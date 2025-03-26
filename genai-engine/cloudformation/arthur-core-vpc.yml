@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ExistingVPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'VPC ID that already exists'
+  ExistingVPCCidrBlock:
+    Type: String
+    Description: 'VPC ID that already exists'
+
+Conditions:
+  CreateVPC: !Equals
+    - !Ref ExistingVPCId
+    - ''
+
+Resources:
+  ArthurVPC:
+    Condition: CreateVPC
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: String
+      EnableDnsHostnames: Boolean
+      EnableDnsSupport: Boolean
+      InstanceTenancy: String
+      Ipv4NetmaskLength: Integer
+
+Outputs:
+  VPCIdOutput:
+    Description: VPC ID to deploy in
+    # For now just passthrough the existing
+    Value: !Ref ExistingVPCId
+  VPCCidrBlockOutput:
+    Description: VPC CIDR block
+    # For now just passthrough the existing
+    Value: !Ref ExistingVPCCidrBlock

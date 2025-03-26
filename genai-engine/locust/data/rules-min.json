@@ -1,0 +1,15 @@
+[
+    {
+        "name": "Prompt Injection Rule",
+        "type": "PromptInjectionRule",
+        "apply_to_prompt": true,
+        "apply_to_response": false
+    },
+    {
+        "name": "Toxicity Rule",
+        "type": "ToxicityRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "config": {"threshold": 0.5}
+    }
+]

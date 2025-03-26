@@ -1,0 +1,82 @@
+[
+    {
+        "prompt": "How do I schedule a Doctor's appointment?",
+        "response": "To schedule a Doctor's appointment under your employee benefits, you can follow these steps: 1. Find a doctor you want to see. 2. Call the doctor's office and ask to schedule an appointment. 3. Follow up with the doctor's office to confirm the details of your appointment.",
+        "context": "You are an AI companion designed to help employees with Human Resources processes and policies. Offer accurate and comprehensive information about HR procedures, including benefits, recruitment, onboarding, and compliance, tailored to the specific needs and location of the employee."
+    },
+    {
+        "prompt": "What is the company's work from home policy?",
+        "response": "Our company's work from home policy allows eligible employees to work remotely with manager approval. To request work from home arrangements: 1. Discuss with your manager 2. Submit a formal request through the HR portal 3. Wait for approval notification 4. Complete required remote work agreement forms. Note that eligibility depends on your role and performance. Regular check-ins with your manager are required to ensure productivity.\n\nPlease raise a HR assist ticket in case of any issues.",
+        "context": "You are an AI companion designed to help employees with Human Resources processes and policies. Offer accurate and comprehensive information about HR procedures, including benefits, recruitment, onboarding, and compliance, tailored to the specific needs and location of the employee."
+    },
+    {
+        "prompt": "How do I debug my code I am seeing a 404 error?",
+        "response": "To debug your code effectively, follow these steps: 1. Add print statements or logging to trace execution flow 2. Use a debugger to set breakpoints and inspect variables 3. Check error messages carefully 4. Isolate the problem by testing smaller code sections 5. Review your logic and check for common mistakes like typos or incorrect data types. Remember to remove debug code before committing.\n\nNeed more help? Feel free to share your specific error message or code snippet.",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "I'm getting a NullPointerException, how do I fix this?",
+        "response": "To resolve a NullPointerException, try these debugging steps: 1. Identify which object is null by examining the stack trace 2. Add null checks at critical points in your code 3. Use your IDE's debugger to inspect variable values 4. Check object initialization and constructor logic 5. Verify that all required dependencies are properly injected or instantiated. Consider using Optional<> for better null handling.\n\nCan you share the specific line where the exception occurs? This will help me provide more targeted guidance.",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "My unit tests are failing, what should I check?",
+        "response": "To troubleshoot failing unit tests, follow these steps: 1. Read the test failure message and stack trace carefully 2. Check if test data and fixtures are properly set up 3. Verify that mock objects and dependencies are configured correctly 4. Use a debugger to step through the test execution 5. Compare expected vs actual results 6. Look for recent code changes that might have affected the tests. Consider using pytest -vv for more detailed output.\n\nCould you share the specific test failure message?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "Why is my API request timing out?",
+        "response": "To debug API timeout issues, try these steps: 1. Check the API endpoint URL and parameters 2. Verify network connectivity and firewall settings 3. Monitor request/response times using tools like Postman 4. Look for potential infinite loops or blocking operations 5. Check if the server is responding within expected timeouts 6. Review server logs for any backend issues 7. Consider implementing retry logic with exponential backoff.\n\nCan you share your API endpoint and the timeout duration you're experiencing?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "My memory usage is too high, how can I debug this?",
+        "response": "To investigate high memory usage, follow these steps: 1. Use memory profiling tools (like memory_profiler for Python) 2. Monitor memory allocation patterns over time 3. Look for memory leaks using tools like Valgrind 4. Check for large objects or collections that aren't being garbage collected 5. Review resource cleanup in destructors/finalizers 6. Consider implementing memory-efficient data structures 7. Use streaming for large data processing.\n\nWould you like help setting up memory profiling for your specific environment?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "Why is my Docker container crashing on startup?",
+        "response": "To debug Docker container crashes, try these steps: 1. Check Docker logs using 'docker logs <container_id>' 2. Verify your Dockerfile configuration and dependencies 3. Ensure environment variables are properly set 4. Check for permission issues with mounted volumes 5. Validate that required services (database, cache, etc.) are accessible 6. Review resource constraints (memory, CPU) 7. Try running the application locally first.\n\nCan you share the Docker logs or the error message you're seeing?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "How do I debug a race condition in my multithreaded code?",
+        "response": "To debug race conditions, follow these steps: 1. Use thread-safe logging to track execution flow 2. Add synchronization mechanisms (locks, semaphores) strategically 3. Implement thread dumps to analyze thread states 4. Use debugging tools with thread visualization 5. Add delays or sleep statements to make race conditions more visible 6. Consider using atomic operations where appropriate 7. Review shared resource access patterns.\n\nWould you like help implementing thread-safe logging in your code?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "How do I debug Python import errors?",
+        "response": "To debug Python import errors, follow these steps: 1. Check your PYTHONPATH environment variable 2. Verify the package is installed using 'pip list' 3. Print sys.path to see Python's module search paths 4. Check for circular imports in your code 5. Ensure __init__.py files exist in package directories 6. Verify package/module names and capitalization 7. Use absolute imports instead of relative imports when possible.\n\nCan you share the specific import error message you're seeing?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "numbers = [1, 2, 3, 4, 5]\nfor i in range(len(numbers)):\n    if numbers[i] == 4:\n        break\nprint(numbers[i+1:]) # prints [5] instead of [4, 5]\n\nWhy does my list slicing code print [5] instead of [4, 5]?",
+        "response": "Let's debug your list slicing issue:\n\n1. In your code:\n   numbers = [1, 2, 3, 4, 5]\n   for i in range(len(numbers)):\n       if numbers[i] == 4:\n           break\n   print(numbers[i+1:])\n\n2. The bug occurs because:\n   - The loop breaks when i=3 (when numbers[i]=4)\n   - Then i+1=4, so numbers[4:] only includes the last element [5]\n   - The slice misses the 4 because we're starting after it\n\n3. To fix this, either:\n   - Use numbers[i:] instead of numbers[i+1:] to include the current number\n   - Or modify the loop to break when finding the number before your target\n\nWould you like to see the corrected version of the code?",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    },
+    {
+        "prompt": "What is the top 10 most active users in the last 30 days?",
+        "response": "SELECT username, COUNT(*) as activity_count \nFROM user_activity \nWHERE activity_timestamp >= NOW() - INTERVAL '30 days' \nGROUP BY username \nORDER BY activity_count DESC \nLIMIT 10;",
+        "context": "You are an SQL agent designed to interact with a Postgres database. Create a syntactically correct SQL query to run, then look at the results of the query and return the answer. Do not include any other text in your response."
+    },
+    {
+        "prompt": "How do I request time off?",
+        "response": "To request time off, please follow these steps: 1. Log into the HR portal 2. Navigate to 'Time Off Requests' 3. Select the dates you wish to take off 4. Choose the type of leave (vacation, sick, personal) 5. Add any relevant notes 6. Submit for manager approval. Please submit requests at least 2 weeks in advance for planned time off.\n\nPlease raise a HR assist ticket in case of any issues.",
+        "context": "You are an AI companion designed to help employees with Human Resources processes and policies. Offer accurate and comprehensive information about HR procedures, including benefits, recruitment, onboarding, and compliance, tailored to the specific needs and location of the employee."
+    },
+    {
+        "prompt": "How do I optimize my database query performance?",
+        "response": "To optimize your database query performance: 1. Add appropriate indexes for frequently queried columns 2. Avoid SELECT * and only retrieve needed columns 3. Use EXPLAIN ANALYZE to identify bottlenecks 4. Consider partitioning large tables 5. Optimize JOIN operations and use proper JOIN types 6. Implement query caching where appropriate.\n\nWould you like me to review a specific query for optimization suggestions?",
+        "context": "You are a database optimization expert. Provide practical advice for improving query performance and database efficiency. Focus on best practices and common optimization techniques. Offer to analyze specific queries when needed. Maintain a helpful and educational tone."
+    },
+    {
+        "prompt": "What are our company's core values?",
+        "response": "Our company's core values are: 1. Innovation - We embrace creative solutions and new ideas 2. Integrity - We act with honesty and transparency 3. Collaboration - We work together to achieve common goals 4. Excellence - We strive for the highest quality in everything we do 5. Customer Focus - We put our customers' needs first. These values guide our daily decisions and actions.\n\nPlease raise a HR assist ticket in case of any questions.",
+        "context": "You are an AI companion designed to help employees with Human Resources processes and policies. Share information about company culture, values, and mission. Maintain a professional and inspiring tone while communicating organizational principles."
+    },
+    {
+        "prompt": "What is wrong with my code: def recursive_function(x):\n    return recursive_function(x)\n\nrecursive_function(1)",
+        "response": "The issue with your code is a classic example of infinite recursion. The function calls itself indefinitely without a base case, which will eventually lead to a runtime error. To fix this, you need to add a base case that stops the recursion. Here's the corrected version:\n\ndef recursive_function(x):\n    if x == 0:\n        return\n    print(x)\n    return recursive_function(x - 1)\n\nrecursive_function(5)",
+        "context": "You are a helpful debugging assistant. Provide clear step-by-step guidance for troubleshooting code issues. Focus on practical debugging techniques and best practices. Encourage users to share specific details about their problems. Maintain a supportive and patient tone while helping users resolve their coding challenges."
+    }
+]

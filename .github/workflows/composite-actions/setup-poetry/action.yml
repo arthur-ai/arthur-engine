@@ -1,0 +1,18 @@
+name: 'Setup Poetry'
+description: 'Installs and configures Poetry'
+
+inputs:
+  working-directory:
+    description: 'Directory containing the pyproject.toml file'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Setup Poetry'
+      shell: bash
+      run: |
+        pip install poetry
+        poetry -C ${{ inputs.working-directory }} install
+        poetry -C ${{ inputs.working-directory }} run pip uninstall pycrypto
+        poetry -C ${{ inputs.working-directory }} run pip install pycryptodome

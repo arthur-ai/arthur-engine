@@ -1,0 +1,67 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: (^genai-engine/staging.openapi.json)
+      - id: end-of-file-fixer
+        exclude: (^genai-engine/staging.openapi.json)
+      - id: check-yaml
+        exclude: (^genai-engine/cloudformation/|^genai-engine/helm/)
+      - id: debug-statements
+      - id: name-tests-test
+        args: ["--pytest-test-first"]
+        exclude: ^(genai-engine/tests/mocks|genai-engine/tests/constants.py|genai-engine/tests/clients)
+  - repo: https://github.com/pycqa/autoflake
+    rev: v2.2.1
+    hooks:
+      - id: autoflake
+        args:
+          - "--in-place"
+          - "--remove-all-unused-imports"
+          - "--recursive"
+        fail_fast: true
+        exclude: (^genai-engine/genai_engine/routers/v2/routers.py)
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: "sort imports"
+        args: ["--profile", "black"]
+        fail_fast: true
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.12
+        fail_fast: true
+  - repo: https://github.com/asottile/add-trailing-comma
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+        name: "add trailing commas"
+        fail_fast: true
+  - repo: local
+    hooks:
+      - id: genai-engine-routes-security-check
+        name: "genai-engine: check routes security"
+        entry: poetry -C genai-engine run routes_security_check
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: false
+        files: ^genai-engine/genai_engine/
+      - id: genai-engine-pytest-check
+        name: "genai-engine: pytest unit tests and coverage"
+        entry: poetry -C genai-engine run pytest -m "unit_tests" --cov=genai-engine/genai_engine --cov-fail-under=79
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: false
+        files: ^genai-engine/genai_engine/
+      - id: genai-engine-api-changelog-check
+        name: "genai-engine: api changelog"
+        entry: poetry -C genai-engine run generate_changelog
+        language: system
+        always_run: false
+        files: ^genai-engine/genai_engine/schemas/

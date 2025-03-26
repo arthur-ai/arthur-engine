@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.arthurResourceNameSuffix }}
+  name: arthur-genai-engine-{{ .Values.arthurResourceNameSuffix }}-service
+  {{- else }}
+  name: arthur-genai-engine-service
+  {{- end }}
+  annotations:
+    {{- with .Values.arthurGenaiEngineService.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    app: arthur-genai-engine
+    {{- include "arthur-genai-engine.labels" . | nindent 4 }}
+    {{- with .Values.arthurGenaiEngineService.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: arthur-genai-engine

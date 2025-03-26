@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  GenaiEngineLoadBalancerSecurityGroupIDs:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'Security groups for Arthur GenAI Engine load balancer'
+  GenaiEngineLoadBalancerSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'List of subnet IDs to apply to the load balancer'
+  GenaiEngineLoadBalancerCertificateARN:
+    Type: String
+    Description: 'GenAI Engine application load balancer TLS certificate ARN'
+  GenaiEngineLoadBalancerScheme:
+    Description: 'Indicate whether the load balancer is internet-facing or VPC internal'
+    Type: String
+    ConstraintDescription: 'Arthur GenAI Engine load balancer scheme must be defined.'
+    AllowedValues:
+      - 'internet-facing'
+      - 'internal'
+  GenaiEngineVPCId:
+    Type: String
+    Description: 'GenAI Engine VPC ID'
+  GenaiEngineRoute53HostedZoneId:
+    Type: String
+    Description: '(Optional) The ID of the existing Route 53 hosted zone where A record of Arthur GenAI Engine DNS name is to be created'
+  GenaiEngineRoute53RecordName:
+    Type: String
+    Description: '(Optional) The name of the Route 53 A record for Arthur GenAI Engine DNS name (e.g., arthur-genai-engine.example.com)'
+
+Conditions:
+  SetRoute53Record: !And
+    - !Not [ !Equals [ !Ref GenaiEngineRoute53HostedZoneId, '' ] ]
+    - !Not [ !Equals [ !Ref GenaiEngineRoute53RecordName, '' ] ]
+
+Resources:
+  GenaiEngineTargetGroup:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}-genai-engine-http1${ArthurResourceNameSuffix}"
+      TargetType: ip
+      Protocol: HTTP
+      Port: 3000
+      VpcId: !Ref GenaiEngineVPCId
+      ProtocolVersion: HTTP1
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 3
+      TargetGroupAttributes:
+        - Key: slow_start.duration_seconds
+          Value: 300
+  GenaiEngineLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}-genai-engine-alb${ArthurResourceNameSuffix}"
+      Type: 'application'
+      Scheme: !Ref GenaiEngineLoadBalancerScheme
+      Subnets: !Ref GenaiEngineLoadBalancerSubnetIDs
+      SecurityGroups: !Ref GenaiEngineLoadBalancerSecurityGroupIDs
+  GenaiEngineHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref GenaiEngineLoadBalancer
+      Port: 443
+      Protocol: 'HTTPS'
+      SslPolicy: 'ELBSecurityPolicy-TLS13-1-2-Res-2021-06'
+      Certificates:
+        - CertificateArn: !Ref GenaiEngineLoadBalancerCertificateARN
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref GenaiEngineTargetGroup
+  GenaiEngineHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref GenaiEngineLoadBalancer
+      Port: 80
+      Protocol: 'HTTP'
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: 'HTTPS'
+            Port: 443
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: 'HTTP_301'
+  Route53RecordSet:
+    Type: 'AWS::Route53::RecordSet'
+    Condition: SetRoute53Record
+    Properties:
+      HostedZoneId: !Ref GenaiEngineRoute53HostedZoneId
+      Name: !Ref GenaiEngineRoute53RecordName
+      Type: 'A'
+      AliasTarget:
+        DNSName: !GetAtt GenaiEngineLoadBalancer.DNSName
+        HostedZoneId: !GetAtt GenaiEngineLoadBalancer.CanonicalHostedZoneID
+
+Outputs:
+  GenaiEngineLBTargetGroupOutput:
+    Description: 'Target group for GenAI Engine'
+    Value: !Ref GenaiEngineTargetGroup
+  GenaiEngineLBTargetGroupFullNameOutput:
+    Description: 'GenAI Engine LB target group full name'
+    Value: !GetAtt GenaiEngineTargetGroup.TargetGroupFullName
+  GenaiEngineLBFullNameOutput:
+    Description: 'GenAI Engine LB full name'
+    Value: !GetAtt GenaiEngineLoadBalancer.LoadBalancerFullName

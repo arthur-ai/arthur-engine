@@ -1,0 +1,36 @@
+services:
+  db:
+    image: ankane/pgvector
+    networks:
+      - arthur_network
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DATABASES=arthur_genai_engine
+    env_file:
+      - db.env
+  genai-engine:
+    # If you have GPUs, use `genai-engine-gpu` image instead
+    image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION}
+    platform: linux/amd64
+    networks:
+      - arthur_network
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_URL=host.docker.internal
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=arthur_genai_engine
+      - POSTGRES_USE_SSL=false
+    env_file:
+      - arthur-genai-engine.env
+    entrypoint: [ "bash", "-c", "./genai_engine/docker-entrypoint.sh" ]
+networks:
+  arthur_network:
+    driver: bridge

@@ -1,0 +1,347 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  GenaiEngineECSTaskRoleARN:
+    Type: String
+    Description: "ARN for GenAI Engine's ECS task role"
+  GenaiEngineECSTaskExecutionRoleARN:
+    Type: String
+    Description: "ARN for GenAI Engine's ECS task execution role"
+  GenaiEngineVersion:
+    Type: String
+    Description: 'GenAI Engine version'
+  GenaiEngineContainerImageLocation:
+    Description: 'The container image location for Arthur GenAI Engine'
+    Type: String
+    AllowedPattern: '.+'
+    Default: 'arthurplatform/genai-engine-gpu'
+    ConstraintDescription: 'The container image location for Arthur GenAI Engine must be specified.'
+  ContainerRepositoryCredentialRequired:
+    Type: String
+    Description: 'Is credential required to access the container repository?'
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ContainerRepositoryCredentialsSecretARN:
+    Type: String
+    Description: 'ARN for the container repository credentials secret'
+  GenaiEnginePostgresUrl:
+    Type: String
+    Description: 'GenAI Engine Postgres URL'
+  GenaiEnginePostgresPort:
+    Type: String
+    Description: 'GenAI Engine Postgres port'
+  GenaiEnginePostgresDatabaseName:
+    Type: String
+    Description: 'GenAI Engine Postgres database name'
+  GenaiEnginePostgresClientConnectionPoolSize:
+    Type: Number
+    Description: 'GenAI Engine Postgres client pool size'
+    Default: 5
+  GenaiEnginePostgresClientConnectionPoolMaxOverflow:
+    Type: Number
+    Description: 'GenAI Engine Postgres client connection poolmax overflow'
+    Default: 15
+  GenaiEngineIngressURL:
+    Type: String
+    Description: 'GenAI Engine ingress DNS URL'
+  GenaiEnginePostgresSSLCertDownloadURL:
+    Type: String
+    Description: 'GenAI Engine Postgres SSL certificate download URL (must be an HTTPS endpoint)'
+  AuthLoadBalancerCertificateURL:
+    Type: String
+    Description: '(Optional) Arthur Auth service SSL certificate download URL (must be an HTTPS endpoint). Required for the use of a self-signed certificate.'
+    AllowedPattern: '^$|https://.+'
+    ConstraintDescription: 'A valid Arthur Auth SSL certificate download HTTPS URL must be defined.'
+    Default: ''
+  GenaiEngineLicense:
+    Type: String
+    Description: 'GenAI Engine license'
+  GenaiEngineSecretAPIKeyARN:
+    Type: String
+    Description: 'GenAI Engine secret API key ARN'
+    NoEcho: true
+  GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN:
+    Type: String
+    Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
+    NoEcho: true
+  GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN:
+    Type: String
+    Description: "Connection strings for OpenAI text-embedding-ada-002 embedding model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The URLs must end with '/'. Many may be specified. Leave blank if Chat is disabled."
+    NoEcho: true
+    Default: ''
+  GenaiEngineSecretPostgresARN:
+    Type: String
+    Description: 'GenAI Engine secret Postgres ARN'
+    NoEcho: true
+  AuthIngressURL:
+    Type: String
+    Description: 'Arthur Auth service ingress DNS URL (e.g. https://arthur-auth.mydomain.com)'
+    Default: ''
+  GenaiEngineAuthAdminConsolePasswordSecretARN:
+    Type: String
+    Description: 'Arthur Auth secret Admin Console password ARN'
+    NoEcho: true
+    Default: ''
+  GenaiEngineAuthClientSecretARN:
+    Type: String
+    Description: 'GenAI Engine secret client secret ARN'
+    NoEcho: true
+    Default: ''
+  GenaiEngineAppSecretKeyARN:
+    Type: String
+    Description: 'GenAI Engine secret app secret ARN'
+    NoEcho: true
+  GenaiEngineAPIOnlyModeEnabled:
+    Type: String
+    Description: 'Enable GenAI Engine API-only mode without the UI components'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'enabled'
+  GenaiEngineSensitiveDataCheckMaxTokenLimit:
+    Type: Number
+    Description: 'Max number of tokens GenAI Engine can process against LLM for sensitive data checks'
+  GenaiEngineHallucinationCheckMaxTokenLimit:
+    Type: Number
+    Description: 'Max number of tokens GenAI Engine can process against LLM for hallucination data checks'
+  GenaiEngineToxicityCheckMaxTokenLimit:
+    Type: Number
+    Default: 1200
+    Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  ChatEnabled:
+    Type: String
+    Description: 'Enable Arthur Chat'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+  DefaultS3BucketName:
+    Type: String
+    Description: 'Default S3 bucket name to use for the platform'
+    Default: ''
+  DefaultS3AssumableRoleARN:
+    Type: String
+    Description: 'An assumable role ARN for accessing the default S3 bucket'
+    Default: ''
+  GenaiEngineEC2TaskCPUValue:
+    Type: Number
+    Default: 8192
+    Description: 'CPU value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineEC2TaskGPUValue:
+    Type: Number
+    Default: 1
+    Description: 'GPU value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineEC2TaskMemoryValue:
+    Type: Number
+    Default: 30720
+    Description: 'Memory value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineServerWorkerCount:
+    Type: Number
+    Default: 5
+    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (5 is recommended)'
+  GenaiEngineOpenAIProvider:
+    Type: String
+    AllowedValues:
+      - 'Azure'
+      - 'OpenAI'
+    Default: "Azure"
+    Description: 'Provider of OpenAI LLMs'
+  GenaiEngineCacheTaskRulesCacheEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Enable task rules cache'
+  GenaiEngineCacheTaskRulesCacheTTL:
+    Type: Number
+    Default: 60
+    Description: 'Task rules cache TTL in seconds'
+
+Conditions:
+  EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
+  EnableChat: !Equals [ !Ref ChatEnabled, 'enabled' ]
+  IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
+  ImportAuthServiceCertificate: !Not [ !Equals [ !Ref AuthLoadBalancerCertificateURL, '' ] ]
+  ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !Not [ !Equals [ !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN, '' ] ]
+
+Resources:
+  GenaiEngineECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-gpu${ArthurResourceNameSuffix}"
+      RetentionInDays: 365
+
+  GenaiEngineECSGPUTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    DependsOn: GenaiEngineECSLogGroup
+    Properties:
+      Family: !Sub "${ArthurResourceNamespace}-genai-engine-gpu${ArthurResourceNameSuffix}"
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities:
+        - 'EC2'
+      Cpu: !Ref GenaiEngineEC2TaskCPUValue
+      Memory: !Ref GenaiEngineEC2TaskMemoryValue
+      TaskRoleArn: !Ref GenaiEngineECSTaskRoleARN
+      ExecutionRoleArn: !Ref GenaiEngineECSTaskExecutionRoleARN
+      ContainerDefinitions:
+        - Name: 'arthur-genai-engine-gpu'
+          Image: !Sub "${GenaiEngineContainerImageLocation}:${GenaiEngineVersion}"
+          RepositoryCredentials: !If
+            - IsContainerRepositoryCredentialRequired
+            - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
+            - !Ref AWS::NoValue
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+              HostPort: 3000
+              Protocol: 'tcp'
+          Cpu: !Ref GenaiEngineEC2TaskCPUValue
+          ResourceRequirements:
+            - Type: "GPU"
+              Value: !Ref GenaiEngineEC2TaskGPUValue
+          Environment:
+            - Name: 'NVIDIA_DRIVER_CAPABILITIES'
+              Value: 'compute,utility'
+            - Name: 'POSTGRES_URL'
+              Value: !Ref GenaiEnginePostgresUrl
+            - Name: 'POSTGRES_USE_SSL'
+              Value: 'true'
+            - Name: 'GENAI_ENGINE_ENVIRONMENT'
+              Value: 'aws'
+            - Name: 'POSTGRES_PORT'
+              Value: !Ref GenaiEnginePostgresPort
+            - Name: 'POSTGRES_DB'
+              Value: !Ref GenaiEnginePostgresDatabaseName
+            - Name: 'GENAI_ENGINE_INGRESS_URI'
+              Value: !Ref GenaiEngineIngressURL
+            - Name: 'POSTGRES_SSL_CERT_DOWNLOAD_URL'
+              Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
+            - Name: 'GENAI_ENGINE_LICENSE'
+              Value: !Ref GenaiEngineLicense
+            - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
+              Value: !Ref GenaiEngineAPIOnlyModeEnabled
+            - Name: 'GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT'
+              Value: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT'
+              Value: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT'
+              Value: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
+              Value: !Ref GenaiEngineOpenAIProvider
+            - Name: 'WORKERS'
+              Value: !Ref GenaiEngineServerWorkerCount
+            - Name: 'POSTGRES_CLIENT_CONNECTION_POOL_SIZE'
+              Value: !Ref GenaiEnginePostgresClientConnectionPoolSize
+            - Name: 'POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW'
+              Value: !Ref GenaiEnginePostgresClientConnectionPoolMaxOverflow
+            - Name: 'CACHE_TASK_RULES_CACHE_ENABLED'
+              Value: !Ref GenaiEngineCacheTaskRulesCacheEnabled
+            - Name: 'CACHE_TASK_RULES_CACHE_TTL'
+              Value: !Ref GenaiEngineCacheTaskRulesCacheTTL
+            - !If
+              - EnableAuthService
+              - Name: 'KEYCLOAK_HOST_URI'
+                Value: !Ref AuthIngressURL
+              - !Ref AWS::NoValue
+            - !If
+              - EnableAuthService
+              - Name: 'KEYCLOAK_REALM'
+                Value: 'genai_engine'
+              - !Ref AWS::NoValue
+            - !If
+              - EnableAuthService
+              - Name: 'AUTH_ADMIN_CONSOLE_USERNAME'
+                Value: 'admin'
+              - !Ref AWS::NoValue
+            - !If
+              - EnableAuthService
+              - Name: 'AUTH_CLIENT_ID'
+                Value: 'arthur-genai-engine'
+              - !Ref AWS::NoValue
+            - !If
+              - EnableChat
+              - Name: 'CHAT_ENABLED'
+                Value: !Ref ChatEnabled
+              - !Ref AWS::NoValue
+            - !If
+              - EnableChat
+              - Name: 'DEFAULT_S3_BUCKET'
+                Value: !Ref DefaultS3BucketName
+              - !Ref AWS::NoValue
+            - !If
+              - EnableChat
+              - Name: 'DEFAULT_S3_ASSUMABLE_ROLE_ARN'
+                Value: !Ref DefaultS3AssumableRoleARN
+              - !Ref AWS::NoValue
+            - !If
+              - ImportAuthServiceCertificate
+              - Name: 'KEYCLOAK_SSL_CERT_DOWNLOAD_URL'
+                Value: !Ref AuthLoadBalancerCertificateURL
+              - !Ref AWS::NoValue
+            - !If
+              - ImportAuthServiceCertificate
+              - Name: 'KEYCLOAK_USE_PRIVATE_CERT'
+                Value: 'true'
+              - !Ref AWS::NoValue
+          Secrets:
+            - Name: 'GENAI_ENGINE_ADMIN_KEY'
+              ValueFrom: !Ref GenaiEngineSecretAPIKeyARN
+            - Name: 'GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS'
+              ValueFrom: !Ref GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN
+            - !If
+              - ImportGenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN
+              - Name: 'GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS'
+                ValueFrom: !Ref GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN
+              - !Ref AWS::NoValue
+            - Name: 'POSTGRES_USER'
+              ValueFrom: !Sub "${GenaiEngineSecretPostgresARN}:username::"
+            - Name: 'POSTGRES_PASSWORD'
+              ValueFrom: !Sub "${GenaiEngineSecretPostgresARN}:password::"
+            - Name: 'APP_SECRET_KEY'
+              ValueFrom: !Ref GenaiEngineAppSecretKeyARN
+            - !If
+              - EnableAuthService
+              - Name: 'AUTH_ADMIN_CONSOLE_PASSWORD'
+                ValueFrom: !Ref GenaiEngineAuthAdminConsolePasswordSecretARN
+              - !Ref AWS::NoValue
+            - !If
+              - EnableAuthService
+              - Name: 'AUTH_CLIENT_SECRET'
+                ValueFrom: !Ref GenaiEngineAuthClientSecretARN
+              - !Ref AWS::NoValue
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: !Sub "/arthur/ecs/${ArthurResourceNamespace}-genai-engine-gpu${ArthurResourceNameSuffix}"
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-stream-prefix: 'ecs'
+          HealthCheck:
+            Command:
+              - 'CMD-SHELL'
+              - python3 -c "import http.client; conn = http.client.HTTPConnection('localhost:3000'); conn.request('GET', '/health'); response = conn.getresponse(); print(response.read().decode())" || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+Outputs:
+  GenaiEngineECSGPUTaskDefinitionOutput:
+    Description: 'The task definition for Arthur GenAI Engine with GPUs'
+    Value: !Ref GenaiEngineECSGPUTaskDefinition

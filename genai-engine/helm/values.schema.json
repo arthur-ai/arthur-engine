@@ -1,0 +1,434 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "arthurResourceNameSuffix": {
+            "type": "string",
+            "description": "Name suffix for this Arthur stack resources (e.g. 'dev' or 'prod')"
+        },
+        "containerRepositoryCredentialRequired": {
+            "type": "boolean",
+            "description": "Indicates if credentials are required to access the container repository"
+        },
+        "genaiEngineDBDatabaseName": {
+            "type": "string",
+            "description": "GenAI Engine database name"
+        },
+        "postgresBYOEndpoint": {
+            "type": "string",
+            "description": "Postgres database URL"
+        },
+        "postgresBYOPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Postgres database port"
+        },
+        "postgresSSLCertDownloadURL": {
+            "type": "string",
+            "format": "uri",
+            "description": "Postgres SSL certificate download URL (must be an HTTPS endpoint)"
+        },
+        "ingress": {
+            "type": "object",
+            "properties": {
+                "className": {
+                    "type": "string",
+                    "description": "Class name for the Kubernetes ingress"
+                },
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Annotations for the Kubernetes ingress"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Labels for the Kubernetes ingress"
+                }
+            }
+        },
+        "genaiEngineContainerImageLocation": {
+            "type": "string",
+            "description": "The container image location for Arthur GenAI Engine"
+        },
+        "genaiEngineVersion": {
+            "type": "string",
+            "description": "GenAI Engine version"
+        },
+        "genaiEngineIngressURL": {
+            "oneOf": [
+                {
+                    "type": "string",
+                    "format": "hostname"
+                },
+                {
+                    "type": "string",
+                    "maxLength": 0
+                }
+            ],
+            "description": "GenAI Engine application ingress DNS URL, can be empty"
+        },
+        "postgresClientConnectionPoolSize": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Postgres client connection pool size"
+        },
+        "postgresClientConnectionPoolMaxOverflow": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Postgres client connection pool max overflow"
+        },
+        "genaiEngineHallucinationCheckMaxTokenLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Max number of tokens GenAI Engine can process for hallucination data checks"
+        },
+        "genaiEngineSensitiveDataCheckMaxTokenLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Max number of tokens GenAI Engine can process for sensitive data checks"
+        },
+        "genaiEngineToxicityCheckMaxTokenLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Max number of tokens an inference can have for the toxicity rule"
+        },
+        "genaiEngineOpenAIProvider": {
+            "type": "string",
+            "enum": [
+                "Azure",
+                "OpenAI"
+            ],
+            "description": "Provider of OpenAI LLMs"
+        },
+        "genaiEngineAPIOnlyModeEnabled": {
+            "type": "string",
+            "enum": [
+                "enabled",
+                "disabled"
+            ],
+            "description": "Enable GenAI Engine API-only mode without the UI components"
+        },
+        "genaiEngineReplicaCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of replicas of GenAI Engine pod running in k8s cluster"
+        },
+        "genaiEngineServiceAccount": {
+            "type": "string",
+            "description": "Name of the service account used by the GenAI Engine pod"
+        },
+        "genaiEngineContainerCPURequests": {
+            "type": "string",
+            "description": "CPU requests value for GenAI Engine"
+        },
+        "genaiEngineContainerMemoryRequests": {
+            "type": "string",
+            "description": "Memory requests value for GenAI Engine"
+        },
+        "genaiEngineContainerCPULimits": {
+            "type": "string",
+            "description": "CPU limits value for GenAI Engine"
+        },
+        "genaiEngineContainerMemoryLimits": {
+            "type": "string",
+            "description": "Memory limits value for GenAI Engine"
+        },
+        "arthurGenaiEngineDeployment": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Annotations for Arthur GenAI Engine deployment"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Labels for Arthur GenAI Engine deployment"
+                },
+                "genaiEnginePodAnnotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Annotations for Arthur GenAI Engine pod"
+                },
+                "genaiEnginePodLabels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Labels for Arthur GenAI Engine pod"
+                },
+                "genaiEnginePodNodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Node selector for Arthur GenAI Engine pod"
+                },
+                "genaiEnginePodAffinity": {
+                    "type": "object",
+                    "description": "Affinity settings for Arthur GenAI Engine pod"
+                },
+                "genaiEnginePodTolerations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "description": "The taint key that the toleration applies to"
+                            },
+                            "operator": {
+                                "type": "string",
+                                "enum": ["Equal"],
+                                "description": "The operator to use for the toleration"
+                            },
+                            "value": {
+                                "type": "string",
+                                "description": "The value to match for the toleration"
+                            },
+                            "effect": {
+                                "type": "string",
+                                "enum": ["NoExecute"],
+                                "description": "The effect of the toleration"
+                            },
+                            "tolerationSeconds": {
+                                "type": "integer",
+                                "description": "The duration for which the toleration is valid"
+                            }
+                        },
+                        "required": ["key", "operator", "value", "effect", "tolerationSeconds"]
+                    },
+                    "description": "Tolerations for Arthur GenAI Engine pod"
+                }
+            }
+        },
+        "arthurGenaiEngineService": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Annotations for Arthur GenAI Engine service"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Labels for Arthur GenAI Engine service"
+                }
+            }
+        },
+        "arthurGenaiEngineHPA": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable Horizontal Pod Autoscaler for Arthur GenAI Engine"
+                },
+                "annotations": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Annotations for Arthur GenAI Engine HPA"
+                },
+                "labels": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Labels for Arthur GenAI Engine HPA"
+                },
+                "behavior": {
+                    "type": "object",
+                    "properties": {
+                        "scaleDown": {
+                            "type": "object",
+                            "properties": {
+                                "stabilizationWindowSeconds": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "description": "Stabilization window seconds for scale down"
+                                },
+                                "policies": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Percent"
+                                                ],
+                                                "description": "Policy type for scale down"
+                                            },
+                                            "value": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "description": "Policy value for scale down"
+                                            },
+                                            "periodSeconds": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "description": "Policy period seconds for scale down"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "scaleUp": {
+                            "type": "object",
+                            "properties": {
+                                "stabilizationWindowSeconds": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "description": "Stabilization window seconds for scale up"
+                                },
+                                "policies": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "type": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "Percent"
+                                                ],
+                                                "description": "Policy type for scale up"
+                                            },
+                                            "value": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "description": "Policy value for scale up"
+                                            },
+                                            "periodSeconds": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "description": "Policy period seconds for scale up"
+                                            }
+                                        }
+                                    }
+                                },
+                                "selectPolicy": {
+                                    "type": "string",
+                                    "enum": [
+                                        "Max"
+                                    ],
+                                    "description": "Select policy for scale up"
+                                }
+                            }
+                        }
+                    }
+                },
+                "minReplicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Minimum number of replicas for HPA"
+                },
+                "maxReplicas": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Maximum number of replicas for HPA"
+                },
+                "targetCPUUtilizationPercentage": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Target CPU utilization percentage for HPA"
+                },
+                "targetMemoryUtilizationPercentage": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Target memory utilization percentage for HPA"
+                }
+            }
+        },
+        "gpuEnabled": {
+            "type": "boolean",
+            "description": "Enable GPU support"
+        },
+        "genaiEngineDeploymentType": {
+            "type": "string",
+            "enum": [
+                "deployment",
+                "daemonset"
+            ],
+            "description": "Deployment type for GenAI Engine"
+        },
+        "genaiEngineWorkers": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of workers for GenAI Engine"
+        },
+        "imagePullSecretName": {
+            "type": "string",
+            "description": "Name of the secret containing the credentials for the container repository"
+        },
+        "genaiEngineSecretPostgresName": {
+            "type": "string",
+            "description": "GenAI Engine secret Postgres name"
+        },
+        "genaiEngineAppSecretKeyName": {
+            "type": "string",
+            "description": "GenAI Engine secret app secret name"
+        },
+        "genaiEngineSecretAPIKeyName": {
+            "type": "string",
+            "description": "GenAI Engine secret API key name"
+        },
+        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName": {
+            "type": "string",
+            "description": "Name of the secret for Azure OpenAI GPT-3.5 model endpoints"
+        }
+    },
+    "required": [
+        "arthurResourceNameSuffix",
+        "containerRepositoryCredentialRequired",
+        "genaiEngineDBDatabaseName",
+        "postgresBYOEndpoint",
+        "postgresBYOPort",
+        "postgresSSLCertDownloadURL",
+        "ingress",
+        "genaiEngineContainerImageLocation",
+        "genaiEngineVersion",
+        "genaiEngineIngressURL",
+        "postgresClientConnectionPoolSize",
+        "postgresClientConnectionPoolMaxOverflow",
+        "genaiEngineHallucinationCheckMaxTokenLimit",
+        "genaiEngineSensitiveDataCheckMaxTokenLimit",
+        "genaiEngineToxicityCheckMaxTokenLimit",
+        "genaiEngineOpenAIProvider",
+        "genaiEngineReplicaCount",
+        "genaiEngineServiceAccount",
+        "genaiEngineContainerCPURequests",
+        "genaiEngineContainerMemoryRequests",
+        "genaiEngineContainerCPULimits",
+        "genaiEngineContainerMemoryLimits",
+        "arthurGenaiEngineDeployment",
+        "arthurGenaiEngineService",
+        "arthurGenaiEngineHPA",
+        "imagePullSecretName",
+        "genaiEngineSecretPostgresName",
+        "genaiEngineAppSecretKeyName",
+        "genaiEngineSecretAPIKeyName",
+        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName"
+    ]
+}

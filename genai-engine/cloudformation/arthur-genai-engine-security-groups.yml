@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'The VPC to deploy SGs to'
+  VPCCidrBlock:
+    Type: String
+    Description: 'The VPC CIDR block for SGs to use'
+  GenaiEngineBYOLBSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur GenAI Engine load balancer. If not specified, one will be provisioned.'
+    Default: ''
+  GenaiEngineBYOAppSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur GenAI Engine application. If not specified, one will be provisioned.'
+    Default: ''
+
+Conditions:
+  IsGenaiEngineBYOLBSecurityGroupIDsEmpty:
+    !Equals [ !Select [ 0, !Ref GenaiEngineBYOLBSecurityGroupIDs ], "" ]
+  IsGenaiEngineBYOAppSecurityGroupIDsEmpty:
+    !Equals [ !Select [ 0, !Ref GenaiEngineBYOAppSecurityGroupIDs ], "" ]
+
+Resources:
+  GenaiEngineLBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsGenaiEngineBYOLBSecurityGroupIDsEmpty
+    Properties:
+      GroupDescription: 'Arthur GenAI Engine load balancer security group'
+      GroupName: !Sub "${ArthurResourceNamespace}-genai-engine-lb${ArthurResourceNameSuffix}"
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: '0.0.0.0/0'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+  GenaiEngineAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsGenaiEngineBYOAppSecurityGroupIDsEmpty
+    Properties:
+      GroupDescription: 'Arthur GenAI Engine service security group'
+      GroupName: !Sub "${ArthurResourceNamespace}-genai-engine-app${ArthurResourceNameSuffix}"
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: !Ref VPCCidrBlock
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+Outputs:
+  GenaiEngineLBSecurityGroupsOutput:
+    Description: 'Security groups for the client-facing Arthur GenAI Engine load balancer'
+    Value: !If
+      - IsGenaiEngineBYOLBSecurityGroupIDsEmpty
+      - !Join [ ",", [ !Ref GenaiEngineLBSecurityGroup ] ]
+      - !Join [ ",", !Ref GenaiEngineBYOLBSecurityGroupIDs ]
+  GenaiEngineAppSecurityGroupsOutput:
+    Description: 'Security groups for the Arthur GenAI Engine ECS service tasks'
+    Value: !If
+      - IsGenaiEngineBYOAppSecurityGroupIDsEmpty
+      - !Join [ ",", [ !Ref GenaiEngineAppSecurityGroup ] ]
+      - !Join [ ",", !Ref GenaiEngineBYOAppSecurityGroupIDs ]

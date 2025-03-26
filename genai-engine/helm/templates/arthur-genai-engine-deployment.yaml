@@ -1,0 +1,136 @@
+{{ if .Values.genaiEngineDeploymentType | eq "deployment" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  {{- if .Values.arthurResourceNameSuffix }}
+  name: arthur-genai-engine-{{ .Values.arthurResourceNameSuffix }}
+  {{- else }}
+  name: arthur-genai-engine
+  {{- end }}
+  annotations:
+    {{- with .Values.arthurGenaiEngineDeployment.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    app: arthur-genai-engine
+    {{- include "arthur-genai-engine.labels" . | nindent 4 }}
+    {{- with .Values.arthurGenaiEngineDeployment.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if not .Values.arthurGenaiEngineHPA.enabled }}
+  replicas: {{ .Values.genaiEngineReplicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: arthur-genai-engine
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app: arthur-genai-engine
+        {{- include "arthur-genai-engine.labels" . | nindent 8 }}
+        {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.containerRepositoryCredentialRequired }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecretName }}
+      {{- end }}
+      {{- if .Values.genaiEngineServiceAccount }}
+      serviceAccountName: {{ .Values.genaiEngineServiceAccount }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.genaiEngineContainerImageLocation }}:{{ .Values.genaiEngineVersion }}"
+          ports:
+            - containerPort: 3000
+            - containerPort: {{ .Values.postgresBYOPort }}
+          resources:
+            requests:
+              memory: "{{ .Values.genaiEngineContainerMemoryRequests }}"
+              cpu: "{{ .Values.genaiEngineContainerCPURequests }}"
+            limits:
+              memory: "{{ .Values.genaiEngineContainerMemoryLimits }}"
+              cpu: "{{ .Values.genaiEngineContainerCPULimits }}"
+          env:
+            - name: POSTGRES_URL
+              value: "{{ .Values.postgresBYOEndpoint }}"
+            - name: POSTGRES_USE_SSL
+              value: "true"
+            - name: POSTGRES_PORT
+              value: "{{ .Values.postgresBYOPort }}"
+            - name: POSTGRES_DB
+              value: "{{ .Values.genaiEngineDBDatabaseName }}"
+            - name: POSTGRES_SSL_CERT_DOWNLOAD_URL
+              value: "{{ .Values.postgresSSLCertDownloadURL }}"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretPostgresName }}
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretPostgresName }}
+                  key: password
+            - name: POSTGRES_CLIENT_CONNECTION_POOL_SIZE
+              value: "{{ .Values.postgresClientConnectionPoolSize }}"
+            - name: POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW
+              value: "{{ .Values.postgresClientConnectionPoolMaxOverflow }}"
+            - name: GENAI_ENGINE_ENVIRONMENT
+              value: kubernetes
+            - name: GENAI_ENGINE_INGRESS_URI
+              value: "https://{{ .Values.genaiEngineIngressURL }}"
+            - name: GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT
+              value: "{{ .Values.genaiEngineSensitiveDataCheckMaxTokenLimit }}"
+            - name: GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT
+              value: "{{ .Values.genaiEngineHallucinationCheckMaxTokenLimit }}"
+            - name: GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT
+              value: "{{ .Values.genaiEngineToxicityCheckMaxTokenLimit}}"
+            - name: GENAI_ENGINE_OPENAI_PROVIDER
+              value: "{{ .Values.genaiEngineOpenAIProvider }}"
+            - name: CACHE_TASK_RULES_CACHE_ENABLED
+              value: "{{ .Values.genaiEngineCacheTaskRulesCacheEnabled }}"
+            - name: CACHE_TASK_RULES_CACHE_TTL
+              value: "{{ .Values.genaiEngineCacheTaskRulesCacheTTL }}"
+            - name: GENAI_ENGINE_ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretAPIKeyName }}
+                  key: key
+            - name: APP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineAppSecretKeyName }}
+                  key: key
+            - name: GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName }}
+                  key: keys
+            {{- if .Values.gpuEnabled }}
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "compute,utility"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            {{- end }}
+            - name: WORKERS
+              value: {{ .Values.genaiEngineWorkers | quote }}
+      {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodNodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

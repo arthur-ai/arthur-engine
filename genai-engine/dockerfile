@@ -1,0 +1,86 @@
+################################################################################
+#                                                                              #
+#             Build GenAI Engine on slim-bookworm images for cpu and gpu             #
+#                                                                              #
+################################################################################
+
+
+# TORCH_DEVICE must be either "cpu" or "gpu"
+ARG TORCH_DEVICE=cpu
+
+# Preinstall Stage: Install Python dependencies
+FROM python:3.12.8-slim-bookworm AS preinstall
+
+# Copy requirements files so this layer can be cached / reused when files are otherwise changed in the repo
+COPY pyproject.toml /app/
+COPY poetry.lock /app/
+
+# Install Python dependencies
+RUN pip3 install poetry==1.8.5
+# Set working directory
+WORKDIR /app
+
+ENV PYTHONPATH="$PYTHONPATH:/app/genai_engine"
+RUN poetry install --without dev,performance --no-ansi
+
+
+# GPU Install: Install PyTorch for GPU
+FROM preinstall AS gpu-install
+COPY requirements-gpu.txt /tmp/requirements-torch.txt
+RUN poetry run pip install --no-cache-dir --upgrade --force-reinstall -r /tmp/requirements-torch.txt
+
+
+# CPU Install: no-op for now
+FROM preinstall AS cpu-install
+
+
+# Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
+FROM ${TORCH_DEVICE}-install AS install
+# Copy backend files
+COPY genai_engine /app/genai_engine
+
+# Copy version file to server directory
+COPY version /app/genai_engine/
+
+# Copy env file to run directory
+COPY .env /app/
+
+# Copy alembic files to run directory
+COPY alembic /app/alembic
+COPY alembic.ini /app/
+
+
+################################################################################
+#                                                                              #
+#    Copy GenAI Engine from install to distroless image to eliminate image bloat     #
+#                                                                              #
+################################################################################
+
+
+# Final Stage(s): Create genai-engine image
+FROM gcr.io/distroless/python3-debian12:latest AS genai_engine_distroless_base
+
+COPY --from=install /bin/sh /bin/sh
+COPY --from=install /bin/bash /bin/bash
+COPY --from=install /bin/env /bin/env
+COPY --from=install /bin/printenv /bin/printenv
+COPY --from=install /usr/bin/sh /usr/bin/sh
+COPY --from=install /usr/bin/bash /usr/bin/bash
+COPY --from=install /usr/bin/env /usr/bin/env
+COPY --from=install /usr/bin/printenv /usr/bin/printenv
+COPY --from=install /usr/local/lib/ /usr/local/lib/
+COPY --from=install /usr/local/bin/ /usr/local/bin/
+COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
+COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/virtualenvs/
+COPY --from=install /app/ /app/
+
+ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+ENV PYTHONPATH="$PYTHONPATH:/app/genai_engine"
+
+# Set working directory (this is where the entrypoint will be run)
+WORKDIR /app
+
+# Expose the necessary ports
+EXPOSE 3000
+
+ENTRYPOINT ["bash", "-c", "/app/genai_engine/docker-entrypoint.sh"]

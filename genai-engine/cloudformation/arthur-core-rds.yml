@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  ArthurBringYourOwnDBEndpoint:
+    Type: String
+    Default: ''
+    Description: 'Bring-your-own database endpoint. If not specified, an Aurora Serverless cluster will be provisioned.'
+  ArthurBringYourOwnDBPort:
+    Type: Number
+    Default: 5432
+    Description: 'Port for bring-your-own database'
+  ArthurRDSDatabaseName:
+    Type: String
+    Default: 'arthur'
+  ArthurDBSecretArn:
+    Type: String
+    Description: 'Secret ARN to store database credentials in'
+  ArthurRDSScalingConfigurationMinCapacity:
+    Type: Number
+    Default: 0.5
+    Description: 'Aurora Serverless v2 minimum scaling capacity in ACU'
+  ArthurRDSScalingConfigurationMaxCapacity:
+    Type: Number
+    Default: 16
+    Description: 'Aurora Serverless v2 maximum scaling capacity in ACU'
+  ArthurRDSSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'List of security groups to apply to the cluster'
+  ArthurRDSPrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'List of private subnets to use for the cluster'
+
+Conditions:
+  CreateRDS: !Equals
+    - !Ref ArthurBringYourOwnDBEndpoint
+    - ""
+
+Resources:
+  ArthurDBKMSKey:
+    Type: AWS::KMS::Key
+    Condition: CreateRDS
+    Properties:
+      Description: 'Arthur DB KMS key'
+      Enabled: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: 'key-default-1'
+        Statement:
+          - Sid: 'Enable IAM User Permissions'
+            Effect: 'Allow'
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: 'kms:*'
+            Resource: '*'
+  ArthurRDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Condition: CreateRDS
+    Properties:
+      DBSubnetGroupDescription: !Sub "RDS Subnet group for ${ArthurResourceNamespace} stack"
+      DBSubnetGroupName: !Sub "${ArthurResourceNamespace}-rds-subnet-group${ArthurResourceNameSuffix}"
+      SubnetIds: !Ref ArthurRDSPrivateSubnets
+  ArthurRDSParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Condition: CreateRDS
+    Properties:
+      Family: 'aurora-postgresql15'
+      Description: !Sub "RDS Parameter group for ${ArthurResourceNamespace} stack"
+      DBParameterGroupName: !Sub "${ArthurResourceNamespace}-rds-parameter-group${ArthurResourceNameSuffix}"
+  ArthurRDSCluster:
+    Type: AWS::RDS::DBCluster
+    Condition: CreateRDS
+    Properties:
+      DBClusterIdentifier: !Sub "${ArthurResourceNamespace}-db-cluster${ArthurResourceNameSuffix}"
+      DatabaseName: !Ref ArthurRDSDatabaseName
+      Engine: 'aurora-postgresql'
+      EngineVersion: '15.3'
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !Ref ArthurRDSScalingConfigurationMinCapacity
+        MaxCapacity: !Ref ArthurRDSScalingConfigurationMaxCapacity
+      StorageEncrypted: true
+      KmsKeyId: !Ref ArthurDBKMSKey
+      BackupRetentionPeriod: 35
+      Port: 5432
+      PreferredBackupWindow: '04:00-07:00'
+      PreferredMaintenanceWindow: 'Mon:07:00-Mon:10:00'
+      VpcSecurityGroupIds: !Ref ArthurRDSSecurityGroupIds
+      DBSubnetGroupName: !Ref ArthurRDSSubnetGroup
+      MasterUsername: !Sub "{{resolve:secretsmanager:${ArthurDBSecretArn}:SecretString:username}}"
+      MasterUserPassword: !Sub "{{resolve:secretsmanager:${ArthurDBSecretArn}:SecretString:password}}"
+      DeletionProtection: true
+  ArthurRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Condition: CreateRDS
+    Properties:
+      DBInstanceIdentifier: !Sub "${ArthurResourceNamespace}-db-instance${ArthurResourceNameSuffix}"
+      DBClusterIdentifier: !Ref ArthurRDSCluster
+      DBInstanceClass: 'db.serverless'
+      Engine: 'aurora-postgresql'
+      DBSubnetGroupName: !Ref ArthurRDSSubnetGroup
+      DBParameterGroupName: !Ref ArthurRDSParameterGroup
+      AutoMinorVersionUpgrade: true
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: 7
+
+Outputs:
+  RDSInstanceAddressOutput:
+    Description: RDS Instance address.
+    Value: !If [ CreateRDS, !GetAtt ArthurRDSCluster.Endpoint.Address, !Ref ArthurBringYourOwnDBEndpoint ]
+  RDSInstancePortOutput:
+    Description: RDS Instance port.
+    Value: !If [ CreateRDS, !GetAtt ArthurRDSCluster.Endpoint.Port, !Ref ArthurBringYourOwnDBPort ]
+  RDSClusterIdentifierOutput:
+    Description: RDS Cluster identifier.
+    Value: !If [ CreateRDS, !Ref ArthurRDSCluster, 'None' ]

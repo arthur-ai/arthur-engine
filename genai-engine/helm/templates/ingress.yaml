@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  {{- if .Values.arthurResourceNameSuffix }}
+  name: arthur-genai-engine-{{ .Values.arthurResourceNameSuffix }}
+  {{- else }}
+  name: arthur-genai-engine
+  {{- end }}
+  annotations:
+    {{ with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    app: arthur-genai-engine
+    {{- include "arthur-genai-engine.labels" . | nindent 4 }}
+    {{- with .Values.ingress.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: "{{ .Values.genaiEngineIngressURL }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                {{- if .Values.arthurResourceNameSuffix }}
+                name: arthur-genai-engine-{{ .Values.arthurResourceNameSuffix }}-service
+                {{- else }}
+                name: arthur-genai-engine-service
+                {{- end }}
+                port:
+                  number: 80

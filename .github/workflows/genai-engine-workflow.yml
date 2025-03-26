@@ -1,0 +1,207 @@
+name: GenAI Engine CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-dev'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  run-linter:
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Run pre-commit
+        run: |
+          poetry -C genai-engine run pre-commit install
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
+
+  run-changelog-cop:
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Install oasdiff
+        run: |
+          curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.10.23/oasdiff_1.10.23_linux_amd64.deb
+          dpkg -i oasdiff.deb
+      - name: Generate changelog
+        run: |
+          export PYTHONPATH=genai_engine
+          poetry -C genai-engine run generate_changelog
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-artifacts
+          path: |
+            new.openapi.json
+            staging.openapi.json
+            genai_engine/api_changelog.md
+
+
+  run-unit-tests:
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Run unit tests
+        run: |
+          poetry -C genai-engine run pytest --cov --cov=genai-engine/genai_engine --cov-report term --junitxml=report.xml -m "unit_tests" | tee pytest-coverage.txt
+      - name: Pytest coverage comment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          pytest-coverage-path: pytest-coverage.txt
+          junitxml-path: genai-engine/report.xml
+          title: Coverage Report
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            genai-engine/report.xml
+            pytest-coverage.txt
+
+  build-docker-images:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        torch_device: [cpu, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: "{{defaultContext}}:genai-engine"
+          file: dockerfile
+          build-args: |
+            TORCH_DEVICE=${{ matrix.torch_device }}
+          tags: |
+            arthurplatform/genai-engine-${{ matrix.torch_device }}:latest
+            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ github.ref_name }}
+            ${{ !endsWith(github.ref, '-dev') && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
+          push: true
+          platforms: linux/amd64
+
+  push-cf-template:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-2
+      BUCKET_NAME: arthur-cft
+      TEMPLATES_DIRECTORY: arthur-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: push cf template
+        run: |
+          echo "Pushing Cloudformation template for ${{ github.ref_name }}"
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ github.ref_name }}/g" genai-engine/cloudformation/root-arthur-genai-engine-cpu.yml
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ github.ref_name }}/g" genai-engine/cloudformation/root-arthur-genai-engine-gpu.yml
+          aws s3 sync ./genai-engine/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ github.ref_name }} --acl public-read
+
+  push-helm-chart-to-github-dev:
+    if: >-
+      startsWith(github.ref, 'refs/tags/') &&
+      endsWith(github.ref, '-dev')
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write    # Required for pushing to GHCR
+      contents: read    # Required for checking out code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-helm
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Package and Push Helm chart
+        env:
+          CHART_NAMESPACE: "charts-dev"
+          CHART_PATH: "genai-engine/helm"
+          VERSION: ${{ github.ref_name }}
+          APP_VERSION: ${{ github.ref_name }}
+        run: |
+          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.APP_VERSION }}
+          helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
+
+  push-helm-chart-to-github-stable:
+    if: >-
+      startsWith(github.ref, 'refs/tags/') &&
+      !endsWith(github.ref, '-dev')
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write    # Required for pushing to GHCR
+      contents: read    # Required for checking out code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-helm
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Package and Push Helm chart
+        env:
+          CHART_NAMESPACE: "charts"
+          CHART_PATH: "genai-engine/helm"
+          VERSION: ${{ github.ref_name }}
+          APP_VERSION: ${{ github.ref_name }}
+        run: |
+          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.APP_VERSION }}
+          helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}

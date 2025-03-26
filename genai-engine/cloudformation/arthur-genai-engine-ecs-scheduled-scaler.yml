@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: '(Optional) Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  ClusterName:
+    Type: String
+    Description: 'The name of the Arthur GenAI Engine ECS cluster.'
+    Default: 'arthur'
+  ServiceName:
+    Type: String
+    Description: 'The name of the Arthur GenAI Engine ECS service.'
+    Default: 'arthur-genai-engine'
+  DesiredTaskCount:
+    Type: Number
+    Description: 'The desired number of tasks for the Arthur GenAI Engine ECS service.'
+  MaxTaskCount:
+    Type: Number
+    Description: 'The max number of tasks for the Arthur GenAI Engine ECS service.'
+  BYORoleArn:
+    Description: '(Optional) The ARN of an existing IAM Role for Lambda execution.'
+    Type: String
+    Default: ''
+  CronSchedule:
+    Description: 'The cron schedule. The default value is daily at 12:00 AM CT.'
+    Type: String
+    Default: 'cron(0 5 * * ? *)'  # Default to run at 12:00 AM CT (midnight)
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: 'Arthur GenAI Engine ECS Scheduled Scaler'
+        Parameters:
+          - ArthurResourceNamespace
+          - ArthurResourceNameSuffix
+          - ClusterName
+          - ServiceName
+          - DesiredTaskCount
+          - MaxTaskCount
+          - BYORoleArn
+          - CronSchedule
+
+Conditions:
+  CreateNewRole: !Equals [ !Ref BYORoleArn, '' ]
+
+Resources:
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Condition: CreateNewRole
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-ecs-scaler-role${ArthurResourceNameSuffix}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - events.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: !Sub "${ArthurResourceNamespace}-ecs-scaler-policy${ArthurResourceNameSuffix}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ecs:UpdateService'
+                  - 'application-autoscaling:RegisterScalableTarget'
+                Resource: '*'
+
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Sub "${ArthurResourceNamespace}-ecs-scaler${ArthurResourceNameSuffix}"
+      Handler: 'index.handler'
+      Role: !If [ CreateNewRole, !GetAtt LambdaExecutionRole.Arn, !Ref BYORoleArn ]
+      Runtime: 'python3.12'
+      Timeout: 900
+      Code:
+        ZipFile: |
+          import boto3
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+              ecs_client = boto3.client('ecs')
+              logger.info(f"Updating service: {event['serviceName']} in cluster: {event['clusterName']} with desired count: {event['desiredTaskCount']}")
+              response = ecs_client.update_service(
+                  cluster=event['clusterName'],
+                  service=event['serviceName'],
+                  desiredCount=int(event['desiredTaskCount'])
+              )
+              logger.info(f"Service update response: {response}")
+
+              appscaling_client = boto3.client('application-autoscaling')
+              logger.info(f"Registering scalable target for service: {event['serviceName']} in cluster: {event['clusterName']} with min capacity: {event['desiredTaskCount']} and max capacity: {event['maxTaskCount']}")
+              response = appscaling_client.register_scalable_target(
+                  ServiceNamespace='ecs',
+                  ResourceId=f'service/{event["clusterName"]}/{event["serviceName"]}',
+                  ScalableDimension='ecs:service:DesiredCount',
+                  MinCapacity=int(event['desiredTaskCount']),
+                  MaxCapacity=int(event['maxTaskCount']),
+              )
+              logger.info(f"Scalable target register response: {response}")
+
+              return response
+
+  LambdaInvokePermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt EventBridgeRule.Arn
+
+  EventBridgeRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}-ecs-scaler${ArthurResourceNameSuffix}"
+      Description: 'Invoke Lambda function to update Arthur GenAI Engine ECS task count'
+      ScheduleExpression: !Ref CronSchedule
+      State: 'ENABLED'
+      Targets:
+        - Arn: !GetAtt LambdaFunction.Arn
+          Id: 'ecs-scaler'
+          Input: !Sub
+            - '{"desiredTaskCount": "${DesiredTaskCount}", "maxTaskCount": "${MaxTaskCount}", "clusterName": "${ClusterName}", "serviceName": "${ServiceName}"}'
+            - DesiredTaskCount: !Ref DesiredTaskCount
+              MaxTaskCount: !Ref MaxTaskCount
+              ClusterName: !Ref ClusterName
+              ServiceName: !Ref ServiceName
+
+  LambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub "/arthur/lambda/${ArthurResourceNamespace}-ecs-scaler${ArthurResourceNameSuffix}"
+      RetentionInDays: 14

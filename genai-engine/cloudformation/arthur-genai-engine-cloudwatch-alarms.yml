@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  AlarmSNSTopicArn:
+    Type: String
+    Description: 'The ARN of the SNS topic to send the alarms to'
+  GenaiEngineLBTargetGroupArnSuffix:
+    Type: String
+    Description: 'The GenAI Engine target group ARN suffix (e.g. targetgroup/arthur-genai-engine/0000000000000000)'
+  GenaiEngineLBArnSuffix:
+    Type: String
+    Description: 'The GenAI Engine application load balancer ARN suffix (e.g. app/arthur-genai-engine-lb/0000000000000000'
+  ArthurECSClusterName:
+    Type: String
+    Default: 'arthur'
+    Description: 'The Arthur ECS cluster name (e.g. arthur)'
+  GenaiEngineECSServiceName:
+    Type: String
+    Default: 'arthur-genai-engine'
+    Description: 'The Arthur GenAI Engine ECS service name (e.g. arthur-genai-engine)'
+  GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold:
+    Type: Number
+    Default: 1
+    Description: 'Alarm is triggered when the healthy Arthur GenAI Engine application host count drops below this number'
+  GenaiEngineLoadBalancerTarget5xxAlarmThreshold:
+    Type: Number
+    Default: 10
+    Description: 'Alarm is triggered when Arthur GenAI Engine raises more than this number of 5xx errors in a minute'
+  GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold:
+    Type: Number
+    Default: 30
+    Description: 'Alarm is triggered when the Arthur GenAI Engine average response time is longer than this number of seconds'
+  GenaiEngineECSMemoryAlarmThreshold:
+    Type: Number
+    Default: 87
+    Description: 'Alarm is triggered when Arthur GenAI Engine service uses this percentage of memory in a minute'
+
+Resources:
+  ArthurGenaiEngineLoadBalancerHealthyHostCount:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-lb-healthy-host-count-alarm"
+      AlarmDescription: !Sub "Alarm when the healthy Arthur GenAI Engine host count drops below ${GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold}"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      InsufficientDataActions: [ ]
+      MetricName: 'HealthyHostCount'
+      Namespace: 'AWS/ApplicationELB'
+      Statistic: 'SampleCount'
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref GenaiEngineLBArnSuffix
+        - Name: TargetGroup
+          Value: !Ref GenaiEngineLBTargetGroupArnSuffix
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold
+      ComparisonOperator: 'LessThanOrEqualToThreshold'
+  ArthurGenaiEngineLoadBalancerTarget5xx:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-lb-target-5xx-alarm"
+      AlarmDescription: !Sub "Alarm when Arthur GenAI Engine raises more than ${GenaiEngineLoadBalancerTarget5xxAlarmThreshold} 5xx errors in a minute"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Dimensions:
+        - Name: TargetGroup
+          Value: !Ref GenaiEngineLBTargetGroupArnSuffix
+        - Name: LoadBalancer
+          Value: !Ref GenaiEngineLBArnSuffix
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineLoadBalancerTarget5xxAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+  ArthurGenaiEngineLoadBalancerTargetResponseTime:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-lb-target-response-time-alarm"
+      AlarmDescription: !Sub "Alarm when the Arthur GenAI Engine average response time is longer than ${GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold} seconds"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Dimensions:
+        - Name: TargetGroup
+          Value: !Ref GenaiEngineLBTargetGroupArnSuffix
+        - Name: LoadBalancer
+          Value: !Ref GenaiEngineLBArnSuffix
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+  ArthurGenaiEngineECSMemory:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "[${ArthurResourceNamespace}${ArthurResourceNameSuffix}] genai-engine-ecs-memory-alarm"
+      AlarmDescription: !Sub "Alarm when Arthur GenAI Engine service uses max ${GenaiEngineECSMemoryAlarmThreshold}% of memory in a minute"
+      ActionsEnabled: true
+      AlarmActions:
+        - !Ref AlarmSNSTopicArn
+      MetricName: MemoryUtilization
+      Namespace: AWS/ECS
+      Statistic: Maximum
+      Dimensions:
+        - Name: ServiceName
+          Value: !Ref GenaiEngineECSServiceName
+        - Name: ClusterName
+          Value: !Ref ArthurECSClusterName
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: !Ref GenaiEngineECSMemoryAlarmThreshold
+      ComparisonOperator: GreaterThanOrEqualToThreshold

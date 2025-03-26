@@ -1,0 +1,198 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  GenaiEngineSecretArns:
+    Description: 'List of GenAI Engine secret ARNs to grant access to'
+    Type: CommaDelimitedList
+  GenaiEngineAuthSecretArns:
+    Description: 'List of GenAI Engine Auth secret ARNs to grant access to'
+    Type: CommaDelimitedList
+    Default: ''
+  GenaiEngineBYOTaskRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM role ARN to use for GenAI Engine task role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+  GenaiEngineBYOTaskExecutionRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM role ARN to use for GenAI Engine task execution role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+  GenaiEngineBYOEC2InstanceProfileIAMArn:
+    Type: String
+    Description: '(Optional) IAM instance profile ARN to use for GenAI Engine ECS cluster EC2 instances to assume. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    Default: ''
+
+Conditions:
+  CreateGenaiEngineEC2InstanceProfile: !Equals [ !Ref GenaiEngineBYOEC2InstanceProfileIAMArn, '' ]
+  CreateGenaiEngineTaskRole: !Equals [ !Ref GenaiEngineBYOTaskRoleIAMArn, '' ]
+  CreateGenaiEngineTaskExecutionRole: !Equals [ !Ref GenaiEngineBYOTaskExecutionRoleIAMArn, '' ]
+  CreateGenaiEngineAuthSecrets: !Not [ !Equals [ !Join [ ",", !Ref GenaiEngineAuthSecretArns ], '' ] ]
+
+Resources:
+  GenaiEngineTaskRole:
+    Type: AWS::IAM::Role
+    Condition: CreateGenaiEngineTaskRole
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-genai-engine-task-role${ArthurResourceNameSuffix}"
+      Description: 'Role granted to the GenAI Engine containers within ECS.'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+  GenaiEngineTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateGenaiEngineTaskExecutionRole
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-genai-engine-task-execution-role${ArthurResourceNameSuffix}"
+      Description: 'Role required to create ECS containers'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-secrets${ArthurResourceNameSuffix}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'secretsmanager:GetSecretValue'
+                Resource: !Ref GenaiEngineSecretArns
+        - !If
+          - CreateGenaiEngineAuthSecrets
+          - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-auth-secrets${ArthurResourceNameSuffix}"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: 'secretsmanager:GetSecretValue'
+                  Resource: !Ref GenaiEngineAuthSecretArns
+          - !Ref AWS::NoValue
+  GenaiEngineECSClusterEC2Role:
+    Type: AWS::IAM::Role
+    Condition: CreateGenaiEngineEC2InstanceProfile
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-genai-engine-ec2-ecs-role${ArthurResourceNameSuffix}"
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+      - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-ec2-ecs${ArthurResourceNameSuffix}"
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:DescribeTags'
+              - 'ecs:DeregisterContainerInstance'
+              - 'ecs:DiscoverPollEndpoint'
+              - 'ecs:Poll'
+              - 'ecs:RegisterContainerInstance'
+              - 'ecs:StartTelemetrySession'
+              - 'ecs:UpdateContainerInstancesState'
+              - 'ecs:Submit*'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:BatchGetImage'
+              - 'logs:CreateLogDelivery'
+              - 'logs:CreateLogStream'
+              - 'logs:UpdateLogDelivery'
+              - 'logs:CreateLogGroup'
+              - 'logs:PutLogEvents'
+              - 'logs:PutLogEvents'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricData'
+              - 'cloudwatch:PutMetricStream'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'ecs:TagResource'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                ecs:CreateAction:
+                  - 'RegisterContainerInstance'
+      - PolicyName: !Sub "${ArthurResourceNamespace}-genai-engine-ec2-modify-instance-attribute${ArthurResourceNameSuffix}"
+        PolicyDocument:
+          Statement:
+          - Sid: VisualEditor0
+            Effect: Allow
+            Action: 'ec2:ModifyInstanceAttribute'
+            Resource: '*'
+  GenaiEngineTaskScalingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-genai-engine-task-scaling-lambda${ArthurResourceNameSuffix}"
+      Description: 'Role for GenAI Engine task scaling Lambda function'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ECSServiceUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:UpdateService
+                  - ecs:DescribeServices
+                  - autoscaling:DescribeAutoScalingGroups
+                  - cloudwatch:SetAlarmState
+                Resource: '*'
+
+  GenaiEngineECSClusterEC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Condition: CreateGenaiEngineEC2InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${ArthurResourceNamespace}-genai-engine-ec2-ecs-role${ArthurResourceNameSuffix}"
+      Path: /
+      Roles: [!Ref GenaiEngineECSClusterEC2Role]
+Outputs:
+  GenaiEngineTaskRoleOutput:
+    Description: 'IAM role for GenAI Engine ECS tasks to assume'
+    Value: !If [ CreateGenaiEngineTaskRole, !GetAtt [ GenaiEngineTaskRole, Arn ], !Ref GenaiEngineBYOTaskRoleIAMArn ]
+  GenaiEngineTaskExecutionRoleOutput:
+    Description: 'IAM role to execute GenAI Engine ECS tasks with'
+    Value: !If [ CreateGenaiEngineTaskExecutionRole, !GetAtt [ GenaiEngineTaskExecutionRole, Arn ], !Ref GenaiEngineBYOTaskExecutionRoleIAMArn ]
+  GenaiEngineEC2InstanceProfileOutput:
+    Description: 'IAM instance profile for GenAI Engine ECS cluster EC2 instances'
+    Value: !If [ CreateGenaiEngineEC2InstanceProfile, !GetAtt [ GenaiEngineECSClusterEC2InstanceProfile, Arn ], !Ref GenaiEngineBYOEC2InstanceProfileIAMArn ]
+  GenaiEngineTaskScalingLambdaRoleOutput:
+    Description: 'IAM role for GenAI Engine task scaling Lambda function'
+    Value: !GetAtt GenaiEngineTaskScalingLambdaRole.Arn

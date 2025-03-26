@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurECSClusterName:
+    Type: String
+    Description: 'The name of an existing ECS cluster to deploy to'
+  GenaiEngineLBTargetGroupARN:
+    Type: String
+    Description: 'GenAI Engine load balancer target group'
+  GenaiEngineECSSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'Security groups for Arthur GenAI Engine'
+  GenaiEngineECSServiceSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'GenAI Engine ECS service subnet IDs'
+  GenaiEngineECSTaskDefinitionARN:
+    Type: String
+    Description: 'GenAI Engine ECS task definition ARN'
+  GenaiEngineECSScaleCPUTargetValue:
+    Type: Number
+    Description: 'CPU target value for triggering GenAI Engine ECS service autoscaling'
+    Default: 50
+  GenaiEngineECSScaleInCooldownInSecs:
+    Type: Number
+    Description: 'Scale-in cooldown time in seconds for GenAI Engine ECS autoscaling'
+    Default: 300
+  GenaiEngineECSScaleOutCooldownInSecs:
+    Type: Number
+    Description: 'Scale-out cooldown time in seconds for GenAI Engine ECS autoscaling'
+    Default: 30
+  GenaiEngineECSAutoscalingMaxCapacity:
+    Type: Number
+    Description: 'The maximum number of tasks allowed for GenAI Engine ECS service autoscaling'
+    Default: 10
+  GenaiEngineECSAutoscalingMinCapacity:
+    Type: Number
+    Description: 'The minimum number of tasks allowed for GenAI Engine ECS service autoscaling'
+    Default: 2
+  GenaiEngineECSServiceTaskDesiredCount:
+    Type: Number
+    Description: 'The desired number of tasks running for GenAI Engine ECS service'
+    Default: 2
+Resources:
+  GenaiEngineECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ArthurECSClusterName
+      DesiredCount: !Ref GenaiEngineECSServiceTaskDesiredCount
+      LaunchType: 'FARGATE'
+      LoadBalancers:
+        - ContainerName: 'arthur-genai-engine'
+          ContainerPort: 3000
+          TargetGroupArn: !Ref GenaiEngineLBTargetGroupARN
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: 'DISABLED'
+          SecurityGroups: !Ref GenaiEngineECSSecurityGroups
+          Subnets: !Ref GenaiEngineECSServiceSubnetIDs
+      ServiceName: 'arthur-genai-engine'
+      TaskDefinition: !Ref GenaiEngineECSTaskDefinitionARN
+  GenaiEngineECSAutoscalingTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: !Ref GenaiEngineECSAutoscalingMaxCapacity
+      MinCapacity: !Ref GenaiEngineECSAutoscalingMinCapacity
+      ResourceId:
+        Fn::Sub:
+          - 'service/${ClusterName}/${ServiceName}'
+          - ClusterName: !Ref ArthurECSClusterName
+            ServiceName: !GetAtt GenaiEngineECSService.Name
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ServiceNamespace: 'ecs'
+  GenaiEngineECSScalingPolicyCPU:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: 'arthur-genai-engine-ecs-sp-cpu'
+      PolicyType: 'TargetTrackingScaling'
+      ResourceId:
+        Fn::Sub:
+          - 'service/${ClusterName}/${ServiceName}'
+          - ClusterName: !Ref ArthurECSClusterName
+            ServiceName: !GetAtt GenaiEngineECSService.Name
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ScalingTargetId: !Ref GenaiEngineECSAutoscalingTarget
+      ServiceNamespace: 'ecs'
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: 'ECSServiceAverageCPUUtilization'
+        TargetValue: !Ref GenaiEngineECSScaleCPUTargetValue
+        ScaleInCooldown: !Ref GenaiEngineECSScaleInCooldownInSecs
+        ScaleOutCooldown: !Ref GenaiEngineECSScaleOutCooldownInSecs
+Outputs:
+  GenaiEngineECSServiceNameOutput:
+    Description: 'ECS service name for GenAI Engine'
+    Value: !GetAtt GenaiEngineECSService.Name

@@ -1,0 +1,34 @@
+name: 'Setup Git'
+description: 'Installs and configures Git'
+
+inputs:
+  safe-directory:
+    description: 'Directory to mark as safe for Git operations'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Configure Git user'
+      shell: bash
+      run: |
+        git config --global user.email "github_ci@arthur.ai"
+        git config --global user.name "GitHub CI"
+
+    - name: 'Configure safe directory'
+      shell: bash
+      # run: git config --global --add safe.directory ${{ inputs.safe-directory }}
+      # run: git config --global --add safe.directory ${{ runner.workspace }}
+      run: git config --global --add safe.directory /__w/arthur-engine-temp/arthur-engine-temp
+
+    - name: 'Fetch tags'
+      shell: bash
+      run: git fetch --tags origin || true
+
+    - name: 'Show recent commits'
+      shell: bash
+      run: git log -n2
+
+    - name: 'Show repository status'
+      shell: bash
+      run: git status

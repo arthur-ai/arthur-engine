@@ -1,0 +1,382 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  ArthurECSClusterName:
+    Type: String
+    Description: 'The name of an existing ECS cluster to deploy to'
+  GenaiEngineECSServiceName:
+    Type: String
+    Default: 'arthur-genai-engine'
+    Description: 'The Arthur GenAI Engine ECS service name (e.g. arthur-genai-engine)'
+  GenaiEngineLBTargetGroupFullName:
+    Type: String
+    Description: 'GenAI Engine load balancer target group'
+  GenaiEngineLoadBalancerFullName:
+    Type: String
+    Description: 'GenAI Engine load balancer full name'
+  GenaiEngineRDSClusterIdentifier:
+    Type: String
+    Description: 'GenAI Engine RDS cluster identifier'
+    Default: ''
+
+Resources:
+  CloudWatchDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub "${ArthurResourceNamespace}-arthur-genai-engine${ArthurResourceNameSuffix}-metrics-per-60-sec"
+      DashboardBody: !Sub |
+        {
+            "widgets": [
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 0,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${GenaiEngineLoadBalancerFullName}", { "region": "${AWS::Region}", "label": "RequestCount" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "title": "Throughput",
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 0,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApplicationELB", "RequestCountPerTarget", "TargetGroup", "${GenaiEngineLBTargetGroupFullName}", { "region": "${AWS::Region}", "label": "RequestCountPerTarget" } ],
+                            [ ".", "HTTPCode_ELB_504_Count", "LoadBalancer", "${GenaiEngineLoadBalancerFullName}", { "region": "${AWS::Region}", "label": "HTTPCode_ELB_504_Count" } ],
+                            [ ".", "HTTPCode_ELB_502_Count", ".", ".", { "region": "${AWS::Region}", "color": "#d62728", "label": "HTTPCode_ELB_502_Count" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "ECS Task Load Health",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${GenaiEngineLoadBalancerFullName}", { "region": "${AWS::Region}", "label": "TargetResponseTime (Avg)", "stat": "Average" } ],
+                            [ "...", { "region": "${AWS::Region}", "stat": "p99", "label": "TargetResponseTime (p99)" } ],
+                            [ "...", { "region": "${AWS::Region}", "label": "TargetResponseTime (IQM)" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "title": "Response Time",
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "IQM"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "ECS/ContainerInsights", "DesiredTaskCount", "ServiceName", "${GenaiEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "region": "${AWS::Region}" } ],
+                            [ ".", "RunningTaskCount", ".", ".", ".", ".", { "region": "${AWS::Region}", "color": "#2ca02c" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "ECS Task Scaling",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 18,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "${GenaiEngineLoadBalancerFullName}", { "region": "${AWS::Region}", "color": "#d62728" } ],
+                            [ ".", "HTTPCode_Target_4XX_Count", ".", ".", { "region": "${AWS::Region}" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "ECS Task Errors",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "${GenaiEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "stat": "Minimum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Maximum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Average", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "CPU utilization",
+                        "view": "timeSeries"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 6,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT AVG(nvidia_smi_utilization_gpu) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUUtilization Average", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU utilization average",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "label": "Percent",
+                                "showUnits": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT MIN(nvidia_smi_utilization_gpu) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUUtilization Min", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU utilization min",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "showUnits": false,
+                                "label": "Percent"
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 18,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT MAX(nvidia_smi_utilization_gpu) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUUtilization Max", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU utilization max",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "label": "Percent",
+                                "showUnits": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 18,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ECS", "MemoryUtilization", "ServiceName", "${GenaiEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "stat": "Minimum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Maximum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Average", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Memory utilization",
+                        "view": "timeSeries"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 18,
+                    "x": 6,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT AVG(nvidia_smi_utilization_memory) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUMemoryUtilization Average", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU Memory utilization average",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "label": "Percent",
+                                "showUnits": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 18,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT MIN(nvidia_smi_utilization_memory) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUMemoryUtilization Min", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU Memory utilization min",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "label": "Percent",
+                                "showUnits": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 18,
+                    "x": 18,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ { "expression": "SELECT MAX(nvidia_smi_utilization_memory) FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name) WHERE ArthurNamespace = '${ArthurResourceNamespace}'", "label": "GPUMemoryUtilization Max", "id": "q1", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "GPU Memory utilization max",
+                        "view": "timeSeries",
+                        "stat": "Average",
+                        "yAxis": {
+                            "left": {
+                                "label": "Percent",
+                                "showUnits": false
+                            }
+                        }
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 24,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/RDS", "DBLoad", "DBClusterIdentifier", "${GenaiEngineRDSClusterIdentifier}" ],
+                            [ ".", "DBLoadCPU", ".", "." ],
+                            [ ".", "DBLoadNonCPU", ".", "." ],
+                            [ ".", "ACUUtilization", ".", "." ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "title": "RDS Cluster Load",
+                        "region": "${AWS::Region}",
+                        "stat": "Average",
+                        "period": 60
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 24,
+                    "x": 6,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/RDS", "DatabaseConnections", "DBClusterIdentifier", "${GenaiEngineRDSClusterIdentifier}", { "region": "${AWS::Region}" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "title": "RDS Cluster DB Conns",
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 24,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/RDS", "CommitLatency", "DBClusterIdentifier", "${GenaiEngineRDSClusterIdentifier}", { "region": "${AWS::Region}" } ],
+                            [ ".", "WriteLatency", ".", ".", { "region": "${AWS::Region}" } ],
+                            [ ".", "ReadLatency", ".", ".", { "region": "${AWS::Region}" } ],
+                            [ ".", "Deadlocks", ".", ".", { "region": "${AWS::Region}" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "RDS Cluster Latencies",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                }
+            ]
+        }

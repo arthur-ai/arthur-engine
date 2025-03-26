@@ -1,0 +1,690 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  ArthurECSClusterName:
+    Type: String
+    Description: 'The name of an existing ECS cluster to deploy to'
+  GenaiEngineLBTargetGroupARN:
+    Type: String
+    Description: 'GenAI Engine load balancer target group'
+  GenaiEngineECSSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'Security groups for Arthur GenAI Engine'
+  GenaiEngineECSServiceSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'GenAI Engine ECS service subnet IDs'
+  GenaiEngineECSTaskDefinitionARN:
+    Type: String
+    Description: 'GenAI Engine ECS task definition ARN'
+  GenaiEngineECSServiceTaskDesiredCount:
+    Type: Number
+    Description: 'The desired number of tasks running for GenAI Engine ECS service'
+    MinValue: 2
+    Default: 2
+  GenaiEngineECSClusterGPUInstanceMaxCapacity:
+    Type: Number
+    Default: 4
+    Description: 'Maximum number of GPU EC2 instances that can be launched in the Arthur ECS cluster'
+  GenaiEngineECSClusterGPUInstanceMinCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Minimum number of GPU EC2 instances that can be launched in the Arthur ECS cluster'
+  GenaiEngineECSClusterGPUInstanceDesiredCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Desired number of GPU EC2 instances in the Arthur ECS cluster'
+  GenaiEngineECSClusterGPUInstanceType:
+    Type: String
+    Default: 'g4dn.2xlarge'
+    Description: 'EC2 NVIDIA GPU instance type (g4dn.2xlarge is recommended)'
+    AllowedPattern: '.+'
+  GenaiEngineECSClusterGPUInstanceImageID:
+    Type: AWS::EC2::Image::Id
+    Description: 'EC2 GPU instance AMI ID. Look up the AMI ID for Amazon ECS-optimized AMIs (aws ssm get-parameters --names /aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended --region <your_region>).'
+    AllowedPattern: '.+'
+  GenaiEngineEC2InstanceProfileIAMArn:
+    Type: String
+    Description: 'IAM instance profile ARN to use for GenAI Engine ECS cluster EC2 instances to assume'
+    AllowedPattern: 'arn:aws:iam:.+'
+    ConstraintDescription: 'A valid IAM role name must be provided for the GenAI Engine ECS cluster EC2 instance profile.'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
+    Type: String
+    Description: 'Cron expression for scaling in GPU instances in UTC timezone (e.g. "0 22 * * MON-FRI")'
+    Default: '0 22 * * MON-FRI'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron:
+    Type: String
+    Description: 'Cron expression for scaling out GPU instances in UTC timezone (e.g. "0 12 * * MON-FRI")'
+    Default: '0 12 * * MON-FRI'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity:
+    Type: Number
+    Description: 'Number of GPU instances to scale in to during off-peak hours'
+    Default: 2
+  GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity:
+    Type: Number
+    Description: 'Number of GPU instances to scale out to during peak hours'
+    Default: 4
+  GenaiEngineECSClusterScheduledScalingEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable scheduled scaling of GenAI Engine ECS cluster'
+  GenaiEngineECSClusterTaskScheduledScaleInCron:
+    Type: String
+    Description: 'Cron expression for scaling in GenAI Engine ECS tasks in UTC timezone (e.g. "0 22 ? * MON-FRI *")'
+    Default: '0 22 ? * MON-FRI *'
+  GenaiEngineECSClusterTaskScheduledScaleOutCron:
+    Type: String
+    Description: 'Cron expression for scaling out GenAI Engine ECS tasks in UTC timezone (e.g. "0 12 ? * MON-FRI *")'
+    Default: '0 12 ? * MON-FRI *'
+  GenaiEngineTaskScalingLambdaRoleARN:
+    Type: String
+    Description: 'ARN of the IAM role for GenAI Engine task scaling Lambda function'
+  GenaiEngineECSClusterGPUUtilizationScaleOutThreshold:
+    Type: Number
+    Description: 'GPU utilization percentage threshold to trigger scale out (1-100)'
+    Default: 50
+    MinValue: 1
+    MaxValue: 100
+  GenaiEngineECSClusterGPUUtilizationScaleInThreshold:
+    Type: Number
+    Description: 'GPU utilization percentage threshold to trigger scale in (1-100)'
+    Default: 5
+    MinValue: 1
+    MaxValue: 100
+  GenaiEngineECSClusterCPUUtilizationScaleOutThreshold:
+    Type: Number
+    Description: 'CPU utilization percentage threshold to trigger scale out (1-100)'
+    Default: 50
+    MinValue: 1
+    MaxValue: 100
+  GenaiEngineECSClusterCPUUtilizationScaleInThreshold:
+    Type: Number
+    Description: 'CPU utilization percentage threshold to trigger scale in (1-100)'
+    Default: 10
+    MinValue: 1
+    MaxValue: 100
+  GenaiEngineDynamicScaleOutCooldown:
+    Type: Number
+    Description: 'Cooldown period in seconds for scaling out instances'
+    Default: 60
+    MinValue: 60
+  GenaiEngineDynamicScaleInCooldown:
+    Type: Number
+    Description: 'Cooldown period in seconds for scaling in instances'
+    Default: 300
+    MinValue: 60
+  GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable CPU based dynamic scale-in of GenAI Engine ECS cluster'
+
+  GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable GPU based dynamic scale-in of GenAI Engine ECS cluster'
+
+  GenaiEngineECSDeploymentMaximumPercent:
+    Type: Number
+    Description: 'Maximum percentage of tasks that can be running during a deployment'
+    Default: 100
+    MinValue: 0
+    MaxValue: 200
+  GenaiEngineECSDeploymentMinimumHealthyPercent:
+    Type: Number
+    Description: 'Minimum percentage of tasks that must remain healthy during a deployment. Note: If the number of tasks is one, this should be equal to 0 or 100.'
+    Default: 50
+    MinValue: 0
+    MaxValue: 100
+  GenaiEngineECSClusterWarmPoolEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable warm pool for GenAI Engine ECS cluster'
+  GenaiEngineECSClusterWarmPoolMinSize:
+    Type: Number
+    Default: 2
+    Description: 'Minimum number of instances in the GenAI Engine ECS cluster warm pool'
+  GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Maximum number of instances in the GenAI Engine ECS cluster warm pool'
+  GenaiEngineEstimatedInstanceWarmup:
+    Type: Number
+    Description: 'Estimated time in seconds for new instances to be ready to serve requests'
+    Default: 120
+    MinValue: 60
+
+Conditions:
+  IsScheduledScalingEnabled: !Equals
+    - !Ref GenaiEngineECSClusterScheduledScalingEnabled
+    - 'enabled'
+  IsDynamicScaleInCPUEnabled: !Equals
+    - !Ref GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled
+    - 'enabled'
+  IsDynamicScaleInGPUEnabled: !Equals
+    - !Ref GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled
+    - 'enabled'
+  IsWarmPoolEnabled: !Equals
+    - !Ref GenaiEngineECSClusterWarmPoolEnabled
+    - 'enabled'
+
+Resources:
+  GenaiEngineGPUContainerInstances:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        ImageId: !Ref GenaiEngineECSClusterGPUInstanceImageID
+        SecurityGroupIds: !Ref GenaiEngineECSSecurityGroups
+        InstanceType: !Ref GenaiEngineECSClusterGPUInstanceType
+        IamInstanceProfile:
+          Arn: !Ref GenaiEngineEC2InstanceProfileIAMArn
+        BlockDeviceMappings:
+          - DeviceName: "/dev/xvda"
+            Ebs:
+              VolumeSize: 60
+              Encrypted: true
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub "${ArthurResourceNamespace}-genai-engine-gpu-ecs${ArthurResourceNameSuffix}"
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash -xe
+            echo "ip_resolve=4" >> /etc/yum.conf
+
+            # ECS configurations
+            echo ECS_CLUSTER=${ArthurECSClusterName} >> /etc/ecs/ecs.config
+            echo ECS_ENABLE_GPU_SUPPORT=true >> /etc/ecs/ecs.config
+
+            # Install CloudWatch Agent
+            yum install -y amazon-cloudwatch-agent
+
+            # Create CloudWatch Agent configuration file
+            # https://aws.amazon.com/blogs/compute/capturing-gpu-telemetry-on-the-amazon-ec2-accelerated-computing-instances/
+            cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            {
+              "agent": {
+                "run_as_user": "root"
+              },
+              "metrics": {
+                "aggregation_dimensions": [["InstanceId"]],
+                "metrics_collected": {
+                  "nvidia_gpu": {
+                    "append_dimensions": {
+                      "ArthurNamespace": "${ArthurResourceNamespace}",
+                      "ImageId": "$(curl -s http://169.254.169.254/latest/meta-data/ami-id)",
+                      "InstanceId": "$(curl -s http://169.254.169.254/latest/meta-data/instance-id)",
+                      "InstanceType": "$(curl -s http://169.254.169.254/latest/meta-data/instance-type)"
+                    },
+                    "measurement": [
+                      "utilization_gpu",
+                      "utilization_memory",
+                      "memory_total",
+                      "memory_used",
+                      "memory_free",
+                      "power_draw"
+                    ]
+                  }
+                }
+              }
+            }
+            EOF
+
+            # Start CloudWatch Agent with custom config file
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config \
+              -m ec2 \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json \
+              -s
+            systemctl enable amazon-cloudwatch-agent
+            systemctl restart amazon-cloudwatch-agent
+            systemctl status amazon-cloudwatch-agent
+
+            # Signal CFT if ECSGPUAutoScalingGroup is successful
+            yum install -y aws-cfn-bootstrap
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource GenaiEngineECSGPUAutoScalingGroup --region ${AWS::Region}
+  GenaiEngineECSGPUAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref GenaiEngineECSServiceSubnetIDs
+      LaunchTemplate:
+        LaunchTemplateId: !Ref GenaiEngineGPUContainerInstances
+        Version: !GetAtt GenaiEngineGPUContainerInstances.LatestVersionNumber
+      MinSize: !Ref GenaiEngineECSClusterGPUInstanceMinCapacity
+      MaxSize: !Ref GenaiEngineECSClusterGPUInstanceMaxCapacity
+      DesiredCapacity: !Ref GenaiEngineECSClusterGPUInstanceDesiredCapacity
+      NewInstancesProtectedFromScaleIn: false
+      MetricsCollection:
+        - Granularity: "1Minute"
+          Metrics:
+            - GroupMinSize
+            - GroupMaxSize
+            - GroupDesiredCapacity
+            - GroupInServiceInstances
+            - GroupPendingInstances
+            - GroupStandbyInstances
+            - GroupTerminatingInstances
+            - GroupTotalInstances
+            - GroupInServiceCapacity
+            - GroupPendingCapacity
+            - GroupStandbyCapacity
+            - GroupTerminatingCapacity
+            - GroupTotalCapacity
+            - WarmPoolDesiredCapacity
+            - WarmPoolWarmedCapacity
+            - WarmPoolPendingCapacity
+            - WarmPoolTerminatingCapacity
+            - WarmPoolTotalCapacity
+            - GroupAndWarmPoolDesiredCapacity
+            - GroupAndWarmPoolTotalCapacity
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  GenaiEngineECSGPUAutoScalingGroupWarmPool:
+    Type: AWS::AutoScaling::WarmPool
+    Condition: IsWarmPoolEnabled
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      PoolState: "Stopped"
+      MinSize: !Ref GenaiEngineECSClusterWarmPoolMinSize
+      MaxGroupPreparedCapacity: !Ref GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity
+  GenaiEngineECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ArthurECSClusterName
+      DesiredCount: !Ref GenaiEngineECSServiceTaskDesiredCount
+      DeploymentConfiguration:
+        MaximumPercent: !Ref GenaiEngineECSDeploymentMaximumPercent
+        MinimumHealthyPercent: !Ref GenaiEngineECSDeploymentMinimumHealthyPercent
+      LoadBalancers:
+        - ContainerName: 'arthur-genai-engine-gpu'
+          ContainerPort: 3000
+          TargetGroupArn: !Ref GenaiEngineLBTargetGroupARN
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: 'DISABLED'
+          SecurityGroups: !Ref GenaiEngineECSSecurityGroups
+          Subnets: !Ref GenaiEngineECSServiceSubnetIDs
+      TaskDefinition: !Ref GenaiEngineECSTaskDefinitionARN
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  ## Scheduled Scaling #########################################################
+
+  GenaiEngineECSServiceTaskScalingInSchedule:
+    Type: AWS::AutoScaling::ScheduledAction
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      ScheduledActionName: !Sub "${ArthurResourceNamespace}-genai-engine-ecs-task-scale-in${ArthurResourceNameSuffix}"
+      Recurrence: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleInCron
+      DesiredCapacity: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity
+  GenaiEngineECSServiceTaskScalingOutSchedule:
+    Type: AWS::AutoScaling::ScheduledAction
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      ScheduledActionName: !Sub "${ArthurResourceNamespace}-genai-engine-ecs-task-scale-out${ArthurResourceNameSuffix}"
+      Recurrence: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron
+      DesiredCapacity: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity
+  GenaiEngineTaskScalingLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/arthur/lambda/${ArthurResourceNamespace}-genai-engine-task-scaling${ArthurResourceNameSuffix}"
+      RetentionInDays: 14
+  GenaiEngineTaskScalingLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.9
+      Handler: index.handler
+      Role: !Ref GenaiEngineTaskScalingLambdaRoleARN
+      LoggingConfig:
+        LogGroup: !Ref GenaiEngineTaskScalingLambdaLogGroup
+        LogFormat: JSON
+      Code:
+        ZipFile: |
+          import boto3
+          import os
+          import json
+          import logging
+
+          # Set up logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+              logger.info('Received event: %s', json.dumps(event))
+
+              cluster_name = os.environ['CLUSTER_NAME']
+              service_name = os.environ['SERVICE_NAME']
+              asg_name = os.environ['ASG_NAME']
+
+              if event.get("alarmData", {}).get("state", {}).get("value") == "OK":
+                logger.info('Alarm is OK, skipping update')
+                return {
+                  'statusCode': 200,
+                  'body': 'Alarm is OK, skipping update'
+                }
+
+              # Initialize clients
+              ecs = boto3.client('ecs')
+              autoscaling = boto3.client('autoscaling')
+              cloudwatch = boto3.client('cloudwatch')
+              logger.info('Initialized AWS reousrce clients for ECS, ASG, and CloudWatch')
+
+              # Get the GenAI Engine ECS service
+              service = ecs.describe_services(
+                  cluster=cluster_name,
+                  services=[service_name]
+              )['services'][0]
+              current_desired_count = service['desiredCount']
+
+              # Get the GenAI Engine ASG
+              asg = autoscaling.describe_auto_scaling_groups(
+                  AutoScalingGroupNames=[asg_name]
+              )['AutoScalingGroups'][0]
+
+              # Handle scheduled scaling
+              if 'desired_count' in event:
+                new_desired_count = event['desired_count']
+                logger.info('Scheduled scaling event received, the new desired count is set to %d', new_desired_count)
+              # Handle CloudWatch Alarm
+              elif 'alarmData' in event:
+                new_desired_count = asg['DesiredCapacity']
+                logger.info('Dynamic scaling event received, the new desired count is set to %d', new_desired_count)
+              else:
+                  raise ValueError("Event format not recognized")
+
+              # Update GenAI Engine ECS service task desired count
+              response = ecs.update_service(
+                  cluster=cluster_name,
+                  service=service_name,
+                  desiredCount=new_desired_count
+              )
+
+              # Reset the CloudWatch alarm
+              alarm_name = event.get('alarmData', {}).get('alarmName')
+              if alarm_name:
+                cloudwatch.set_alarm_state(
+                  AlarmName=alarm_name,
+                  StateValue='OK',
+                  StateReason='Reset by GenaiEngineTaskScalingLambda'
+                )
+                logger.info('Reset alarm %s to OK state', alarm_name)
+
+              logger.info('Updated ECS service, %s desired count from %d to %d', service_name, current_desired_count, new_desired_count)
+              return {
+                  'statusCode': 200,
+                  'body': f'Updated ECS service, {service_name} desired count from {current_desired_count} to {new_desired_count}'
+              }
+      Environment:
+        Variables:
+          CLUSTER_NAME: !Ref ArthurECSClusterName
+          SERVICE_NAME: !GetAtt GenaiEngineECSService.Name
+          ASG_NAME: !Ref GenaiEngineECSGPUAutoScalingGroup
+      Timeout: 30
+      MemorySize: 128
+  GenaiEngineTaskScalingInRule:
+    Type: AWS::Events::Rule
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}-genai-engine-task-scaling-in${ArthurResourceNameSuffix}"
+      Description: "Rule to trigger GenAI Engine task scaling in Lambda function"
+      ScheduleExpression: !Sub "cron(${GenaiEngineECSClusterTaskScheduledScaleInCron})"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt GenaiEngineTaskScalingLambda.Arn
+          Id: "GenaiEngineTaskScalingInTarget"
+          Input: !Sub '{"desired_count": ${GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity}}'
+  GenaiEngineTaskScalingOutRule:
+    Type: AWS::Events::Rule
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      Name: !Sub "${ArthurResourceNamespace}-genai-engine-task-scaling-out${ArthurResourceNameSuffix}"
+      Description: "Rule to trigger GenAI Engine task scaling out Lambda function"
+      ScheduleExpression: !Sub "cron(${GenaiEngineECSClusterTaskScheduledScaleOutCron})"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt GenaiEngineTaskScalingLambda.Arn
+          Id: "GenaiEngineTaskScalingOutTarget"
+          Input: !Sub '{"desired_count": ${GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity}}'
+  GenaiEngineTaskScalingInLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      FunctionName: !GetAtt GenaiEngineTaskScalingLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GenaiEngineTaskScalingInRule.Arn
+  GenaiEngineTaskScalingOutLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsScheduledScalingEnabled
+    Properties:
+      FunctionName: !GetAtt GenaiEngineTaskScalingLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt GenaiEngineTaskScalingOutRule.Arn
+  GenaiEngineTaskScalingLambdaPermissionCloudWatch:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt GenaiEngineTaskScalingLambda.Arn
+      Action: lambda:InvokeFunction
+      Principal: lambda.alarms.cloudwatch.amazonaws.com
+      SourceArn: !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:*"
+
+  ## Dynamic Autoscaling #########################################################
+
+  # GPU Scaling Policies
+  GenaiEngineGPUScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      MetricAggregationType: Average
+      EstimatedInstanceWarmup: !Ref GenaiEngineEstimatedInstanceWarmup
+      StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          MetricIntervalUpperBound: 20
+          ScalingAdjustment: 1
+        - MetricIntervalLowerBound: 20
+          ScalingAdjustment: 2
+      Cooldown: !Ref GenaiEngineDynamicScaleOutCooldown
+  GenaiEngineGPUScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Condition: IsDynamicScaleInGPUEnabled
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      MetricAggregationType: Average
+      EstimatedInstanceWarmup: !Ref GenaiEngineEstimatedInstanceWarmup
+      StepAdjustments:
+        - MetricIntervalUpperBound: 0
+          ScalingAdjustment: -1
+      Cooldown: !Ref GenaiEngineDynamicScaleInCooldown
+
+  # GPU CloudWatch Alarm
+  GenaiEngineGPUHighUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ArthurResourceNamespace}-genai-engine-gpu-high-utilization${ArthurResourceNameSuffix}"
+      AlarmDescription: "High GPU utilization across GenAI Engine instances"
+      Metrics:
+        - Expression: !Sub |
+            SELECT AVG(nvidia_smi_utilization_gpu)
+            FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name)
+            WHERE ArthurNamespace = '${ArthurResourceNamespace}'
+          Id: "gpuUtilization"
+          Period: !Ref GenaiEngineDynamicScaleOutCooldown
+          ReturnData: true
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Threshold: !Ref GenaiEngineECSClusterGPUUtilizationScaleOutThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref GenaiEngineGPUScaleOutPolicy
+  GenaiEngineGPULowUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsDynamicScaleInGPUEnabled
+    Properties:
+      AlarmName: !Sub "${ArthurResourceNamespace}-genai-engine-gpu-low-utilization${ArthurResourceNameSuffix}"
+      AlarmDescription: "Low GPU utilization across GenAI Engine instances"
+      Metrics:
+        - Expression: !Sub |
+            SELECT AVG(nvidia_smi_utilization_gpu)
+            FROM SCHEMA(CWAgent, ArthurNamespace,ImageId,InstanceId,InstanceType,arch,host,index,name)
+            WHERE ArthurNamespace = '${ArthurResourceNamespace}'
+          Id: "gpuUtilization"
+          Period: !Ref GenaiEngineDynamicScaleInCooldown
+          ReturnData: true
+      ComparisonOperator: LessThanThreshold
+      EvaluationPeriods: 2
+      Threshold: !Ref GenaiEngineECSClusterGPUUtilizationScaleInThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref GenaiEngineGPUScaleInPolicy
+
+  # CPU Scaling Policies
+  GenaiEngineCPUScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      MetricAggregationType: Average
+      EstimatedInstanceWarmup: !Ref GenaiEngineEstimatedInstanceWarmup
+      StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          MetricIntervalUpperBound: 20
+          ScalingAdjustment: 1
+        - MetricIntervalLowerBound: 20
+          ScalingAdjustment: 2
+      Cooldown: !Ref GenaiEngineDynamicScaleOutCooldown
+  GenaiEngineCPUScaleInPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Condition: IsDynamicScaleInCPUEnabled
+    Properties:
+      AutoScalingGroupName: !Ref GenaiEngineECSGPUAutoScalingGroup
+      PolicyType: StepScaling
+      AdjustmentType: ChangeInCapacity
+      MetricAggregationType: Average
+      EstimatedInstanceWarmup: !Ref GenaiEngineEstimatedInstanceWarmup
+      StepAdjustments:
+        - MetricIntervalUpperBound: 0
+          ScalingAdjustment: -1
+      Cooldown: !Ref GenaiEngineDynamicScaleInCooldown
+
+  # CPU CloudWatch Alarm
+  GenaiEngineCPUHighUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ArthurResourceNamespace}-genai-engine-cpu-high-utilization${ArthurResourceNameSuffix}"
+      AlarmDescription: "High CPU utilization across GenAI Engine instances"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: !Ref GenaiEngineDynamicScaleOutCooldown
+      EvaluationPeriods: 1
+      Threshold: !Ref GenaiEngineECSClusterCPUUtilizationScaleOutThreshold
+      AlarmActions:
+        - !Ref GenaiEngineCPUScaleOutPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref GenaiEngineECSGPUAutoScalingGroup
+      ComparisonOperator: GreaterThanThreshold
+  GenaiEngineCPULowUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IsDynamicScaleInCPUEnabled
+    Properties:
+      AlarmName: !Sub "${ArthurResourceNamespace}-genai-engine-cpu-low-utilization${ArthurResourceNameSuffix}"
+      AlarmDescription: "Low CPU utilization across GenAI Engine instances"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: !Ref GenaiEngineDynamicScaleInCooldown
+      EvaluationPeriods: 2
+      Threshold: !Ref GenaiEngineECSClusterCPUUtilizationScaleInThreshold
+      AlarmActions:
+        - !Ref GenaiEngineCPUScaleInPolicy
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref GenaiEngineECSGPUAutoScalingGroup
+      ComparisonOperator: LessThanThreshold
+
+  GenaiEngineInstanceToTaskRatioAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ArthurResourceNamespace}-genai-engine-instance-task-mismatch${ArthurResourceNameSuffix}"
+      AlarmDescription: "Alarm when there is a mismatch between number of desired EC2 instances and desired ECS tasks"
+      Metrics:
+        - Id: instances
+          MetricStat:
+            Metric:
+              Namespace: AWS/AutoScaling
+              MetricName: GroupDesiredCapacity
+              Dimensions:
+                - Name: AutoScalingGroupName
+                  Value: !Ref GenaiEngineECSGPUAutoScalingGroup
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
+        - Id: tasks
+          MetricStat:
+            Metric:
+              Namespace: ECS/ContainerInsights
+              MetricName: DesiredTaskCount
+              Dimensions:
+                - Name: ClusterName
+                  Value: !Ref ArthurECSClusterName
+                - Name: ServiceName
+                  Value: !GetAtt GenaiEngineECSService.Name
+            Period: 60
+            Stat: Maximum
+          ReturnData: false
+        - Id: difference
+          Expression: "ABS(instances - tasks)"
+          Label: "Instance and Task Desired Count Difference"
+          ReturnData: true
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Threshold: 0
+      TreatMissingData: missing
+      AlarmActions:
+        - !GetAtt GenaiEngineTaskScalingLambda.Arn
+
+Outputs:
+  GenaiEngineECSServiceNameOutput:
+    Description: 'ECS service name for GenAI Engine'
+    Value: !GetAtt GenaiEngineECSService.Name
+  GenaiEngineTaskScalingLambdaArn:
+    Description: 'ARN of the Lambda function that scales GenAI Engine ECS tasks'
+    Value: !GetAtt GenaiEngineTaskScalingLambda.Arn

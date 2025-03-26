@@ -1,0 +1,27 @@
+name: 'Setup Helm'
+description: 'Installs and configures Helm'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Create temporary directory
+      shell: bash
+      run: mkdir -p /tmp/helm
+
+    - name: Download Helm
+      shell: bash
+      run: wget -nv -O /tmp/helm.tgz "https://get.helm.sh/helm-v3.14.2-linux-amd64.tar.gz"
+
+    - name: Extract Helm
+      shell: bash
+      run: tar zxvf /tmp/helm.tgz -C /tmp/helm
+
+    - name: Install Helm binary
+      shell: bash
+      run: |
+        mv /tmp/helm/linux-amd64/helm /usr/local/bin/helm
+        chmod a+x /usr/local/bin/helm
+
+    - name: Remove helm repo if cached
+      shell: bash
+      run: helm repo list | grep -q "arthur-engine" && helm repo remove arthur-engine || true # Removes any cached arthur-engine helm repo if it exists

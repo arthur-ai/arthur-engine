@@ -1,0 +1,132 @@
+[tool.poetry]
+name = "arthur-genai-engine"
+version = "2.1.8"
+description = ""
+authors = ["Arthur <engineering@arthur.ai>"]
+readme = "README.md"
+packages = [
+    { include = "genai_engine" },
+    { include = "genai_engine/auth" },
+    { include = "genai_engine/db_models" },
+    { include = "genai_engine/repositories" },
+    { include = "genai_engine/routers" },
+    { include = "genai_engine/schemas" },
+    { include = "genai_engine/scorer" },
+    { include = "genai_engine/utils" },
+]
+
+[tool.poetry.dependencies]
+python = "3.12.*"
+openai = "1.59.6"
+fastapi = "0.115.6"
+uvicorn = "0.34.0"
+pydantic = "2.10.5"
+sse-starlette = "2.2.1"
+fastapi-sqlalchemy = "0.2.1"
+alembic = "1.14.0"
+boto3 = "1.35.96"
+python-dotenv = "1.0.1"
+psycopg2-binary = "2.9.10"
+sqlalchemy = "2.0.37"
+pgvector = "0.3.6"
+python-multipart = "0.0.20"
+pypdf = "5.1.0"
+httpx = "0.27.2"
+transformers = "4.48.0"
+authlib = "1.4.0"
+requests = "2.32.3"
+starlette = "0.41.3"
+pyjwt = "2.10.1"
+azure-storage-blob = "12.24.0"
+itsdangerous = "2.2.0"
+newrelic = "10.4.0"
+importlib-metadata = "8.5.0"
+opentelemetry-instrumentation-logging = "0.50b0"
+opentelemetry-instrumentation = "0.50b0"
+opentelemetry-instrumentation-fastapi = "0.50b0"
+opentelemetry-exporter-otlp = "1.29.0"
+opentelemetry-instrumentation-sqlalchemy = "0.50b0"
+tiktoken = "0.8.0"
+nltk = "3.9.1"
+more-itertools = "10.5.0"
+presidio-analyzer = "2.2.356"
+presidio-anonymizer = "2.2.356"
+python-keycloak = "5.1.1"
+bcrypt = "4.2.1"
+cachetools = "5.5.0"
+sentence-transformers = "3.3.1"
+en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
+torch = [
+    { version = "=2.5.1", source = "PyPI", platform = "darwin" },
+    { version = "=2.5.1+cpu", source = "pytorch-cpu", platform = "linux" },
+    { version = "=2.5.1+cpu", source = "pytorch-cpu", platform = "win32" },
+]
+commonmark = "0.9.1"
+gunicorn = "^23.0.0"
+fastapi-pagination = "0.12.34"
+pydantic-settings = "^2.3.4"
+spacy = ">=3.8.3"
+langchain = "0.3.14"
+langchain-community = "0.3.14"
+langchain-openai = "0.3.0"
+cloudpickle = "3.1.0"
+amplitude-analytics = "^1.1.5"
+
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+
+[[tool.poetry.source]]
+name = "arthur-repo"
+url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
+priority = "explicit"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.3.4"
+pytest-asyncio = "0.25.2"
+pytest-cov = "^6.0.0"
+pre-commit = "^4.0.0"
+moto = { extras = ["s3", "sts"], version = "^5.0.21" }
+black = "^24.8.0"
+mypy = "^1.13.0"
+
+
+[tool.poetry.group.performance.dependencies]
+locust = "^2.32.2"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-vv"
+pythonpath = ["genai_engine"]
+testpaths = [
+    "tests"
+]
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "api_key_tests: mark a test as testing api key actions",
+    "aws_live: mark a test as running against a live environment. AWS_BUCKET_NAME must be supplied as an environment variable",
+    "azure_live: mark a test as running against a live environment. AZURE_STORAGE_CONTAINER_NAME and AZURE_STORAGE_CONNECTION_STRING must be supplied as a environment variables",
+    "integration_tests: mark a test as running an integration test. These will tend to replicate user flows and minimize the amount of junk data created",
+    "unit_tests: mark a test as part of the unit tests suite. These should run locally with no outside configuration required. Should also be entirely self contained (no external dependencies)",
+    "skip_auto_api_key_create: mark a test as opting out of api key creation and deletion pre and post steps"
+]
+
+[tool.poetry.scripts]
+serve = "genai_engine.server:start"
+generate_changelog = "changelog:main"
+routes_security_check = "routes_security_check:main"
+
+[tool.black]
+target-version = ['py312']
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

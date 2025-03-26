@@ -1,0 +1,59 @@
+[
+    {
+        "name": "Sensitive Data Rule",
+        "type": "ModelSensitiveDataRule",
+        "apply_to_prompt": true,
+        "apply_to_response": false,
+        "config": {
+            "examples": [
+                {"example": "John has O negative blood group", "result": true},
+                {"example": "Most of the people have A positive blood group", "result": false}
+            ],
+            "hint": "specific individual's blood types"
+        }
+    },
+    {
+        "name": "SSN Regex Rule",
+        "type": "RegexRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "config": {"regex_patterns": ["\\d{3}-\\d{2}-\\d{4}", "\\d{5}-\\d{6}-\\d{7}"]}
+    },
+    {
+        "name": "Blocked Keywords Rule",
+        "type": "KeywordRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "config": {"keywords": ["Blocked_Keyword_1", "Blocked_Keyword_2"]}
+    },
+    {
+        "name": "Prompt Injection Rule",
+        "type": "PromptInjectionRule",
+        "apply_to_prompt": true,
+        "apply_to_response": false
+    },
+    {
+        "name": "Hallucination Rule",
+        "type": "ModelHallucinationRuleV2",
+        "apply_to_prompt": false,
+        "apply_to_response": true
+    },
+    {
+        "name": "PII Rule",
+        "type": "PIIDataRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "config": {
+            "disabled_pii_entities": ["EMAIL_ADDRESS", "PHONE_NUMBER"],
+            "confidence_threshold": "0.5",
+            "allow_list": ["arthur.ai", "Arthur"]
+        }
+    },
+    {
+        "name": "Toxicity Rule",
+        "type": "ToxicityRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "config": {"threshold": 0.5}
+    }
+]

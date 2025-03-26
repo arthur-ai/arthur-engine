@@ -1,0 +1,121 @@
+name: Version Management
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - '.github/workflows/**/*'
+      - 'genai-engine/alembic/**/*'
+      - 'genai-engine/cloudformation/**/*'
+      - 'genai-engine/genai_engine/**/*'
+      - 'genai-engine/helm/**/*'
+      - 'genai-engine/shield/**/*'
+      - 'genai-engine/tests/**/*'
+      - 'genai-engine/.env'
+      - 'genai-engine/dockerfile'
+      - 'genai-engine/pyproject.toml'
+      - 'genai-engine/requirements-gpu.txt'
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: 'Trigger version bump'
+        required: true
+        default: 'bump_version'
+        type: string
+
+jobs:
+  bump-and-tag-version:
+    if: |
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/dev') &&
+      !contains(github.event.head_commit.message, 'Increment version to') &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Bump Version
+        env:
+          CHART_YAML_PATH: "helm/Chart.yaml"
+          VALUES_YAML_PATH: "helm/values.yaml"
+        run: |
+          set -e
+
+          # Update files in the genai-engine directory
+          cd genai-engine
+
+          # Vars to externalize if needed
+          export SUFFIX="-dev"
+          export BUMP_COMMAND="patch"
+
+          # Set version vars with no suffix
+          export CURRENT_VERSION=$(poetry version -s)
+          export NEW_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
+
+          # Validate version variables are set
+          if [ -z "$CURRENT_VERSION" ] || [ -z "$NEW_VERSION" ]; then
+            echo "Error: Version variables not set. CURRENT_VERSION='$CURRENT_VERSION', NEW_VERSION='$NEW_VERSION'"
+            exit 1
+          fi
+
+          # Set git tag with suffix to trigger dev release
+          export GIT_TAG=$NEW_VERSION$SUFFIX
+
+          echo "New version will be ${NEW_VERSION}[${SUFFIX}]"
+
+          # Update the version file
+          echo $NEW_VERSION > version
+
+          # Update the shieldVersion in the helm k8s deployment values.yaml file
+          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$VALUES_YAML_PATH"
+
+          # Update the version and appVersion in the helm k8s deployment Chart.yaml file
+          sed -i "s|version:.*|version: $NEW_VERSION|" "$CHART_YAML_PATH"
+          sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$CHART_YAML_PATH"
+
+          # Add, commit, and push changes
+          git add version pyproject.toml $CHART_YAML_PATH $VALUES_YAML_PATH
+          git status
+          git diff --cached
+          git commit --no-verify -m "Increment version to ${NEW_VERSION}${SUFFIX}"
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+
+          # Add and push tag to trigger release
+          git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
+          # git push origin "${GIT_TAG}"
+          git push "https://${{ secrets.PAT_PUSH_TAGS }}@github.com/arthur-ai/arthur-engine-temp.git" "$GIT_TAG"
+
+
+
+  tag-main:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Create and Push Tag
+        run: |
+          cd genai-engine
+          GIT_TAG=$(poetry version -s)
+          echo "New version will be $GIT_TAG"
+          git tag -a "$GIT_TAG" -m "Create tag $GIT_TAG"
+          git push origin "$GIT_TAG"
