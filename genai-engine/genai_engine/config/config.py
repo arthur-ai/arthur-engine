@@ -1,4 +1,3 @@
-import os
 import uuid
 from logging import _nameToLevel as allowed_log_levels
 
@@ -6,7 +5,7 @@ from dotenv import load_dotenv
 from utils import constants
 from utils.utils import get_env_var
 
-load_dotenv(os.environ.get(constants.GENAI_ENGINE_ENV_FILE_ENV_VAR))
+load_dotenv()
 
 
 class Config:
