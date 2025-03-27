@@ -343,7 +343,7 @@ def get_test_app() -> FastAPI:
 
     if is_api_only_mode_enabled():
 
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         async def redirect_to_docs():
             return RedirectResponse("/docs")
 
@@ -377,7 +377,7 @@ def get_app() -> FastAPI:
 
     if is_api_only_mode_enabled():
 
-        @app.get("/")
+        @app.get("/", include_in_schema=False)
         async def redirect_to_docs():
             return RedirectResponse("/docs")
 
