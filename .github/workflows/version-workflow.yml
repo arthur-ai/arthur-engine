@@ -27,6 +27,7 @@ on:
 
 jobs:
   bump-and-tag-version:
+    environment: shared-protected-branch-secrets
     if: |
       github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/dev') &&
@@ -98,6 +99,7 @@ jobs:
           git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" "${GIT_TAG}"
 
   tag-main:
+    environment: shared-protected-branch-secrets
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
