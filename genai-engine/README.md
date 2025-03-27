@@ -144,7 +144,7 @@ poetry run alembic upgrade head
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "genai_engine",
-                "GENAI_ENGINE_ENV_FILE": "${workspaceFolder}/genai-engine/.env",
+                "GENAI_ENGINE_CONFIG_PATH": "${workspaceFolder}/genai-engine/.env",
                 "TEST_DATABASE": "true"
             }
         }
@@ -163,7 +163,7 @@ poetry run alembic upgrade head
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "genai_engine",
-                "GENAI_ENGINE_ENV_FILE": "${workspaceFolder}/genai-engine/.env",
+                "GENAI_ENGINE_CONFIG_PATH": "${workspaceFolder}/genai-engine/.env",
             }
         },
     ```
@@ -176,7 +176,7 @@ poetry run alembic upgrade head
 2. Follow the step from [Poetry](#poetry) section to install dependencies
 3. Set up all relevant variables in the `.env` file and then export it path
     ```bash
-    export GENAI_ENGINE_ENV_FILE=./.env
+    export GENAI_ENGINE_CONFIG_PATH=./.env
     ```
 4. Run the server:
     ```bash
