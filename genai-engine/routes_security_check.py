@@ -115,7 +115,7 @@ def analyze_file(file_path: str) -> List[dict]:
 
 
 def analyze_routers_directory(
-    directory_path: str = "genai_engine/routers",
+    directory_path: str = "src/routers",
 ) -> List[Tuple[str, List[dict]]]:
     results = []
 

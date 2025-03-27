@@ -1,6 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "genai_engine"
+        "src"
     ],
     "python.testing.pytestArgs": [
         "tests",

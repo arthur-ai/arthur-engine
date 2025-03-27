@@ -3,9 +3,9 @@ from logging.config import fileConfig
 from alembic import context
 from db_models import db_models
 from dotenv import load_dotenv
-from genai_engine.utils import constants
-from genai_engine.utils.utils import get_env_var, get_postgres_connection_string
 from sqlalchemy import engine_from_config, pool
+from utils import constants
+from utils.utils import get_env_var, get_postgres_connection_string
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

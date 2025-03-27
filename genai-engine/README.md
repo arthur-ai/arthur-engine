@@ -107,7 +107,7 @@ export POSTGRES_URL=localhost
 export POSTGRES_PORT=5432
 export POSTGRES_DB=arthur_genai_engine
 export POSTGRES_USE_SSL=false
-export PYTHONPATH="genai_engine:$PYTHONPATH"
+export PYTHONPATH="src:$PYTHONPATH"
 
 poetry run alembic upgrade head
 ```
@@ -126,7 +126,7 @@ poetry run alembic upgrade head
     ```bash
     poetry env info --path
     ```
-5. Open a Python file (e.g. `genai_engine/server.py`) and make sure you have the Python interpreter looked up in the previous step selected
+5. Open a Python file (e.g. `src/server.py`) and make sure you have the Python interpreter looked up in the previous step selected
 6. Create a new launch configuration: `Run` -> `Add Configurations` -> `Python Debugger` -> `Python File `. Add the below configuration and adjust the values according to your environment. Please reference the `.env` file.
     ```json
         {
@@ -135,13 +135,13 @@ poetry run alembic upgrade head
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "genai_engine.server:get_app",
+                "src.server:get_app",
                 "--reload"
             ],
             "jinja": true,
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "genai_engine",
+                "PYTHONPATH": "src",
 
                 "POSTGRES_USER": "postgres",
                 "POSTGRES_PASSWORD": "changeme_pg_password",
@@ -188,7 +188,7 @@ poetry run alembic upgrade head
     ```
 4. Run the server
     ```bash
-    export PYTHONPATH="genai_engine:$PYTHONPATH"
+    export PYTHONPATH="src:$PYTHONPATH"
     poetry run serve
     ```
 
@@ -230,7 +230,7 @@ poetry run pytest -m "unit_tests"
 
 Run the unit tests with coverage:
 ```bash
-poetry run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
+poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
 ```
 
 ## Integration Tests
