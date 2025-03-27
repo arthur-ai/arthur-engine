@@ -19,7 +19,7 @@ runs:
       shell: bash
       # run: git config --global --add safe.directory ${{ inputs.safe-directory }}
       # run: git config --global --add safe.directory ${{ runner.workspace }}
-      run: git config --global --add safe.directory /__w/arthur-engine-temp/arthur-engine-temp
+      run: git config --global --add safe.directory /__w/arthur-engine/arthur-engine
 
     - name: 'Fetch tags'
       shell: bash
