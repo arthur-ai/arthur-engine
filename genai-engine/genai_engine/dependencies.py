@@ -62,7 +62,7 @@ API_KEY_CACHE = None
 API_KEY_VALIDATOR_CLIENT = None
 KEYCLOAK_CLIENT = None
 
-load_dotenv(os.environ.get(constants.GENAI_ENGINE_ENV_FILE_ENV_VAR))
+load_dotenv()
 
 
 def load_env_vars():
