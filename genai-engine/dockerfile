@@ -20,7 +20,7 @@ RUN pip3 install poetry==1.8.5
 # Set working directory
 WORKDIR /app
 
-ENV PYTHONPATH="$PYTHONPATH:/app/genai_engine"
+ENV PYTHONPATH="$PYTHONPATH:/app/src"
 RUN poetry install --without dev,performance --no-ansi
 
 
@@ -37,10 +37,10 @@ FROM preinstall AS cpu-install
 # Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
 FROM ${TORCH_DEVICE}-install AS install
 # Copy backend files
-COPY genai_engine /app/genai_engine
+COPY src /app/src
 
 # Copy version file to server directory
-COPY version /app/genai_engine/
+COPY version /app/src/
 
 # Copy env file to run directory
 COPY .env /app/
@@ -75,7 +75,7 @@ COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/vir
 COPY --from=install /app/ /app/
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-ENV PYTHONPATH="$PYTHONPATH:/app/genai_engine"
+ENV PYTHONPATH="$PYTHONPATH:/app/src"
 
 # Set working directory (this is where the entrypoint will be run)
 WORKDIR /app
@@ -83,4 +83,4 @@ WORKDIR /app
 # Expose the necessary ports
 EXPOSE 3000
 
-ENTRYPOINT ["bash", "-c", "/app/genai_engine/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "-c", "/app/src/docker-entrypoint.sh"]

@@ -30,7 +30,7 @@ services:
       - POSTGRES_USE_SSL=false
     env_file:
       - arthur-genai-engine.env
-    entrypoint: [ "bash", "-c", "./genai_engine/docker-entrypoint.sh" ]
+    entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
 networks:
   arthur_network:
     driver: bridge
