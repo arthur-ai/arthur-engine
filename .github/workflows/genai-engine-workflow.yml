@@ -127,7 +127,6 @@ jobs:
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
-            arthurplatform/genai-engine-${{ matrix.torch_device }}:latest
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ github.ref_name }}
             ${{ !endsWith(github.ref, '-dev') && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
           push: true
