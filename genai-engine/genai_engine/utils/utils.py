@@ -35,7 +35,12 @@ sentence_tokenizer = PunktSentenceTokenizer()
 
 def new_relic_enabled():
     return (
-        get_env_var(constants.NEWRELIC_ENABLED_ENV_VAR, none_on_missing=False) == "true"
+        get_env_var(
+            constants.NEWRELIC_ENABLED_ENV_VAR,
+            none_on_missing=False,
+            default="false",
+        )
+        == "true"
     )
 
 

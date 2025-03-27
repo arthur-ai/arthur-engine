@@ -3,10 +3,10 @@ import logging
 from copy import deepcopy
 from typing import Any, List
 
+from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.permission_mappings import ROLE_NAMES_TO_PERMISSIONS
 from config.keycloak_config import KeyCloakSettings
 from fastapi import HTTPException
-from genai_engine.clients.auth.abc_keycloak_client import ABCAuthClient
 from keycloak import KeycloakAdmin
 from keycloak.exceptions import KeycloakGetError, KeycloakPostError
 from pydantic import BaseModel, TypeAdapter
