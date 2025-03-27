@@ -1,3 +1,4 @@
+import os
 import uuid
 from logging import _nameToLevel as allowed_log_levels
 
@@ -5,7 +6,7 @@ from dotenv import load_dotenv
 from utils import constants
 from utils.utils import get_env_var
 
-load_dotenv()
+load_dotenv(os.environ.get(constants.GENAI_ENGINE_ENV_FILE_ENV_VAR))
 
 
 class Config:
@@ -15,7 +16,8 @@ class Config:
 
     @classmethod
     def max_api_key_limit(cls) -> int:
-        return int(get_env_var(constants.MAX_API_KEYS_ENV_VAR))
+        max_api_key_limit = get_env_var(constants.MAX_API_KEYS_ENV_VAR, default="100")
+        return int(max_api_key_limit)
 
     @classmethod
     def app_secret_key(cls) -> str:

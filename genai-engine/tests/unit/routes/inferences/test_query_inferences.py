@@ -4,17 +4,17 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from genai_engine.db_models.db_models import DatabaseInference
-from genai_engine.schemas.enums import RuleResultEnum, RuleType
-from genai_engine.schemas.internal_schemas import InferencePrompt, Task
-from genai_engine.schemas.response_schemas import QueryInferencesResponse
-from genai_engine.utils import constants
+from db_models.db_models import DatabaseInference
+from schemas.enums import RuleResultEnum, RuleType
+from schemas.internal_schemas import InferencePrompt, Task
+from schemas.response_schemas import QueryInferencesResponse
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_scorer_client import (
     MOCK_KEYWORD_FAILING_TEXT,
     MOCK_KEYWORD_PASSING_TEXT,
     MOCK_REGEX_PASSING_TEXT,
 )
+from utils import constants
 
 
 @pytest.mark.unit_tests

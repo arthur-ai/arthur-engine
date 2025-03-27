@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from genai_engine.schemas.common_schemas import UserPermission
+from schemas.common_schemas import UserPermission
 from schemas.internal_schemas import User
 
 

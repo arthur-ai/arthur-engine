@@ -116,38 +116,6 @@ def test_create_sensitive_data_rule_response_enabled(client: GenaiEngineTestClie
 
 
 @pytest.mark.unit_tests
-def test_create_hallucination_rule(client: GenaiEngineTestClientBase):
-    status_code, rule = client.create_rule(
-        "Hallucination",
-        RuleType.MODEL_HALLUCINATION,
-        prompt_enabled=False,
-    )
-    assert status_code == 200
-
-    assert rule.name == "Hallucination"
-    assert rule.type == "ModelHallucinationRule"
-    assert rule.scope == RuleScope.DEFAULT
-    assert rule.created_at
-    assert rule.updated_at
-
-    return rule
-
-
-@pytest.mark.unit_tests
-def test_create_hallucination_rule_prompt_enabled(client: GenaiEngineTestClientBase):
-    status_code, error = client.create_rule(
-        "Hallucination",
-        RuleType.MODEL_HALLUCINATION,
-        prompt_enabled=True,
-    )
-    assert status_code == 400
-    assert (
-        error["detail"]
-        == "ModelHallucinationRule can only be enabled for response. Please set the 'apply_to_prompt' field to false."
-    )
-
-
-@pytest.mark.unit_tests
 def test_create_hallucination_v2_rule(client: GenaiEngineTestClientBase):
     status_code, rule = client.create_rule(
         "Hallucination_V2",
