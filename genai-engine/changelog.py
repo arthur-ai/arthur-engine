@@ -90,7 +90,7 @@ def main():
     new_openapi_path = os.path.join(path_directory, "genai-engine/new.openapi.json")
     changelog_md_path = os.path.join(
         path_directory,
-        "genai-engine/genai_engine/api_changelog.md",
+        "genai-engine/src/api_changelog.md",
     )
     generate_new_openapi(new_openapi_path)
     changelog_md: list[str] = ["\n", f"# {datetime.today().strftime('%m/%d/%Y')}\n"]

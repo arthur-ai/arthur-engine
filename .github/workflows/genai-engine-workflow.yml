@@ -57,7 +57,7 @@ jobs:
           dpkg -i oasdiff.deb
       - name: Generate changelog
         run: |
-          export PYTHONPATH=genai_engine
+          export PYTHONPATH=src
           poetry -C genai-engine run generate_changelog
       - name: Upload artifacts on failure
         if: failure()
