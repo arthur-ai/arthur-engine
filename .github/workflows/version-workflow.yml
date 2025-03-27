@@ -95,7 +95,7 @@ jobs:
           # Add and push tag to trigger release
           git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
           # git push origin "${GIT_TAG}"
-          git push "https://${{ secrets.PAT_PUSH_TAGS }}@github.com/arthur-ai/arthur-engine-temp.git" "$GIT_TAG"
+          # git push "https://${{ secrets.PAT_PUSH_TAGS }}@github.com/arthur-ai/arthur-engine-temp.git" "$GIT_TAG"
 
 
 
