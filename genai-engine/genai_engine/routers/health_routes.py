@@ -1,7 +1,7 @@
 from fastapi import APIRouter
-from genai_engine.utils import utils
-from genai_engine.utils.utils import public_endpoint
 from schemas.response_schemas import HealthResponse
+from utils import utils
+from utils.utils import public_endpoint
 
 health_router = APIRouter()
 
