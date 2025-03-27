@@ -1,6 +1,6 @@
 ##################################################################
 # Application Server
-GENAI_ENGINE_ENV_FILE_ENV_VAR = "GENAI_ENGINE_ENV_FILE"
+GENAI_ENGINE_ENV_FILE_ENV_VAR = "GENAI_ENGINE_CONFIG_PATH"
 GENAI_ENGINE_INGRESS_URI_ENV_VAR = "GENAI_ENGINE_INGRESS_URI"
 GENAI_ENGINE_ADMIN_KEY_ENV_VAR = "GENAI_ENGINE_ADMIN_KEY"
 GENAI_ENGINE_ENVIRONMENT_ENV_VAR = "GENAI_ENGINE_ENVIRONMENT"
@@ -15,22 +15,14 @@ MAX_PAGE_SIZE = 5000
 ##################################################################
 # Postgres
 POSTGRES_USE_SSL_ENV_VAR = "POSTGRES_USE_SSL"
-POSTGRES_CLIENT_CONNECTION_POOL_SIZE_VAR = "POSTGRES_CLIENT_CONNECTION_POOL_SIZE"
-POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW_VAR = (
-    "POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW"
-)
 
 ##################################################################
 # Auth Environment Variables
-KEYCLOAK_ENABLED_ENV_VAR = "KEYCLOAK_ENABLED"
 GENAI_ENGINE_AUTH_CLIENT_SECRET_ENV_VAR = "AUTH_CLIENT_SECRET"
 GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR = "AUTH_CLIENT_ID"
 GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR = "KEYCLOAK_HOST_URI"
 GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR = "KEYCLOAK_REALM"
 GENAI_ENGINE_APP_SECRET_KEY_ENV_VAR = "APP_SECRET_KEY"
-GENAI_ENGINE_AUTH_USER_PASSWORD_ENV_VAR = "AUTH_USER_PASSWORD"
-GENAI_ENGINE_KEYCLOAK_ADMIN_USERNAME_ENV_VAR = "AUTH_ADMIN_CONSOLE_USERNAME"
-GENAI_ENGINE_KEYCLOAK_ADMIN_PASSWORD_ENV_VAR = "AUTH_ADMIN_CONSOLE_PASSWORD"
 GENAI_ENGINE_KEYCLOAK_VERIFY_SSL_ENV_VAR = "KEYCLOAK_VERIFY_SSL"
 
 ##################################################################
@@ -67,8 +59,6 @@ GENAI_ENGINE_CHAT_ENABLED_ENV_VAR = "CHAT_ENABLED"
 GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR = (
     "GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS"
 )
-GENAI_ENGINE_DEFAULT_S3_BUCKET_ENV_VAR = "DEFAULT_S3_BUCKET"
-GENAI_ENGINE_DEFAULT_S3_ASSUMABLE_ROLE_ARN_ENV_VAR = "DEFAULT_S3_ASSUMABLE_ROLE_ARN"
 MAX_CHAT_CONTEXT_LIMIT = 2048
 MAX_CHAT_HISTORY_CONTEXT = 512
 
@@ -91,9 +81,6 @@ ERROR_INVALID_REGEX = "Invalid regex: %s"
 ERROR_TOO_MANY_LLM_RULES_PER_TASK = "Only %d LLM rules (i.e. hallucination, sensitive data) inluding the default rules are allowed to be enabled on a task at a time. Please review the rules already enabled for this task."
 ERROR_GENAI_ENGINE_RATE_LIMIT_EXCEEDED = "GenAI Engine rate limit exceeded"
 ERROR_DEFAULT_RULE_ENGINE = "This rule could not be evaluated"
-ERROR_AWS_ASSUME_ROLE_PERMISSION_DENIED = (
-    "Access to assume the role is denied. Check IAM permissions."
-)
 ERROR_TOKEN_LIMIT_EXCEEDED = (
     "Token limit exceeded. Please reduce the size of the input."
 )
@@ -101,7 +88,6 @@ ERROR_INVALID_DOCUMENT_TYPE = (
     "Invalid document type. Must be one of application/pdf, text/csv, text/plain."
 )
 ERROR_UNCAUGHT_GENERIC = "Something went wrong."
-ERROR_EMBEDDINGS_REFERENCE_INFERENCE_ID_REQUIRED = "Inference id must be defined"
 ERROR_UNRELATED_TASK_RULE = "This rule id is not associated with this task."
 ERROR_INVALID_QUERY_PROMPT_STATUS = (
     "prompt_status parameter cannot contain values outside ('Pass', 'Fail')"
@@ -147,14 +133,6 @@ REGEX_MATCHES_MESSAGE = "Regex match in text."
 GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH = 12
 GENAI_ENGINE_KEYCLOAK_PASSWORD_POLICY = f"length({GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH}) and specialChars(1) and upperCase(1) and lowerCase(1)"
 ERROR_PASSWORD_POLICY_NOT_MET = f"Password should be at least {GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH} characters and contain at least one special character, lowercase character, and uppercase character."
-
-##################################################################
-# Default names
-DEFAULT_CHAT_TASK_NAME = "default_chat_task"
-DEFAULT_HALLUCINATION_RULE_NAME = "default_hallucination_rule"
-DEFAULT_PROMPT_INJECTION_RULE_NAME = "default_prompt_injection_rule"
-DEFAULT_TOXICITY_RULE_NAME = "default_toxicity_rule"
-DEFAULT_PII_INJECTION_RULE_NAME = "default_pii_rule"
 
 ##################################################################
 # Headers
