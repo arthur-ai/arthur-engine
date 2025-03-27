@@ -41,10 +41,10 @@ if [[ -n "$KEYCLOAK_USE_PRIVATE_CERT" ]]; then
   fi
 fi
 
-export PYTHONPATH="genai_engine"
+export PYTHONPATH="src"
 
 echo "==> Running database migration"
 poetry run alembic upgrade head || exit 1
 
 echo "==> Starting the GenAI Engine server with ${WORKER:-1} worker"
-poetry run gunicorn genai_engine.server:get_app -c /app/genai_engine/gunicorn.conf.py
+poetry run gunicorn src.server:get_app -c /app/src/gunicorn.conf.py

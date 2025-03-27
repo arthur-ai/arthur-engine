@@ -5,14 +5,14 @@ description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
 packages = [
-    { include = "genai_engine" },
-    { include = "genai_engine/auth" },
-    { include = "genai_engine/db_models" },
-    { include = "genai_engine/repositories" },
-    { include = "genai_engine/routers" },
-    { include = "genai_engine/schemas" },
-    { include = "genai_engine/scorer" },
-    { include = "genai_engine/utils" },
+    { include = "src" },
+    { include = "src/auth" },
+    { include = "src/db_models" },
+    { include = "src/repositories" },
+    { include = "src/routers" },
+    { include = "src/schemas" },
+    { include = "src/scorer" },
+    { include = "src/utils" },
 ]
 
 [tool.poetry.dependencies]
@@ -105,7 +105,7 @@ locust = "^2.32.2"
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-vv"
-pythonpath = ["genai_engine"]
+pythonpath = ["src"]
 testpaths = [
     "tests"
 ]
@@ -120,7 +120,7 @@ markers = [
 ]
 
 [tool.poetry.scripts]
-serve = "genai_engine.server:start"
+serve = "src.server:start"
 generate_changelog = "changelog:main"
 routes_security_check = "routes_security_check:main"
 

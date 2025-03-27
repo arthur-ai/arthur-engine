@@ -8,8 +8,8 @@ Create Date: 2024-10-23 10:29:50.715009
 
 import sqlalchemy as sa
 from alembic import op
-from genai_engine.db_models.custom_types import RoleType
-from genai_engine.utils import constants
+from db_models.custom_types import RoleType
+from utils import constants
 
 # revision identifiers, used by Alembic.
 revision = "68c62e902853"
