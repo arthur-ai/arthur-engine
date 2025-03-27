@@ -62,7 +62,7 @@ class MultiMethodValidator:
 
         # If API key validation fails, try oauth validation
         try:
-            if user := jwk_client.validate(token):
+            if jwk_client and (user := jwk_client.validate(token)):
                 return user
         except Exception as oauth_error:
             raise oauth_error

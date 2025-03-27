@@ -1,5 +1,6 @@
 import concurrent.futures
 import logging
+import os
 import re
 import time
 from typing import List, Optional
@@ -20,7 +21,7 @@ tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
 
 
-load_dotenv()
+load_dotenv(os.environ.get(constants.GENAI_ENGINE_ENV_FILE_ENV_VAR))
 PROMPT_INJECTION_TOKEN_WARNING_LIMIT = 512
 MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
     get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),

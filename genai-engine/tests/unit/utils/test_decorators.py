@@ -3,7 +3,7 @@ import threading
 import time
 
 import pytest
-from genai_engine.utils.decorators import with_lock
+from utils.decorators import with_lock
 
 
 @pytest.mark.unit_tests
