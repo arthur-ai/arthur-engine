@@ -92,11 +92,12 @@ jobs:
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
-          git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF#refs/heads/}
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          # git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF#refs/heads/}
 
           # Add and push tag to trigger release
-          git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
-          git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" "${GIT_TAG}"
+          # git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
+          # git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" "${GIT_TAG}"
 
   tag-main:
     environment: shared-protected-branch-secrets
