@@ -36,6 +36,7 @@ jobs:
         (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
       )
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
     steps:
@@ -89,15 +90,12 @@ jobs:
           git add version pyproject.toml $CHART_YAML_PATH $VALUES_YAML_PATH
           git status
           git diff --cached
-          git commit --no-verify -m "Increment version to ${NEW_VERSION}${SUFFIX}"
-          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          git commit --no-verify -m "Increment version to ${NEW_VERSION}"
+          git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF#refs/heads/}
 
           # Add and push tag to trigger release
           git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
-          # git push origin "${GIT_TAG}"
-          # git push "https://${{ secrets.PAT_PUSH_TAGS }}@github.com/arthur-ai/arthur-engine-temp.git" "$GIT_TAG"
-
-
+          git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" "${GIT_TAG}"
 
   tag-main:
     if: github.ref == 'refs/heads/main'
