@@ -67,11 +67,6 @@ class DatabaseConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_parameters(self):
-        print("self.POSTGRES_DB", self.POSTGRES_DB)
-        print("self.POSTGRES_URL", self.POSTGRES_URL)
-        print("self.POSTGRES_PASSWORD", self.POSTGRES_PASSWORD)
-        print("self.POSTGRES_PORT", self.POSTGRES_PORT)
-        print("self.POSTGRES_USER", self.POSTGRES_USER)
         if not self.TEST_DATABASE:
             if not all(
                 [
