@@ -61,26 +61,26 @@ For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
 
 1. Git clone the repo
 2. Install Poetry: Poetry is a Python dependency management framework. `pyproject.toml` is the descriptor.
-   ```
-   pip install poetry
-   ```
-3. Set the proper Python version: Currently developed and tested with `3.12.8`
+    ```bash
+    pip install poetry
     ```
+3. Set the proper Python version: Currently developed and tested with `3.12.8`
+    ```bash
     cd genai-engine
 
     poetry self add poetry-plugin-shell
     poetry shell && poetry env use 3.12
     ```
 4. Install dependencies/packages
-    ```
+    ```bash
     poetry install
     ```
-   To add (or upgrade) a dependency, use the following command:
-    ```
+    To add (or upgrade) a dependency, use the following command:
+    ```bash
     poetry add <package_name>==<package_version>
     ```
-   To add (or upgrade) a dev dependency, use the following command:
-    ```
+    To add (or upgrade) a dev dependency, use the following command:
+    ```bash
     poetry add --group dev <package_name>==<package_version>
     ```
 
@@ -100,7 +100,7 @@ Maks sure the Poetry install is complete and you have a running Postgres instanc
 
 `cd` to `/genai-engine` and run the commands below:
 
-```
+```bash
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=changeme_pg_password
 export POSTGRES_URL=localhost
@@ -123,14 +123,14 @@ poetry run alembic upgrade head
    - Markdown All in One
 3. Open a new window and select the `genai-engine` folder
 4. Find the path to the interpreter used by the Poetry environment
-    ```
+    ```bash
     poetry env info --path
     ```
 5. Open a Python file (e.g. `genai_engine/server.py`) and make sure you have the Python interpreter looked up in the previous step selected
 6. Create a new launch configuration: `Run` -> `Add Configurations` -> `Python Debugger` -> `Python File `. Add the below configuration and adjust the values according to your environment. Please reference the `.env` file.
-   ```
+    ```json
         {
-            "name": "genai-engine",
+            "name": "GenAI Engine",
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
@@ -144,7 +144,7 @@ poetry run alembic upgrade head
                 "PYTHONPATH": "genai_engine",
 
                 "POSTGRES_USER": "postgres",
-                "POSTGRES_PASSWORD": "changeme_pg",
+                "POSTGRES_PASSWORD": "changeme_pg_password",
                 "POSTGRES_URL": "localhost",
                 "POSTGRES_PORT": "5432",
                 "POSTGRES_DB": "arthur_genai_engine",
@@ -160,17 +160,35 @@ poetry run alembic upgrade head
                 "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key"
             }
         }
-   ```
+    ```
 7. `Run` -> `Run Without Debugging` / `Start Debugging`
 8. Open `http://localhost:8000/docs` in your web browser and start building!
 
 ### Run the app via the terminal
 
-1. Load the appropriate Python environment with a compatible Python version
-2. Follow the step from [Poetry](#poetry) section to install dependencies
-3. Export all relevant envars in the `.env` file according to the VSCode launch configuration example. Many of these are secret, do not commit them.
-4. Run the server:
+1. Load a dedicated Python environment with a compatible Python version (i.e. `3.12`)
+2. [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
+3. Set the following environment variables:
     ```
+    export POSTGRES_USER=postgres
+    export POSTGRES_PASSWORD=changeme_pg_password
+    export POSTGRES_URL=localhost
+    export POSTGRES_PORT=5432
+    export POSTGRES_DB=arthur_genai_engine
+    export POSTGRES_USE_SSL=false
+    export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
+
+    export GENAI_ENGINE_ENVIRONMENT=local
+    export GENAI_ENGINE_ADMIN_KEY=changeme123
+    export GENAI_ENGINE_INGRESS_URI=http://localhost:8000
+
+    export GENAI_ENGINE_OPENAI_PROVIDER=Azure
+    export OPENAI_API_VERSION=2023-07-01-preview
+    export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+    ```
+4. Run the server
+    ```bash
+    export PYTHONPATH="genai_engine:$PYTHONPATH"
     poetry run serve
     ```
 
@@ -185,7 +203,7 @@ Make sure the git pre-commit hooks are installed properly.
 As part of the pre-commit hook, Pytest unit tests are executed.
 You can disable it with following command when making a commit that's not ready for testing:
 
-```
+```bash
 SKIP=genai-engine-pytest-check git commit -m "<your message>"
 ```
 
@@ -194,7 +212,7 @@ SKIP=genai-engine-pytest-check git commit -m "<your message>"
 The pre-commit hook also runs a check to make sure that all endpoints have been evaluated for access control
 using the below script.
 
-```
+```bash
 poetry run python routes_security_check.py
 ```
 
@@ -206,12 +224,12 @@ Script accepts the following arguments:
 ## Unit Tests
 
 Run the unit tests with the following command:
-```
+```bash
 poetry run pytest -m "unit_tests"
 ```
 
 Run the unit tests with coverage:
-```
+```bash
 poetry run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
 ```
 
@@ -219,14 +237,14 @@ poetry run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
 
 1. Make sure you have a running instance of genai-engine on your local machine
 2. Set the below envars
-```bash
-export REMOTE_TEST_URL=http://localhost:8000
-export REMOTE_TEST_KEY=changeme123
-```
+    ```bash
+    export REMOTE_TEST_URL=http://localhost:8000
+    export REMOTE_TEST_KEY=changeme123
+    ```
 3. Run the below shell script from the `genai-engine` directory
-```bash
-./tests/test_remote.sh
-```
+    ```bash
+    ./tests/test_remote.sh
+    ```
 
 ## Performance Tests
 For running performance tests, we use [Locust](https://locust.io/).
@@ -234,7 +252,7 @@ For running performance tests, we use [Locust](https://locust.io/).
 Follow the steps below to run performance tests:
 
 1. Install Locust
-```
-poetry install --only performance
-```
+    ```bash
+    poetry install --only performance
+    ```
 2. Run performance tests by referring to the [Locust README](locust/README.md)

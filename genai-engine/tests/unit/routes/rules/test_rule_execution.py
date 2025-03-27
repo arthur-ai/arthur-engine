@@ -1,6 +1,6 @@
 import pytest
-from genai_engine.schemas.enums import RuleResultEnum, RuleType
-from genai_engine.schemas.response_schemas import (
+from schemas.enums import RuleResultEnum, RuleType
+from schemas.response_schemas import (
     ExternalRuleResult,
     KeywordDetailsResponse,
     RegexDetailsResponse,

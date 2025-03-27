@@ -16,7 +16,6 @@ from db_models.db_models import (
 from fastapi import HTTPException
 from fastapi_pagination import Page, Params
 from fastapi_pagination.ext.sqlalchemy import paginate
-from genai_engine.utils.token_count import TokenCounter
 from opentelemetry import trace
 from schemas.custom_exceptions import AlreadyValidatedException
 from schemas.enums import PaginationSortMethod, RuleResultEnum, RuleType
@@ -33,6 +32,7 @@ from schemas.response_schemas import ConversationBaseResponse, ConversationRespo
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, selectinload
+from utils.token_count import TokenCounter
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)

@@ -1,9 +1,6 @@
-from unittest.mock import patch
-
 import pytest
-from config.extra_features import ExtraFeaturesSettings
-from genai_engine.schemas.enums import PIIEntityTypes, RuleResultEnum, RuleType
-from genai_engine.schemas.response_schemas import (
+from schemas.enums import PIIEntityTypes, RuleResultEnum, RuleType
+from schemas.response_schemas import (
     ExternalRuleResult,
     KeywordDetailsResponse,
     RegexDetailsResponse,
@@ -70,10 +67,6 @@ def test_pii_results(
         assert response.rule_results[0].details.pii_entities[0].confidence > 0
 
 
-@patch(
-    "schemas.request_schemas.extra_feature_config",
-    ExtraFeaturesSettings(HALLUCINATION_V3=True),
-)
 @pytest.mark.parametrize(
     ("rule_type"),
     [
@@ -151,24 +144,7 @@ def test_run_rule_types_check_response_model(
                 for prr in prompt_rule_results:
                     assert prr.result in [RuleResultEnum.PASS, RuleResultEnum.FAIL]
                     assert prr.details is None
-            case RuleType.MODEL_HALLUCINATION:
-                assert len(prompt_rule_results) == 0
-                assert len(response_rule_results) > 0
-                for rrr in response_rule_results:
-                    assert rrr.result in [RuleResultEnum.PASS, RuleResultEnum.FAIL]
-                    # assert type(rrr.details) is BaseDetailsResponse
             case RuleType.MODEL_HALLUCINATION_V2:
-                assert len(prompt_rule_results) == 0
-                assert len(response_rule_results) > 0
-                for rrr in response_rule_results:
-                    assert rrr.result in [
-                        RuleResultEnum.PASS,
-                        RuleResultEnum.FAIL,
-                        RuleResultEnum.PARTIALLY_UNAVAILABLE,
-                        RuleResultEnum.UNAVAILABLE,
-                    ]
-                    # assert type(rrr.details) is HallucinationDetailsResponse
-            case RuleType.MODEL_HALLUCINATION_V3:
                 assert len(prompt_rule_results) == 0
                 assert len(response_rule_results) > 0
                 for rrr in response_rule_results:
@@ -324,7 +300,7 @@ def test_rule_result_skipped(client: GenaiEngineTestClientBase):
     status_code, task = client.create_task(empty_rules=True)
     assert status_code == 200
 
-    client.create_rule("hallv1", RuleType.MODEL_HALLUCINATION)
+    client.create_rule("hallv2", RuleType.MODEL_HALLUCINATION_V2)
 
     status_code, prompt = client.create_prompt(task_id=task.id)
     assert status_code == 200
