@@ -27,7 +27,7 @@ _genai_engine_version = None
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
-load_dotenv(os.environ.get(constants.GENAI_ENGINE_ENV_FILE_ENV_VAR))
+load_dotenv()
 
 list_indicator_regex = re.compile(r"^[\-\•\*]|\d+\)|\d+\.")
 sentence_tokenizer = PunktSentenceTokenizer()
