@@ -79,11 +79,6 @@ def test_get_token_usage_by_rule_type_incrementing(
         case RuleType.MODEL_SENSITIVE_DATA:
             assert new_count.count.prompt - old_count.count.prompt > prompt_text_tokens
             assert new_count.count.completion - old_count.count.completion > 0
-        case RuleType.MODEL_HALLUCINATION:
-            assert new_count.count.prompt - old_count.count.prompt > 4 * (
-                response_text_tokens + context_text_tokens
-            )
-            assert new_count.count.completion - old_count.count.completion > 0
         case RuleType.MODEL_HALLUCINATION_V2:
             # These thresholds are difficult to predict as claim parsing is not deterministic. 4x seems fine but may need to be adjusted.
             assert new_count.count.prompt - old_count.count.prompt > 4 * (

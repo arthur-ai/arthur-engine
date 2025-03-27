@@ -57,9 +57,9 @@ Enterprise version of Arthur Engine leverages state-of-the-art high-performing, 
 
 
 
-**The free version of Arthur Platform is coming soon!**
+**A free SaaS version of Arthur Platform is coming soon!**
 
-If you are interested in joining the waitlist or learning more, [send us a note](https://www.arthur.ai/arthur-book-a-demo)
+If you are interested in joining the waitlist or learning more, [send us a note](https://www.arthur.ai/waitlist)
 
 ![Arthur GenAI Evals](./docs/images/arthur-genai.png)
 

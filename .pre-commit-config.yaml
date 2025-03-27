@@ -53,7 +53,7 @@ repos:
         files: ^genai-engine/genai_engine/
       - id: genai-engine-pytest-check
         name: "genai-engine: pytest unit tests and coverage"
-        entry: poetry -C genai-engine run pytest -m "unit_tests" --cov=genai-engine/genai_engine --cov-fail-under=79
+        entry: poetry -C genai-engine run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
         language: system
         types: [python]
         pass_filenames: false

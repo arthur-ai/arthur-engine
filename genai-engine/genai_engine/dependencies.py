@@ -157,9 +157,14 @@ def get_scorer_client():
 def get_jwk_client():
     global SINGLETON_JWK_CLIENT
     if not SINGLETON_JWK_CLIENT:
-        SINGLETON_JWK_CLIENT = JWKClient(
-            get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR),
+        ingress_uri = get_env_var(
+            constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
+            none_on_missing=True,
         )
+        if ingress_uri:
+            SINGLETON_JWK_CLIENT = JWKClient(ingress_uri)
+        else:
+            SINGLETON_JWK_CLIENT = None
     return SINGLETON_JWK_CLIENT
 
 

@@ -6,7 +6,8 @@ from typing import Any
 
 import httpx
 from config.database_config import DatabaseConfig
-from genai_engine.schemas.common_schemas import (
+from pydantic import TypeAdapter
+from schemas.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
@@ -14,7 +15,7 @@ from genai_engine.schemas.common_schemas import (
     ToxicityConfig,
     UserPermission,
 )
-from genai_engine.schemas.enums import (
+from schemas.enums import (
     InferenceFeedbackTarget,
     PaginationSortMethod,
     RuleResultEnum,
@@ -22,7 +23,7 @@ from genai_engine.schemas.enums import (
     RuleType,
     TokenUsageScope,
 )
-from genai_engine.schemas.request_schemas import (
+from schemas.request_schemas import (
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -31,7 +32,7 @@ from genai_engine.schemas.request_schemas import (
     SearchRulesRequest,
     SearchTasksRequest,
 )
-from genai_engine.schemas.response_schemas import (
+from schemas.response_schemas import (
     ApiKeyResponse,
     ChatDefaultTaskResponse,
     ChatDocumentContext,
@@ -48,9 +49,6 @@ from genai_engine.schemas.response_schemas import (
     UserResponse,
     ValidationResult,
 )
-from genai_engine.utils import constants
-from genai_engine.utils.utils import get_env_var
-from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -63,6 +61,8 @@ from tests.mocks.mock_jwk_client import MockJWKClient
 from tests.mocks.mock_keycloak_client import MockAuthClient
 from tests.mocks.mock_oauth_client import MockAuthClient
 from tests.mocks.mock_scorer_client import MockScorerClient
+from utils import constants
+from utils.utils import get_env_var
 
 MASTER_API_KEY = (
     "Tests" if "REMOTE_TEST_KEY" not in os.environ else os.environ["REMOTE_TEST_KEY"]

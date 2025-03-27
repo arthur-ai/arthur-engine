@@ -1,3 +1,4 @@
+import os
 from typing import Generator
 
 import pytest
@@ -45,6 +46,11 @@ def pytest_configure(config):
         "markers",
         "skip_auto_api_key_create: mark a test as opting out of api key creation and deletion pre and post steps",
     )
+
+
+@pytest.fixture(autouse=True)
+def set_env_vars():
+    os.environ["NEW_RELIC_ENABLED"] = "false"
 
 
 def create_rule_for_task(create_task: Task, rule_request: NewRuleRequest) -> Rule:
