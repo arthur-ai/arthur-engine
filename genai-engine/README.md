@@ -144,7 +144,7 @@ poetry run alembic upgrade head
                 "PYTHONPATH": "genai_engine",
 
                 "POSTGRES_USER": "postgres",
-                "POSTGRES_PASSWORD": "changeme_pg",
+                "POSTGRES_PASSWORD": "changeme_pg_password",
                 "POSTGRES_URL": "localhost",
                 "POSTGRES_PORT": "5432",
                 "POSTGRES_DB": "arthur_genai_engine",
@@ -168,27 +168,26 @@ poetry run alembic upgrade head
 
 1. Load a dedicated Python environment with a compatible Python version (i.e. `3.12`)
 2. [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
-3. Create a `.env.local` file
+3. Set the following environment variables:
     ```
-    POSTGRES_USER=postgres
-    POSTGRES_PASSWORD=changeme_pg
-    POSTGRES_URL=localhost
-    POSTGRES_PORT=5432
-    POSTGRES_DB=arthur_genai_engine
-    POSTGRES_USE_SSL=false
-    GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
+    export POSTGRES_USER=postgres
+    export POSTGRES_PASSWORD=changeme_pg_password
+    export POSTGRES_URL=localhost
+    export POSTGRES_PORT=5432
+    export POSTGRES_DB=arthur_genai_engine
+    export POSTGRES_USE_SSL=false
+    export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
 
-    GENAI_ENGINE_ENVIRONMENT=local
-    GENAI_ENGINE_ADMIN_KEY=changeme123
-    GENAI_ENGINE_INGRESS_URI=http://localhost:8000
+    export GENAI_ENGINE_ENVIRONMENT=local
+    export GENAI_ENGINE_ADMIN_KEY=changeme123
+    export GENAI_ENGINE_INGRESS_URI=http://localhost:8000
 
-    GENAI_ENGINE_OPENAI_PROVIDER=Azure
-    OPENAI_API_VERSION=2023-07-01-preview
-    GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+    export GENAI_ENGINE_OPENAI_PROVIDER=Azure
+    export OPENAI_API_VERSION=2023-07-01-preview
+    export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
     ```
-4. Run the server using your `.env.local` file from the `genai-engine` folder
+4. Run the server
     ```bash
-    export GENAI_ENGINE_CONFIG_PATH=./.env.local
     export PYTHONPATH="genai_engine:$PYTHONPATH"
     poetry run serve
     ```
