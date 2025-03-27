@@ -45,10 +45,12 @@ def permission_checker(permissions: frozenset[str]):
             if not user:
                 raise HTTPException(
                     status_code=401,
+                    headers={"full_stacktrace": "false"},
                 )
             if not permissions & user.get_role_names_set():
                 raise HTTPException(
                     status_code=403,
+                    headers={"full_stacktrace": "false"},
                 )
             return func(*args, **kwargs)
 

@@ -2,4 +2,4 @@
 *.log
 *.parquet
 *.zip
-genai_engine/
+src/
