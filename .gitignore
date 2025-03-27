@@ -1,24 +1,25 @@
-node_modules
-__pycache__
-.chroma
 .DS_Store
-.idea
-.run
-.vscode/launch.json
-.python-version
+
 *.log
+*.tgz
 dist
 
-*.venv*
-local.env
+.idea
+.run
+launch.json
+
+__pycache__
+.python-version
+
+.html_cov*
 .coverage*
 coverage.xml
 report.xml
 
+*.venv*
+local.env
+.env.local
+
 .pre-commit-config-no-pytest-check.yaml
-.html_cov*
 oasdiff*
 new.openapi.json
-
-# Ignore helm package files
-*.tgz
