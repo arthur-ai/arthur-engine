@@ -3,7 +3,7 @@
 # Fail on errored out commands
 set -e
 
-for var in REMOTE_TEST_URL REMOTE_TEST_KEY BUILD_VERSION; do
+for var in REMOTE_TEST_URL REMOTE_TEST_KEY; do
   if [[ -z "${!var}" ]]; then
   missing_vars+=" $var"
   fi
@@ -45,7 +45,7 @@ if [[ $REMOTE_TEST_URL != *"localhost"* ]]; then
     sleep 90
 fi
 
-poetry -C genai-engine run pytest -m "integration_tests"
+poetry run pytest -m "integration_tests"
 if [[ $? == '1' ]]
 then
     echo "$(date): Integration tests failed, returning with exit code 1"

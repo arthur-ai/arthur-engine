@@ -16,8 +16,9 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
     - [Run the app with an IDE (Visual Studio Code / Cursor example)](#run-the-app-with-an-ide-visual-studio-code--cursor-example)
     - [Run the app via the terminal](#run-the-app-via-the-terminal)
   - [Making your first commit](#making-your-first-commit)
-      - [Pytest](#pytest)
-      - [Security check for endpoints](#security-check-for-endpoints)
+    - [The git pre-commit hooks](#the-git-pre-commit-hooks)
+    - [Pytest](#pytest)
+    - [Security check for endpoints](#security-check-for-endpoints)
   - [Unit Tests](#unit-tests)
   - [Integration Tests](#integration-tests)
   - [Performance Tests](#performance-tests)
@@ -175,7 +176,11 @@ poetry run alembic upgrade head
 
 ## Making your first commit
 
-#### Pytest
+### The git pre-commit hooks
+Review the [../CONTRIBUTE.MD](CONTRIBUTE.MD) document carefully.
+Make sure the git pre-commit hooks are installed properly.
+
+### Pytest
 
 As part of the pre-commit hook, Pytest unit tests are executed.
 You can disable it with following command when making a commit that's not ready for testing:
@@ -184,7 +189,7 @@ You can disable it with following command when making a commit that's not ready 
 SKIP=genai-engine-pytest-check git commit -m "<your message>"
 ```
 
-#### Security check for endpoints
+### Security check for endpoints
 
 The pre-commit hook also runs a check to make sure that all endpoints have been evaluated for access control
 using the below script.
@@ -217,13 +222,11 @@ poetry run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
 ```bash
 export REMOTE_TEST_URL=http://localhost:8000
 export REMOTE_TEST_KEY=changeme123
-export BUILD_VERSION=2.2.1
 ```
 3. Run the below shell script from the `genai-engine` directory
 ```bash
 ./tests/test_remote.sh
 ```
-
 
 ## Performance Tests
 For running performance tests, we use [Locust](https://locust.io/).
