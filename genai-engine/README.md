@@ -89,7 +89,7 @@ For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
 A Postgres database is required to run the GenAI Engine. The easiest way to get started is to run Postgres using Docker.
 
 1. Install and run Docker for Mac
-2. `cd` to the `genai-engine/docker-compose` folder
+2. `cd` to the `genai-engine/docker-comforpose` folder
 3. Populate `db.env` file from `genai-engine/docker-compose/db.env.template`
 4. Run `docker-compose up db`
 
@@ -130,56 +130,66 @@ poetry run alembic upgrade head
 6. Create a new launch configuration: `Run` -> `Add Configurations` -> `Python Debugger` -> `Python File `. Add the below configuration and adjust the values according to your environment. Please reference the `.env` file.
     ```json
         {
-            "name": "GenAI Engine with test database",
-            "type": "python",
-            "request": "launch",
-            "module": "uvicorn",
-            "args": [
-                "server:get_app",
-                "--app-dir",
-                "${workspaceFolder}/genai-engine/genai_engine",
-                "--reload"
-            ],
-            "jinja": true,
-            "justMyCode": false,
-            "env": {
-                "PYTHONPATH": "genai_engine",
-                "GENAI_ENGINE_CONFIG_PATH": "${workspaceFolder}/genai-engine/.env",
-                "TEST_DATABASE": "true"
-            }
-        }
-        {
             "name": "GenAI Engine",
             "type": "python",
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "server:get_app",
-                "--app-dir",
-                "${workspaceFolder}/genai-engine/genai_engine",
+                "genai_engine.server:get_app",
                 "--reload"
             ],
             "jinja": true,
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "genai_engine",
-                "GENAI_ENGINE_CONFIG_PATH": "${workspaceFolder}/genai-engine/.env",
+
+                "POSTGRES_USER": "postgres",
+                "POSTGRES_PASSWORD": "changeme_pg",
+                "POSTGRES_URL": "localhost",
+                "POSTGRES_PORT": "5432",
+                "POSTGRES_DB": "arthur_genai_engine",
+                "POSTGRES_USE_SSL": "false",
+                "GENAI_ENGINE_ENABLE_PERSISTENCE": "enabled",
+
+                "GENAI_ENGINE_ENVIRONMENT":"local",
+                "GENAI_ENGINE_ADMIN_KEY": "changeme123",
+                "GENAI_ENGINE_INGRESS_URI": "http://localhost:8000",
+
+                "GENAI_ENGINE_OPENAI_PROVIDER": "Azure",
+                "OPENAI_API_VERSION": "2023-07-01-preview",
+                "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key"
             }
-        },
+        }
     ```
 7. `Run` -> `Run Without Debugging` / `Start Debugging`
 8. Open `http://localhost:8000/docs` in your web browser and start building!
 
 ### Run the app via the terminal
 
-1. Load the appropriate Python environment with a compatible Python version
-2. Follow the step from [Poetry](#poetry) section to install dependencies
-3. Set up all relevant variables in the `.env` file and then export it path
-    ```bash
-    export GENAI_ENGINE_CONFIG_PATH=./.env
+1. Load a dedicated Python environment with a compatible Python version (i.e. `3.12`)
+2. [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
+3. Create a `.env.local` file
     ```
-4. Run the server:
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=changeme_pg
+    POSTGRES_URL=localhost
+    POSTGRES_PORT=5432
+    POSTGRES_DB=arthur_genai_engine
+    POSTGRES_USE_SSL=false
+    GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
+
+    GENAI_ENGINE_ENVIRONMENT=local
+    GENAI_ENGINE_ADMIN_KEY=changeme123
+    GENAI_ENGINE_INGRESS_URI=http://localhost:8000
+
+    GENAI_ENGINE_OPENAI_PROVIDER=Azure
+    OPENAI_API_VERSION=2023-07-01-preview
+    GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+    ```
+4. Run the server using your `.env.local` file from the `genai-engine` folder
     ```bash
+    export GENAI_ENGINE_CONFIG_PATH=./.env.local
+    export PYTHONPATH="genai_engine:$PYTHONPATH"
     poetry run serve
     ```
 
