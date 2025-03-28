@@ -130,7 +130,7 @@ jobs:
         uses: docker/build-push-action@v6.15.0
         with:
           context: "{{defaultContext}}:genai-engine"
-          file: genai-engine/dockerfile
+          file: dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
