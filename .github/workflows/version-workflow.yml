@@ -94,10 +94,6 @@ jobs:
           # Push the new branch with the commit
           git push -u origin "$BRANCH_NAME"
 
-          # Create and push the tag
-          git tag -a "$GIT_TAG" -m "Create tag $GIT_TAG"
-          git push origin "$GIT_TAG"
-
       - name: Create Pull Request
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,25 +103,3 @@ jobs:
             --body "Increment version to $(cat genai-engine/version)" \
             --base ${GITHUB_REF#refs/heads/} \
             --head "$BRANCH_NAME"
-
-  tag-main:
-    environment: shared-protected-branch-secrets
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/workflows/composite-actions/setup-git
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: genai-engine
-      - name: Create and Push Tag
-        run: |
-          cd genai-engine
-          GIT_TAG=$(poetry version -s)
-          echo "New version will be $GIT_TAG"
-          git tag -a "$GIT_TAG" -m "Create tag $GIT_TAG"
-          git push origin "$GIT_TAG"
