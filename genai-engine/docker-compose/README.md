@@ -8,6 +8,7 @@
 
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
+* When `GENAI_ENGINE_VERSION` environment variable is not set, `latest` stable image is used. When `latest` is used, make sure to run `docker compose pull` first to get the latest of the `latest` tagged image.
 
 ## Prerequisites
 
