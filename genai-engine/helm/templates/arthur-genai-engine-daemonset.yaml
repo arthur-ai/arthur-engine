@@ -99,7 +99,7 @@ spec:
             - name: GENAI_ENGINE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.genaiEngineSecretAPIKeyName }}
+                  name: {{ .Values.genaiEngineSecretAdminKeyName }}
                   key: key
             - name: APP_SECRET_KEY
               valueFrom:
