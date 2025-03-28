@@ -3,7 +3,7 @@
 ## Prerequisites
 
 ### Engine Version
-Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine-temp/releases).
+Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine/releases).
 
 ### OpenAI GPT Model
 Arthur GenAI Engine's hallucination and sensitive data rules require an OpenAI GPT model for running evaluations.
