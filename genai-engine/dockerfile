@@ -83,4 +83,4 @@ WORKDIR /app
 # Expose the necessary ports
 EXPOSE 3000
 
-ENTRYPOINT ["bash", "-c", "ls -la /app/src && /app/src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "-c", "/app/src/docker-entrypoint.sh"]
