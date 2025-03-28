@@ -120,11 +120,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Build and push docker image
-        working-directory: genai-engine
         uses: docker/build-push-action@v6.15.0
         with:
-          context: .
-          file: dockerfile
+          context: "{{defaultContext}}:genai-engine"
+          file: genai-engine/dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
