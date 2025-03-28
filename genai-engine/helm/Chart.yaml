@@ -2,5 +2,5 @@ apiVersion: v2
 name: arthur-engine
 description: A Helm chart for deploying OSS Arthur Engine in Kubernetes
 type: application
-version: 2.1.14
-appVersion: 2.1.14
+version: 2.1.15
+appVersion: 2.1.15

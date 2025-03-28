@@ -24,7 +24,7 @@ The Arthur Engine is a tool designed for:
 - **Extensibility to fit into your application's architecture**
   - Support for plug-and-play metrics and extensible API so you can bring your own custom-models or popular open-source models (inc. HuggingFace, etc.)
 
-## Quickstart
+## Quickstart - [See Examples](https://github.com/arthur-ai/engine-examples/)
 
 1. Clone the repository and `cd genai-engine/docker-compose`
 2. Copy `*.env.template` files and modify them (more instructions can be found in README on the current path)
