@@ -69,9 +69,6 @@ Parameters:
     AllowedPattern: '^$|https://.+'
     ConstraintDescription: 'A valid Arthur Auth SSL certificate download HTTPS URL must be defined.'
     Default: ''
-  GenaiEngineLicense:
-    Type: String
-    Description: 'GenAI Engine license'
   GenaiEngineSecretAPIKeyARN:
     Type: String
     Description: 'GenAI Engine secret API key ARN'
@@ -234,8 +231,6 @@ Resources:
               Value: !Ref GenaiEngineIngressURL
             - Name: 'POSTGRES_SSL_CERT_DOWNLOAD_URL'
               Value: !Ref GenaiEnginePostgresSSLCertDownloadURL
-            - Name: 'GENAI_ENGINE_LICENSE'
-              Value: !Ref GenaiEngineLicense
             - Name: 'GENAI_ENGINE_API_ONLY_MODE_ENABLED'
               Value: !Ref GenaiEngineAPIOnlyModeEnabled
             - Name: 'GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT'

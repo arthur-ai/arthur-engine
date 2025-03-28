@@ -173,11 +173,6 @@ Parameters:
     AllowedValues:
       - 'internet-facing'
       - 'internal'
-  ArthurLicense:
-    Type: String
-    Description: 'The license provided by Arthur'
-    AllowedPattern: '.+'
-    ConstraintDescription: 'A valid Arthur license must be provided.'
   GenaiEngineECSClusterGPUInstanceDesiredCapacity:
     Type: Number
     Default: 2
@@ -359,7 +354,6 @@ Metadata:
       - Label:
           default: "Arthur - General"
         Parameters:
-          - ArthurLicense
           - ArthurResourceNamespace
           - ArthurResourceNameSuffix
           - ContainerRepositoryUsername
@@ -549,8 +543,6 @@ Metadata:
         default: 'GenAI Engine Route 53 Hosted Zone ID'
       GenaiEngineRoute53RecordName:
         default: 'GenAI Engine Route 53 Record Name'
-      ArthurLicense:
-        default: 'Arthur License'
       AlarmSNSTopicArn:
         default: 'Alarm SNS Topic ARN'
       GenaiEngineECSServiceTaskDesiredCount:
@@ -716,7 +708,6 @@ Resources:
         GenaiEnginePostgresClientConnectionPoolMaxOverflow: !Ref GenaiEnginePostgresClientConnectionPoolMaxOverflow
         GenaiEngineIngressURL: !Ref GenaiEngineIngressURL
         GenaiEnginePostgresSSLCertDownloadURL: !Ref PostgresSSLCertDownloadURL
-        GenaiEngineLicense: !Ref ArthurLicense
         GenaiEngineContainerImageLocation: !Ref GenaiEngineContainerImageLocation
         ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
