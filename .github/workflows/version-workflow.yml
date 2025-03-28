@@ -40,6 +40,7 @@ jobs:
 
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,6 +62,7 @@ jobs:
           # Vars to externalize if needed
           export SUFFIX="-dev"
           export BUMP_COMMAND="patch"
+          export BRANCH_NAME="version-bump/$(date +%Y%m%d-%H%M%S)"
 
           # Set version vars with no suffix
           export CURRENT_VERSION=$(poetry version -s)
@@ -72,32 +74,39 @@ jobs:
             exit 1
           fi
 
-          # Set git tag with suffix to trigger dev release
+          # Create and checkout new branch
+          git checkout -b "$BRANCH_NAME"
+
+          # Rest of the version update logic
           export GIT_TAG=$NEW_VERSION$SUFFIX
-
           echo "New version will be ${NEW_VERSION}[${SUFFIX}]"
-
-          # Update the version file
           echo $NEW_VERSION > version
-
-          # Update the shieldVersion in the helm k8s deployment values.yaml file
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$VALUES_YAML_PATH"
-
-          # Update the version and appVersion in the helm k8s deployment Chart.yaml file
           sed -i "s|version:.*|version: $NEW_VERSION|" "$CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$CHART_YAML_PATH"
 
-          # Add, commit, and push changes
+          # Add and commit changes
           git add version pyproject.toml $CHART_YAML_PATH $VALUES_YAML_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
-          git push origin HEAD:${GITHUB_REF#refs/heads/}
-          # git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:${GITHUB_REF#refs/heads/}
 
-          # Add and push tag to trigger release
-          # git tag -a ${GIT_TAG} -m "Create tag ${GIT_TAG}"
-          # git push "https://${{ secrets.PAT_T1 }}@github.com/${GITHUB_REPOSITORY}.git" "${GIT_TAG}"
+          # Push the new branch with the commit
+          git push -u origin "$BRANCH_NAME"
+
+          # Create and push the tag
+          git tag -a "$GIT_TAG" -m "Create tag $GIT_TAG"
+          git push origin "$GIT_TAG"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --title "Increment version to $(cat genai-engine/version)" \
+            --body "Increment version to $(cat genai-engine/version)" \
+            --base ${GITHUB_REF#refs/heads/} \
+            --head "$BRANCH_NAME"
 
   tag-main:
     environment: shared-protected-branch-secrets
