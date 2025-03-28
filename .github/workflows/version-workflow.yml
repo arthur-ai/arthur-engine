@@ -91,8 +91,12 @@ jobs:
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
 
-          # Push the new branch
+          # Push the new branch with the commit
           git push -u origin "$BRANCH_NAME"
+
+          # Create and push the tag
+          git tag -a "$GIT_TAG" -m "Create tag $GIT_TAG"
+          git push origin "$GIT_TAG"
 
       - name: Create Pull Request
         run: |
