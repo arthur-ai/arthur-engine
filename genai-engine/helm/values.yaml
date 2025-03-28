@@ -32,7 +32,7 @@ ingress:
 # The container image location for Arthur GenAI Engine
 genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
 # GenAI Engine version
-genaiEngineVersion: '2.1.14'
+genaiEngineVersion: '2.1.15'
 # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
 genaiEngineIngressURL: ""
 # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
