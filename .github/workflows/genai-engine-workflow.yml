@@ -15,7 +15,12 @@ on:
 
 jobs:
   run-linter:
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      )
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -38,7 +43,12 @@ jobs:
           echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
 
   run-changelog-cop:
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      )
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -71,7 +81,12 @@ jobs:
 
 
   run-unit-tests:
-    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') || github.event_name == 'pull_request'
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      )
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -100,9 +115,35 @@ jobs:
             genai-engine/report.xml
             pytest-coverage.txt
 
+
+
+  push-tag:
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: Push tag
+        run: |
+          VERSION=$(cat genai-engine/version)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            VERSION="${VERSION}-dev"
+          fi
+          git tag -a "$VERSION" -m "Create tag $VERSION"
+          git push origin "$VERSION"
+
   build-docker-images:
+    needs: push-tag
     environment: shared-protected-branch-secrets
-    if: startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, 'Increment version to')
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -140,8 +181,11 @@ jobs:
           platforms: linux/amd64
 
   push-cf-template:
+    needs: [push-tag, build-docker-images]
     environment: shared-protected-branch-secrets
-    if: startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, 'Increment version to')
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -174,10 +218,11 @@ jobs:
           aws s3 sync ./genai-engine/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
 
   push-helm-chart-to-github-dev:
+    needs: [push-tag, build-docker-images]
     environment: shared-protected-branch-secrets
-    if: >-
-      (startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-dev')) ||
-      contains(github.event.head_commit.message, 'Increment version to')
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -197,38 +242,9 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Package and Push Helm chart
         env:
-          CHART_NAMESPACE: "charts-dev"
           CHART_PATH: "genai-engine/helm"
+          CHART_NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'charts' || 'charts-dev' }}
         run: |
           helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
-  push-helm-chart-to-github-stable:
-    environment: shared-protected-branch-secrets
-    if: >-
-      (startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '-dev')) ||
-      contains(github.event.head_commit.message, 'Increment version to')
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-helm
-      - name: Set version
-        run: |
-          VERSION=$(cat genai-engine/version)
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            VERSION="${VERSION}-dev"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Package and Push Helm chart
-        env:
-          CHART_NAMESPACE: "charts"
-          CHART_PATH: "genai-engine/helm"
-        run: |
-          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
-          helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
