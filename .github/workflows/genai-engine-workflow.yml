@@ -102,7 +102,7 @@ jobs:
 
   build-docker-images:
     environment: shared-protected-branch-secrets
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -123,7 +123,7 @@ jobs:
         uses: docker/build-push-action@v6.15.0
         with:
           context: "{{defaultContext}}:genai-engine"
-          file: dockerfile
+          file: genai-engine/dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
@@ -134,7 +134,7 @@ jobs:
 
   push-cf-template:
     environment: shared-protected-branch-secrets
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -162,8 +162,8 @@ jobs:
   push-helm-chart-to-github-dev:
     environment: shared-protected-branch-secrets
     if: >-
-      startsWith(github.ref, 'refs/tags/') &&
-      endsWith(github.ref, '-dev')
+      (startsWith(github.ref, 'refs/tags/') && endsWith(github.ref, '-dev')) ||
+      contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     permissions:
       packages: write    # Required for pushing to GHCR
@@ -187,8 +187,8 @@ jobs:
   push-helm-chart-to-github-stable:
     environment: shared-protected-branch-secrets
     if: >-
-      startsWith(github.ref, 'refs/tags/') &&
-      !endsWith(github.ref, '-dev')
+      (startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, '-dev')) ||
+      contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     permissions:
       packages: write    # Required for pushing to GHCR
