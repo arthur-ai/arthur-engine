@@ -11,8 +11,10 @@
 
 ## Prerequisites
 
-### OpenAI GPT Model
+### Engine Version
+Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine-temp/releases).
 
+### OpenAI GPT Model
 Arthur's GenAI Engine hallucination and sensitive data rules require an OpenAI-compatible GPT model for running evaluations.
 
 Please review the GPT model requirements below:
@@ -23,18 +25,16 @@ Please review the GPT model requirements below:
 - Token limits, configured appropriately for your use cases
 
 ### Container Image Repository Access
-
 - There must be a network route available to connect to Docker Hub
 - If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the Docker Compose script
 
 ## Steps for Mac
-
 1. Install and run Docker for Mac
 2. Copy the `.env.template` files as `.env` files in the `docker-compose` folder
 3. Configure the `.env` files
 4. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
    ```
-       export GENAI_ENGINE_VERSION=latest
+       export GENAI_ENGINE_VERSION=<genai_enginve_version>
        docker compose up
    ```
 5. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
@@ -45,7 +45,7 @@ Please review the GPT model requirements below:
 3. Configure the `.env` files
 4. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
     ```
-        $env:GENAI_ENGINE_VERSION = "latest"
+        $env:GENAI_ENGINE_VERSION = "<genai_enginve_version>"
         docker-compose up
     ```
 5. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
