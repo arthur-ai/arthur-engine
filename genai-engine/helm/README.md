@@ -27,7 +27,7 @@ The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
 
 * A `kubectl` workstation with admin privileges
 * Nginx ingress controller
-* A dedicated namespace (e.g. `arthur_genai_engine`)
+* A dedicated namespace (e.g. `arthur`)
 * For CPU deployment: a node group with AWS `m8g.large` x 2 or similar
   * Memory: 16 GiB
   * CPU: 4 cores
@@ -340,21 +340,24 @@ aws cloudwatch put-metric-alarm \
     ```bash
     # WARNING: Do NOT set up secrets this way in production.
     #          Use a secure method such as sealed secrets and external secret store providers.
-    kubectl -n arthur_genai_engine create secret generic postgres-secret \
+    kubectl -n arthur create secret generic postgres-secret \
         --from-literal=username='<username>' \
         --from-literal=password='<password>'
-    kubectl -n arthur_genai_engine create secret docker-registry arthur-repository-credentials \
+
+    # Create this secret only if you have username and password to the container registry
+    kubectl -n arthur create secret docker-registry arthur-repository-credentials \
         --docker-server='registry-1.docker.io' \
         --docker-username='<username>' \
         --docker-password='<password>' \
         --docker-email=''
-    kubectl -n arthur_genai_engine create secret generic genai-engine-secret-api-key \
+
+    kubectl -n arthur create secret generic genai-engine-secret-admin-key \
         --from-literal=key='<api_key>'
 
     # Connection strings for Azure OpenAI GPT model endpoints (Many may be specified)
     # Must be in the form:
     # "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"
-    kubectl -n arthur_genai_engine create secret generic genai-engine-secret-open-ai-gpt-model-names-endpoints-keys \
+    kubectl -n arthur create secret generic genai-engine-secret-open-ai-gpt-model-names-endpoints-keys \
         --from-literal=keys='<your_gpt_keys>'
     ```
 
@@ -362,13 +365,13 @@ aws cloudwatch put-metric-alarm \
 
 3. Install the Arthur GenAI Engine Helm Chart
     ```bash
-    helm upgrade --install -n arthur_genai_engine -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
+    helm upgrade --install -n arthur -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
     ```
 4. Configure DNS by create an `A` record that routes the Arthur GenAI Engine service ingress DNS URL to the GenAI Engine load balancer created
     by the ingress.
 5. Verify that all the pods are running with
     ```bash
-    kubectl get pods -n arthur_genai_engine
+    kubectl get pods -n arthur
     ```
     You should see the GenAI Engine pods in the running state. Please also inspect the log.
 
