@@ -344,7 +344,9 @@ aws cloudwatch put-metric-alarm \
         --from-literal=username='<username>' \
         --from-literal=password='<password>'
 
-    # Create this secret only if you have username and password to the container registry
+    # Create this secret only if you have username and password to the container registry.
+    # If you do, also make sure `containerRepositoryCredentialRequired` in
+    # the `values.yaml` is set correctly.
     kubectl -n arthur create secret docker-registry arthur-repository-credentials \
         --docker-server='registry-1.docker.io' \
         --docker-username='<username>' \
