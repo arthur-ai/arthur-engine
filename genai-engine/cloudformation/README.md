@@ -34,9 +34,9 @@ in the Secrets Manager, load balancer, RDS, ECS, and CloudWatch (IAM and RDS can
    1. Select "Template is ready" and "Amazon S3 URL"
    2. Provide the HTTP link to the CloudFormation template that maps to the latest stable version of GenAI Engine
       1. GPU deployment:<br>
-      `https://arthur-cft.s3.us-east-2.amazonaws.com/templates/arthur-engine/<version_number>/root-arthur-genai-engine-gpu.yml`
+      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-genai-engine-gpu.yml`
       2. CPU deployment:<br>
-      `https://arthur-cft.s3.us-east-2.amazonaws.com/templates/arthur-engine/<version_number>/root-arthur-genai-engine-cpu.yml`
+      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-genai-engine-cpu.yml`
 5. Populate the "Specify stack details" page and click "Next"
 6. Populate the "Configure stack options" page and click "Next"
    1. Behavior on provisioning failure: "Roll back all stack resources" (Do not use `--disable-rollback` if you're using AWS CLI)
