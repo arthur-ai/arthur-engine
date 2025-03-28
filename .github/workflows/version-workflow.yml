@@ -103,8 +103,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr create \
-            --title "Increment version to $(cat version)" \
-            --body "Increment version to $(cat version)" \
+            --title "Increment version to $(cat genai-engine/version)" \
+            --body "Increment version to $(cat genai-engine/version)" \
             --base ${GITHUB_REF#refs/heads/} \
             --head "$BRANCH_NAME"
 
