@@ -238,21 +238,27 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: 'Arthur - General'
+          default: 'Minimum Required Configurations'
         Parameters:
           - ArthurResourceNamespace
-          - ArthurResourceNameSuffix
-          - ContainerRepositoryUsername
-          - ContainerRepositoryPassword
-      - Label:
-          default: 'Arthur - VPC'
-        Parameters:
           - ExistingArthurVPCId
           - ExistingArthurVPCCidrBlock
           - ArthurPrivateSubnets
           - ArthurPublicSubnets
+          - AlarmSNSTopicArn
+          - GenaiEngineLoadBalancerScheme
+          - GenaiEngineIngressURL
+          - GenaiEngineLoadBalancerCertificateARN
+          - GenaiEngineOpenAIProvider
+          - OpenAIGPTModelNamesEndpointsAndKeys
       - Label:
-          default: 'Arthur - Database'
+          default: 'Advanced - General'
+        Parameters:
+          - ArthurResourceNameSuffix
+          - ContainerRepositoryUsername
+          - ContainerRepositoryPassword
+      - Label:
+          default: 'Advanced - Database'
         Parameters:
           - PostgresBYOEndpoint
           - PostgresBYOPort
@@ -263,15 +269,8 @@ Metadata:
           - RDSAuroraServerlessScalingConfigurationMinCapacity
           - RDSAuroraServerlessScalingConfigurationMaxCapacity
       - Label:
-          default: 'Arthur - Platform Monitoring'
+          default: 'Advanced GenAI Engine'
         Parameters:
-          - AlarmSNSTopicArn
-      - Label:
-          default: 'Arthur GenAI Engine - General'
-        Parameters:
-          - GenaiEngineLoadBalancerScheme
-          - GenaiEngineIngressURL
-          - GenaiEngineLoadBalancerCertificateARN
           - GenaiEngineRoute53HostedZoneId
           - GenaiEngineRoute53RecordName
           - GenaiEngineBYOLBSecurityGroupIDs
@@ -286,12 +285,12 @@ Metadata:
           - GenaiEngineCacheTaskRulesCacheEnabled
           - GenaiEngineCacheTaskRulesCacheTTL
       - Label:
-          default: 'Arthur GenAI Engine - IAM'
+          default: 'Advanced GenAI Engine (IAM)'
         Parameters:
           - GenaiEngineBYOTaskRoleIAMArn
           - GenaiEngineBYOTaskExecutionRoleIAMArn
       - Label:
-          default: 'Arthur GenAI Engine - Scalability'
+          default: 'Advanced GenAI Engine (Scalability)'
         Parameters:
           - GenaiEngineECSServiceTaskDesiredCount
           - GenaiEngineECSAutoscalingMinCapacity
@@ -300,17 +299,15 @@ Metadata:
           - GenaiEngineECSScaleInCooldownInSecs
           - GenaiEngineECSScaleOutCooldownInSecs
       - Label:
-          default: 'Arthur GenAI Engine - Platform Monitoring'
+          default: 'Advanced GenAI Engine (Platform Monitoring)'
         Parameters:
           - GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold
           - GenaiEngineLoadBalancerTarget5xxAlarmThreshold
           - GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
           - GenaiEngineECSMemoryAlarmThreshold
       - Label:
-          default: 'Arthur GenAI Engine - LLM'
+          default: 'Advanced GenAI Engine (LLM)'
         Parameters:
-          - GenaiEngineOpenAIProvider
-          - OpenAIGPTModelNamesEndpointsAndKeys
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
