@@ -3,13 +3,13 @@
 ## Pre-requisites
 
 ### Engine Version
-Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine-temp/releases).
+Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine/releases).
 
 ### Helm
 * Install Helm on your workstation. Helm version 3.8.0 or higher is required
-* The Arthur Engine Helm charts are hosted in the OCI format as [GitHub packages](https://github.com/orgs/arthur-ai/packages/container/package/arthur-engine-temp%2Fcharts%2Farthur-engine)
+* The Arthur Engine Helm charts are hosted in the OCI format as [GitHub packages](https://github.com/arthur-ai/arthur-engine/pkgs/container/arthur-engine%2Fcharts%2Farthur-engine)
   ```bash
-  helm show chart oci://ghcr.io/arthur-ai/arthur-engine-temp/charts/arthur-engine:<version_number>
+  helm show chart oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine:<version_number>
   ```
 
 ### OpenAI GPT Model
@@ -362,7 +362,7 @@ aws cloudwatch put-metric-alarm \
 
 3. Install the Arthur GenAI Engine Helm Chart
     ```bash
-    helm upgrade --install -n arthur_genai_engine -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine-temp/charts/arthur-engine --version <version_number>
+    helm upgrade --install -n arthur_genai_engine -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
     ```
 4. Configure DNS by create an `A` record that routes the Arthur GenAI Engine service ingress DNS URL to the GenAI Engine load balancer created
     by the ingress.
