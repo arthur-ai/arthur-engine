@@ -112,6 +112,13 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
+      - name: Set version
+        run: |
+          VERSION=$(cat genai-engine/version)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            VERSION="${VERSION}-dev"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
@@ -123,12 +130,12 @@ jobs:
         uses: docker/build-push-action@v6.15.0
         with:
           context: "{{defaultContext}}:genai-engine"
-          file: genai-engine/dockerfile
+          file: dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
           tags: |
-            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ github.ref_name }}
-            ${{ !endsWith(github.ref, '-dev') && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
+            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
           push: true
           platforms: linux/amd64
 
@@ -146,6 +153,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-git
+      - name: Set version
+        run: |
+          VERSION=$(cat genai-engine/version)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            VERSION="${VERSION}-dev"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
         with:
@@ -154,10 +168,10 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: push cf template
         run: |
-          echo "Pushing Cloudformation template for ${{ github.ref_name }}"
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ github.ref_name }}/g" genai-engine/cloudformation/root-arthur-genai-engine-cpu.yml
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ github.ref_name }}/g" genai-engine/cloudformation/root-arthur-genai-engine-gpu.yml
-          aws s3 sync ./genai-engine/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ github.ref_name }} --acl public-read
+          echo "Pushing Cloudformation template for ${{ env.VERSION }}"
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" genai-engine/cloudformation/root-arthur-genai-engine-cpu.yml
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" genai-engine/cloudformation/root-arthur-genai-engine-gpu.yml
+          aws s3 sync ./genai-engine/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
 
   push-helm-chart-to-github-dev:
     environment: shared-protected-branch-secrets
@@ -166,11 +180,18 @@ jobs:
       contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     permissions:
-      packages: write    # Required for pushing to GHCR
-      contents: read    # Required for checking out code
+      packages: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-helm
+      - name: Set version
+        run: |
+          VERSION=$(cat genai-engine/version)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            VERSION="${VERSION}-dev"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -178,10 +199,8 @@ jobs:
         env:
           CHART_NAMESPACE: "charts-dev"
           CHART_PATH: "genai-engine/helm"
-          VERSION: ${{ github.ref_name }}
-          APP_VERSION: ${{ github.ref_name }}
         run: |
-          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.APP_VERSION }}
+          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
   push-helm-chart-to-github-stable:
@@ -191,11 +210,18 @@ jobs:
       contains(github.event.head_commit.message, 'Increment version to')
     runs-on: ubuntu-latest
     permissions:
-      packages: write    # Required for pushing to GHCR
-      contents: read    # Required for checking out code
+      packages: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-helm
+      - name: Set version
+        run: |
+          VERSION=$(cat genai-engine/version)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            VERSION="${VERSION}-dev"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -203,8 +229,6 @@ jobs:
         env:
           CHART_NAMESPACE: "charts"
           CHART_PATH: "genai-engine/helm"
-          VERSION: ${{ github.ref_name }}
-          APP_VERSION: ${{ github.ref_name }}
         run: |
-          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.APP_VERSION }}
+          helm package ${CHART_PATH} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
