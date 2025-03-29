@@ -390,9 +390,9 @@
             "type": "string",
             "description": "GenAI Engine secret app secret name"
         },
-        "genaiEngineSecretAPIKeyName": {
+        "genaiEngineSecretAdminKeyName": {
             "type": "string",
-            "description": "GenAI Engine secret API key name"
+            "description": "GenAI Engine secret admin key name"
         },
         "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName": {
             "type": "string",
@@ -428,7 +428,7 @@
         "imagePullSecretName",
         "genaiEngineSecretPostgresName",
         "genaiEngineAppSecretKeyName",
-        "genaiEngineSecretAPIKeyName",
+        "genaiEngineSecretAdminKeyName",
         "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName"
     ]
 }
