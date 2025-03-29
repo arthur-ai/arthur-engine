@@ -367,7 +367,7 @@ aws cloudwatch put-metric-alarm \
 
 3. Install the Arthur GenAI Engine Helm Chart
     ```bash
-    helm upgrade --install -n arthur -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
+    helm upgrade --install -n arthur -f genai-values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
     ```
 4. Configure DNS by create an `A` record that routes the Arthur GenAI Engine service ingress DNS URL to the GenAI Engine load balancer created
     by the ingress.
