@@ -18,16 +18,42 @@ arthurGenaiEngineDeployment:
   genaiEnginePodNodeSelector: {}
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
-  # CPU deployment - Comment out the below 4 lines
-  gpuEnabled: false
-  genaiEngineDeploymentType: "deployment"
-  genaiEngineWorkers: 1
-  genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
-  # GPU deployment - Uncomment the below 4 lines
-  #gpuEnabled: true
-  #genaiEngineDeploymentType: "daemonset"
-  #genaiEngineWorkers: 5
-  #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+
+# CPU deployment - Comment out the below 4 lines
+gpuEnabled: false
+genaiEngineDeploymentType: "deployment"
+genaiEngineWorkers: 1
+genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
+
+# GPU deployment - Uncomment the below 4 lines
+#gpuEnabled: true
+#genaiEngineDeploymentType: "daemonset"
+#genaiEngineWorkers: 5
+#genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+
+arthurGenaiEngineHPA:
+  # Set it to 'false' for GPU deployment
+  enabled: true
+  annotations: {}
+  labels: {}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+      selectPolicy: Max
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 50
+  targetMemoryUtilizationPercentage: 80
 
 ###################################
 ## Advanced - General
@@ -89,29 +115,6 @@ genaiEngineContainerMemoryLimits: "16Gi"
 arthurGenaiEngineService:
   annotations: {}
   labels: {}
-# Modifiable properties of Arthur GenAI Engine HPA
-arthurGenaiEngineHPA:
-  enabled: true
-  annotations: {}
-  labels: {}
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-        - type: Percent
-          value: 100
-          periodSeconds: 15
-    scaleUp:
-      stabilizationWindowSeconds: 30
-      policies:
-        - type: Percent
-          value: 100
-          periodSeconds: 15
-      selectPolicy: Max
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 50
-  targetMemoryUtilizationPercentage: 80
 
 ###################################
 ## Advanced - Secrets name customization

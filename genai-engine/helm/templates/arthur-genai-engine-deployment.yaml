@@ -1,4 +1,4 @@
-{{ if .Values.genaiEngineDeploymentType | eq "deployment" }}
+{{- if eq .Values.genaiEngineDeploymentType "deployment" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
