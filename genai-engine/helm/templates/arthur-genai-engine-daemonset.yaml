@@ -100,7 +100,7 @@ spec:
               value: "{{ .Values.genaiEngineCacheTaskRulesCacheEnabled }}"
             - name: CACHE_TASK_RULES_CACHE_TTL
               value: "{{ .Values.genaiEngineCacheTaskRulesCacheTTL }}"
-            - name: GENAI_ENGINE_API_KEY
+            - name: GENAI_ENGINE_ADMIN_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretAdminKeyName }}
