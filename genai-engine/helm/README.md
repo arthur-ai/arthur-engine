@@ -116,7 +116,7 @@ EOF
     ],
 ```
 
-4. Look up the AMI ID for the latest GPU optimized AMI
+4. Look up the AMI ID for the latest GPU optimized AMI in the correct region
 ```bash
 aws ssm get-parameters \
 --names /aws/service/eks/optimized-ami/<kubernetes-version>/amazon-linux-2-gpu/recommended/image_id \
