@@ -1,76 +1,40 @@
-## General
-
-# Name suffix for this Arthur stack resources (e.g. 'dev' or 'prod')
-arthurResourceNameSuffix: ""
-# Are credentials required to access the container repository?
-containerRepositoryCredentialRequired: false
-
-## Database
-
-# GenAI Engine database name
-genaiEngineDBDatabaseName: "arthur_genai_engine"
+###################################
+## Minimum Required Configurations
+###################################
 # postgres database URL
 postgresBYOEndpoint: ""
-# postgres database port
-postgresBYOPort: 5432
-# Postgres SSL certificate download URL (must be an HTTPS endpoint)
-postgresSSLCertDownloadURL: "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
-# Postgres client connection pool max overflow
-postgresClientConnectionPoolMaxOverflow: 15
-# Postgres client connection pool size
-postgresClientConnectionPoolSize: 5
-
-## Ingress
-
-# Modifiable properties of k8s ingress
-ingress:
-  className: "nginx"
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-  labels: {}
-
-# The container image location for Arthur GenAI Engine
-genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
-# GenAI Engine version
-genaiEngineVersion: '2.1.16'
 # GenAI Engine application ingress DNS URL (e.g. arthur-genai-engine.mydomain.com)
 genaiEngineIngressURL: ""
-# Max number of tokens GenAI Engine can process against LLM for hallucination data checks
-genaiEngineHallucinationCheckMaxTokenLimit: 3000
-# Max number of tokens GenAI Engine can process against LLM for sensitive data checks
-genaiEngineSensitiveDataCheckMaxTokenLimit: 6000
-# Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.
-genaiEngineToxicityCheckMaxTokenLimit: 1200
 # Provider of OpenAI LLMs (must be set to 'Azure' or 'OpenAI')
 genaiEngineOpenAIProvider: "Azure"
-# Number of replicas of GenAI Engine pod running in k8s cluster (This is automatically overridden if the GenAI Engine HPA is enabled)
-genaiEngineReplicaCount: 2
-# Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
-genaiEngineServiceAccount: ""
-# CPU requests value for GenAI Engine
-genaiEngineContainerCPURequests: "8"
-# Memory requests value for GenAI Engine
-genaiEngineContainerMemoryRequests: "16Gi"
-# CPU limits value for GenAI Engine
-genaiEngineContainerCPULimits: "8"
-# Memory limits value for GenAI Engine
-genaiEngineContainerMemoryLimits: "16Gi"
-# Modifiable properties of Arthur GenAI Engine deployment
+
+###################################
+## Additional Required Configurations For GPU Deployment
+###################################
 arthurGenaiEngineDeployment:
   annotations: {}
   labels: {}
   genaiEnginePodAnnotations: {}
   genaiEnginePodLabels: {}
-  # When GPU is enabled and we want to deploy as daemonset, we need to specify the node selector to "capability: gpu"
+  # Specify the node selector to "capability: gpu"
   genaiEnginePodNodeSelector: {}
   genaiEnginePodAffinity: {}
   genaiEnginePodTolerations: []
-# Modifiable properties of Arthur GenAI Engine service
-arthurGenaiEngineService:
-  annotations: {}
-  labels: {}
-# Modifiable properties of Arthur GenAI Engine HPA
+
+# CPU deployment - Comment out the below 4 lines
+gpuEnabled: false
+genaiEngineDeploymentType: "deployment"
+genaiEngineWorkers: 1
+genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
+
+# GPU deployment - Uncomment the below 4 lines
+#gpuEnabled: true
+#genaiEngineDeploymentType: "daemonset"
+#genaiEngineWorkers: 1
+#genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+
 arthurGenaiEngineHPA:
+  # Set it to 'false' for GPU deployment
   enabled: true
   annotations: {}
   labels: {}
@@ -92,29 +56,80 @@ arthurGenaiEngineHPA:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 50
   targetMemoryUtilizationPercentage: 80
-# For CPU deployment
-# gpuEnabled: false
-# genaiEngineDeploymentType: "deployment"
-# genaiEngineWorkers: 1
-# genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
 
-# For GPU deployment
-# gpuEnabled: true
-# genaiEngineDeploymentType: "daemonset"
-# genaiEngineWorkers: 5
-# genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
+###################################
+## Advanced - General
+###################################
+# Name suffix for this Arthur stack resources (e.g. 'dev' or 'prod')
+arthurResourceNameSuffix: ""
+# Are credentials required to access the container repository?
+containerRepositoryCredentialRequired: false
 
-## Secrets name customization
+###################################
+## Advanced - Database
+###################################
+# GenAI Engine database name
+genaiEngineDBDatabaseName: "arthur_genai_engine"
+# postgres database port
+postgresBYOPort: 5432
+# Postgres SSL certificate download URL (must be an HTTPS endpoint)
+postgresSSLCertDownloadURL: "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
+# Postgres client connection pool max overflow
+postgresClientConnectionPoolMaxOverflow: 15
+# Postgres client connection pool size
+postgresClientConnectionPoolSize: 5
 
+###################################
+## Advanced - Kubernetes Ingress
+###################################
+ingress:
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  labels: {}
+
+###################################
+## Advanced - GenAI Engine
+###################################
+# GenAI Engine version
+genaiEngineVersion: '2.1.17'
+# Max number of tokens GenAI Engine can process against LLM for hallucination data checks
+genaiEngineHallucinationCheckMaxTokenLimit: 3000
+# Max number of tokens GenAI Engine can process against LLM for sensitive data checks
+genaiEngineSensitiveDataCheckMaxTokenLimit: 6000
+# Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.
+genaiEngineToxicityCheckMaxTokenLimit: 1200
+# Enable task rules cache
+genaiEngineCacheTaskRulesCacheEnabled: true
+# Task rules cache TTL in seconds
+genaiEngineCacheTaskRulesCacheTTL: 60
+# Number of replicas of GenAI Engine pod running in k8s cluster (This is automatically overridden if the GenAI Engine HPA is enabled)
+genaiEngineReplicaCount: 2
+# Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
+genaiEngineServiceAccount: ""
+# CPU requests value for GenAI Engine
+genaiEngineContainerCPURequests: "7"
+# Memory requests value for GenAI Engine
+genaiEngineContainerMemoryRequests: "16Gi"
+# CPU limits value for GenAI Engine
+genaiEngineContainerCPULimits: "8"
+# Memory limits value for GenAI Engine
+genaiEngineContainerMemoryLimits: "16Gi"
+# Modifiable properties of Arthur GenAI Engine service
+arthurGenaiEngineService:
+  annotations: {}
+  labels: {}
+
+###################################
+## Advanced - Secrets name customization
+###################################
 # Name of the secret containing the credentials for the container repository holding the GenAI Engine image
 # (expecting values for keys 'docker-server', 'docker-username', 'docker-password', 'docker-email')
 imagePullSecretName: "arthur-repository-credentials"
 # GenAI Engine secret Postgres name (expecting values for keys 'username' and 'password')
 genaiEngineSecretPostgresName: "postgres-secret"
-# GenAI Engine secret app secret name (expecting value for key 'key')
-genaiEngineAppSecretKeyName: "genai-engine-app-secret-key"
-# GenAI Engine secret API key name (expecting value for key 'key')
-genaiEngineSecretAPIKeyName: "genai-engine-secret-api-key"
+# GenAI Engine secret admin key name (expecting value for key 'key')
+genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
 # Name of the secret which stores the connection strings for Azure OpenAI GPT-3.5 model endpoints. Must be in form "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"). Many may be specified.
 # (expecting value for key 'keys')
 genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
