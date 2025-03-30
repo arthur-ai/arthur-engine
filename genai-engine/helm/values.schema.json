@@ -98,6 +98,15 @@
             "minimum": 0,
             "description": "Max number of tokens an inference can have for the toxicity rule"
         },
+        "genaiEngineCacheTaskRulesCacheEnabled": {
+            "type": "boolean",
+            "description": "Enable task rules cache"
+        },
+        "genaiEngineCacheTaskRulesCacheTTL": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Task rules cache TTL in seconds"
+        },
         "genaiEngineOpenAIProvider": {
             "type": "string",
             "enum": [
@@ -386,10 +395,6 @@
             "type": "string",
             "description": "GenAI Engine secret Postgres name"
         },
-        "genaiEngineAppSecretKeyName": {
-            "type": "string",
-            "description": "GenAI Engine secret app secret name"
-        },
         "genaiEngineSecretAdminKeyName": {
             "type": "string",
             "description": "GenAI Engine secret admin key name"
@@ -427,7 +432,6 @@
         "arthurGenaiEngineHPA",
         "imagePullSecretName",
         "genaiEngineSecretPostgresName",
-        "genaiEngineAppSecretKeyName",
         "genaiEngineSecretAdminKeyName",
         "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName"
     ]
