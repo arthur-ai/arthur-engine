@@ -28,6 +28,7 @@ def get_prompt_injection_model():
     if not PROMPT_INJECTION_MODEL:
         PROMPT_INJECTION_MODEL = AutoModelForSequenceClassification.from_pretrained(
             "ProtectAI/deberta-v3-base-prompt-injection-v2",
+            weights_only=False,
         )
     return PROMPT_INJECTION_MODEL
 
@@ -39,6 +40,7 @@ def get_prompt_injection_tokenizer():
     if not PROMPT_INJECTION_TOKENIZER:
         PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
             "ProtectAI/deberta-v3-base-prompt-injection-v2",
+            weights_only=False,
         )
     return PROMPT_INJECTION_TOKENIZER
 
