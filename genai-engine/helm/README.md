@@ -28,11 +28,11 @@ The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
 * A `kubectl` workstation with admin privileges
 * Nginx ingress controller
 * A dedicated namespace (e.g. `arthur`)
-* For CPU deployment: a node group with AWS `m8g.large` x 2 or similar
+* For CPU high availability deployment: a node group with AWS `m8g.large` x 2 or similar
   * Memory: 16 GiB
   * CPU: 4 cores
   * Metrics server
-* For GPU deployment: a node group with AWS `g4dn.2xlarge` x 2 or similar
+* For GPU high availability deployment: a node group with AWS `g4dn.2xlarge` x 2 or similar
   * Memory: 64 GiB
   * CPU: 16 cores
   * GPU: 2 cores
@@ -44,6 +44,11 @@ Please pre-create a database on your instance (e.g. `arthur_genai_engine`)
 ### Container Image Repository Access
 * There must be a network route available to connect to Docker Hub
 * If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the `values.yaml` file
+
+# GPU deployment
+Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
+
+The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml](values.yaml) file runs the GenAI Engine as a DaemonSet with a specific node group autoscaler described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
 
 # How to configure your AWS EKS cluster with a GPU node group
 This section is a guide to help you configure your existing AWS EKS cluster with a GPU node group for GenAI Engine.
@@ -363,7 +368,7 @@ aws cloudwatch put-metric-alarm \
         --from-literal=keys='<your_gpt_keys>'
     ```
 
-2. Prepare a copy of the Arthur GenAI Engine Helm Chart configuration file, [values.yaml](values.yaml) in the directory where you will run `helm install` and populate the values accordingly:
+2. Prepare a copy of the Arthur GenAI Engine Helm Chart configuration file, [values.yaml](values.yaml) in the directory where you will run `helm install` and populate the values accordingly. For GPU deployment, please review the "Additional Required Configurations For GPU Deployment" section in the [values.yaml](values.yaml) file.
 
 3. Install the Arthur GenAI Engine Helm Chart
     ```bash
