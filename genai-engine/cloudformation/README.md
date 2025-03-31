@@ -25,6 +25,9 @@ in the Secrets Manager, load balancer, RDS, ECS, and CloudWatch (IAM and RDS can
 * There must be a network route available to connect to Docker Hub
 * If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the Cloudformation template
 
+## GPU Deployment
+Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
+
 ## How to install GenAI Engine using AWS CloudFormation template from AWS Console
 
 1. Log in to the AWS account that has the VPC and the subnets you want to deploy to
