@@ -37,4 +37,4 @@ def test_with_lock_behavior():
         result_2 = result_queue.get()
 
     assert result_1 == "test"
-    assert result_2 is None
+    assert result_2 == "test"
