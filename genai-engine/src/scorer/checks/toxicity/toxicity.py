@@ -37,6 +37,7 @@ def get_toxicity_model():
     if not TOXICITY_MODEL:
         TOXICITY_MODEL = RobertaForSequenceClassification.from_pretrained(
             "s-nlp/roberta_toxicity_classifier",
+            weights_only=False,
         )
     return TOXICITY_MODEL
 
@@ -48,6 +49,7 @@ def get_toxicity_tokenizer():
     if not TOXICITY_TOKENIZER:
         TOXICITY_TOKENIZER = RobertaTokenizer.from_pretrained(
             "s-nlp/roberta_toxicity_classifier",
+            weights_only=False,
         )
     return TOXICITY_TOKENIZER
 
