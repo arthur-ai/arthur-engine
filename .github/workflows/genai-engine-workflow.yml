@@ -167,6 +167,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Update Telemetry Settings
+        run: |
+          # Ensure telemetry is enabled for production builds
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            sed -i 's/TELEMETRY_ENABLED=false/TELEMETRY_ENABLED=true/' genai-engine/.env
+          fi
       - name: Build and push docker image
         uses: docker/build-push-action@v6.15.0
         with:
