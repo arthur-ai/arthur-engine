@@ -45,12 +45,12 @@ Please pre-create a database on your instance (e.g. `arthur_genai_engine`)
 * There must be a network route available to connect to Docker Hub
 * If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the `values.yaml` file
 
-# GPU deployment
+## GPU deployment
 Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
 
 The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml](values.yaml) file runs the GenAI Engine as a DaemonSet with a specific node group autoscaler described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
 
-# How to configure your AWS EKS cluster with a GPU node group
+## How to configure your AWS EKS cluster with a GPU node group
 This section is a guide to help you configure your existing AWS EKS cluster with a GPU node group for GenAI Engine.
 To perform the steps, you need AWS CLI with admin level permissions for the target AWS account.
 
@@ -339,7 +339,7 @@ aws cloudwatch put-metric-alarm \
 
 9. Label the CPU node group with `capability=cpu`
 
-# How to install GenAI Engine using Helm Chart
+## How to install GenAI Engine using Helm Chart
 
 1. Create Kubernetes secrets
     ```bash
@@ -382,7 +382,7 @@ aws cloudwatch put-metric-alarm \
     ```
     You should see the GenAI Engine pods in the running state. Please also inspect the log.
 
-# FAQs
+## FAQs
 
 ### The usage of my Azure OpenAI endpoint is going beyond my quota. What do I do?
 
