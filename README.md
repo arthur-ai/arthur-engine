@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/images/arthur-logo-symbol.svg" alt="Arthur AI Logo" width="150"/>
+<img src="https://cdn.prod.website-files.com/5a749d2c4f343700013366d4/67eab9e594ec4accb58badeb_arthur-logo-symbol.svg" alt="Arthur AI Logo" width="150"/>
 
 <i>Make AI work for Everyone.</i>
 
