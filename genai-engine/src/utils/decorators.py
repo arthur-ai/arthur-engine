@@ -28,16 +28,15 @@ def with_lock(lock_file_path):
         def wrapper(*args, **kwargs):
             with open(lock_file_path, "w") as lock_file:
                 try:
-                    # Attempt to acquire an exclusive lock (non-blocking)
-                    fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    # Attempt to acquire an exclusive lock (blocking)
+                    logger.debug(f"Acquiring lock for {lock_file_path}")
+                    fcntl.flock(lock_file, fcntl.LOCK_EX)
                     return download_func(*args, **kwargs)
-                except BlockingIOError:
-                    logger.warning(f"Lock is already held for {lock_file_path}.")
-                    return None
                 except Exception as e:
                     logger.error(f"Failed to download model: {e}")
                     return None
                 finally:
+                    logger.debug(f"Releasing lock for {lock_file_path}")
                     # Release the lock
                     try:
                         fcntl.flock(lock_file, fcntl.LOCK_UN)
