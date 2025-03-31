@@ -55,6 +55,7 @@ def get_claim_classifier_embedding_model():
         CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(
             "sentence-transformers/all-MiniLM-L12-v2",
         )
+        logger.debug("SentenceTransformer model loaded successfully.")
     return CLAIM_CLASSIFIER_EMBEDDING_MODEL
 
 
@@ -72,7 +73,11 @@ def get_claim_classifier(
         os.path.join(__location__, CLAIM_CLASSIFIER_CLASSIFIER_PATH),
         "rb",
     ) as file:
-        state_dict = torch.load(file, map_location=torch.device(get_device()))
+        state_dict = torch.load(
+            file,
+            map_location=torch.device(get_device()),
+            weights_only=False,
+        )
 
     classifier = (
         LogisticRegressionModel(
