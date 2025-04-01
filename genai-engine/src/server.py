@@ -109,6 +109,13 @@ tags_metadata = [
     },
 ]
 
+# Initialize all models and tokenizers
+get_toxicity_model()
+get_toxicity_tokenizer()
+get_prompt_injection_tokenizer()
+get_prompt_injection_model()
+get_claim_classifier_embedding_model()
+
 
 def bootstrap_genai_engine_keycloak():
     lock_file = "/tmp/bootstrap.lock"
@@ -148,11 +155,6 @@ async def lifespan(app: FastAPI):
         get_oauth_client()
         time.sleep(random.randint(0, 3))
 
-    get_toxicity_model()
-    get_toxicity_tokenizer()
-    get_prompt_injection_tokenizer()
-    get_prompt_injection_model()
-    get_claim_classifier_embedding_model()
     get_scorer_client()
 
     send_telemetry_event(TelemetryEventTypes.SERVER_START_COMPLETED)

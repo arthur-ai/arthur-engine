@@ -19,17 +19,23 @@ logger = logging.getLogger()
 MAX_LENGTH = 512
 PROMPT_INJECTION_MODEL = None
 PROMPT_INJECTION_TOKENIZER = None
+model_lock = threading.Lock()
+tokenizer_lock = threading.Lock()
 
 
 @reset_on_failure("PROMPT_INJECTION_MODEL")
 @with_lock("/tmp/prompt_injection_model.lock")
 def get_prompt_injection_model():
     global PROMPT_INJECTION_MODEL
-    if not PROMPT_INJECTION_MODEL:
-        PROMPT_INJECTION_MODEL = AutoModelForSequenceClassification.from_pretrained(
-            "ProtectAI/deberta-v3-base-prompt-injection-v2",
-            weights_only=False,
-        )
+    if PROMPT_INJECTION_MODEL is None:
+        with model_lock:  # Ensure only one thread initializes the model
+            if PROMPT_INJECTION_MODEL is None:  # Double-check within the lock
+                PROMPT_INJECTION_MODEL = (
+                    AutoModelForSequenceClassification.from_pretrained(
+                        "ProtectAI/deberta-v3-base-prompt-injection-v2",
+                        weights_only=False,
+                    )
+                )
     return PROMPT_INJECTION_MODEL
 
 
@@ -37,11 +43,13 @@ def get_prompt_injection_model():
 @with_lock("/tmp/prompt_injection_tokenizer.lock")
 def get_prompt_injection_tokenizer():
     global PROMPT_INJECTION_TOKENIZER
-    if not PROMPT_INJECTION_TOKENIZER:
-        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
-            "ProtectAI/deberta-v3-base-prompt-injection-v2",
-            weights_only=False,
-        )
+    if PROMPT_INJECTION_TOKENIZER is None:
+        with tokenizer_lock:  # Ensure only one thread initializes the tokenizer
+            if PROMPT_INJECTION_TOKENIZER is None:  # Double-check within the lock
+                PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
+                    "ProtectAI/deberta-v3-base-prompt-injection-v2",
+                    weights_only=False,
+                )
     return PROMPT_INJECTION_TOKENIZER
 
 
