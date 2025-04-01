@@ -1,0 +1,15 @@
+services:
+  data-plane:
+    image: arthurplatform/ml-engine:20874-dev
+    restart: unless-stopped
+    stop_grace_period: "60s"
+    env_file:
+      - ./ml-engine.env
+    entrypoint:
+      - python3
+      - app/job_agent.py
+    healthcheck:
+      test: wget -qO - http://127.0.0.1:7492/health
+      interval: 30s
+      timeout: 5s
+      retries: 5
