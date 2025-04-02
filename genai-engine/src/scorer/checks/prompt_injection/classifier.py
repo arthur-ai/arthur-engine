@@ -5,44 +5,14 @@ import torch
 from schemas.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    TextClassificationPipeline,
-)
+from transformers import TextClassificationPipeline
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 from utils.classifiers import get_device
-from utils.decorators import reset_on_failure, with_lock
+from utils.model_load import get_prompt_injection_model, get_prompt_injection_tokenizer
 
 logger = logging.getLogger()
 MAX_LENGTH = 512
-PROMPT_INJECTION_MODEL = None
-PROMPT_INJECTION_TOKENIZER = None
-
-
-@reset_on_failure("PROMPT_INJECTION_MODEL")
-@with_lock("/tmp/prompt_injection_model.lock")
-def get_prompt_injection_model():
-    global PROMPT_INJECTION_MODEL
-    if not PROMPT_INJECTION_MODEL:
-        PROMPT_INJECTION_MODEL = AutoModelForSequenceClassification.from_pretrained(
-            "ProtectAI/deberta-v3-base-prompt-injection-v2",
-            weights_only=False,
-        )
-    return PROMPT_INJECTION_MODEL
-
-
-@reset_on_failure("PROMPT_INJECTION_TOKENIZER")
-@with_lock("/tmp/prompt_injection_tokenizer.lock")
-def get_prompt_injection_tokenizer():
-    global PROMPT_INJECTION_TOKENIZER
-    if not PROMPT_INJECTION_TOKENIZER:
-        PROMPT_INJECTION_TOKENIZER = AutoTokenizer.from_pretrained(
-            "ProtectAI/deberta-v3-base-prompt-injection-v2",
-            weights_only=False,
-        )
-    return PROMPT_INJECTION_TOKENIZER
 
 
 def get_prompt_injection_classifier(
@@ -71,10 +41,12 @@ class BinaryPromptInjectionClassifier(RuleScorer):
         self.model = get_prompt_injection_classifier(model, tokenizer)
 
     def _download_model_and_tokenizer(self):
+        global PROMPT_INJECTION_MODEL
+        global PROMPT_INJECTION_TOKENIZER
         if PROMPT_INJECTION_MODEL is None:
-            get_prompt_injection_model()
+            PROMPT_INJECTION_MODEL = get_prompt_injection_model()
         if PROMPT_INJECTION_TOKENIZER is None:
-            get_prompt_injection_tokenizer()
+            PROMPT_INJECTION_TOKENIZER = get_prompt_injection_tokenizer()
         self.model = get_prompt_injection_classifier(
             PROMPT_INJECTION_MODEL,
             PROMPT_INJECTION_TOKENIZER,
