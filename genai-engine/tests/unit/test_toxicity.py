@@ -20,11 +20,17 @@ CLASSIFIER = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)
 
 @pytest.mark.unit_tests
 def test_detect_profanity():
-    assert detect_profanity("f*ck")
     assert detect_profanity("shit")
     assert detect_profanity("s h i t")
     assert detect_profanity("s H ! t")
     assert detect_profanity("s       H     , ! t")
+    assert detect_profanity("fuck")
+    assert detect_profanity("f*ck")
+    assert detect_profanity("f-ck")
+    assert detect_profanity("f**ck")
+    assert detect_profanity("f--ck")
+    assert not detect_profanity("fxck")
+    assert not detect_profanity("fxxck")
 
 
 @pytest.mark.unit_tests
@@ -293,3 +299,11 @@ if fast_ema[0] > slow_ema[0]:
         "# Buy",
         "buy_quantity = int(fast_length * data['Volume'] / 2)",
     ]
+
+    chunked_texts = CLASSIFIER.split_text_into_sections(
+        """
+        *This is a test*
+        **This is a test**
+        """,
+    )
+    assert chunked_texts == ["*This is a test*", "--This is a test--"]
