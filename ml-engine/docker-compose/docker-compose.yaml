@@ -1,6 +1,7 @@
 services:
   data-plane:
-    image: arthurplatform/ml-engine:20874-dev
+    image: arthurplatform/ml-engine:latest
+    platform: linux/amd64
     restart: unless-stopped
     stop_grace_period: "60s"
     env_file:
