@@ -45,12 +45,6 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
-from scorer.checks.hallucination.v2 import get_claim_classifier_embedding_model
-from scorer.checks.prompt_injection.classifier import (
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-)
-from scorer.checks.toxicity.toxicity import get_toxicity_model, get_toxicity_tokenizer
 from scorer.llm_client import validate_llm_connection
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -68,7 +62,8 @@ logger = logging.getLogger()
 logger.setLevel(Config.get_log_level())
 stream_handler = logging.StreamHandler()
 log_formatter = logging.Formatter(
-    os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
+    fmt=os.environ.get("GENAI_ENGINE_LOG_FORMAT", logging.BASIC_FORMAT),
+    datefmt="%Y-%m-%d %H:%M:%S %z",
 )
 stream_handler.setFormatter(log_formatter)
 logger.addHandler(stream_handler)
@@ -108,13 +103,6 @@ tags_metadata = [
         "description": "Endpoints for API keys management",
     },
 ]
-
-# Initialize all models and tokenizers
-get_toxicity_model()
-get_toxicity_tokenizer()
-get_prompt_injection_tokenizer()
-get_prompt_injection_model()
-get_claim_classifier_embedding_model()
 
 
 def bootstrap_genai_engine_keycloak():
