@@ -15,43 +15,16 @@ from schemas.scorer_schemas import (
 )
 from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
 from scorer.scorer import RuleScorer
-from transformers import RobertaForSequenceClassification, RobertaTokenizer, pipeline
+from transformers import pipeline
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 from utils import utils
 from utils.classifiers import get_device
-from utils.decorators import reset_on_failure, with_lock
+from utils.model_load import get_toxicity_model, get_toxicity_tokenizer
 from utils.utils import list_indicator_regex, pad_text
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
-
-TOXICITY_MODEL = None
-TOXICITY_TOKENIZER = None
-
-
-@reset_on_failure("TOXICITY_MODEL")
-@with_lock("/tmp/toxicity_model.lock")
-def get_toxicity_model():
-    global TOXICITY_MODEL
-    if not TOXICITY_MODEL:
-        TOXICITY_MODEL = RobertaForSequenceClassification.from_pretrained(
-            "s-nlp/roberta_toxicity_classifier",
-            weights_only=False,
-        )
-    return TOXICITY_MODEL
-
-
-@reset_on_failure("TOXICITY_TOKENIZER")
-@with_lock("/tmp/toxicity_tokenizer.lock")
-def get_toxicity_tokenizer():
-    global TOXICITY_TOKENIZER
-    if not TOXICITY_TOKENIZER:
-        TOXICITY_TOKENIZER = RobertaTokenizer.from_pretrained(
-            "s-nlp/roberta_toxicity_classifier",
-            weights_only=False,
-        )
-    return TOXICITY_TOKENIZER
 
 
 def get_toxicity_classifier(
@@ -98,6 +71,8 @@ class ToxicityScorer(RuleScorer):
 
     def _download_model_and_tokenizer(self):
         # Download the model and tokenizer using the provided methods
+        global TOXICITY_TOKENIZER
+        global TOXICITY_MODEL
         if TOXICITY_TOKENIZER is None:
             get_toxicity_tokenizer()
         if TOXICITY_MODEL is None:
