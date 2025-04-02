@@ -13,32 +13,34 @@ with open(os.path.join(__location__, FULLY_BAD_WORDS_PATH), "r") as file:
 with open(os.path.join(__location__, END_PUNCTUATIONS_PATH), "r") as file:
     END_PUNCTUATIONS = [json.loads(line)["text"] for line in file]
 
+# Where '*' is occuring, '-' should be included due to the string substitution performed in ToxicityScorer.split_text_into_sections.
+# It prevents detect_profanity from compiling regex that's too expensive to run.
 letter_substitutions = {
-    "a": "[a@4*]",
+    "a": "[a@4*-]",
     "b": "[b8]",
     "c": "[c(]",
     "d": "[d]",
-    "e": "[e3*]",
+    "e": "[e3*-]",
     "f": "[f]",
     "g": "[g9]",
     "h": "[h#]",
-    "i": "[i!1*]",
+    "i": "[i!1*-]",
     "j": "[j]",
     "k": "[k]",
     "l": "[l1]",
     "m": "[m]",
     "n": "[n]",
-    "o": "[o0*]",
+    "o": "[o0*-]",
     "p": "[p]",
     "q": "[q]",
     "r": "[r]",
     "s": "[s$5]",
     "t": "[t+]",
-    "u": "[u*]",
+    "u": "[u*-]",
     "v": "[v]",
     "w": "[w]",
     "x": "[x]",
-    "y": "[y*]",
+    "y": "[y*-]",
     "z": "[z2]",
 }
 

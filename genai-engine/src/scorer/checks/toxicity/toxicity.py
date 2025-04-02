@@ -94,8 +94,10 @@ class ToxicityScorer(RuleScorer):
         # "1. do this thing"
         # gets treated as a single section instead of spltting the "1" away from the "do this thing"
         pattern = r"(?:\.|\?)(?=\s+[A-Za-z])"
+        asterisk_pattern = r"\*{2,}"
+        updated_text = re.sub(asterisk_pattern, lambda m: "-" * len(m.group()), text)
 
-        lines = text.split("\n")
+        lines = updated_text.split("\n")
         texts = []
         for line in lines:
             line = line.strip()
