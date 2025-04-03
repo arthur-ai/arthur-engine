@@ -1,13 +1,7 @@
 from os import environ
 
 from gunicorn.arbiter import Arbiter
-from utils.model_load import (
-    get_claim_classifier_embedding_model,
-    get_prompt_injection_model,
-    get_prompt_injection_tokenizer,
-    get_toxicity_model,
-    get_toxicity_tokenizer,
-)
+from utils.model_load import download_models
 
 bind = "0.0.0.0:" + environ.get("PORT", "3000")
 workers = environ.get("WORKERS", 1)
@@ -19,14 +13,10 @@ worker_class = "uvicorn.workers.UvicornWorker"
 
 
 def on_starting(server: Arbiter) -> None:
-    server.log.info("Loading models...")
+    server.log.info("Downloading models...")
     try:
-        get_claim_classifier_embedding_model()
-        get_prompt_injection_model()
-        get_prompt_injection_tokenizer()
-        get_toxicity_model()
-        get_toxicity_tokenizer()
+        download_models(int(workers))
     except Exception as e:
-        server.log.error(f"Error loading models: {e}")
+        server.log.error(f"Error downloading models: {e}")
         raise e
-    server.log.info("Models loaded")
+    server.log.info("Models downloaded.")

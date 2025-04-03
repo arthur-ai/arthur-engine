@@ -1,5 +1,7 @@
 from logging import getLogger
+from multiprocessing import Pool
 
+from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
 from transformers import (
     AutoModelForSequenceClassification,
@@ -15,6 +17,62 @@ PROMPT_INJECTION_MODEL = None
 PROMPT_INJECTION_TOKENIZER = None
 TOXICITY_MODEL = None
 TOXICITY_TOKENIZER = None
+
+
+def download_file(args):
+    model_name, filename = args
+    try:
+        hf_hub_download(model_name, filename)
+        logger.info(f"Downloaded {filename} from {model_name}")
+    except Exception as e:
+        logger.info(f"Failed to download {filename} from {model_name}: {e}")
+
+
+def download_models(num_of_process: int):
+    models_to_download = {
+        "sentence-transformers/all-MiniLM-L12-v2": [
+            "1_Pooling/config.json",
+            "config.json",
+            "config_sentence_transformers.json",
+            "model.safetensors",
+            "modules.json",
+            "sentence_bert_config.json",
+            "special_tokens_map.json",
+            "tokenizer_config.json",
+            "tokenizer.json",
+            "vocab.txt",
+        ],
+        "ProtectAI/deberta-v3-base-prompt-injection-v2": [
+            "added_tokens.json",
+            "config.json",
+            "model.safetensors",
+            "special_tokens_map.json",
+            "spm.model",
+            "tokenizer_config.json",
+            "tokenizer.json",
+        ],
+        "s-nlp/roberta_toxicity_classifier": [
+            "config.json",
+            "merges.txt",
+            "pytorch_model.bin",
+            "special_tokens_map.json",
+            "tokenizer_config.json",
+            "vocab.json",
+        ],
+    }
+
+    # Prepare a list of tasks (model_name, filename pairs)
+    tasks = [
+        (model_name, filename)
+        for model_name, filenames in models_to_download.items()
+        for filename in filenames
+    ]
+
+    # Use multiprocessing Pool to download files in parallel
+    with Pool(
+        processes=num_of_process,
+    ) as pool:  # Adjust 'processes' based on your CPU cores
+        pool.map(download_file, tasks)
 
 
 def get_claim_classifier_embedding_model():
