@@ -1,0 +1,571 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: '(Optional) Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  MLEngineContainerImageLocation:
+    Description: 'The container image location for Arthur ML Engine'
+    Type: String
+    AllowedPattern: '.+'
+    Default: 'arthurplatform/genai-engine-cpu'
+    ConstraintDescription: 'The container image location for Arthur ML Engine must be specified.'
+  ContainerRepositoryUsername:
+    Description: '(Optional) Username for accessing the container repository'
+    Type: String
+    Default: ''
+  ContainerRepositoryPassword:
+    Description: '(Optional) Password for accessing the container repository'
+    Type: String
+    NoEcho: true
+  OpenAIGPTModelNamesEndpointsAndKeys:
+    Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
+    Type: String
+    NoEcho: true
+    AllowedPattern: '.+'
+    ConstraintDescription: 'OpenAI GPT model deployments must be defined.'
+  PostgresCredentialsUsername:
+    Description: 'Username for the Postgres database'
+    Type: String
+    AllowedPattern: '.+'
+    Default: 'arthur_admin'
+  PostgresCredentialsPassword:
+    Description: '(Optional) Password for the Postgres database. If not specified, one will be provisioned.'
+    Type: String
+    NoEcho: true
+  MLEngineDBDatabaseName:
+    Description: 'Arthur ML Engine database name'
+    Type: String
+    Default: 'arthur_genai_engine'
+  MLEnginePostgresClientConnectionPoolSize:
+    Type: Number
+    Description: 'ML Engine Postgres client pool size'
+    Default: 5
+  MLEnginePostgresClientConnectionPoolMaxOverflow:
+    Type: Number
+    Description: 'ML Engine Postgres client connection poolmax overflow'
+    Default: 15
+  AlarmSNSTopicArn:
+    Description: 'The ARN of the SNS topic to send the CloudWatch alarms to'
+    Type: String
+    AllowedPattern: 'arn:aws:sns:.+'
+    ConstraintDescription: 'A valid SNS ARN must be provided for the alarm SNS topic.'
+  MLEngineLoadBalancerHealthyHostCountAlarmThreshold:
+    Description: 'Alarm is triggered when the healthy ML Engine application host count drops below this number'
+    Type: Number
+    Default: 1
+  MLEngineLoadBalancerTarget5xxAlarmThreshold:
+    Description: 'Alarm is triggered when ML Engine raises more than this number of 5xx errors in a minute'
+    Type: Number
+    Default: 10
+  MLEngineLoadBalancerTargetResponseTimeAlarmThreshold:
+    Description: 'Alarm is triggered when the ML Engine average response time is longer than this number of seconds'
+    Type: Number
+    Default: 30
+  MLEngineECSMemoryAlarmThreshold:
+    Type: Number
+    Default: 87
+    Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
+  ExistingArthurVPCId:
+    Description: 'VPC to deploy Arthur stack to'
+    Type: AWS::EC2::VPC::Id
+    AllowedPattern: '.+'
+    ConstraintDescription: 'VPC ID to deploy in must be defined'
+  ExistingArthurVPCCidrBlock:
+    Description: 'CIDR block of the Arthur stack VPC'
+    Type: String
+    AllowedPattern: '.+'
+    ConstraintDescription: 'VPC CIDR block must be defined.'
+  ArthurPrivateSubnets:
+    Description: 'List of private subnets to use for the Arthur stack'
+    Type: List<AWS::EC2::Subnet::Id>
+    AllowedPattern: '.+'
+    ConstraintDescription: 'Private subnets must be defined.'
+  ArthurPublicSubnets:
+    Description: 'List of public subnets to use for the Arthur stack'
+    Type: List<AWS::EC2::Subnet::Id>
+    AllowedPattern: '.+'
+    ConstraintDescription: 'Public subnets must be defined.'
+  PostgresBYOEndpoint:
+    Description: '(Optional) Bring-your-own Postgres endpoint. If not specified, an AWS Aurora Serverless v2 cluster will be provisioned.'
+    Type: String
+  PostgresBYOPort:
+    Description: 'The port for bring-your-own Postgres. Leave the default value if you do not have one.'
+    Type: Number
+    Default: 5432
+  PostgresBYOSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for the auto-provisioned Aurora Serverless v2 or the bring-your-own Postgres. If not specified, one will be provisioned.'
+    Default: ''
+    AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
+    ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
+  RDSAuroraServerlessScalingConfigurationMinCapacity:
+    Type: Number
+    Default: 0.5
+    Description: 'Aurora Serverless v2 minimum scaling capacity in ACU'
+  RDSAuroraServerlessScalingConfigurationMaxCapacity:
+    Type: Number
+    Default: 16
+    Description: 'Aurora Serverless v2 maximum scaling capacity in ACU'
+  PostgresSSLCertDownloadURL:
+    Type: String
+    Description: 'Postgres SSL certificate download URL (must be an HTTPS endpoint)'
+    AllowedPattern: 'https://.+'
+    ConstraintDescription: 'A valid Postgres SSL certificate download HTTPS URL must be defined.'
+    Default: 'https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem'
+  MLEngineBYOTaskRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM Role ARN to use for ML Engine ECS task role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task IAM role.'
+  MLEngineBYOTaskExecutionRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM Role ARN to use for ML Engine ECS task execution role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task execution IAM role.'
+  MLEngineBYOLBSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur ML Engine load balancer. If not specified, one will be provisioned.'
+    Default: ''
+    AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
+    ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
+  MLEngineBYOAppSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'
+    Default: ''
+    AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
+    ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
+  MLEngineIngressURL:
+    Type: String
+    Description: 'ML Engine application ingress DNS URL (e.g. https://arthur-genai-engine.mydomain.com)'
+    AllowedPattern: 'https://.+'
+    ConstraintDescription: 'A valid ML Engine service DNS URL must be provided.'
+  MLEngineRoute53HostedZoneId:
+    Type: String
+    Description: '(Optional) The ID of the existing Route 53 hosted zone that contains the A record of ML Engine DNS to update. Only required when you want the A record of Arthur ML Engine DNS to be created.'
+  MLEngineRoute53RecordName:
+    Type: String
+    Description: '(Optional) The name of the Route 53 A record of ML Engine DNS to create (e.g., arthur-genai-engine.example.com)'
+  MLEngineLoadBalancerCertificateARN:
+    Type: String
+    Description: 'ML Engine application ingress DNS URL TLS certificate ARN'
+    AllowedPattern: 'arn:aws:acm:.+'
+    ConstraintDescription: 'A valid certificate ARN must be provided for ML Engine service ingress DNS URL.'
+  MLEngineLoadBalancerScheme:
+    Description: 'Indicate whether the load balancer is internet-facing or VPC internal'
+    Type: String
+    ConstraintDescription: 'Arthur ML Engine load balancer scheme must be defined.'
+    AllowedValues:
+      - 'internet-facing'
+      - 'internal'
+  MLEngineFargateTaskCPUValue:
+    Type: Number
+    Default: 8192
+    Description: 'CPU value for AWS Fargate per ML Engine ECS task'
+  MLEngineFargateTaskMemoryValue:
+    Type: Number
+    Default: 16384
+    Description: 'Memory value for AWS Fargate per ML Engine ECS task'
+  MLEngineServerWorkerCount:
+    Type: Number
+    Default: 1
+    Description: 'Number of ML Engine server processes to run for adjusting parallelism'
+  MLEngineECSScaleCPUTargetValue:
+    Type: Number
+    Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
+    Default: 50
+  MLEngineECSScaleInCooldownInSecs:
+    Type: Number
+    Description: 'Scale-in cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 300
+  MLEngineECSScaleOutCooldownInSecs:
+    Type: Number
+    Description: 'Scale-out cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 30
+  MLEngineECSAutoscalingMaxCapacity:
+    Type: Number
+    Description: 'The maximum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 10
+  MLEngineECSAutoscalingMinCapacity:
+    Type: Number
+    Description: 'The minimum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 2
+  MLEngineECSServiceTaskDesiredCount:
+    Type: Number
+    Description: 'The desired number of tasks running for ML Engine ECS service'
+    Default: 2
+  MLEngineSensitiveDataCheckMaxTokenLimit:
+    Type: Number
+    Description: 'Max number of tokens ML Engine can process against LLM for sensitive data checks'
+    Default: 3000
+  MLEngineHallucinationCheckMaxTokenLimit:
+    Type: Number
+    Description: 'Max number of tokens ML Engine can process against LLM for hallucination data checks'
+    Default: 6000
+  MLEngineToxicityCheckMaxTokenLimit:
+    Type: Number
+    Default: 1200
+    Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  MLEngineOpenAIProvider:
+    Type: String
+    AllowedValues:
+      - 'Azure'
+      - 'OpenAI'
+    Default: "Azure"
+    Description: 'Provider of OpenAI LLMs'
+  MLEngineCacheTaskRulesCacheEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: 'Enable task rules cache'
+  MLEngineCacheTaskRulesCacheTTL:
+    Type: Number
+    Default: 60
+    Description: 'Task rules cache TTL in seconds'
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: 'Minimum Required Configurations'
+        Parameters:
+          - ArthurResourceNamespace
+          - ExistingArthurVPCId
+          - ExistingArthurVPCCidrBlock
+          - ArthurPrivateSubnets
+          - ArthurPublicSubnets
+          - AlarmSNSTopicArn
+          - MLEngineLoadBalancerScheme
+          - MLEngineIngressURL
+          - MLEngineLoadBalancerCertificateARN
+          - MLEngineOpenAIProvider
+          - OpenAIGPTModelNamesEndpointsAndKeys
+      - Label:
+          default: 'Advanced - General'
+        Parameters:
+          - ArthurResourceNameSuffix
+          - ContainerRepositoryUsername
+          - ContainerRepositoryPassword
+      - Label:
+          default: 'Advanced - Database'
+        Parameters:
+          - PostgresBYOEndpoint
+          - PostgresBYOPort
+          - PostgresCredentialsUsername
+          - PostgresCredentialsPassword
+          - PostgresSSLCertDownloadURL
+          - PostgresBYOSecurityGroupIDs
+          - RDSAuroraServerlessScalingConfigurationMinCapacity
+          - RDSAuroraServerlessScalingConfigurationMaxCapacity
+      - Label:
+          default: 'Advanced ML Engine'
+        Parameters:
+          - MLEngineRoute53HostedZoneId
+          - MLEngineRoute53RecordName
+          - MLEngineBYOLBSecurityGroupIDs
+          - MLEngineBYOAppSecurityGroupIDs
+          - MLEngineContainerImageLocation
+          - MLEngineDBDatabaseName
+          - MLEnginePostgresClientConnectionPoolSize
+          - MLEnginePostgresClientConnectionPoolMaxOverflow
+          - MLEngineFargateTaskCPUValue
+          - MLEngineFargateTaskMemoryValue
+          - MLEngineServerWorkerCount
+          - MLEngineCacheTaskRulesCacheEnabled
+          - MLEngineCacheTaskRulesCacheTTL
+      - Label:
+          default: 'Advanced ML Engine (IAM)'
+        Parameters:
+          - MLEngineBYOTaskRoleIAMArn
+          - MLEngineBYOTaskExecutionRoleIAMArn
+      - Label:
+          default: 'Advanced ML Engine (Scalability)'
+        Parameters:
+          - MLEngineECSServiceTaskDesiredCount
+          - MLEngineECSAutoscalingMinCapacity
+          - MLEngineECSAutoscalingMaxCapacity
+          - MLEngineECSScaleCPUTargetValue
+          - MLEngineECSScaleInCooldownInSecs
+          - MLEngineECSScaleOutCooldownInSecs
+      - Label:
+          default: 'Advanced ML Engine (Platform Monitoring)'
+        Parameters:
+          - MLEngineLoadBalancerHealthyHostCountAlarmThreshold
+          - MLEngineLoadBalancerTarget5xxAlarmThreshold
+          - MLEngineLoadBalancerTargetResponseTimeAlarmThreshold
+          - MLEngineECSMemoryAlarmThreshold
+      - Label:
+          default: 'Advanced ML Engine (LLM)'
+        Parameters:
+          - MLEngineSensitiveDataCheckMaxTokenLimit
+          - MLEngineHallucinationCheckMaxTokenLimit
+          - MLEngineToxicityCheckMaxTokenLimit
+    ParameterLabels:
+      MLEngineContainerImageLocation:
+        default: 'Arthur ML Engine Container Image Location'
+      ContainerRepositoryUsername:
+        default: 'Container Repository Username'
+      ContainerRepositoryPassword:
+        default: 'Container Repository Password'
+      PostgresCredentialsUsername:
+        default: 'Postgres Database Username'
+      PostgresCredentialsPassword:
+        default: 'Postgres Database Password'
+      MLEngineDBDatabaseName:
+        default: 'ML Engine Database Name'
+      MLEnginePostgresClientConnectionPoolSize:
+        default: 'ML Engine Postgres Client Pool Size'
+      MLEnginePostgresClientConnectionPoolMaxOverflow:
+        default: 'ML Engine Postgres Client Pool Max Overflow'
+      OpenAIGPTModelNamesEndpointsAndKeys:
+        default: 'OpenAI GPT Model Endpoints'
+      ArthurResourceNamespace:
+        default: 'Arthur Platform Resource Namespace'
+      ArthurResourceNameSuffix:
+        default: 'Arthur Platform Resource Name Suffix'
+      MLEngineFargateTaskCPUValue:
+        default: 'Number of CPU for Fargate ML Engine task'
+      MLEngineFargateTaskMemoryValue:
+        default: 'Size of memory for Fargate ML Engine task'
+      MLEngineServerWorkerCount:
+        default: 'Number of ML Engine Server Workers'
+      MLEngineLoadBalancerHealthyHostCountAlarmThreshold:
+        default: 'ALB Healthy Host Count Alarm Threshold'
+      MLEngineLoadBalancerTarget5xxAlarmThreshold:
+        default: 'ALB Target 5xx Alarm Threshold'
+      MLEngineLoadBalancerTargetResponseTimeAlarmThreshold:
+        default: 'ALB Response Time Threshold'
+      MLEngineECSMemoryAlarmThreshold:
+        default: 'ECS Memory Alarm Threshold'
+      RDSAuroraServerlessScalingConfigurationMinCapacity:
+        default: 'Aurora Serverless v2 Min Scaling Capacity'
+      RDSAuroraServerlessScalingConfigurationMaxCapacity:
+        default: 'Aurora Serverless v2 Max Scaling Capacity'
+      PostgresBYOEndpoint:
+        default: 'Bring-Your-Own Postgres Database Endpoint'
+      PostgresBYOPort:
+        default: 'Bring-Your-Own Postgres Database Port'
+      PostgresSSLCertDownloadURL:
+        default: 'Postgres SSL Cert Download URL'
+      PostgresBYOSecurityGroupIDs:
+        default: 'Bring-Your-Own Postgres Security Group IDs'
+      MLEngineBYOTaskRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task Role'
+      MLEngineBYOTaskExecutionRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task Execution Role'
+      MLEngineBYOLBSecurityGroupIDs:
+        default: 'Bring-Your-Own ML Engine Load Balancer Security Group IDs'
+      MLEngineBYOAppSecurityGroupIDs:
+        default: 'Bring-Your-Own ML Engine Application Security Group IDs'
+      ExistingArthurVPCId:
+        default: 'Arthur Stack VPC ID'
+      ExistingArthurVPCCidrBlock:
+        default: 'Arthur Stack VPC CIDR Block'
+      ArthurPrivateSubnets:
+        default: 'Arthur Stack Private Subnets'
+      ArthurPublicSubnets:
+        default: 'Arthur Stack Public Subnets'
+      MLEngineLoadBalancerCertificateARN:
+        default: 'ML Engine Application DNS URL TLS Certificate ARN'
+      MLEngineLoadBalancerScheme:
+        default: 'ML Engine Load Balancer Scheme'
+      MLEngineIngressURL:
+        default: 'ML Engine Application DNS URL'
+      MLEngineRoute53HostedZoneId:
+        default: 'ML Engine Route 53 Hosted Zone ID'
+      MLEngineRoute53RecordName:
+        default: 'ML Engine Route 53 Record Name'
+      AlarmSNSTopicArn:
+        default: 'Alarm SNS Topic ARN'
+      MLEngineECSScaleCPUTargetValue:
+        default: 'ML Engine ECS Scale CPU Target Value'
+      MLEngineECSScaleInCooldownInSecs:
+        default: 'ML Engine ECS Scale-in Cooldown in Seconds'
+      MLEngineECSScaleOutCooldownInSecs:
+        default: 'ML Engine ECS Scale-out Cooldown in Seconds'
+      MLEngineECSAutoscalingMaxCapacity:
+        default: 'ML Engine ECS Autoscaling Max Capacity'
+      MLEngineECSAutoscalingMinCapacity:
+        default: 'ML Engine ECS Autoscaling Min Capacity'
+      MLEngineECSServiceTaskDesiredCount:
+        default: 'ML Engine ECS Service Task Desired Count'
+      MLEngineSensitiveDataCheckMaxTokenLimit:
+        default: 'ML Engine Sensitive Data Check Max Token Limit'
+      MLEngineHallucinationCheckMaxTokenLimit:
+        default: 'ML Engine Hallucination Check Max Token Limit'
+      MLEngineToxicityCheckMaxTokenLimit:
+        default: 'ML Engine Toxicity Check Max Token Limit'
+      MLEngineOpenAIProvider:
+        default: 'OpenAI Service Provider'
+      MLEngineCacheTaskRulesCacheEnabled:
+        default: 'Enable task rules cache'
+      MLEngineCacheTaskRulesCacheTTL:
+        default: 'Task rules cache TTL in seconds'
+Conditions:
+  ContainerRepositoryCredentialRequired:
+    !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
+Resources:
+  CoreVPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ExistingVPCId: !Ref ExistingArthurVPCId
+        ExistingVPCCidrBlock: !Ref ExistingArthurVPCCidrBlock
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-vpc.yml"
+  CoreSecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
+        VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
+        PostgresBYOSecurityGroupIDs: !Join [ ",", !Ref PostgresBYOSecurityGroupIDs ]
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
+  CoreSecretsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        ContainerRepositoryUsername: !Ref ContainerRepositoryUsername
+        ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
+        PostgresUsername: !Ref PostgresCredentialsUsername
+        PostgresPassword: !Ref PostgresCredentialsPassword
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+
+  CoreECSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-ecs.yml"
+  MLEngineSecretsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        OpenAIEmbeddingModelNamesEndpointsAndKeys: 'none'
+        OpenAIGPTModelNamesEndpointsAndKeys: !Ref OpenAIGPTModelNamesEndpointsAndKeys
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-secrets-manager.yml"
+  MLEngineIAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        MLEngineBYOTaskRoleIAMArn: !Ref MLEngineBYOTaskRoleIAMArn
+        MLEngineBYOTaskExecutionRoleIAMArn: !Ref MLEngineBYOTaskExecutionRoleIAMArn
+        MLEngineSecretArns: !Join
+          - ','
+          - - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
+            - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
+            - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAPIKeySecretOutput ]
+            - !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
+            - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+            - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAppKeySecretOutput ]
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-iam.yml"
+  MLEngineSecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
+        VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
+        MLEngineBYOLBSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOLBSecurityGroupIDs ]
+        MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-security-groups.yml"
+  MLEngineECSTaskDefinitionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        MLEngineECSTaskRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskRoleOutput ]
+        MLEngineECSTaskExecutionRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskExecutionRoleOutput ]
+        MLEngineVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
+        MLEnginePostgresUrl: !GetAtt [ CoreRDSStack, Outputs.RDSInstanceAddressOutput ]
+        MLEnginePostgresPort: !GetAtt [ CoreRDSStack, Outputs.RDSInstancePortOutput ]
+        MLEnginePostgresDatabaseName: !Ref MLEngineDBDatabaseName
+        MLEnginePostgresClientConnectionPoolSize: !Ref MLEnginePostgresClientConnectionPoolSize
+        MLEnginePostgresClientConnectionPoolMaxOverflow: !Ref MLEnginePostgresClientConnectionPoolMaxOverflow
+        MLEngineIngressURL: !Ref MLEngineIngressURL
+        MLEnginePostgresSSLCertDownloadURL: !Ref PostgresSSLCertDownloadURL
+        MLEngineContainerImageLocation: !Ref MLEngineContainerImageLocation
+        ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
+        ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+        MLEngineSecretAPIKeyARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAPIKeySecretOutput ]
+        MLEngineAppSecretKeyARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAppKeySecretOutput ]
+        MLEngineSecretOpenAIGPTModelNamesEndpointsKeysARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
+        MLEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
+        MLEngineSecretPostgresARN: !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
+        MLEngineAPIOnlyModeEnabled: 'enabled'
+        MLEngineSensitiveDataCheckMaxTokenLimit: !Ref MLEngineSensitiveDataCheckMaxTokenLimit
+        MLEngineHallucinationCheckMaxTokenLimit: !Ref MLEngineHallucinationCheckMaxTokenLimit
+        MLEngineToxicityCheckMaxTokenLimit: !Ref MLEngineToxicityCheckMaxTokenLimit
+        MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
+        MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
+        MLEngineServerWorkerCount: !Ref MLEngineServerWorkerCount
+        MLEngineOpenAIProvider: !Ref MLEngineOpenAIProvider
+        MLEngineCacheTaskRulesCacheEnabled: !Ref MLEngineCacheTaskRulesCacheEnabled
+        MLEngineCacheTaskRulesCacheTTL: !Ref MLEngineCacheTaskRulesCacheTTL
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
+
+  MLEngineECSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineLBTargetGroupARN: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupOutput ]
+        MLEngineECSSecurityGroups: !GetAtt [ MLEngineSecurityGroupStack, Outputs.MLEngineAppSecurityGroupsOutput ]
+        MLEngineECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
+        MLEngineECSTaskDefinitionARN: !GetAtt [ MLEngineECSTaskDefinitionStack, Outputs.MLEngineECSTaskDefinitionOutput ]
+        MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
+        MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
+        MLEngineECSAutoscalingMaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
+        MLEngineECSScaleCPUTargetValue: !Ref MLEngineECSScaleCPUTargetValue
+        MLEngineECSScaleInCooldownInSecs: !Ref MLEngineECSScaleInCooldownInSecs
+        MLEngineECSScaleOutCooldownInSecs: !Ref MLEngineECSScaleOutCooldownInSecs
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs.yml"
+  MLEngineCloudwatchStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        AlarmSNSTopicArn: !Ref AlarmSNSTopicArn
+        MLEngineLBTargetGroupArnSuffix: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupFullNameOutput ]
+        MLEngineLBArnSuffix: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBFullNameOutput ]
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
+        MLEngineLoadBalancerHealthyHostCountAlarmThreshold: !Ref MLEngineLoadBalancerHealthyHostCountAlarmThreshold
+        MLEngineLoadBalancerTarget5xxAlarmThreshold: !Ref MLEngineLoadBalancerTarget5xxAlarmThreshold
+        MLEngineLoadBalancerTargetResponseTimeAlarmThreshold: !Ref MLEngineLoadBalancerTargetResponseTimeAlarmThreshold
+        MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-alarms.yml"
+  MLEngineCloudwatchDashboardStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
+        MLEngineLBTargetGroupFullName: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupFullNameOutput ]
+        MLEngineLoadBalancerFullName: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBFullNameOutput ]
+        MLEngineRDSClusterIdentifier: !GetAtt [ CoreRDSStack, Outputs.RDSClusterIdentifierOutput ]
+      TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-dashboard.yml"
