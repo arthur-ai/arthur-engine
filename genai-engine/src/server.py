@@ -50,6 +50,13 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from utils import constants as constants
 from utils.classifiers import get_device
+from utils.model_load import (
+    get_claim_classifier_embedding_model,
+    get_prompt_injection_model,
+    get_prompt_injection_tokenizer,
+    get_toxicity_model,
+    get_toxicity_tokenizer,
+)
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
@@ -142,6 +149,12 @@ async def lifespan(app: FastAPI):
     if not is_api_only_mode_enabled():
         get_oauth_client()
         time.sleep(random.randint(0, 3))
+
+    get_claim_classifier_embedding_model()
+    get_prompt_injection_model()
+    get_prompt_injection_tokenizer()
+    get_toxicity_model()
+    get_toxicity_tokenizer()
 
     get_scorer_client()
 
