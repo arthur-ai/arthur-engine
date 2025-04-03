@@ -423,16 +423,15 @@ Resources:
         ExistingVPCId: !Ref ExistingArthurVPCId
         ExistingVPCCidrBlock: !Ref ExistingArthurVPCCidrBlock
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-vpc.yml"
-  # CoreSecurityGroupStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
-  #       VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
-  #       PostgresBYOSecurityGroupIDs: !Join [ ",", !Ref PostgresBYOSecurityGroupIDs ]
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
+  CoreSecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
+        VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
   # CoreSecretsStack:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
