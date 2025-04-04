@@ -43,6 +43,21 @@ Parameters:
   #   Description: '(Optional) Password for the Postgres database. If not specified, one will be provisioned.'
   #   Type: String
   #   NoEcho: true
+  MLEngineArthurApiHost:
+    Description: 'Arthur API Host for the ML Engine'
+    Type: String
+    AllowedPattern: '.+'
+  MLEngineArthurClientId:
+    Description: 'Arthur Client ID for the ML Engine'
+    Type: String
+    AllowedPattern: '.+'
+  MLEngineArthurClientSecret:
+    Description: 'Arthur Client Secret for the ML Engine'
+    Type: String
+    NoEcho: true
+    AllowedPattern: '.+'
+
+
   # MLEngineDBDatabaseName:
   #   Description: 'Arthur ML Engine database name'
   #   Type: String
