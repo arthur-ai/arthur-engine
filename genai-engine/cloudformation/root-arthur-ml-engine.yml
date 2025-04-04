@@ -20,14 +20,14 @@ Parameters:
   #   AllowedPattern: '.+'
   #   Default: 'arthurplatform/genai-engine-cpu'
   #   ConstraintDescription: 'The container image location for Arthur ML Engine must be specified.'
-  # ContainerRepositoryUsername:
-  #   Description: '(Optional) Username for accessing the container repository'
-  #   Type: String
-  #   Default: ''
-  # ContainerRepositoryPassword:
-  #   Description: '(Optional) Password for accessing the container repository'
-  #   Type: String
-  #   NoEcho: true
+  ContainerRepositoryUsername:
+    Description: '(Optional) Username for accessing the container repository'
+    Type: String
+    Default: ''
+  ContainerRepositoryPassword:
+    Description: '(Optional) Password for accessing the container repository'
+    Type: String
+    NoEcho: true
   # OpenAIGPTModelNamesEndpointsAndKeys:
   #   Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
   #   Type: String
@@ -43,16 +43,16 @@ Parameters:
   #   Description: '(Optional) Password for the Postgres database. If not specified, one will be provisioned.'
   #   Type: String
   #   NoEcho: true
-  MLEngineArthurApiHost:
-    Description: 'Arthur API Host for the ML Engine'
+  ArthurApiHost:
+    Description: 'Arthur API Host'
     Type: String
     AllowedPattern: '.+'
-  MLEngineArthurClientId:
-    Description: 'Arthur Client ID for the ML Engine'
+  MLEngineClientId:
+    Description: 'Client ID for the ML Engine'
     Type: String
     AllowedPattern: '.+'
-  MLEngineArthurClientSecret:
-    Description: 'Arthur Client Secret for the ML Engine'
+  MLEngineClientSecret:
+    Description: 'Client Secret for the ML Engine'
     Type: String
     NoEcho: true
     AllowedPattern: '.+'
@@ -266,12 +266,15 @@ Metadata:
       #     - MLEngineLoadBalancerCertificateARN
       #     - MLEngineOpenAIProvider
       #     - OpenAIGPTModelNamesEndpointsAndKeys
-      # - Label:
-      #     default: 'Advanced - General'
-      #   Parameters:
-      #     - ArthurResourceNameSuffix
-      #     - ContainerRepositoryUsername
-      #     - ContainerRepositoryPassword
+          - ArthurApiHost
+          - MLEngineClientId
+          - MLEngineClientSecret
+      - Label:
+          default: 'Advanced - General'
+        Parameters:
+          - ArthurResourceNameSuffix
+          - ContainerRepositoryUsername
+          - ContainerRepositoryPassword
       # - Label:
       #     default: 'Advanced - Database'
       #   Parameters:
@@ -329,10 +332,10 @@ Metadata:
     ParameterLabels:
       # MLEngineContainerImageLocation:
       #   default: 'Arthur ML Engine Container Image Location'
-      # ContainerRepositoryUsername:
-      #   default: 'Container Repository Username'
-      # ContainerRepositoryPassword:
-      #   default: 'Container Repository Password'
+      ContainerRepositoryUsername:
+        default: 'Container Repository Username'
+      ContainerRepositoryPassword:
+        default: 'Container Repository Password'
       # PostgresCredentialsUsername:
       #   default: 'Postgres Database Username'
       # PostgresCredentialsPassword:
@@ -387,6 +390,12 @@ Metadata:
         default: 'Arthur Stack VPC ID'
       ExistingArthurVPCCidrBlock:
         default: 'Arthur Stack VPC CIDR Block'
+      ArthurApiHost:
+        default: 'Arthur API Host for the ML Engine to connect to'
+      MLEngineClientId:
+        default: 'Client ID for the ML Engine'
+      MLEngineClientSecret:
+        default: 'Client Secret for the ML Engine'
       # ArthurPrivateSubnets:
       #   default: 'Arthur Stack Private Subnets'
       # ArthurPublicSubnets:
@@ -447,17 +456,24 @@ Resources:
         VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
-  # CoreSecretsStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       ContainerRepositoryUsername: !Ref ContainerRepositoryUsername
-  #       ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
-  #       PostgresUsername: !Ref PostgresCredentialsUsername
-  #       PostgresPassword: !Ref PostgresCredentialsPassword
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+  CoreSecretsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        ContainerRepositoryUsername: !Ref ContainerRepositoryUsername
+        ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+  MLEngineSecretsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        MLEngineClientId: !Ref MLEngineClientId
+        MLEngineClientSecret: !Ref MLEngineClientSecret
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-secrets-manager.yml"
 
   # CoreECSStack:
   #   Type: AWS::CloudFormation::Stack
