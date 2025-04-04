@@ -138,16 +138,16 @@ Parameters:
   #   AllowedPattern: 'https://.+'
   #   ConstraintDescription: 'A valid Postgres SSL certificate download HTTPS URL must be defined.'
   #   Default: 'https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem'
-  # MLEngineBYOTaskRoleIAMArn:
-  #   Type: String
-  #   Description: '(Optional) IAM Role ARN to use for ML Engine ECS task role. If not specified, one will be provisioned.'
-  #   AllowedPattern: '(arn:aws:iam:.+)?'
-  #   ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task IAM role.'
-  # MLEngineBYOTaskExecutionRoleIAMArn:
-  #   Type: String
-  #   Description: '(Optional) IAM Role ARN to use for ML Engine ECS task execution role. If not specified, one will be provisioned.'
-  #   AllowedPattern: '(arn:aws:iam:.+)?'
-  #   ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task execution IAM role.'
+  MLEngineBYOTaskRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM Role ARN to use for ML Engine ECS task role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task IAM role.'
+  MLEngineBYOTaskExecutionRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM Role ARN to use for ML Engine ECS task execution role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task execution IAM role.'
   # MLEngineBYOLBSecurityGroupIDs:
   #   Type: CommaDelimitedList
   #   Description: '(Optional) Security group ID to use for Arthur ML Engine load balancer. If not specified, one will be provisioned.'
@@ -302,11 +302,11 @@ Metadata:
       #     - MLEngineServerWorkerCount
       #     - MLEngineCacheTaskRulesCacheEnabled
       #     - MLEngineCacheTaskRulesCacheTTL
-      # - Label:
-      #     default: 'Advanced ML Engine (IAM)'
-      #   Parameters:
-      #     - MLEngineBYOTaskRoleIAMArn
-      #     - MLEngineBYOTaskExecutionRoleIAMArn
+      - Label:
+          default: 'Advanced ML Engine (IAM)'
+        Parameters:
+          - MLEngineBYOTaskRoleIAMArn
+          - MLEngineBYOTaskExecutionRoleIAMArn
       # - Label:
       #     default: 'Advanced ML Engine (Scalability)'
       #   Parameters:
@@ -378,10 +378,10 @@ Metadata:
       #   default: 'Postgres SSL Cert Download URL'
       # PostgresBYOSecurityGroupIDs:
       #   default: 'Bring-Your-Own Postgres Security Group IDs'
-      # MLEngineBYOTaskRoleIAMArn:
-      #   default: 'Bring-Your-Own ML Engine Task Role'
-      # MLEngineBYOTaskExecutionRoleIAMArn:
-      #   default: 'Bring-Your-Own ML Engine Task Execution Role'
+      MLEngineBYOTaskRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task Role'
+      MLEngineBYOTaskExecutionRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task Execution Role'
       # MLEngineBYOLBSecurityGroupIDs:
       #   default: 'Bring-Your-Own ML Engine Load Balancer Security Group IDs'
       # MLEngineBYOAppSecurityGroupIDs:
@@ -465,6 +465,13 @@ Resources:
         ContainerRepositoryUsername: !Ref ContainerRepositoryUsername
         ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+  CoreECSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-ecs.yml"
   MLEngineSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -474,40 +481,19 @@ Resources:
         MLEngineClientId: !Ref MLEngineClientId
         MLEngineClientSecret: !Ref MLEngineClientSecret
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-secrets-manager.yml"
-
-  # CoreECSStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-ecs.yml"
-  # MLEngineSecretsStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       OpenAIEmbeddingModelNamesEndpointsAndKeys: 'none'
-  #       OpenAIGPTModelNamesEndpointsAndKeys: !Ref OpenAIGPTModelNamesEndpointsAndKeys
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-secrets-manager.yml"
-  # MLEngineIAMStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       MLEngineBYOTaskRoleIAMArn: !Ref MLEngineBYOTaskRoleIAMArn
-  #       MLEngineBYOTaskExecutionRoleIAMArn: !Ref MLEngineBYOTaskExecutionRoleIAMArn
-  #       MLEngineSecretArns: !Join
-  #         - ','
-  #         - - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
-  #           - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
-  #           - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAPIKeySecretOutput ]
-  #           - !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
-  #           - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
-  #           - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAppKeySecretOutput ]
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-iam.yml"
+  MLEngineIAMStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        MLEngineBYOTaskRoleIAMArn: !Ref MLEngineBYOTaskRoleIAMArn
+        MLEngineBYOTaskExecutionRoleIAMArn: !Ref MLEngineBYOTaskExecutionRoleIAMArn
+        MLEngineSecretArns: !Join
+          - ','
+          - - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+            - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-iam.yml"
   # MLEngineSecurityGroupStack:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
