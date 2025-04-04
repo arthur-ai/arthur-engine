@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  MLEngineSecretArns:
+    Description: 'List of ML Engine secret ARNs to grant access to'
+    Type: CommaDelimitedList
+  MLEngineAuthSecretArns:
+    Description: 'List of ML Engine Auth secret ARNs to grant access to'
+    Type: CommaDelimitedList
+    Default: ''
+  MLEngineBYOTaskRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM role ARN to use for ML Engine task role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+  MLEngineBYOTaskExecutionRoleIAMArn:
+    Type: String
+    Description: '(Optional) IAM role ARN to use for ML Engine task execution role. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+
+Conditions:
+  CreateMLEngineTaskRole: !Equals [ !Ref MLEngineBYOTaskRoleIAMArn, '' ]
+  CreateMLEngineTaskExecutionRole: !Equals [ !Ref MLEngineBYOTaskExecutionRoleIAMArn, '' ]
+  CreateMLEngineAuthSecrets: !Not [ !Equals [ !Join [ ",", !Ref MLEngineAuthSecretArns ], '' ] ]
+
+Resources:
+  MLEngineTaskRole:
+    Type: AWS::IAM::Role
+    Condition: CreateMLEngineTaskRole
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-ml-engine-task-role${ArthurResourceNameSuffix}"
+      Description: 'Role granted to the ML Engine containers within ECS.'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+  MLEngineTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Condition: CreateMLEngineTaskExecutionRole
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-ml-engine-task-execution-role${ArthurResourceNameSuffix}"
+      Description: 'Role required to create ECS containers'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: !Sub "${ArthurResourceNamespace}-ml-engine-secrets${ArthurResourceNameSuffix}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 'secretsmanager:GetSecretValue'
+                Resource: !Ref MLEngineSecretArns
+        - !If
+          - CreateMLEngineAuthSecrets
+          - PolicyName: !Sub "${ArthurResourceNamespace}-ml-engine-auth-secrets${ArthurResourceNameSuffix}"
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: 'secretsmanager:GetSecretValue'
+                  Resource: !Ref MLEngineAuthSecretArns
+          - !Ref AWS::NoValue
+  MLEngineTaskScalingLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ArthurResourceNamespace}-ml-engine-task-scaling-lambda${ArthurResourceNameSuffix}"
+      Description: 'Role for ML Engine task scaling Lambda function'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ECSServiceUpdate
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:UpdateService
+                  - ecs:DescribeServices
+                  - autoscaling:DescribeAutoScalingGroups
+                  - cloudwatch:SetAlarmState
+                Resource: '*'
+
+Outputs:
+  MLEngineTaskRoleOutput:
+    Description: 'IAM role for ML Engine ECS tasks to assume'
+    Value: !If [ CreateMLEngineTaskRole, !GetAtt [ MLEngineTaskRole, Arn ], !Ref MLEngineBYOTaskRoleIAMArn ]
+  MLEngineTaskExecutionRoleOutput:
+    Description: 'IAM role to execute ML Engine ECS tasks with'
+    Value: !If [ CreateMLEngineTaskExecutionRole, !GetAtt [ MLEngineTaskExecutionRole, Arn ], !Ref MLEngineBYOTaskExecutionRoleIAMArn ]
+  MLEngineTaskScalingLambdaRoleOutput:
+    Description: 'IAM role for ML Engine task scaling Lambda function'
+    Value: !GetAtt MLEngineTaskScalingLambdaRole.Arn
