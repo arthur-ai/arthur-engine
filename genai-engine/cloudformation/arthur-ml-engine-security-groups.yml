@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  VPCId:
+    Type: AWS::EC2::VPC::Id
+    Description: 'The VPC to deploy SGs to'
+  VPCCidrBlock:
+    Type: String
+    Description: 'The VPC CIDR block for SGs to use'
+  MLEngineBYOAppSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'
+    Default: ''
+
+Conditions:
+  IsMLEngineBYOAppSecurityGroupIDsEmpty:
+    !Equals [ !Select [ 0, !Ref MLEngineBYOAppSecurityGroupIDs ], "" ]
+
+Resources:
+  MLEngineAppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: IsMLEngineBYOAppSecurityGroupIDsEmpty
+    Properties:
+      GroupDescription: 'Arthur ML Engine service security group'
+      GroupName: !Sub "${ArthurResourceNamespace}-genai-engine-app${ArthurResourceNameSuffix}"
+      VpcId: !Ref VPCId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+Outputs:
+  MLEngineAppSecurityGroupsOutput:
+    Description: 'Security groups for the Arthur ML Engine ECS service tasks'
+    Value: !If
+      - IsMLEngineBYOAppSecurityGroupIDsEmpty
+      - !Join [ ",", [ !Ref MLEngineAppSecurityGroup ] ]
+      - !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
