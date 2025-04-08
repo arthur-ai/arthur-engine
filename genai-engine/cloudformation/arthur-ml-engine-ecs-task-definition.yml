@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  MLEngineECSTaskRoleARN:
+    Type: String
+    Description: "ARN for ML Engine's ECS task role"
+  MLEngineECSTaskExecutionRoleARN:
+    Type: String
+    Description: "ARN for ML Engine's ECS task execution role"
+  MLEngineVersion:
+    Type: String
+    Description: 'ML Engine version'
+  MLEngineContainerImageLocation:
+    Description: 'The container image location for Arthur ML Engine'
+    Type: String
+    AllowedPattern: '.+'
+    Default: 'arthurplatform/ml-engine-cpu'
+    ConstraintDescription: 'The container image location for Arthur ML Engine must be specified.'
+  ContainerRepositoryCredentialRequired:
+    Type: String
+    Description: 'Is credential required to access the container repository?'
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ContainerRepositoryCredentialsSecretARN:
+    Type: String
+    Description: 'ARN for the container repository credentials secret'
+  MLEngineArthurApiHost:
+    Type: String
+    Description: 'The Arthur API Host that specifies jobs for ML Engine'
+  MLEngineClientCredentialsSecretARN:
+    Type: String
+    Description: 'The ARN of the Secret containing Client Credentials for the ML Engine'
+    NoEcho: true
+  MLEngineFargateTaskCPUValue:
+    Type: Number
+    Default: 8192
+    Description: 'CPU value for AWS Fargate per ML Engine ECS task'
+  MLEngineFargateTaskMemoryValue:
+    Type: Number
+    Default: 16384
+    Description: 'Memory value for AWS Fargate per ML Engine ECS task'
+
+Conditions:
+  IsContainerRepositoryCredentialRequired: !Equals [ !Ref ContainerRepositoryCredentialRequired, 'true' ]
+
+Resources:
+  MLEngineECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/arthur/ecs/${ArthurResourceNamespace}-ml-engine${ArthurResourceNameSuffix}"
+      RetentionInDays: 365
+
+  MLEngineECSTaskDefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    DependsOn: MLEngineECSLogGroup
+    Properties:
+      Family: !Sub "${ArthurResourceNamespace}-ml-engine${ArthurResourceNameSuffix}"
+      NetworkMode: 'awsvpc'
+      RequiresCompatibilities:
+        - 'FARGATE'
+      Cpu: !Ref MLEngineFargateTaskCPUValue
+      Memory: !Ref MLEngineFargateTaskMemoryValue
+      TaskRoleArn: !Ref MLEngineECSTaskRoleARN
+      ExecutionRoleArn: !Ref MLEngineECSTaskExecutionRoleARN
+      ContainerDefinitions:
+        - Name: 'arthur-ml-engine'
+          Image: !Sub "${MLEngineContainerImageLocation}:${MLEngineVersion}"
+          RepositoryCredentials: !If
+            - IsContainerRepositoryCredentialRequired
+            - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
+            - !Ref AWS::NoValue
+          Essential: true
+          PortMappings:
+            - ContainerPort: 3000
+              HostPort: 3000
+              Protocol: 'tcp'
+          Environment:
+            - Name: 'ARTHUR_API_HOST'
+              Value: !Ref MLEngineArthurApiHost
+          Secrets:
+            - Name: 'ARTHUR_CLIENT_ID'
+              ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_id::'
+            - Name: 'ARTHUR_CLIENT_SECRET'
+              ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_secret::'
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: !Sub "/arthur/ecs/${ArthurResourceNamespace}-ml-engine${ArthurResourceNameSuffix}"
+              awslogs-region: !Sub "${AWS::Region}"
+              awslogs-stream-prefix: 'ecs'
+          HealthCheck:
+            Command:
+              - 'CMD-SHELL'
+              - python3 -c "import http.client; conn = http.client.HTTPConnection('localhost:3000'); conn.request('GET', '/health'); response = conn.getresponse(); print(response.read().decode())" || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+Outputs:
+  MLEngineECSTaskDefinitionOutput:
+    Description: 'The task definition for Arthur ML Engine'
+    Value: !Ref MLEngineECSTaskDefinition
