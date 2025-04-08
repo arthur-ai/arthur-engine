@@ -154,12 +154,12 @@ Parameters:
   #   Default: ''
   #   AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
   #   ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
-  # MLEngineBYOAppSecurityGroupIDs:
-  #   Type: CommaDelimitedList
-  #   Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'
-  #   Default: ''
-  #   AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
-  #   ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
+  MLEngineBYOAppSecurityGroupIDs:
+    Type: CommaDelimitedList
+    Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'
+    Default: ''
+    AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
+    ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
   # MLEngineIngressURL:
   #   Type: String
   #   Description: 'ML Engine application ingress DNS URL (e.g. https://arthur-genai-engine.mydomain.com)'
@@ -494,17 +494,16 @@ Resources:
           - - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-iam.yml"
-  # MLEngineSecurityGroupStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
-  #       VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
-  #       MLEngineBYOLBSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOLBSecurityGroupIDs ]
-  #       MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-security-groups.yml"
+  MLEngineSecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
+        VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
+        MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-security-groups.yml"
   # MLEngineECSTaskDefinitionStack:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
