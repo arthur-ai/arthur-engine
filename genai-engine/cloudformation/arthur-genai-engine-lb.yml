@@ -108,6 +108,7 @@ Resources:
       HostedZoneId: !Ref GenaiEngineRoute53HostedZoneId
       Name: !Ref GenaiEngineRoute53RecordName
       Type: 'A'
+      TTL: 300
       AliasTarget:
         DNSName: !GetAtt GenaiEngineLoadBalancer.DNSName
         HostedZoneId: !GetAtt GenaiEngineLoadBalancer.CanonicalHostedZoneID
