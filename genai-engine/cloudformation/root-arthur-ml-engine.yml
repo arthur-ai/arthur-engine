@@ -56,8 +56,12 @@ Parameters:
     Type: String
     NoEcho: true
     AllowedPattern: '.+'
-
-
+  MLEngineVersion:
+    Description: 'Version tag for the ML Engine'
+    Type: String
+    Default: 'REPLACE_ME_ML_ENGINE_TAG'
+    AllowedPattern: '.+'
+    ConstraintDescription: 'ML Engine version must be specified.'
   # MLEngineDBDatabaseName:
   #   Description: 'Arthur ML Engine database name'
   #   Type: String
@@ -521,7 +525,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         MLEngineECSTaskRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskRoleOutput ]
         MLEngineECSTaskExecutionRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskExecutionRoleOutput ]
-        MLEngineVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
+        MLEngineVersion: !Ref MLEngineVersion
         MLEngineContainerImageLocation: !Ref MLEngineContainerImageLocation
         ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
