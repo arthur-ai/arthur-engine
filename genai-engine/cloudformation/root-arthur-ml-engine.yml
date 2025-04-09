@@ -70,11 +70,11 @@ Parameters:
   #   Type: Number
   #   Description: 'ML Engine Postgres client connection poolmax overflow'
   #   Default: 15
-  # AlarmSNSTopicArn:
-  #   Description: 'The ARN of the SNS topic to send the CloudWatch alarms to'
-  #   Type: String
-  #   AllowedPattern: 'arn:aws:sns:.+'
-  #   ConstraintDescription: 'A valid SNS ARN must be provided for the alarm SNS topic.'
+  AlarmSNSTopicArn:
+    Description: 'The ARN of the SNS topic to send the CloudWatch alarms to'
+    Type: String
+    AllowedPattern: 'arn:aws:sns:.+'
+    ConstraintDescription: 'A valid SNS ARN must be provided for the alarm SNS topic.'
   # MLEngineLoadBalancerHealthyHostCountAlarmThreshold:
   #   Description: 'Alarm is triggered when the healthy ML Engine application host count drops below this number'
   #   Type: Number
@@ -87,10 +87,15 @@ Parameters:
   #   Description: 'Alarm is triggered when the ML Engine average response time is longer than this number of seconds'
   #   Type: Number
   #   Default: 30
-  # MLEngineECSMemoryAlarmThreshold:
-  #   Type: Number
-  #   Default: 87
-  #   Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
+  MLEngineECSMemoryAlarmThreshold:
+    Type: Number
+    Default: 80
+    Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
+  MLEngineECSCPUAlarmThreshold:
+    Type: Number
+    Default: 80
+    Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
+
   ExistingArthurVPCId:
     Description: 'VPC to deploy Arthur stack to'
     Type: AWS::EC2::VPC::Id
@@ -522,8 +527,7 @@ Resources:
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
         MLEngineArthurApiHost: !Ref ArthurApiHost
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
-
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs-task-definition.yml"
   MLEngineECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -540,22 +544,18 @@ Resources:
         MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
         MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs.yml"
-  # MLEngineCloudwatchStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       AlarmSNSTopicArn: !Ref AlarmSNSTopicArn
-  #       MLEngineLBTargetGroupArnSuffix: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupFullNameOutput ]
-  #       MLEngineLBArnSuffix: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBFullNameOutput ]
-  #       ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
-  #       MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
-  #       MLEngineLoadBalancerHealthyHostCountAlarmThreshold: !Ref MLEngineLoadBalancerHealthyHostCountAlarmThreshold
-  #       MLEngineLoadBalancerTarget5xxAlarmThreshold: !Ref MLEngineLoadBalancerTarget5xxAlarmThreshold
-  #       MLEngineLoadBalancerTargetResponseTimeAlarmThreshold: !Ref MLEngineLoadBalancerTargetResponseTimeAlarmThreshold
-  #       MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-alarms.yml"
+  MLEngineCloudwatchStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        AlarmSNSTopicArn: !Ref AlarmSNSTopicArn
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
+        MLEngineECSCPUAlarmThreshold: !Ref MLEngineECSCPUAlarmThreshold
+        MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-alarms.yml"
   # MLEngineCloudwatchDashboardStack:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
