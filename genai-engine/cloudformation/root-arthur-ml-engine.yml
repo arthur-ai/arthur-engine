@@ -477,6 +477,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         ContainerRepositoryUsername: !Ref ContainerRepositoryUsername
         ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
+        CreatePostgresSecret: 'false'
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
   CoreECSStack:
     Type: AWS::CloudFormation::Stack
