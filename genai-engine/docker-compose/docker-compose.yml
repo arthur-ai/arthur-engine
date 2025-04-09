@@ -11,7 +11,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_DATABASES=arthur_genai_engine
     env_file:
-      - db.env
+      - .env
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
@@ -29,7 +29,7 @@ services:
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
     env_file:
-      - arthur-genai-engine.env
+      - .env
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
 networks:
   arthur_network:
