@@ -90,8 +90,8 @@ A Postgres database is required to run the GenAI Engine. The easiest way to get 
 
 1. Install and run Docker for Mac
 2. `cd` to the `genai-engine/docker-compose` folder
-3. Populate `db.env` file from `genai-engine/docker-compose/db.env.template`
-4. Run `docker-compose up db`
+3. Populate `.env` file from `genai-engine/docker-compose/env.template` and set the `POSTGRES_PASSWORD` variable accordingly
+4. Run `docker compose up db`
 
 ### Populate the Database Schema with Alembic
 
@@ -156,7 +156,6 @@ poetry run alembic upgrade head
                 "GENAI_ENGINE_INGRESS_URI": "http://localhost:8000",
 
                 "GENAI_ENGINE_OPENAI_PROVIDER": "Azure",
-                "OPENAI_API_VERSION": "2023-07-01-preview",
                 "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key"
             }
         }
