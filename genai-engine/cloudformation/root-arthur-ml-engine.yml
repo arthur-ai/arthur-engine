@@ -14,12 +14,12 @@ Parameters:
     MaxLength: '5'
     ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
     Default: ''
-  # MLEngineContainerImageLocation:
-  #   Description: 'The container image location for Arthur ML Engine'
-  #   Type: String
-  #   AllowedPattern: '.+'
-  #   Default: 'arthurplatform/genai-engine-cpu'
-  #   ConstraintDescription: 'The container image location for Arthur ML Engine must be specified.'
+  MLEngineContainerImageLocation:
+    Description: 'The container image location for Arthur ML Engine'
+    Type: String
+    AllowedPattern: '.+'
+    Default: 'arthurplatform/ml-engine'
+    ConstraintDescription: 'The container image location for Arthur ML Engine must be specified.'
   ContainerRepositoryUsername:
     Description: '(Optional) Username for accessing the container repository'
     Type: String
@@ -436,9 +436,9 @@ Metadata:
       #   default: 'Enable task rules cache'
       # MLEngineCacheTaskRulesCacheTTL:
       #   default: 'Task rules cache TTL in seconds'
-# Conditions:
-#   ContainerRepositoryCredentialRequired:
-#     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
+Conditions:
+  ContainerRepositoryCredentialRequired:
+    !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
 Resources:
   CoreVPCStack:
     Type: AWS::CloudFormation::Stack
@@ -504,41 +504,21 @@ Resources:
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-security-groups.yml"
-  # MLEngineECSTaskDefinitionStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       MLEngineECSTaskRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskRoleOutput ]
-  #       MLEngineECSTaskExecutionRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskExecutionRoleOutput ]
-  #       MLEngineVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
-  #       MLEnginePostgresUrl: !GetAtt [ CoreRDSStack, Outputs.RDSInstanceAddressOutput ]
-  #       MLEnginePostgresPort: !GetAtt [ CoreRDSStack, Outputs.RDSInstancePortOutput ]
-  #       MLEnginePostgresDatabaseName: !Ref MLEngineDBDatabaseName
-  #       MLEnginePostgresClientConnectionPoolSize: !Ref MLEnginePostgresClientConnectionPoolSize
-  #       MLEnginePostgresClientConnectionPoolMaxOverflow: !Ref MLEnginePostgresClientConnectionPoolMaxOverflow
-  #       MLEngineIngressURL: !Ref MLEngineIngressURL
-  #       MLEnginePostgresSSLCertDownloadURL: !Ref PostgresSSLCertDownloadURL
-  #       MLEngineContainerImageLocation: !Ref MLEngineContainerImageLocation
-  #       ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
-  #       ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
-  #       MLEngineSecretAPIKeyARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAPIKeySecretOutput ]
-  #       MLEngineAppSecretKeyARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineAppKeySecretOutput ]
-  #       MLEngineSecretOpenAIGPTModelNamesEndpointsKeysARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
-  #       MLEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
-  #       MLEngineSecretPostgresARN: !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
-  #       MLEngineAPIOnlyModeEnabled: 'enabled'
-  #       MLEngineSensitiveDataCheckMaxTokenLimit: !Ref MLEngineSensitiveDataCheckMaxTokenLimit
-  #       MLEngineHallucinationCheckMaxTokenLimit: !Ref MLEngineHallucinationCheckMaxTokenLimit
-  #       MLEngineToxicityCheckMaxTokenLimit: !Ref MLEngineToxicityCheckMaxTokenLimit
-  #       MLEngineFargateTaskCPUValue: !Ref MLEngineFargateTaskCPUValue
-  #       MLEngineFargateTaskMemoryValue: !Ref MLEngineFargateTaskMemoryValue
-  #       MLEngineServerWorkerCount: !Ref MLEngineServerWorkerCount
-  #       MLEngineOpenAIProvider: !Ref MLEngineOpenAIProvider
-  #       MLEngineCacheTaskRulesCacheEnabled: !Ref MLEngineCacheTaskRulesCacheEnabled
-  #       MLEngineCacheTaskRulesCacheTTL: !Ref MLEngineCacheTaskRulesCacheTTL
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
+  MLEngineECSTaskDefinitionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        MLEngineECSTaskRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskRoleOutput ]
+        MLEngineECSTaskExecutionRoleARN: !GetAtt [ MLEngineIAMStack, Outputs.MLEngineTaskExecutionRoleOutput ]
+        MLEngineVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
+        MLEngineContainerImageLocation: !Ref MLEngineContainerImageLocation
+        ContainerRepositoryCredentialRequired: !If [ ContainerRepositoryCredentialRequired, 'true', 'false' ]
+        ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
+        MLEngineArthurApiHost: !Ref ArthurApiHost
+        MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
 
   # MLEngineECSStack:
   #   Type: AWS::CloudFormation::Stack

@@ -49,11 +49,11 @@ Parameters:
     NoEcho: true
   MLEngineFargateTaskCPUValue:
     Type: Number
-    Default: 8192
+    Default: 1024
     Description: 'CPU value for AWS Fargate per ML Engine ECS task'
   MLEngineFargateTaskMemoryValue:
     Type: Number
-    Default: 16384
+    Default: 2048
     Description: 'Memory value for AWS Fargate per ML Engine ECS task'
 
 Conditions:
