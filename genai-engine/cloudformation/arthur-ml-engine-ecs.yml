@@ -4,9 +4,6 @@ Parameters:
   ArthurECSClusterName:
     Type: String
     Description: 'The name of an existing ECS cluster to deploy to'
-  MLEngineLBTargetGroupARN:
-    Type: String
-    Description: 'ML Engine load balancer target group'
   MLEngineECSSecurityGroups:
     Type: List<AWS::EC2::SecurityGroup::Id>
     Description: 'Security groups for Arthur ML Engine'
@@ -51,9 +48,6 @@ Resources:
       Cluster: !Ref ArthurECSClusterName
       DesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
       LaunchType: 'FARGATE'
-      LoadBalancers:
-        - ContainerName: 'arthur-ml-engine'
-          TargetGroupArn: !Ref MLEngineLBTargetGroupARN
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: 'DISABLED'
