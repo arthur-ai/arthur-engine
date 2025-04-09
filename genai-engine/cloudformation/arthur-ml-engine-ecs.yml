@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ArthurECSClusterName:
+    Type: String
+    Description: 'The name of an existing ECS cluster to deploy to'
+  MLEngineLBTargetGroupARN:
+    Type: String
+    Description: 'ML Engine load balancer target group'
+  MLEngineECSSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: 'Security groups for Arthur ML Engine'
+  MLEngineECSServiceSubnetIDs:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: 'ML Engine ECS service subnet IDs'
+  MLEngineECSTaskDefinitionARN:
+    Type: String
+    Description: 'ML Engine ECS task definition ARN'
+  MLEngineECSScaleCPUTargetValue:
+    Type: Number
+    Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
+    Default: 25
+  MLEngineECSScaleMemoryTargetValue:
+    Type: Number
+    Description: 'Memory target value for triggering Data Plane ECS service autoscaling'
+    Default: 20
+  MLEngineECSScaleInCooldownInSecs:
+    Type: Number
+    Description: 'Scale-in cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 300
+  MLEngineECSScaleOutCooldownInSecs:
+    Type: Number
+    Description: 'Scale-out cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 30
+  MLEngineECSAutoscalingMaxCapacity:
+    Type: Number
+    Description: 'The maximum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 10
+  MLEngineECSAutoscalingMinCapacity:
+    Type: Number
+    Description: 'The minimum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 1
+  MLEngineECSServiceTaskDesiredCount:
+    Type: Number
+    Description: 'The desired number of tasks running for ML Engine ECS service'
+    Default: 1
+Resources:
+  MLEngineECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ArthurECSClusterName
+      DesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
+      LaunchType: 'FARGATE'
+      LoadBalancers:
+        - ContainerName: 'arthur-ml-engine'
+          TargetGroupArn: !Ref MLEngineLBTargetGroupARN
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: 'DISABLED'
+          SecurityGroups: !Ref MLEngineECSSecurityGroups
+          Subnets: !Ref MLEngineECSServiceSubnetIDs
+      ServiceName: 'arthur-ml-engine'
+      TaskDefinition: !Ref MLEngineECSTaskDefinitionARN
+  MLEngineECSAutoscalingTarget:
+    Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
+    Properties:
+      MaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
+      MinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
+      ResourceId:
+        Fn::Sub:
+          - 'service/${ClusterName}/${ServiceName}'
+          - ClusterName: !Ref ArthurECSClusterName
+            ServiceName: !GetAtt MLEngineECSService.Name
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ServiceNamespace: 'ecs'
+  MLEngineECSScalingPolicyCPU:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: 'arthur-ml-engine-ecs-sp-cpu'
+      PolicyType: 'TargetTrackingScaling'
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ScalingTargetId: !Ref MLEngineECSAutoscalingTarget
+      ServiceNamespace: 'ecs'
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: 'ECSServiceAverageCPUUtilization'
+        TargetValue: !Ref MLEngineECSScaleCPUTargetValue
+        ScaleInCooldown: !Ref MLEngineECSScaleInCooldownInSecs
+        ScaleOutCooldown: !Ref MLEngineECSScaleOutCooldownInSecs
+  MLEngineECSScalingPolicyMemory:
+    Type: 'AWS::ApplicationAutoScaling::ScalingPolicy'
+    Properties:
+      PolicyName: 'arthur-ml-engine-ecs-sp-memory'
+      PolicyType: 'TargetTrackingScaling'
+      ScalableDimension: 'ecs:service:DesiredCount'
+      ScalingTargetId: !Ref MLEngineECSAutoscalingTarget
+      ServiceNamespace: 'ecs'
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: 'ECSServiceAverageMemoryUtilization'
+        TargetValue: !Ref MLEngineECSScaleMemoryTargetValue
+        ScaleInCooldown: !Ref MLEngineECSScaleInCooldownInSecs
+        ScaleOutCooldown: !Ref MLEngineECSScaleOutCooldownInSecs
+
+Outputs:
+  MLEngineECSServiceNameOutput:
+    Description: 'ECS service name for ML Engine'
+    Value: !GetAtt MLEngineECSService.Name
