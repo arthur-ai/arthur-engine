@@ -87,10 +87,6 @@ Resources:
             - CredentialsParameter: !Ref ContainerRepositoryCredentialsSecretARN
             - !Ref AWS::NoValue
           Essential: true
-          PortMappings:
-            - ContainerPort: 3000
-              HostPort: 3000
-              Protocol: 'tcp'
           Environment:
             - Name: 'ARTHUR_API_HOST'
               Value: !Ref MLEngineArthurApiHost
@@ -108,7 +104,7 @@ Resources:
           HealthCheck:
             Command:
               - 'CMD-SHELL'
-              - python3 -c "import http.client; conn = http.client.HTTPConnection('localhost:3000'); conn.request('GET', '/health'); response = conn.getresponse(); print(response.read().decode())" || exit 1
+              - 'wget -qO - http://127.0.0.1:7492/health'
             Interval: 30
             Timeout: 5
             Retries: 3
