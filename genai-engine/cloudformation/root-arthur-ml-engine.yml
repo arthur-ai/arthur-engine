@@ -556,15 +556,12 @@ Resources:
         MLEngineECSCPUAlarmThreshold: !Ref MLEngineECSCPUAlarmThreshold
         MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-alarms.yml"
-  # MLEngineCloudwatchDashboardStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurResourceNamespace: !Ref ArthurResourceNamespace
-  #       ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-  #       ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
-  #       MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
-  #       MLEngineLBTargetGroupFullName: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupFullNameOutput ]
-  #       MLEngineLoadBalancerFullName: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBFullNameOutput ]
-  #       MLEngineRDSClusterIdentifier: !GetAtt [ CoreRDSStack, Outputs.RDSClusterIdentifierOutput ]
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-dashboard.yml"
+  MLEngineCloudwatchDashboardStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-dashboard.yml"
