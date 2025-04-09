@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ArthurResourceNamespace:
+    Description: 'A unique namespace for this Arthur stack resources (e.g. arthur1). It should be between 1 and 14 characters long.'
+    Type: String
+    MinLength: '1'
+    MaxLength: '14'
+    ConstraintDescription: 'The Arthur platform resources namespace must be 1-14 characters long.'
+    Default: 'arthur'
+  ArthurResourceNameSuffix:
+    Description: 'Name suffix for this Arthur stack resources (e.g. -prod). It should be between 0 and 5 characters long.'
+    Type: String
+    MinLength: '0'
+    MaxLength: '5'
+    ConstraintDescription: 'The Arthur platform resources name suffix must be 0-5 characters long.'
+    Default: ''
+  ArthurECSClusterName:
+    Type: String
+    Description: 'The name of an existing ECS cluster to deploy to'
+  MLEngineECSServiceName:
+    Type: String
+    Default: 'arthur-ml-engine'
+    Description: 'The Arthur ML Engine ECS service name (e.g. arthur-ml-engine)'
+
+Resources:
+  CloudWatchDashboard:
+    Type: 'AWS::CloudWatch::Dashboard'
+    Properties:
+      DashboardName: !Sub "${ArthurResourceNamespace}-arthur-ml-engine${ArthurResourceNameSuffix}-metrics-per-60-sec"
+      DashboardBody: !Sub |
+        {
+            "widgets": [
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 12,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "ECS/ContainerInsights", "DesiredTaskCount", "ServiceName", "${MLEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "region": "${AWS::Region}" } ],
+                            [ ".", "RunningTaskCount", ".", ".", ".", ".", { "region": "${AWS::Region}", "color": "#2ca02c" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "title": "ECS Task Scaling",
+                        "period": 60,
+                        "stat": "Average"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ECS", "CPUUtilization", "ServiceName", "${MLEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "stat": "Minimum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Maximum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Average", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "CPU utilization",
+                        "view": "timeSeries"
+                    }
+                },
+                                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 12,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ECS", "MemoryUtilization", "ServiceName", "${MLEngineECSServiceName}", "ClusterName", "${ArthurECSClusterName}", { "stat": "Minimum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Maximum", "region": "${AWS::Region}" } ],
+                            [ "...", { "stat": "Average", "region": "${AWS::Region}" } ]
+                        ],
+                        "period": 60,
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Memory utilization",
+                        "view": "timeSeries"
+                    }
+                }
+            ]
+        }
