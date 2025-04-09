@@ -27,7 +27,7 @@ The Arthur Engine is a tool designed for:
 ## Quickstart - [See Examples](https://github.com/arthur-ai/engine-examples/)
 
 1. Clone the repository and `cd genai-engine/docker-compose`
-2. Copy `*.env.template` files and modify them (more instructions can be found in README on the current path)
+2. Copy `.env.template` file and modify it (more instructions can be found in README on the current path)
 3. Run `docker compose up`
 4. Wait for the `genai-engine` container to initialize then navigate to localhost:3000/docs to see the API docs
 5. Start building!
