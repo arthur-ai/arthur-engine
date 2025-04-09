@@ -27,11 +27,11 @@ Parameters:
     Description: 'The Arthur ML Engine ECS service name (e.g. arthur-ml-engine)'
   MLEngineECSMemoryAlarmThreshold:
     Type: Number
-    Default: 87
+    Default: 80
     Description: 'Alarm is triggered when Arthur ML Engine service uses this percentage of memory in a minute'
   MLEngineECSCPUAlarmThreshold:
     Type: Number
-    Default: 85
+    Default: 80
     Description: 'Alarm is triggered when Arthur ML Engine service uses this percentage of CPU in a minute'
 
 Resources:
