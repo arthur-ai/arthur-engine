@@ -101,11 +101,11 @@ Parameters:
     Type: String
     AllowedPattern: '.+'
     ConstraintDescription: 'VPC CIDR block must be defined.'
-  # ArthurPrivateSubnets:
-  #   Description: 'List of private subnets to use for the Arthur stack'
-  #   Type: List<AWS::EC2::Subnet::Id>
-  #   AllowedPattern: '.+'
-  #   ConstraintDescription: 'Private subnets must be defined.'
+  ArthurPrivateSubnets:
+    Description: 'List of private subnets to use for the Arthur stack'
+    Type: List<AWS::EC2::Subnet::Id>
+    AllowedPattern: '.+'
+    ConstraintDescription: 'Private subnets must be defined.'
   # ArthurPublicSubnets:
   #   Description: 'List of public subnets to use for the Arthur stack'
   #   Type: List<AWS::EC2::Subnet::Id>
@@ -195,30 +195,34 @@ Parameters:
   #   Type: Number
   #   Default: 1
   #   Description: 'Number of ML Engine server processes to run for adjusting parallelism'
-  # MLEngineECSScaleCPUTargetValue:
-  #   Type: Number
-  #   Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
-  #   Default: 50
-  # MLEngineECSScaleInCooldownInSecs:
-  #   Type: Number
-  #   Description: 'Scale-in cooldown time in seconds for ML Engine ECS autoscaling'
-  #   Default: 300
-  # MLEngineECSScaleOutCooldownInSecs:
-  #   Type: Number
-  #   Description: 'Scale-out cooldown time in seconds for ML Engine ECS autoscaling'
-  #   Default: 30
-  # MLEngineECSAutoscalingMaxCapacity:
-  #   Type: Number
-  #   Description: 'The maximum number of tasks allowed for ML Engine ECS service autoscaling'
-  #   Default: 10
-  # MLEngineECSAutoscalingMinCapacity:
-  #   Type: Number
-  #   Description: 'The minimum number of tasks allowed for ML Engine ECS service autoscaling'
-  #   Default: 2
-  # MLEngineECSServiceTaskDesiredCount:
-  #   Type: Number
-  #   Description: 'The desired number of tasks running for ML Engine ECS service'
-  #   Default: 2
+  MLEngineECSScaleCPUTargetValue:
+    Type: Number
+    Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
+    Default: 50
+  MLEngineECSScaleMemoryTargetValue:
+    Type: Number
+    Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
+    Default: 25
+  MLEngineECSScaleInCooldownInSecs:
+    Type: Number
+    Description: 'Scale-in cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 300
+  MLEngineECSScaleOutCooldownInSecs:
+    Type: Number
+    Description: 'Scale-out cooldown time in seconds for ML Engine ECS autoscaling'
+    Default: 30
+  MLEngineECSAutoscalingMaxCapacity:
+    Type: Number
+    Description: 'The maximum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 10
+  MLEngineECSAutoscalingMinCapacity:
+    Type: Number
+    Description: 'The minimum number of tasks allowed for ML Engine ECS service autoscaling'
+    Default: 2
+  MLEngineECSServiceTaskDesiredCount:
+    Type: Number
+    Description: 'The desired number of tasks running for ML Engine ECS service'
+    Default: 2
   # MLEngineSensitiveDataCheckMaxTokenLimit:
   #   Type: Number
   #   Description: 'Max number of tokens ML Engine can process against LLM for sensitive data checks'
@@ -258,7 +262,7 @@ Metadata:
           - ArthurResourceNamespace
           - ExistingArthurVPCId
           - ExistingArthurVPCCidrBlock
-      #     - ArthurPrivateSubnets
+          - ArthurPrivateSubnets
       #     - ArthurPublicSubnets
       #     - AlarmSNSTopicArn
       #     - MLEngineLoadBalancerScheme
@@ -396,8 +400,8 @@ Metadata:
         default: 'Client ID for the ML Engine'
       MLEngineClientSecret:
         default: 'Client Secret for the ML Engine'
-      # ArthurPrivateSubnets:
-      #   default: 'Arthur Stack Private Subnets'
+      ArthurPrivateSubnets:
+        default: 'Arthur Stack Private Subnets'
       # ArthurPublicSubnets:
       #   default: 'Arthur Stack Public Subnets'
       # MLEngineLoadBalancerCertificateARN:
@@ -520,22 +524,22 @@ Resources:
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
 
-  # MLEngineECSStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     Parameters:
-  #       ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
-  #       MLEngineLBTargetGroupARN: !GetAtt [ MLEngineLBStack, Outputs.MLEngineLBTargetGroupOutput ]
-  #       MLEngineECSSecurityGroups: !GetAtt [ MLEngineSecurityGroupStack, Outputs.MLEngineAppSecurityGroupsOutput ]
-  #       MLEngineECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
-  #       MLEngineECSTaskDefinitionARN: !GetAtt [ MLEngineECSTaskDefinitionStack, Outputs.MLEngineECSTaskDefinitionOutput ]
-  #       MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
-  #       MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
-  #       MLEngineECSAutoscalingMaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
-  #       MLEngineECSScaleCPUTargetValue: !Ref MLEngineECSScaleCPUTargetValue
-  #       MLEngineECSScaleInCooldownInSecs: !Ref MLEngineECSScaleInCooldownInSecs
-  #       MLEngineECSScaleOutCooldownInSecs: !Ref MLEngineECSScaleOutCooldownInSecs
-  #     TemplateURL: !Sub "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs.yml"
+  MLEngineECSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
+        MLEngineECSSecurityGroups: !GetAtt [ MLEngineSecurityGroupStack, Outputs.MLEngineAppSecurityGroupsOutput ]
+        MLEngineECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
+        MLEngineECSTaskDefinitionARN: !GetAtt [ MLEngineECSTaskDefinitionStack, Outputs.MLEngineECSTaskDefinitionOutput ]
+        MLEngineECSScaleCPUTargetValue: !Ref MLEngineECSScaleCPUTargetValue
+        MLEngineECSScaleMemoryTargetValue: !Ref MLEngineECSScaleMemoryTargetValue
+        MLEngineECSScaleInCooldownInSecs: !Ref MLEngineECSScaleInCooldownInSecs
+        MLEngineECSScaleOutCooldownInSecs: !Ref MLEngineECSScaleOutCooldownInSecs
+        MLEngineECSAutoscalingMaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
+        MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
+        MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs.yml"
   # MLEngineCloudwatchStack:
   #   Type: AWS::CloudFormation::Stack
   #   Properties:
