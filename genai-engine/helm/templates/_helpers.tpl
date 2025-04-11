@@ -54,9 +54,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "arthur-genai-engine.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "arthur-genai-engine.fullname" .) .Values.serviceAccount.name }}
+{{- if .Values.genaiEngineServiceAccount.create }}
+{{- default (include "arthur-genai-engine.fullname" .) .Values.genaiEngineServiceAccount.name }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- default "default" .Values.genaiEngineServiceAccount.name }}
 {{- end }}
 {{- end }}

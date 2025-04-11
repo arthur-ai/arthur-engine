@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-engine{{ if .Values.resourceNameSuffix }}-{{ .Values.resourceNameSuffix }}{{ end }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: ml-engine
+    {{- include "ml-engine.labels" . | nindent 4 }}
+    {{- with .Values.mlEngine.deployment.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.mlEngine.deployment.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.mlEngine.deployment.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: ml-engine
+  template:
+    metadata:
+      labels:
+        app: ml-engine
+        {{- include "ml-engine.labels" . | nindent 8 }}
+        {{- with .Values.mlEngine.deployment.mlEnginePodLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.containerRepository.credentialsRequired }}
+      imagePullSecrets:
+        - name: {{ .Values.containerRepository.imagePullSecretName }}
+      {{- end }}
+      {{- if .Values.mlEngine.deployment.serviceAccount }}
+      serviceAccountName: {{ .Values.mlEngine.deployment.serviceAccount }}
+      {{- end }}
+      containers:
+        - name: ml-engine
+          image: "{{ .Values.containerRepository.imageLocation }}/{{ .Values.mlEngine.deployment.containerImageName }}:{{ .Values.mlEngine.deployment.containerImageVersion }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7492
+          livenessProbe:
+            exec:
+              command: ["wget", "-qO", "-", "http://localhost:7492/health"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command: ["wget", "-qO", "-", "http://localhost:7492/health"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              memory: "{{ .Values.mlEngine.deployment.containerMemoryRequests }}"
+              cpu: "{{ .Values.mlEngine.deployment.containerCPURequests }}"
+            limits:
+              memory: "{{ .Values.mlEngine.deployment.containerMemoryLimits }}"
+              cpu: "{{ .Values.mlEngine.deployment.containerCPULimits }}"
+          env:
+            - name: ARTHUR_API_HOST
+              value: "{{ .Values.mlEngine.deployment.appPlaneUrl }}"
+            - name: ARTHUR_CLIENT_ID
+              value: "{{ .Values.mlEngine.deployment.clientId }}"
+            - name: ARTHUR_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mlEngine.deployment.secretsName }}
+                  key: client_secret
+      {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mlEngine.deployment.mlEnginePodAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mlEngine.deployment.mlEnginePodTolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
