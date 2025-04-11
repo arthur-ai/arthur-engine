@@ -288,7 +288,10 @@ def archive_task_rule(
             )
 
         tasks_rules_repo = TasksRulesRepository(db_session)
-        task_rules = tasks_rules_repo._get_task_rules_ids(str(task_id))
+        task_rules = tasks_rules_repo._get_task_rules_ids(
+            str(task_id),
+            only_enabled=False,
+        )
         if str(rule_id) not in task_rules:
             raise HTTPException(
                 status_code=400,
