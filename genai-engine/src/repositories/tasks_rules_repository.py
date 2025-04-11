@@ -3,7 +3,8 @@ import logging
 from cachetools import TTLCache
 from config.cache_config import cache_config
 from db_models.db_models import DatabaseTaskToRules
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
 
 CACHED_TASK_RULES = TTLCache(maxsize=1000, ttl=cache_config.TASK_RULES_CACHE_TTL)
 logger = logging.getLogger(__name__)
@@ -30,12 +31,14 @@ class TasksRulesRepository:
         CACHED_TASK_RULES[task_id] = rules
         return rules
 
-    def _get_task_rules_ids(self, task_id: str) -> list[str]:
-        result = (
-            self.db_session.query(DatabaseTaskToRules)
-            .where(DatabaseTaskToRules.task_id == task_id, DatabaseTaskToRules.enabled)
-            .all()
+    def _get_task_rules_ids(self, task_id: str, only_enabled: bool = True) -> list[str]:
+        statement = select(DatabaseTaskToRules).where(
+            DatabaseTaskToRules.task_id == task_id,
         )
+        if only_enabled:
+            statement = statement.where(DatabaseTaskToRules.enabled == True)
+        statement = statement.options(joinedload(DatabaseTaskToRules.task))
+        result = self.db_session.execute(statement).unique().scalars().all()
         return [rule.rule_id for rule in result]
 
     def clear_cache(self):
