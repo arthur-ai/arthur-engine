@@ -1,0 +1,131 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ML Engine Helm Chart Values",
+    "type": "object",
+    "properties": {
+        "namespace": {
+            "type": "string",
+            "description": "The Kubernetes namespace where the ML Engine will be deployed."
+        },
+        "resourceNameSuffix": {
+            "type": "string",
+            "description": "Optional suffix for resource names."
+        },
+        "containerRepository": {
+            "type": "object",
+            "properties": {
+                "imageLocation": {
+                    "type": "string",
+                    "description": "The location of the container image repository."
+                },
+                "credentialsRequired": {
+                    "type": "boolean",
+                    "description": "Indicates if credentials are required to pull the image."
+                },
+                "imagePullSecretName": {
+                    "type": "string",
+                    "description": "The name of the secret containing image pull credentials."
+                }
+            },
+            "required": [
+                "imageLocation",
+                "credentialsRequired",
+                "imagePullSecretName"
+            ]
+        },
+        "mlEngine": {
+            "type": "object",
+            "properties": {
+                "deployment": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "description": "The number of replicas for the deployment."
+                        },
+                        "labels": {
+                            "type": "object",
+                            "description": "Custom labels for the deployment."
+                        },
+                        "annotations": {
+                            "type": "object",
+                            "description": "Custom annotations for the deployment."
+                        },
+                        "mlEnginePodLabels": {
+                            "type": "object",
+                            "description": "Labels for the ml engine pods."
+                        },
+                        "serviceAccount": {
+                            "type": "string",
+                            "description": "The service account to use for the deployment."
+                        },
+                        "containerImageName": {
+                            "type": "string",
+                            "description": "The name of the container image."
+                        },
+                        "containerImageVersion": {
+                            "type": "string",
+                            "description": "The version of the container image."
+                        },
+                        "containerMemoryRequests": {
+                            "type": "string",
+                            "description": "The memory requests for the container."
+                        },
+                        "containerCPURequests": {
+                            "type": "string",
+                            "description": "The CPU requests for the container."
+                        },
+                        "containerMemoryLimits": {
+                            "type": "string",
+                            "description": "The memory limits for the container."
+                        },
+                        "containerCPULimits": {
+                            "type": "string",
+                            "description": "The CPU limits for the container."
+                        },
+                        "appPlaneUrl": {
+                            "type": "string",
+                            "description": "The URL of the application plane."
+                        },
+                        "clientId": {
+                            "type": "string",
+                            "description": "The client ID for authentication."
+                        },
+                        "secretsName": {
+                            "type": "string",
+                            "description": "The name of the secret containing sensitive data."
+                        },
+                        "mlEnginePodNodeSelector": {
+                            "type": "object",
+                            "description": "Node selector for the ml engine pods."
+                        },
+                        "mlEnginePodAffinity": {
+                            "type": "object",
+                            "description": "Affinity settings for the ml engine pods."
+                        },
+                        "mlEnginePodTolerations": {
+                            "type": "object",
+                            "description": "Tolerations for the ml engine pods."
+                        }
+                    },
+                    "required": [
+                        "replicas",
+                        "containerImageName",
+                        "containerImageVersion",
+                        "containerMemoryRequests",
+                        "containerCPURequests",
+                        "containerMemoryLimits",
+                        "containerCPULimits",
+                        "appPlaneUrl",
+                        "secretsName"
+                    ]
+                }
+            }
+        }
+    },
+    "required": [
+        "namespace",
+        "containerRepository",
+        "mlEngine"
+    ]
+}
