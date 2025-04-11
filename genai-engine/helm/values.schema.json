@@ -129,7 +129,19 @@
             "description": "Number of replicas of GenAI Engine pod running in k8s cluster"
         },
         "genaiEngineServiceAccount": {
-            "type": "string",
+            "type": "object",
+            "properties": {
+                "create": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "create",
+                "name"
+            ],
             "description": "Name of the service account used by the GenAI Engine pod"
         },
         "genaiEngineContainerCPURequests": {
@@ -201,7 +213,9 @@
                             },
                             "operator": {
                                 "type": "string",
-                                "enum": ["Equal"],
+                                "enum": [
+                                    "Equal"
+                                ],
                                 "description": "The operator to use for the toleration"
                             },
                             "value": {
@@ -210,7 +224,9 @@
                             },
                             "effect": {
                                 "type": "string",
-                                "enum": ["NoExecute"],
+                                "enum": [
+                                    "NoExecute"
+                                ],
                                 "description": "The effect of the toleration"
                             },
                             "tolerationSeconds": {
@@ -218,7 +234,13 @@
                                 "description": "The duration for which the toleration is valid"
                             }
                         },
-                        "required": ["key", "operator", "value", "effect", "tolerationSeconds"]
+                        "required": [
+                            "key",
+                            "operator",
+                            "value",
+                            "effect",
+                            "tolerationSeconds"
+                        ]
                     },
                     "description": "Tolerations for Arthur GenAI Engine pod"
                 }

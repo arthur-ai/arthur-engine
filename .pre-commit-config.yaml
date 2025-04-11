@@ -1,13 +1,13 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
         exclude: (^genai-engine/staging.openapi.json)
       - id: end-of-file-fixer
         exclude: (^genai-engine/staging.openapi.json)
       - id: check-yaml
-        exclude: (^genai-engine/cloudformation/|^genai-engine/helm/)
+        exclude: (^genai-engine/cloudformation/|^genai-engine/helm/|^ml-engine/helm/)
       - id: debug-statements
       - id: name-tests-test
         args: ["--pytest-test-first"]
