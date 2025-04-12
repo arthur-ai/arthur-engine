@@ -1,0 +1,29 @@
+#!/bin/bash
+
+K8S_NAMESPACE=arthur
+POSTGRES_USER=arthur_genai_engine
+POSTGRES_PASSWORD=changeme_pg_password
+POSTGRES_ENDPOINT=mydb
+GENAI_ENGINE_VERSION=2.1.20
+GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
+GENAI_ENGINE_OPENAI_PROVIDER=Azure
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+GENAI_ENGINE_INGRESS_URL=genai-engine.mycompany.ai
+
+VALUES_FILE_URL="https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/genai-engine/helm/values.yaml.template"
+
+kubectl -n $K8S_NAMESPACE create secret generic postgres-secret \
+    --from-literal=username=$POSTGRES_USER \
+    --from-literal=password=$POSTGRES_PASSWORD
+kubectl -n $K8S_NAMESPACE create secret generic genai-engine-secret-admin-key \
+    --from-literal=key=$GENAI_ENGINE_ADMIN_KEY
+kubectl -n $K8S_NAMESPACE create secret generic genai-engine-secret-open-ai-gpt-model-names-endpoints-keys \
+    --from-literal=keys=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
+
+curl -o "values.yaml" "$VALUES_FILE_URL"
+helm upgrade --install -n $K8S_NAMESPACE -f values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version $GENAI_ENGINE_VERSION \
+--set genaiEngineVersion=$GENAI_ENGINE_VERSION \
+--set postgresBYOEndpoint=$POSTGRES_ENDPOINT \
+--set genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
+--set genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER
+# TODO: Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
