@@ -374,8 +374,7 @@ aws cloudwatch put-metric-alarm \
     ```bash
     helm upgrade --install -n arthur -f genai-values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
     ```
-4. Configure DNS by create an `A` record that routes the Arthur GenAI Engine service ingress DNS URL to the GenAI Engine load balancer created
-    by the ingress.
+4. Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
 5. Verify that all the pods are running with
     ```bash
     kubectl get pods -n arthur
