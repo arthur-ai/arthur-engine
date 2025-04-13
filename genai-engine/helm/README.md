@@ -20,7 +20,7 @@ Please review the GPT model requirements below:
 * Token limits, configured appropriately for your use cases
 
 ### DNS
-A DNS URL for the GenAI Engine with a SSL certificate
+A DNS URL for the GenAI Engine with an SSL certificate
 
 ### Kubernetes
 The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
