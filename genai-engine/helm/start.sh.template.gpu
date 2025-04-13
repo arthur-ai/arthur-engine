@@ -25,5 +25,8 @@ helm upgrade --install -n $K8S_NAMESPACE -f values.yaml arthur-engine oci://ghcr
 --set genaiEngineVersion=$GENAI_ENGINE_VERSION \
 --set postgresBYOEndpoint=$POSTGRES_ENDPOINT \
 --set genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
---set genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER
-# TODO: Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
+--set genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER \
+--set gpuEnabled=true \
+--set genaiEngineDeploymentType=daemonset \
+--set genaiEngineWorkers=5 \
+--set genaiEngineContainerImageLocation=arthurplatform/genai-engine-gpu
