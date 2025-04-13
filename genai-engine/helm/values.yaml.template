@@ -30,7 +30,7 @@ genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
 # GPU deployment - Uncomment the below 4 lines
 #gpuEnabled: true
 #genaiEngineDeploymentType: "daemonset"
-#genaiEngineWorkers: 1
+#genaiEngineWorkers: 5
 #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
 
 arthurGenaiEngineHPA:
