@@ -53,7 +53,8 @@ jobs:
         env:
           CHART_YAML_PATH: "helm/Chart.yaml"
           VALUES_YAML_PATH: "helm/values.yaml.template"
-          HELM_START_SCRIPT_PATH: "helm/start.sh.template"
+          HELM_CPU_START_SCRIPT_PATH: "helm/start.sh.template.cpu"
+          HELM_GPU_START_SCRIPT_PATH: "helm/start.sh.template.gpu"
         run: |
           set -e
 
@@ -85,7 +86,8 @@ jobs:
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$VALUES_YAML_PATH"
           sed -i "s|version:.*|version: $NEW_VERSION|" "$CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$CHART_YAML_PATH"
-          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_START_SCRIPT_PATH"
+          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_CPU_START_SCRIPT_PATH"
+          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_GPU_START_SCRIPT_PATH"
 
           # Add and commit changes
           git add version pyproject.toml $CHART_YAML_PATH $VALUES_YAML_PATH
