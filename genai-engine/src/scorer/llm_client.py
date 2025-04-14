@@ -7,13 +7,9 @@ from datetime import datetime as dt
 import openai
 from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
 from langchain_community.callbacks import get_openai_callback
-from langchain_openai import (
-    AzureChatOpenAI,
-    AzureOpenAIEmbeddings,
-    ChatOpenAI,
-    OpenAIEmbeddings,
-)
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from opentelemetry import trace
+from pydantic import SecretStr
 from schemas.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import (
     LLMContentFilterException,
@@ -86,10 +82,10 @@ class LLMExecutor:
             self.api_version = llm_config.OPENAI_API_VERSION
 
     @staticmethod
-    def _get_random_connection_details(contract: str) -> tuple[str, str, str]:
+    def _get_random_connection_details(contract: str) -> tuple[str, str, SecretStr]:
         random_model = random.choice(contract.split(","))
         model_name, endpoint, api_key = random_model.split("::")
-        return model_name, endpoint, api_key
+        return model_name, endpoint, SecretStr(api_key)
 
     def get_gpt_model(
         self,
@@ -98,7 +94,7 @@ class LLMExecutor:
         model_name, endpoint, key = self._get_random_connection_details(self.gpt_hosts)
         if self.azure_openai_enabled:
             return AzureChatOpenAI(
-                deployment_name=model_name,
+                azure_deployment=model_name,
                 azure_endpoint=endpoint,
                 api_key=key,
                 temperature=chat_temperature,
@@ -127,26 +123,7 @@ class LLMExecutor:
                     api_key=key,
                     temperature=chat_temperature,
                 )
-
-    def get_embeddings_model(self) -> AzureOpenAIEmbeddings | OpenAIEmbeddings | None:
-        model_name, endpoint, key = self._get_random_connection_details(
-            self.embeddings_hosts,
-        )
-        model = None
-        if self.azure_openai_enabled:
-            model = AzureOpenAIEmbeddings(
-                deployment=model_name,
-                azure_endpoint=endpoint,
-                openai_api_key=key,
-            )
-        elif self.openai_enable:
-            model = OpenAIEmbeddings(
-                model=model_name,
-                base_url=endpoint,
-                api_key=key,
-                openai_api_type="openai",
-            )
-        return model
+        raise ValueError("Invalid LLM configuration")
 
     @tracer.start_as_current_span("OpenAI")
     def execute(self, f, operation_name: str):

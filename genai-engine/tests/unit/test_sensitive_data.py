@@ -12,9 +12,6 @@ from schemas.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest
 from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExamples
 
-os.environ[utils.constants.GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR] = (
-    "1::2/::3"
-)
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1::2/::3"
 os.environ[utils.constants.GENAI_ENGINE_OPENAI_PROVIDER_ENV_VAR] = "Azure"
 

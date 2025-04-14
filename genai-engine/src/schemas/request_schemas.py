@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Type
+from typing import Dict, Optional, Type
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -323,14 +323,6 @@ class ResponseValidationRequest(BaseModel):
         return values
 
 
-class ChatRequest(BaseModel):
-    user_prompt: str = Field(description="Prompt user wants to send to chat.")
-    conversation_id: str = Field(description="Conversation ID")
-    file_ids: List[str] = Field(
-        description="list of file IDs to retrieve from during chat.",
-    )
-
-
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
     environment: DocumentStorageEnvironment
     connection_string: Optional[str] = None
@@ -360,10 +352,6 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
 
 
 class ApplicationConfigurationUpdateRequest(BaseModel):
-    chat_task_id: Optional[str] = None
-    document_storage_configuration: Optional[
-        DocumentStorageConfigurationUpdateRequest
-    ] = None
     max_llm_rules_per_task_count: Optional[int] = None
 
 
@@ -400,7 +388,3 @@ class PasswordResetRequest(BaseModel):
         ):
             raise ValueError(constants.ERROR_PASSWORD_POLICY_NOT_MET)
         return value
-
-
-class ChatDefaultTaskRequest(BaseModel):
-    task_id: str

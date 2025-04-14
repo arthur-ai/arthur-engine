@@ -53,15 +53,6 @@ GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT_ENV_VAR = (
 )
 
 ##################################################################
-# Chat
-GENAI_ENGINE_CHAT_ENABLED_ENV_VAR = "CHAT_ENABLED"
-GENAI_ENGINE_OPENAI_EMBEDDINGS_ENDPOINTS_KEYS_ENV_VAR = (
-    "GENAI_ENGINE_OPENAI_EMBEDDINGS_NAMES_ENDPOINTS_KEYS"
-)
-MAX_CHAT_CONTEXT_LIMIT = 2048
-MAX_CHAT_HISTORY_CONTEXT = 512
-
-##################################################################
 # String Constants
 HALLUCINATION_CLAIMS_INVALID_MESSAGE = (
     "At least one claim was unsupported by the context."

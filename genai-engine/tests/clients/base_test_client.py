@@ -24,7 +24,6 @@ from schemas.enums import (
     TokenUsageScope,
 )
 from schemas.request_schemas import (
-    ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
     NewTaskRequest,
@@ -34,9 +33,6 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ApiKeyResponse,
-    ChatDefaultTaskResponse,
-    ChatDocumentContext,
-    ChatResponse,
     ExternalDocument,
     FileUploadResult,
     QueryFeedbackResponse,
@@ -74,7 +70,6 @@ os.environ[constants.GENAI_ENGINE_OPENAI_RATE_LIMIT_PERIOD_SECONDS_ENV_VAR] = "6
 os.environ[constants.GENAI_ENGINE_OPENAI_RATE_LIMIT_TOKENS_PER_PERIOD_ENV_VAR] = "5000"
 os.environ[constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR] = "http://localhost"
 os.environ[constants.ALLOW_ADMIN_KEY_GENERAL_ACCESS_ENV_VAR] = "enabled"
-os.environ[constants.GENAI_ENGINE_CHAT_ENABLED_ENV_VAR] = "enabled"
 os.environ[constants.TELEMETRY_ENABLED_ENV_VAR] = "False"
 
 MASTER_KEY_AUTHORIZED_HEADERS = {"Authorization": "Bearer %s" % MASTER_API_KEY}
@@ -778,54 +773,6 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code
 
-    def send_chat(
-        self,
-        user_prompt: str,
-        conversation_id: str,
-        file_ids: list[str],
-    ) -> tuple[int, ChatResponse]:
-        request = {
-            "user_prompt": user_prompt,
-            "conversation_id": conversation_id,
-            "file_ids": file_ids,
-        }
-
-        resp = self.base_client.post(
-            "/api/chat/",
-            json=request,
-            headers=self.authorized_chat_headers,
-        )
-
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
-    def get_inference_document_context(
-        self,
-        inference_id: str,
-    ) -> tuple[int, list[ChatDocumentContext]]:
-        resp = self.base_client.get(
-            f"/api/chat/context/{inference_id}",
-            headers=self.authorized_chat_headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                [ChatDocumentContext.model_validate(i) for i in resp.json()]
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
     def get_token_usage(
         self,
         start_time: datetime = None,
@@ -1053,50 +1000,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             loaded_data = []
 
         return (resp.status_code, loaded_data)
-
-    def get_chat_default_task(
-        self,
-        headers: dict | None = None,
-    ) -> tuple[int, ChatDefaultTaskResponse]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        resp = self.base_client.get(
-            "/api/chat/default_task",
-            headers=headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatDefaultTaskResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
-
-    def update_chat_default_task(
-        self,
-        task_id: str,
-        headers: dict | None = None,
-    ) -> tuple[int, ChatDefaultTaskResponse]:
-        if headers is None:
-            headers = self.authorized_chat_headers
-        resp = self.base_client.put(
-            "/api/chat/default_task",
-            json=ChatDefaultTaskRequest(task_id=task_id).model_dump(),
-            headers=headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                ChatDefaultTaskResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else None
-            ),
-        )
 
 
 def get_base_pagination_parameters(

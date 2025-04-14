@@ -1,7 +1,7 @@
 import random
 
 import pytest
-from schemas.enums import RuleResultEnum, RuleScope, RuleType
+from schemas.enums import InferenceFeedbackTarget, RuleResultEnum, RuleScope, RuleType
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -86,7 +86,13 @@ def test_user_story_create_prompt_send_feedback(client: GenaiEngineTestClientBas
 
     inference_id = prompt_result.inference_id
     reason = "this was bad"
-    feedback_sc = client.send_chat_feedback(inference_id, "prompt_results", 1, reason)
+    feedback_sc, _ = client.post_feedback(
+        target=InferenceFeedbackTarget.PROMPT_RESULTS,
+        score=1,
+        reason=reason,
+        user_id=None,
+        inference_id=inference_id,
+    )
     assert feedback_sc == 201
 
     status_code, query_resp = client.query_inferences(

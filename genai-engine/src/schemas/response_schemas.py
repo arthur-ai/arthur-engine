@@ -448,33 +448,6 @@ class ExternalDocument(BaseModel):
     owner_id: str
 
 
-class ChatDocumentContext(BaseModel):
-    id: str
-    seq_num: int
-    context: str
-
-
-class ChatResponse(BaseModel):
-    inference_id: str = Field(description="ID of the inference sent to the chat")
-    conversation_id: str = Field(description="ID of the conversation session")
-    timestamp: int = Field(
-        description="Time the inference was made in unix milliseconds",
-    )
-    retrieved_context: List[ChatDocumentContext] = Field(
-        description="related sections of documents that were most relevant to the inference prompt. "
-        "Formatted as a list of retrieved context chunks which include document name, seq num, and context.",
-    )
-    llm_response: str = Field(
-        description="response from the LLM for the original user prompt",
-    )
-    prompt_results: List[ExternalRuleResult] = Field(
-        description="list of rule results for the user prompt",
-    )
-    response_results: List[ExternalRuleResult] = Field(
-        description="list of rule results for the llm response",
-    )
-
-
 class DocumentStorageConfigurationResponse(BaseModel):
     storage_environment: Optional[str] = None
     bucket_name: Optional[str] = None
@@ -483,10 +456,6 @@ class DocumentStorageConfigurationResponse(BaseModel):
 
 
 class ApplicationConfigurationResponse(BaseModel):
-    chat_task_id: Optional[str] = None
-    document_storage_configuration: Optional[DocumentStorageConfigurationResponse] = (
-        None
-    )
     max_llm_rules_per_task_count: int
 
 
@@ -561,7 +530,3 @@ class ConversationResponse(ConversationBaseResponse):
 class HealthResponse(BaseModel):
     message: str
     build_version: Optional[str] = None
-
-
-class ChatDefaultTaskResponse(BaseModel):
-    task_id: str

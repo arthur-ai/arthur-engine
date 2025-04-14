@@ -105,7 +105,6 @@ def logout_callback(request: Request):
     response = RedirectResponse("/login", status_code=302)
     response.delete_cookie(auth_constants.ACCESS_TOKEN_COOKIE_NAME)
     response.delete_cookie(auth_constants.ACCESS_TOKEN_COOKIE_NAME)
-    response.delete_cookie(auth_constants.USER_CHAT_SESSION_ID_COOKIE_NAME)
     response.delete_cookie(auth_constants.USER_INFO_COOKIE_NAME)
     response.delete_cookie(auth_constants.ID_TOKEN_COOKIE_NAME)
 

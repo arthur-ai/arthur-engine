@@ -4,8 +4,6 @@ from datetime import datetime
 from dependencies import get_application_config, get_db_session, logger
 from fastapi import APIRouter, Depends, Query, Request
 from repositories.configuration_repository import ConfigurationRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
@@ -100,13 +98,6 @@ def update_configuration(
     application_config: ApplicationConfiguration = Depends(get_application_config),
 ):
     try:
-        if body.chat_task_id:
-            tasks_repo = TaskRepository(
-                db_session,
-                RuleRepository(db_session),
-                application_config,
-            )
-            tasks_repo.get_db_task_by_id(body.chat_task_id)
         config_repo = ConfigurationRepository(db_session)
 
         new_config = config_repo.update_configurations(body)

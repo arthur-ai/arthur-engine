@@ -14,59 +14,7 @@ class ConfigurationRepository:
         request: ApplicationConfigurationUpdateRequest,
     ):
         existing_configurations = self.get_database_configurations()
-        if request.chat_task_id:
-            chat_config = update_or_create_config(
-                ApplicationConfigurations.CHAT_TASK_ID,
-                request.chat_task_id,
-                existing_configurations,
-            )
-            self.db_session.add(chat_config)
 
-        if request.document_storage_configuration:
-            rows = []
-            config = request.document_storage_configuration
-            if config.environment:
-                rows.append(
-                    update_or_create_config(
-                        ApplicationConfigurations.DOCUMENT_STORAGE_ENV,
-                        config.environment,
-                        existing_configurations,
-                    ),
-                )
-            if config.bucket_name:
-                rows.append(
-                    update_or_create_config(
-                        ApplicationConfigurations.DOCUMENT_STORAGE_BUCKET_NAME,
-                        config.bucket_name,
-                        existing_configurations,
-                    ),
-                )
-            if config.assumable_role_arn:
-                rows.append(
-                    update_or_create_config(
-                        ApplicationConfigurations.DOCUMENT_STORAGE_ROLE_ARN,
-                        config.assumable_role_arn,
-                        existing_configurations,
-                    ),
-                )
-            if config.connection_string:
-                rows.append(
-                    update_or_create_config(
-                        ApplicationConfigurations.DOCUMENT_STORAGE_CONNECTION_STRING,
-                        config.connection_string,
-                        existing_configurations,
-                    ),
-                )
-            if config.container_name:
-                rows.append(
-                    update_or_create_config(
-                        ApplicationConfigurations.DOCUMENT_STORAGE_CONTAINER_NAME,
-                        config.container_name,
-                        existing_configurations,
-                    ),
-                )
-
-            self.db_session.add_all(rows)
         if request.max_llm_rules_per_task_count:
             max_llm_rules = update_or_create_config(
                 ApplicationConfigurations.MAX_LLM_RULES_PER_TASK_COUNT,

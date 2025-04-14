@@ -9,9 +9,6 @@ from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.keycloak_client import KeycloakClient
-from clients.s3.azure_client import AzureBlobStorageClient
-from clients.s3.InMemoryS3Client import InMemoryClient
-from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
@@ -20,11 +17,8 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from repositories.configuration_repository import ConfigurationRepository
-from schemas.enums import DocumentStorageEnvironment, RuleType
-from schemas.internal_schemas import (
-    ApplicationConfiguration,
-    DocumentStorageConfiguration,
-)
+from schemas.enums import RuleType
+from schemas.internal_schemas import ApplicationConfiguration
 from scorer import (
     BinaryPIIDataClassifier,
     BinaryPromptInjectionClassifier,
@@ -46,12 +40,7 @@ from utils.model_load import (
     TOXICITY_MODEL,
     TOXICITY_TOKENIZER,
 )
-from utils.utils import (
-    get_auth_metadata_uri,
-    get_env_var,
-    is_local_environment,
-    seed_database,
-)
+from utils.utils import get_auth_metadata_uri, get_env_var, seed_database
 
 SINGLETON_GRADER_LLM = None
 SINGLETON_INFERENCE_REPOSITORY = None
@@ -213,38 +202,3 @@ def get_keycloak_client() -> Generator[ABCAuthClient, None, None]:
     keycloak_client = KeycloakClient(keycloak_settings)
     keycloak_client.get_genai_engine_realm_admin_connection()
     yield keycloak_client
-
-
-def get_s3_client(
-    application_config: ApplicationConfiguration = Depends(get_application_config),
-):
-    client = s3_client_from_config(application_config.document_storage_configuration)
-    if not is_local_environment() and type(client) == InMemoryClient:
-        raise HTTPException(
-            status_code=400,
-            detail="You cannot perform file operations without a valid document storage configuration",
-        )
-    return client
-
-
-def s3_client_from_config(doc_storage_config: DocumentStorageConfiguration):
-    if doc_storage_config is None:
-        return InMemoryClient()
-    elif (
-        doc_storage_config.document_storage_environment
-        == DocumentStorageEnvironment.AWS
-    ):
-        return S3Client(
-            doc_storage_config.bucket_name,
-            doc_storage_config.assumable_role_arn,
-        )
-    elif (
-        doc_storage_config.document_storage_environment
-        == DocumentStorageEnvironment.AZURE
-    ):
-        return AzureBlobStorageClient(
-            doc_storage_config.connection_string,
-            doc_storage_config.container_name,
-        )
-    else:
-        raise NotImplementedError(doc_storage_config.document_storage_environment)

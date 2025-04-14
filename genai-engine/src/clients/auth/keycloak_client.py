@@ -252,7 +252,7 @@ class KeycloakClient(ABCAuthClient):
         genai_engine_ui_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-ui",
             client_name="Arthur GenAI Engine UI",
-            description="Default UI client for all GenAI Engine / Chat users",
+            description="Default UI client for all GenAI Engine users",
             redirect_uris=["*"],
             web_origins=["/*", get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)],
             post_logout_redirect_uris="",
@@ -331,7 +331,7 @@ class KeycloakClient(ABCAuthClient):
         genai_engine_api_client_config = create_client_config(
             client_id=f"{get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR)}-api",
             client_name="Arthur GenAI Engine API",
-            description="Default API client for all GenAI Engine / Chat users",
+            description="Default API client for all GenAI Engine users",
             redirect_uris=["*"],
             web_origins=["/*", get_env_var(constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR)],
             post_logout_redirect_uris="",

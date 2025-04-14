@@ -79,7 +79,6 @@ class DocumentStorageEnvironment(str, Enum):
 
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
-    CHAT_TASK_ID = "chat_task_id"
     DOCUMENT_STORAGE_ENV = "document_storage_environment"
     DOCUMENT_STORAGE_BUCKET_NAME = "document_storage_bucket_name"
     DOCUMENT_STORAGE_ROLE_ARN = "document_storage_assumable_role_arn"

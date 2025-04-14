@@ -1,4 +1,3 @@
-import os
 import re
 
 import pytest
@@ -9,80 +8,40 @@ from tests.clients.base_test_client import (
 from utils import utils
 
 
-@pytest.mark.parametrize(
-    ("environment"),
-    [
-        pytest.param("test", marks=pytest.mark.unit_tests),
-        pytest.param(
-            "azure",
-            marks=pytest.mark.azure_live,
-        ),
-        pytest.param(
-            "aws",
-            marks=pytest.mark.aws_live,
-        ),
-    ],
-)
-def test_config_update_get(environment, client: GenaiEngineTestClientBase):
+@pytest.fixture
+def config_setup(client: GenaiEngineTestClientBase):
+    headers = MASTER_KEY_AUTHORIZED_HEADERS
+    current_config = client.get_configs(headers=headers).json()
+    yield
+    client.update_configs(current_config, headers=headers)
+
+
+@pytest.mark.unit_tests
+def test_config_update_get(client: GenaiEngineTestClientBase, config_setup):
+    headers = MASTER_KEY_AUTHORIZED_HEADERS
+
     status_code, task_response = client.create_task("TestTask123")
     task_id = task_response.id
-    new_config = {"chat_task_id": task_id}
+    new_config = {"max_llm_rules_per_task_count": 1}
 
-    document_config = None
-    if environment == "azure":
-        document_config = {
-            "environment": "azure",
-            "connection_string": os.environ["AZURE_STORAGE_CONNECTION_STRING"],
-            "container_name": os.environ["AZURE_STORAGE_CONTAINER_NAME"],
-        }
-        headers = MASTER_KEY_AUTHORIZED_HEADERS
-    elif environment == "aws":
-        document_config = {
-            "environment": "aws",
-            "bucket_name": os.environ["AWS_BUCKET_NAME"],
-            "assumable_role_arn": os.environ["AWS_ASSUMABLE_ROLE_ARN"],
-        }
-        headers = MASTER_KEY_AUTHORIZED_HEADERS
-    else:
-        headers = {"Authorization": "Bearer admin_0"}
-
-    if document_config is not None:
-        new_config["document_storage_configuration"] = document_config
     config_update_response = client.update_configs(
         new_config,
         headers=headers,
     )
 
     assert config_update_response.status_code == 200
-    assert config_update_response.json()["chat_task_id"] == task_id
+    assert config_update_response.json()["max_llm_rules_per_task_count"] == 1
 
     _, task2 = client.create_task("TestTask456")
     task_id_2 = task2.id
-    updated_config = {"chat_task_id": task_id_2}
+    updated_config = {"max_llm_rules_per_task_count": 2}
     config_update2_response = client.update_configs(
         updated_config,
         headers=headers,
     )
 
     assert config_update2_response.status_code == 200
-    assert config_update2_response.json()["chat_task_id"] == task_id_2
-
-    get_configs_response = client.get_configs(headers=headers)
-    assert get_configs_response.status_code == 200
-    configs = get_configs_response.json()
-    assert configs["chat_task_id"] == task_id_2
-
-    doc_storage_config_response = configs["document_storage_configuration"]
-    if document_config is not None and document_config["environment"] == "aws":
-        assert (
-            doc_storage_config_response["bucket_name"] == document_config["bucket_name"]
-        )
-    if document_config is not None and document_config["environment"] == "azure":
-        assert (
-            doc_storage_config_response["container_name"]
-            == document_config["container_name"]
-        )
-        assert "connection_string" not in doc_storage_config_response
+    assert config_update2_response.json()["max_llm_rules_per_task_count"] == 2
 
 
 @pytest.mark.unit_tests

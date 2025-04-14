@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import List, Optional
 
 from db_models.db_models import (
-    DatabaseEmbeddingReference,
     DatabaseInference,
     DatabaseInferencePrompt,
     DatabaseInferenceResponse,
@@ -20,7 +19,6 @@ from opentelemetry import trace
 from schemas.custom_exceptions import AlreadyValidatedException
 from schemas.enums import PaginationSortMethod, RuleResultEnum, RuleType
 from schemas.internal_schemas import (
-    Embedding,
     Inference,
     InferencePrompt,
     InferenceResponse,
@@ -358,24 +356,6 @@ class InferenceRepository:
             )
 
         return inference_response
-
-    def save_inference_document_context(
-        self,
-        inference_id: str,
-        context_embeddings: list[Embedding],
-    ):
-        embedding_references = [
-            e._to_reference_database_model(inference_id) for e in context_embeddings
-        ]
-        self.db_session.add_all(embedding_references)
-        self.db_session.commit()
-
-    def get_inference_document_context(self, inference_id: str) -> list[Embedding]:
-        inference = self.get_inference(inference_id)
-        query = self.db_session.query(DatabaseEmbeddingReference).where(
-            DatabaseEmbeddingReference.inference_id == inference.id,
-        )
-        return [Embedding._from_database_model(e.embedding) for e in query.all()]
 
     def get_all_user_conversations(
         self,
