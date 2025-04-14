@@ -29,7 +29,7 @@ from scorer.scorer import RuleScorer
 from sentence_transformers import SentenceTransformer
 from utils import constants, utils
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
-from utils.decorators import reset_on_failure, with_lock
+from utils.model_load import get_claim_classifier_embedding_model
 from utils.utils import custom_text_parser
 
 tracer = trace.get_tracer(__name__)
@@ -43,19 +43,6 @@ CLAIM_CLASSIFIER_CLASSIFIER_PATH = (
     "claim_classifier/354ec0a465a14726b825b3bd5b97137b.pth"
 )
 d = os.path.dirname(os.path.dirname(os.path.dirname(__location__)))
-
-CLAIM_CLASSIFIER_EMBEDDING_MODEL = None
-
-
-@reset_on_failure("CLAIM_CLASSIFIER_EMBEDDING_MODEL")
-@with_lock("/tmp/claim_classifier_embedding_model.lock")
-def get_claim_classifier_embedding_model():
-    global CLAIM_CLASSIFIER_EMBEDDING_MODEL
-    if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
-        CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(
-            "sentence-transformers/all-MiniLM-L12-v2",
-        )
-    return CLAIM_CLASSIFIER_EMBEDDING_MODEL
 
 
 def get_claim_classifier(
@@ -72,7 +59,11 @@ def get_claim_classifier(
         os.path.join(__location__, CLAIM_CLASSIFIER_CLASSIFIER_PATH),
         "rb",
     ) as file:
-        state_dict = torch.load(file, map_location=torch.device(get_device()))
+        state_dict = torch.load(
+            file,
+            map_location=torch.device(get_device()),
+            weights_only=False,
+        )
 
     classifier = (
         LogisticRegressionModel(

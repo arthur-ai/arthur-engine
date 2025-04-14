@@ -96,3 +96,26 @@ def test_archive_task_rule(client: GenaiEngineTestClientBase):
     _, query_resp = client.query_inferences(conversation_id=task.id)
     assert query_resp.count > 0
     assert all([i.task_id == task.id for i in query_resp.inferences])
+
+
+@pytest.mark.unit_tests
+@pytest.mark.integration_tests
+def test_archive_task_rule_which_is_disabled(client: GenaiEngineTestClientBase):
+    status_code, task = client.create_task()
+    assert status_code == 200
+
+    _, regex_rule = client.create_rule("", rule_type=RuleType.REGEX, task_id=task.id)
+    _, _ = client.patch_rule(task.id, regex_rule.id, enabled=False)
+
+    status_code = client.delete_task_rule(task.id, regex_rule.id)
+    assert status_code == 204
+
+    _, task = client.get_task(task.id)
+    assert regex_rule.id not in [rule.id for rule in task.rules]
+
+    # Clean up
+    status_code = client.delete_task(task.id)
+    assert status_code == 204
+
+    status_code, _ = client.get_task(task.id)
+    assert status_code == 404

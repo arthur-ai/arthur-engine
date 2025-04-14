@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cdn.prod.website-files.com/6230fe4706acf355d38b2d54/65b98b3564bb58c88c0a1b66_arthur-logo-light-nav.svg" alt="Arthur AI Logo" width="300" style="background-color: white;"/>
+<img src="https://cdn.prod.website-files.com/5a749d2c4f343700013366d4/67eab9e594ec4accb58badeb_arthur-logo-symbol.svg" alt="Arthur AI Logo" width="150"/>
 
 <i>Make AI work for Everyone.</i>
 
@@ -27,7 +27,7 @@ The Arthur Engine is a tool designed for:
 ## Quickstart - [See Examples](https://github.com/arthur-ai/engine-examples/)
 
 1. Clone the repository and `cd genai-engine/docker-compose`
-2. Copy `*.env.template` files and modify them (more instructions can be found in README on the current path)
+2. Create `.env` file from `.env.template` file and modify it (more instructions can be found in [README](genai-engine/docker-compose/README.md) on the current path)
 3. Run `docker compose up`
 4. Wait for the `genai-engine` container to initialize then navigate to localhost:3000/docs to see the API docs
 5. Start building!
@@ -93,7 +93,7 @@ The Arthur Engine can prevent data-security and compliance risks from creating n
 | Personally Identifiable Information | Using [presidio](https://github.com/microsoft/presidio) based off Named-Entity recognition                        | [Source](genai-engine/genai_engine/scorer/checks/pii/classifier.py)                 | [Docs](https://shield.docs.arthur.ai/docs/pii-leakage)      |
 | CustomRules                         | Extend the service to support whatever monitoring or guardrails are applicable for your use-case                  | Build your own!                                                               | [Docs](https://shield.docs.arthur.ai/docs/custom-rules)     |
 
-_NB: We have provided open-source models for Prompt Injection and Toxicity evaluation as default in the free version of Arthur. In the case that you already have custom solutions for these evaluations and would like to use them, the models used for Prompt Injection and Toxicity are fully customizable and can be substituted out here ([PI Code Pointer](genai-engine/genai_engine/scorer/checks/prompt_injection/classifier.py#L20), [Toxicity Code Pointer](genai-engine/genai_engine/scorer/checks/toxicity/toxicity.py#L29)). If you are interested in higher performing and/or lower latency evaluations out of the box, please enquire about the enterprise version of Arthur Engine._
+_NB: We have provided open-source models for Prompt Injection and Toxicity evaluation as default in the free version of Arthur. In the case that you already have custom solutions for these evaluations and would like to use them, the models used for Prompt Injection and Toxicity are fully customizable and can be substituted out here ([PI Code Pointer](genai-engine/src/scorer/checks/prompt_injection/classifier.py#L20), [Toxicity Code Pointer](genai-engine/src/scorer/checks/toxicity/toxicity.py#L29)). If you are interested in higher performing and/or lower latency evaluations out of the box, please enquire about the enterprise version of Arthur Engine._
 ### Deploying the stand-alone Guardrails
 
 The Arthur Engine can be deployed as **a stand-alone capability for building real-time guardrails for your LLM applications and agentic workflows**. Read about the guardrails capability (also formerly known as Arthur Shield) [here](https://shield.docs.arthur.ai).

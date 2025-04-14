@@ -2,7 +2,7 @@
 
 ## TLDR - Quick Start
 
-1. Copy `*.env.template` files and modify them
+1. Create `.env` file from `.env.template` file and modify it
 2. Run `docker compose up`
 3. Wait for the `genai-engine` container to initialize then navigate to localhost:3000/docs to see the API docs
 
@@ -31,22 +31,20 @@ Please review the GPT model requirements below:
 
 ## Steps for Mac
 1. Install and run Docker for Mac
-2. Copy the `.env.template` files as `.env` files in the `docker-compose` folder
-3. Configure the `.env` files
-4. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
+2. Create `.env` file from `.env.template` file and modify it
+3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
    ```
        export GENAI_ENGINE_VERSION=<genai_enginve_version>
        docker compose up
    ```
-5. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
 
 ## Steps for Windows (with Powershell)
 1. Install and run Docker for Windows
-2. Copy the `.env.template` files as `.env` files in the `docker-compose` folder
-3. Configure the `.env` files
-4. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
+2. Create `.env` file from `.env.template` file and modify it
+3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
     ```
         $env:GENAI_ENGINE_VERSION = "<genai_enginve_version>"
-        docker-compose up
+        docker compose up
     ```
-5. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)

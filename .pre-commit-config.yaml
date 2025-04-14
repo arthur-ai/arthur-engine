@@ -21,7 +21,7 @@ repos:
           - "--remove-all-unused-imports"
           - "--recursive"
         fail_fast: true
-        exclude: (^genai-engine/genai_engine/routers/v2/routers.py)
+        exclude: (^genai-engine/src/routers/v2/routers.py)
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
@@ -50,7 +50,7 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: false
-        files: ^genai-engine/genai_engine/
+        files: ^genai-engine/src/
       - id: genai-engine-pytest-check
         name: "genai-engine: pytest unit tests and coverage"
         entry: poetry -C genai-engine run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
@@ -58,10 +58,10 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: false
-        files: ^genai-engine/genai_engine/
+        files: ^genai-engine/src/
       - id: genai-engine-api-changelog-check
         name: "genai-engine: api changelog"
         entry: poetry -C genai-engine run generate_changelog
         language: system
         always_run: false
-        files: ^genai-engine/genai_engine/schemas/
+        files: ^genai-engine/src/schemas/

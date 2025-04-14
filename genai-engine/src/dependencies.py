@@ -34,17 +34,18 @@ from scorer import (
     SensitiveDataCustomExamples,
     ToxicityScorer,
 )
-from scorer.checks.hallucination.v2 import CLAIM_CLASSIFIER_EMBEDDING_MODEL
-from scorer.checks.prompt_injection.classifier import (
-    PROMPT_INJECTION_MODEL,
-    PROMPT_INJECTION_TOKENIZER,
-)
-from scorer.checks.toxicity.toxicity import TOXICITY_MODEL, TOXICITY_TOKENIZER
 from scorer.score import ScorerClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 from utils import constants
+from utils.model_load import (
+    CLAIM_CLASSIFIER_EMBEDDING_MODEL,
+    PROMPT_INJECTION_MODEL,
+    PROMPT_INJECTION_TOKENIZER,
+    TOXICITY_MODEL,
+    TOXICITY_TOKENIZER,
+)
 from utils.utils import (
     get_auth_metadata_uri,
     get_env_var,

@@ -51,8 +51,12 @@ jobs:
           working-directory: genai-engine
       - name: Bump Version
         env:
-          CHART_YAML_PATH: "helm/Chart.yaml"
-          VALUES_YAML_PATH: "helm/values.yaml"
+          HELM_CHART_YAML_PATH: "helm/Chart.yaml"
+          HELM_VALUES_YAML_PATH: "helm/values.yaml.template"
+          HELM_CPU_START_SCRIPT_PATH: "helm/start.sh.template.cpu"
+          HELM_GPU_START_SCRIPT_PATH: "helm/start.sh.template.gpu"
+          CFT_CPU_HTML_PATH: "cloudformation/start-cpu.html"
+          CFT_GPU_HTML_PATH: "cloudformation/start-gpu.html"
         run: |
           set -e
 
@@ -81,12 +85,16 @@ jobs:
           export GIT_TAG=$NEW_VERSION$SUFFIX
           echo "New version will be ${NEW_VERSION}[${SUFFIX}]"
           echo $NEW_VERSION > version
-          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$VALUES_YAML_PATH"
-          sed -i "s|version:.*|version: $NEW_VERSION|" "$CHART_YAML_PATH"
-          sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$CHART_YAML_PATH"
+          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$HELM_VALUES_YAML_PATH"
+          sed -i "s|version:.*|version: $NEW_VERSION|" "$HELM_CHART_YAML_PATH"
+          sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$HELM_CHART_YAML_PATH"
+          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_CPU_START_SCRIPT_PATH"
+          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_GPU_START_SCRIPT_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$CFT_GPU_HTML_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$CFT_CPU_HTML_PATH"
 
           # Add and commit changes
-          git add version pyproject.toml $CHART_YAML_PATH $VALUES_YAML_PATH
+          git add version pyproject.toml $HELM_CHART_YAML_PATH $HELM_VALUES_YAML_PATH $HELM_CPU_START_SCRIPT_PATH $HELM_GPU_START_SCRIPT_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"

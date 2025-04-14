@@ -20,7 +20,7 @@ Please review the GPT model requirements below:
 * Token limits, configured appropriately for your use cases
 
 ### DNS
-A DNS URL for GenAI Engine with a SSL certificate
+A DNS URL for the GenAI Engine with an SSL certificate
 
 ### Kubernetes
 The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
@@ -374,8 +374,7 @@ aws cloudwatch put-metric-alarm \
     ```bash
     helm upgrade --install -n arthur -f genai-values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
     ```
-4. Configure DNS by create an `A` record that routes the Arthur GenAI Engine service ingress DNS URL to the GenAI Engine load balancer created
-    by the ingress.
+4. Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
 5. Verify that all the pods are running with
     ```bash
     kubectl get pods -n arthur

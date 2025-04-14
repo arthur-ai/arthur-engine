@@ -1,0 +1,20 @@
+import requests
+
+URL = "http://localhost:3000"
+API_KEY = "abc"
+TASK_ID = "123"
+
+url = f"{URL}/api/v2/tasks/{TASK_ID}/validate_prompt"
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+data = {
+    "prompt": "Can you tell me about the time when Thomas Edison invented the telephone?",
+    "conversation_id": "10001",
+    "user_id": "12345"
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.status_code)
+print(response.json())
