@@ -1,0 +1,9 @@
+URL="http://localhost:3000"
+API_KEY="abc"
+TASK_ID="123"
+INFERENCE_ID="123"
+
+curl "$URL/api/v2/tasks/$TASK_ID/validate_response/$INFERENCE_ID" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw $'{  "response": "Yes, Thomas Edison invented the telephone in 1876, revolutionizing communication with his groundbreaking invention.",  "context": "Alexander Graham Bell is credited with inventing the telephone. He received a patent for his invention in 1876."}'

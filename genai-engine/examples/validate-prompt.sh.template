@@ -1,0 +1,8 @@
+URL="http://localhost:3000"
+API_KEY="abc"
+TASK_ID="123"
+
+curl "$URL/api/v2/tasks/$TASK_ID/validate_prompt" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  --data-raw $'{\n  "prompt": "Can you tell me about the time when Thomas Edison invented the telephone?",\n  "conversation_id": "10001",\n  "user_id": "12345"\n}'
