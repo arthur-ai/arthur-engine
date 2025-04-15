@@ -28,21 +28,6 @@ Parameters:
     Description: '(Optional) Password for accessing the container repository'
     Type: String
     NoEcho: true
-  # OpenAIGPTModelNamesEndpointsAndKeys:
-  #   Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
-  #   Type: String
-  #   NoEcho: true
-  #   AllowedPattern: '.+'
-  #   ConstraintDescription: 'OpenAI GPT model deployments must be defined.'
-  # PostgresCredentialsUsername:
-  #   Description: 'Username for the Postgres database'
-  #   Type: String
-  #   AllowedPattern: '.+'
-  #   Default: 'arthur_admin'
-  # PostgresCredentialsPassword:
-  #   Description: '(Optional) Password for the Postgres database. If not specified, one will be provisioned.'
-  #   Type: String
-  #   NoEcho: true
   ArthurApiHost:
     Description: 'Arthur API Host'
     Type: String
@@ -62,35 +47,11 @@ Parameters:
     Default: 'REPLACE_ME_ML_ENGINE_TAG'
     AllowedPattern: '.+'
     ConstraintDescription: 'ML Engine version must be specified.'
-  # MLEngineDBDatabaseName:
-  #   Description: 'Arthur ML Engine database name'
-  #   Type: String
-  #   Default: 'arthur_genai_engine'
-  # MLEnginePostgresClientConnectionPoolSize:
-  #   Type: Number
-  #   Description: 'ML Engine Postgres client pool size'
-  #   Default: 5
-  # MLEnginePostgresClientConnectionPoolMaxOverflow:
-  #   Type: Number
-  #   Description: 'ML Engine Postgres client connection poolmax overflow'
-  #   Default: 15
   AlarmSNSTopicArn:
     Description: 'The ARN of the SNS topic to send the CloudWatch alarms to'
     Type: String
     AllowedPattern: 'arn:aws:sns:.+'
     ConstraintDescription: 'A valid SNS ARN must be provided for the alarm SNS topic.'
-  # MLEngineLoadBalancerHealthyHostCountAlarmThreshold:
-  #   Description: 'Alarm is triggered when the healthy ML Engine application host count drops below this number'
-  #   Type: Number
-  #   Default: 1
-  # MLEngineLoadBalancerTarget5xxAlarmThreshold:
-  #   Description: 'Alarm is triggered when ML Engine raises more than this number of 5xx errors in a minute'
-  #   Type: Number
-  #   Default: 10
-  # MLEngineLoadBalancerTargetResponseTimeAlarmThreshold:
-  #   Description: 'Alarm is triggered when the ML Engine average response time is longer than this number of seconds'
-  #   Type: Number
-  #   Default: 30
   MLEngineECSMemoryAlarmThreshold:
     Type: Number
     Default: 80
@@ -99,7 +60,6 @@ Parameters:
     Type: Number
     Default: 80
     Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
-
   ExistingArthurVPCId:
     Description: 'VPC to deploy Arthur stack to'
     Type: AWS::EC2::VPC::Id
@@ -115,38 +75,6 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
     AllowedPattern: '.+'
     ConstraintDescription: 'Private subnets must be defined.'
-  # ArthurPublicSubnets:
-  #   Description: 'List of public subnets to use for the Arthur stack'
-  #   Type: List<AWS::EC2::Subnet::Id>
-  #   AllowedPattern: '.+'
-  #   ConstraintDescription: 'Public subnets must be defined.'
-  # PostgresBYOEndpoint:
-  #   Description: '(Optional) Bring-your-own Postgres endpoint. If not specified, an AWS Aurora Serverless v2 cluster will be provisioned.'
-  #   Type: String
-  # PostgresBYOPort:
-  #   Description: 'The port for bring-your-own Postgres. Leave the default value if you do not have one.'
-  #   Type: Number
-  #   Default: 5432
-  # PostgresBYOSecurityGroupIDs:
-  #   Type: CommaDelimitedList
-  #   Description: '(Optional) Security group ID to use for the auto-provisioned Aurora Serverless v2 or the bring-your-own Postgres. If not specified, one will be provisioned.'
-  #   Default: ''
-  #   AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
-  #   ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
-  # RDSAuroraServerlessScalingConfigurationMinCapacity:
-  #   Type: Number
-  #   Default: 0.5
-  #   Description: 'Aurora Serverless v2 minimum scaling capacity in ACU'
-  # RDSAuroraServerlessScalingConfigurationMaxCapacity:
-  #   Type: Number
-  #   Default: 16
-  #   Description: 'Aurora Serverless v2 maximum scaling capacity in ACU'
-  # PostgresSSLCertDownloadURL:
-  #   Type: String
-  #   Description: 'Postgres SSL certificate download URL (must be an HTTPS endpoint)'
-  #   AllowedPattern: 'https://.+'
-  #   ConstraintDescription: 'A valid Postgres SSL certificate download HTTPS URL must be defined.'
-  #   Default: 'https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem'
   MLEngineBYOTaskRoleIAMArn:
     Type: String
     Description: '(Optional) IAM Role ARN to use for ML Engine ECS task role. If not specified, one will be provisioned.'
@@ -157,53 +85,12 @@ Parameters:
     Description: '(Optional) IAM Role ARN to use for ML Engine ECS task execution role. If not specified, one will be provisioned.'
     AllowedPattern: '(arn:aws:iam:.+)?'
     ConstraintDescription: 'A valid ARN must be provided for the Arthur ML Engine task execution IAM role.'
-  # MLEngineBYOLBSecurityGroupIDs:
-  #   Type: CommaDelimitedList
-  #   Description: '(Optional) Security group ID to use for Arthur ML Engine load balancer. If not specified, one will be provisioned.'
-  #   Default: ''
-  #   AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
-  #   ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
   MLEngineBYOAppSecurityGroupIDs:
     Type: CommaDelimitedList
     Description: '(Optional) Security group ID to use for Arthur ML Engine application. If not specified, one will be provisioned.'
     Default: ''
     AllowedPattern: '^$|^sg-[0-9a-f]{8}(,sg-[0-9a-f]{8})*$|^sg-[0-9a-f]{17}(,sg-[0-9a-f]{17})*$'
     ConstraintDescription: 'Must be a comma-separated list of valid AWS security group IDs (sg- followed by 8 or 17 hexadecimal characters), or leave it empty.'
-  # MLEngineIngressURL:
-  #   Type: String
-  #   Description: 'ML Engine application ingress DNS URL (e.g. https://arthur-genai-engine.mydomain.com)'
-  #   AllowedPattern: 'https://.+'
-  #   ConstraintDescription: 'A valid ML Engine service DNS URL must be provided.'
-  # MLEngineRoute53HostedZoneId:
-  #   Type: String
-  #   Description: '(Optional) The ID of the existing Route 53 hosted zone that contains the A record of ML Engine DNS to update. Only required when you want the A record of Arthur ML Engine DNS to be created.'
-  # MLEngineRoute53RecordName:
-  #   Type: String
-  #   Description: '(Optional) The name of the Route 53 A record of ML Engine DNS to create (e.g., arthur-genai-engine.example.com)'
-  # MLEngineLoadBalancerCertificateARN:
-  #   Type: String
-  #   Description: 'ML Engine application ingress DNS URL TLS certificate ARN'
-  #   AllowedPattern: 'arn:aws:acm:.+'
-  #   ConstraintDescription: 'A valid certificate ARN must be provided for ML Engine service ingress DNS URL.'
-  # MLEngineLoadBalancerScheme:
-  #   Description: 'Indicate whether the load balancer is internet-facing or VPC internal'
-  #   Type: String
-  #   ConstraintDescription: 'Arthur ML Engine load balancer scheme must be defined.'
-  #   AllowedValues:
-  #     - 'internet-facing'
-  #     - 'internal'
-  # MLEngineFargateTaskCPUValue:
-  #   Type: Number
-  #   Default: 8192
-  #   Description: 'CPU value for AWS Fargate per ML Engine ECS task'
-  # MLEngineFargateTaskMemoryValue:
-  #   Type: Number
-  #   Default: 16384
-  #   Description: 'Memory value for AWS Fargate per ML Engine ECS task'
-  # MLEngineServerWorkerCount:
-  #   Type: Number
-  #   Default: 1
-  #   Description: 'Number of ML Engine server processes to run for adjusting parallelism'
   MLEngineECSScaleCPUTargetValue:
     Type: Number
     Description: 'CPU target value for triggering ML Engine ECS service autoscaling'
@@ -232,36 +119,6 @@ Parameters:
     Type: Number
     Description: 'The desired number of tasks running for ML Engine ECS service'
     Default: 2
-  # MLEngineSensitiveDataCheckMaxTokenLimit:
-  #   Type: Number
-  #   Description: 'Max number of tokens ML Engine can process against LLM for sensitive data checks'
-  #   Default: 3000
-  # MLEngineHallucinationCheckMaxTokenLimit:
-  #   Type: Number
-  #   Description: 'Max number of tokens ML Engine can process against LLM for hallucination data checks'
-  #   Default: 6000
-  # MLEngineToxicityCheckMaxTokenLimit:
-  #   Type: Number
-  #   Default: 1200
-  #   Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
-  # MLEngineOpenAIProvider:
-  #   Type: String
-  #   AllowedValues:
-  #     - 'Azure'
-  #     - 'OpenAI'
-  #   Default: "Azure"
-  #   Description: 'Provider of OpenAI LLMs'
-  # MLEngineCacheTaskRulesCacheEnabled:
-  #   Type: String
-  #   Default: 'true'
-  #   AllowedValues:
-  #     - 'true'
-  #     - 'false'
-  #   Description: 'Enable task rules cache'
-  # MLEngineCacheTaskRulesCacheTTL:
-  #   Type: Number
-  #   Default: 60
-  #   Description: 'Task rules cache TTL in seconds'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -272,13 +129,6 @@ Metadata:
           - ExistingArthurVPCId
           - ExistingArthurVPCCidrBlock
           - ArthurPrivateSubnets
-      #     - ArthurPublicSubnets
-      #     - AlarmSNSTopicArn
-      #     - MLEngineLoadBalancerScheme
-      #     - MLEngineIngressURL
-      #     - MLEngineLoadBalancerCertificateARN
-      #     - MLEngineOpenAIProvider
-      #     - OpenAIGPTModelNamesEndpointsAndKeys
           - ArthurApiHost
           - MLEngineClientId
           - MLEngineClientSecret
@@ -288,117 +138,20 @@ Metadata:
           - ArthurResourceNameSuffix
           - ContainerRepositoryUsername
           - ContainerRepositoryPassword
-      # - Label:
-      #     default: 'Advanced - Database'
-      #   Parameters:
-      #     - PostgresBYOEndpoint
-      #     - PostgresBYOPort
-      #     - PostgresCredentialsUsername
-      #     - PostgresCredentialsPassword
-      #     - PostgresSSLCertDownloadURL
-      #     - PostgresBYOSecurityGroupIDs
-      #     - RDSAuroraServerlessScalingConfigurationMinCapacity
-      #     - RDSAuroraServerlessScalingConfigurationMaxCapacity
-      # - Label:
-      #     default: 'Advanced ML Engine'
-      #   Parameters:
-      #     - MLEngineRoute53HostedZoneId
-      #     - MLEngineRoute53RecordName
-      #     - MLEngineBYOLBSecurityGroupIDs
-      #     - MLEngineBYOAppSecurityGroupIDs
-      #     - MLEngineContainerImageLocation
-      #     - MLEngineDBDatabaseName
-      #     - MLEnginePostgresClientConnectionPoolSize
-      #     - MLEnginePostgresClientConnectionPoolMaxOverflow
-      #     - MLEngineFargateTaskCPUValue
-      #     - MLEngineFargateTaskMemoryValue
-      #     - MLEngineServerWorkerCount
-      #     - MLEngineCacheTaskRulesCacheEnabled
-      #     - MLEngineCacheTaskRulesCacheTTL
       - Label:
           default: 'Advanced ML Engine (IAM)'
         Parameters:
           - MLEngineBYOTaskRoleIAMArn
           - MLEngineBYOTaskExecutionRoleIAMArn
-      # - Label:
-      #     default: 'Advanced ML Engine (Scalability)'
-      #   Parameters:
-      #     - MLEngineECSServiceTaskDesiredCount
-      #     - MLEngineECSAutoscalingMinCapacity
-      #     - MLEngineECSAutoscalingMaxCapacity
-      #     - MLEngineECSScaleCPUTargetValue
-      #     - MLEngineECSScaleInCooldownInSecs
-      #     - MLEngineECSScaleOutCooldownInSecs
-      # - Label:
-      #     default: 'Advanced ML Engine (Platform Monitoring)'
-      #   Parameters:
-      #     - MLEngineLoadBalancerHealthyHostCountAlarmThreshold
-      #     - MLEngineLoadBalancerTarget5xxAlarmThreshold
-      #     - MLEngineLoadBalancerTargetResponseTimeAlarmThreshold
-      #     - MLEngineECSMemoryAlarmThreshold
-      # - Label:
-      #     default: 'Advanced ML Engine (LLM)'
-      #   Parameters:
-      #     - MLEngineSensitiveDataCheckMaxTokenLimit
-      #     - MLEngineHallucinationCheckMaxTokenLimit
-      #     - MLEngineToxicityCheckMaxTokenLimit
     ParameterLabels:
-      # MLEngineContainerImageLocation:
-      #   default: 'Arthur ML Engine Container Image Location'
       ContainerRepositoryUsername:
         default: 'Container Repository Username'
       ContainerRepositoryPassword:
         default: 'Container Repository Password'
-      # PostgresCredentialsUsername:
-      #   default: 'Postgres Database Username'
-      # PostgresCredentialsPassword:
-      #   default: 'Postgres Database Password'
-      # MLEngineDBDatabaseName:
-      #   default: 'ML Engine Database Name'
-      # MLEnginePostgresClientConnectionPoolSize:
-      #   default: 'ML Engine Postgres Client Pool Size'
-      # MLEnginePostgresClientConnectionPoolMaxOverflow:
-      #   default: 'ML Engine Postgres Client Pool Max Overflow'
-      # OpenAIGPTModelNamesEndpointsAndKeys:
-      #   default: 'OpenAI GPT Model Endpoints'
-      # ArthurResourceNamespace:
-      #   default: 'Arthur Platform Resource Namespace'
-      # ArthurResourceNameSuffix:
-      #   default: 'Arthur Platform Resource Name Suffix'
-      # MLEngineFargateTaskCPUValue:
-      #   default: 'Number of CPU for Fargate ML Engine task'
-      # MLEngineFargateTaskMemoryValue:
-      #   default: 'Size of memory for Fargate ML Engine task'
-      # MLEngineServerWorkerCount:
-      #   default: 'Number of ML Engine Server Workers'
-      # MLEngineLoadBalancerHealthyHostCountAlarmThreshold:
-      #   default: 'ALB Healthy Host Count Alarm Threshold'
-      # MLEngineLoadBalancerTarget5xxAlarmThreshold:
-      #   default: 'ALB Target 5xx Alarm Threshold'
-      # MLEngineLoadBalancerTargetResponseTimeAlarmThreshold:
-      #   default: 'ALB Response Time Threshold'
-      # MLEngineECSMemoryAlarmThreshold:
-      #   default: 'ECS Memory Alarm Threshold'
-      # RDSAuroraServerlessScalingConfigurationMinCapacity:
-      #   default: 'Aurora Serverless v2 Min Scaling Capacity'
-      # RDSAuroraServerlessScalingConfigurationMaxCapacity:
-      #   default: 'Aurora Serverless v2 Max Scaling Capacity'
-      # PostgresBYOEndpoint:
-      #   default: 'Bring-Your-Own Postgres Database Endpoint'
-      # PostgresBYOPort:
-      #   default: 'Bring-Your-Own Postgres Database Port'
-      # PostgresSSLCertDownloadURL:
-      #   default: 'Postgres SSL Cert Download URL'
-      # PostgresBYOSecurityGroupIDs:
-      #   default: 'Bring-Your-Own Postgres Security Group IDs'
       MLEngineBYOTaskRoleIAMArn:
         default: 'Bring-Your-Own ML Engine Task Role'
       MLEngineBYOTaskExecutionRoleIAMArn:
         default: 'Bring-Your-Own ML Engine Task Execution Role'
-      # MLEngineBYOLBSecurityGroupIDs:
-      #   default: 'Bring-Your-Own ML Engine Load Balancer Security Group IDs'
-      # MLEngineBYOAppSecurityGroupIDs:
-      #   default: 'Bring-Your-Own ML Engine Application Security Group IDs'
       ExistingArthurVPCId:
         default: 'Arthur Stack VPC ID'
       ExistingArthurVPCCidrBlock:
@@ -411,44 +164,6 @@ Metadata:
         default: 'Client Secret for the ML Engine'
       ArthurPrivateSubnets:
         default: 'Arthur Stack Private Subnets'
-      # ArthurPublicSubnets:
-      #   default: 'Arthur Stack Public Subnets'
-      # MLEngineLoadBalancerCertificateARN:
-      #   default: 'ML Engine Application DNS URL TLS Certificate ARN'
-      # MLEngineLoadBalancerScheme:
-      #   default: 'ML Engine Load Balancer Scheme'
-      # MLEngineIngressURL:
-      #   default: 'ML Engine Application DNS URL'
-      # MLEngineRoute53HostedZoneId:
-      #   default: 'ML Engine Route 53 Hosted Zone ID'
-      # MLEngineRoute53RecordName:
-      #   default: 'ML Engine Route 53 Record Name'
-      # AlarmSNSTopicArn:
-      #   default: 'Alarm SNS Topic ARN'
-      # MLEngineECSScaleCPUTargetValue:
-      #   default: 'ML Engine ECS Scale CPU Target Value'
-      # MLEngineECSScaleInCooldownInSecs:
-      #   default: 'ML Engine ECS Scale-in Cooldown in Seconds'
-      # MLEngineECSScaleOutCooldownInSecs:
-      #   default: 'ML Engine ECS Scale-out Cooldown in Seconds'
-      # MLEngineECSAutoscalingMaxCapacity:
-      #   default: 'ML Engine ECS Autoscaling Max Capacity'
-      # MLEngineECSAutoscalingMinCapacity:
-      #   default: 'ML Engine ECS Autoscaling Min Capacity'
-      # MLEngineECSServiceTaskDesiredCount:
-      #   default: 'ML Engine ECS Service Task Desired Count'
-      # MLEngineSensitiveDataCheckMaxTokenLimit:
-      #   default: 'ML Engine Sensitive Data Check Max Token Limit'
-      # MLEngineHallucinationCheckMaxTokenLimit:
-      #   default: 'ML Engine Hallucination Check Max Token Limit'
-      # MLEngineToxicityCheckMaxTokenLimit:
-      #   default: 'ML Engine Toxicity Check Max Token Limit'
-      # MLEngineOpenAIProvider:
-      #   default: 'OpenAI Service Provider'
-      # MLEngineCacheTaskRulesCacheEnabled:
-      #   default: 'Enable task rules cache'
-      # MLEngineCacheTaskRulesCacheTTL:
-      #   default: 'Task rules cache TTL in seconds'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
