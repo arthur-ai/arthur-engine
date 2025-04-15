@@ -94,7 +94,7 @@ jobs:
           sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$CFT_CPU_HTML_PATH"
 
           # Add and commit changes
-          git add version pyproject.toml $HELM_CHART_YAML_PATH $HELM_VALUES_YAML_PATH $HELM_CPU_START_SCRIPT_PATH $HELM_GPU_START_SCRIPT_PATH
+          git add version pyproject.toml $HELM_CHART_YAML_PATH $HELM_VALUES_YAML_PATH $HELM_CPU_START_SCRIPT_PATH $HELM_GPU_START_SCRIPT_PATH $CFT_GPU_HTML_PATH $CFT_CPU_HTML_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
