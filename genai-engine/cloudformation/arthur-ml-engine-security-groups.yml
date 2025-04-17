@@ -36,7 +36,7 @@ Resources:
     Condition: IsMLEngineBYOAppSecurityGroupIDsEmpty
     Properties:
       GroupDescription: 'Arthur ML Engine service security group'
-      GroupName: !Sub "${ArthurResourceNamespace}-genai-engine-app${ArthurResourceNameSuffix}"
+      GroupName: !Sub "${ArthurResourceNamespace}-ml-engine-app${ArthurResourceNameSuffix}"
       VpcId: !Ref VPCId
       SecurityGroupEgress:
         - IpProtocol: -1
