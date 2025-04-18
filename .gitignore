@@ -23,3 +23,5 @@ local.env
 .pre-commit-config-no-pytest-check.yaml
 oasdiff*
 new.openapi.json
+
+.env

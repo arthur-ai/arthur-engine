@@ -444,7 +444,6 @@
         "genaiEngineToxicityCheckMaxTokenLimit",
         "genaiEngineOpenAIProvider",
         "genaiEngineReplicaCount",
-        "genaiEngineServiceAccount",
         "genaiEngineContainerCPURequests",
         "genaiEngineContainerMemoryRequests",
         "genaiEngineContainerCPULimits",
