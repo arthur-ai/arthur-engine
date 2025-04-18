@@ -1,36 +1,22 @@
-# Arthur Platform Docker Compose Deployment Guide
-- [Arthur Platform Docker Compose Deployment Guide](#arthur-platform-docker-compose-deployment-guide)
-  - [TLDR - Quick Start](#tldr---quick-start)
-  - [Prerequisites](#prerequisites)
-    - [Container Image Repository Access](#container-image-repository-access)
-    - [GenAI Engine](#genai-engine)
-      - [Engine Version](#engine-version)
-      - [OpenAI GPT Model](#openai-gpt-model)
-  - [Steps to run](#steps-to-run)
-
+# Arthur Engine Docker Compose Deployment Guide
 
 ## TLDR - Quick Start
 
-1. Create `.env` file from `.env.template` file and modify it
-2. Run `docker compose up`
-3. Wait for the `genai-engine` container to initialize then navigate to localhost:3000/docs to see the API docs
+1. Go through the engine onboarding on https://platform.arthur.ai to get the required credentials
+2. Create `.env` file from `.env.template` file and modify it
+3. Run `docker compose up`
+4. Wait for the containers to initialize then navigate to localhost:3000/docs to see the API docs
 
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
-* When the `GENAI_ENGINE_VERSION` or `ML_ENGINE_VERSION` environment variables are not set, the `latest` stable image is used. When `latest` is used, make sure to run `docker compose pull` first to get the most recent`latest` tagged image.
+* When the `GENAI_ENGINE_VERSION` and `ML_ENGINE_VERSION` environment variables are not set, the `latest` stable image is used (not recommended). When `latest` is used, make sure to run `docker compose pull` first to get the most recent `latest` tagged image.
 
 ## Prerequisites
 
-### Container Image Repository Access
-- There must be a network route available to connect to Docker Hub
-- If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the Docker Compose script
-
-### GenAI Engine
-
-#### Engine Version
+### Engine Version
 Look up an engine version to use from the [Releases](https://github.com/arthur-ai/arthur-engine/releases).
 
-#### OpenAI GPT Model
+### OpenAI GPT Model
 Arthur's GenAI Engine hallucination and sensitive data rules require an OpenAI-compatible GPT model for running evaluations.
 
 Please review the GPT model requirements below:
@@ -40,11 +26,28 @@ Please review the GPT model requirements below:
 - A secure network route between your environment and the OpenAI endpoint(s)
 - Token limits, configured appropriately for your use cases
 
-## Steps to run
+### Container Image Repository Access
+- There must be a network route available to connect to Docker Hub
+- If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the Docker Compose script
+
+## Steps for Mac
 1. Install and run Docker for Mac
-2. Copy the `.env.template` files as `.env` files in the `docker-compose` folder
-3. Configure the `.env` file
-4. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
+2. Create `.env` file from `.env.template` file and modify it
+3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
    ```
+       export GENAI_ENGINE_VERSION=<genai_engine_version>
+       export ML_ENGINE_VERSION=<ml_engine_version>
        docker compose up
    ```
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
+
+## Steps for Windows (with Powershell)
+1. Install and run Docker for Windows
+2. Create `.env` file from `.env.template` file and modify it
+3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
+    ```
+        $env:GENAI_ENGINE_VERSION = "<genai_engine_version>"
+        $env:ML_ENGINE_VERSION = "<ml_engine_version>"
+        docker compose up
+    ```
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
