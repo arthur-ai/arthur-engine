@@ -18,7 +18,7 @@ Parameters:
     Description: 'The container image location for Arthur GenAI Engine'
     Type: String
     AllowedPattern: '.+'
-    Default: 'arthurplatform/genai-engine-cpu'
+    Default: 'arthurplatform/genai-engine-gpu'
     ConstraintDescription: 'The container image location for Arthur GenAI Engine must be specified.'
   MLEngineContainerImageLocation:
     Description: 'The container image location for Arthur ML Engine'
@@ -38,7 +38,7 @@ Parameters:
     Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
     Type: String
     NoEcho: true
-    AllowedPattern: '.+'
+    AllowedPattern: '^(?:[^,]+::[^,]+::[^,]+(?:,[^,]+::[^,]+::[^,]+)*$)'
     ConstraintDescription: 'OpenAI GPT model deployments must be defined.'
   PostgresCredentialsUsername:
     Description: 'Username for the Postgres database'
@@ -77,7 +77,7 @@ Parameters:
   MLEngineVersion:
     Description: 'Version tag for the ML Engine'
     Type: String
-    Default: 'REPLACE_ME_ML_ENGINE_TAG'
+    Default: 'latest'
     AllowedPattern: '.+'
     ConstraintDescription: 'ML Engine version must be specified.'
   AlarmSNSTopicArn:
@@ -158,14 +158,19 @@ Parameters:
     Default: 'https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem'
   GenaiEngineBYOTaskRoleIAMArn:
     Type: String
-    Description: '(Optional) IAM Role ARN to use for GenAI Engine ECS task role. If not specified, one will be provisioned.'
+    Description: '(Optional) IAM role ARN to use for GenAI Engine ECS task role. If not specified, one will be provisioned.'
     AllowedPattern: '(arn:aws:iam:.+)?'
     ConstraintDescription: 'A valid ARN must be provided for the Arthur GenAI Engine task IAM role.'
   GenaiEngineBYOTaskExecutionRoleIAMArn:
     Type: String
-    Description: '(Optional) IAM Role ARN to use for GenAI Engine ECS task execution role. If not specified, one will be provisioned.'
+    Description: '(Optional) IAM role ARN to use for GenAI Engine ECS task execution role. If not specified, one will be provisioned.'
     AllowedPattern: '(arn:aws:iam:.+)?'
     ConstraintDescription: 'A valid ARN must be provided for the Arthur GenAI Engine task execution IAM role.'
+  GenaiEngineBYOEC2InstanceProfileIAMArn:
+    Type: String
+    Description: '(Optional) IAM instance profile ARN to use for GenAI Engine ECS cluster EC2 instances to assume. If not specified, one will be provisioned.'
+    AllowedPattern: '(arn:aws:iam:.+)?'
+    Default: ''
   GenaiEngineBYOLBSecurityGroupIDs:
     Type: CommaDelimitedList
     Description: '(Optional) Security group ID to use for Arthur GenAI Engine load balancer. If not specified, one will be provisioned.'
@@ -185,10 +190,10 @@ Parameters:
     ConstraintDescription: 'A valid GenAI Engine service DNS URL must be provided.'
   GenaiEngineRoute53HostedZoneId:
     Type: String
-    Description: '(Optional) The ID of the existing Route 53 hosted zone that contains the A record of GenAI Engine DNS to update. Only required when you want the A record of Arthur GenAI Engine DNS to be created.'
+    Description: '(Optional) The ID of the existing Route 53 hosted zone where A record of Arthur GenAI Engine DNS name is to be created'
   GenaiEngineRoute53RecordName:
     Type: String
-    Description: '(Optional) The name of the Route 53 A record of GenAI Engine DNS to create (e.g., arthur-genai-engine.example.com)'
+    Description: '(Optional) The name of the Route 53 A record for Arthur GenAI Engine DNS name (e.g., arthur-genai-engine.example.com)'
   GenaiEngineLoadBalancerCertificateARN:
     Type: String
     Description: 'GenAI Engine application ingress DNS URL TLS certificate ARN'
@@ -201,41 +206,47 @@ Parameters:
     AllowedValues:
       - 'internet-facing'
       - 'internal'
-  GenaiEngineFargateTaskCPUValue:
+  GenaiEngineECSClusterGPUInstanceDesiredCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Desired number of GPU EC2 instances in the Arthur ECS cluster'
+  GenaiEngineECSClusterGPUInstanceMaxCapacity:
+    Type: Number
+    Default: 4
+    Description: 'Maximum number of GPU EC2 instances that can be launched in the Arthur ECS cluster (Check your G4 instance service quota to make sure you have enough capacity)'
+  GenaiEngineECSClusterGPUInstanceMinCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Minimum number of GPU EC2 instances that can be launched in the Arthur ECS cluster'
+  GenaiEngineECSClusterGPUInstanceType:
+    Type: String
+    Default: 'g4dn.2xlarge'
+    Description: 'EC2 NVIDIA GPU instance type (g4dn.2xlarge is recommended)'
+  GenaiEngineECSClusterGPUInstanceImageID:
+    Type: String
+    Description: 'EC2 GPU instance AMI ID. Look up the AMI ID for Amazon ECS-optimized AMIs (aws ssm get-parameters --names /aws/service/ecs/optimized-ami/amazon-linux-2/gpu/recommended --region <your_region>).'
+    AllowedPattern: '.+'
+    ConstraintDescription: 'A valid ID for ECS-optimized GPU-ready AMI must be provided. Refer to the description for GenaiEngineECSClusterGPUInstanceImageID.'
+  GenaiEngineEC2TaskCPUValue:
     Type: Number
     Default: 8192
-    Description: 'CPU value for AWS Fargate per GenAI Engine ECS task'
-  GenaiEngineFargateTaskMemoryValue:
-    Type: Number
-    Default: 16384
-    Description: 'Memory value for AWS Fargate per GenAI Engine ECS task'
-  GenaiEngineServerWorkerCount:
+    Description: 'CPU value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineEC2TaskGPUValue:
     Type: Number
     Default: 1
-    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism'
-  GenaiEngineECSScaleCPUTargetValue:
+    Description: 'GPU value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineEC2TaskMemoryValue:
     Type: Number
-    Description: 'CPU target value for triggering GenAI Engine ECS service autoscaling'
-    Default: 50
-  GenaiEngineECSScaleInCooldownInSecs:
+    Default: 30720
+    Description: 'Memory value for AWS EC2 per GenAI Engine ECS task'
+  GenaiEngineServerWorkerCount:
     Type: Number
-    Description: 'Scale-in cooldown time in seconds for GenAI Engine ECS autoscaling'
-    Default: 300
-  GenaiEngineECSScaleOutCooldownInSecs:
-    Type: Number
-    Description: 'Scale-out cooldown time in seconds for GenAI Engine ECS autoscaling'
-    Default: 30
-  GenaiEngineECSAutoscalingMaxCapacity:
-    Type: Number
-    Description: 'The maximum number of tasks allowed for GenAI Engine ECS service autoscaling'
-    Default: 10
-  GenaiEngineECSAutoscalingMinCapacity:
-    Type: Number
-    Description: 'The minimum number of tasks allowed for GenAI Engine ECS service autoscaling'
-    Default: 2
+    Default: 5
+    Description: 'Number of GenAI Engine server processes to run for adjusting parallelism (5 is recommended)'
   GenaiEngineECSServiceTaskDesiredCount:
     Type: Number
     Description: 'The desired number of tasks running for GenAI Engine ECS service'
+    MinValue: 2
     Default: 2
   GenaiEngineSensitiveDataCheckMaxTokenLimit:
     Type: Number
@@ -256,6 +267,109 @@ Parameters:
       - 'OpenAI'
     Default: "Azure"
     Description: 'Provider of OpenAI LLMs'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
+    Type: String
+    Default: '0 22 * * MON-FRI'
+    Description: 'Cron expression for scaling in GPU instances in UTC timezone (e.g. "0 22 * * MON-FRI")'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron:
+    Type: String
+    Default: '0 12 * * MON-FRI'
+    Description: 'Cron expression for scaling out GPU instances in UTC timezone (e.g. "0 12 * * MON-FRI")'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Number of GPU instances to scale in to during off-peak hours'
+  GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity:
+    Type: Number
+    Default: 4
+    Description: 'Number of GPU instances to scale out to during peak hours'
+  GenaiEngineECSClusterScheduledScalingEnabled:
+    Type: String
+    Description: 'Enable or disable scheduled scaling of GenAI Engine ECS cluster'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+  GenaiEngineECSClusterTaskScheduledScaleInCron:
+    Type: String
+    Description: 'Cron expression for scaling in GenAI Engine ECS tasks in UTC timezone (e.g. "0 22 ? * MON-FRI *")'
+    Default: '0 22 ? * MON-FRI *'
+  GenaiEngineECSClusterTaskScheduledScaleOutCron:
+    Type: String
+    Description: 'Cron expression for scaling out GenAI Engine ECS tasks in UTC timezone (e.g. "0 12 ? * MON-FRI *")'
+    Default: '0 12 ? * MON-FRI *'
+  GenaiEngineECSClusterGPUUtilizationScaleOutThreshold:
+    Type: Number
+    Default: 50
+    Description: 'GPU utilization percentage threshold to trigger scale out'
+  GenaiEngineECSClusterGPUUtilizationScaleInThreshold:
+    Type: Number
+    Default: 5
+    Description: 'GPU utilization percentage threshold to trigger scale in'
+  GenaiEngineECSClusterCPUUtilizationScaleOutThreshold:
+    Type: Number
+    Default: 50
+    Description: 'CPU utilization percentage threshold to trigger scale out'
+  GenaiEngineECSClusterCPUUtilizationScaleInThreshold:
+    Type: Number
+    Default: 10
+    Description: 'CPU utilization percentage threshold to trigger scale in'
+  GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable CPU based dynamic scale-in of GenAI Engine ECS cluster'
+  GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled:
+    Type: String
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+    Description: 'Enable or disable GPU based dynamic scale-in of GenAI Engine ECS cluster'
+  GenaiEngineDynamicScaleOutCooldown:
+    Type: Number
+    Description: 'Cooldown period in seconds for scaling out instances'
+    Default: 60
+    MinValue: 60
+  GenaiEngineDynamicScaleInCooldown:
+    Type: Number
+    Description: 'Cooldown period in seconds for scaling in instances'
+    Default: 300
+    MinValue: 60
+  GenaiEngineECSDeploymentMaximumPercent:
+    Type: Number
+    Description: 'Maximum percentage of tasks that can be running during a deployment'
+    Default: 100
+    MinValue: 0
+    MaxValue: 200
+  GenaiEngineECSDeploymentMinimumHealthyPercent:
+    Type: Number
+    Description: 'Minimum percentage of tasks that must remain healthy during a deployment. Note: If the number of tasks is one, this should be equal to 0 or 100.'
+    Default: 50
+    MinValue: 0
+    MaxValue: 100
+  GenaiEngineECSClusterWarmPoolEnabled:
+    Type: String
+    Description: 'Enable or disable warm pool for GenAI Engine ECS cluster'
+    AllowedValues:
+      - 'enabled'
+      - 'disabled'
+    Default: 'disabled'
+  GenaiEngineECSClusterWarmPoolMinSize:
+    Type: Number
+    Default: 2
+    Description: 'Minimum number of instances in the GenAI Engine ECS cluster warm pool'
+  GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity:
+    Type: Number
+    Default: 2
+    Description: 'Maximum number of instances in the GenAI Engine ECS cluster warm pool'
+  GenaiEngineEstimatedInstanceWarmup:
+    Type: Number
+    Description: 'Estimated time in seconds for new instances to be ready to serve requests'
+    Default: 120
+    MinValue: 60
   GenaiEngineCacheTaskRulesCacheEnabled:
     Type: String
     Default: 'true'
@@ -315,7 +429,7 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: 'Minimum Required Configurations'
+          default: "Minimum Required Configurations"
         Parameters:
           - ArthurResourceNamespace
           - ExistingArthurVPCId
@@ -326,13 +440,11 @@ Metadata:
           - GenaiEngineLoadBalancerScheme
           - GenaiEngineIngressURL
           - GenaiEngineLoadBalancerCertificateARN
+          - GenaiEngineECSClusterGPUInstanceImageID
           - GenaiEngineOpenAIProvider
           - OpenAIGPTModelNamesEndpointsAndKeys
-          - ArthurApiHost
-          - MLEngineClientId
-          - MLEngineClientSecret
       - Label:
-          default: 'Advanced - General'
+          default: "Advanced - General"
         Parameters:
           - ArthurResourceNameSuffix
           - ContainerRepositoryUsername
@@ -349,7 +461,7 @@ Metadata:
           - RDSAuroraServerlessScalingConfigurationMinCapacity
           - RDSAuroraServerlessScalingConfigurationMaxCapacity
       - Label:
-          default: 'Advanced GenAI Engine'
+          default: 'Advanced - GenAI Engine'
         Parameters:
           - GenaiEngineRoute53HostedZoneId
           - GenaiEngineRoute53RecordName
@@ -359,66 +471,63 @@ Metadata:
           - GenaiEngineDBDatabaseName
           - GenaiEnginePostgresClientConnectionPoolSize
           - GenaiEnginePostgresClientConnectionPoolMaxOverflow
-          - GenaiEngineFargateTaskCPUValue
-          - GenaiEngineFargateTaskMemoryValue
+          - GenaiEngineECSClusterGPUInstanceType
+          - GenaiEngineEC2TaskCPUValue
+          - GenaiEngineEC2TaskGPUValue
+          - GenaiEngineEC2TaskMemoryValue
           - GenaiEngineServerWorkerCount
+          - GenaiEngineECSDeploymentMaximumPercent
+          - GenaiEngineECSDeploymentMinimumHealthyPercent
           - GenaiEngineCacheTaskRulesCacheEnabled
           - GenaiEngineCacheTaskRulesCacheTTL
       - Label:
-          default: 'Advanced GenAI Engine (IAM)'
+          default: 'Advanced - GenAI Engine (IAM)'
         Parameters:
           - GenaiEngineBYOTaskRoleIAMArn
           - GenaiEngineBYOTaskExecutionRoleIAMArn
+          - GenaiEngineBYOEC2InstanceProfileIAMArn
       - Label:
-          default: 'Advanced GenAI Engine (Scalability)'
+          default: 'Advanced - GenAI Engine (Dynamic Scaling)'
         Parameters:
+          - GenaiEngineECSClusterGPUInstanceDesiredCapacity
+          - GenaiEngineECSClusterGPUInstanceMinCapacity
+          - GenaiEngineECSClusterGPUInstanceMaxCapacity
           - GenaiEngineECSServiceTaskDesiredCount
-          - GenaiEngineECSAutoscalingMinCapacity
-          - GenaiEngineECSAutoscalingMaxCapacity
-          - GenaiEngineECSScaleCPUTargetValue
-          - GenaiEngineECSScaleInCooldownInSecs
-          - GenaiEngineECSScaleOutCooldownInSecs
+          - GenaiEngineECSClusterGPUUtilizationScaleOutThreshold
+          - GenaiEngineECSClusterGPUUtilizationScaleInThreshold
+          - GenaiEngineECSClusterCPUUtilizationScaleOutThreshold
+          - GenaiEngineECSClusterCPUUtilizationScaleInThreshold
+          - GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled
+          - GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled
+          - GenaiEngineDynamicScaleOutCooldown
+          - GenaiEngineDynamicScaleInCooldown
+          - GenaiEngineEstimatedInstanceWarmup
+          - GenaiEngineECSClusterWarmPoolEnabled
+          - GenaiEngineECSClusterWarmPoolMinSize
+          - GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity
       - Label:
-          default: 'Advanced GenAI Engine (Platform Monitoring)'
+          default: 'Advanced - GenAI Engine (Scheduled Scaling)'
+        Parameters:
+          - GenaiEngineECSClusterScheduledScalingEnabled
+          - GenaiEngineECSClusterGPUInstanceScheduledScaleInCron
+          - GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron
+          - GenaiEngineECSClusterTaskScheduledScaleInCron
+          - GenaiEngineECSClusterTaskScheduledScaleOutCron
+          - GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity
+          - GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity
+      - Label:
+          default: 'Advanced - GenAI Engine (Platform Monitoring)'
         Parameters:
           - GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold
           - GenaiEngineLoadBalancerTarget5xxAlarmThreshold
           - GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
           - GenaiEngineECSMemoryAlarmThreshold
       - Label:
-          default: 'Advanced GenAI Engine (LLM)'
+          default: 'Advanced - GenAI Engine (LLM)'
         Parameters:
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
-      - Label:
-          default: 'Advanced ML Engine'
-        Parameters:
-          - MLEngineVersion
-          - MLEngineClientId
-          - MLEngineClientSecret
-          - MLEngineContainerImageLocation
-          - MLEngineBYOAppSecurityGroupIDs
-      - Label:
-          default: 'Advanced ML Engine (IAM)'
-        Parameters:
-          - MLEngineBYOTaskRoleIAMArn
-          - MLEngineBYOTaskExecutionRoleIAMArn
-      - Label:
-          default: 'Advanced ML Engine (Scalability)'
-        Parameters:
-          - MLEngineECSServiceTaskDesiredCount
-          - MLEngineECSAutoscalingMinCapacity
-          - MLEngineECSAutoscalingMaxCapacity
-          - MLEngineECSScaleCPUTargetValue
-          - MLEngineECSScaleMemoryTargetValue
-          - MLEngineECSScaleInCooldownInSecs
-          - MLEngineECSScaleOutCooldownInSecs
-      - Label:
-          default: 'Advanced ML Engine (Platform Monitoring)'
-        Parameters:
-          - MLEngineECSCPUAlarmThreshold
-          - MLEngineECSMemoryAlarmThreshold
     ParameterLabels:
       GenaiEngineContainerImageLocation:
         default: 'Arthur GenAI Engine Container Image Location'
@@ -442,10 +551,22 @@ Metadata:
         default: 'Arthur Platform Resource Namespace'
       ArthurResourceNameSuffix:
         default: 'Arthur Platform Resource Name Suffix'
-      GenaiEngineFargateTaskCPUValue:
-        default: 'Number of CPU for Fargate GenAI Engine task'
-      GenaiEngineFargateTaskMemoryValue:
-        default: 'Size of memory for Fargate GenAI Engine task'
+      GenaiEngineECSClusterGPUInstanceImageID:
+        default: 'ECS Cluster EC2 GPU Instance Image ID'
+      GenaiEngineECSClusterGPUInstanceType:
+        default: 'ECS Cluster EC2 GPU Instance Type'
+      GenaiEngineECSClusterGPUInstanceDesiredCapacity:
+        default: 'ECS Cluster EC2 GPU Instance Desired Capacity'
+      GenaiEngineECSClusterGPUInstanceMinCapacity:
+        default: 'ECS Cluster EC2 GPU Instance Minimum Capacity'
+      GenaiEngineECSClusterGPUInstanceMaxCapacity:
+        default: 'ECS Cluster EC2 GPU Instance Maximum Capacity'
+      GenaiEngineEC2TaskCPUValue:
+        default: 'Number of CPU for EC2 GenAI Engine task'
+      GenaiEngineEC2TaskGPUValue:
+        default: 'Number of GPU for EC2 GenAI Engine task'
+      GenaiEngineEC2TaskMemoryValue:
+        default: 'Size of memory for EC2 GenAI Engine task'
       GenaiEngineServerWorkerCount:
         default: 'Number of GenAI Engine Server Workers'
       GenaiEngineLoadBalancerHealthyHostCountAlarmThreshold:
@@ -469,9 +590,11 @@ Metadata:
       PostgresBYOSecurityGroupIDs:
         default: 'Bring-Your-Own Postgres Security Group IDs'
       GenaiEngineBYOTaskRoleIAMArn:
-        default: 'Bring-Your-Own GenAI Engine Task Role'
+        default: 'Bring-Your-Own GenAI Engine Task IAM Role ARN'
       GenaiEngineBYOTaskExecutionRoleIAMArn:
-        default: 'Bring-Your-Own GenAI Engine Task Execution Role'
+        default: 'Bring-Your-Own GenAI Engine Task Execution IAM Role ARN'
+      GenaiEngineBYOEC2InstanceProfileIAMArn:
+        default: 'Bring-Your-Own GenAI Engine ECS Cluster EC2 Instance Profile IAM ARN'
       GenaiEngineBYOLBSecurityGroupIDs:
         default: 'Bring-Your-Own GenAI Engine Load Balancer Security Group IDs'
       GenaiEngineBYOAppSecurityGroupIDs:
@@ -496,16 +619,6 @@ Metadata:
         default: 'GenAI Engine Route 53 Record Name'
       AlarmSNSTopicArn:
         default: 'Alarm SNS Topic ARN'
-      GenaiEngineECSScaleCPUTargetValue:
-        default: 'GenAI Engine ECS Scale CPU Target Value'
-      GenaiEngineECSScaleInCooldownInSecs:
-        default: 'GenAI Engine ECS Scale-in Cooldown in Seconds'
-      GenaiEngineECSScaleOutCooldownInSecs:
-        default: 'GenAI Engine ECS Scale-out Cooldown in Seconds'
-      GenaiEngineECSAutoscalingMaxCapacity:
-        default: 'GenAI Engine ECS Autoscaling Max Capacity'
-      GenaiEngineECSAutoscalingMinCapacity:
-        default: 'GenAI Engine ECS Autoscaling Min Capacity'
       GenaiEngineECSServiceTaskDesiredCount:
         default: 'GenAI Engine ECS Service Task Desired Count'
       GenaiEngineSensitiveDataCheckMaxTokenLimit:
@@ -516,42 +629,52 @@ Metadata:
         default: 'GenAI Engine Toxicity Check Max Token Limit'
       GenaiEngineOpenAIProvider:
         default: 'OpenAI Service Provider'
+      GenaiEngineECSClusterGPUInstanceScheduledScaleInCron:
+        default: 'GenAI Engine ECS Cluster GPU Instance Scheduled Scale In Cron Expression'
+      GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron:
+        default: 'GenAI Engine ECS Cluster GPU Instance Scheduled Scale Out Cron Expression'
+      GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity:
+        default: 'GenAI Engine ECS Cluster GPU Instance Scheduled Scale In Capacity'
+      GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity:
+        default: 'GenAI Engine ECS Cluster GPU Instance Scheduled Scale Out Capacity'
+      GenaiEngineECSClusterScheduledScalingEnabled:
+        default: 'Enable scheduled scaling'
+      GenaiEngineECSClusterTaskScheduledScaleInCron:
+        default: 'GenAI Engine ECS Cluster Task Scheduled Scale In Cron Expression'
+      GenaiEngineECSClusterTaskScheduledScaleOutCron:
+        default: 'GenAI Engine ECS Cluster Task Scheduled Scale Out Cron Expression'
+      GenaiEngineECSClusterGPUUtilizationScaleOutThreshold:
+        default: 'GPU Utilization Scale Out Threshold'
+      GenaiEngineECSClusterGPUUtilizationScaleInThreshold:
+        default: 'GPU Utilization Scale In Threshold'
+      GenaiEngineECSClusterCPUUtilizationScaleOutThreshold:
+        default: 'CPU Utilization Scale Out Threshold'
+      GenaiEngineECSClusterCPUUtilizationScaleInThreshold:
+        default: 'CPU Utilization Scale In Threshold'
+      GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled:
+        default: 'Enable CPU based dynamic scale-in of GenAI Engine ECS cluster'
+      GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled:
+        default: 'Enable GPU based dynamic scale-in of GenAI Engine ECS cluster'
+      GenaiEngineDynamicScaleOutCooldown:
+        default: 'Cooldown period in seconds for scaling out instances'
+      GenaiEngineDynamicScaleInCooldown:
+        default: 'Cooldown period in seconds for scaling in instances'
+      GenaiEngineECSDeploymentMaximumPercent:
+        default: 'GenAI Engine ECS Deployment Maximum Percent'
+      GenaiEngineECSDeploymentMinimumHealthyPercent:
+        default: 'GenAI Engine ECS Deployment Minimum Healthy Percent'
+      GenaiEngineECSClusterWarmPoolEnabled:
+        default: 'Enable GenAI Engine ECS Cluster Warm Pool'
+      GenaiEngineECSClusterWarmPoolMinSize:
+        default: 'GenAI Engine ECS Cluster Warm Pool Min Size'
+      GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity:
+        default: 'GenAI Engine ECS Cluster Warm Pool Max Group Prepared Capacity'
+      GenaiEngineEstimatedInstanceWarmup:
+        default: 'Estimated time in seconds for new instances to be ready to serve requests'
       GenaiEngineCacheTaskRulesCacheEnabled:
         default: 'Enable task rules cache'
       GenaiEngineCacheTaskRulesCacheTTL:
         default: 'Task rules cache TTL in seconds'
-      MLEngineVersion:
-        default: 'ML Engine Version'
-      MLEngineClientId:
-        default: 'ML Engine Client ID'
-      MLEngineClientSecret:
-        default: 'ML Engine Client Secret'
-      MLEngineContainerImageLocation:
-        default: 'Arthur ML Engine Container Image Location'
-      MLEngineECSCPUAlarmThreshold:
-        default: 'ML Engine ECS CPU Alarm Threshold'
-      MLEngineECSMemoryAlarmThreshold:
-        default: 'ML Engine ECS Memory Alarm Threshold'
-      MLEngineECSScaleCPUTargetValue:
-        default: 'ML Engine ECS Scale CPU Target Value'
-      MLEngineECSScaleMemoryTargetValue:
-        default: 'ML Engine ECS Scale Memory Target Value'
-      MLEngineECSScaleInCooldownInSecs:
-        default: 'ML Engine ECS Scale-in Cooldown in Seconds'
-      MLEngineECSScaleOutCooldownInSecs:
-        default: 'ML Engine ECS Scale-out Cooldown in Seconds'
-      MLEngineECSAutoscalingMaxCapacity:
-        default: 'ML Engine ECS Autoscaling Max Capacity'
-      MLEngineECSAutoscalingMinCapacity:
-        default: 'ML Engine ECS Autoscaling Min Capacity'
-      MLEngineECSServiceTaskDesiredCount:
-        default: 'ML Engine ECS Service Task Desired Count'
-      MLEngineBYOTaskRoleIAMArn:
-        default: 'Bring-Your-Own ML Engine Task Role'
-      MLEngineBYOTaskExecutionRoleIAMArn:
-        default: 'Bring-Your-Own ML Engine Task Execution Role'
-      MLEngineBYOAppSecurityGroupIDs:
-        default: 'Bring-Your-Own ML Engine Application Security Group IDs'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
@@ -562,7 +685,7 @@ Resources:
       Parameters:
         ExistingVPCId: !Ref ExistingArthurVPCId
         ExistingVPCCidrBlock: !Ref ExistingArthurVPCCidrBlock
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-vpc.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-core-vpc.yml"
   CoreSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -572,7 +695,7 @@ Resources:
         VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         PostgresBYOSecurityGroupIDs: !Join [ ",", !Ref PostgresBYOSecurityGroupIDs ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-core-security-groups.yml"
   CoreSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -583,7 +706,7 @@ Resources:
         ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
         PostgresUsername: !Ref PostgresCredentialsUsername
         PostgresPassword: !Ref PostgresCredentialsPassword
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-core-secrets-manager.yml"
   CoreRDSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -598,14 +721,14 @@ Resources:
         ArthurRDSDatabaseName: !Ref GenaiEngineDBDatabaseName
         ArthurRDSScalingConfigurationMinCapacity: !Ref RDSAuroraServerlessScalingConfigurationMinCapacity
         ArthurRDSScalingConfigurationMaxCapacity: !Ref RDSAuroraServerlessScalingConfigurationMaxCapacity
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-rds.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-core-rds.yml"
   CoreECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
         ArthurResourceNamespace: !Ref ArthurResourceNamespace
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-ecs.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-core-ecs.yml"
   GenaiEngineSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -614,7 +737,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         OpenAIEmbeddingModelNamesEndpointsAndKeys: 'none'
         OpenAIGPTModelNamesEndpointsAndKeys: !Ref OpenAIGPTModelNamesEndpointsAndKeys
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-secrets-manager.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-secrets-manager.yml"
   MLEngineSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -623,7 +746,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         MLEngineClientId: !Ref MLEngineClientId
         MLEngineClientSecret: !Ref MLEngineClientSecret
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-secrets-manager.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-secrets-manager.yml"
   GenaiEngineIAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -632,15 +755,15 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         GenaiEngineBYOTaskRoleIAMArn: !Ref GenaiEngineBYOTaskRoleIAMArn
         GenaiEngineBYOTaskExecutionRoleIAMArn: !Ref GenaiEngineBYOTaskExecutionRoleIAMArn
+        GenaiEngineBYOEC2InstanceProfileIAMArn: !Ref GenaiEngineBYOEC2InstanceProfileIAMArn
         GenaiEngineSecretArns: !Join
           - ','
-          - - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
-            - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
+          - - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
             - !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
             - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-iam.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-iam.yml"
   MLEngineIAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -653,7 +776,7 @@ Resources:
           - ','
           - - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-iam.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-iam.yml"
   GenaiEngineSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -664,7 +787,7 @@ Resources:
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         GenaiEngineBYOLBSecurityGroupIDs: !Join [ ",", !Ref GenaiEngineBYOLBSecurityGroupIDs ]
         GenaiEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref GenaiEngineBYOAppSecurityGroupIDs ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-security-groups.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-security-groups.yml"
   MLEngineSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -674,8 +797,8 @@ Resources:
         VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-security-groups.yml"
-  GenaiEngineECSTaskDefinitionStack:
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-security-groups.yml"
+  GenaiEngineECSGPUTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -683,7 +806,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         GenaiEngineECSTaskRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskRoleOutput ]
         GenaiEngineECSTaskExecutionRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskExecutionRoleOutput ]
-        GenaiEngineVersion: 'REPLACE_ME_GENAI_ENGINE_VERSION'
+        GenaiEngineVersion: '2.1.23-dev'
         GenaiEnginePostgresUrl: !GetAtt [ CoreRDSStack, Outputs.RDSInstanceAddressOutput ]
         GenaiEnginePostgresPort: !GetAtt [ CoreRDSStack, Outputs.RDSInstancePortOutput ]
         GenaiEnginePostgresDatabaseName: !Ref GenaiEngineDBDatabaseName
@@ -697,19 +820,18 @@ Resources:
         GenaiEngineSecretAPIKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
         GenaiEngineAppSecretKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
         GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
-        GenaiEngineSecretOpenAIEmbeddingModelNamesEndpointsKeysARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIEmbeddingModelNamesEndpointsAndKeysSecretOutput ]
         GenaiEngineSecretPostgresARN: !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
-        GenaiEngineAPIOnlyModeEnabled: 'enabled'
         GenaiEngineSensitiveDataCheckMaxTokenLimit: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit
         GenaiEngineHallucinationCheckMaxTokenLimit: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
-        GenaiEngineFargateTaskCPUValue: !Ref GenaiEngineFargateTaskCPUValue
-        GenaiEngineFargateTaskMemoryValue: !Ref GenaiEngineFargateTaskMemoryValue
+        GenaiEngineEC2TaskCPUValue: !Ref GenaiEngineEC2TaskCPUValue
+        GenaiEngineEC2TaskGPUValue: !Ref GenaiEngineEC2TaskGPUValue
+        GenaiEngineEC2TaskMemoryValue: !Ref GenaiEngineEC2TaskMemoryValue
         GenaiEngineServerWorkerCount: !Ref GenaiEngineServerWorkerCount
         GenaiEngineOpenAIProvider: !Ref GenaiEngineOpenAIProvider
         GenaiEngineCacheTaskRulesCacheEnabled: !Ref GenaiEngineCacheTaskRulesCacheEnabled
         GenaiEngineCacheTaskRulesCacheTTL: !Ref GenaiEngineCacheTaskRulesCacheTTL
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-ecs-task-definition-gpu.yml"
   MLEngineECSTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -724,7 +846,7 @@ Resources:
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
         MLEngineArthurApiHost: !Ref ArthurApiHost
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs-task-definition.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -738,23 +860,48 @@ Resources:
         GenaiEngineVPCId: !Ref ExistingArthurVPCId
         GenaiEngineRoute53HostedZoneId: !Ref GenaiEngineRoute53HostedZoneId
         GenaiEngineRoute53RecordName: !Ref GenaiEngineRoute53RecordName
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-lb.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-lb.yml"
   GenaiEngineECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
+        ArthurResourceNamespace: !Ref ArthurResourceNamespace
+        ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
         GenaiEngineLBTargetGroupARN: !GetAtt [ GenaiEngineLBStack, Outputs.GenaiEngineLBTargetGroupOutput ]
         GenaiEngineECSSecurityGroups: !GetAtt [ GenaiEngineSecurityGroupStack, Outputs.GenaiEngineAppSecurityGroupsOutput ]
         GenaiEngineECSServiceSubnetIDs: !Join [ ',', !Ref ArthurPrivateSubnets ]
-        GenaiEngineECSTaskDefinitionARN: !GetAtt [ GenaiEngineECSTaskDefinitionStack, Outputs.GenaiEngineECSTaskDefinitionOutput ]
+        GenaiEngineECSTaskDefinitionARN: !GetAtt [ GenaiEngineECSGPUTaskDefinitionStack, Outputs.GenaiEngineECSGPUTaskDefinitionOutput ]
         GenaiEngineECSServiceTaskDesiredCount: !Ref GenaiEngineECSServiceTaskDesiredCount
-        GenaiEngineECSAutoscalingMinCapacity: !Ref GenaiEngineECSAutoscalingMinCapacity
-        GenaiEngineECSAutoscalingMaxCapacity: !Ref GenaiEngineECSAutoscalingMaxCapacity
-        GenaiEngineECSScaleCPUTargetValue: !Ref GenaiEngineECSScaleCPUTargetValue
-        GenaiEngineECSScaleInCooldownInSecs: !Ref GenaiEngineECSScaleInCooldownInSecs
-        GenaiEngineECSScaleOutCooldownInSecs: !Ref GenaiEngineECSScaleOutCooldownInSecs
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs.yml"
+        GenaiEngineECSClusterGPUInstanceMaxCapacity: !Ref GenaiEngineECSClusterGPUInstanceMaxCapacity
+        GenaiEngineECSClusterGPUInstanceMinCapacity: !Ref GenaiEngineECSClusterGPUInstanceMinCapacity
+        GenaiEngineECSClusterGPUInstanceDesiredCapacity: !Ref GenaiEngineECSClusterGPUInstanceDesiredCapacity
+        GenaiEngineECSClusterGPUInstanceType: !Ref GenaiEngineECSClusterGPUInstanceType
+        GenaiEngineECSClusterGPUInstanceImageID: !Ref GenaiEngineECSClusterGPUInstanceImageID
+        GenaiEngineEC2InstanceProfileIAMArn: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineEC2InstanceProfileOutput ]
+        GenaiEngineECSClusterGPUUtilizationScaleOutThreshold: !Ref GenaiEngineECSClusterGPUUtilizationScaleOutThreshold
+        GenaiEngineECSClusterGPUUtilizationScaleInThreshold: !Ref GenaiEngineECSClusterGPUUtilizationScaleInThreshold
+        GenaiEngineECSClusterCPUUtilizationScaleOutThreshold: !Ref GenaiEngineECSClusterCPUUtilizationScaleOutThreshold
+        GenaiEngineECSClusterCPUUtilizationScaleInThreshold: !Ref GenaiEngineECSClusterCPUUtilizationScaleInThreshold
+        GenaiEngineECSClusterGPUInstanceScheduledScaleInCron: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleInCron
+        GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleOutCron
+        GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleInCapacity
+        GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity: !Ref GenaiEngineECSClusterGPUInstanceScheduledScaleOutCapacity
+        GenaiEngineECSClusterScheduledScalingEnabled: !Ref GenaiEngineECSClusterScheduledScalingEnabled
+        GenaiEngineECSClusterTaskScheduledScaleInCron: !Ref GenaiEngineECSClusterTaskScheduledScaleInCron
+        GenaiEngineECSClusterTaskScheduledScaleOutCron: !Ref GenaiEngineECSClusterTaskScheduledScaleOutCron
+        GenaiEngineTaskScalingLambdaRoleARN: !GetAtt [ GenaiEngineIAMStack, Outputs.GenaiEngineTaskScalingLambdaRoleOutput ]
+        GenaiEngineDynamicScaleOutCooldown: !Ref GenaiEngineDynamicScaleOutCooldown
+        GenaiEngineDynamicScaleInCooldown: !Ref GenaiEngineDynamicScaleInCooldown
+        GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled: !Ref GenaiEngineECSClusterDynamicScaleInCPUBasedEnabled
+        GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled: !Ref GenaiEngineECSClusterDynamicScaleInGPUBasedEnabled
+        GenaiEngineECSDeploymentMaximumPercent: !Ref GenaiEngineECSDeploymentMaximumPercent
+        GenaiEngineECSDeploymentMinimumHealthyPercent: !Ref GenaiEngineECSDeploymentMinimumHealthyPercent
+        GenaiEngineECSClusterWarmPoolEnabled: !Ref GenaiEngineECSClusterWarmPoolEnabled
+        GenaiEngineECSClusterWarmPoolMinSize: !Ref GenaiEngineECSClusterWarmPoolMinSize
+        GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity: !Ref GenaiEngineECSClusterWarmPoolMaxGroupPreparedCapacity
+        GenaiEngineEstimatedInstanceWarmup: !Ref GenaiEngineEstimatedInstanceWarmup
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-ecs-gpu.yml"
   MLEngineECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -770,7 +917,7 @@ Resources:
         MLEngineECSAutoscalingMaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
         MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
         MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-ecs.yml"
   GenaiEngineCloudwatchStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -786,7 +933,7 @@ Resources:
         GenaiEngineLoadBalancerTarget5xxAlarmThreshold: !Ref GenaiEngineLoadBalancerTarget5xxAlarmThreshold
         GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold: !Ref GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
         GenaiEngineECSMemoryAlarmThreshold: !Ref GenaiEngineECSMemoryAlarmThreshold
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-alarms.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-cloudwatch-alarms.yml"
   MLEngineCloudwatchStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -798,7 +945,7 @@ Resources:
         MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
         MLEngineECSCPUAlarmThreshold: !Ref MLEngineECSCPUAlarmThreshold
         MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-alarms.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-cloudwatch-alarms.yml"
   GenaiEngineCloudwatchDashboardStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -810,7 +957,7 @@ Resources:
         GenaiEngineLBTargetGroupFullName: !GetAtt [ GenaiEngineLBStack, Outputs.GenaiEngineLBTargetGroupFullNameOutput ]
         GenaiEngineLoadBalancerFullName: !GetAtt [ GenaiEngineLBStack, Outputs.GenaiEngineLBFullNameOutput ]
         GenaiEngineRDSClusterIdentifier: !GetAtt [ CoreRDSStack, Outputs.RDSClusterIdentifierOutput ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-dashboard.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-genai-engine-cloudwatch-dashboard.yml"
   MLEngineCloudwatchDashboardStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -819,4 +966,4 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
         MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-dashboard.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.23-test/arthur-ml-engine-cloudwatch-dashboard.yml"

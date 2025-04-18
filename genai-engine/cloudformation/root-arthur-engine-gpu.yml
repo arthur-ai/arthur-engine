@@ -443,6 +443,8 @@ Metadata:
           - GenaiEngineECSClusterGPUInstanceImageID
           - GenaiEngineOpenAIProvider
           - OpenAIGPTModelNamesEndpointsAndKeys
+          - MLEngineClientId
+          - MLEngineClientSecret
       - Label:
           default: "Advanced - General"
         Parameters:
@@ -675,6 +677,40 @@ Metadata:
         default: 'Enable task rules cache'
       GenaiEngineCacheTaskRulesCacheTTL:
         default: 'Task rules cache TTL in seconds'
+      ArthurApiHost:
+        default: 'Arthur API Host'
+      MLEngineClientId:
+        default: 'ML Engine Client ID'
+      MLEngineClientSecret:
+        default: 'ML Engine Client Secret'
+      MLEngineVersion:
+        default: 'ML Engine Version'
+      MLEngineContainerImageLocation:
+        default: 'ML Engine Container Image Location'
+      MLEngineECSMemoryAlarmThreshold:
+        default: 'ML Engine ECS Memory Alarm Threshold'
+      MLEngineECSCPUAlarmThreshold:
+        default: 'ML Engine ECS CPU Alarm Threshold'
+      MLEngineBYOTaskRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task IAM Role ARN'
+      MLEngineBYOTaskExecutionRoleIAMArn:
+        default: 'Bring-Your-Own ML Engine Task Execution IAM Role ARN'
+      MLEngineBYOAppSecurityGroupIDs:
+        default: 'Bring-Your-Own ML Engine Application Security Group IDs'
+      MLEngineECSScaleCPUTargetValue:
+        default: 'ML Engine ECS Scale CPU Target Value'
+      MLEngineECSScaleMemoryTargetValue:
+        default: 'ML Engine ECS Scale Memory Target Value'
+      MLEngineECSScaleInCooldownInSecs:
+        default: 'ML Engine ECS Scale In Cooldown in Seconds'
+      MLEngineECSScaleOutCooldownInSecs:
+        default: 'ML Engine ECS Scale Out Cooldown in Seconds'
+      MLEngineECSAutoscalingMaxCapacity:
+        default: 'ML Engine ECS Autoscaling Maximum Capacity'
+      MLEngineECSAutoscalingMinCapacity:
+        default: 'ML Engine ECS Autoscaling Minimum Capacity'
+      MLEngineECSServiceTaskDesiredCount:
+        default: 'ML Engine ECS Service Task Desired Count'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
