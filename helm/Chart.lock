@@ -1,9 +1,0 @@
-dependencies:
-- name: arthur-engine
-  repository: file://../genai-engine/helm
-  version: 2.1.20
-- name: ml-engine
-  repository: file://../ml-engine/helm
-  version: 1.4.933
-digest: sha256:1d67cf24a8706e9f0c4e8c7849e1dedac1fc2363496560771eef60184b5992b0
-generated: "2025-04-18T13:18:05.473497+02:00"
