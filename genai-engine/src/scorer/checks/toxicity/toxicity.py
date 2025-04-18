@@ -53,6 +53,10 @@ def get_harmful_request_classifier(
         return None
 
 
+def replace_special_chars(match):
+    return match.group(1)
+
+
 class ToxicityScorer(RuleScorer):
     LABEL = "TOXIC"
 
@@ -94,13 +98,13 @@ class ToxicityScorer(RuleScorer):
         # "1. do this thing"
         # gets treated as a single section instead of spltting the "1" away from the "do this thing"
         pattern = r"(?:\.|\?)(?=\s+[A-Za-z])"
-        asterisk_pattern = r"\*{2,}"
-        updated_text = re.sub(asterisk_pattern, lambda m: "-" * len(m.group()), text)
+        special_char_pattern = r"(?<![a-zA-Z])([^\w\s])\1{2,}(?![a-zA-Z])"
 
-        lines = updated_text.split("\n")
+        lines = text.split("\n")
         texts = []
         for line in lines:
             line = line.strip()
+            line = re.sub(special_char_pattern, replace_special_chars, line)
             if list_indicator_regex.match(line):
                 texts.append(line)
             else:
