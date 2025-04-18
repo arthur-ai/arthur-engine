@@ -31,7 +31,7 @@ services:
     env_file:
       - .env
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
-  data-plane:
+  ml-engine:
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
     platform: linux/amd64
     restart: unless-stopped
