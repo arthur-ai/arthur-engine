@@ -26,9 +26,9 @@ def test_detect_profanity():
     assert detect_profanity("s       H     , ! t")
     assert detect_profanity("fuck")
     assert detect_profanity("f*ck")
-    assert detect_profanity("f-ck")
+    assert not detect_profanity("f-ck")
     assert detect_profanity("f**ck")
-    assert detect_profanity("f--ck")
+    assert not detect_profanity("f--ck")
     assert not detect_profanity("fxck")
     assert not detect_profanity("fxxck")
 
@@ -253,15 +253,15 @@ def test_text_splitter():
         "I did not re-creat any article about the formal Australian Worker's Party formaly known as the New Communist Party of Australia",
         "I think you are high on the lies told by storm front",
         "You the hell listens to storm front.",
-        '"""" Peter Watson (of Warwick, Qld.) has claimed to represent all sorts of groups, and - in forums - likes to pretend he is several people at the same time',
+        '" Peter Watson (of Warwick, Qld.) has claimed to represent all sorts of groups, and - in forums - likes to pretend he is several people at the same time',
         "He has a habit of claiming to be the President of organisations he has made up on the internet",
-        'He says he is 14 (or 16) years old.""""',
+        'He says he is 14 (or 16) years old."',
         "Answere:- No I have not supported lotsd of groups",
         "I have only supported the CPW , AWP (formally known as the NCPA)",
         "I was never a member of the People's Think Tank Association plus the PTTA never had a president",
         "Plus I have only ever been one person",
         "And that person is Peter Watson",
-        'So I can only say on thing """"go get a life man"""".',
+        'So I can only say on thing ""go get a life man"".',
     ]
 
     chunked_texts = CLASSIFIER.split_text_into_sections(
@@ -306,4 +306,44 @@ if fast_ema[0] > slow_ema[0]:
         **This is a test**
         """,
     )
-    assert chunked_texts == ["*This is a test*", "--This is a test--"]
+
+    chunked_texts = CLASSIFIER.split_text_into_sections(
+        """
+        **** Replace this with a single asterisk ****
+        Th**s will not be re****placed
+        ----- This will be replaced -----
+        ===== This will be replaced =====
+        """,
+    )
+    assert chunked_texts == [
+        "* Replace this with a single asterisk *",
+        "Th**s will not be re****placed",
+        "- This will be replaced -",
+        "= This will be replaced =",
+    ]
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "text, expected_result",
+    [
+        ("f***ck", [True]),
+        ("f*********ck", [True]),
+        ("dendr**hilia", [False]),
+        ("dendr*philia", [True]),
+        ("dendr*****philia", [True]),
+        ("f***ck dendr**hilia", [True]),
+        ("f*********ck dendr*****philia", [True]),
+        ("f***ck dendr**hilia \n f*********ck dendr*****philia", [True, True]),
+        ("f***ck \n dendr**hilia", [True, False]),
+    ],
+)
+def test_profanity_detection_with_character_replacement(
+    text: str,
+    expected_result: list[bool],
+):
+    profanity_result = [
+        detect_profanity(section)
+        for section in CLASSIFIER.split_text_into_sections(text)
+    ]
+    assert profanity_result == expected_result
