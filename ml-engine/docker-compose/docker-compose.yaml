@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     stop_grace_period: "60s"
     env_file:
-      - ./ml-engine.env
+      - .env
     entrypoint:
       - python3
       - app/job_agent.py
