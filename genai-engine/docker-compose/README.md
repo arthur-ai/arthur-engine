@@ -4,11 +4,11 @@
 
 1. Create `.env` file from `.env.template` file and modify it
 2. Run `docker compose up`
-3. Wait for the `genai-engine` container to initialize then navigate to localhost:3000/docs to see the API docs
+3. Wait for the containers to initialize then navigate to localhost:3000/docs to see the API docs
 
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
-* When the `GENAI_ENGINE_VERSION` environment variable is not set, the `latest` stable image is used. When `latest` is used, make sure to run `docker compose pull` first to get the most recent`latest` tagged image.
+* When the `GENAI_ENGINE_VERSION` environment variable is not set, the `latest` stable image is used (not recommended). When `latest` is used, make sure to run `docker compose pull` first to get the most recent `latest` tagged image.
 
 ## Prerequisites
 
@@ -34,17 +34,17 @@ Please review the GPT model requirements below:
 2. Create `.env` file from `.env.template` file and modify it
 3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
    ```
-       export GENAI_ENGINE_VERSION=<genai_enginve_version>
+       export GENAI_ENGINE_VERSION=<genai_engine_version>
        docker compose up
    ```
-4. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
 
 ## Steps for Windows (with Powershell)
 1. Install and run Docker for Windows
 2. Create `.env` file from `.env.template` file and modify it
 3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
     ```
-        $env:GENAI_ENGINE_VERSION = "<genai_enginve_version>"
+        $env:GENAI_ENGINE_VERSION = "<genai_engine_version>"
         docker compose up
     ```
-4. Access the GenAI Engine API interactive documentation via a web browser at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
