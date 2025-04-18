@@ -25,3 +25,4 @@ oasdiff*
 new.openapi.json
 
 .env
+Chart.lock
