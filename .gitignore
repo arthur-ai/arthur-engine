@@ -19,10 +19,11 @@ report.xml
 *.venv*
 local.env
 .env.local
+.env
 
 .pre-commit-config-no-pytest-check.yaml
 oasdiff*
 new.openapi.json
 
-.env
 Chart.lock
+values.yaml
