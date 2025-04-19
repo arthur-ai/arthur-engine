@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ml-engine{{ if .Values.resourceNameSuffix }}-{{ .Values.resourceNameSuffix }}{{ end }}
-  namespace: {{ .Values.namespace }}
   labels:
     app: ml-engine
     {{- include "ml-engine.labels" . | nindent 4 }}
