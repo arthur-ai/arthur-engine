@@ -1,0 +1,53 @@
+services:
+  db:
+    image: ankane/pgvector
+    networks:
+      - arthur_network
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DATABASES=arthur_genai_engine
+    env_file:
+      - .env
+  genai-engine:
+    # If you have GPUs, use `genai-engine-gpu` image instead
+    image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
+    platform: linux/amd64
+    networks:
+      - arthur_network
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_URL=host.docker.internal
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=arthur_genai_engine
+      - POSTGRES_USE_SSL=false
+    env_file:
+      - .env
+    entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
+  ml-engine:
+    image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
+    platform: linux/amd64
+    restart: unless-stopped
+    stop_grace_period: "60s"
+    environment:
+      - ARTHUR_API_HOST=https://platform.arthur.ai
+    env_file:
+      - .env
+    entrypoint:
+      - python3
+      - app/job_agent.py
+    healthcheck:
+      test: wget -qO - http://127.0.0.1:7492/health
+      interval: 30s
+      timeout: 5s
+      retries: 5
+networks:
+  arthur_network:
+    driver: bridge
