@@ -9,7 +9,7 @@ Look up an engine version to use from the [Releases](https://github.com/arthur-a
 * Install Helm on your workstation. Helm version 3.8.0 or higher is required
 * The Arthur Engine Helm charts are hosted in the OCI format as [GitHub packages](https://github.com/arthur-ai/arthur-engine/pkgs/container/arthur-engine%2Fcharts%2Farthur-engine)
   ```bash
-  helm show chart oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine:<version_number>
+  helm show chart oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine:<version_number>
   ```
 
 ### OpenAI GPT Model
@@ -368,11 +368,11 @@ aws cloudwatch put-metric-alarm \
         --from-literal=keys='<your_gpt_keys>'
     ```
 
-2. Prepare a copy of the Arthur GenAI Engine Helm Chart configuration file, [values.yaml](values.yaml) in the directory where you will run `helm install` and populate the values accordingly. For GPU deployment, please review the "Additional Required Configurations For GPU Deployment" section in the [values.yaml](values.yaml) file.
+2. Prepare an Arthur GenAI Engine Helm Chart configuration file, `values.yaml` from [values.yaml.template](values.yaml.template) in the directory where you will run Helm install and populate the values accordingly. For GPU deployment, please review the "Additional Required Configurations For GPU Deployment" section in the [values.yaml.template](values.yaml.template) file.
 
 3. Install the Arthur GenAI Engine Helm Chart
     ```bash
-    helm upgrade --install -n arthur -f genai-values.yaml arthur-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-engine --version <version_number>
+    helm upgrade --install -n arthur -f values.yaml arthur-genai-engine oci://ghcr.io/arthur-ai/arthur-engine/charts/arthur-genai-engine --version <version_number>
     ```
 4. Configure DNS by creating an `A` record that routes the GenAI Engine service URL to the GenAI Engine's ingress load balancer
 5. Verify that all the pods are running with
