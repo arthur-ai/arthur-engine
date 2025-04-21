@@ -11,7 +11,7 @@ mlEngine:
     labels: {}
     annotations: {}
     mlEnginePodLabels: {}
-    serviceAccount: ""
+    mlEngineServiceAccount: ""
     containerImageName: "ml-engine"
     containerImageVersion: "1.4.933"
     containerMemoryRequests: "16Gi"
