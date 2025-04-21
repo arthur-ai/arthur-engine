@@ -105,10 +105,6 @@ genaiEngineCacheTaskRulesCacheEnabled: true
 genaiEngineCacheTaskRulesCacheTTL: 60
 # Number of replicas of GenAI Engine pod running in k8s cluster (This is automatically overridden if the GenAI Engine HPA is enabled)
 genaiEngineReplicaCount: 2
-# Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
-genaiEngineServiceAccount:
-  create: false
-  name: ""
 # CPU requests value for GenAI Engine
 genaiEngineContainerCPURequests: "7"
 # Memory requests value for GenAI Engine
@@ -117,6 +113,10 @@ genaiEngineContainerMemoryRequests: "16Gi"
 genaiEngineContainerCPULimits: "8"
 # Memory limits value for GenAI Engine
 genaiEngineContainerMemoryLimits: "16Gi"
+# Name of the service account used by the GenAI Engine pod (if no service account is specified, the pod will use its default behavior, which usually means that it uses the `default` k8s service account)
+genaiEngineServiceAccount:
+  create: false
+  name: ""
 # Modifiable properties of Arthur GenAI Engine service
 arthurGenaiEngineService:
   annotations: {}
