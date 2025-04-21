@@ -3,10 +3,6 @@
     "title": "ML Engine Helm Chart Values",
     "type": "object",
     "properties": {
-        "namespace": {
-            "type": "string",
-            "description": "The Kubernetes namespace where the ML Engine will be deployed."
-        },
         "resourceNameSuffix": {
             "type": "string",
             "description": "Optional suffix for resource names."
@@ -53,11 +49,11 @@
                         },
                         "mlEnginePodLabels": {
                             "type": "object",
-                            "description": "Labels for the ml engine pods."
+                            "description": "Labels for the ML Engine pods."
                         },
-                        "serviceAccount": {
-                            "type": "string",
-                            "description": "The service account to use for the deployment."
+                        "mlEngineServiceAccount": {
+                            "type": "object",
+                            "description": "The service account to use for the ML Engine deployment."
                         },
                         "containerImageName": {
                             "type": "string",
@@ -124,7 +120,6 @@
         }
     },
     "required": [
-        "namespace",
         "containerRepository",
         "mlEngine"
     ]

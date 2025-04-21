@@ -35,8 +35,8 @@ spec:
       imagePullSecrets:
         - name: {{ .Values.containerRepository.imagePullSecretName }}
       {{- end }}
-      {{- if .Values.mlEngine.deployment.serviceAccount }}
-      serviceAccountName: {{ .Values.mlEngine.deployment.serviceAccount }}
+      {{- if .Values.mlEngine.deployment.mlEngineServiceAccount }}
+      serviceAccountName: {{ .Values.mlEngine.deployment.mlEngineServiceAccount }}
       {{- end }}
       containers:
         - name: ml-engine
