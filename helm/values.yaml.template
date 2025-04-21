@@ -1,0 +1,104 @@
+env:
+  suffix: &suffix ""
+
+arthur-engine:
+  enabled: true
+  postgresBYOEndpoint: ""
+  genaiEngineIngressURL: ""
+  genaiEngineOpenAIProvider: "Azure"
+  arthurGenaiEngineDeployment:
+    annotations: {}
+    labels: {}
+    genaiEnginePodAnnotations: {}
+    genaiEnginePodLabels: {}
+    genaiEnginePodNodeSelector: {}
+    genaiEnginePodAffinity: {}
+    genaiEnginePodTolerations: []
+  gpuEnabled: false
+  genaiEngineDeploymentType: "deployment"
+  genaiEngineWorkers: 1
+  genaiEngineContainerImageLocation: "arthurplatform/genai-engine-cpu"
+  arthurGenaiEngineHPA:
+    enabled: true
+    annotations: {}
+    labels: {}
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+      scaleUp:
+        stabilizationWindowSeconds: 30
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+        selectPolicy: Max
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 80
+  arthurResourceNameSuffix: *suffix
+  containerRepositoryCredentialRequired: false
+  genaiEngineDBDatabaseName: "arthur_genai_engine"
+  postgresBYOPort: 5432
+  postgresSSLCertDownloadURL: "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
+  postgresClientConnectionPoolMaxOverflow: 15
+  postgresClientConnectionPoolSize: 5
+  ingress:
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+    labels: {}
+  genaiEngineVersion: '2.1.22'
+  genaiEngineHallucinationCheckMaxTokenLimit: 3000
+  genaiEngineSensitiveDataCheckMaxTokenLimit: 6000
+  genaiEngineToxicityCheckMaxTokenLimit: 1200
+  genaiEngineCacheTaskRulesCacheEnabled: true
+  genaiEngineCacheTaskRulesCacheTTL: 60
+  genaiEngineReplicaCount: 2
+  genaiEngineContainerCPURequests: "7"
+  genaiEngineContainerMemoryRequests: "16Gi"
+  genaiEngineContainerCPULimits: "8"
+  genaiEngineContainerMemoryLimits: "16Gi"
+  arthurGenaiEngineService:
+    annotations: {}
+    labels: {}
+  imagePullSecretName: "arthur-repository-credentials"
+  genaiEngineSecretPostgresName: "postgres-secret"
+  genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
+  genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
+
+ml-engine:
+  enabled: true
+  image:
+    repository: ml-engine
+    tag: latest
+    pullPolicy: IfNotPresent
+  namespace: "ml-engine"
+  resourceNameSuffix: *suffix
+  containerRepository:
+    imageLocation: "arthurplatform"
+    credentialsRequired: false
+    imagePullSecretName: ""
+  mlEngine:
+    deployment:
+      replicas: 1
+      labels: {}
+      annotations: {}
+      mlEnginePodLabels: {}
+      serviceAccount: ""
+      containerImageName: "ml-engine"
+      containerImageVersion: "1.4.933"
+      containerMemoryRequests: "16Gi"
+      containerCPURequests: "7"
+      containerMemoryLimits: "16Gi"
+      containerCPULimits: "8"
+      appPlaneUrl: "https://platform.arthur.ai"
+      clientId: ""
+      secretsName: "ml-engine-secrets"
+      mlEnginePodNodeSelector: {}
+      mlEnginePodAffinity: {}
+      mlEnginePodTolerations: {}

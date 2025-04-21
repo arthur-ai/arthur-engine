@@ -1,0 +1,26 @@
+resourceNameSuffix: ""
+
+containerRepository:
+  imageLocation: "arthurplatform"
+  credentialsRequired: false
+  imagePullSecretName: ""
+
+mlEngine:
+  deployment:
+    replicas: 1
+    labels: {}
+    annotations: {}
+    mlEnginePodLabels: {}
+    serviceAccount: ""
+    containerImageName: "ml-engine"
+    containerImageVersion: "1.4.933"
+    containerMemoryRequests: "16Gi"
+    containerCPURequests: "7"
+    containerMemoryLimits: "16Gi"
+    containerCPULimits: "8"
+    appPlaneUrl: "https://platform.arthur.ai"
+    clientId: ""
+    secretsName: "ml-engine-secrets"
+    mlEnginePodNodeSelector: {}
+    mlEnginePodAffinity: {}
+    mlEnginePodTolerations: {}

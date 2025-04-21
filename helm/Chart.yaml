@@ -1,0 +1,11 @@
+# Chart.yaml
+apiVersion: v2
+name: arthur-engine
+version: 0.1.0
+dependencies:
+  - name: arthur-genai-engine
+    version: 2.1.23
+    repository: file://../genai-engine/helm
+  - name: arthur-ml-engine
+    version: 1.4.933
+    repository: file://../ml-engine/helm
