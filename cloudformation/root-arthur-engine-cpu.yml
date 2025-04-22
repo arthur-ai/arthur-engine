@@ -562,7 +562,7 @@ Resources:
       Parameters:
         ExistingVPCId: !Ref ExistingArthurVPCId
         ExistingVPCCidrBlock: !Ref ExistingArthurVPCCidrBlock
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-vpc.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/core/arthur-core-vpc.yml"
   CoreSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -572,7 +572,7 @@ Resources:
         VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         PostgresBYOSecurityGroupIDs: !Join [ ",", !Ref PostgresBYOSecurityGroupIDs ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-security-groups.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/core/arthur-core-security-groups.yml"
   CoreSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -583,7 +583,7 @@ Resources:
         ContainerRepositoryPassword: !Ref ContainerRepositoryPassword
         PostgresUsername: !Ref PostgresCredentialsUsername
         PostgresPassword: !Ref PostgresCredentialsPassword
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-secrets-manager.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/core/arthur-core-secrets-manager.yml"
   CoreRDSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -598,14 +598,14 @@ Resources:
         ArthurRDSDatabaseName: !Ref GenaiEngineDBDatabaseName
         ArthurRDSScalingConfigurationMinCapacity: !Ref RDSAuroraServerlessScalingConfigurationMinCapacity
         ArthurRDSScalingConfigurationMaxCapacity: !Ref RDSAuroraServerlessScalingConfigurationMaxCapacity
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-rds.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/core/arthur-core-rds.yml"
   CoreECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
         ArthurResourceNamespace: !Ref ArthurResourceNamespace
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-core-ecs.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/core/arthur-core-ecs.yml"
   GenaiEngineSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -614,7 +614,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         OpenAIEmbeddingModelNamesEndpointsAndKeys: 'none'
         OpenAIGPTModelNamesEndpointsAndKeys: !Ref OpenAIGPTModelNamesEndpointsAndKeys
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-secrets-manager.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-secrets-manager.yml"
   MLEngineSecretsStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -623,7 +623,7 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         MLEngineClientId: !Ref MLEngineClientId
         MLEngineClientSecret: !Ref MLEngineClientSecret
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-secrets-manager.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-secrets-manager.yml"
   GenaiEngineIAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -640,7 +640,7 @@ Resources:
             - !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
             - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-iam.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-iam.yml"
   MLEngineIAMStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -653,7 +653,7 @@ Resources:
           - ','
           - - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-iam.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-iam.yml"
   GenaiEngineSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -664,7 +664,7 @@ Resources:
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         GenaiEngineBYOLBSecurityGroupIDs: !Join [ ",", !Ref GenaiEngineBYOLBSecurityGroupIDs ]
         GenaiEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref GenaiEngineBYOAppSecurityGroupIDs ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-security-groups.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-security-groups.yml"
   MLEngineSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -674,7 +674,7 @@ Resources:
         VPCId: !GetAtt [ CoreVPCStack, Outputs.VPCIdOutput ]
         VPCCidrBlock: !GetAtt [ CoreVPCStack, Outputs.VPCCidrBlockOutput ]
         MLEngineBYOAppSecurityGroupIDs: !Join [ ",", !Ref MLEngineBYOAppSecurityGroupIDs ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-security-groups.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-security-groups.yml"
   GenaiEngineECSTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -709,7 +709,7 @@ Resources:
         GenaiEngineOpenAIProvider: !Ref GenaiEngineOpenAIProvider
         GenaiEngineCacheTaskRulesCacheEnabled: !Ref GenaiEngineCacheTaskRulesCacheEnabled
         GenaiEngineCacheTaskRulesCacheTTL: !Ref GenaiEngineCacheTaskRulesCacheTTL
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs-task-definition.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-ecs-task-definition.yml"
   MLEngineECSTaskDefinitionStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -724,7 +724,7 @@ Resources:
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
         MLEngineArthurApiHost: !Ref ArthurApiHost
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs-task-definition.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -738,7 +738,7 @@ Resources:
         GenaiEngineVPCId: !Ref ExistingArthurVPCId
         GenaiEngineRoute53HostedZoneId: !Ref GenaiEngineRoute53HostedZoneId
         GenaiEngineRoute53RecordName: !Ref GenaiEngineRoute53RecordName
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-lb.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-lb.yml"
   GenaiEngineECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -754,7 +754,7 @@ Resources:
         GenaiEngineECSScaleCPUTargetValue: !Ref GenaiEngineECSScaleCPUTargetValue
         GenaiEngineECSScaleInCooldownInSecs: !Ref GenaiEngineECSScaleInCooldownInSecs
         GenaiEngineECSScaleOutCooldownInSecs: !Ref GenaiEngineECSScaleOutCooldownInSecs
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-ecs.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-ecs.yml"
   MLEngineECSStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -770,7 +770,7 @@ Resources:
         MLEngineECSAutoscalingMaxCapacity: !Ref MLEngineECSAutoscalingMaxCapacity
         MLEngineECSAutoscalingMinCapacity: !Ref MLEngineECSAutoscalingMinCapacity
         MLEngineECSServiceTaskDesiredCount: !Ref MLEngineECSServiceTaskDesiredCount
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-ecs.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs.yml"
   GenaiEngineCloudwatchStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -786,7 +786,7 @@ Resources:
         GenaiEngineLoadBalancerTarget5xxAlarmThreshold: !Ref GenaiEngineLoadBalancerTarget5xxAlarmThreshold
         GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold: !Ref GenaiEngineLoadBalancerTargetResponseTimeAlarmThreshold
         GenaiEngineECSMemoryAlarmThreshold: !Ref GenaiEngineECSMemoryAlarmThreshold
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-alarms.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-cloudwatch-alarms.yml"
   MLEngineCloudwatchStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -798,7 +798,7 @@ Resources:
         MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
         MLEngineECSCPUAlarmThreshold: !Ref MLEngineECSCPUAlarmThreshold
         MLEngineECSMemoryAlarmThreshold: !Ref MLEngineECSMemoryAlarmThreshold
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-alarms.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-cloudwatch-alarms.yml"
   GenaiEngineCloudwatchDashboardStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -810,7 +810,7 @@ Resources:
         GenaiEngineLBTargetGroupFullName: !GetAtt [ GenaiEngineLBStack, Outputs.GenaiEngineLBTargetGroupFullNameOutput ]
         GenaiEngineLoadBalancerFullName: !GetAtt [ GenaiEngineLBStack, Outputs.GenaiEngineLBFullNameOutput ]
         GenaiEngineRDSClusterIdentifier: !GetAtt [ CoreRDSStack, Outputs.RDSClusterIdentifierOutput ]
-      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-genai-engine-cloudwatch-dashboard.yml"
+      TemplateURL:  "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/genai-engine/arthur-genai-engine-cloudwatch-dashboard.yml"
   MLEngineCloudwatchDashboardStack:
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -819,4 +819,4 @@ Resources:
         ArthurResourceNameSuffix: !Ref ArthurResourceNameSuffix
         ArthurECSClusterName: !GetAtt [ CoreECSStack, Outputs.ArthurECSClusterNameOutput ]
         MLEngineECSServiceName: !GetAtt [ MLEngineECSStack, Outputs.MLEngineECSServiceNameOutput ]
-      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/arthur-ml-engine-cloudwatch-dashboard.yml"
+      TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-cloudwatch-dashboard.yml"
