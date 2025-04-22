@@ -48,7 +48,7 @@ Please pre-create a database on your instance (e.g. `arthur_genai_engine`)
 ## GPU deployment
 Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
 
-The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml](values.yaml) file runs the GenAI Engine as a DaemonSet with a specific node group autoscaler described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
+The CPU deployment runs the GenAI Engine as a Deployment with a Horizontal Pod Autoscaler (HPA). For the GPU deployment, following our guide in the [values.yaml.template](values.yaml.template) file runs the GenAI Engine as a DaemonSet on a dedicated node group described in the section below, "How to configure your AWS EKS cluster with a GPU node group". The DaemonSet GPU deployment is the Arthur's preferred configuration. It depends on the node group autoscaling for scaling out and scaling in on-demand. This approach does not assume you have a large pool of GPUs sitting idle, waiting to be used.
 
 ## How to configure your AWS EKS cluster with a GPU node group
 This section is a guide to help you configure your existing AWS EKS cluster with a GPU node group for GenAI Engine.
