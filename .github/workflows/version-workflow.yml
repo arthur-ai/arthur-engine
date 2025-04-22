@@ -55,10 +55,10 @@ jobs:
           HELM_VALUES_YAML_PATH: "helm/values.yaml.template"
           HELM_CPU_START_SCRIPT_PATH: "helm/start.sh.template.cpu"
           HELM_GPU_START_SCRIPT_PATH: "helm/start.sh.template.gpu"
-          CFT_CPU_HTML_PATH: "cloudformation/start-cpu.html"
-          CFT_GPU_HTML_PATH: "cloudformation/start-gpu.html"
-          PARENT_CHART_YAML_PATH: "../helm/Chart.yaml"
-          PARENT_VALUES_YAML_PATH: "../helm/values.yaml.template"
+          PARENT_CFT_CPU_HTML_PATH: "../deployment/cloudformation/start-cpu.html"
+          PARENT_CFT_GPU_HTML_PATH: "../deployment/cloudformation/start-gpu.html"
+          PARENT_CHART_YAML_PATH: "../deployment/helm/Chart.yaml"
+          PARENT_VALUES_YAML_PATH: "../deployment/helm/values.yaml.template"
         run: |
           set -e
 
@@ -92,14 +92,14 @@ jobs:
           sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$HELM_CHART_YAML_PATH"
           sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_CPU_START_SCRIPT_PATH"
           sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$HELM_GPU_START_SCRIPT_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$CFT_GPU_HTML_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$CFT_CPU_HTML_PATH"
 
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$PARENT_CFT_GPU_HTML_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$PARENT_CFT_CPU_HTML_PATH"
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: $NEW_VERSION|" "$PARENT_VALUES_YAML_PATH"
           sed -i "s|version:.*|version: $NEW_VERSION|" "$PARENT_CHART_YAML_PATH"
 
           # Add and commit changes
-          git add version pyproject.toml $HELM_CHART_YAML_PATH $HELM_VALUES_YAML_PATH $HELM_CPU_START_SCRIPT_PATH $HELM_GPU_START_SCRIPT_PATH $CFT_GPU_HTML_PATH $CFT_CPU_HTML_PATH $PARENT_CHART_YAML_PATH $PARENT_VALUES_YAML_PATH
+          git add version pyproject.toml $HELM_CHART_YAML_PATH $HELM_VALUES_YAML_PATH $HELM_CPU_START_SCRIPT_PATH $HELM_GPU_START_SCRIPT_PATH $PARENT_CFT_GPU_HTML_PATH $PARENT_CFT_CPU_HTML_PATH $PARENT_CHART_YAML_PATH $PARENT_VALUES_YAML_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
