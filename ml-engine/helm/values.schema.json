@@ -83,10 +83,6 @@
                             "type": "string",
                             "description": "The URL of the application plane."
                         },
-                        "clientId": {
-                            "type": "string",
-                            "description": "The client ID for authentication."
-                        },
                         "secretsName": {
                             "type": "string",
                             "description": "The name of the secret containing sensitive data."

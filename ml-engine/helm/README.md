@@ -31,12 +31,10 @@ The chart is tested on AWS Elastic Kubernetes Service (EKS) version 1.31.
 1. Create a Kubernetes secret for the client secret provided by the Arthur Platform
     # WARNING: Do NOT set up secrets this way in production.
     #          Use a secure method such as sealed secrets and external secret store providers.
-    kubectl -n arthur create secret generic postgres-secret \
-        --from-literal=username='<username>' \
-        --from-literal=password='<password>'
    ```bash
    kubectl -n arthur create secret generic ml-engine-client-secret \
-      --from-literal=client_secret=$CLIENT_SECRET_BASE64
+        --from-literal=client_id='<client_id>' \
+        --from-literal=client_secret='<client_secret>'
    ```
 
 2. Prepare an Arthur ML Engine Helm Chart configuration file, `values.yaml` from [values.yaml.template](values.yaml.template) in the directory where you will run Helm install and populate the values accordingly.
