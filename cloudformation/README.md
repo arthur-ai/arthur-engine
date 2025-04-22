@@ -71,13 +71,15 @@ Secrets Manager.
 ### How do I configure my bring-your-own IAM roles?
 
 Please refer to the IAM details described in the CloudFormation template:
-* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/arthur-genai-engine-iam.yml`
+* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/genai-engine/arthur-genai-engine-iam.yml`
+* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/ml-engine/arthur-ml-engine-iam.yml`
 
 ### How do I configure my bring-your-own security groups?
 
 Please refer to the security group details described in the CloudFormation templates:
-* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/arthur-core-security-groups.yml`
-* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/arthur-genai-engine-security-groups.yml`
+* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/core/arthur-core-security-groups.yml`
+* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/genai-engine/arthur-genai-engine-security-groups.yml`
+* `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/ml-engine/arthur-ml-engine-security-groups.yml`
 
 ### The usage of my Azure OpenAI endpoint is going beyond my quota. What do I do?
 
