@@ -250,12 +250,14 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Package and Push Helm chart
         env:
-          CHART_PATH: "helm"
-          CHART_PATH_GENAI_ENGINE: "genai-engine/helm"
-          CHART_PATH_ML_ENGINE: "ml-engine/helm"
+          CHART_PATH_ARTHUR_ENGINE: "deployment/arthur-engine/helm"
+          CHART_PATH_GENAI_ENGINE: "deployment/genai-engine/helm"
+          CHART_PATH_ML_ENGINE: "deployment/ml-engine/helm"
           CHART_NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'charts' || 'charts-dev' }}
         run: |
           helm package ${CHART_PATH_GENAI_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
           helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
+          helm package ${CHART_PATH_ARTHUR_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
+          helm push arthur-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
