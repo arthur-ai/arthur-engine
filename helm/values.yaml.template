@@ -177,3 +177,9 @@ arthur-ml-engine:
       mlEnginePodNodeSelector: {}
       mlEnginePodAffinity: {}
       mlEnginePodTolerations: {}
+
+  ###################################
+  ## Advanced - Secrets name customization
+  ###################################
+  # ML Engine client secret name (expecting values for keys 'client_id' and 'client_secret')
+  mlEngineClientSecretName: "ml-engine-client-secret"

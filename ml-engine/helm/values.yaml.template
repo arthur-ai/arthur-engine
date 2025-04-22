@@ -1,10 +1,12 @@
-resourceNameSuffix: ""
+###################################
+## Advanced - General
+###################################
 
 containerRepository:
   imageLocation: "arthurplatform"
   credentialsRequired: false
   imagePullSecretName: ""
-
+resourceNameSuffix: ""
 mlEngine:
   deployment:
     replicas: 1
@@ -19,8 +21,12 @@ mlEngine:
     containerMemoryLimits: "16Gi"
     containerCPULimits: "8"
     appPlaneUrl: "https://platform.arthur.ai"
-    clientId: ""
-    secretsName: "ml-engine-secrets"
     mlEnginePodNodeSelector: {}
     mlEnginePodAffinity: {}
     mlEnginePodTolerations: {}
+
+    ###################################
+    ## Advanced - Secrets name customization
+    ###################################
+    # ML Engine client secret name (expecting values for keys 'client_id' and 'client_secret')
+    mlEngineClientSecretName: "ml-engine-client-secret"
