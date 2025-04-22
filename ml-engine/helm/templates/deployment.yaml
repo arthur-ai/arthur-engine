@@ -69,11 +69,14 @@ spec:
             - name: ARTHUR_API_HOST
               value: "{{ .Values.mlEngine.deployment.appPlaneUrl }}"
             - name: ARTHUR_CLIENT_ID
-              value: "{{ .Values.mlEngine.deployment.clientId }}"
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
+                  key: client_id
             - name: ARTHUR_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mlEngine.deployment.secretsName }}
+                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
                   key: client_secret
       {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
       nodeSelector:
