@@ -28,6 +28,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
+      - ALLOW_ADMIN_KEY_GENERAL_ACCESS=true
     env_file:
       - .env
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
@@ -38,6 +39,9 @@ services:
     stop_grace_period: "60s"
     environment:
       - ARTHUR_API_HOST=https://platform.arthur.ai
+      - SHIELD_ENGINE_INTERNAL_API_KEY=${GENAI_ENGINE_ADMIN_KEY}
+      - SHIELD_ENGINE_INTERNAL_HOST=${GENAI_ENGINE_INGRESS_URI}
+      - SHIELD_ENGINE_INTERNAL_INGRESS_HOST=${GENAI_ENGINE_INGRESS_URI}
     env_file:
       - .env
     entrypoint:
