@@ -166,6 +166,13 @@ Parameters:
     Type: Number
     Default: 60
     Description: 'Task rules cache TTL in seconds'
+  GenaiEngineAllowAdminKeyGeneralAccess:
+    Type: String
+    Description: 'Allow admin key general access'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
@@ -231,6 +238,8 @@ Resources:
               Value: !Ref GenaiEngineToxicityCheckMaxTokenLimit
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
               Value: !Ref GenaiEngineOpenAIProvider
+            - Name: 'ALLOW_ADMIN_KEY_GENERAL_ACCESS'
+              Value: !Ref GenaiEngineAllowAdminKeyGeneralAccess
             - Name: 'WORKERS'
               Value: !Ref GenaiEngineServerWorkerCount
             - Name: 'POSTGRES_CLIENT_CONNECTION_POOL_SIZE'
