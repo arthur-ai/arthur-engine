@@ -725,7 +725,6 @@ Resources:
         MLEngineArthurApiHost: !Ref ArthurApiHost
         MLEngineClientCredentialsSecretARN: !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
         ShieldEngineInternalAPIKeySecretARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
-        ShieldEngineInternalHost: !Ref GenaiEngineIngressURL
         ShieldEngineInternalIngressHost: !Ref GenaiEngineIngressURL
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-ecs-task-definition.yml"
   GenaiEngineLBStack:
