@@ -110,6 +110,18 @@
                         "mlEnginePodTolerations": {
                             "type": "object",
                             "description": "Tolerations for the ml engine pods."
+                        },
+                        "shieldEngineInternalAPIKeySecretName": {
+                            "type": "string",
+                            "description": "The name of the secret containing the internal API key for Shield Engine."
+                        },
+                        "shieldEngineInternalHost": {
+                            "type": "string",
+                            "description": "The internal host name for the Shield Engine service."
+                        },
+                        "shieldEngineInternalIngressHost": {
+                            "type": "string",
+                            "description": "The internal ingress host for Shield Engine."
                         }
                     },
                     "required": [
@@ -121,7 +133,10 @@
                         "containerMemoryLimits",
                         "containerCPULimits",
                         "appPlaneUrl",
-                        "secretsName"
+                        "secretsName",
+                        "shieldEngineInternalAPIKeySecretName",
+                        "shieldEngineInternalHost",
+                        "shieldEngineInternalIngressHost"
                     ]
                 }
             }
