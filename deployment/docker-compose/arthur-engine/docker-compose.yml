@@ -40,8 +40,8 @@ services:
     environment:
       - ARTHUR_API_HOST=https://platform.arthur.ai
       - SHIELD_ENGINE_INTERNAL_API_KEY=${GENAI_ENGINE_ADMIN_KEY}
-      - SHIELD_ENGINE_INTERNAL_HOST=${GENAI_ENGINE_INGRESS_URI}
-      - SHIELD_ENGINE_INTERNAL_INGRESS_HOST=${GENAI_ENGINE_INGRESS_URI}
+      - SHIELD_ENGINE_INTERNAL_HOST=http://genai-engine:3000
+      - SHIELD_ENGINE_INTERNAL_INGRESS_HOST=http://genai-engine:3000
     env_file:
       - .env
     entrypoint:
