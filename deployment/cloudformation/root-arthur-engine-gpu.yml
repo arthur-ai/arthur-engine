@@ -445,6 +445,7 @@ Metadata:
           - OpenAIGPTModelNamesEndpointsAndKeys
           - MLEngineClientId
           - MLEngineClientSecret
+          - ArthurApiHost
       - Label:
           default: "Advanced - General"
         Parameters:
@@ -531,8 +532,12 @@ Metadata:
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
     ParameterLabels:
-      GenaiEngineContainerImageLocation:
-        default: 'Arthur GenAI Engine Container Image Location'
+      ArthurResourceNamespace:
+        default: 'Arthur Platform Resource Namespace'
+      ArthurResourceNameSuffix:
+        default: 'Arthur Platform Resource Name Suffix'
+      MLEngineContainerImageLocation:
+        default: 'ML Engine Container Image Location'
       ContainerRepositoryUsername:
         default: 'Container Repository Username'
       ContainerRepositoryPassword:
@@ -549,10 +554,6 @@ Metadata:
         default: 'GenAI Engine Postgres Client Pool Max Overflow'
       OpenAIGPTModelNamesEndpointsAndKeys:
         default: 'OpenAI GPT Model Endpoints'
-      ArthurResourceNamespace:
-        default: 'Arthur Platform Resource Namespace'
-      ArthurResourceNameSuffix:
-        default: 'Arthur Platform Resource Name Suffix'
       GenaiEngineECSClusterGPUInstanceImageID:
         default: 'ECS Cluster EC2 GPU Instance Image ID'
       GenaiEngineECSClusterGPUInstanceType:
