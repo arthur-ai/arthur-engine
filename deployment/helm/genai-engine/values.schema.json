@@ -448,6 +448,7 @@
         "genaiEngineContainerMemoryRequests",
         "genaiEngineContainerCPULimits",
         "genaiEngineContainerMemoryLimits",
+        "genaiEngineAllowAdminKeyGeneralAccess",
         "arthurGenaiEngineDeployment",
         "arthurGenaiEngineService",
         "arthurGenaiEngineHPA",
