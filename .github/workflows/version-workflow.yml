@@ -57,8 +57,8 @@ jobs:
           ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH: "../deployment/helm/arthur-engine/start.sh.template.gpu"
           ARTHUR_ENGINE_CFT_CPU_HTML_PATH: "../deployment/cloudformation/start-cpu-stack.html"
           ARTHUR_ENGINE_CFT_GPU_HTML_PATH: "../deployment/cloudformation/start-gpu-stack.html"
-          ARTHUR_ENGINE_CHART_YAML_PATH: "../deployment/helm/Chart.yaml"
-          ARTHUR_ENGINE_VALUES_YAML_PATH: "../deployment/helm/values.yaml.template"
+          ARTHUR_ENGINE_CHART_YAML_PATH: "../deployment/helm/arthur-engine/Chart.yaml"
+          ARTHUR_ENGINE_VALUES_YAML_PATH: "../deployment/helm/arthur-engine/values.yaml.template"
         run: |
           set -e
 
