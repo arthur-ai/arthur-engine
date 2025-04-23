@@ -47,6 +47,16 @@ Parameters:
     Type: String
     Description: 'The ARN of the Secret containing Client Credentials for the ML Engine'
     NoEcho: true
+  ShieldEngineInternalAPIKeySecretARN:
+    Type: String
+    Description: 'The ARN of the Secret containing the Shield Engine Internal API Key'
+    NoEcho: true
+  ShieldEngineInternalHost:
+    Type: String
+    Description: 'The Shield Engine Internal Host'
+  ShieldEngineInternalIngressHost:
+    Type: String
+    Description: 'The Shield Engine Internal Ingress Host'
   MLEngineFargateTaskCPUValue:
     Type: Number
     Default: 1024
@@ -90,11 +100,17 @@ Resources:
           Environment:
             - Name: 'ARTHUR_API_HOST'
               Value: !Ref MLEngineArthurApiHost
+            - Name: 'SHIELD_ENGINE_INTERNAL_HOST'
+              Value: !Ref ShieldEngineInternalHost
+            - Name: 'SHIELD_ENGINE_INTERNAL_INGRESS_HOST'
+              Value: !Ref ShieldEngineInternalIngressHost
           Secrets:
             - Name: 'ARTHUR_CLIENT_ID'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_id::'
             - Name: 'ARTHUR_CLIENT_SECRET'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_secret::'
+            - Name: 'SHIELD_ENGINE_INTERNAL_API_KEY'
+              ValueFrom: !Ref ShieldEngineInternalAPIKeySecretARN
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
