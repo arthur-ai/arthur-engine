@@ -121,6 +121,8 @@ genaiEngineServiceAccount:
 arthurGenaiEngineService:
   annotations: {}
   labels: {}
+# Allow admin key general access for the data plane
+genaiEngineAllowAdminKeyGeneralAccess: true
 
 ###################################
 ## Advanced - Secrets name customization
