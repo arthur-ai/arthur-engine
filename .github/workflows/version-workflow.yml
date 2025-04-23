@@ -91,10 +91,10 @@ jobs:
           sed -i "s|version:.*|version: $NEW_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
 
-          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH"
-          sed -i "s/GENAI_ENGINE_VERSION=.*/GENAI_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-genai-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-genai-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
+          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH"
+          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: $NEW_VERSION|" "$ARTHUR_ENGINE_VALUES_YAML_PATH"
           sed -i "s|version:.*|version: $NEW_VERSION|" "$ARTHUR_ENGINE_CHART_YAML_PATH"
 
