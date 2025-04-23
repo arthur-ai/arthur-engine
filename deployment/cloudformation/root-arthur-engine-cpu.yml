@@ -108,7 +108,7 @@ Parameters:
   MLEngineECSCPUAlarmThreshold:
     Type: Number
     Default: 80
-    Description: 'Alarm is triggered when ML Engine service uses this percentage of memory in a minute'
+    Description: 'Alarm is triggered when ML Engine service uses this percentage of CPU in a minute'
   ExistingArthurVPCId:
     Description: 'VPC to deploy Arthur stack to'
     Type: AWS::EC2::VPC::Id
@@ -552,6 +552,8 @@ Metadata:
         default: 'Bring-Your-Own ML Engine Task Execution Role'
       MLEngineBYOAppSecurityGroupIDs:
         default: 'Bring-Your-Own ML Engine Application Security Group IDs'
+      ArthurApiHost:
+        default: 'Arthur API Host'
 Conditions:
   ContainerRepositoryCredentialRequired:
     !Not [ !Equals [ !Ref ContainerRepositoryUsername, '' ] ]
