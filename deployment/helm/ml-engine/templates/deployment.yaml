@@ -78,6 +78,15 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.mlEngineClientSecretName }}
                   key: client_secret
+            - name: SHIELD_ENGINE_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mlEngine.deployment.shieldEngineInternalAPIKeySecretName }}
+                  key: api-key
+            - name: SHIELD_ENGINE_INTERNAL_HOST
+              value: "{{ .Values.mlEngine.deployment.shieldEngineInternalHost }}"
+            - name: SHIELD_ENGINE_INTERNAL_INGRESS_HOST
+              value: "{{ .Values.mlEngine.deployment.shieldEngineInternalIngressHost }}"
       {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

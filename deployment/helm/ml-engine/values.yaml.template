@@ -28,6 +28,10 @@ mlEngine:
     mlEnginePodAffinity: {}
     mlEnginePodTolerations: {}
 
+    shieldEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"
+    shieldEngineInternalHost: "arthur-genai-engine-service"
+    shieldEngineInternalIngressHost: ""
+
     ###################################
     ## Advanced - Secrets name customization
     ###################################
