@@ -4,6 +4,8 @@ services:
     platform: linux/amd64
     restart: unless-stopped
     stop_grace_period: "60s"
+    environment:
+      - ARTHUR_API_HOST=https://platform.arthur.ai
     env_file:
       - .env
     entrypoint:

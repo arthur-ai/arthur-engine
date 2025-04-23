@@ -9,4 +9,4 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.open
 GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
 EOF
 
-curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/genai-engine/docker-compose/docker-compose.yml | docker-compose -f - up \
+curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker-compose -f - up \
