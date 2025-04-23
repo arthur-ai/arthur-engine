@@ -51,9 +51,6 @@ Parameters:
     Type: String
     Description: 'The ARN of the Secret containing the Shield Engine Internal API Key'
     NoEcho: true
-  ShieldEngineInternalHost:
-    Type: String
-    Description: 'The Shield Engine Internal Host'
   ShieldEngineInternalIngressHost:
     Type: String
     Description: 'The Shield Engine Internal Ingress Host'
@@ -101,7 +98,7 @@ Resources:
             - Name: 'ARTHUR_API_HOST'
               Value: !Ref MLEngineArthurApiHost
             - Name: 'SHIELD_ENGINE_INTERNAL_HOST'
-              Value: !Ref ShieldEngineInternalHost
+              Value: !Ref ShieldEngineInternalIngressHost
             - Name: 'SHIELD_ENGINE_INTERNAL_INGRESS_HOST'
               Value: !Ref ShieldEngineInternalIngressHost
           Secrets:
