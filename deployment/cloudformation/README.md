@@ -1,4 +1,4 @@
-# Arthur GenAI Engine AWS CloudFormation Deployment Guide
+# Arthur Engine AWS CloudFormation Deployment Guide
 
 ## Prerequisites
 
@@ -25,6 +25,10 @@ in the Secrets Manager, load balancer, RDS, ECS, and CloudWatch (IAM and RDS can
 * There must be a network route available to connect to Docker Hub
 * If Docker Hub access is not an option, you can push the images from Docker Hub to your private container registry and provide its access information in the Cloudformation template
 
+### Arthur Platform Engine Credentials
+To use the free/paid [Arthur Platform](https://platform.arthur.ai), you need to login and get a pair of `Client ID` and `Client Secret`.
+If you're not using the Arthur Platform, the Arthur GenAI Engine-only (guardrails) deployment is what you're looking for.
+
 ## GPU Deployment
 Arthur recommends running the GenAI Engine on GPUs for any production-grade deployments. The usage of GPUs provides significantly lower latency, higher scalability and platform cost efficiency.
 
@@ -35,11 +39,15 @@ Arthur recommends running the GenAI Engine on GPUs for any production-grade depl
 3. From the "Stacks" page, select "Create stack" -> "With new resources (standard)"
 4. Populate the "Create stack" page and click "Next"
    1. Select "Template is ready" and "Amazon S3 URL"
-   2. Provide the HTTP link to the CloudFormation template that maps to the latest stable version of GenAI Engine
-      1. GPU deployment:<br>
+   2. Provide the HTTP link to the CloudFormation template that maps to the latest stable version
+      1. Arthur Engine GPU stack deployment:<br>
+      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-engine-gpu.yml`
+      2. Arthur Engine CPU stack deployment:<br>
+      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-engine-cpu.yml`
+      3. Arthur GenAI Engine-only (guardrails) GPU stack deployment ():<br>
       `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-genai-engine-gpu.yml`
-      2. CPU deployment:<br>
-      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-genai-engine-cpu.yml`
+      4. Arthur GenAI Engine-only (guardrails) CPU stack deployment ():<br>
+      `https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/<version_number>/root-arthur-genan-engine-cpu.yml`
 5. Populate the "Specify stack details" page and click "Next"
 6. Populate the "Configure stack options" page and click "Next"
    1. Behavior on provisioning failure: "Roll back all stack resources" (Do not use `--disable-rollback` if you're using AWS CLI)
