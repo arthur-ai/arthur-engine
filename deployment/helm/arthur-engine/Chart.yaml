@@ -5,7 +5,7 @@ version: 2.1.27
 dependencies:
   - name: arthur-genai-engine
     version: 2.1.27
-    repository: oci://ghcr.io/arthur-ai/arthur-engine/charts-dev
+    repository: oci://ghcr.io/arthur-ai/arthur-engine/charts
   - name: arthur-ml-engine
     version: 2.1.27
-    repository: oci://ghcr.io/arthur-ai/arthur-engine/charts-dev
+    repository: oci://ghcr.io/arthur-ai/arthur-engine/charts
