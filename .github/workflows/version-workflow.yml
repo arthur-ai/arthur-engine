@@ -8,15 +8,14 @@ on:
     paths:
       - '.github/workflows/**/*'
       - 'genai-engine/alembic/**/*'
-      - 'genai-engine/cloudformation/**/*'
-      - 'genai-engine/genai_engine/**/*'
-      - 'genai-engine/helm/**/*'
-      - 'genai-engine/shield/**/*'
+      - 'genai-engine/src/**/*'
       - 'genai-engine/tests/**/*'
       - 'genai-engine/.env'
       - 'genai-engine/dockerfile'
       - 'genai-engine/pyproject.toml'
       - 'genai-engine/requirements-gpu.txt'
+      - 'deployment/cloudformation/**/*'
+      - 'deployment/helm/**/*'
   workflow_dispatch:
     inputs:
       intent:
