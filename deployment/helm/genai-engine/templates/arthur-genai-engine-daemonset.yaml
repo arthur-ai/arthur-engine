@@ -39,7 +39,7 @@ spec:
         - name: {{ .Values.imagePullSecretName }}
       {{- end }}
       {{- if .Values.genaiEngineServiceAccount }}
-      serviceAccountName: {{ .Values.genaiEngineServiceAccount }}
+      serviceAccountName: {{ include "arthur-genai-engine.serviceAccountName" . }}
       {{- end }}
       nodeSelector:
         capability: gpu
