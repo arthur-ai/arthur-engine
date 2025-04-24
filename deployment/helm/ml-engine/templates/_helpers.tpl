@@ -24,3 +24,14 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "arthur-ml-engine.serviceAccountName" -}}
+{{- if .Values.mlEngineServiceAccount.create }}
+{{- default (include "arthur-ml-engine.fullname" .) .Values.mlEngineServiceAccount.name }}
+{{- else }}
+{{- default "default" .Values.mlEngineServiceAccount.name }}
+{{- end }}
+{{- end }}

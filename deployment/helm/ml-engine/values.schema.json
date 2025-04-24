@@ -53,7 +53,19 @@
                         },
                         "mlEngineServiceAccount": {
                             "type": "object",
-                            "description": "The service account to use for the ML Engine deployment."
+                            "properties": {
+                                "create": {
+                                    "type": "boolean"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "create",
+                                "name"
+                            ],
+                            "description": "Name of the service account used by the ML Engine pod"
                         },
                         "containerImageName": {
                             "type": "string",
