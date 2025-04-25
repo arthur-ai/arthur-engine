@@ -28,6 +28,7 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
+      - GENAI_ENGINE_INGRESS_URI=http://localhost:3000
     env_file:
       - .env
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
