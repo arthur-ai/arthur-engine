@@ -38,9 +38,9 @@ services:
     restart: unless-stopped
     stop_grace_period: "60s"
     environment:
-      - SHIELD_ENGINE_INTERNAL_API_KEY=${GENAI_ENGINE_ADMIN_KEY}
-      - SHIELD_ENGINE_INTERNAL_HOST=http://genai-engine:3030
-      - SHIELD_ENGINE_INTERNAL_INGRESS_HOST=http://localhost:3030
+      - GENAI_ENGINE_INTERNAL_API_KEY=${GENAI_ENGINE_ADMIN_KEY}
+      - GENAI_ENGINE_INTERNAL_HOST=http://genai-engine:3030
+      - GENAI_ENGINE_INTERNAL_INGRESS_HOST=http://localhost:3030
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=true
       - ARTHUR_API_HOST=https://platform.arthur.ai
     env_file:
