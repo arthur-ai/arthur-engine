@@ -29,13 +29,13 @@ curl -o "tmp/Chart.yaml" "https://raw.githubusercontent.com/arthur-ai/arthur-eng
 cd tmp
 helm dependency update
 helm upgrade --install -n $K8S_NAMESPACE -f values.yaml arthur-engine . \
---set genaiEngineVersion=$GENAI_ENGINE_VERSION \
---set postgresBYOEndpoint=$POSTGRES_ENDPOINT \
---set genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
---set genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER \
---set mlEngineClientId=$ML_ENGINE_CLIENT_ID \
---set mlEngineClientSecret=$ML_ENGINE_CLIENT_SECRET \
---set gpuEnabled=true \
---set genaiEngineDeploymentType=daemonset \
---set genaiEngineWorkers=5 \
---set genaiEngineContainerImageLocation=arthurplatform/genai-engine-gpu
+--set arthur-genai-engine.genaiEngineVersion=$ARTHUR_ENGINE_VERSION \
+--set arthur-genai-engine.postgresBYOEndpoint=$POSTGRES_ENDPOINT \
+--set arthur-genai-engine.genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
+--set arthur-genai-engine.genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER \
+--set arthur-genai-engine.gpuEnabled=true \
+--set arthur-genai-engine.genaiEngineDeploymentType=daemonset \
+--set arthur-genai-engine.genaiEngineWorkers=5 \
+--set arthur-genai-engine.genaiEngineContainerImageLocation=arthurplatform/genai-engine-gpu \
+--set arthur-ml-engine.deployment.mlEngineClientId=$ML_ENGINE_CLIENT_ID \
+--set arthur-ml-engine.deployment.mlEngineClientSecret=$ML_ENGINE_CLIENT_SECRET
