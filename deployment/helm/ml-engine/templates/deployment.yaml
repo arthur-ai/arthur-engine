@@ -71,12 +71,12 @@ spec:
             - name: ARTHUR_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
+                  name: {{ .Values.mlEngineClientSecretName }}
                   key: client_id
             - name: ARTHUR_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
+                  name: {{ .Values.mlEngineClientSecretName }}
                   key: client_secret
       {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
       nodeSelector:
