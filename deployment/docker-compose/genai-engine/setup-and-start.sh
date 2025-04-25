@@ -49,9 +49,7 @@ else
     random_genai_engine_admin_key=$(generate_random_password)
     genai_engine_admin_key="GENAI_ENGINE_ADMIN_KEY=$random_genai_engine_admin_key"
 
-    echo "Enter the ingress URL (Format: http(s)://<DNS>)"
-    echo "The address of the proxy or the load balancer if you have one"
-    genai_engine_ingress_uri=$(prompt_env_var "GENAI_ENGINE_INGRESS_URI" "http://localhost:3030" "true")
+    echo "All you need is an OpenAI endpoint to get started!"
     echo ""
     echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
     genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
@@ -66,7 +64,8 @@ else
     echo "Enter the OpenAI GPT API key:"
     genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
-    all_env_vars="$postgres_password
+    all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030
+$postgres_password
 $app_secret_key
 $genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key
