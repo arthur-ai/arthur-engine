@@ -41,7 +41,7 @@ spec:
       imagePullSecrets:
         - name: {{ .Values.imagePullSecretName }}
       {{- end }}
-      {{- if .Values.genaiEngineServiceAccount }}
+      {{- if .Values.genaiEngineServiceAccount.name }}
       serviceAccountName: {{ include "arthur-genai-engine.serviceAccountName" . }}
       {{- end }}
       containers:
