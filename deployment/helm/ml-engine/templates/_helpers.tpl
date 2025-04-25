@@ -29,9 +29,9 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Create the name of the service account to use
 */}}
 {{- define "arthur-ml-engine.serviceAccountName" -}}
-{{- if .Values.mlEngineServiceAccount.create }}
-{{- default (include "arthur-ml-engine.fullname" .) .Values.mlEngineServiceAccount.name }}
+{{- if .Values.mlEngine.deployment.mlEngineServiceAccount.create }}
+{{- default (include "arthur-ml-engine.fullname" .) .Values.mlEngine.deployment.mlEngineServiceAccount.name }}
 {{- else }}
-{{- default "default" .Values.mlEngineServiceAccount.name }}
+{{- default "default" .Values.mlEngine.deployment.mlEngineServiceAccount.name }}
 {{- end }}
 {{- end }}
