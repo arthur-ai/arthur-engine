@@ -28,7 +28,6 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
-      - PORT=3030
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=true
     env_file:
       - .env
