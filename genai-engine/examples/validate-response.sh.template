@@ -1,4 +1,4 @@
-URL="http://localhost:3000"
+URL="http://localhost:3030"
 API_KEY="abc"
 TASK_ID="123"
 INFERENCE_ID="123"
