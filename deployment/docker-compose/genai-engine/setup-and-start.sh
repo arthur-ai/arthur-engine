@@ -49,6 +49,10 @@ else
     random_genai_engine_admin_key=$(generate_random_password)
     genai_engine_admin_key="GENAI_ENGINE_ADMIN_KEY=$random_genai_engine_admin_key"
 
+    echo "Enter the ingress URL (Format: http(s)://<DNS>)"
+    echo "The address of the proxy or the load balancer if you have one"
+    genai_engine_ingress_uri=$(prompt_env_var "GENAI_ENGINE_INGRESS_URI" "http://localhost:3030" "true")
+    echo ""
     echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
     genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
     echo ""

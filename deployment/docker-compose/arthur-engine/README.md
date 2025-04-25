@@ -4,8 +4,8 @@
 
 1. Go through the engine onboarding on https://platform.arthur.ai to get the required credentials
 2. Create `.env` file from `.env.template` file and modify it
-3. Run `docker compose up`
-4. Wait for the containers to initialize then navigate to localhost:3000/docs to see the API docs
+3. From `deployment/docker-compose/arthur-engine` run `docker compose up`
+4. Wait for the containers to initialize then navigate to localhost:3030/docs to see the API docs
 
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
@@ -39,7 +39,7 @@ Please review the GPT model requirements below:
        export ML_ENGINE_VERSION=<ml_engine_version>
        docker compose up
    ```
-4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3030/docs](http://localhost:3030/docs)
 
 ## Steps for Windows (with Powershell)
 1. Install and run Docker for Windows
@@ -50,4 +50,4 @@ Please review the GPT model requirements below:
         $env:ML_ENGINE_VERSION = "<ml_engine_version>"
         docker compose up
     ```
-4. Access the GenAI Engine's interactive API documentation at [http://localhost:3000/docs](http://localhost:3000/docs)
+4. Access the GenAI Engine's interactive API documentation at [http://localhost:3030/docs](http://localhost:3030/docs)
