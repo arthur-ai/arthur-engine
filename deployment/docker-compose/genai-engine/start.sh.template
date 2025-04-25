@@ -1,7 +1,6 @@
 #!/bin/bash
 
 cat <<EOF > .env
-GENAI_ENGINE_INGRESS_URI=http://localhost:3000
 POSTGRES_PASSWORD=changeme_pg_password
 APP_SECRET_KEY=changeme_app_secret_key
 GENAI_ENGINE_OPENAI_PROVIDER=Azure
