@@ -47,13 +47,13 @@ Parameters:
     Type: String
     Description: 'The ARN of the Secret containing Client Credentials for the ML Engine'
     NoEcho: true
-  ShieldEngineInternalAPIKeySecretARN:
+  GenaiEngineInternalAPIKeySecretARN:
     Type: String
-    Description: 'The ARN of the Secret containing the Shield Engine Internal API Key'
+    Description: 'The ARN of the secret containing the API Key for the GenAI Engine internal to the platform'
     NoEcho: true
-  ShieldEngineInternalIngressHost:
+  GenaiEngineInternalIngressHost:
     Type: String
-    Description: 'The Shield Engine Internal Ingress Host'
+    Description: 'The GenAI Engine ingress host address internal to the platform'
   MLEngineFargateTaskCPUValue:
     Type: Number
     Default: 1024
@@ -97,17 +97,17 @@ Resources:
           Environment:
             - Name: 'ARTHUR_API_HOST'
               Value: !Ref MLEngineArthurApiHost
-            - Name: 'SHIELD_ENGINE_INTERNAL_HOST'
-              Value: !Ref ShieldEngineInternalIngressHost
-            - Name: 'SHIELD_ENGINE_INTERNAL_INGRESS_HOST'
-              Value: !Ref ShieldEngineInternalIngressHost
+            - Name: 'GENAI_ENGINE_INTERNAL_HOST'
+              Value: !Ref GenaiEngineInternalIngressHost
+            - Name: 'GENAI_ENGINE_INTERNAL_INGRESS_HOST'
+              Value: !Ref GenaiEngineInternalIngressHost
           Secrets:
             - Name: 'ARTHUR_CLIENT_ID'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_id::'
             - Name: 'ARTHUR_CLIENT_SECRET'
               ValueFrom: !Sub '${MLEngineClientCredentialsSecretARN}:client_secret::'
-            - Name: 'SHIELD_ENGINE_INTERNAL_API_KEY'
-              ValueFrom: !Ref ShieldEngineInternalAPIKeySecretARN
+            - Name: 'GENAI_ENGINE_INTERNAL_API_KEY'
+              ValueFrom: !Ref GenaiEngineInternalAPIKeySecretARN
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
