@@ -39,7 +39,7 @@ check_docker_compose
 env_file=".env"
 if [[ -f "$env_file" ]]; then
     echo "The .env file already exists."
-    echo "Press any key to proceed to Docker Compose up..."
+    echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
     random_postgres_password=$(generate_random_password)
@@ -58,7 +58,7 @@ else
     genai_engine_openai_gpt_name=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_NAME" "gpt-4o-mini-2024-07-18")
     echo ""
     echo "Enter the OpenAI GPT endpoint (Format: https://endpoint):"
-    echo "If using OpenAI provider, leave this blank unless you are using a proxy or service emulator (eg: OpenAI API compatible model)"
+    echo "If using OpenAI provider, leave this blank unless you are using a proxy or OpenAI compatible service emulator."
     genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
     echo ""
     echo "Enter the OpenAI GPT API key:"
@@ -76,4 +76,4 @@ fi
 
 sleep 1
 
-curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/dev/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up
+curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up
