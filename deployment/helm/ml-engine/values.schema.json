@@ -95,9 +95,9 @@
                             "type": "string",
                             "description": "The URL of the application plane."
                         },
-                        "secretsName": {
+                        "mlEngineClientSecretName": {
                             "type": "string",
-                            "description": "The name of the secret containing sensitive data."
+                            "description": "The name of the ML Engine client credentials secret."
                         },
                         "mlEnginePodNodeSelector": {
                             "type": "object",
@@ -133,7 +133,7 @@
                         "containerMemoryLimits",
                         "containerCPULimits",
                         "appPlaneUrl",
-                        "secretsName",
+                        "mlEngineClientSecretName",
                         "genaiEngineInternalAPIKeySecretName",
                         "genaiEngineInternalHost",
                         "genaiEngineInternalIngressHost"
