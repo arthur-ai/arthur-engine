@@ -174,9 +174,9 @@ Parameters:
     Type: String
     Description: 'Allow admin key general access (Must be enabled for the Arthur Platform. Disabling is recommended for the guardrails-only standalone deployment)'
     AllowedValues:
-      - 'true'
-      - 'false'
-    Default: 'true'
+      - 'enabled'
+      - 'disabled'
+    Default: 'enabled'
 
 Conditions:
   EnableAuthService: !Equals [ !Ref GenaiEngineAPIOnlyModeEnabled, 'disabled' ]
