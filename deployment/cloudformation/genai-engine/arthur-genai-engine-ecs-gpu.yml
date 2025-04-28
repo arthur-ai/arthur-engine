@@ -326,7 +326,7 @@ Resources:
         MinimumHealthyPercent: !Ref GenaiEngineECSDeploymentMinimumHealthyPercent
       LoadBalancers:
         - ContainerName: 'arthur-genai-engine-gpu'
-          ContainerPort: 3000
+          ContainerPort: 3030
           TargetGroupArn: !Ref GenaiEngineLBTargetGroupARN
       NetworkConfiguration:
         AwsvpcConfiguration:

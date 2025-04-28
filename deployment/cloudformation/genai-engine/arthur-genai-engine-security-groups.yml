@@ -65,8 +65,8 @@ Resources:
       VpcId: !Ref VPCId
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
+          FromPort: 3030
+          ToPort: 3030
           CidrIp: !Ref VPCCidrBlock
       SecurityGroupEgress:
         - IpProtocol: -1

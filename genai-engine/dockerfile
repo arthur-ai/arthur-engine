@@ -81,6 +81,6 @@ ENV PYTHONPATH="$PYTHONPATH:/app/src"
 WORKDIR /app
 
 # Expose the necessary ports
-EXPOSE 3000
+EXPOSE 3030
 
 ENTRYPOINT ["bash", "-c", "/app/src/docker-entrypoint.sh"]
