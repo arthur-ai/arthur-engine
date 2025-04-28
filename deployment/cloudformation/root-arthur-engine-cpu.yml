@@ -77,7 +77,7 @@ Parameters:
   MLEngineVersion:
     Description: 'Version tag for the ML Engine'
     Type: String
-    Default: 'REPLACE_ME_ML_ENGINE_TAG'
+    Default: 'latest'
     AllowedPattern: '.+'
     ConstraintDescription: 'ML Engine version must be specified.'
   AlarmSNSTopicArn:
