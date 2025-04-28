@@ -125,6 +125,8 @@ arthur-genai-engine:
   arthurGenaiEngineService:
     annotations: {}
     labels: {}
+  # Allow admin key general access for the data plane
+  genaiEngineAllowAdminKeyGeneralAccess: "enabled"
 
   ###################################
   ## Advanced - Secrets name customization
@@ -145,10 +147,6 @@ arthur-ml-engine:
   ## Minimum Required Configurations for Arthur ML Engine
   ###################################
   enabled: true
-
-  ###################################
-  ## Advanced - General
-  ###################################
   image:
     repository: ml-engine
     tag: latest
@@ -160,6 +158,12 @@ arthur-ml-engine:
     imagePullSecretName: ""
   mlEngine:
     deployment:
+      # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+      genaiEngineInternalIngressHost: ""
+
+      ###################################
+      ## Advanced - General
+      ###################################
       replicas: 1
       labels: {}
       annotations: {}
@@ -169,20 +173,21 @@ arthur-ml-engine:
         create: false
         name: ""
       containerImageName: "ml-engine"
-      containerImageVersion: "1.4.933"
+      containerImageVersion: "1.4.1002"
       containerMemoryRequests: "16Gi"
       containerCPURequests: "7"
       containerMemoryLimits: "16Gi"
       containerCPULimits: "8"
       appPlaneUrl: "https://platform.arthur.ai"
-      clientId: ""
-      secretsName: "ml-engine-secrets"
       mlEnginePodNodeSelector: {}
       mlEnginePodAffinity: {}
       mlEnginePodTolerations: {}
+      genaiEngineInternalHost: "arthur-genai-engine-service"
 
-  ###################################
-  ## Advanced - Secrets name customization
-  ###################################
-  # ML Engine client secret name (expecting values for keys 'client_id' and 'client_secret')
-  mlEngineClientSecretName: "ml-engine-client-secret"
+      ###################################
+      ## Advanced - Secrets name customization
+      ###################################
+      # ML Engine client secret name (expecting values for keys 'client_id' and 'client_secret')
+      mlEngineClientSecretName: "ml-engine-client-secret"
+      # GenAI Engine secret admin key name (expecting value for key 'key')
+      genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"

@@ -1,7 +1,3 @@
-###################################
-## Advanced - General
-###################################
-
 containerRepository:
   imageLocation: "arthurplatform"
   credentialsRequired: false
@@ -9,6 +5,15 @@ containerRepository:
 resourceNameSuffix: ""
 mlEngine:
   deployment:
+    ###################################
+    ## Minimum Required Configurations for when deployed with Arthur GenAI Engine
+    ###################################
+    # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
+    genaiEngineInternalIngressHost: ""
+
+    ###################################
+    ## Advanced - General
+    ###################################
     replicas: 1
     labels: {}
     annotations: {}
@@ -18,7 +23,7 @@ mlEngine:
       create: false
       name: ""
     containerImageName: "ml-engine"
-    containerImageVersion: "1.4.933"
+    containerImageVersion: "1.4.1002"
     containerMemoryRequests: "16Gi"
     containerCPURequests: "7"
     containerMemoryLimits: "16Gi"
@@ -28,12 +33,10 @@ mlEngine:
     mlEnginePodAffinity: {}
     mlEnginePodTolerations: {}
 
-    genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"
-    genaiEngineInternalHost: "arthur-genai-engine-service"
-    genaiEngineInternalIngressHost: ""
-
     ###################################
     ## Advanced - Secrets name customization
     ###################################
     # ML Engine client secret name (expecting values for keys 'client_id' and 'client_secret')
     mlEngineClientSecretName: "ml-engine-client-secret"
+    # GenAI Engine secret admin key name (expecting value for key 'key')
+    genaiEngineInternalAPIKeySecretName: "genai-engine-secret-admin-key"

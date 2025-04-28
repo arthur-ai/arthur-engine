@@ -33,5 +33,4 @@ helm upgrade --install -n $K8S_NAMESPACE -f values.yaml arthur-engine . \
 --set arthur-genai-engine.postgresBYOEndpoint=$POSTGRES_ENDPOINT \
 --set arthur-genai-engine.genaiEngineIngressURL=$GENAI_ENGINE_INGRESS_URL \
 --set arthur-genai-engine.genaiEngineOpenAIProvider=$GENAI_ENGINE_OPENAI_PROVIDER \
---set arthur-ml-engine.deployment.mlEngineClientId=$ML_ENGINE_CLIENT_ID \
---set arthur-ml-engine.deployment.mlEngineClientSecret=$ML_ENGINE_CLIENT_SECRET
+--set arthur-ml-engine.mlEngine.deployment.genaiEngineInternalIngressHost=$GENAI_ENGINE_INGRESS_URL
