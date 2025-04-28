@@ -1,5 +1,8 @@
+
+name: arthur-ml-engine
 services:
   ml-engine:
+    container_name: arthur-ml-engine
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
     platform: linux/amd64
     restart: unless-stopped
