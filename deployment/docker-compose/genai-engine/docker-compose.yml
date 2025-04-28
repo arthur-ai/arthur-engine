@@ -1,5 +1,7 @@
+name: arthur-genai-engine
 services:
   db:
+    container_name: arthur-genai-engine-db
     image: ankane/pgvector
     networks:
       - arthur_network
@@ -11,6 +13,7 @@ services:
     env_file:
       - .env
   genai-engine:
+    container_name: arthur-genai-engine
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
@@ -22,7 +25,7 @@ services:
       - "3030:3030"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_URL=db
+      - POSTGRES_URL=arthur-genai-engine-db
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
