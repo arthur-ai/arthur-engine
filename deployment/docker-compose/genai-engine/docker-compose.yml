@@ -19,7 +19,7 @@ services:
     depends_on:
       - db
     ports:
-      - "3030:3000"
+      - "3030:3030"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_URL=host.docker.internal

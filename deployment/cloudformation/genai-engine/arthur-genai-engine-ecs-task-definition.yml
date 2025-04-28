@@ -210,8 +210,8 @@ Resources:
             - !Ref AWS::NoValue
           Essential: true
           PortMappings:
-            - ContainerPort: 3000
-              HostPort: 3000
+            - ContainerPort: 3030
+              HostPort: 3030
               Protocol: 'tcp'
           Environment:
             - Name: 'POSTGRES_URL'
@@ -330,7 +330,7 @@ Resources:
           HealthCheck:
             Command:
               - 'CMD-SHELL'
-              - python3 -c "import http.client; conn = http.client.HTTPConnection('localhost:3000'); conn.request('GET', '/health'); response = conn.getresponse(); print(response.read().decode())" || exit 1
+              - python3 -c "import http.client; conn = http.client.HTTPConnection('localhost:3030'); conn.request('GET', '/health'); response = conn.getresponse(); print(response.read().decode())" || exit 1
             Interval: 30
             Timeout: 5
             Retries: 3

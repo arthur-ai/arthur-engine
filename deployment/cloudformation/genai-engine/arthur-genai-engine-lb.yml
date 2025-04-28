@@ -53,7 +53,7 @@ Resources:
       Name: !Sub "${ArthurResourceNamespace}-genai-engine-http1${ArthurResourceNameSuffix}"
       TargetType: ip
       Protocol: HTTP
-      Port: 3000
+      Port: 3030
       VpcId: !Ref GenaiEngineVPCId
       ProtocolVersion: HTTP1
       HealthCheckProtocol: HTTP

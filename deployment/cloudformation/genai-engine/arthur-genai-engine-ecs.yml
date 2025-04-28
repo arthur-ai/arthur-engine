@@ -49,7 +49,7 @@ Resources:
       LaunchType: 'FARGATE'
       LoadBalancers:
         - ContainerName: 'arthur-genai-engine'
-          ContainerPort: 3000
+          ContainerPort: 3030
           TargetGroupArn: !Ref GenaiEngineLBTargetGroupARN
       NetworkConfiguration:
         AwsvpcConfiguration:
