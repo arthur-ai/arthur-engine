@@ -173,7 +173,7 @@ arthur-ml-engine:
         create: false
         name: ""
       containerImageName: "ml-engine"
-      containerImageVersion: "1.4.1002"
+      containerImageVersion: "latest"
       containerMemoryRequests: "16Gi"
       containerCPURequests: "7"
       containerMemoryLimits: "16Gi"
