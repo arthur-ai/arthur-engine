@@ -431,7 +431,7 @@
                 "enabled",
                 "disabled"
             ],
-            "description": "Allow admin key general access for the data plane"
+            "description": "Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)"
         }
     },
     "required": [
