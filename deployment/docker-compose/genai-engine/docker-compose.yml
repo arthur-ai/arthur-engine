@@ -22,7 +22,7 @@ services:
       - "3030:3030"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_URL=host.docker.internal
+      - POSTGRES_URL=db
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
