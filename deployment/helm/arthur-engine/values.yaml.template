@@ -125,7 +125,7 @@ arthur-genai-engine:
   arthurGenaiEngineService:
     annotations: {}
     labels: {}
-  # Allow admin key general access for the data plane
+  # Allow the admin key general API access (Must be enabled for the Arthur Platform. Can be disabled for the guardrails-only standalone deployment.)
   genaiEngineAllowAdminKeyGeneralAccess: "enabled"
 
   ###################################
