@@ -116,6 +116,8 @@ spec:
               value: "all"
             - name: WORKERS
               value: {{ .Values.genaiEngineWorkers | default "1" | quote }}
+            - name: ALLOW_ADMIN_KEY_GENERAL_ACCESS
+              value: {{ .Values.genaiEngineAllowAdminKeyGeneralAccess }}
       {{- with .Values.arthurGenaiEngineDeployment.genaiEnginePodAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}

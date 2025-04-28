@@ -424,6 +424,14 @@
         "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName": {
             "type": "string",
             "description": "Name of the secret for Azure OpenAI GPT-3.5 model endpoints"
+        },
+        "genaiEngineAllowAdminKeyGeneralAccess": {
+            "type": "string",
+            "enum": [
+                "enabled",
+                "disabled"
+            ],
+            "description": "Allow admin key general access for the data plane"
         }
     },
     "required": [

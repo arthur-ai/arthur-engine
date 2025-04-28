@@ -71,18 +71,18 @@ spec:
             - name: ARTHUR_CLIENT_ID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mlEngineClientSecretName }}
+                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
                   key: client_id
             - name: ARTHUR_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.mlEngineClientSecretName }}
+                  name: {{ .Values.mlEngine.deployment.mlEngineClientSecretName }}
                   key: client_secret
             - name: GENAI_ENGINE_INTERNAL_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.mlEngine.deployment.genaiEngineInternalAPIKeySecretName }}
-                  key: api-key
+                  key: key
             - name: GENAI_ENGINE_INTERNAL_HOST
               value: "{{ .Values.mlEngine.deployment.genaiEngineInternalHost }}"
             - name: GENAI_ENGINE_INTERNAL_INGRESS_HOST
