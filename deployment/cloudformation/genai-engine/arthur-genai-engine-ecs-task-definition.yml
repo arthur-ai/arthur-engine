@@ -168,7 +168,7 @@ Parameters:
     Description: 'Task rules cache TTL in seconds'
   GenaiEngineAllowAdminKeyGeneralAccess:
     Type: String
-    Description: 'Allow admin key general access (Must be enabled for the Arthur Platform. Disabling is recommended for the guardrails-only standalone deployment)'
+    Description: 'Allow the admin key general API access (Must be enabled for the Arthur Platform. Disabling is recommended for the guardrails-only standalone deployment)'
     AllowedValues:
       - 'enabled'
       - 'disabled'
