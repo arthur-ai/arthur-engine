@@ -655,6 +655,7 @@ Resources:
           - ','
           - - !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
             - !GetAtt [ MLEngineSecretsStack, Outputs.MLEngineClientCredentialsSecretOutput ]
+            - !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
       TemplateURL: "https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/REPLACE_ME_GENAI_ENGINE_VERSION/ml-engine/arthur-ml-engine-iam.yml"
   GenaiEngineSecurityGroupStack:
     Type: AWS::CloudFormation::Stack
