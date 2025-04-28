@@ -48,7 +48,7 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.genaiEngineContainerImageLocation }}:{{ .Values.genaiEngineVersion }}"
           ports:
-            - containerPort: 3000
+            - containerPort: 3030
             - containerPort: {{ .Values.postgresBYOPort }}
           resources:
             requests:
