@@ -359,7 +359,7 @@ aws cloudwatch put-metric-alarm \
         --docker-email=''
 
     kubectl -n arthur create secret generic genai-engine-secret-admin-key \
-        --from-literal=key='<api_key>'
+        --from-literal=key='<key>'
 
     # Connection strings for Azure OpenAI GPT model endpoints (Many may be specified)
     # Must be in the form:
