@@ -89,9 +89,9 @@ For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
 A Postgres database is required to run the GenAI Engine. The easiest way to get started is to run Postgres using Docker.
 
 1. Install and run Docker for Mac
-2. `cd` to the `genai-engine/docker-compose` folder
-3. Populate `.env` file from `genai-engine/docker-compose/env.template` and set the `POSTGRES_PASSWORD` variable accordingly
-4. Run `docker compose up db`
+2. `cd` to the `genai-engine` folder
+3. Run `docker compose up`
+4. Login with `postgres/changeme_pg_password`
 
 ### Populate the Database Schema with Alembic
 
