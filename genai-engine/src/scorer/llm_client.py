@@ -90,9 +90,14 @@ class LLMExecutor:
         contract: str,
     ) -> tuple[str | None, str | None, str | None]:
         try:
-            random_model = random.choice(contract.split(","))
+            random_model = random.choice(contract.strip().split(","))
             model_name, endpoint, api_key = random_model.split("::")
+
+            model_name = model_name if model_name else None
+            endpoint = endpoint if endpoint else None
+            api_key = api_key if api_key else None
         except (ValueError, IndexError, AttributeError):
+            logger.warning(f"LLM connection string could not be parsed: {contract}")
             model_name, endpoint, api_key = None, None, None
         return model_name, endpoint, api_key
 

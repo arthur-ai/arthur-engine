@@ -151,6 +151,22 @@ def test_get_random_connection_details():
     )
     assert result == ("model_name", "example.com", "api_key")
 
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::example.com::api_key,model_name2::example.com2::api_key2",
+    )
+    assert result in [
+        ("model_name", "example.com", "api_key"),
+        ("model_name2", "example.com2", "api_key2"),
+    ]
+
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::example.com::api_key, model_name2::example.com2::api_key2",
+    )
+    assert result in [
+        ("model_name", "example.com", "api_key"),
+        ("model_name2", "example.com2", "api_key2"),
+    ]
+
 
 @pytest.mark.unit_tests
 def test_get_random_connection_details_empty():
@@ -163,3 +179,31 @@ def test_get_random_connection_details_empty():
         None,
     )
     assert result == (None, None, None)
+
+    result = LLMExecutor._get_random_connection_details(
+        "::::::",
+    )
+    assert result == (None, None, None)
+
+    result = LLMExecutor._get_random_connection_details(
+        "gpt-35-turbo-0125::::",
+    )
+    assert result == ("gpt-35-turbo-0125", None, None)
+
+    result = LLMExecutor._get_random_connection_details(
+        ":::abc",
+    )
+    assert result == (None, None, None)
+
+    result = LLMExecutor._get_random_connection_details(
+        "::::abc",
+    )
+    assert result == (None, None, "abc")
+
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::example.com::api_key, model_name2::example.com2::api_key2",
+    )
+    assert result in [
+        ("model_name", "example.com", "api_key"),
+        ("model_name2", "example.com2", "api_key2"),
+    ]
