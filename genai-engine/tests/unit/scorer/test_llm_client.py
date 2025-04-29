@@ -157,9 +157,9 @@ def test_get_random_connection_details_empty():
     result = LLMExecutor._get_random_connection_details(
         "",
     )
-    assert result == ("", "", "")
+    assert result == (None, None, None)
 
     result = LLMExecutor._get_random_connection_details(
         None,
     )
-    assert result == ("", "", "")
+    assert result == (None, None, None)
