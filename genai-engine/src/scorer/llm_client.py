@@ -92,6 +92,9 @@ class LLMExecutor:
         """Parse and randomly select an LLM connection string in the format:
         "model_name::example.com::api_key, model_name2::example.com2::api_key2"
 
+        For OpenAI, the the endpoint value is optional like this:
+        "model_name::::api_key, model_name2::::api_key2"
+
         Returns a tuple of (model_name, endpoint, api_key) for the selected connection.
         If parsing fails, returns (None, None, None).
         """
