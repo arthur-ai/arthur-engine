@@ -2,14 +2,13 @@ name: arthur-genai-engine
 services:
   db:
     container_name: arthur-genai-engine-db
-    image: ankane/pgvector
+    image: postgres
     networks:
       - arthur_network
-    volumes:
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    shm_size: 128mb
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_DATABASES=arthur_genai_engine
+      POSTGRES_PASSWORD: changeme_pg_password
+      POSTGRES_DB: arthur_genai_engine
     env_file:
       - .env
   genai-engine:
