@@ -7,6 +7,7 @@ APP_SECRET_KEY=changeme_app_secret_key
 GENAI_ENGINE_OPENAI_PROVIDER=Azure
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
 GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
+FETCH_RAW_DATA_ENABLED=true
 ARTHUR_CLIENT_ID=
 ARTHUR_CLIENT_SECRET=
 EOF
