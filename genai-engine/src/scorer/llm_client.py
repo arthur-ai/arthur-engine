@@ -86,12 +86,14 @@ class LLMExecutor:
             self.api_version = llm_config.OPENAI_API_VERSION
 
     @staticmethod
-    def _get_random_connection_details(contract: str) -> tuple[str, str, str]:
+    def _get_random_connection_details(
+        contract: str,
+    ) -> tuple[str | None, str | None, str | None]:
         try:
             random_model = random.choice(contract.split(","))
             model_name, endpoint, api_key = random_model.split("::")
         except (ValueError, IndexError, AttributeError):
-            model_name, endpoint, api_key = "", "", ""
+            model_name, endpoint, api_key = None, None, None
         return model_name, endpoint, api_key
 
     def get_gpt_model(
