@@ -45,7 +45,6 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
-from scorer.llm_client import validate_llm_connection
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from utils import constants as constants
@@ -140,8 +139,6 @@ async def lifespan(app: FastAPI):
         db.close()
     except HTTPException as e:
         raise ConnectionError(f"Error connecting to database: {e}") from None
-
-    validate_llm_connection()
 
     keycloak_settings = get_keycloak_settings()
     if keycloak_settings.ENABLED:
