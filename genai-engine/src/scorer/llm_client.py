@@ -87,8 +87,11 @@ class LLMExecutor:
 
     @staticmethod
     def _get_random_connection_details(contract: str) -> tuple[str, str, str]:
-        random_model = random.choice(contract.split(","))
-        model_name, endpoint, api_key = random_model.split("::")
+        try:
+            random_model = random.choice(contract.split(","))
+            model_name, endpoint, api_key = random_model.split("::")
+        except (ValueError, IndexError, AttributeError):
+            model_name, endpoint, api_key = "", "", ""
         return model_name, endpoint, api_key
 
     def get_gpt_model(
@@ -96,7 +99,9 @@ class LLMExecutor:
         chat_temperature=DEFAULT_TEMPERATURE,
     ) -> AzureChatOpenAI | ChatOpenAI:
         model_name, endpoint, key = self._get_random_connection_details(self.gpt_hosts)
-        if self.azure_openai_enabled:
+        if not model_name or not key:
+            return None
+        elif self.azure_openai_enabled:
             return AzureChatOpenAI(
                 deployment_name=model_name,
                 azure_endpoint=endpoint,

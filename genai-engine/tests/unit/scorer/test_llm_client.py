@@ -150,3 +150,16 @@ def test_get_random_connection_details():
         "model_name::example.com::api_key",
     )
     assert result == ("model_name", "example.com", "api_key")
+
+
+@pytest.mark.unit_tests
+def test_get_random_connection_details_empty():
+    result = LLMExecutor._get_random_connection_details(
+        "",
+    )
+    assert result == ("", "", "")
+
+    result = LLMExecutor._get_random_connection_details(
+        None,
+    )
+    assert result == ("", "", "")
