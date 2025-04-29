@@ -167,6 +167,28 @@ def test_get_random_connection_details():
         ("model_name2", "example.com2", "api_key2"),
     ]
 
+    # OpenAI connection string with no endpoint
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::::api_key",
+    )
+    assert result == ("model_name", None, "api_key")
+
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::::api_key,model_name2::::api_key2",
+    )
+    assert result in [
+        ("model_name", None, "api_key"),
+        ("model_name2", None, "api_key2"),
+    ]
+
+    result = LLMExecutor._get_random_connection_details(
+        "model_name::::api_key, model_name2::::api_key2",
+    )
+    assert result in [
+        ("model_name", None, "api_key"),
+        ("model_name2", None, "api_key2"),
+    ]
+
 
 @pytest.mark.unit_tests
 def test_get_random_connection_details_empty():
@@ -199,11 +221,3 @@ def test_get_random_connection_details_empty():
         "::::abc",
     )
     assert result == (None, None, "abc")
-
-    result = LLMExecutor._get_random_connection_details(
-        "model_name::example.com::api_key, model_name2::example.com2::api_key2",
-    )
-    assert result in [
-        ("model_name", "example.com", "api_key"),
-        ("model_name2", "example.com2", "api_key2"),
-    ]
