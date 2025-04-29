@@ -89,9 +89,15 @@ class LLMExecutor:
     def _get_random_connection_details(
         contract: str,
     ) -> tuple[str | None, str | None, str | None]:
+        """Parse and randomly select an LLM connection string in the format:
+        "model_name::example.com::api_key, model_name2::example.com2::api_key2"
+
+        Returns a tuple of (model_name, endpoint, api_key) for the selected connection.
+        If parsing fails, returns (None, None, None).
+        """
         try:
             random_model = random.choice(contract.strip().split(","))
-            model_name, endpoint, api_key = random_model.split("::")
+            model_name, endpoint, api_key = random_model.strip().split("::")
 
             model_name = model_name if model_name else None
             endpoint = endpoint if endpoint else None
