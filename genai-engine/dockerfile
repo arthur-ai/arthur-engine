@@ -45,6 +45,11 @@ COPY version /app/src/
 # Copy env file to run directory
 COPY .env /app/
 
+# Add telemetry setting based on build arg
+ARG ENABLE_TELEMETRY=false
+RUN echo "TELEMETRY_ENABLED=${ENABLE_TELEMETRY}" >> /app/.env
+
+
 # Copy alembic files to run directory
 COPY alembic /app/alembic
 COPY alembic.ini /app/
