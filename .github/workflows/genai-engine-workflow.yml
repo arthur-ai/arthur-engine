@@ -167,12 +167,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Update Telemetry Settings
-        run: |
-          # Ensure telemetry is enabled for production builds
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            sed -i 's/TELEMETRY_ENABLED=false/TELEMETRY_ENABLED=true/' genai-engine/.env
-          fi
       - name: Build and push docker image
         uses: docker/build-push-action@v6.15.0
         with:
@@ -180,6 +174,7 @@ jobs:
           file: dockerfile
           build-args: |
             TORCH_DEVICE=${{ matrix.torch_device }}
+            ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
