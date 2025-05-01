@@ -6,6 +6,7 @@
 2. Run `docker compose up`
 3. Wait for the containers to initialize then navigate to localhost:3030/docs to see the API docs
 
+* The script is optimized for quick `localhost` address deploys. If you're running the engine elsewhere, adjust `GENAI_ENGINE_INGRESS_URI`,  `GENAI_ENGINE_ADMIN_KEY`, and `POSTGRES_PASSWORD` according to the environment variable descriptions in the `docker-compose.yml` file.
 * Depending on your environment, Pytorch package wheel might not be available (e.g. Intel chip Mac).
 * You might need to change the `image` and the `platform` configurations in the `docker-compose.yml` depending on your environment.
 * When the `GENAI_ENGINE_VERSION` environment variable is not set, the `latest` stable image is used (not recommended). When `latest` is used, make sure to run `docker compose pull` first to get the most recent `latest` tagged image.
