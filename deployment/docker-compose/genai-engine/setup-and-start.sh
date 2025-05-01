@@ -34,6 +34,11 @@ check_docker_compose
 env_file=".env"
 if [[ -f "$env_file" ]]; then
     echo "The .env file already exists."
+    # Check if GENAI_ENGINE_INGRESS_URI exists in the file
+    if ! grep -q "^GENAI_ENGINE_INGRESS_URI=" "$env_file"; then
+        echo "Adding missing GENAI_ENGINE_INGRESS_URI to .env file..."
+        echo "GENAI_ENGINE_INGRESS_URI=http://localhost:3030" >> "$env_file"
+    fi
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
@@ -56,12 +61,13 @@ else
         echo "Enter the OpenAI GPT API key:"
         genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
-        all_env_vars="$genai_engine_openai_provider
+        all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030
+$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        all_env_vars=""
+        all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030"
     fi
 
     echo "$all_env_vars" > "$env_file"
