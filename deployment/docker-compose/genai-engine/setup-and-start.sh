@@ -34,11 +34,6 @@ check_docker_compose
 env_file=".env"
 if [[ -f "$env_file" ]]; then
     echo "The .env file already exists."
-    # Check if GENAI_ENGINE_INGRESS_URI exists in the file
-    if ! grep -q "^GENAI_ENGINE_INGRESS_URI=" "$env_file"; then
-        echo "Adding missing GENAI_ENGINE_INGRESS_URI to .env file..."
-        echo "GENAI_ENGINE_INGRESS_URI=http://localhost:3030" >> "$env_file"
-    fi
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
