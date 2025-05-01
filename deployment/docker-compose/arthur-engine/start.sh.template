@@ -1,9 +1,6 @@
 #!/bin/bash
 
 cat <<EOF > .env
-GENAI_ENGINE_INGRESS_URI=http://localhost:3030
-POSTGRES_PASSWORD=changeme_pg_password
-APP_SECRET_KEY=changeme_app_secret_key
 GENAI_ENGINE_OPENAI_PROVIDER=Azure
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
 GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
