@@ -7,11 +7,6 @@ check_docker_compose() {
   fi
 }
 
-generate_random_password() {
-    # Set the LC_CTYPE to C to handle any byte sequences
-    LC_ALL=C < /dev/urandom tr -dc 'A-Za-z0-9!' | head -c 16
-}
-
 prompt_env_var() {
   local var_name=$1
   local default_value=$2
@@ -42,14 +37,6 @@ if [[ -f "$env_file" ]]; then
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
-    random_postgres_password=$(generate_random_password)
-    postgres_password="POSTGRES_PASSWORD=$random_postgres_password"
-    random_app_secret_key=$(generate_random_password)
-    app_secret_key="APP_SECRET_KEY=$random_app_secret_key"
-    random_genai_engine_admin_key=$(generate_random_password)
-    genai_engine_admin_key="GENAI_ENGINE_ADMIN_KEY=$random_genai_engine_admin_key"
-
-    echo "All you need is an OpenAI endpoint to get started!"
     echo ""
     echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
     genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
@@ -65,11 +52,8 @@ else
     genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
     all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030
-$postgres_password
-$app_secret_key
 $genai_engine_openai_provider
-GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key
-$genai_engine_admin_key"
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
 
     echo "$all_env_vars" > "$env_file"
 fi
