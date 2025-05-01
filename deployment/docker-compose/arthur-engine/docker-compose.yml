@@ -24,6 +24,7 @@ services:
       - "3030:3030"
     environment:
       - POSTGRES_USER=postgres
+      # Must match POSTGRES_PASSWORD in the db service
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_URL=arthur-engine-db
       - POSTGRES_PORT=5432
@@ -43,8 +44,10 @@ services:
     restart: unless-stopped
     stop_grace_period: "60s"
     environment:
-      - GENAI_ENGINE_INTERNAL_INGRESS_HOST=${GENAI_ENGINE_INGRESS_URI}
-      - GENAI_ENGINE_INTERNAL_API_KEY=${GENAI_ENGINE_ADMIN_KEY}
+      # Must match GENAI_ENGINE_INGRESS_URI in the genai-engine service
+      - GENAI_ENGINE_INTERNAL_INGRESS_HOST=http://localhost:3030
+      # Must match GENAI_ENGINE_ADMIN_KEY in the genai-engine service
+      - GENAI_ENGINE_INTERNAL_API_KEY=changeme_genai_engine_admin_key
       - GENAI_ENGINE_INTERNAL_HOST=http://genai-engine:3030
       - ARTHUR_API_HOST=https://platform.arthur.ai
     env_file:
