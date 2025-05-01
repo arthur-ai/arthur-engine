@@ -24,6 +24,7 @@ services:
       - "3030:3030"
     environment:
       - POSTGRES_USER=postgres
+      # Must match POSTGRES_PASSWORD in the db service
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_URL=arthur-genai-engine-db
       - POSTGRES_PORT=5432
