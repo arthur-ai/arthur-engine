@@ -56,13 +56,12 @@ else
         echo "Enter the OpenAI GPT API key:"
         genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
 
-        all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030
-$genai_engine_openai_provider
+        all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030"
+        all_env_vars=""
     fi
 
     echo "$all_env_vars" > "$env_file"
