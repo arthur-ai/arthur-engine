@@ -38,22 +38,31 @@ if [[ -f "$env_file" ]]; then
     read -n 1 -s
 else
     echo ""
-    echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
-    genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
-    echo ""
-    echo "Enter the OpenAI GPT model name (Example: gpt-4o-mini-2024-07-18)"
-    genai_engine_openai_gpt_name=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_NAME" "gpt-4o-mini-2024-07-18")
-    echo ""
-    echo "Enter the OpenAI GPT endpoint (Format: https://endpoint):"
-    echo "If using OpenAI provider, leave this blank unless you are using a proxy or OpenAI compatible service emulator."
-    genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
-    echo ""
-    echo "Enter the OpenAI GPT API key:"
-    genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
+    read -p "Do you have access to OpenAI services? (y/n) [Default: y]: " has_openai
+    has_openai=${has_openai:-y}
 
-    all_env_vars="GENAI_ENGINE_INGRESS_URI=http://localhost:3030
-$genai_engine_openai_provider
+    if [[ $has_openai =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
+        genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
+        echo ""
+        echo "Enter the OpenAI GPT model name (Example: gpt-4o-mini-2024-07-18)"
+        genai_engine_openai_gpt_name=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_NAME" "gpt-4o-mini-2024-07-18")
+        echo ""
+        echo "Enter the OpenAI GPT endpoint (Format: https://endpoint):"
+        echo "If using OpenAI provider, leave this blank unless you are using a proxy or OpenAI compatible service emulator."
+        genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
+        echo ""
+        echo "Enter the OpenAI GPT API key:"
+        genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
+
+        all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
+    else
+        echo ""
+        echo "Skipping OpenAI configuration..."
+        all_env_vars=""
+    fi
 
     echo "$all_env_vars" > "$env_file"
 fi
