@@ -1560,8 +1560,9 @@
                     "Default Validation"
                 ],
                 "summary": "Default Validate Prompt",
-                "description": "Validate a non-task related prompt based on the configured default rules.",
+                "description": "[Deprecated] Validate a non-task related prompt based on the configured default rules.",
                 "operationId": "default_validate_prompt_api_v2_validate_prompt_post",
+                "deprecated": true,
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -1607,8 +1608,9 @@
                     "Default Validation"
                 ],
                 "summary": "Default Validate Response",
-                "description": "Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt\u2019s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.",
+                "description": "[Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt's inference ID. Must provide context if a Hallucination Rule is an enabled default rule.",
                 "operationId": "default_validate_response_api_v2_validate_response__inference_id__post",
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
