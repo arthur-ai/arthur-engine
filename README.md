@@ -30,7 +30,7 @@ The Arthur Engine is a tool designed for:
 2. Create `.env` file from `.env.template` file and modify it (more instructions can be found in [README](deployment/docker-compose/genai-engine/README.md) on the current path)
 3. Run `docker compose up`
 4. Wait for the `genai-engine` container to initialize then navigate to localhost:3030/docs to see the API docs
-5. Start building!
+5. [Start building!](genai-engine/README.md#quickstart).
 
 ## Arthur Platform Enterprise Version
 

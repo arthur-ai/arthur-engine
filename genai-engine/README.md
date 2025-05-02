@@ -33,9 +33,9 @@ There are a several ways to run the GenAI Engine:
 Note: The GenAI Engine is currently limited to providing you with the guardrail features. The rest of the features are coming soon!
 
 ### Quickstart
-1. Follow the [Docker Compose](docker-compose/README.md) instructions to deploy the engine on your local machine
+1. Follow the [Docker Compose](../deployment/docker-compose/README.md) instructions to deploy the engine on your local machine
 2. Once your `genai-engine` is up and running, navigate to its interactive API documentation at `/docs` via a browser
-3. Create an API key by referring to [the API Authentication Guide](https://shield.docs.arthur.ai/docs/api-authentication-guide). Your admin key is the `GENAI_ENGINE_ADMIN_KEY` in the `docker-compose/arthur-genai-engine.env` file.
+3. Create an API key by referring to [the API Authentication Guide](https://shield.docs.arthur.ai/docs/api-authentication-guide). Your admin key is the `GENAI_ENGINE_ADMIN_KEY` in the [docker-compose.yml](../deployment/docker-compose/genai-engine/docker-compose.yml) file. In the Docker Compose deployment, the admin key is also enabled to interact with all the API endpoints to quickly get started with exploring the capability.
 4. Provide `/docs` the access to use the API endpoints by entering your new API key, via the "Authorize" button, located at the top right of the page
 5. Create a new task (use case/LLM application) by expanding the `POST /api/v2/task` endpoint on the `/docs` page. Click on "Try it out", provide a task name, and click "Execute".
 6. Configure evaluation rules in the newly created task with the `POST /api/v2/tasks/{task_id}/rules` endpoint
