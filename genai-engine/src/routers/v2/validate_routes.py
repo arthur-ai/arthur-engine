@@ -25,10 +25,11 @@ validate_routes = APIRouter(
 
 @validate_routes.post(
     "/validate_prompt",
-    description="Validate a non-task related prompt based on the configured default rules.",
+    description="[Deprecated] Validate a non-task related prompt based on the configured default rules.",
     response_model=ValidationResult,
     response_model_exclude_none=True,
     tags=["Default Validation"],
+    deprecated=True,
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 def default_validate_prompt(
@@ -59,12 +60,13 @@ def default_validate_prompt(
 
 @validate_routes.post(
     "/validate_response/{inference_id}",
-    description="Validate a non-task related generated response based on the configured default rules. "
+    description="[Deprecated] Validate a non-task related generated response based on the configured default rules. "
     "Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide "
     "context if a Hallucination Rule is an enabled default rule.",
     response_model=ValidationResult,
     response_model_exclude_none=True,
     tags=["Default Validation"],
+    deprecated=True,
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
 def default_validate_response(
