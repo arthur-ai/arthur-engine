@@ -52,3 +52,6 @@ Please review the GPT model requirements below:
         docker compose up
     ```
 4. Access the GenAI Engine's interactive API documentation at [http://localhost:3030/docs](http://localhost:3030/docs)
+
+## Getting Started with using the GenAI Engine
+Please refer to the ["Quickstart" guide](../genai-engine/README.md#quickstart).
