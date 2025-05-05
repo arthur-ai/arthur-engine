@@ -20,5 +20,5 @@
 2. Create `.env` file from `.env.template` file and modify it
 3. Navigate to the `docker-compose` directory on your terminal and run `docker compose up`
    ```
-       docker compose up
+       docker compose up --pull always
    ```
