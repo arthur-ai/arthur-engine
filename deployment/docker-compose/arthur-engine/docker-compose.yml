@@ -49,7 +49,6 @@ services:
       # Must match GENAI_ENGINE_ADMIN_KEY in the genai-engine service
       - GENAI_ENGINE_INTERNAL_API_KEY=changeme_genai_engine_admin_key
       - GENAI_ENGINE_INTERNAL_HOST=http://genai-engine:3030
-      - ARTHUR_API_HOST=https://platform.arthur.ai
     env_file:
       - .env
     entrypoint:
