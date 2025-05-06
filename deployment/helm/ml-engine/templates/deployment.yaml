@@ -87,6 +87,8 @@ spec:
               value: "{{ .Values.mlEngine.deployment.genaiEngineInternalHost }}"
             - name: GENAI_ENGINE_INTERNAL_INGRESS_HOST
               value: "{{ .Values.mlEngine.deployment.genaiEngineInternalIngressHost }}"
+            - name: DATA_PLANE_FETCH_RAW_DATA_ENABLED
+              value: "{{ .Values.mlEngine.deployment.dataPlaneFetchRawDataEnabled }}"
       {{- with .Values.mlEngine.deployment.mlEnginePodNodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
