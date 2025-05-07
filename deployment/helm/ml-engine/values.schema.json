@@ -123,7 +123,7 @@
                             "type": "string",
                             "description": "The internal ingress host addressfor GenAI Engine."
                         },
-                        "dataPlaneFetchRawDataEnabled": {
+                        "fetchRawDataEnabled": {
                             "type": "boolean",
                             "description": "Whether to fetch raw data from the data plane."
                         }
