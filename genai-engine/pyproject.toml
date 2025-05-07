@@ -57,9 +57,9 @@ cachetools = "5.5.0"
 sentence-transformers = "3.3.1"
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
 torch = [
-    { version = "=2.5.1", source = "PyPI", platform = "darwin" },
-    { version = "=2.5.1+cpu", source = "pytorch-cpu", platform = "linux" },
-    { version = "=2.5.1+cpu", source = "pytorch-cpu", platform = "win32" },
+    { version = "=2.6.0", source = "PyPI", platform = "darwin" },
+    { version = "=2.6.0+cpu", source = "pytorch-cpu", platform = "linux" },
+    { version = "=2.6.0+cpu", source = "pytorch-cpu", platform = "win32" },
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
