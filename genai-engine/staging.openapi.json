@@ -1247,7 +1247,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task Rule",
-                "description": "Create a rule to be applied only to this task. Available rule types are KeywordRule, ModelHallucinationRuleV2, ModelSensitiveDataRule, PIIDataRule, PromptInjectionRule, RegexRule, ToxicityRule. Note: The rules are cached by the validation endpoints for 60 seconds.",
+                "description": "Create a rule to be applied only to this task. Available rule types are KeywordRule, ModelHallucinationRule, ModelHallucinationRuleV2, ModelHallucinationRuleV3, ModelSensitiveDataRule, PIIDataRule, PromptInjectionRule, RegexRule, ToxicityRule. Note: The rules are cached by the validation endpoints for 60 seconds.",
                 "operationId": "create_task_rule_api_v2_tasks__task_id__rules_post",
                 "security": [
                     {
@@ -1796,6 +1796,380 @@
                             }
                         },
                         "description": "Bad Request"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/traces": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Receive Traces",
+                "description": "Receiver for OpenInference trace standard.",
+                "operationId": "receive_traces_v1_traces_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary",
+                                "title": "Body"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/v1/spans/query": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Query Spans",
+                "description": "Query spans with filters for trace_id, span_id, task_id, and creation_time",
+                "operationId": "query_spans_v1_spans_query_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace ID to filter on.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace ID to filter on."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span ID to filter on.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span ID to filter on."
+                    },
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Task ID to filter on.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task ID to filter on."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format.",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format.",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/traces": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Receive Traces",
+                "description": "Receiver for OpenInference trace standard.",
+                "operationId": "receive_traces_v1_traces_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary",
+                                "title": "Body"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/v1/spans/query": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Query Spans",
+                "description": "Query spans with filters for trace_id, span_id, task_id, and creation_time",
+                "operationId": "query_spans_v1_spans_query_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace ID to filter on.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace ID to filter on."
+                    },
+                    {
+                        "name": "span_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span ID to filter on.",
+                            "title": "Span Ids"
+                        },
+                        "description": "Span ID to filter on."
+                    },
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Task ID to filter on.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task ID to filter on."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format.",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format.",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansResponse"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -3783,7 +4157,7 @@
                     "type": {
                         "type": "string",
                         "title": "Type",
-                        "description": "Type of the rule. It can only be one of KeywordRule, RegexRule, ModelSensitiveDataRule, ModelHallucinationRule, ModelHallucinationRuleV2, PromptInjectionRule, PIIDataRule",
+                        "description": "Type of the rule. It can only be one of KeywordRule, RegexRule, ModelSensitiveDataRule, ModelHallucinationRuleV2, PromptInjectionRule, PIIDataRule",
                         "examples": [
                             "RegexRule"
                         ]
@@ -4424,6 +4798,52 @@
                     ]
                 }
             },
+            "QuerySpansResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of spans matching the query parameters"
+                    },
+                    "spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/SpanResponse"
+                        },
+                        "type": "array",
+                        "title": "Spans",
+                        "description": "List of spans matching the search filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "spans"
+                ],
+                "title": "QuerySpansResponse"
+            },
+            "QuerySpansResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of spans matching the query parameters"
+                    },
+                    "spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/SpanResponse"
+                        },
+                        "type": "array",
+                        "title": "Spans",
+                        "description": "List of spans matching the search filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "spans"
+                ],
+                "title": "QuerySpansResponse"
+            },
             "RegexConfig": {
                 "properties": {
                     "regex_patterns": {
@@ -4814,6 +5234,132 @@
                     "tasks"
                 ],
                 "title": "SearchTasksResponse"
+            },
+            "SpanResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id"
+                    },
+                    "span_id": {
+                        "type": "string",
+                        "title": "Span Id"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time"
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    },
+                    "raw_data": {
+                        "type": "object",
+                        "title": "Raw Data"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "trace_id",
+                    "span_id",
+                    "start_time",
+                    "end_time",
+                    "created_at",
+                    "updated_at",
+                    "raw_data"
+                ],
+                "title": "SpanResponse"
+            },
+            "SpanResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id"
+                    },
+                    "span_id": {
+                        "type": "string",
+                        "title": "Span Id"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time"
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At"
+                    },
+                    "raw_data": {
+                        "type": "object",
+                        "title": "Raw Data"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "trace_id",
+                    "span_id",
+                    "start_time",
+                    "end_time",
+                    "created_at",
+                    "updated_at",
+                    "raw_data"
+                ],
+                "title": "SpanResponse"
             },
             "TaskResponse": {
                 "properties": {
