@@ -93,33 +93,6 @@ from db_models.db_models import (
     DatabaseUser,
 )
 
-from db_models.db_models import (
-    DatabaseApiKey,
-    DatabaseApplicationConfiguration,
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
-    DatabaseHallucinationClaim,
-    DatabaseInference,
-    DatabaseInferenceFeedback,
-    DatabaseInferencePrompt,
-    DatabaseInferencePromptContent,
-    DatabaseInferenceResponse,
-    DatabaseInferenceResponseContent,
-    DatabaseKeywordEntity,
-    DatabasePIIEntity,
-    DatabasePromptRuleResult,
-    DatabaseRegexEntity,
-    DatabaseResponseRuleResult,
-    DatabaseRule,
-    DatabaseRuleResultDetail,
-    DatabaseSpan,
-    DatabaseTask,
-    DatabaseTaskToRules,
-    DatabaseToxicityScore,
-    DatabaseUser,
-)
-
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
 

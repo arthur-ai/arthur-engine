@@ -3,11 +3,11 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from dependencies import get_bi_client, get_db_session
+from dependencies import get_db_session
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
 from repositories.span_repository import SpanRepository
-from routers.route_handler import ShieldRoute
+from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
@@ -17,13 +17,12 @@ from sqlalchemy.orm import Session
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
-from shield.clients.bi.abc_bi_client import BIClient
 
 logger = logging.getLogger(__name__)
 
 span_routes = APIRouter(
     prefix="/v1",
-    route_class=ShieldRoute,
+    route_class=GenaiEngineRoute,
 )
 
 
@@ -38,7 +37,6 @@ span_routes = APIRouter(
 def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
-    bi_client: BIClient = Depends(get_bi_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     try:
@@ -111,8 +109,13 @@ def query_spans(
     finally:
         db_session.close()
 
+
 def response_handler(
-        total_spans, accepted_spans, unnecessary_spans, rejected_spans, rejected_reasons,
+    total_spans,
+    accepted_spans,
+    unnecessary_spans,
+    rejected_spans,
+    rejected_reasons,
 ):
     content = {
         "total_spans": total_spans,
