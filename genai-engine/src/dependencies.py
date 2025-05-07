@@ -15,7 +15,6 @@ from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
-from db_models.db_models import Base
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from psycopg2 import OperationalError as Psycopg2OperationalError
@@ -52,6 +51,12 @@ from utils.utils import (
     is_local_environment,
     seed_database,
 )
+
+from db_models.db_models import Base
+
+from db_models.db_models import Base
+
+from db_models.db_models import Base
 
 SINGLETON_GRADER_LLM = None
 SINGLETON_INFERENCE_REPOSITORY = None
