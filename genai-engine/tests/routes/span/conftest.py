@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Generator, List
 
 import pytest
-from dependencies import get_application_config, get_bi_client
+from dependencies import get_application_config
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
@@ -85,7 +85,6 @@ def _create_llm_span(trace_id, span_id, name, include_task_id=True, model_name="
 def create_span() -> Generator[InternalSpan, None, None]:
     db_session = override_get_db_session()
     application_config = get_application_config(session=db_session)
-    bi_client = get_bi_client()
     span_repo = SpanRepository(db_session)
 
     now = datetime.now()
@@ -116,7 +115,6 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     """Create multiple test spans with different attributes for query testing."""
     db_session = override_get_db_session()
     application_config = get_application_config(session=db_session)
-    bi_client = get_bi_client()
     span_repo = SpanRepository(db_session)
 
     # Create spans with different attributes

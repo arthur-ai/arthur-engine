@@ -13,10 +13,6 @@ from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseInference, DatabaseInferenceFeedback
 
-from db_models.db_models import DatabaseInference, DatabaseInferenceFeedback
-
-from db_models.db_models import DatabaseInference, DatabaseInferenceFeedback
-
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)
 

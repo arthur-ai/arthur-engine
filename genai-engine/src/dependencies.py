@@ -51,11 +51,6 @@ from utils.utils import (
     is_local_environment,
     seed_database,
 )
-
-from db_models.db_models import Base
-
-from db_models.db_models import Base
-
 from db_models.db_models import Base
 
 SINGLETON_GRADER_LLM = None
