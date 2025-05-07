@@ -94,7 +94,6 @@ pytest = "8.3.4"
 pytest-asyncio = "0.25.2"
 pytest-cov = "^6.0.0"
 pre-commit = "^4.0.0"
-moto = { extras = ["s3", "sts"], version = "^5.0.21" }
 black = "^24.8.0"
 mypy = "^1.13.0"
 
