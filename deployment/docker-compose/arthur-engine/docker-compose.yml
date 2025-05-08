@@ -3,12 +3,13 @@ services:
   db:
     container_name: arthur-engine-db
     image: postgres
-    networks:
-      - arthur_network
     shm_size: 128mb
     environment:
-      POSTGRES_PASSWORD: changeme_pg_password
-      POSTGRES_DB: arthur_genai_engine
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_PASSWORD=changeme_pg_password
+      - POSTGRES_DB=arthur_genai_engine
+    volumes:
+      - /var/lib/postgresql/data
     env_file:
       - .env
   genai-engine:
@@ -16,8 +17,6 @@ services:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
-    networks:
-      - arthur_network
     depends_on:
       - db
     ports:
@@ -59,6 +58,3 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
-networks:
-  arthur_network:
-    driver: bridge
