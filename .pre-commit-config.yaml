@@ -11,7 +11,7 @@ repos:
       - id: debug-statements
       - id: name-tests-test
         args: ["--pytest-test-first"]
-        exclude: ^(genai-engine/tests/mocks|genai-engine/tests/constants.py|genai-engine/tests/clients)
+        exclude: ^(genai-engine/tests/mocks|genai-engine/tests/constants.py|genai-engine/tests/clients|arthur-common/tests/test_data/)
   - repo: https://github.com/pycqa/autoflake
     rev: v2.2.1
     hooks:
@@ -53,7 +53,7 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-pytest-check
         name: "genai-engine: pytest unit tests and coverage"
-        entry: poetry -C genai-engine run pytest -m "unit_tests" --cov=genai_engine --cov-fail-under=79
+        entry: poetry -C genai-engine run pytest genai-engine/tests/ -m "unit_tests" --cov=genai_engine --cov-fail-under=79
         language: system
         types: [python]
         pass_filenames: false
@@ -65,3 +65,11 @@ repos:
         language: system
         always_run: false
         files: ^genai-engine/src/schemas/
+      - id: arthur-common-pytest-check
+        name: "arthur-common: pytest unit tests and coverage"
+        entry: poetry -C arthur-common run pytest arthur-common/tests/ --cov=arthur_common --cov-fail-under=45
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: false
+        files: ^arthur-common/src/
