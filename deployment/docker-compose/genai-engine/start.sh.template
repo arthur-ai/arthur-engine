@@ -1,8 +1,8 @@
 #!/bin/bash
 
 cat <<EOF > .env
-GENAI_ENGINE_OPENAI_PROVIDER=Azure
-GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+GENAI_ENGINE_OPENAI_PROVIDER=OpenAI
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::::my_api_key
 EOF
 
 curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up --pull always \
