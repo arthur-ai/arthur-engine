@@ -1,5 +1,6 @@
 import logging
 import platform
+import uuid
 from enum import Enum
 
 import requests
@@ -8,10 +9,46 @@ from config.telemetry_config import TelemetryConfig
 from schemas.enums import RuleType
 from utils import utils
 
+logging.getLogger("amplitude").setLevel(logging.CRITICAL)
+
 AMPLITUDE_CLIENT = Amplitude("ae623bd644a045706785eb01fd21945d")
 TELEMETRY_CONFIG = TelemetryConfig()
 
-logging.getLogger("amplitude").setLevel(logging.CRITICAL)
+
+def get_public_ip():
+    try:
+        response = requests.get("https://api.ipify.org?format=json", timeout=5)
+        response.raise_for_status()
+        return response.json().get("ip")
+    except requests.RequestException:
+        return None
+    except ValueError:
+        return None
+
+
+TELEMETRY_IP = get_public_ip()
+try:
+    TELEMETRY_USER_ID = ":".join(
+        ["{:02x}".format((uuid.getnode() >> ele) & 0xFF) for ele in range(0, 8 * 6, 8)][
+            ::-1
+        ],
+    )
+except Exception:
+    TELEMETRY_USER_ID = None
+try:
+    TELEMETRY_DEVICE_ID = platform.node()
+    TELEMETRY_PLATFORM = platform.machine()
+    TELEMETRY_OS_NAME = platform.system()
+    TELEMETRY_OS_VERSION = platform.version()
+except Exception:
+    TELEMETRY_DEVICE_ID = None
+    TELEMETRY_PLATFORM = None
+    TELEMETRY_OS_NAME = None
+    TELEMETRY_OS_VERSION = None
+try:
+    TELEMETRY_APP_VERSION = utils.get_genai_engine_version()
+except Exception:
+    TELEMETRY_APP_VERSION = None
 
 
 class TelemetryEventTypes(str, Enum):
@@ -91,29 +128,22 @@ def send_telemetry_event_for_default_rule_create_completed(rule_type: RuleType):
 
 
 def send_telemetry_event(event_type: TelemetryEventTypes):
-    try:
-        if not TELEMETRY_CONFIG.ENABLED:
-            return
+    if not TELEMETRY_CONFIG.ENABLED:
+        return
 
-        event = BaseEvent(
-            event_type=event_type.value,
-            user_id=TELEMETRY_CONFIG.get_instance_id(),
-            device_id=platform.node(),
-            ip=get_public_ip(),
-            platform=platform.machine(),
-            os_name=platform.system(),
-            os_version=platform.version(),
-            app_version=utils.get_genai_engine_version(),
-        )
+    event = BaseEvent(
+        event_type=event_type.value,
+        user_id=TELEMETRY_USER_ID,
+        device_id=TELEMETRY_DEVICE_ID,
+        ip=TELEMETRY_IP,
+        platform=TELEMETRY_PLATFORM,
+        os_name=TELEMETRY_OS_NAME,
+        os_version=TELEMETRY_OS_VERSION,
+        app_version=TELEMETRY_APP_VERSION,
+    )
+
+    try:
         AMPLITUDE_CLIENT.track(event)
         AMPLITUDE_CLIENT.flush()
     except Exception as e:
         return
-
-
-def get_public_ip():
-    try:
-        response = requests.get("https://api.ipify.org?format=json")
-        return response.json()["ip"]
-    except requests.RequestException as e:
-        return None

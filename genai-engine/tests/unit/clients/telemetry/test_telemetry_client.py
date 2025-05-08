@@ -1,4 +1,3 @@
-import platform
 import re
 from unittest.mock import patch
 
@@ -32,35 +31,56 @@ def mock_telemetry_config():
 @pytest.mark.unit_tests
 def test_send_telemetry_event(mock_amplitude_client):
     with (
-        patch("platform.node") as mock_node,
-        patch("clients.telemetry.telemetry_client.get_public_ip") as mock_ip,
-        patch(
-            "clients.telemetry.telemetry_client.utils.get_genai_engine_version",
-        ) as mock_version,
         patch(
             "clients.telemetry.telemetry_client.TELEMETRY_CONFIG",
         ) as mock_telemetry_config,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_USER_ID",
+            "test-instance",
+        ) as mock_user_id,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_DEVICE_ID",
+            "test-node",
+        ) as mock_device_id,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_IP",
+            "1.2.3.4",
+        ) as mock_ip_addr,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_PLATFORM",
+            "test-platform",
+        ) as mock_platform,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_OS_NAME",
+            "test-os-name",
+        ) as mock_os_name,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_OS_VERSION",
+            "test-os-version",
+        ) as mock_os_version,
+        patch(
+            "clients.telemetry.telemetry_client.TELEMETRY_APP_VERSION",
+            "1.0.0",
+        ) as mock_app_version,
     ):
         mock_telemetry_config.ENABLED = True
 
-        mock_node.return_value = "test-node"
-        mock_ip.return_value = "1.2.3.4"
-        mock_version.return_value = "1.0.0"
-
-        send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
-
-        expected_event = BaseEvent(
-            event_type=TelemetryEventTypes.SERVER_START_INITIATED.value,
-            user_id="test-instance",
-            device_id="test-node",
-            ip="1.2.3.4",
-            platform=platform.machine(),
-            os_name=platform.system(),
-            os_version=platform.version(),
-            app_version="1.0.0",
-        )
+        event_type_to_send = TelemetryEventTypes.SERVER_START_INITIATED
+        send_telemetry_event(event_type_to_send)
 
         mock_amplitude_client.track.assert_called_once()
+        tracked_event = mock_amplitude_client.track.call_args[0][0]
+
+        assert isinstance(tracked_event, BaseEvent)
+        assert tracked_event.event_type == event_type_to_send.value
+        assert tracked_event.user_id == "test-instance"
+        assert tracked_event.device_id == "test-node"
+        assert tracked_event.ip == "1.2.3.4"
+        assert tracked_event.platform == "test-platform"
+        assert tracked_event.os_name == "test-os-name"
+        assert tracked_event.os_version == "test-os-version"
+        assert tracked_event.app_version == "1.0.0"
+
         mock_amplitude_client.flush.assert_called_once()
 
 
