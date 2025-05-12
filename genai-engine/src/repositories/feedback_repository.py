@@ -2,7 +2,6 @@ import logging
 import uuid
 from datetime import datetime
 
-from db_models.db_models import DatabaseInference, DatabaseInferenceFeedback
 from dependencies import get_db_session
 from fastapi import Depends
 from opentelemetry import trace
