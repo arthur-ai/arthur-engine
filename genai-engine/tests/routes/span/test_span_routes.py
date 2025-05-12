@@ -131,7 +131,6 @@ def test_query_spans_happy_path(client: ShieldTestClient, create_test_spans):
     # Test basic query without filters
     status_code, response = client.query_spans()
     assert status_code == 200
-    print(response)
     assert response.count == 5  # We created 5 spans
     assert len(response.spans) == 5
 
