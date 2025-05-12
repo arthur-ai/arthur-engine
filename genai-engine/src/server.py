@@ -315,6 +315,7 @@ def get_app_with_routes() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -337,6 +338,7 @@ def get_test_app() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -369,6 +371,7 @@ def get_app() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
