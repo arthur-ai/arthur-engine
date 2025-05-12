@@ -279,6 +279,7 @@ def get_base_app(
         "http://0.0.0.0:8000",
         "http://localhost:3030",
         "http://localhost:8080",
+        "http://localhost:3023",
     ]
     if ingress_url := get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
@@ -286,12 +287,15 @@ def get_base_app(
     ):
         origins.append(ingress_url)
 
+    arthur_allowed_origins = r"https://.*\.arthur\.ai"
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        allow_origin_regex=arthur_allowed_origins,
     )
     return app
 
