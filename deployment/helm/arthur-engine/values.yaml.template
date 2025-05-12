@@ -96,7 +96,7 @@ arthur-genai-engine:
   ## Advanced - GenAI Engine
   ###################################
   # GenAI Engine version
-  genaiEngineVersion: 2.1.39
+  genaiEngineVersion: 2.1.40
   # Max number of tokens GenAI Engine can process against LLM for hallucination data checks
   genaiEngineHallucinationCheckMaxTokenLimit: 3000
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
@@ -160,6 +160,7 @@ arthur-ml-engine:
     deployment:
       # This should be the same as the genaiEngineIngressURL in the arthur-genai-engine chart
       genaiEngineInternalIngressHost: ""
+      fetchRawDataEnabled: true
 
       ###################################
       ## Advanced - General
