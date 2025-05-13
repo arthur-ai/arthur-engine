@@ -9,7 +9,7 @@ from arthur_common.aggregations.aggregator import (
 from arthur_common.models.datasets import ModelProblemType
 from arthur_common.models.metrics import DatasetReference, NumericMetric, SketchMetric
 from arthur_common.models.schema_definitions import (
-    SHIELD_RESPONSE_SCHEMA,
+    GENAI_ENGINE_RESPONSE_SCHEMA,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
 )
@@ -17,7 +17,7 @@ from duckdb import DuckDBPyConnection
 from tokencost import calculate_cost_by_tokens
 
 
-class ShieldInferencePassFailCountAggregation(NumericAggregationFunction):
+class GenAIEngineInferencePassFailCountAggregation(NumericAggregationFunction):
     METRIC_NAME = "inference_count"
 
     @staticmethod
@@ -30,7 +30,7 @@ class ShieldInferencePassFailCountAggregation(NumericAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that counts the number of Shield inferences grouped by the prompt, response, and overall check results."
+        return "Metric that counts the number of GenAI Engine inferences grouped by the prompt, response, and overall check results."
 
     def aggregate(
         self,
@@ -39,20 +39,20 @@ class ShieldInferencePassFailCountAggregation(NumericAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[NumericMetric]:
@@ -77,7 +77,7 @@ class ShieldInferencePassFailCountAggregation(NumericAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRuleCountAggregation(NumericAggregationFunction):
+class GenAIEngineInferenceRuleCountAggregation(NumericAggregationFunction):
     METRIC_NAME = "rule_count"
 
     @staticmethod
@@ -90,7 +90,7 @@ class ShieldInferenceRuleCountAggregation(NumericAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that counts the number of Shield rule evaluations grouped by whether it was on the prompt or response, the rule type, the rule evaluation result, the rule name, and the rule id."
+        return "Metric that counts the number of GenAI Engine rule evaluations grouped by whether it was on the prompt or response, the rule type, the rule evaluation result, the rule name, and the rule id."
 
     def aggregate(
         self,
@@ -99,20 +99,20 @@ class ShieldInferenceRuleCountAggregation(NumericAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[NumericMetric]:
@@ -160,7 +160,7 @@ class ShieldInferenceRuleCountAggregation(NumericAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceHallucinationCountAggregation(NumericAggregationFunction):
+class GenAIEngineInferenceHallucinationCountAggregation(NumericAggregationFunction):
     METRIC_NAME = "hallucination_count"
 
     @staticmethod
@@ -173,7 +173,7 @@ class ShieldInferenceHallucinationCountAggregation(NumericAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that counts the number of Shield hallucination evaluations that failed."
+        return "Metric that counts the number of GenAI Engine hallucination evaluations that failed."
 
     def aggregate(
         self,
@@ -182,20 +182,20 @@ class ShieldInferenceHallucinationCountAggregation(NumericAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[NumericMetric]:
@@ -217,7 +217,7 @@ class ShieldInferenceHallucinationCountAggregation(NumericAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRuleToxicityScoreAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRuleToxicityScoreAggregation(SketchAggregationFunction):
     METRIC_NAME = "toxicity_score"
 
     @staticmethod
@@ -230,7 +230,7 @@ class ShieldInferenceRuleToxicityScoreAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on toxicity scores returned by the Shield toxicity rule."
+        return "Metric that reports a distribution (data sketch) on toxicity scores returned by the GenAI Engine toxicity rule."
 
     def aggregate(
         self,
@@ -239,20 +239,20 @@ class ShieldInferenceRuleToxicityScoreAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -293,7 +293,7 @@ class ShieldInferenceRuleToxicityScoreAggregation(SketchAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRulePIIDataScoreAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRulePIIDataScoreAggregation(SketchAggregationFunction):
     METRIC_NAME = "pii_score"
 
     @staticmethod
@@ -306,7 +306,7 @@ class ShieldInferenceRulePIIDataScoreAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on PII scores returned by the Shield PII rule."
+        return "Metric that reports a distribution (data sketch) on PII scores returned by the GenAI Engine PII rule."
 
     def aggregate(
         self,
@@ -315,20 +315,20 @@ class ShieldInferenceRulePIIDataScoreAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -375,7 +375,7 @@ order by ts desc;                                                               
         return [metric]
 
 
-class ShieldInferenceRuleClaimCountAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRuleClaimCountAggregation(SketchAggregationFunction):
     METRIC_NAME = "claim_count"
 
     @staticmethod
@@ -388,7 +388,7 @@ class ShieldInferenceRuleClaimCountAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on over the number of claims identified by the Shield hallucination rule."
+        return "Metric that reports a distribution (data sketch) on over the number of claims identified by the GenAI Engine hallucination rule."
 
     def aggregate(
         self,
@@ -397,20 +397,20 @@ class ShieldInferenceRuleClaimCountAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -439,7 +439,7 @@ class ShieldInferenceRuleClaimCountAggregation(SketchAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRuleClaimPassCountAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRuleClaimPassCountAggregation(SketchAggregationFunction):
     METRIC_NAME = "claim_valid_count"
 
     @staticmethod
@@ -452,7 +452,7 @@ class ShieldInferenceRuleClaimPassCountAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on the number of valid claims determined by the Shield hallucination rule."
+        return "Metric that reports a distribution (data sketch) on the number of valid claims determined by the GenAI Engine hallucination rule."
 
     def aggregate(
         self,
@@ -461,20 +461,20 @@ class ShieldInferenceRuleClaimPassCountAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -503,7 +503,7 @@ class ShieldInferenceRuleClaimPassCountAggregation(SketchAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRuleClaimFailCountAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRuleClaimFailCountAggregation(SketchAggregationFunction):
     METRIC_NAME = "claim_invalid_count"
 
     @staticmethod
@@ -516,7 +516,7 @@ class ShieldInferenceRuleClaimFailCountAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on the number of invalid claims determined by the Shield hallucination rule."
+        return "Metric that reports a distribution (data sketch) on the number of invalid claims determined by the GenAI Engine hallucination rule."
 
     def aggregate(
         self,
@@ -525,20 +525,20 @@ class ShieldInferenceRuleClaimFailCountAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -567,7 +567,7 @@ class ShieldInferenceRuleClaimFailCountAggregation(SketchAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceRuleLatencyAggregation(SketchAggregationFunction):
+class GenAIEngineInferenceRuleLatencyAggregation(SketchAggregationFunction):
     METRIC_NAME = "rule_latency"
 
     @staticmethod
@@ -580,7 +580,7 @@ class ShieldInferenceRuleLatencyAggregation(SketchAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports a distribution (data sketch) on the latency of Shield rule evaluations. Dimensions are the rule result, rule type, and whether the rule was applicable to a prompt or response."
+        return "Metric that reports a distribution (data sketch) on the latency of GenAI Engine rule evaluations. Dimensions are the rule result, rule type, and whether the rule was applicable to a prompt or response."
 
     def aggregate(
         self,
@@ -589,20 +589,20 @@ class ShieldInferenceRuleLatencyAggregation(SketchAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[SketchMetric]:
@@ -642,7 +642,7 @@ class ShieldInferenceRuleLatencyAggregation(SketchAggregationFunction):
         return [metric]
 
 
-class ShieldInferenceTokenCountAggregation(NumericAggregationFunction):
+class GenAIEngineInferenceTokenCountAggregation(NumericAggregationFunction):
     METRIC_NAME = "token_count"
 
     @staticmethod
@@ -655,7 +655,7 @@ class ShieldInferenceTokenCountAggregation(NumericAggregationFunction):
 
     @staticmethod
     def description() -> str:
-        return "Metric that reports the number of tokens in the Shield response and prompt schemas, and their estimated cost."
+        return "Metric that reports the number of tokens in the GenAI Engine response and prompt schemas, and their estimated cost."
 
     def aggregate(
         self,
@@ -664,20 +664,20 @@ class ShieldInferenceTokenCountAggregation(NumericAggregationFunction):
             DatasetReference,
             MetricDatasetParameterAnnotation(
                 friendly_name="Dataset",
-                description="The task inference dataset sourced from Arthur Shield.",
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                description="The task inference dataset sourced from Arthur GenAI Engine.",
+                model_problem_type=ModelProblemType.ARTHUR_GENAI_ENGINE,
             ),
         ],
-        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for shield
-        shield_response_column: Annotated[
+        # This parameter exists mostly to work with the aggregation matcher such that we don't need to have any special handling for genai_engine
+        genai_engine_response_column: Annotated[
             str,
             MetricColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
-                    SHIELD_RESPONSE_SCHEMA,
+                    GENAI_ENGINE_RESPONSE_SCHEMA,
                 ],
-                friendly_name="Shield Response Column",
-                description="The Shield response column from the task inference dataset.",
+                friendly_name="GenAI Engine Response Column",
+                description="The GenAI Engine response column from the task inference dataset.",
             ),
         ],
     ) -> list[NumericMetric]:
