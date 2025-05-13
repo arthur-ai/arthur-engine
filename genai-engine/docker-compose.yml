@@ -3,9 +3,10 @@ services:
   db:
     image: postgres
     ports:
-      - 5432:5432
+      - 5436:5432
     shm_size: 128mb
     environment:
+      POSTGRES_USER: user
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
 
