@@ -404,3 +404,17 @@ class PasswordResetRequest(BaseModel):
 
 class ChatDefaultTaskRequest(BaseModel):
     task_id: str
+
+
+class NewMetricRequest(BaseModel):
+    metric_type: MetricType = Field(
+        description="Type of the metric. It can only be one of UserQueryRelevance, ResponseRelevance, QueryRelevanceBert, ResponseRelevanceBert",
+        examples=["UserQueryRelevance"],
+    )
+    metric_name: str = Field(description="Name of metric", examples=["My User Query Relevance"])
+    metric_metadata: str = Field(description="Additional metadata for the metric")
+    
+
+class UpdateMetricRequest(BaseModel):
+    enabled: bool = Field(description="Boolean value to enable or disable the metric. ")
+
