@@ -20,18 +20,30 @@ class AggregationType(str, Enum):
     MAX = "max"
     AVERAGE = "average"
     COUNT = "count"
-    # Highly specific for Shield MVP work, to be abtracted more along the lines of the above later
-    SHIELD_INFERENCE_PASS_FAIL_COUNT = "shield_inference_pass_fail_count"
-    SHIELD_PROMPT_RESPONSE_PASS_FAIL_COUNT = "shield_prompt_response_pass_fail_count"
-    SHIELD_INFERENCE_RULE_COUNT = "shield_inference_rule_count"
-    SHIELD_INFERENCE_RULE_PASS_FAIL_COUNT = "shield_inference_rule_pass_fail_count"
-    SHIELD_INFERENCE_RULE_TOXICITY_SCORE = "shield_inference_rule_toxicity_score"
-    SHIELD_INFERENCE_RULE_PII_SCORE = "shield_inference_rule_pii_score"
-    SHIELD_INFERENCE_HALLUCINATION_COUNT = "shield_inference_hallucination_count"
-    SHIELD_INFERENCE_RULE_CLAIM_COUNT = "shield_inference_rule_claim_count"
-    SHIELD_INFERENCE_RULE_CLAIM_PASS_COUNT = "shield_inference_rule_claim_pass_count"
-    SHIELD_INFERENCE_RULE_CLAIM_FAIL_COUNT = "shield_inference_rule_claim_fail_count"
-    SHIELD_INFERENCE_RULE_LATENCY = "shield_inference_rule_latency"
+    # Highly specific for GenAI Engine MVP work, to be abtracted more along the lines of the above later
+    GENAI_ENGINE_INFERENCE_PASS_FAIL_COUNT = "genai_engine_inference_pass_fail_count"
+    GENAI_ENGINE_PROMPT_RESPONSE_PASS_FAIL_COUNT = (
+        "genai_engine_prompt_response_pass_fail_count"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_COUNT = "genai_engine_inference_rule_count"
+    GENAI_ENGINE_INFERENCE_RULE_PASS_FAIL_COUNT = (
+        "genai_engine_inference_rule_pass_fail_count"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_TOXICITY_SCORE = (
+        "genai_engine_inference_rule_toxicity_score"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_PII_SCORE = "genai_engine_inference_rule_pii_score"
+    GENAI_ENGINE_INFERENCE_HALLUCINATION_COUNT = (
+        "genai_engine_inference_hallucination_count"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_CLAIM_COUNT = "genai_engine_inference_rule_claim_count"
+    GENAI_ENGINE_INFERENCE_RULE_CLAIM_PASS_COUNT = (
+        "genai_engine_inference_rule_claim_pass_count"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_CLAIM_FAIL_COUNT = (
+        "genai_engine_inference_rule_claim_fail_count"
+    )
+    GENAI_ENGINE_INFERENCE_RULE_LATENCY = "genai_engine_inference_rule_latency"
 
 
 class Dimension(BaseModel):
