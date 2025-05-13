@@ -1,7 +1,7 @@
 """create_span_table
 
 Revision ID: 7747edf460b3
-Revises: 68f8943ed6a4
+Revises: 5c2dd37eed9e
 Create Date: 2025-04-29 13:01:29.420778
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "7747edf460b3"
-down_revision = "68f8943ed6a4"
+down_revision = "5c2dd37eed9e"
 branch_labels = None
 depends_on = None
 
