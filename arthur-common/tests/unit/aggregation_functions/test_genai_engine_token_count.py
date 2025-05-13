@@ -1,6 +1,6 @@
 import pytest
-from arthur_common.aggregations.functions.shield_aggregations import (
-    ShieldInferenceTokenCountAggregation,
+from arthur_common.aggregations.functions.genai_engine_aggregations import (
+    GenAIEngineInferenceTokenCountAggregation,
 )
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
@@ -25,31 +25,31 @@ from duckdb import DuckDBPyConnection
         ),
     ],
 )
-def test_shield_token_count(
-    get_shield_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+def test_genai_engine_token_count(
+    get_genai_engine_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     model_name: str,
     expected_prompt_tokens: int,
     expected_response_tokens: int,
     expected_prompt_cost: float,
     expected_response_cost: float,
 ):
-    """Test the Shield token count aggregation function.
+    """Test the GenAI Engine token count aggregation function.
 
     Args:
-        get_shield_dataset_conn: Fixture providing connection and dataset reference
+        get_genai_engine_dataset_conn: Fixture providing connection and dataset reference
         model_name: Name of the model to test costs for
         expected_prompt_tokens: Expected number of tokens in prompts
         expected_response_tokens: Expected number of tokens in responses
         expected_prompt_cost: Expected cost for prompt tokens
         expected_response_cost: Expected cost for response tokens
     """
-    conn, dataset_ref = get_shield_dataset_conn
-    token_count_aggregator = ShieldInferenceTokenCountAggregation()
+    conn, dataset_ref = get_genai_engine_dataset_conn
+    token_count_aggregator = GenAIEngineInferenceTokenCountAggregation()
 
     metrics = token_count_aggregator.aggregate(
         conn,
         dataset_ref,
-        shield_response_column="shield_response",
+        genai_engine_response_column="genai_engine_response",
     )
 
     # Check for a single token count metric, and two token count series within those metrics
@@ -112,31 +112,34 @@ def test_shield_token_count(
         ),
     ],
 )
-def test_shield_empty_token_count(
-    get_shield_dataset_conn_no_tokens: tuple[DuckDBPyConnection, DatasetReference],
+def test_genai_engine_empty_token_count(
+    get_genai_engine_dataset_conn_no_tokens: tuple[
+        DuckDBPyConnection,
+        DatasetReference,
+    ],
     model_name: str,
     expected_prompt_tokens: int,
     expected_response_tokens: int,
     expected_prompt_cost: float,
     expected_response_cost: float,
 ):
-    """Test the Shield token count aggregation function.
+    """Test the GenAI Engine token count aggregation function.
 
     Args:
-        get_shield_dataset_conn: Fixture providing connection and dataset reference
+        get_genai_engine_dataset_conn_no_tokens: Fixture providing connection and dataset reference
         model_name: Name of the model to test costs for
         expected_prompt_tokens: Expected number of tokens in prompts
         expected_response_tokens: Expected number of tokens in responses
         expected_prompt_cost: Expected cost for prompt tokens
         expected_response_cost: Expected cost for response tokens
     """
-    conn, dataset_ref = get_shield_dataset_conn_no_tokens
-    token_count_aggregator = ShieldInferenceTokenCountAggregation()
+    conn, dataset_ref = get_genai_engine_dataset_conn_no_tokens
+    token_count_aggregator = GenAIEngineInferenceTokenCountAggregation()
 
     metrics = token_count_aggregator.aggregate(
         conn,
         dataset_ref,
-        shield_response_column="shield_response",
+        genai_engine_response_column="genai_engine_response",
     )
 
     # Check for a single token count metric, and two token count series within those metrics
