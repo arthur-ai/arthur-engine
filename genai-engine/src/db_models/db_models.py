@@ -57,6 +57,10 @@ class DatabaseTask(Base, IsArchivable):
         back_populates="task",
         lazy="joined",
     )
+    metric_links: Mapped[List["DatabaseTaskToMetrics"]] = relationship(
+        back_populates="task",
+        lazy="joined",
+    )
 
 
 class DatabaseTaskToRules(Base):
@@ -460,3 +464,35 @@ class DatabaseSpan(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
     )
+
+
+class DatabaseMetric(Base):
+    __tablename__ = "metrics"
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    metric_type: Mapped[str] = mapped_column(String)
+    metric_name: Mapped[str] = mapped_column(String)
+    metric_metadata: Mapped[str] = mapped_column(String)
+    # metric_config: Mapped[DatabaseMetricConfig] = relationship(
+    #     lazy="joined",
+    # )
+
+
+class DatabaseTaskToMetrics(Base):
+    __tablename__ = "tasks_to_metrics"
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        index=True,
+        primary_key=True,
+    )
+    metric_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("metrics.id"),
+        index=True,
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    task: Mapped["DatabaseTask"] = relationship(back_populates="metric_links")
+    metric: Mapped["DatabaseMetric"] = relationship(lazy="joined")
