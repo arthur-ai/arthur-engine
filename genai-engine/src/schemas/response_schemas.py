@@ -18,6 +18,7 @@ from schemas.enums import (
     RuleType,
     ToxicityViolationType,
 )
+from schemas.enums import MetricType
 
 
 class HTTPError(BaseModel):
