@@ -35,4 +35,10 @@ services:
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
     env_file:
       - .env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3030/docs" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]

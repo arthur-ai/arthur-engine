@@ -9,9 +9,7 @@ services:
     stop_grace_period: "60s"
     env_file:
       - .env
-    entrypoint:
-      - python3
-      - app/job_agent.py
+    entrypoint: [ "bash", "-c", "until wget --spider --quiet http://host.docker.internal:3030/docs; do sleep 1; done; python3 app/job_agent.py" ]
     healthcheck:
       test: wget -qO - http://127.0.0.1:7492/health
       interval: 30s
