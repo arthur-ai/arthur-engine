@@ -32,6 +32,7 @@ pytest = "^8.3.5"
 responses = "0.25.7"
 pytest-xdist = "3.6.1"
 pytest-cov = "^6.1.1"
+pre-commit = "^4.2.0"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
