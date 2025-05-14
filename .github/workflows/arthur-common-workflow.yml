@@ -36,6 +36,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: arthur-common
+          python-version: 3.12
       - name: Run pre-commit
         run: |
           poetry -C arthur-common run pre-commit install
@@ -59,9 +60,10 @@ jobs:
         - uses: ./.github/workflows/composite-actions/setup-poetry
           with:
             working-directory: arthur-common
+            python-version: 3.12
         - name: Run unit tests
           run: |
-            poetry -C arthur-common run pytest arthur-common/tests/ --cov --cov=arthur-common/src --cov-report term --junitxml=report.xml | tee pytest-coverage.txt
+            poetry -C arthur-common run pytest tests/unit/ --cov --cov=src/arthur_common --cov-report term --junitxml=report.xml | tee pytest-coverage.txt
         - name: Pytest coverage comment
           uses: MishaKav/pytest-coverage-comment@main
           with:
