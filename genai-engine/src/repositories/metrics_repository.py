@@ -5,7 +5,7 @@ from schemas.internal_schemas import Metric
 from schemas.request_schemas import UpdateMetricRequest
 
 
-class MetricsRepository:
+class MetricRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
@@ -28,3 +28,11 @@ class MetricsRepository:
 
         self.db_session.commit()
         return Metric._from_database_model(database_metric)
+
+    def archive_metric(self, metric_id: str):
+        database_metric = self.db_session.query(DatabaseMetric).filter(DatabaseMetric.id == metric_id).first()
+        if not database_metric:
+            raise ValueError(f"Metric with id {metric_id} not found")
+
+        database_metric.archived = True
+        self.db_session.commit()

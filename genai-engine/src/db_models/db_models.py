@@ -466,7 +466,7 @@ class DatabaseSpan(Base):
     )
 
 
-class DatabaseMetric(Base):
+class DatabaseMetric(Base, IsArchivable):
     __tablename__ = "metrics"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())

@@ -25,13 +25,14 @@ class TaskRepository:
         self,
         db_session: Session,
         rule_repository: RuleRepository,
+        metric_repository: MetricRepository,
         application_config: ApplicationConfiguration,
-        metric_repository: Optional[MetricRepository] = None,
     ):
         self.db_session = db_session
         self.rule_repository = rule_repository
-        self.app_config = application_config
         self.metric_repository = metric_repository
+        self.app_config = application_config
+        
     @tracer.start_as_current_span("query_tasks")
     def query_tasks(
         self,
@@ -101,6 +102,7 @@ class TaskRepository:
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
+        
         for link in db_task.metric_links:
             self.metric_repository.archive_metric(link.metric_id)
         db_task.archived = True
@@ -237,7 +239,6 @@ class TaskRepository:
                 detail=constants.ERROR_TOO_MANY_LLM_RULES_PER_TASK % max_llm_rule_count,
             )
 
-
     def link_metric_to_task(self, task_id: str, metric_id: str):
         new_link = DatabaseTaskToMetrics(
             task_id=task_id,
@@ -245,4 +246,19 @@ class TaskRepository:
             enabled=True
         )
         self.db_session.add(new_link)
+        self.db_session.commit()
+
+    def toggle_task_metric_enabled(self, task_id: str, metric_id: str, enabled: bool):
+        task = self.get_db_task_by_id(task_id)
+        for metric_link in task.metric_links:
+            if metric_link.metric_id == metric_id:
+                metric_link.enabled = enabled
+        self.db_session.commit()
+        return
+    
+    def archive_metric_link(self, task_id: str, metric_id: str):
+        task = self.get_db_task_by_id(task_id)
+        for metric_link in task.metric_links:
+            if metric_link.metric_id == metric_id:
+                self.db_session.delete(metric_link)
         self.db_session.commit()

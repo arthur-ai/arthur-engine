@@ -68,7 +68,7 @@ def create_task(
             )
 
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
 
@@ -95,7 +95,7 @@ def get_all_tasks(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         tasks = tasks_repo.get_all_tasks()
 
         return [task._to_response_model() for task in tasks]
@@ -119,7 +119,7 @@ def archive_task(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         tasks_repo.archive_task(str(task_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -146,6 +146,7 @@ def get_task(
         task_repo = TaskRepository(
             db_session,
             RuleRepository(db_session),
+            MetricRepository(db_session),
             application_config,
         )
         task = task_repo.get_task_by_id(str(task_id))
@@ -192,7 +193,7 @@ def search_tasks(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         db_tasks, count = tasks_repo.query_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
@@ -242,6 +243,7 @@ def create_task_rule(
         task_repo = TaskRepository(
             db_session,
             RuleRepository(db_session),
+            MetricRepository(db_session),
             application_config,
         )
         rule_repo = RuleRepository(db_session)
@@ -281,6 +283,7 @@ def update_task_rules(
         task_repo = TaskRepository(
             db_session,
             RuleRepository(db_session),
+            MetricRepository(db_session),
             application_config,
         )
         task_repo.toggle_task_rule_enabled(str(task_id), str(rule_id), body.enabled)
@@ -327,7 +330,7 @@ def archive_task_rule(
                 detail=constants.ERROR_UNRELATED_TASK_RULE,
             )
 
-        task_repo = TaskRepository(db_session, rule_repo, application_config)
+        task_repo = TaskRepository(db_session, rule_repo, MetricRepository(db_session), application_config)
 
         task_repo.delete_rule_link(str(task_id), str(rule_id))
 
@@ -368,9 +371,9 @@ def create_task_metric(
         metric_repo = MetricRepository(db_session)
         task_repo = TaskRepository(
             db_session,
-            None,
-            application_config,
+            RuleRepository(db_session),
             metric_repo,
+            application_config,
         )
         task = task_repo.get_task_by_id(str(task_id))
         metric = Metric._from_request_model(request)
@@ -401,10 +404,11 @@ def update_task_metric(
     try:
         task_repo = TaskRepository(
             db_session,
+            RuleRepository(db_session),
             MetricRepository(db_session),
             application_config,
         )
-        task_repo.update_metric(str(task_id), str(metric_id), body.enabled)
+        task_repo.toggle_task_metric_enabled(str(task_id), str(metric_id), body.enabled)
         updated_task = task_repo.get_task_by_id(str(task_id))
         return updated_task._to_response_model()
     except:
@@ -427,9 +431,34 @@ def archive_task_metric(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     try:
-        # Stub implementation
+        metric_repo = MetricRepository(db_session)
+        task_repo = TaskRepository(
+            db_session,
+            RuleRepository(db_session),
+            metric_repo,
+            application_config,
+        )
+        tasks_metrics_repo = TasksMetricsRepository(db_session)
+        # task_repo.archive_metric_link(str(task_id), str(metric_id))
+        # return Response(status_code=status.HTTP_204_NO_CONTENT)
+    
+        task_metrics = tasks_metrics_repo._get_task_metrics_ids(
+            str(task_id),
+            only_enabled=False,
+        )
+        if str(metric_id) not in task_metrics:
+            raise HTTPException(
+                status_code=400,
+                detail=constants.ERROR_UNRELATED_TASK_METRIC,
+            )
+
+        task_repo.archive_metric_link(str(task_id), str(metric_id))
+        metric_repo.archive_metric(str(metric_id))
+
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
     except:
         raise
     finally:
         db_session.close()
+
