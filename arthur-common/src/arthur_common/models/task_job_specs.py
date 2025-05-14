@@ -1,14 +1,14 @@
 from typing import Literal, Optional
 from uuid import UUID
 
-from arthur_common.models.genai_engine import NewRuleRequest
+from arthur_common.models.shield import NewRuleRequest
 from pydantic import BaseModel, Field
 
 
 class CreateModelTaskJobSpec(BaseModel):
     job_type: Literal["create_model_task"] = "create_model_task"
     connector_id: UUID = Field(
-        description="The id of the GenAI Engine connector to use to create the task.",
+        description="The id of the Shield connector to use to create the task.",
     )
     task_name: str = Field(description="The name of the task.")
     onboarding_identifier: Optional[str] = Field(
