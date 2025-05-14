@@ -14,7 +14,7 @@ search = "__version__ = \"{current_version}\""
 replace = "__version__ = \"{new_version}\""
 
 [tool.poetry.dependencies]
-python = "3.12.*"
+python = "^3.12"
 pydantic = ">=2"
 typing-extensions = ">=4.7.1"
 pandas = ">=2.2.2"
