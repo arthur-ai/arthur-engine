@@ -257,7 +257,7 @@ def create_dataset_list_type(items: DatasetSchemaTypeUnion) -> DatasetListType:
     return DatasetListType(id=uuid4(), items=items)
 
 
-def create_genai_engine_rule_results_schema() -> DatasetListType:
+def create_shield_rule_results_schema() -> DatasetListType:
     return create_dataset_list_type(
         create_dataset_object_type(
             {
@@ -315,7 +315,7 @@ def create_genai_engine_rule_results_schema() -> DatasetListType:
     )
 
 
-def create_genai_engine_prompt_schema() -> DatasetObjectType:
+def create_shield_prompt_schema() -> DatasetObjectType:
     return create_dataset_object_type(
         {
             "id": create_dataset_scalar_type(DType.UUID),
@@ -324,13 +324,13 @@ def create_genai_engine_prompt_schema() -> DatasetObjectType:
             "created_at": create_dataset_scalar_type(DType.INT),
             "updated_at": create_dataset_scalar_type(DType.INT),
             "message": create_dataset_scalar_type(DType.STRING),
-            "prompt_rule_results": create_genai_engine_rule_results_schema(),
+            "prompt_rule_results": create_shield_rule_results_schema(),
             "tokens": create_dataset_scalar_type(DType.INT),
         },
     )
 
 
-def create_genai_engine_response_schema() -> DatasetObjectType:
+def create_shield_response_schema() -> DatasetObjectType:
     return create_dataset_object_type(
         {
             "id": create_dataset_scalar_type(DType.UUID),
@@ -340,13 +340,13 @@ def create_genai_engine_response_schema() -> DatasetObjectType:
             "updated_at": create_dataset_scalar_type(DType.INT),
             "message": create_dataset_scalar_type(DType.STRING),
             "context": create_dataset_scalar_type(DType.STRING),
-            "response_rule_results": create_genai_engine_rule_results_schema(),
+            "response_rule_results": create_shield_rule_results_schema(),
             "tokens": create_dataset_scalar_type(DType.INT),
         },
     )
 
 
-def create_genai_engine_inference_feedback_schema() -> DatasetListType:
+def create_shield_inference_feedback_schema() -> DatasetListType:
     return create_dataset_list_type(
         create_dataset_object_type(
             {
@@ -363,7 +363,7 @@ def create_genai_engine_inference_feedback_schema() -> DatasetListType:
     )
 
 
-def GENAI_ENGINE_SCHEMA() -> DatasetSchema:
+def SHIELD_SCHEMA() -> DatasetSchema:
     return DatasetSchema(
         alias_mask={},
         columns=[
@@ -400,21 +400,21 @@ def GENAI_ENGINE_SCHEMA() -> DatasetSchema:
             DatasetColumn(
                 id=uuid4(),
                 source_name="inference_prompt",
-                definition=create_genai_engine_prompt_schema(),
+                definition=create_shield_prompt_schema(),
             ),
             DatasetColumn(
                 id=uuid4(),
                 source_name="inference_response",
-                definition=create_genai_engine_response_schema(),
+                definition=create_shield_response_schema(),
             ),
             DatasetColumn(
                 id=uuid4(),
                 source_name="inference_feedback",
-                definition=create_genai_engine_inference_feedback_schema(),
+                definition=create_shield_inference_feedback_schema(),
             ),
         ],
     )
 
 
-GENAI_ENGINE_RESPONSE_SCHEMA = create_genai_engine_response_schema().to_base_type()
-GENAI_ENGINE_PROMPT_SCHEMA = create_genai_engine_prompt_schema().to_base_type()
+SHIELD_RESPONSE_SCHEMA = create_shield_response_schema().to_base_type()
+SHIELD_PROMPT_SCHEMA = create_shield_prompt_schema().to_base_type()

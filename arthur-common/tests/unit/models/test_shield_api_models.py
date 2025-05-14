@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
-from arthur_common.models.genai_engine import (
+from arthur_common.models.shield import (
     ExampleConfig,
     ExamplesConfig,
     KeywordsConfig,
@@ -17,7 +17,7 @@ from arthur_common.models.genai_engine import (
 
 
 @pytest.mark.parametrize(
-    "genai_engine_rule",
+    "shield_rule",
     [
         (
             NewRuleRequest(
@@ -264,12 +264,7 @@ from arthur_common.models.genai_engine import (
         ),
     ],
 )
-def test_genai_engine_api_models(
-    genai_engine_rule: NewRuleRequest | RuleResponse,
-) -> None:
+def test_shield_api_models(shield_rule: NewRuleRequest | RuleResponse) -> None:
     # validate a rule is the same after serialization
-    genai_engine_rule_json = genai_engine_rule.model_dump_json()
-    assert (
-        type(genai_engine_rule).model_validate_json(genai_engine_rule_json)
-        == genai_engine_rule
-    )
+    shield_rule_json = shield_rule.model_dump_json()
+    assert type(shield_rule).model_validate_json(shield_rule_json) == shield_rule

@@ -91,16 +91,16 @@ def get_electricity_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference
 
 
 @pytest.fixture
-def get_genai_engine_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
-    """Create a test database with GenAI Engine inference data.
+def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
+    """Create a test database with Shield inference data.
 
     Returns:
         tuple: (DuckDB connection, DatasetReference)
     """
     conn = duckdb.connect(":memory:")
     dataset_ref = DatasetReference(
-        dataset_name="genai_engine_dataset",
-        dataset_table_name="genai_engine_test_data",
+        dataset_name="shield_dataset",
+        dataset_table_name="shield_test_data",
         dataset_id="test-dataset",
     )
 
@@ -155,18 +155,16 @@ def get_genai_engine_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReferenc
 
 
 @pytest.fixture
-def get_genai_engine_dataset_conn_no_tokens() -> (
-    tuple[DuckDBPyConnection, DatasetReference]
-):
-    """Create a test database with GenAI Engine inference data that has NULL token values.
+def get_shield_dataset_conn_no_tokens() -> tuple[DuckDBPyConnection, DatasetReference]:
+    """Create a test database with Shield inference data that has NULL token values.
 
     Returns:
         tuple: (DuckDB connection, DatasetReference)
     """
     conn = duckdb.connect(":memory:")
     dataset_ref = DatasetReference(
-        dataset_name="genai_engine_dataset",
-        dataset_table_name="genai_engine_test_data",
+        dataset_name="shield_dataset",
+        dataset_table_name="shield_test_data",
         dataset_id="test-dataset",
     )
 
