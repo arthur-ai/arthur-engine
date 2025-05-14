@@ -36,7 +36,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3030/docs" ]
+      test: [ "CMD", "lsof", "-i", ":3030" ]
       interval: 10s
       timeout: 10s
       retries: 10
