@@ -4,7 +4,7 @@ from enum import Enum
 class ModelProblemType(str, Enum):
     REGRESSION = "regression"
     BINARY_CLASSIFICATION = "binary_classification"
-    ARTHUR_GENAI_ENGINE = "arthur_genai_engine"
+    ARTHUR_SHIELD = "arthur_shield"
     CUSTOM = "custom"
     MULTICLASS_CLASSIFICATION = "multiclass_classification"
 
