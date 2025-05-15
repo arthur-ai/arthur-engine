@@ -565,3 +565,24 @@ class HealthResponse(BaseModel):
 
 class ChatDefaultTaskResponse(BaseModel):
     task_id: str
+
+
+class SpanResponse(BaseModel):
+    id: str
+    trace_id: str
+    span_id: str
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+
+
+class QuerySpansResponse(BaseModel):
+    count: int = Field(
+        description="The total number of spans matching the query parameters",
+    )
+    spans: list[SpanResponse] = Field(
+        description="List of spans matching the search filters",
+    )
