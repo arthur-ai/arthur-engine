@@ -31,16 +31,11 @@ from transformers import (
     XLMRobertaForSequenceClassification,
 )
 from utils.classifiers import get_device
+from utils.model_load import get_relevance_model, get_relevance_tokenizer
 
 logger = logging.getLogger()
 
-__location__ = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_MODEL = "microsoft/deberta-xlarge-mnli"
-
-RELEVANCE_RERANKER_MODEL_PATH = os.path.join(
-    __location__,
-    "model",
-)
 
 
 # Schemas to force JSON output to the right format
@@ -79,11 +74,10 @@ def get_bert_scorer_model(model_type: str = DEFAULT_MODEL) -> BERTScorer:
 
 def get_relevance_reranker() -> TextClassificationPipeline:
     """Loads in the relevance reranker"""
-    model = XLMRobertaForSequenceClassification.from_pretrained(
-        RELEVANCE_RERANKER_MODEL_PATH,
-    )
-    tokenizer = AutoTokenizer.from_pretrained(RELEVANCE_RERANKER_MODEL_PATH)
-
+    # Use the model_load functionality to get or download models
+    model = get_relevance_model()
+    tokenizer = get_relevance_tokenizer()
+    
     return TextClassificationPipeline(
         model=model,
         tokenizer=tokenizer,
