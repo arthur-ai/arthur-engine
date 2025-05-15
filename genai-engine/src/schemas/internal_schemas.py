@@ -27,7 +27,7 @@ from schemas.enums import (
     RuleType,
     ToxicityViolationType,
 )
-from schemas.request_schemas import NewRuleRequest, NewTaskRequest
+from schemas.request_schemas import NewRuleRequest, NewTaskRequest, NewMetricRequest
 from schemas.response_schemas import (
     ApiKeyResponse,
     ApplicationConfigurationResponse,
@@ -53,6 +53,7 @@ from schemas.response_schemas import (
     TaskResponse,
     ToxicityDetailsResponse,
     UserResponse,
+    MetricResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -91,6 +92,7 @@ from db_models.db_models import (
     DatabaseTaskToRules,
     DatabaseToxicityScore,
     DatabaseUser,
+    DatabaseMetric,
 )
 
 tracer = trace.get_tracer(__name__)
@@ -1359,6 +1361,47 @@ class Span(BaseModel):
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
+
+
+class Metric(BaseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    metric_type: str
+    metric_name: str
+    metric_metadata: str
+
+    @staticmethod
+    def _from_request_model(request: NewMetricRequest) -> "Metric":
+        return Metric(
+            id=str(uuid.uuid4()),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            metric_type=request.metric_type,
+            metric_name=request.metric_name,
+            metric_metadata=request.metric_metadata,
+        )
+    
+    def _to_database_model(self) -> DatabaseMetric:
+        return DatabaseMetric(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_type=self.metric_type,
+            metric_name=self.metric_name,
+            metric_metadata=self.metric_metadata,
+        )
+    
+    def _to_response_model(self) -> MetricResponse:
+        return MetricResponse(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_type=self.metric_type,
+            metric_name=self.metric_name,
+            metric_metadata=self.metric_metadata,
+        )
+
 
 class OrderedClaim(BaseModel):
     index_number: int

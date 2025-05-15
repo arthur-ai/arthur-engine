@@ -18,6 +18,7 @@ from schemas.enums import (
     RuleType,
     ToxicityViolationType,
 )
+from schemas.enums import MetricType
 
 
 class HTTPError(BaseModel):
@@ -586,3 +587,12 @@ class QuerySpansResponse(BaseModel):
     spans: list[SpanResponse] = Field(
         description="List of spans matching the search filters",
     )
+
+
+class MetricResponse(BaseModel):
+    id: str
+    metric_name: str
+    metric_type: MetricType
+    metric_metadata: str
+    created_at: datetime
+    updated_at: datetime

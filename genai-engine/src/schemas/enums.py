@@ -66,6 +66,34 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
+class MetricType(str, Enum):
+    QUERY_RELEVANCE = "QueryRelevance"
+    RESPONSE_RELEVANCE = "ResponseRelevance"
+    RAG_SCORE = "RAGScore"
+    PERSONA_ALIGNMENT = "PersonaAlignment"
+    TOOL_SELECTION = "ToolSelection"
+
+    def __str__(self):
+        return self.value
+
+
+class ToolClassEnum(int, Enum):
+    WRONG_TOOL_SELECTED = 0
+    CORRECT_TOOL_SELECTED = 1
+    NO_TOOL_SELECTED = 2
+
+    def __str__(self):
+        return str(self.value)
+
+
+class MetricDataType(str, Enum):
+    QUERY_RELEVANCE = "query_relevance"
+    RESPONSE_RELEVANCE = "response_relevance"
+    RAG_SCORE = "rag_score"
+    PERSONA_ALIGNMENT = "persona_alignment"
+    TOOL_SELECTION = "tool_selection"
+
+
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
