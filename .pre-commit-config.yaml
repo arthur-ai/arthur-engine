@@ -67,7 +67,7 @@ repos:
         files: ^genai-engine/src/schemas/
       - id: arthur-common-pytest-check
         name: "arthur-common: pytest unit tests and coverage"
-        entry: poetry -C arthur-common run pytest arthur-common/tests/ --cov=arthur_common --cov-fail-under=45
+        entry: poetry -C arthur-common run pytest tests/ --cov=arthur_common --cov-fail-under=45
         language: system
         types: [python]
         pass_filenames: false

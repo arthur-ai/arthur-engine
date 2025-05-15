@@ -89,6 +89,23 @@ class SketchMetric(BaseMetric):
     )
 
 
+class SystemMetricEventKind(Enum):
+    MODEL_JOB_FAILURE = "model_job_failure"
+
+
+class SystemMetric(BaseModel):
+    event_kind: SystemMetricEventKind = Field(
+        description="Kind of the system metric event.",
+    )
+    timestamp: datetime = Field(
+        description="Timezone-aware timestamp of the system metric event.",
+    )
+    dimensions: list[Dimension] = Field(
+        description="List of dimensions for the systems metric. If multiple dimensions are uploaded with the same key, "
+        "the one that is kept is undefined.",
+    )
+
+
 class AggregationMetricType(Enum):
     SKETCH = "sketch"
     NUMERIC = "numeric"
