@@ -1,7 +1,6 @@
 name: arthur-engine
 services:
   db:
-    container_name: arthur-engine-db
     image: postgres
     shm_size: 128mb
     environment:
@@ -13,7 +12,6 @@ services:
     env_file:
       - .env
   genai-engine:
-    container_name: arthur-genai-engine
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
@@ -37,7 +35,6 @@ services:
       - .env
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
   ml-engine:
-    container_name: arthur-ml-engine
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
     platform: linux/amd64
     restart: unless-stopped
