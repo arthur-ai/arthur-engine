@@ -18,6 +18,7 @@ from schemas.enums import (
     RuleType,
 )
 from utils import constants
+from schemas.enums import MetricType
 
 
 class UpdateRuleRequest(BaseModel):
