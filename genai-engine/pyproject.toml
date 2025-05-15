@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.40"
+version = "2.1.41"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -129,3 +129,6 @@ target-version = ['py312']
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
