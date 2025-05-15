@@ -1921,14 +1921,14 @@ blobfile = ["blobfile (>=2)"]
 
 [[package]]
 name = "tokencost"
-version = "0.1.20"
+version = "0.1.21"
 description = "To calculate token and translated USD cost of string and message calls to OpenAI, for example when used by AI agents"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "tokencost-0.1.20-py3-none-any.whl", hash = "sha256:31fbb75d71e08bc638e8e945e6ff542eda5c171cd2789d0ec3b44c7198283f32"},
-    {file = "tokencost-0.1.20.tar.gz", hash = "sha256:eefe0fdc93df64af05c09c85a5f3de65866208d4fae0701b50c851b75499932a"},
+    {file = "tokencost-0.1.21-py3-none-any.whl", hash = "sha256:754ee867b483c6a41c5d34760947feb3f1252db752c6f92b0ac1f4bcdc23342b"},
+    {file = "tokencost-0.1.21.tar.gz", hash = "sha256:4ba6291212e3edcdb960c2077955ea4f4c3525b267b4ae84b823d1d02c3803dc"},
 ]
 
 [package.dependencies]
@@ -1937,8 +1937,7 @@ anthropic = ">=0.34.0"
 tiktoken = ">=0.9.0"
 
 [package.extras]
-dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pytest (>=7.4.4)", "tabulate (>=0.9.0)", "tach (==0.6.9)"]
-llama-index = ["llama-index (>=0.10.23)"]
+dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pytest (>=7.4.4)", "tabulate (>=0.9.0)", "tach (>=0.6.9)"]
 
 [[package]]
 name = "types-python-dateutil"
@@ -1954,14 +1953,14 @@ files = [
 
 [[package]]
 name = "types-requests"
-version = "2.32.0.20250328"
+version = "2.32.0.20250515"
 description = "Typing stubs for requests"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "types_requests-2.32.0.20250328-py3-none-any.whl", hash = "sha256:72ff80f84b15eb3aa7a8e2625fffb6a93f2ad5a0c20215fc1dcfa61117bcb2a2"},
-    {file = "types_requests-2.32.0.20250328.tar.gz", hash = "sha256:c9e67228ea103bd811c96984fac36ed2ae8da87a36a633964a21f199d60baf32"},
+    {file = "types_requests-2.32.0.20250515-py3-none-any.whl", hash = "sha256:f8eba93b3a892beee32643ff836993f15a785816acca21ea0ffa006f05ef0fb2"},
+    {file = "types_requests-2.32.0.20250515.tar.gz", hash = "sha256:09c8b63c11318cb2460813871aaa48b671002e59fda67ca909e9883777787581"},
 ]
 
 [package.dependencies]
@@ -2167,4 +2166,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "8ea2059daa2114c8ebafb93fb17e2243804e359617b5eea3ae408190253cc611"
+content-hash = "34f97cd6012273cb9f3e12942ea158a66a9838cecdfdee76fbefb639536b3a99"
