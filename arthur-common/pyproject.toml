@@ -46,28 +46,5 @@ include = ["arthur_common*"]
 "pkgname" = ["py.typed"]
 
 [build-system]
-requires = [
-    "setuptools>=60",
-    "setuptools-scm>=8.0"
-]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "arthur-common"
-description = "Utility code common to Arthur platform components."
-authors = [
-    { name="Arthur", email="engineering@arthur.ai" }
-]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.12",
-]
-license = { text = "MIT" }
-readme = "README.md"
-requires-python = ">=3.12"
-dynamic = ["version"]
-
-[tool.setuptools.dynamic]
-version = {attr = "arthur_common.__version__.__version__"}
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
