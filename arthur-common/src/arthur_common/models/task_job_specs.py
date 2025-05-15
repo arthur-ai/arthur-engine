@@ -4,19 +4,35 @@ from uuid import UUID
 from arthur_common.models.shield import NewRuleRequest
 from pydantic import BaseModel, Field
 
+onboarding_id_desc = "An identifier to assign to the created model to make it easy to retrieve. Used by the UI during the GenAI model creation flow."
+
 
 class CreateModelTaskJobSpec(BaseModel):
     job_type: Literal["create_model_task"] = "create_model_task"
     connector_id: UUID = Field(
-        description="The id of the Shield connector to use to create the task.",
+        description="The id of the engine internal connector to use to create the task.",
     )
     task_name: str = Field(description="The name of the task.")
     onboarding_identifier: Optional[str] = Field(
         default=None,
-        description="An identifier to assign to the created model to make it easy to retrieve. Used by the UI during the GenAI model creation flow.",
+        description=onboarding_id_desc,
     )
     initial_rules: list[NewRuleRequest] = Field(
         description="The initial rules to apply to the created model.",
+    )
+
+
+class CreateModelLinkTaskJobSpec(BaseModel):
+    job_type: Literal["link_model_task"] = "link_model_task"
+    task_id: UUID = Field(
+        description="The id of the Shield task to link when creating the new model.",
+    )
+    connector_id: UUID = Field(
+        description="The id of the engine internal connector to use to link the task.",
+    )
+    onboarding_identifier: Optional[str] = Field(
+        default=None,
+        description=onboarding_id_desc,
     )
 
 
