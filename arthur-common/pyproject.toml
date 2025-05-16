@@ -6,7 +6,7 @@ authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
 readme = "README.md"
 packages = [
-    { include = "src" },
+    { include = "arthur_common", from = "src", to = "arthur_common" },
 ]
 
 [tool.poetry_bumpversion.file."src/arthur_common/__version__.py"]
