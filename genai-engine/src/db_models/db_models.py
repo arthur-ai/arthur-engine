@@ -16,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from utils import constants
 from utils.utils import get_env_var
@@ -433,3 +434,29 @@ class DatabaseApiKey(Base):
     def deactivate(self):
         self.is_active = False
         self.deactivated_at = datetime.now()
+
+
+class DatabaseSpan(Base):
+    __tablename__ = "spans"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
+    end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        nullable=True,
+        index=True,
+    )
+    raw_data: Mapped[dict] = mapped_column(postgresql.JSON, nullable=False)
+    created_at: Mapped[TIMESTAMP] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+        index=True,
+    )
+    updated_at: Mapped[TIMESTAMP] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
