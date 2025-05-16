@@ -25,15 +25,28 @@ prompt_env_var() {
   fi
 }
 
+create_directory_if_not_present() {
+  local dir_name=$1
+  # creates base directories if they don't exist
+  if [[ ! -d "$dir_name" ]]; then
+    mkdir -p "$dir_name"
+    echo "Created directory: $dir_name"
+  fi
+}
+
 echo "┌───────────────────────────────────────────────────┐"
 echo "│     Welcome to the Arthur GenAI Engine Setup!     │"
 echo "└───────────────────────────────────────────────────┘"
 
 check_docker_compose
 
+root_dir="$HOME/.arthur-engine-install"
+genai_subdir="$root_dir/genai-engine"
 env_file=".env"
-if [[ -f "$env_file" ]]; then
-    echo "The .env file already exists."
+create_directory_if_not_present "$genai_subdir"
+
+if [[ -f "$genai_subdir/$env_file" ]]; then
+    echo "The $genai_subdir/$env_file file already exists."
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
@@ -64,9 +77,9 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
         all_env_vars=""
     fi
 
-    echo "$all_env_vars" > "$env_file"
+    echo "$all_env_vars" > "$genai_subdir/$env_file"
 fi
 
 sleep 1
-
+cd "$genai_subdir"
 curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up -d --pull always
