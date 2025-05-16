@@ -5,9 +5,6 @@ description = "Utility code common to Arthur platform components."
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
 readme = "README.md"
-packages = [
-    { include = "arthur_common", from = "src", to = "arthur_common" },
-]
 
 [tool.poetry_bumpversion.file."src/arthur_common/__version__.py"]
 search = "__version__ = \"{current_version}\""
