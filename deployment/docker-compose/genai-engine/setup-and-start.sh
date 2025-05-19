@@ -40,7 +40,7 @@ echo "└───────────────────────�
 
 check_docker_compose
 
-root_dir="$HOME/.arthur-engine-install"
+root_dir="$HOME/.arthur-engine/local-stack"
 genai_subdir="$root_dir/genai-engine"
 env_file=".env"
 create_directory_if_not_present "$genai_subdir"
@@ -82,4 +82,5 @@ fi
 
 sleep 1
 cd "$genai_subdir"
-curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up -d --pull always
+curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml > "docker-compose.yml"
+docker compose up -d --pull always
