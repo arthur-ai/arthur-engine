@@ -17,6 +17,8 @@ PROMPT_INJECTION_MODEL = None
 PROMPT_INJECTION_TOKENIZER = None
 TOXICITY_MODEL = None
 TOXICITY_TOKENIZER = None
+RELEVANCE_MODEL = None
+RELEVANCE_TOKENIZER = None
 
 
 def download_file(args):
@@ -57,6 +59,14 @@ def download_models(num_of_process: int):
             "pytorch_model.bin",
             "special_tokens_map.json",
             "tokenizer_config.json",
+            "vocab.json",
+        ],
+        "microsoft/deberta-xlarge-mnli": [
+            "config.json",
+            "model.safetensors",
+            "special_tokens_map.json",
+            "tokenizer_config.json",
+            "tokenizer.json",
             "vocab.json",
         ],
     }
@@ -122,3 +132,23 @@ def get_toxicity_tokenizer():
             weights_only=False,
         )
     return TOXICITY_TOKENIZER
+
+
+def get_relevance_model():
+    global RELEVANCE_MODEL
+    if not RELEVANCE_MODEL:
+        RELEVANCE_MODEL = AutoModelForSequenceClassification.from_pretrained(
+            "microsoft/deberta-xlarge-mnli",
+            weights_only=False,
+        )
+    return RELEVANCE_MODEL
+
+
+def get_relevance_tokenizer():
+    global RELEVANCE_TOKENIZER
+    if not RELEVANCE_TOKENIZER:
+        RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(
+            "microsoft/deberta-xlarge-mnli",
+            weights_only=False,
+        )
+    return RELEVANCE_TOKENIZER

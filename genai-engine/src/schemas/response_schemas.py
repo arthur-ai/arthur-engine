@@ -18,6 +18,7 @@ from schemas.enums import (
     RuleType,
     ToxicityViolationType,
 )
+from schemas.enums import MetricType
 
 
 class HTTPError(BaseModel):
@@ -406,6 +407,15 @@ class QueryInferencesResponse(BaseModel):
         },
     )
 
+class MetricResponse(BaseModel):
+    id: str = Field(description="ID of the Metric")
+    metric_name: str = Field(description="Name of the Metric")
+    metric_type: MetricType = Field(description="Type of the Metric")
+    metric_metadata: str = Field(description="Metadata of the Metric")
+    config: Optional[str] = Field(description="JSON-serialized configuration for the Metric", default=None)
+    created_at: datetime = Field(description="Time the Metric was created in unix milliseconds")
+    updated_at: datetime = Field(description="Time the Metric was updated in unix milliseconds")
+    enabled: Optional[bool] = Field(description="Whether the Metric is enabled", default=None)
 
 class TaskResponse(BaseModel):
     id: str = Field(description=" ID of the task")
@@ -417,6 +427,7 @@ class TaskResponse(BaseModel):
         description="Time the task was created in unix milliseconds",
     )
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
+    metrics: List[MetricResponse] = Field(description="List of all the metrics for the task.")
 
 
 class SearchTasksResponse(BaseModel):
@@ -586,3 +597,4 @@ class QuerySpansResponse(BaseModel):
     spans: list[SpanResponse] = Field(
         description="List of spans matching the search filters",
     )
+
