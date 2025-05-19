@@ -3,14 +3,14 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from repositories.span_repository import is_llm_span
+from repositories.span_repository import SpanRepository
 
-from tests.test_client import ShieldTestClient
+from tests.clients.base_test_client import GenaiEngineTestClientBase, override_get_db_session
 
 
 @pytest.mark.unit_tests
 def test_receive_traces_happy_path(
-    client: ShieldTestClient,
+    client: GenaiEngineTestClientBase,
     sample_openinference_trace,
 ):
     # Test with valid trace data
@@ -28,7 +28,7 @@ def test_receive_traces_happy_path(
 
 
 @pytest.mark.unit_tests
-def test_receive_traces_invalid_protobuf(client: ShieldTestClient):
+def test_receive_traces_invalid_protobuf(client: GenaiEngineTestClientBase):
     # Test with invalid protobuf data
     invalid_trace = b"invalid_protobuf_data"
 
@@ -47,12 +47,12 @@ def test_receive_traces_invalid_protobuf(client: ShieldTestClient):
 
 @pytest.mark.unit_tests
 def test_receive_traces_server_error(
-    client: ShieldTestClient,
+    client: GenaiEngineTestClientBase,
     sample_openinference_trace,
 ):
     # Test with data that causes server error
     with patch(
-        "repositories.span_repository.SpanRepository.store_traces",
+        "repositories.span_repository.SpanRepository.create_traces",
         side_effect=Exception("Test error"),
     ):
         status_code, response = client.receive_traces(sample_openinference_trace)
@@ -62,7 +62,7 @@ def test_receive_traces_server_error(
 
 @pytest.mark.unit_tests
 def test_receive_traces_response_types(
-    client: ShieldTestClient,
+    client: GenaiEngineTestClientBase,
     sample_mixed_spans_trace,
     sample_all_rejected_spans_trace,
 ):
@@ -85,6 +85,7 @@ def test_receive_traces_response_types(
 
 @pytest.mark.unit_tests
 def test_is_llm_span():
+    span_repo =SpanRepository(override_get_db_session())
     # Test positive case - is an LLM span
     llm_span_data = {
         "attributes": [
@@ -92,7 +93,7 @@ def test_is_llm_span():
             {"key": "other.attribute", "value": {"stringValue": "value"}},
         ],
     }
-    assert is_llm_span(llm_span_data) is True
+    assert span_repo._is_llm_span(llm_span_data) is True
 
     # Test negative case - not an LLM span
     non_llm_span_data = {
@@ -101,20 +102,20 @@ def test_is_llm_span():
             {"key": "other.attribute", "value": {"stringValue": "value"}},
         ],
     }
-    assert is_llm_span(non_llm_span_data) is False
+    assert span_repo._is_llm_span(non_llm_span_data) is False
 
     # Test negative case - no attributes
     no_attributes_span_data = {}
-    assert is_llm_span(no_attributes_span_data) is False
+    assert span_repo._is_llm_span(no_attributes_span_data) is False
 
     # Test negative case - empty attributes
     empty_attributes_span_data = {"attributes": []}
-    assert is_llm_span(empty_attributes_span_data) is False
+    assert span_repo._is_llm_span(empty_attributes_span_data) is False
 
 
 @pytest.mark.unit_tests
 def test_spans_missing_task_id(
-    client: ShieldTestClient,
+    client: GenaiEngineTestClientBase,
     sample_span_missing_task_id,
 ):
     # Test with a span missing task ID
@@ -127,7 +128,7 @@ def test_spans_missing_task_id(
 
 
 @pytest.mark.unit_tests
-def test_query_spans_happy_path(client: ShieldTestClient, create_test_spans):
+def test_query_spans_happy_path(client: GenaiEngineTestClientBase, create_test_spans):
     # Test basic query without filters
     status_code, response = client.query_spans()
     assert status_code == 200
@@ -136,7 +137,7 @@ def test_query_spans_happy_path(client: ShieldTestClient, create_test_spans):
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_trace_ids(client: ShieldTestClient, create_test_spans):
+def test_query_spans_with_trace_ids(client: GenaiEngineTestClientBase, create_test_spans):
     # Test querying spans for trace1
     status_code, response = client.query_spans(trace_ids=["trace1"])
     assert status_code == 200
@@ -145,7 +146,7 @@ def test_query_spans_with_trace_ids(client: ShieldTestClient, create_test_spans)
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_span_ids(client: ShieldTestClient, create_test_spans):
+def test_query_spans_with_span_ids(client: GenaiEngineTestClientBase, create_test_spans):
     # Test querying specific spans
     status_code, response = client.query_spans(span_ids=["span1", "span3"])
     assert status_code == 200
@@ -154,7 +155,7 @@ def test_query_spans_with_span_ids(client: ShieldTestClient, create_test_spans):
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_task_ids(client: ShieldTestClient, create_test_spans):
+def test_query_spans_with_task_ids(client: GenaiEngineTestClientBase, create_test_spans):
     # Test querying spans for task1
     status_code, response = client.query_spans(task_ids=["task1"])
     assert status_code == 200
@@ -163,7 +164,7 @@ def test_query_spans_with_task_ids(client: ShieldTestClient, create_test_spans):
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_date_filters(client: ShieldTestClient, create_test_spans):
+def test_query_spans_with_date_filters(client: GenaiEngineTestClientBase, create_test_spans):
     base_time = datetime.now()
 
     # Test querying spans within a specific time range
@@ -182,7 +183,7 @@ def test_query_spans_with_date_filters(client: ShieldTestClient, create_test_spa
 
 
 @pytest.mark.unit_tests
-def test_query_spans_pagination(client: ShieldTestClient, create_test_spans):
+def test_query_spans_pagination(client: GenaiEngineTestClientBase, create_test_spans):
     # Test pagination parameters
     status_code, response = client.query_spans(page=0, page_size=2, sort="desc")
     assert status_code == 200
@@ -201,7 +202,7 @@ def test_query_spans_pagination(client: ShieldTestClient, create_test_spans):
 
 
 @pytest.mark.unit_tests
-def test_query_spans_invalid_page_size(client: ShieldTestClient):
+def test_query_spans_invalid_page_size(client: GenaiEngineTestClientBase):
     # Test with invalid page size
     status_code, response = client.query_spans(page_size=5001)
     assert status_code == 400
@@ -209,7 +210,7 @@ def test_query_spans_invalid_page_size(client: ShieldTestClient):
 
 
 @pytest.mark.unit_tests
-def test_query_spans_server_error(client: ShieldTestClient):
+def test_query_spans_server_error(client: GenaiEngineTestClientBase):
     # Test with data that causes server error
     with patch(
         "repositories.span_repository.SpanRepository.query_spans",

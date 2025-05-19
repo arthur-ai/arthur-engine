@@ -1,7 +1,6 @@
 name: arthur-genai-engine
 services:
   db:
-    container_name: arthur-genai-engine-db
     image: postgres
     shm_size: 128mb
     environment:
@@ -13,7 +12,6 @@ services:
     env_file:
       - .env
   genai-engine:
-    container_name: arthur-genai-engine
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
@@ -25,7 +23,7 @@ services:
       - POSTGRES_USER=postgres
       # Must match POSTGRES_PASSWORD in the db service
       - POSTGRES_PASSWORD=changeme_pg_password
-      - POSTGRES_URL=arthur-genai-engine-db
+      - POSTGRES_URL=db
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false

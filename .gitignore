@@ -10,6 +10,8 @@ launch.json
 
 __pycache__
 .python-version
+*.egg-info
+build/
 
 .html_cov*
 .coverage*
