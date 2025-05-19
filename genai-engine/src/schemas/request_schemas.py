@@ -414,7 +414,24 @@ class NewMetricRequest(BaseModel):
     )
     metric_name: str = Field(description="Name of metric", examples=["My User Query Relevance"])
     metric_metadata: str = Field(description="Additional metadata for the metric")
-    
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example1": {
+                "metric_type": "UserQueryRelevance",
+                "metric_name": "My User Query Relevance",
+                "metric_metadata": "This is a test metric metadata"
+            }
+        }
+    )
+
+    @field_validator("metric_type")
+    def validate_metric_type(cls, value):
+        if value not in MetricType:
+            raise ValueError(f"Invalid metric type: {value}")
+        return value
+
+
 
 class UpdateMetricRequest(BaseModel):
     enabled: bool = Field(description="Boolean value to enable or disable the metric. ")

@@ -13,6 +13,7 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
@@ -193,7 +194,8 @@ def search_tasks(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        metrics_repo = MetricRepository(db_session)
+        tasks_repo = TaskRepository(db_session, rules_repo, metrics_repo, application_config)
         db_tasks, count = tasks_repo.query_tasks(
             ids=request.task_ids,
             task_name=request.task_name,

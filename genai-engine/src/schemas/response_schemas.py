@@ -407,6 +407,14 @@ class QueryInferencesResponse(BaseModel):
         },
     )
 
+class MetricResponse(BaseModel):
+    id: str = Field(description="ID of the Metric")
+    metric_name: str = Field(description="Name of the Metric")
+    metric_type: MetricType = Field(description="Type of the Metric")
+    metric_metadata: str = Field(description="Metadata of the Metric")
+    created_at: datetime = Field(description="Time the Metric was created in unix milliseconds")
+    updated_at: datetime = Field(description="Time the Metric was updated in unix milliseconds")
+    enabled: Optional[bool] = Field(description="Whether the Metric is enabled", default=None)
 
 class TaskResponse(BaseModel):
     id: str = Field(description=" ID of the task")
@@ -418,6 +426,7 @@ class TaskResponse(BaseModel):
         description="Time the task was created in unix milliseconds",
     )
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
+    metrics: List[MetricResponse] = Field(description="List of all the metrics for the task.")
 
 
 class SearchTasksResponse(BaseModel):
@@ -588,11 +597,3 @@ class QuerySpansResponse(BaseModel):
         description="List of spans matching the search filters",
     )
 
-
-class MetricResponse(BaseModel):
-    id: str
-    metric_name: str
-    metric_type: MetricType
-    metric_metadata: str
-    created_at: datetime
-    updated_at: datetime
