@@ -93,6 +93,7 @@ from db_models.db_models import (
     DatabaseToxicityScore,
     DatabaseUser,
     DatabaseMetric,
+    DatabaseTaskToMetrics,
 )
 
 tracer = trace.get_tracer(__name__)
@@ -264,6 +265,57 @@ class Rule(BaseModel):
         )
 
 
+class Metric(BaseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    metric_type: str
+    metric_name: str
+    metric_metadata: str
+
+    @staticmethod
+    def _from_request_model(request: NewMetricRequest) -> "Metric":
+        return Metric(
+            id=str(uuid.uuid4()),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+            metric_type=request.metric_type,
+            metric_name=request.metric_name,
+            metric_metadata=request.metric_metadata,
+        )
+    
+    @staticmethod
+    def _from_database_model(x: DatabaseMetric):
+        return Metric(
+            id=x.id,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            metric_type=x.metric_type,
+            metric_name=x.metric_name,
+            metric_metadata=x.metric_metadata,
+        )
+    
+    def _to_database_model(self) -> DatabaseMetric:
+        return DatabaseMetric(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_type=self.metric_type,
+            metric_name=self.metric_name,
+            metric_metadata=self.metric_metadata,
+        )
+    
+    def _to_response_model(self) -> MetricResponse:
+        return MetricResponse(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_type=self.metric_type,
+            metric_name=self.metric_name,
+            metric_metadata=self.metric_metadata,
+        )
+
+
 class TaskToRuleLink(BaseModel):
     task_id: str
     rule_id: str
@@ -279,13 +331,28 @@ class TaskToRuleLink(BaseModel):
             rule=Rule._from_database_model(x.rule),
         )
 
+class TaskToMetricLink(BaseModel):
+    task_id: str
+    metric_id: str
+    enabled: bool
+    metric: Metric
 
+    @staticmethod
+    def _from_database_model(x: DatabaseTaskToMetrics):
+        return TaskToMetricLink(
+            task_id=x.task_id,
+            metric_id=x.metric_id,
+            enabled=x.enabled,
+            metric=Metric._from_database_model(x.metric),
+        )
 class Task(BaseModel):
     id: str
     name: str
     created_at: datetime
     updated_at: datetime
     rule_links: Optional[List[TaskToRuleLink]] = None
+    metric_links: Optional[List[TaskToMetricLink]] = None
+    
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest):
@@ -306,6 +373,9 @@ class Task(BaseModel):
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
+            metric_links=[
+                TaskToMetricLink._from_database_model(link) for link in x.metric_links
+            ],
         )
 
     def _to_database_model(self):
@@ -323,12 +393,19 @@ class Task(BaseModel):
             response_rule.enabled = link.enabled
             response_rules.append(response_rule)
 
+        response_metrics = []
+        for link in self.metric_links:
+            response_metric: MetricResponse = link.metric._to_response_model()
+            response_metric.enabled = link.enabled
+            response_metrics.append(response_metric)
+
         return TaskResponse(
             id=self.id,
             name=self.name,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             rules=response_rules,
+            metrics=response_metrics,
         )
 
 
@@ -1360,46 +1437,6 @@ class Span(BaseModel):
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
             updated_at=datetime.now(),
-        )
-
-
-class Metric(BaseModel):
-    id: str
-    created_at: datetime
-    updated_at: datetime
-    metric_type: str
-    metric_name: str
-    metric_metadata: str
-
-    @staticmethod
-    def _from_request_model(request: NewMetricRequest) -> "Metric":
-        return Metric(
-            id=str(uuid.uuid4()),
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            metric_type=request.metric_type,
-            metric_name=request.metric_name,
-            metric_metadata=request.metric_metadata,
-        )
-    
-    def _to_database_model(self) -> DatabaseMetric:
-        return DatabaseMetric(
-            id=self.id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            metric_type=self.metric_type,
-            metric_name=self.metric_name,
-            metric_metadata=self.metric_metadata,
-        )
-    
-    def _to_response_model(self) -> MetricResponse:
-        return MetricResponse(
-            id=self.id,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            metric_type=self.metric_type,
-            metric_name=self.metric_name,
-            metric_metadata=self.metric_metadata,
         )
 
 
