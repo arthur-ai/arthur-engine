@@ -48,6 +48,7 @@ from schemas.response_schemas import (
     TokenUsageResponse,
     UserResponse,
     ValidationResult,
+    QuerySpansResponse
 )
 from sqlalchemy.orm import sessionmaker
 from tests.constants import (
@@ -1098,6 +1099,88 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def receive_traces(self, trace_data: bytes) -> tuple[int, str]:
+        """Send OpenInference trace data to the evaluate endpoint.
+
+        Args:
+            trace_data: Raw protobuf trace data in bytes
+
+        Returns:
+            tuple[int, str]: Status code and response message
+        """
+        headers = self.authorized_user_api_key_headers.copy()
+        headers["Content-Type"] = "application/x-protobuf"
+
+        resp = self.base_client.post(
+            "/v1/traces",
+            content=trace_data,
+            headers=headers,
+        )
+        log_response(resp)
+        return resp.status_code, resp.text
+
+    def query_spans(
+        self,
+        user_id: str | None = None,
+        trace_ids: list[str] | None = None,
+        span_ids: list[str] | None = None,
+        task_ids: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, QuerySpansResponse | str]:
+        """Query spans with various filters.
+
+        Args:
+            user_id: Filter by user ID
+            trace_ids: Filter by trace IDs
+            span_ids: Filter by span IDs
+            task_ids: Filter by task IDs
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, QuerySpansResponse | str]: Status code and response
+        """
+        params = {}
+        if user_id is not None:
+            params["user_id"] = user_id
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if span_ids is not None:
+            params["span_ids"] = span_ids
+        if task_ids is not None:
+            params["task_ids"] = task_ids
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            f"/v1/spans/query?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                QuerySpansResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
 
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,
@@ -1122,3 +1205,4 @@ def log_response(response: httpx.Response):
         print(
             f"\tResponse trace id: {response.headers[constants.RESPONSE_TRACE_ID_HEADER]}",
         )
+

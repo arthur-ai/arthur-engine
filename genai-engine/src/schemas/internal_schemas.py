@@ -3,31 +3,6 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from db_models.db_models import (
-    DatabaseApiKey,
-    DatabaseApplicationConfiguration,
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
-    DatabaseHallucinationClaim,
-    DatabaseInference,
-    DatabaseInferenceFeedback,
-    DatabaseInferencePrompt,
-    DatabaseInferencePromptContent,
-    DatabaseInferenceResponse,
-    DatabaseInferenceResponseContent,
-    DatabaseKeywordEntity,
-    DatabasePIIEntity,
-    DatabasePromptRuleResult,
-    DatabaseRegexEntity,
-    DatabaseResponseRuleResult,
-    DatabaseRule,
-    DatabaseRuleResultDetail,
-    DatabaseTask,
-    DatabaseTaskToRules,
-    DatabaseToxicityScore,
-    DatabaseUser,
-)
 from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
@@ -74,6 +49,7 @@ from schemas.response_schemas import (
     RegexDetailsResponse,
     RegexSpanResponse,
     RuleResponse,
+    SpanResponse,
     TaskResponse,
     ToxicityDetailsResponse,
     UserResponse,
@@ -89,6 +65,33 @@ from schemas.scorer_schemas import (
     ScorerToxicityScore,
 )
 from utils import constants
+
+from db_models.db_models import (
+    DatabaseApiKey,
+    DatabaseApplicationConfiguration,
+    DatabaseDocument,
+    DatabaseEmbedding,
+    DatabaseEmbeddingReference,
+    DatabaseHallucinationClaim,
+    DatabaseInference,
+    DatabaseInferenceFeedback,
+    DatabaseInferencePrompt,
+    DatabaseInferencePromptContent,
+    DatabaseInferenceResponse,
+    DatabaseInferenceResponseContent,
+    DatabaseKeywordEntity,
+    DatabasePIIEntity,
+    DatabasePromptRuleResult,
+    DatabaseRegexEntity,
+    DatabaseResponseRuleResult,
+    DatabaseRule,
+    DatabaseRuleResultDetail,
+    DatabaseSpan,
+    DatabaseTask,
+    DatabaseTaskToRules,
+    DatabaseToxicityScore,
+    DatabaseUser,
+)
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -1290,6 +1293,72 @@ class ApiKey(BaseModel):
             ],
         )
 
+
+class Span(BaseModel):
+    id: str
+    trace_id: str
+    span_id: str
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    raw_data: dict
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _from_database_model(db_span: DatabaseSpan) -> "Span":
+        return Span(
+            id=db_span.id,
+            trace_id=db_span.trace_id,
+            span_id=db_span.span_id,
+            start_time=db_span.start_time,
+            end_time=db_span.end_time,
+            task_id=db_span.task_id,
+            raw_data=db_span.raw_data,
+            created_at=db_span.created_at,
+            updated_at=db_span.updated_at,
+        )
+
+    def _to_database_model(self) -> DatabaseSpan:
+        return DatabaseSpan(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            task_id=self.task_id,
+            raw_data=self.raw_data,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def _to_response_model(self) -> SpanResponse:
+        return SpanResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            task_id=self.task_id,
+            raw_data=self.raw_data,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @staticmethod
+    def from_span_data(span_data: dict, user_id: str) -> "Span":
+        """Create a Span from raw span data received from OpenTelemetry"""
+        return Span(
+            id=str(uuid.uuid4()),
+            trace_id=span_data["trace_id"],
+            span_id=span_data["span_id"],
+            start_time=span_data["start_time"],
+            end_time=span_data["end_time"],
+            task_id=span_data["task_id"],
+            raw_data=span_data["raw_data"],
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
 
 class OrderedClaim(BaseModel):
     index_number: int
