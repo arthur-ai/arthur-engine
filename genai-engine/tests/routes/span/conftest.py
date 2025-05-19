@@ -12,8 +12,15 @@ from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Sp
 from repositories.span_repository import SpanRepository
 from schemas.internal_schemas import Span as InternalSpan
 
-from shield.db_models.db_models import DatabaseSpan
-from tests.test_client import override_get_db_session
+from db_models.db_models import DatabaseSpan
+from tests.clients.unit_test_client import get_genai_engine_test_client
+from tests.clients.base_test_client import override_get_db_session
+
+
+@pytest.fixture(scope="function")
+def client():
+    """Create a test client for the API endpoints."""
+    return get_genai_engine_test_client()
 
 
 def _delete_spans_from_db(db_session, span_ids):

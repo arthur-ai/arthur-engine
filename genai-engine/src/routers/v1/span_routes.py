@@ -41,7 +41,7 @@ def receive_traces(
 ):
     try:
         span_repo = SpanRepository(db_session)
-        span_results = span_repo.store_traces(body)
+        span_results = span_repo.create_traces(body)
         return response_handler(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
