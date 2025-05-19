@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column('metric_type', sa.String(), nullable=False),
         sa.Column('metric_name', sa.String(), nullable=False),
         sa.Column('metric_metadata', sa.String(), nullable=False),
+        sa.Column('metric_config', sa.String(), nullable=True),
         sa.Column('archived', sa.Boolean(), nullable=False, server_default='false'),
         sa.PrimaryKeyConstraint('id')
     )

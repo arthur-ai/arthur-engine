@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import pgvector.sqlalchemy
 import sqlalchemy.types as types
@@ -474,6 +474,7 @@ class DatabaseMetric(Base, IsArchivable):
     metric_type: Mapped[str] = mapped_column(String)
     metric_name: Mapped[str] = mapped_column(String)
     metric_metadata: Mapped[str] = mapped_column(String)
+    metric_config: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     # metric_config: Mapped[DatabaseMetricConfig] = relationship(
     #     lazy="joined",
     # )

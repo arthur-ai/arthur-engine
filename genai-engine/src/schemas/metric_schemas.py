@@ -1,8 +1,14 @@
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from schemas.enums import MetricType, ToolClassEnum
 from schemas.scorer_schemas import Example
+
+
+class RelevanceMetricConfig(BaseModel):
+    """Configuration for relevance metrics including QueryRelevance and ResponseRelevance"""
+    relevance_threshold: Optional[float] = Field(default=None, description="Threshold for determining relevance when not using LLM judge")
+    use_llm_judge: bool = Field(default=True, description="Whether to use LLM as a judge for relevance scoring")
 
 
 class QueryRelevanceMetric(BaseModel):
