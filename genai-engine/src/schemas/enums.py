@@ -69,8 +69,6 @@ class RuleScoringMethod(str, Enum):
 class MetricType(str, Enum):
     QUERY_RELEVANCE = "QueryRelevance"
     RESPONSE_RELEVANCE = "ResponseRelevance"
-    RAG_SCORE = "RAGScore"
-    PERSONA_ALIGNMENT = "PersonaAlignment"
     TOOL_SELECTION = "ToolSelection"
 
     def __str__(self):
@@ -89,8 +87,6 @@ class ToolClassEnum(int, Enum):
 class MetricDataType(str, Enum):
     QUERY_RELEVANCE = "query_relevance"
     RESPONSE_RELEVANCE = "response_relevance"
-    RAG_SCORE = "rag_score"
-    PERSONA_ALIGNMENT = "persona_alignment"
     TOOL_SELECTION = "tool_selection"
 
 

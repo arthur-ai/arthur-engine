@@ -272,9 +272,14 @@ class Metric(BaseModel):
     metric_type: str
     metric_name: str
     metric_metadata: str
+    metric_config: Optional[str] = None  # JSON-serialized config
 
     @staticmethod
     def _from_request_model(request: NewMetricRequest) -> "Metric":
+        config_json = None
+        if request.config:
+            config_json = request.config.model_dump_json()
+            
         return Metric(
             id=str(uuid.uuid4()),
             created_at=datetime.now(),
@@ -282,6 +287,7 @@ class Metric(BaseModel):
             metric_type=request.metric_type,
             metric_name=request.metric_name,
             metric_metadata=request.metric_metadata,
+            metric_config=config_json,
         )
     
     @staticmethod
@@ -293,6 +299,7 @@ class Metric(BaseModel):
             metric_type=x.metric_type,
             metric_name=x.metric_name,
             metric_metadata=x.metric_metadata,
+            metric_config=x.metric_config,
         )
     
     def _to_database_model(self) -> DatabaseMetric:
@@ -303,6 +310,7 @@ class Metric(BaseModel):
             metric_type=self.metric_type,
             metric_name=self.metric_name,
             metric_metadata=self.metric_metadata,
+            metric_config=self.metric_config,
         )
     
     def _to_response_model(self) -> MetricResponse:
@@ -313,6 +321,7 @@ class Metric(BaseModel):
             metric_type=self.metric_type,
             metric_name=self.metric_name,
             metric_metadata=self.metric_metadata,
+            config=self.metric_config,
         )
 
 

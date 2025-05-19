@@ -412,6 +412,7 @@ class MetricResponse(BaseModel):
     metric_name: str = Field(description="Name of the Metric")
     metric_type: MetricType = Field(description="Type of the Metric")
     metric_metadata: str = Field(description="Metadata of the Metric")
+    config: Optional[str] = Field(description="JSON-serialized configuration for the Metric", default=None)
     created_at: datetime = Field(description="Time the Metric was created in unix milliseconds")
     updated_at: datetime = Field(description="Time the Metric was updated in unix milliseconds")
     enabled: Optional[bool] = Field(description="Whether the Metric is enabled", default=None)
