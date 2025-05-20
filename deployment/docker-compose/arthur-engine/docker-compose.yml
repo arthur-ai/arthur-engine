@@ -33,6 +33,12 @@ services:
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
     env_file:
       - .env
+    healthcheck:
+      test: [ "CMD", "lsof", "-i", ":3030" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
   ml-engine:
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
@@ -55,3 +61,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    depends_on:
+      genai-engine:
+        condition: service_healthy
