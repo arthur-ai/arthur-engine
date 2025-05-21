@@ -26,14 +26,6 @@ prompt_env_var() {
 }
 
 parse_script_vars() {
-  # Required ML Engine environment variables
-  local required_vars=(
-    "ARTHUR_API_HOST"
-    "ARTHUR_CLIENT_ID"
-    "ARTHUR_CLIENT_SECRET"
-    "FETCH_RAW_DATA_ENABLED"
-  )
-
   # Parse command line arguments
   while [[ $# -gt 0 ]]; do
     case $1 in
@@ -87,7 +79,7 @@ read_env_file() {
 }
 
 missing_ml_engine_vars() {
-  local required_vars=("ARTHUR_API_HOST" "ARTHUR_CLIENT_ID" "ARTHUR_CLIENT_SECRET" "FETCH_RAW_DATA_ENABLED")
+  local required_vars=("ARTHUR_CLIENT_ID" "ARTHUR_CLIENT_SECRET")
   local missing_vars=()
 
   for var in "${required_vars[@]}"; do
@@ -111,9 +103,6 @@ echo "└───────────────────────�
 
 check_docker_compose
 
-# parse command line arguments
-parse_script_vars "$@"
-
 # create necessary directories if not already present
 root_dir="$HOME/.arthur-engine/local-stack"
 engine_subdir="$root_dir/arthur-engine"
@@ -126,12 +115,19 @@ if [[ -f "$engine_subdir/$env_file" ]]; then
     read_env_file "$engine_subdir/$env_file"
 fi
 
+# parse command line arguments - will overwrite any existing .env variables
+parse_script_vars "$@"
+
 # validate required ML engine variables
 if missing_ml_engine_vars; then
-  echo "The following format is required to set missing required ML engine variables."
+  echo "The following format is required to set ML engine variables."
   echo "Usage: $0 [--arthur-api-host=HOST] [--arthur-client-id=ID] [--arthur-client-secret=SECRET] [--fetch-raw-data-enabled=BOOL]"
   exit 1
 fi
+
+# set default env vars for ml-engine if unset in both existing .env and command line
+ARTHUR_API_HOST=${ARTHUR_API_HOST:-"https://platform.arthur.ai"}
+FETCH_RAW_DATA_ENABLED=${FETCH_RAW_DATA_ENABLED:-"true"}
 
 # create or update the .env file
 all_env_vars="########################################################
