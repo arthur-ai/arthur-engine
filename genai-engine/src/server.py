@@ -37,6 +37,7 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
+from routers.v1.span_routes import span_routes
 from routers.v2.routers import (
     feedback_routes,
     query_routes,
@@ -279,6 +280,7 @@ def get_base_app(
         "http://0.0.0.0:8000",
         "http://localhost:3030",
         "http://localhost:8080",
+        "http://localhost:3023",
     ]
     if ingress_url := get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
@@ -286,12 +288,15 @@ def get_base_app(
     ):
         origins.append(ingress_url)
 
+    arthur_allowed_origins = r"https://.*\.arthur\.ai"
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        allow_origin_regex=arthur_allowed_origins,
     )
     return app
 
@@ -314,6 +319,7 @@ def get_app_with_routes() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -336,6 +342,7 @@ def get_test_app() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -368,6 +375,7 @@ def get_app() -> FastAPI:
             task_management_routes,
             validate_routes,
             api_keys_routes,
+            span_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
