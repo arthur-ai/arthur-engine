@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 import pytest
 from amplitude import BaseEvent
+from requests import RequestException
+
 from clients.telemetry.telemetry_client import (
     TelemetryEventTypes,
     get_public_ip,
@@ -10,7 +12,6 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_default_rule_create_completed,
     send_telemetry_event_for_task_rule_create_completed,
 )
-from requests import RequestException
 from schemas.enums import RuleType
 
 
@@ -24,7 +25,6 @@ def mock_amplitude_client():
 def mock_telemetry_config():
     with patch("clients.telemetry.telemetry_client.TELEMETRY_CONFIG") as mock:
         mock.ENABLED = True
-        mock.get_instance_id.return_value = "test-instance"
         yield mock
 
 
