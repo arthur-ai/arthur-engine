@@ -16,6 +16,9 @@ on:
       - 'genai-engine/requirements-gpu.txt'
       - 'deployment/cloudformation/**/*'
       - 'deployment/helm/**/*'
+      - 'arthur-common/src/**/*'
+      - 'arthur-common/tests/**/*'
+      - 'arthur-common/pyproject.toml'
   workflow_dispatch:
     inputs:
       intent:
