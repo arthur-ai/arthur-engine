@@ -38,7 +38,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 10
-      start_period: 10s
+      start_period: 300s
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
   ml-engine:
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
