@@ -1,7 +1,7 @@
 #!/bin/bash
 
 K8S_NAMESPACE=arthur
-ARTHUR_ENGINE_VERSION=2.1.42
+ARTHUR_ENGINE_VERSION=2.1.43
 POSTGRES_USER=arthur_genai_engine
 POSTGRES_PASSWORD=changeme_pg_password
 POSTGRES_ENDPOINT=mydb
