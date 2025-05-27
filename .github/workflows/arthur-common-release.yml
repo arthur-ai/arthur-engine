@@ -13,8 +13,9 @@ jobs:
     # Should be separate from publish job: https://docs.pypi.org/trusted-publishers/security-model/#:~:text=Retrieve%20the%20publishable%20distribution%20files%20from%20a%20separate%20build%20job%3B
     # written from guide: https://johnfraney.ca/blog/how-to-publish-a-python-package-with-poetry-and-github-actions/
     name: Build release for PyPI
-    if: |
-      contains(github.event.head_commit.message, 'test pypi build workflow')
+#    if: |
+#      contains(github.event.head_commit.message, 'Increment version to') &&
+#      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     environment:
       name: pypi-arthur-common
