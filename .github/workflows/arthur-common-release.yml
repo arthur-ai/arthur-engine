@@ -35,9 +35,8 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: arthur-common
-          python-version: 3.12
       - name: Package project
-        run: poetry build --directory=arthur-common
+        run: cd arthur-common && poetry build
 
 #  pypi-publish:
 #    # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
