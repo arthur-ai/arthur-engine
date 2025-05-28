@@ -41,8 +41,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: arthur-common
-          path: dist
+          path: arthur-common/dist
           retention-days: 1
+          if-no-files-found: error
 
   pypi-publish:
     # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
