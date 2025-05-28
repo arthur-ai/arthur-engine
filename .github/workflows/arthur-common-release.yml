@@ -17,8 +17,6 @@ jobs:
 #      contains(github.event.head_commit.message, 'Increment version to') &&
 #      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-    environment:
-      name: pypi-arthur-common
     permissions:
       contents: read
     steps:
@@ -55,7 +53,7 @@ jobs:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:  # must be the same as what is set for the trusted publisher in PyPI
-      name: pypi-arthur-common
+      name: shared-protected-branch-secrets
       url: https://pypi.org/project/arthur-common/
     permissions:
       contents: read
@@ -66,12 +64,6 @@ jobs:
           with:
             name: arthur-common
             path: arthur-common
-        - name: Display structure of downloaded files for debugging
-          run: ls -R arthur-common
-        - name: See current directory for debugging
-          run: pwd
-        - name: See workspace value for debugging
-          run: echo $GITHUB_WORKSPACE
         - name: Publish package distributions to PyPI
           uses: pypa/gh-action-pypi-publish@release/v1
           with:
