@@ -70,7 +70,9 @@ jobs:
           run: ls -R arthur-common
         - name: See current directory for debugging
           run: pwd
+        - name: See workspace value for debugging
+          run: echo $GITHUB_WORKSPACE
         - name: Publish package distributions to PyPI
           uses: pypa/gh-action-pypi-publish@release/v1
           with:
-            packages-dir: ./arthur-common/dist/
+            packages-dir: $GITHUB_WORKSPACE/arthur-common/dist/
