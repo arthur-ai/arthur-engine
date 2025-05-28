@@ -1,9 +1,10 @@
 name: Version Management
 
 on:
-  pull_request:
+  push:
     branches:
-      - UP-2590-publish-common-pypi
+      - dev
+      - main
     paths:
       - '.github/workflows/**/*'
       - 'genai-engine/alembic/**/*'
@@ -18,18 +19,25 @@ on:
       - 'arthur-common/src/**/*'
       - 'arthur-common/tests/**/*'
       - 'arthur-common/pyproject.toml'
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: 'Trigger version bump'
+        required: true
+        default: 'bump_version'
+        type: string
 
 jobs:
   bump-and-tag-version:
     environment: shared-protected-branch-secrets
-#    if: |
-#      github.event_name != 'pull_request' &&
-#      (github.ref == 'refs/heads/dev') &&
-#      !contains(github.event.head_commit.message, 'Increment version to') &&
-#      (
-#        github.event_name == 'push' ||
-#        (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
-#      )
+    if: |
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/dev') &&
+      !contains(github.event.head_commit.message, 'Increment version to') &&
+      (
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
+      )
     runs-on: ubuntu-latest
 
     permissions:
@@ -106,17 +114,17 @@ jobs:
           git add version pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH
           git status
           git diff --cached
-#          git commit --no-verify -m "Increment version to ${NEW_VERSION}"
-#
-#          # Push the new branch with the commit
-#          git push -u origin "$BRANCH_NAME"
-#
-#      - name: Create Pull Request
-#        env:
-#          GH_TOKEN: ${{ github.token }}
-#        run: |
-#          gh pr create \
-#            --title "Increment version to $(cat genai-engine/version)" \
-#            --body "Increment version to $(cat genai-engine/version)" \
-#            --base ${GITHUB_REF#refs/heads/} \
-#            --head "$BRANCH_NAME"
+          git commit --no-verify -m "Increment version to ${NEW_VERSION}"
+
+          # Push the new branch with the commit
+          git push -u origin "$BRANCH_NAME"
+
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --title "Increment version to $(cat genai-engine/version)" \
+            --body "Increment version to $(cat genai-engine/version)" \
+            --base ${GITHUB_REF#refs/heads/} \
+            --head "$BRANCH_NAME"
