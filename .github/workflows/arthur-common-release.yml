@@ -66,6 +66,8 @@ jobs:
           with:
             name: arthur-common
             path: arthur-common
+        - name: Display structure of downloaded files for debugging
+          run: ls -R arthur-common
         - name: Publish package distributions to PyPI
           uses: pypa/gh-action-pypi-publish@release/v1
           with:
