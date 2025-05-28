@@ -44,6 +44,3 @@ This project is licensed under the MIT License.
 ## Authors
 
 - Arthur <engineering@arthur.ai>
-
-# ALEX
-- Change for testing
