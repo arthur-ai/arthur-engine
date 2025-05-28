@@ -4,18 +4,19 @@ name: Arthur Common CI Release
 # See considerations here: https://docs.pypi.org/trusted-publishers/security-model/
 
 on:
-  pull_request:
+  push:
     branches:
-      - UP-2590-publish-common-pypi
+      - main
+      - dev
 
 jobs:
   pypi-build:
     # Should be separate from publish job: https://docs.pypi.org/trusted-publishers/security-model/#:~:text=Retrieve%20the%20publishable%20distribution%20files%20from%20a%20separate%20build%20job%3B
     # written from guide: https://johnfraney.ca/blog/how-to-publish-a-python-package-with-poetry-and-github-actions/
     name: Build release for PyPI
-#    if: |
-#      contains(github.event.head_commit.message, 'Increment version to') &&
-#      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,9 +48,9 @@ jobs:
     # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
     # PyPI are as limited as possible
     needs: pypi-build
-#    if: |
-#      contains(github.event.head_commit.message, 'Increment version to') &&
-#      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:  # must be the same as what is set for the trusted publisher in PyPI
@@ -59,7 +60,7 @@ jobs:
       contents: read
       id-token: write  # needed for PyPI trusted publishing to create short-lived ID token to verify authority to publish
     steps:
-        - name: Download distribution from last job
+        - name: Download distribution from pypi-build job
           uses: actions/download-artifact@v4
           with:
             name: arthur-common
