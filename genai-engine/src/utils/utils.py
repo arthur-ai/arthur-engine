@@ -9,7 +9,6 @@ import urllib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Union
 
-import commonmark
 import utils.constants as constants
 from dotenv import load_dotenv
 from fastapi import HTTPException, Query
@@ -239,63 +238,70 @@ def strip_markdown(text: str) -> str:
     """
     Strip Markdown from a LLM Response
     """
-    parser = commonmark.Parser()
+    # Normalize line endings
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
 
-    def ast2text(astNode):
-        """
-        Returns the text from markdown, stripped of the markdown syntax itself
-        """
-        walker = astNode.walker()
-        acc = ""
-        iterator = iter(walker)
-        list_level = 0
-        for current, entering in iterator:
-            if current.literal and not (
-                current.parent
-                and current.parent.t == "link"
-                and current.parent.destination == current.literal
-            ):
-                acc += current.literal
-            if current.t == "linebreak":
-                acc += "\n"
-            elif current.t == "softbreak":
-                acc += " "
-            elif current.t == "list" and entering:
-                if list_level > 0:
-                    # Already in a list
-                    acc = acc.strip() + " "
-                    # Sub the last new line, the rest of the item is supposed to be on the same line
-                list_level += 1
-            elif current.t == "list" and not entering:
-                list_level -= 1
-                if list_level <= 1:
-                    acc = acc.strip()
-                    acc += "\n"
-            elif current.t == "paragraph" and not entering:
-                if list_level > 1:
-                    if acc[-1] in string.punctuation:
-                        acc = acc[:-1]  # Strip punctuation for list items
-                    acc += " "  # Don't add new line until exiting nested alist
-                else:
-                    acc = acc.strip()
-                    acc += "\n"
-            elif current.t == "heading" and not entering:
-                acc += " "
-            elif current.t in ("link", "image") and entering is False:
-                acc += f" {current.destination}"
-                if current.title:
-                    acc += f" - {current.title}"
-        return acc.strip()
+    # Remove code fences but keep their content (i.e. drop ```)
+    text = re.sub(r'```+', '', text)
 
-    try:
-        ast = parser.parse(text)
-        parsed = ast2text(ast)
-    except Exception as e:
-        parsed = text
-        logger.warning(f"Failed to parse text with exception {e}")
+    # Handle inline code
+    text = re.sub(r'`([^`]+)`', r'\1', text)
 
-    return parsed
+    # Handle headings: "# Foo" turns into "Foo"
+    text = re.sub(r'(?m)^\s{0,3}#{1,6}\s*', '', text)
 
+    # Handle links: [text](url) → "text url"
+    text = re.sub(r'\[([^]]+)\]\(([^)]+)\)', r'\1 \2', text)
+
+    # Split into lines
+    lines = text.split('\n')
+
+    out = []
+    last_blank = False
+    last_hard = False
+
+    for line in lines:
+        # detect blank line
+        if not line.strip():
+            last_blank = True
+            continue
+
+        stripped = line.strip()
+
+        # put numbered list items on theirown line
+        if re.match(r'^\d+\.\s+', stripped):
+            out.append(stripped)
+            last_blank = last_hard = False
+            continue
+
+        # put bulleted list items on their own line
+        if re.match(r'^[-*+]\s+', stripped):
+            out.append(stripped)
+            last_blank = last_hard = False
+            continue
+
+        # handle hard breaks (two spaces at end)
+        if line.endswith('  '):
+            out.append(stripped)
+            last_blank = False
+            last_hard = True
+            continue
+
+        # after a blank line or hard break start a new paragraph
+        if last_blank or last_hard:
+            out.append(stripped)
+            last_blank = last_hard = False
+            continue
+
+        # otherwise merge it into the previous paragraph
+        if out:
+            out[-1] += ' ' + stripped
+        else:
+            out.append(stripped)
+
+        last_blank = last_hard = False
+
+    return '\n'.join(out)
 
 def custom_text_parser(text, delims="all") -> list[str]:
     """
