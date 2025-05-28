@@ -37,6 +37,12 @@ jobs:
           working-directory: arthur-common
       - name: Package project
         run: cd arthur-common && poetry build
+      - name: Archive package
+        uses: actions/upload-artifact@v4
+        with:
+          name: arthur-common
+          path: dist
+          retention-days: 1
 
   pypi-publish:
     # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
@@ -54,7 +60,9 @@ jobs:
       contents: read
       id-token: write  # needed for PyPI trusted publishing to create short-lived ID token to verify authority to publish
     steps:
+        - name: Download distribution from last job
+          uses: actions/download-artifact@v4
+          with:
+            name: arthur-common
         - name: Publish package distributions to PyPI
           uses: pypa/gh-action-pypi-publish@release/v1
-          with:
-            packages-dir: arthur-common/dist/
