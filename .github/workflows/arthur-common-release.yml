@@ -38,23 +38,23 @@ jobs:
       - name: Package project
         run: cd arthur-common && poetry build
 
-#  pypi-publish:
-#    # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
-#    # PyPI are as limited as possible
-#    needs: pypi-build
+  pypi-publish:
+    # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
+    # PyPI are as limited as possible
+    needs: pypi-build
 #    if: |
 #      contains(github.event.head_commit.message, 'Increment version to') &&
 #      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-#    name: Upload release to PyPI
-#    runs-on: ubuntu-latest
-#    environment:  # must be the same as what is set for the trusted publisher in PyPI
-#      name: pypi-arthur-common
-#      url: https://pypi.org/project/arthur-common/
-#    permissions:
-#      contents: read
-#      id-token: write  # needed for PyPI trusted publishing to create short-lived ID token to verify authority to publish
-#    steps:
-#        - name: Publish package distributions to PyPI
-#          uses: pypa/gh-action-pypi-publish@release/v1
-#          with:
-#            packages-dir: arthur-common/dist/
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:  # must be the same as what is set for the trusted publisher in PyPI
+      name: pypi-arthur-common
+      url: https://pypi.org/project/arthur-common/
+    permissions:
+      contents: read
+      id-token: write  # needed for PyPI trusted publishing to create short-lived ID token to verify authority to publish
+    steps:
+        - name: Publish package distributions to PyPI
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            packages-dir: arthur-common/dist/
