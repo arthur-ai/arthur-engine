@@ -68,7 +68,9 @@ jobs:
             path: arthur-common
         - name: Display structure of downloaded files for debugging
           run: ls -R arthur-common
+        - name: See current directory for debugging
+          run: pwd
         - name: Publish package distributions to PyPI
           uses: pypa/gh-action-pypi-publish@release/v1
           with:
-            packages-dir: arthur-common/dist/
+            packages-dir: ./arthur-common/dist/
