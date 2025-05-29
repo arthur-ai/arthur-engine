@@ -25,6 +25,19 @@ prompt_env_var() {
   fi
 }
 
+parse_boolean() {
+  # parse bool from command line to expected python formatting (all lowercase)
+  # takes in the name of the command line flag and the value of the flag
+  local flag_name=$1
+  local value=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+  if [[ "$value" != "true" && "$value" != "false" ]]; then
+    echo "Usage: $flag_name flag must be set to 'true' or 'false'."
+    exit 1
+  else
+    echo "$value"
+  fi
+}
+
 parse_script_vars() {
   # Parse command line arguments
   while [[ $# -gt 0 ]]; do
@@ -42,12 +55,16 @@ parse_script_vars() {
         shift
         ;;
       --fetch-raw-data-enabled=*)
-        FETCH_RAW_DATA_ENABLED="${1#*=}"
+        FETCH_RAW_DATA_ENABLED=$(parse_boolean "--fetch-raw-data-enabled" "${1#*=}")
+        shift
+        ;;
+      --default-genai-config=*)
+        DEFAULT_GENAI_CONFIG=$(parse_boolean "--default-genai-config" "${1#*=}")
         shift
         ;;
       *)
         echo "Unknown parameter: $1"
-        echo "Usage: $0 [--arthur-api-host=HOST] [--arthur-client-id=ID] [--arthur-client-secret=SECRET] [--fetch-raw-data-enabled=BOOL]"
+        echo "Usage: $0 [--arthur-api-host=HOST] [--arthur-client-id=ID] [--arthur-client-secret=SECRET] [--fetch-raw-data-enabled=BOOL] [--default-genai-config=BOOL]"
         exit 1
         ;;
     esac
@@ -121,13 +138,14 @@ parse_script_vars "$@"
 # validate required ML engine variables
 if missing_ml_engine_vars; then
   echo "The following format is required to set ML engine variables."
-  echo "Usage: $0 [--arthur-api-host=HOST] [--arthur-client-id=ID] [--arthur-client-secret=SECRET] [--fetch-raw-data-enabled=BOOL]"
+  echo "Usage: $0 [--arthur-api-host=HOST] [--arthur-client-id=ID] [--arthur-client-secret=SECRET] [--fetch-raw-data-enabled=BOOL] [--default-genai-config=BOOL]"
   exit 1
 fi
 
 # set default env vars for ml-engine if unset in both existing .env and command line
 ARTHUR_API_HOST=${ARTHUR_API_HOST:-"https://platform.arthur.ai"}
 FETCH_RAW_DATA_ENABLED=${FETCH_RAW_DATA_ENABLED:-"true"}
+DEFAULT_GENAI_CONFIG=${DEFAULT_GENAI_CONFIG:-"false"}
 
 # create or update the .env file
 all_env_vars="########################################################
@@ -143,41 +161,71 @@ FETCH_RAW_DATA_ENABLED=$FETCH_RAW_DATA_ENABLED
 ########################################################
 "
 
-# prompt for OpenAI configuration if it's not already set
-if [[ -z "$GENAI_ENGINE_OPENAI_PROVIDER" ]]; then
+# handle OpenAI configuration for GenAI engine
+if [[ "$DEFAULT_GENAI_CONFIG" == "true" ]]; then
+    # skip OpenAI configuration entirely when default flag is set
     echo ""
-    read -p "Do you have access to OpenAI services? (y/n) [Default: y]: " has_openai
-    has_openai=${has_openai:-y}
-
-    if [[ $has_openai =~ ^[Yy]$ ]]; then
-        echo ""
-        echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
-        genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
-        echo ""
-        echo "Enter the OpenAI GPT model name (Example: gpt-4o-mini-2024-07-18)"
-        genai_engine_openai_gpt_name=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_NAME" "gpt-4o-mini-2024-07-18")
-        echo ""
-        echo "Enter the OpenAI GPT endpoint (Format: https://endpoint):"
-        echo "If using OpenAI provider, leave this blank unless you are using a proxy or OpenAI compatible service emulator."
-        genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
-        echo ""
-        echo "Enter the OpenAI GPT API key:"
-        genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
-
-        all_env_vars+="$genai_engine_openai_provider
-GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
-    else
-        echo ""
-        echo "Skipping OpenAI configuration..."
+    echo "Skipping OpenAI configuration as --default-genai-config is set..."
+    # make sure we preserve existing open AI configs if they're already in the .env file
+    if [[ ! -z $GENAI_ENGINE_OPENAI_PROVIDER  ]]; then
+      all_env_vars+="GENAI_ENGINE_OPENAI_PROVIDER=$GENAI_ENGINE_OPENAI_PROVIDER"
+    fi
+    if [[ ! -z $GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS  ]]; then
+      all_env_vars+="
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS"
     fi
 else
-    # use existing OpenAI configuration
-    all_env_vars+="GENAI_ENGINE_OPENAI_PROVIDER=$GENAI_ENGINE_OPENAI_PROVIDER
+    if [[ -z "$GENAI_ENGINE_OPENAI_PROVIDER" ]]; then
+        # run prompts for OpenAI configuration if it's not already set in .env
+        echo ""
+        echo "Do you have access to OpenAI services?"
+        echo ""
+        echo "Why we ask: Arthur uses your OpenAI key to run guardrails like hallucination and sensitive data checks—all within your environment, so your data never leaves your infrastructure."
+        echo "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
+        echo "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
+        echo ""
+        read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
+        has_openai=${has_openai:-y}
+
+        if [[ $has_openai =~ ^[Yy]$ ]]; then
+            echo ""
+            echo "Enter the provider for OpenAI services (Format: Azure or OpenAI)"
+            genai_engine_openai_provider=$(prompt_env_var "GENAI_ENGINE_OPENAI_PROVIDER" "OpenAI" "true")
+            echo ""
+            echo "Enter the OpenAI GPT model name (Example: gpt-4o-mini-2024-07-18)"
+            genai_engine_openai_gpt_name=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_NAME" "gpt-4o-mini-2024-07-18")
+            echo ""
+            echo "Enter the OpenAI GPT endpoint (Format: https://endpoint):"
+            echo "If using OpenAI provider, leave this blank unless you are using a proxy or OpenAI compatible service emulator."
+            genai_engine_openai_gpt_endpoint=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_ENDPOINT" "")
+            echo ""
+            echo "Enter the OpenAI GPT API key:"
+            genai_engine_openai_api_key=$(prompt_env_var "GENAI_ENGINE_OPENAI_GPT_API_KEY" "changeme_api_key")
+
+            all_env_vars+="$genai_engine_openai_provider
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
+        else
+            echo ""
+            echo "Skipping OpenAI configuration..."
+        fi
+    else
+        echo ""
+        echo "Skipping OpenAI Configuration because it is already set in the config file..."
+        # use existing OpenAI configuration from .env
+        all_env_vars+="GENAI_ENGINE_OPENAI_PROVIDER=$GENAI_ENGINE_OPENAI_PROVIDER
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS"
+    fi
 fi
 
 echo "$all_env_vars" > "$engine_subdir/$env_file"
+echo ""
 echo "Updated $env_file file at $engine_subdir/$env_file"
+echo ""
+echo "To see the $env_file file or docker-compose.yml, look in the $engine_subdir directory."
+echo "We discourage moving this directory so you can continue using our automated workflow to update your configuration."
+echo ""
+echo "Downloading images (~2.86 GB) and running docker containers. This will take a few minutes..."
+echo ""
 
 sleep 1
 cd "$engine_subdir"
