@@ -1727,6 +1727,12 @@ files = [
     {file = "geventhttpclient-2.3.3-pp310-pypy310_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:447fc2d49a41449684154c12c03ab80176a413e9810d974363a061b71bdbf5a0"},
     {file = "geventhttpclient-2.3.3-pp310-pypy310_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4598c2aa14c866a10a07a2944e2c212f53d0c337ce211336ad68ae8243646216"},
     {file = "geventhttpclient-2.3.3-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:69d2bd7ab7f94a6c73325f4b88fd07b0d5f4865672ed7a519f2d896949353761"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-macosx_10_15_x86_64.whl", hash = "sha256:45a3f7e3531dd2650f5bb840ed11ce77d0eeb45d0f4c9cd6985eb805e17490e6"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:73b427e0ea8c2750ee05980196893287bfc9f2a155a282c0f248b472ea7ae3e7"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c2959ef84271e4fa646c3dbaad9e6f2912bf54dcdfefa5999c2ef7c927d92127"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:0a800fcb8e53a8f4a7c02b4b403d2325a16cad63a877e57bd603aa50bf0e475b"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:528321e9aab686435ba09cc6ff90f12e577ace79762f74831ec2265eeab624a8"},
+    {file = "geventhttpclient-2.3.3-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:034be44ff3318359e3c678cb5c4ed13efd69aeb558f2981a32bd3e3fb5355700"},
     {file = "geventhttpclient-2.3.3-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:7a3182f1457599c2901c48a1def37a5bc4762f696077e186e2050fcc60b2fbdf"},
     {file = "geventhttpclient-2.3.3-pp39-pypy39_pp73-macosx_11_0_arm64.whl", hash = "sha256:86b489238dc2cbfa53cdd5621e888786a53031d327e0a8509529c7568292b0ce"},
     {file = "geventhttpclient-2.3.3-pp39-pypy39_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c4c8aca6ab5da4211870c1d8410c699a9d543e86304aac47e1558ec94d0da97a"},
@@ -2336,28 +2342,44 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "langchain"
-version = "0.3.14"
+version = "0.3.25"
 description = "Building applications with LLMs through composability"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = ">=3.9"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "langchain-0.3.14-py3-none-any.whl", hash = "sha256:5df9031702f7fe6c956e84256b4639a46d5d03a75be1ca4c1bc9479b358061a2"},
-    {file = "langchain-0.3.14.tar.gz", hash = "sha256:4a5ae817b5832fa0e1fcadc5353fbf74bebd2f8e550294d4dc039f651ddcd3d1"},
+    {file = "langchain-0.3.25-py3-none-any.whl", hash = "sha256:931f7d2d1eaf182f9f41c5e3272859cfe7f94fc1f7cef6b3e5a46024b4884c21"},
+    {file = "langchain-0.3.25.tar.gz", hash = "sha256:a1d72aa39546a23db08492d7228464af35c9ee83379945535ceef877340d2a3a"},
 ]
 
 [package.dependencies]
-aiohttp = ">=3.8.3,<4.0.0"
-langchain-core = ">=0.3.29,<0.4.0"
-langchain-text-splitters = ">=0.3.3,<0.4.0"
-langsmith = ">=0.1.17,<0.3"
-numpy = {version = ">=1.26.2,<3", markers = "python_version >= \"3.12\""}
+langchain-core = ">=0.3.58,<1.0.0"
+langchain-text-splitters = ">=0.3.8,<1.0.0"
+langsmith = ">=0.1.17,<0.4"
 pydantic = ">=2.7.4,<3.0.0"
 PyYAML = ">=5.3"
 requests = ">=2,<3"
 SQLAlchemy = ">=1.4,<3"
-tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<10"
+
+[package.extras]
+anthropic = ["langchain-anthropic"]
+aws = ["langchain-aws"]
+azure-ai = ["langchain-azure-ai"]
+cohere = ["langchain-cohere"]
+community = ["langchain-community"]
+deepseek = ["langchain-deepseek"]
+fireworks = ["langchain-fireworks"]
+google-genai = ["langchain-google-genai"]
+google-vertexai = ["langchain-google-vertexai"]
+groq = ["langchain-groq"]
+huggingface = ["langchain-huggingface"]
+mistralai = ["langchain-mistralai"]
+ollama = ["langchain-ollama"]
+openai = ["langchain-openai"]
+perplexity = ["langchain-perplexity"]
+together = ["langchain-together"]
+xai = ["langchain-xai"]
 
 [[package]]
 name = "langchain-community"
@@ -7173,4 +7195,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "f90a2dbfd3b6994bc065ed3c7d672d13051efdeedec12fa759f8bc7bfb376f66"
+content-hash = "98d83e8cf585e3ab1d48a3ba14c0957baf7a28d5d9c576fe911c4a97b5feaed1"
