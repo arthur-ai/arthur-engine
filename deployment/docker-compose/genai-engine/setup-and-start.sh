@@ -45,13 +45,19 @@ genai_subdir="$root_dir/genai-engine"
 env_file=".env"
 create_directory_if_not_present "$genai_subdir"
 
-if [[ -f "$genai_subdir/$env_file" ]]; then
+if [[ -s "$genai_subdir/$env_file" ]]; then
     echo "The $genai_subdir/$env_file file already exists."
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
     echo ""
-    read -p "Do you have access to OpenAI services? (y/n) [Default: y]: " has_openai
+    echo "Do you have access to OpenAI services?"
+    echo ""
+    echo "Why we ask: Arthur uses your OpenAI key to run guardrails like hallucination and sensitive data checks—all within your environment, so your data never leaves your infrastructure."
+    echo "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
+    echo "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
+    echo ""
+    read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
     has_openai=${has_openai:-y}
 
     if [[ $has_openai =~ ^[Yy]$ ]]; then
@@ -71,14 +77,20 @@ else
 
         all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
+        echo "$all_env_vars" > "$genai_subdir/$env_file"
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        all_env_vars=""
+        touch "$genai_subdir/$env_file"
     fi
-
-    echo "$all_env_vars" > "$genai_subdir/$env_file"
 fi
+
+echo ""
+echo "To see the $env_file file or docker-compose.yml, look in the $genai_subdir directory."
+echo "We discourage moving this directory so you can continue using our automated workflow to update your configuration."
+echo ""
+echo "Downloading images (~2.24 GB) and running docker containers. This will take a few minutes..."
+echo ""
 
 sleep 1
 cd "$genai_subdir"
