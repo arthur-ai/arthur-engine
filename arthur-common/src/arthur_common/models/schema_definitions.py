@@ -17,6 +17,7 @@ class ScopeSchemaTag(str, Enum):
     CONTINUOUS = "continuous"
     PREDICTION = "prediction"
     GROUND_TRUTH = "ground_truth"
+    PIN_IN_DEEP_DIVE = "pin_in_deep_dive"
 
 
 class DType(str, Enum):
