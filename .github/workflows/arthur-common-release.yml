@@ -48,9 +48,10 @@ jobs:
     # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
     # PyPI are as limited as possible
     needs: pypi-build
+    # does not run on dev—https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers:~:text=Local%20version%20identifiers%20SHOULD%20NOT%20be%20used%20when%20publishing%20upstream%20projects%20to%20a%20public%20index%20server%2C%20but%20MAY%20be%20used%20to%20identify%20private%20builds%20created%20directly%20from%20the%20project%20source.
     if: |
       contains(github.event.head_commit.message, 'Increment version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+      (github.ref == 'refs/heads/main')
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:  # must be the same as what is set for the trusted publisher in PyPI
