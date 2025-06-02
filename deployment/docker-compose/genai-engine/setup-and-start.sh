@@ -25,20 +25,39 @@ prompt_env_var() {
   fi
 }
 
+create_directory_if_not_present() {
+  local dir_name=$1
+  # creates base directories if they don't exist
+  if [[ ! -d "$dir_name" ]]; then
+    mkdir -p "$dir_name"
+    echo "Created directory: $dir_name"
+  fi
+}
+
 echo "┌───────────────────────────────────────────────────┐"
 echo "│     Welcome to the Arthur GenAI Engine Setup!     │"
 echo "└───────────────────────────────────────────────────┘"
 
 check_docker_compose
 
+root_dir="$HOME/.arthur-engine/local-stack"
+genai_subdir="$root_dir/genai-engine"
 env_file=".env"
-if [[ -f "$env_file" ]]; then
-    echo "The .env file already exists."
+create_directory_if_not_present "$genai_subdir"
+
+if [[ -s "$genai_subdir/$env_file" ]]; then
+    echo "The $genai_subdir/$env_file file already exists."
     echo "Please review the file and press any key to proceed to Docker Compose up..."
     read -n 1 -s
 else
     echo ""
-    read -p "Do you have access to OpenAI services? (y/n) [Default: y]: " has_openai
+    echo "Do you have access to OpenAI services?"
+    echo ""
+    echo "Why we ask: Arthur uses your OpenAI key to run guardrails like hallucination and sensitive data checks—all within your environment, so your data never leaves your infrastructure."
+    echo "You can use a new or existing key tied to the OpenAI project/org your LLM calls are billed to."
+    echo "Don't have a key? You can skip for now and add it later. Just note: hallucination & sensitive data guardrails won't run without it."
+    echo ""
+    read -p "Do you have access to OpenAI? (y/n) [Default: y]: " has_openai
     has_openai=${has_openai:-y}
 
     if [[ $has_openai =~ ^[Yy]$ ]]; then
@@ -58,15 +77,22 @@ else
 
         all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
+        echo "$all_env_vars" > "$genai_subdir/$env_file"
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        all_env_vars=""
+        touch "$genai_subdir/$env_file"
     fi
-
-    echo "$all_env_vars" > "$env_file"
 fi
 
-sleep 1
+echo ""
+echo "To see the $env_file file or docker-compose.yml, look in the $genai_subdir directory."
+echo "We discourage moving this directory so you can continue using our automated workflow to update your configuration."
+echo ""
+echo "Downloading images (~2.24 GB) and running docker containers. This will take a few minutes..."
+echo ""
 
-curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml | docker compose -f - up -d --pull always
+sleep 1
+cd "$genai_subdir"
+curl -s https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml > "docker-compose.yml"
+docker compose up -d --pull always

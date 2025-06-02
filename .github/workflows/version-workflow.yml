@@ -16,6 +16,9 @@ on:
       - 'genai-engine/requirements-gpu.txt'
       - 'deployment/cloudformation/**/*'
       - 'deployment/helm/**/*'
+      - 'arthur-common/src/**/*'
+      - 'arthur-common/tests/**/*'
+      - 'arthur-common/pyproject.toml'
   workflow_dispatch:
     inputs:
       intent:
@@ -61,13 +64,13 @@ jobs:
         run: |
           set -e
 
-          # Update files in the genai-engine directory
-          cd genai-engine
-
           # Vars to externalize if needed
           export SUFFIX="-dev"
           export BUMP_COMMAND="patch"
           export BRANCH_NAME="version-bump/$(date +%Y%m%d-%H%M%S)"
+
+          # Update files in the arthur-common directory
+          cd arthur-common
 
           # Set version vars with no suffix
           export CURRENT_VERSION=$(poetry version -s)
@@ -76,6 +79,16 @@ jobs:
           # Validate version variables are set
           if [ -z "$CURRENT_VERSION" ] || [ -z "$NEW_VERSION" ]; then
             echo "Error: Version variables not set. CURRENT_VERSION='$CURRENT_VERSION', NEW_VERSION='$NEW_VERSION'"
+            exit 1
+          fi
+
+          # Update files in the genai-engine directory
+          cd ../genai-engine
+          export NEW_GENAI_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
+
+          # validate new genai version is the same as new arthur common version
+          if [ -z "$NEW_GENAI_VERSION" ] || [ "$NEW_VERSION" != "$NEW_GENAI_VERSION" ]; then
+            echo "Error: New Gen AI version and new Arthur Common versions are not the same. NEW_GENAI_VERSION='$NEW_GENAI_VERSION', NEW_ARTHUR_COMMON_VERSION='$NEW_VERSION'"
             exit 1
           fi
 
@@ -98,7 +111,7 @@ jobs:
           sed -i "s|version:.*|version: $NEW_VERSION|" "$ARTHUR_ENGINE_CHART_YAML_PATH"
 
           # Add and commit changes
-          git add version pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH
+          git add version pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH ../arthur-common/pyproject.toml
           git status
           git diff --cached
           git commit --no-verify -m "Increment version to ${NEW_VERSION}"
