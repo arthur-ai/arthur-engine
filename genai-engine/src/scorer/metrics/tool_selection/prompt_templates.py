@@ -28,7 +28,7 @@ TOOL_SELECTION_PROMPT_TEMPLATE = """
     {system_prompt}
 
     **User Question:**
-    {user_question}
+    {user_query}
 
     **Context:**
     {context}
@@ -66,7 +66,7 @@ TOOL_USAGE_PROMPT_TEMPLATE = """
     {system_prompt}
 
     **User Question:**
-    {user_question}
+    {user_query}
 
     **Context:**
     {context}

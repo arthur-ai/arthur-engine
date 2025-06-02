@@ -2,7 +2,6 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 from schemas.enums import MetricType, ToolClassEnum
-from schemas.scorer_schemas import Example
 
 
 class RelevanceMetricConfig(BaseModel):
@@ -34,6 +33,7 @@ class ToolSelectionCorrectnessMetric(BaseModel):
     tool_usage_reason: str
 
 
+
 class MetricScoreDetails(BaseModel):
     query_relevance: Optional[QueryRelevanceMetric] = None
     response_relevance: Optional[ResponseRelevanceMetric] = None
@@ -41,21 +41,52 @@ class MetricScoreDetails(BaseModel):
     persona_alignment: Optional[float] = None
     tool_selection: Optional[ToolSelectionCorrectnessMetric] = None
 
-
 class MetricScore(BaseModel):
     metric: MetricType
-    details: MetricScoreDetails
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-
+    metric_details: Optional[MetricScoreDetails] = None
+    prompt_tokens: int
+    completion_tokens: int
 
 class MetricRequest(BaseModel):
-    metric_type: MetricType
-    system_prompt: Optional[str] = None
-    user_prompt: Optional[str] = None
-    llm_response: Optional[str] = None
-    use_llm_judge: Optional[bool] = False
-    scoring_text: Optional[str] = None
-    context: Optional[str] = None
-    examples: Optional[List[Example]] = None
-    hint: Optional[str] = None 
+    system_prompt: Optional[str] = Field(
+        description="System prompt to be used by GenAI Engine for computing metrics.",
+        default=None,
+    )
+    user_query: Optional[str] = Field(
+        description="User query to be used by GenAI Engine for computing metrics.",
+        default=None,
+    )
+    context: List[dict] = Field(
+        description="Conversation history and additional context to be used by GenAI Engine for computing metrics.",
+        default=[],
+        example=[
+            {
+                "role": "user",
+                "value": "What is the weather in Tokyo?"
+            },
+            {
+                "role": "assistant",
+                "value": "WeatherTool",
+                "args": {
+                    "city": "Tokyo"
+                }
+            },
+            {
+                "role": "tool",
+                "value": "[{\"name\": \"WeatherTool\", \"result\": {\"temperature\": \"20°C\", \"humidity\": \"50%\", \"condition\": \"sunny\"}}]",
+            },
+            {
+                "role": "assistant",
+                "value": "The weather in Tokyo is sunny and the temperature is 20°C."
+            }
+        ]
+    )
+    response: Optional[str] = Field(
+        description="Response to be used by GenAI Engine for computing metrics.",
+        default=None,
+    )
+
+class MetricResult(BaseModel):
+    id: str
+    metric_score_result: Optional[MetricScore] = None
+    latency_ms: int
