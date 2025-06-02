@@ -1,0 +1,71 @@
+name: Arthur Common CI Release
+# isolated from Arthur Common workflow because we're using trusted publishing in PyPI.
+# Best practices are to isolate the workflow publishing to PyPI.
+# See considerations here: https://docs.pypi.org/trusted-publishers/security-model/
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  pypi-build:
+    # Should be separate from publish job: https://docs.pypi.org/trusted-publishers/security-model/#:~:text=Retrieve%20the%20publishable%20distribution%20files%20from%20a%20separate%20build%20job%3B
+    # written from guide: https://johnfraney.ca/blog/how-to-publish-a-python-package-with-poetry-and-github-actions/
+    name: Build release for PyPI
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: actions/setup-python@v5
+        # can't use container with python instead: https://github.com/pypa/gh-action-pypi-publish/tree/unstable/v1#:~:text=Running%20the%20action,that%20publishes%20them.
+        with:
+          python-version: 3.12
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-common
+      - name: Package project
+        run: cd arthur-common && poetry build
+      - name: Archive package
+        uses: actions/upload-artifact@v4
+        with:
+          name: arthur-common
+          path: arthur-common/dist
+          retention-days: 1
+          if-no-files-found: error
+
+  pypi-publish:
+    # don't add more steps to this job—it should only publish so that steps with access to the OIDC token for use with
+    # PyPI are as limited as possible
+    needs: pypi-build
+    if: |
+      contains(github.event.head_commit.message, 'Increment version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:  # must be the same as what is set for the trusted publisher in PyPI
+      name: shared-protected-branch-secrets
+      url: https://pypi.org/project/arthur-common/
+    permissions:
+      contents: read
+      id-token: write  # needed for PyPI trusted publishing to create short-lived ID token to verify authority to publish
+    steps:
+        - name: Download distribution from pypi-build job
+          uses: actions/download-artifact@v4
+          with:
+            name: arthur-common
+            path: arthur-common
+        - name: Publish package distributions to PyPI
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            packages-dir: arthur-common
