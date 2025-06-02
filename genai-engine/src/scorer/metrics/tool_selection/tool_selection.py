@@ -1,5 +1,4 @@
-from langchain.chains import LLMChain
-from langchain.output_parsers import OutputFixingParser
+from langchain_core.runnables import RunnableSequence
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -45,18 +44,15 @@ def get_model(temperature=0.0):
 # Chain to evaluate tool selection
 def get_tool_selection_chain(temperature=0.0):
     model = get_model(temperature)
-
     parser = JsonOutputParser(pydantic_object=ToolSelectionResponseSchema)
-    fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
     pt = PromptTemplate(
-        input_variables=["system_prompt", "user_question", "context"],
+        input_variables=["system_prompt", "user_query", "context"],
         partial_variables={
-            "format_instructions": fixing_parser.get_format_instructions(),
+            "format_instructions": parser.get_format_instructions(),
         },
         template=TOOL_SELECTION_PROMPT_TEMPLATE,
     )
-
-    evaluation_chain = LLMChain(llm=model, prompt=pt, output_parser=fixing_parser)
+    evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
@@ -65,16 +61,15 @@ def get_tool_usage_chain(temperature=0.0):
     model = get_model(temperature)
 
     parser = JsonOutputParser(pydantic_object=ToolUsageResponseSchema)
-    fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=model)
     pt = PromptTemplate(
-        input_variables=["system_prompt", "user_question", "context"],
+        input_variables=["system_prompt", "user_query", "context"],
         partial_variables={
-            "format_instructions": fixing_parser.get_format_instructions(),
+            "format_instructions": parser.get_format_instructions(),
         },
         template=TOOL_USAGE_PROMPT_TEMPLATE,
     )
 
-    evaluation_chain = LLMChain(llm=model, prompt=pt, output_parser=fixing_parser)
+    evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
@@ -94,7 +89,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         tool_selection_call = lambda: self.tool_selection_chain.invoke(
             {
                 "system_prompt": system_prompt,
-                "user_question": user_query,
+                "user_query": user_query,
                 "context": context,
             },
         )
@@ -103,7 +98,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         tool_usage_call = lambda: self.tool_usage_chain.invoke(
             {
                 "system_prompt": system_prompt,
-                "user_question": user_query,
+                "user_query": user_query,
                 "context": context,
             },
         )
@@ -152,9 +147,12 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
 
         return tool_response, total_tokens
 
-    def score(self, request: MetricRequest) -> MetricScore:
+    def score(self, request: MetricRequest, config: dict) -> MetricScore:
         """Scores tool selection and tool use by the assistant in relevance to the user's query"""
-        user_query = request.user_prompt
+        # Config is not used in this scorer
+        _ = config
+
+        user_query = request.user_query
         system_prompt = request.system_prompt
         context = request.context
 
@@ -163,14 +161,13 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             system_prompt,
             context,
         )
-
         # Translate integer values to ToolClassEnum
         tool_selection_enum = ToolClassEnum(tool_response["tool_selection"])
         tool_usage_enum = ToolClassEnum(tool_response["tool_usage"])
 
         return MetricScore(
             metric=MetricType.TOOL_SELECTION,
-            details=MetricScoreDetails(
+            metric_details=MetricScoreDetails(
                 tool_selection=ToolSelectionCorrectnessMetric(
                     tool_selection=tool_selection_enum,
                     tool_selection_reason=tool_response["tool_selection_reason"],

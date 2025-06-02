@@ -598,3 +598,20 @@ class QuerySpansResponse(BaseModel):
         description="List of spans matching the search filters",
     )
 
+
+class ComputeMetricsFiltersResponse(BaseModel):
+    start_time: Optional[datetime] = Field(description="Start time filter applied", default=None)
+    end_time: Optional[datetime] = Field(description="End time filter applied", default=None)
+    conversation_id: Optional[str] = Field(description="Conversation ID filter applied", default=None)
+    user_id: Optional[str] = Field(description="User ID filter applied", default=None)
+    page: int = Field(description="Page number used for pagination")
+    page_size: int = Field(description="Page size used for pagination")
+
+
+class ComputeMetricsResponse(BaseModel):
+    task_id: str = Field(description="ID of the task for which metrics were computed")
+    metrics: list[MetricResponse] = Field(description="List of metrics associated with the task")
+    span_count: int = Field(description="Number of spans matching the filters")
+    spans: list[SpanResponse] = Field(description="List of spans used for metric computation")
+    filters_applied: ComputeMetricsFiltersResponse = Field(description="Filters that were applied to the data")
+

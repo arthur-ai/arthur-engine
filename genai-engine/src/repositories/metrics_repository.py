@@ -36,3 +36,10 @@ class MetricRepository:
 
         database_metric.archived = True
         self.db_session.commit()
+
+    def get_metrics_by_metric_id(self, metric_ids: list[str]) -> list[Metric]:
+        database_metrics = self.db_session.query(DatabaseMetric).filter(
+            DatabaseMetric.id.in_(metric_ids)
+        ).all()
+        return [Metric._from_database_model(metric) for metric in database_metrics]
+    

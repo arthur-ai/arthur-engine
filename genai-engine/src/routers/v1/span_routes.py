@@ -7,6 +7,8 @@ from dependencies import get_db_session
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
 from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
@@ -40,7 +42,9 @@ def receive_traces(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     try:
-        span_repo = SpanRepository(db_session)
+        tasks_metrics_repo = TasksMetricsRepository(db_session)
+        metrics_repo = MetricRepository(db_session)
+        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
         span_results = span_repo.create_traces(body)
         return response_handler(*span_results)
     except DecodeError as e:
@@ -90,7 +94,7 @@ def query_spans(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     try:
-        span_repo = SpanRepository(db_session)
+        span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
         spans = span_repo.query_spans(
             trace_ids=trace_ids,
             span_ids=span_ids,
