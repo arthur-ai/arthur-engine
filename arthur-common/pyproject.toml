@@ -6,10 +6,6 @@ authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
 readme = "README.md"
 
-[tool.poetry_bumpversion.file."src/arthur_common/__version__.py"]
-search = "__version__ = \"{current_version}\""
-replace = "__version__ = \"{new_version}\""
-
 [tool.poetry.dependencies]
 python = "^3.12"
 pydantic = ">=2"
