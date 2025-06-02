@@ -1,7 +1,6 @@
 name: arthur-engine
 services:
   db:
-    container_name: arthur-engine-db
     image: postgres
     shm_size: 128mb
     environment:
@@ -13,7 +12,6 @@ services:
     env_file:
       - .env
   genai-engine:
-    container_name: arthur-genai-engine
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
@@ -25,7 +23,7 @@ services:
       - POSTGRES_USER=postgres
       # Must match POSTGRES_PASSWORD in the db service
       - POSTGRES_PASSWORD=changeme_pg_password
-      - POSTGRES_URL=arthur-engine-db
+      - POSTGRES_URL=db
       - POSTGRES_PORT=5432
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
@@ -35,9 +33,14 @@ services:
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
     env_file:
       - .env
+    healthcheck:
+      test: [ "CMD", "lsof", "-i", ":3030" ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
     entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
   ml-engine:
-    container_name: arthur-ml-engine
     image: arthurplatform/ml-engine:${ML_ENGINE_VERSION-latest}
     platform: linux/amd64
     restart: unless-stopped
@@ -58,3 +61,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    depends_on:
+      genai-engine:
+        condition: service_healthy
