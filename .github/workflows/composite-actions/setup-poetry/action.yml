@@ -14,4 +14,3 @@ runs:
       run: |
         pip install poetry
         poetry -C ${{ inputs.working-directory }} install
-        poetry self add poetry-bumpversion
