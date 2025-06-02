@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 class ConnectorPaginationOptions(BaseModel):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=25, gt=0, le=500)
+    # comment to run pipeline
 
     @property
     def page_params(self) -> tuple[int, int]:
