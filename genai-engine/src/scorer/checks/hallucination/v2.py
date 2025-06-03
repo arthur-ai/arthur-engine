@@ -30,7 +30,7 @@ from sentence_transformers import SentenceTransformer
 from utils import constants, utils
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
 from utils.model_load import get_claim_classifier_embedding_model
-from utils.utils import custom_text_parser
+from utils.markdown_parser import MarkdownParser
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -270,6 +270,7 @@ class HallucinationClaimsV2(RuleScorer):
     def __init__(self, sentence_transformer: SentenceTransformer | None):
         self.claim_classifier = get_claim_classifier(sentence_transformer)
         self.model = get_llm_executor().get_gpt_model()
+        self.markdown_parser = MarkdownParser()
 
     def _download_sentence_transformer(self):
         global CLAIM_CLASSIFIER_EMBEDDING_MODEL
@@ -286,7 +287,7 @@ class HallucinationClaimsV2(RuleScorer):
         Parse the text of the LLM response into text pieces (sentences & list items)
         """
         response = request.llm_response
-        initial_texts = custom_text_parser(response)
+        initial_texts = self.markdown_parser.parse_markdown(response)
 
         """
         Filter out dialog (e.g. 'Any other questions?') & non-claims (e.g. 'I dont have information about X') from the LLM response,
