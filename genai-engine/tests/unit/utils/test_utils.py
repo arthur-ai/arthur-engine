@@ -93,7 +93,7 @@ def test_is_api_only_mode_enabled(mock_get_env_var):
 )
 @pytest.mark.unit_tests
 def test_custom_test_parser(source_str: str, target_strs: list[str]):
-    chunked = claim_parser.parse_markdown(source_str)
+    chunked = claim_parser.process_and_extract_claims(source_str)
     assert len(chunked) == len(target_strs)
     for chunk in chunked:
         assert chunk in target_strs
