@@ -34,6 +34,9 @@ class ClaimParser:
                     and current.parent.t == "link"
                     and current.parent.destination == current.literal
                 ):
+                    # workaround for list items that are not formatted as proper markdown
+                    if list_indicator_regex.match(current.literal.strip()) and list_level <= 1:
+                        acc += "\n"
                     acc += current.literal
                 if current.t == "linebreak":
                     acc += "\n"
@@ -79,7 +82,11 @@ class ClaimParser:
         """
         Returns a list of texts that should contain sentences & list items from an LLM response
         """
-        text = self._strip_markdown(text)
+                # check for the edge case where the text is just a singular digit or letter and skip strip_markdown
+        # if it is to avoid the function from mistaking it for a list item
+        if not re.match(r'^(?:\d+|[A-Za-z])\.?\s*$', text.strip()):
+            text = self._strip_markdown(text)
+
         abbreviation_pattern = r"([A-Za-z]\.)([A-Za-z]\.)+"
         all_abbreviations = re.finditer(abbreviation_pattern, text)
 
