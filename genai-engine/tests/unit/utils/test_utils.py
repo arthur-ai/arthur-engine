@@ -8,17 +8,16 @@ from schemas.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import LLMTokensPerPeriodRateLimitException
 from scorer import llm_client
 from utils.utils import (
-    custom_text_parser,
     get_auth_logout_uri,
     get_auth_metadata_uri,
     get_jwks_uri,
     get_postgres_connection_string,
     is_api_only_mode_enabled,
-    strip_markdown,
 )
+from utils.claim_parser import ClaimParser
 
 CURRDIR = os.path.dirname(os.path.abspath(__file__))
-
+claim_parser = ClaimParser()
 
 @pytest.mark.parametrize(
     "exceeds",
@@ -94,7 +93,7 @@ def test_is_api_only_mode_enabled(mock_get_env_var):
 )
 @pytest.mark.unit_tests
 def test_custom_test_parser(source_str: str, target_strs: list[str]):
-    chunked = custom_text_parser(source_str)
+    chunked = claim_parser.process_and_extract_claims(source_str)
     assert len(chunked) == len(target_strs)
     for chunk in chunked:
         assert chunk in target_strs
@@ -163,7 +162,7 @@ Item3""",
 )
 @pytest.mark.unit_tests
 def test_strip_markdown(source_str: str, target_str: str):
-    stripped = strip_markdown(source_str)
+    stripped = claim_parser._strip_markdown(source_str)
     assert stripped == target_str.strip()
 
 
