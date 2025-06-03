@@ -14,10 +14,10 @@ from utils.utils import (
     get_postgres_connection_string,
     is_api_only_mode_enabled,
 )
-from utils.markdown_parser import MarkdownParser
+from utils.claim_parser import ClaimParser
 
 CURRDIR = os.path.dirname(os.path.abspath(__file__))
-markdown_parser = MarkdownParser()
+claim_parser = ClaimParser()
 
 @pytest.mark.parametrize(
     "exceeds",
@@ -93,7 +93,7 @@ def test_is_api_only_mode_enabled(mock_get_env_var):
 )
 @pytest.mark.unit_tests
 def test_custom_test_parser(source_str: str, target_strs: list[str]):
-    chunked = markdown_parser.parse_markdown(source_str)
+    chunked = claim_parser.parse_markdown(source_str)
     assert len(chunked) == len(target_strs)
     for chunk in chunked:
         assert chunk in target_strs
@@ -162,7 +162,7 @@ Item3""",
 )
 @pytest.mark.unit_tests
 def test_strip_markdown(source_str: str, target_str: str):
-    stripped = markdown_parser.strip_markdown(source_str)
+    stripped = claim_parser._strip_markdown(source_str)
     assert stripped == target_str.strip()
 
 
