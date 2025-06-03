@@ -4,11 +4,11 @@ import string
 from utils.abbreviations import ABBREVIATIONS
 from utils.utils import sentence_tokenizer, list_indicator_regex, logger
 
-class MarkdownParser:
+class ClaimParser:
     def __init__(self):
         self.parser = commonmark.Parser()
 
-    def deduplicate(self, seq: list[str]) -> list[str]:
+    def _deduplicate(self, seq: list[str]) -> list[str]:
         """
         Source: https://stackoverflow.com/a/480227/1493011
         """
@@ -16,7 +16,7 @@ class MarkdownParser:
         seen = set()
         return [x for x in seq if not (x in seen or seen.add(x))]
 
-    def strip_markdown(self, text: str) -> str:
+    def _strip_markdown(self, text: str) -> str:
         """
         Strip Markdown from a LLM Response
         """
@@ -79,7 +79,7 @@ class MarkdownParser:
         """
         Returns a list of texts that should contain sentences & list items from an LLM response
         """
-        text = self.strip_markdown(text)
+        text = self._strip_markdown(text)
         abbreviation_pattern = r"([A-Za-z]\.)([A-Za-z]\.)+"
         all_abbreviations = re.finditer(abbreviation_pattern, text)
 
@@ -100,4 +100,4 @@ class MarkdownParser:
             else:
                 texts.extend(sentence_tokenizer.tokenize(line))
 
-        return self.deduplicate(texts)
+        return self._deduplicate(texts)
