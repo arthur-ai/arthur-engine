@@ -80,7 +80,11 @@ def test_claim_and_nonclaims_v2(
     request = ScoreRequest(
         rule_type=RuleType.MODEL_HALLUCINATION_V2,
         context="Some context",
-        llm_response="Isaac Newton built on the principles put forth by Galileo when formulating the laws of gravity.\n -hello. -hi, how are you? -I'm fine thanks and you?",
+        llm_response="""Isaac Newton built on the principles put forth by Galileo when formulating the laws of gravity.
+
+    - hello. 
+    - hi, how are you? 
+    - I'm fine thanks and you?""",
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
