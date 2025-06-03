@@ -3,7 +3,7 @@ import pytest
 from utils.claim_parser import ClaimParser
 
 CURRDIR = os.path.dirname(os.path.abspath(__file__))
-claim_parser = ClaimParser()
+CLAIM_PARSER = ClaimParser()
 
 @pytest.mark.parametrize(
     ("source_str", "target_strs"),
@@ -197,5 +197,5 @@ Regular text with &lt; HTML entities &gt;""",
 )
 @pytest.mark.unit_tests
 def test_strip_markdown(source_str: str, target_str: str):
-    stripped = claim_parser._strip_markdown(source_str)
+    stripped = CLAIM_PARSER._strip_markdown(source_str)
     assert stripped == target_str.strip()
