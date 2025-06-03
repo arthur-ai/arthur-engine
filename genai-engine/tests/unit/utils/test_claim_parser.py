@@ -28,7 +28,7 @@ CLAIM_PARSER = ClaimParser()
 )
 @pytest.mark.unit_tests
 def test_process_and_extract_claims(source_str: str, target_strs: list[str]):
-    chunked = claim_parser.process_and_extract_claims(source_str)
+    chunked = CLAIM_PARSER.process_and_extract_claims(source_str)
     assert len(chunked) == len(target_strs)
     for chunk in chunked:
         assert chunk in target_strs
