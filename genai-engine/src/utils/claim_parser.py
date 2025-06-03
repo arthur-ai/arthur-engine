@@ -75,7 +75,7 @@ class ClaimParser:
 
         return parsed
 
-    def parse_markdown(self, text) -> list[str]:
+    def process_and_extract_claims(self, text) -> list[str]:
         """
         Returns a list of texts that should contain sentences & list items from an LLM response
         """

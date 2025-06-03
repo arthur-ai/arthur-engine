@@ -287,7 +287,7 @@ class HallucinationClaimsV2(RuleScorer):
         Parse the text of the LLM response into text pieces (sentences & list items)
         """
         response = request.llm_response
-        initial_texts = self.claim_parser.parse_markdown(response)
+        initial_texts = self.claim_parser.process_and_extract_claims(response)
 
         """
         Filter out dialog (e.g. 'Any other questions?') & non-claims (e.g. 'I dont have information about X') from the LLM response,
