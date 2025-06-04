@@ -11,7 +11,6 @@ from typing import Callable, List, Union
 import utils.constants as constants
 from dotenv import load_dotenv
 from fastapi import HTTPException, Query
-from nltk.tokenize.punkt import PunktSentenceTokenizer
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
@@ -27,7 +26,6 @@ logger = logging.getLogger()
 load_dotenv()
 
 list_indicator_regex = re.compile(r"^[\-\•\*]|\d+\)|\d+\.")
-sentence_tokenizer = PunktSentenceTokenizer()
 
 
 def new_relic_enabled():
