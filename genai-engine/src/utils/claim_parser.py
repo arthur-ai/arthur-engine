@@ -1,8 +1,14 @@
 import commonmark
 import re
 import string
+import logging
+
+from nltk.tokenize.punkt import PunktSentenceTokenizer
 from utils.abbreviations import ABBREVIATIONS
-from utils.utils import sentence_tokenizer, list_indicator_regex, logger
+from utils.utils import list_indicator_regex
+
+SENTENCE_TOKENIZER = PunktSentenceTokenizer()
+LOGGER = logging.getLogger()
 
 class ClaimParser:
     def __init__(self):
@@ -34,6 +40,9 @@ class ClaimParser:
                     and current.parent.t == "link"
                     and current.parent.destination == current.literal
                 ):
+                    # workaround for list items that are not formatted as proper markdown
+                    if list_indicator_regex.match(current.literal.strip()) and list_level <= 1:
+                        acc += "\n"
                     acc += current.literal
                 if current.t == "linebreak":
                     acc += "\n"
@@ -71,7 +80,7 @@ class ClaimParser:
             parsed = ast2text(ast)
         except Exception as e:
             parsed = text
-            logger.warning(f"Failed to parse text with exception {e}")
+            LOGGER.warning(f"Failed to parse text with exception {e}")
 
         return parsed
 
@@ -79,7 +88,11 @@ class ClaimParser:
         """
         Returns a list of texts that should contain sentences & list items from an LLM response
         """
-        text = self._strip_markdown(text)
+        # check for the edge case where the text is just a singular digit or letter and skip strip_markdown
+        # if it is to avoid the function from mistaking it for a list item
+        if not re.match(r'^(?:\d+|[A-Za-z])\.?\s*$', text.strip()):
+            text = self._strip_markdown(text)
+
         abbreviation_pattern = r"([A-Za-z]\.)([A-Za-z]\.)+"
         all_abbreviations = re.finditer(abbreviation_pattern, text)
 
@@ -98,6 +111,6 @@ class ClaimParser:
             if list_indicator_regex.match(line.strip()):
                 texts.append(line.strip())
             else:
-                texts.extend(sentence_tokenizer.tokenize(line))
+                texts.extend(SENTENCE_TOKENIZER.tokenize(line))
 
         return self._deduplicate(texts)
