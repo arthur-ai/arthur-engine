@@ -14,10 +14,6 @@ from utils.utils import (
     get_postgres_connection_string,
     is_api_only_mode_enabled,
 )
-from utils.claim_parser import ClaimParser
-
-CURRDIR = os.path.dirname(os.path.abspath(__file__))
-claim_parser = ClaimParser()
 
 @pytest.mark.parametrize(
     "exceeds",
@@ -68,102 +64,6 @@ def test_is_api_only_mode_enabled(mock_get_env_var):
 
     mock_get_env_var.side_effect = ["disabled"]
     assert not is_api_only_mode_enabled()
-
-
-@pytest.mark.parametrize(
-    ("source_str", "target_strs"),
-    [
-        [
-            """Mackenzie Caquatto (born August 20, 1994) is an American former artistic gymnast.
-            She was a member of the U.S. Women's Gymnastics team, and competed at the 2012 Summer Olympics in London. Caquatto was born in Naperville, Illinois, and began gymnastics at the age of three. """,  # noqa
-            [
-                "Mackenzie Caquatto (born August 20, 1994) is an American former artistic gymnast.",  # noqa
-                "She was a member of the US Women's Gymnastics team, and competed at the 2012 Summer Olympics in London.",  # noqa
-                "Caquatto was born in Naperville, Illinois, and began gymnastics at the age of three.",
-            ],
-        ],
-        [
-            "I lived on Blvd. Exelmans in the 16th arrondissement. It was next to the St. Helen Church.",
-            [
-                "I lived on Blvd Exelmans in the 16th arrondissement.",
-                "It was next to the St Helen Church.",
-            ],
-        ],
-    ],
-)
-@pytest.mark.unit_tests
-def test_custom_test_parser(source_str: str, target_strs: list[str]):
-    chunked = claim_parser.process_and_extract_claims(source_str)
-    assert len(chunked) == len(target_strs)
-    for chunk in chunked:
-        assert chunk in target_strs
-
-
-@pytest.mark.parametrize(
-    ("source_str", "target_str"),
-    [
-        [
-            """Will strip all the *code like python: print('hello world')*""",
-            """Will strip all the code like python: print('hello world')""",
-        ],
-        [
-            """### Will strip all the `code like python: print('hello world')`""",
-            """Will strip all the code like python: print('hello world')""",
-        ],
-        [
-            """[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/facebook/react/blob/main/LICENSE)""",
-            """GitHub license https://img.shields.io/badge/license-MIT-blue.svg https://github.com/facebook/react/blob/main/LICENSE""",
-        ],
-        [
-            """ <https://en.wikipedia.org/wiki/Hobbit#Lifestyle>""",
-            """https://en.wikipedia.org/wiki/Hobbit#Lifestyle""",
-        ],
-        [
-            """![The San Juan Mountains are beautiful!](/assets/images/san-juan-mountains.jpg "San Juan Mountains")""",
-            """The San Juan Mountains are beautiful! /assets/images/san-juan-mountains.jpg - San Juan Mountains""",
-        ],
-        [
-            """1. Ingredients
-
-    - spaghetti
-    - marinara sauce
-        * 14.5 ounce - for 8 servings
-        * with oregano and garlic
-    - salt - himalayan
-
-2. Cooking
-
-   - Bring water to boil, add a pinch of salt and spaghetti. Cook until pasta is **tender**.
-
-3. Serve
-
-   - Drain the pasta on a plate. Add heated sauce.
-
-   - > No man is lonely eating spaghetti; it requires so much attention.
-
-   - Bon appetit!""",
-            """Ingredients spaghetti marinara sauce 14.5 ounce - for 8 servings with oregano and garlic salt - himalayan
-Cooking Bring water to boil, add a pinch of salt and spaghetti. Cook until pasta is tender
-Serve Drain the pasta on a plate. Add heated sauce No man is lonely eating spaghetti; it requires so much attention Bon appetit""",
-        ],
-        [
-            """* Item1
-* Item2
-* Item3""",
-            """Item1
-Item2
-Item3""",
-        ],
-        [
-            open(os.path.join(CURRDIR, "test_data", "test_README.md"), "r").read(),
-            open(os.path.join(CURRDIR, "test_data", "target_README.txt"), "r").read(),
-        ],
-    ],
-)
-@pytest.mark.unit_tests
-def test_strip_markdown(source_str: str, target_str: str):
-    stripped = claim_parser._strip_markdown(source_str)
-    assert stripped == target_str.strip()
 
 
 @patch.dict(

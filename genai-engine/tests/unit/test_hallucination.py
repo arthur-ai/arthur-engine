@@ -25,6 +25,14 @@ CLAIM_REQUEST = ScoreRequest(
     llm_response="Isaac Newton built on the principles put forth by Galileo when formulating the laws of gravity.",
 )
 
+SIMPLE_NUMERIC_CLAIM_REQUEST = ScoreRequest(
+    rule_type=RuleType.MODEL_HALLUCINATION_V2,
+    context="What's 1x1 equal?",
+    llm_response="1.",
+)
+
+CLAIM_REQUESTS = [CLAIM_REQUEST, SIMPLE_NUMERIC_CLAIM_REQUEST]
+
 DIALOG_REQUEST = ScoreRequest(
     rule_type=RuleType.MODEL_HALLUCINATION_V2,
     context="Some context",
@@ -58,10 +66,11 @@ def test_all_claims_valid_v2(
     mock_llm_chain().invoke.return_value = AIMessage("0")
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
-    score = scorer.score(CLAIM_REQUEST)
-
-    assert score.result is RuleResultEnum.PASS
-    assert constants.HALLUCINATION_CLAIMS_VALID_MESSAGE in score.details.message
+    
+    for request in CLAIM_REQUESTS:
+        score = scorer.score(request)
+        assert score.result is RuleResultEnum.PASS
+        assert constants.HALLUCINATION_CLAIMS_VALID_MESSAGE in score.details.message
 
 
 @patch("langchain_core.runnables.base.RunnableSequence")
