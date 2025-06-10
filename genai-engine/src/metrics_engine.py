@@ -3,12 +3,13 @@ import logging
 import re
 import time
 from typing import List, Optional
+import uuid
 
 from dotenv import load_dotenv
 from opentelemetry import trace
-from schemas.enums import MetricType
 from schemas.internal_schemas import Metric
-from schemas.metric_schemas import MetricRequest, MetricResult, MetricScore
+from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import MetricResult
 from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import METRIC_FAILURE_COUNTER
@@ -46,6 +47,7 @@ class MetricsEngine:
     ) -> List[MetricResult]:
         if not metrics:
             return []
+        logger.info(f"Metric Request: {request.model_dump_json()}")
         metric_results = self.run_metrics(request, metrics)
         return metric_results
 
@@ -66,22 +68,22 @@ class MetricsEngine:
             exc = future.exception()
             if exc is not None:
                 logger.error(
-                    "Metric evaluation failed. Metric ID: %s, Metric config: %s"
-                    % (metric.id, metric.model_dump_json()),
+                    "Metric evaluation failed. Metric: %s"
+                    % (metric.model_dump_json()),
                 )
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
                 METRIC_FAILURE_COUNTER.add(1)
                 metric_results.append(
                     MetricResult(
-                        id=metric.id,
-                        metric_score_result=MetricScore(
-                            metric=metric.metric_type,
-                            metric_details=None,
-                            prompt_tokens=0,
-                            completion_tokens=0,
-                        ),
+                        id=str(uuid.uuid4()),
+                        metric_type=metric.type,
+                        details=None,
+                        prompt_tokens=0,
+                        completion_tokens=0,
                         latency_ms=0,
+                        span_id=None,
+                        metric_id=None,
                     ),
                 )
             else:
@@ -90,20 +92,19 @@ class MetricsEngine:
 
     def run_metric(self, request: MetricRequest, metric: Metric):
         start_time = time.time()
-        
         try:
-            logger.debug(f"Running metric {metric.metric_type}")
+            logger.debug(f"Running metric {metric.type}")
             score = self.scorer_client.score_metric(request, metric)
             logger.debug(f"Score: {score}")
         except Exception as e:
-            logger.error(f"Error scoring metric {metric.metric_type}: {str(e)}")
+            logger.error(f"Error scoring metric {metric.type}: {str(e)}")
             raise e
             
         end_time = time.time()
         
-        return MetricResult(
-            id=metric.id,
-            metric_score_result=score,
-            latency_ms=int((end_time - start_time) * 1000)
-        )
+        # Update the score with the correct id and latency
+        score.id = str(uuid.uuid4())
+        score.latency_ms = int((end_time - start_time) * 1000)
+        
+        return score
 

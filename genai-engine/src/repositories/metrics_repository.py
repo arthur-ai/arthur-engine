@@ -23,8 +23,8 @@ class MetricRepository:
         if not database_metric:
             raise ValueError(f"Metric with id {metric_id} not found")
 
-        database_metric.metric_name = metric.metric_name
-        database_metric.metric_metadata = metric.metric_metadata
+        database_metric.name = metric.name
+        database_metric.metadata = metric.metadata
 
         self.db_session.commit()
         return Metric._from_database_model(database_metric)

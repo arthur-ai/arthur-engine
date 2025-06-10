@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
-from schemas.enums import MetricType, ToolClassEnum
+from schemas.enums import ToolClassEnum
 
 
 class RelevanceMetricConfig(BaseModel):
@@ -33,7 +33,6 @@ class ToolSelectionCorrectnessMetric(BaseModel):
     tool_usage_reason: str
 
 
-
 class MetricScoreDetails(BaseModel):
     query_relevance: Optional[QueryRelevanceMetric] = None
     response_relevance: Optional[ResponseRelevanceMetric] = None
@@ -41,11 +40,6 @@ class MetricScoreDetails(BaseModel):
     persona_alignment: Optional[float] = None
     tool_selection: Optional[ToolSelectionCorrectnessMetric] = None
 
-class MetricScore(BaseModel):
-    metric: MetricType
-    metric_details: Optional[MetricScoreDetails] = None
-    prompt_tokens: int
-    completion_tokens: int
 
 class MetricRequest(BaseModel):
     system_prompt: Optional[str] = Field(
@@ -85,8 +79,3 @@ class MetricRequest(BaseModel):
         description="Response to be used by GenAI Engine for computing metrics.",
         default=None,
     )
-
-class MetricResult(BaseModel):
-    id: str
-    metric_score_result: Optional[MetricScore] = None
-    latency_ms: int

@@ -3,7 +3,8 @@ import json
 from schemas.enums import RuleType, MetricType
 from schemas.internal_schemas import Metric
 from schemas.scorer_schemas import RuleScore, ScoreRequest
-from schemas.metric_schemas import MetricScore, MetricRequest
+from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import MetricResult
 from scorer.scorer import RuleScorer, MetricScorer
 
 
@@ -26,7 +27,7 @@ class ScorerClient:
 
         return scorer_obj.score(score_request)
 
-    def score_metric(self, metric_request: MetricRequest, metric: Metric) -> MetricScore:
+    def score_metric(self, metric_request: MetricRequest, metric: Metric) -> MetricResult:
         """Scores any request with the provided metric
 
         :param metric_request: metric request object
@@ -34,10 +35,10 @@ class ScorerClient:
         Returns: metric score
         """
         try:
-            scorer_obj = self.NAME_VERSION_MAPPING[metric.metric_type]
+            scorer_obj = self.NAME_VERSION_MAPPING[metric.type]
         except KeyError:
             raise ValueError(
-                f"Metric type {metric.metric_type} does not have a scorer",
+                f"Metric type {metric.type} does not have a scorer",
             )
-        config = json.loads(metric.metric_config) if metric.metric_config else {}
+        config = json.loads(metric.config) if metric.config else {}
         return scorer_obj.score(metric_request, config)

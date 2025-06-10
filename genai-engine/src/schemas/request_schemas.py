@@ -409,11 +409,11 @@ class ChatDefaultTaskRequest(BaseModel):
 
 
 class NewMetricRequest(BaseModel):
-    metric_type: MetricType = Field(
+    type: MetricType = Field(
         description="Type of the metric. It can only be one of QueryRelevance, ResponseRelevance, ToolSelection",
         examples=["UserQueryRelevance"],
     )
-    metric_name: str = Field(description="Name of metric", examples=["My User Query Relevance"])
+    name: str = Field(description="Name of metric", examples=["My User Query Relevance"])
     metric_metadata: str = Field(description="Additional metadata for the metric")
     config: Optional[RelevanceMetricConfig] = Field(
         description="Configuration for the metric. Currently only applies to UserQueryRelevance and ResponseRelevance metric types.",
@@ -423,13 +423,13 @@ class NewMetricRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example1": {
-                "metric_type": "QueryRelevance",
-                "metric_name": "My User Query Relevance",
+                "type": "QueryRelevance",
+                "name": "My User Query Relevance",
                 "metric_metadata": "This is a test metric metadata"
             },
             "example2": {
-                "metric_type": "QueryRelevance",
-                "metric_name": "My User Query Relevance with Config",
+                "type": "QueryRelevance",
+                "name": "My User Query Relevance with Config",
                 "metric_metadata": "This is a test metric metadata",
                 "config": {
                     "relevance_threshold": 0.8,
@@ -437,8 +437,8 @@ class NewMetricRequest(BaseModel):
                 }
             },
             "example3": {
-                "metric_type": "ResponseRelevance",
-                "metric_name": "My Response Relevance",
+                "type": "ResponseRelevance",
+                "name": "My Response Relevance",
                 "metric_metadata": "This is a test metric metadata",
                 "config": {
                     "use_llm_judge": True
@@ -447,7 +447,7 @@ class NewMetricRequest(BaseModel):
         }
     )
 
-    @field_validator("metric_type")
+    @field_validator("type")
     def validate_metric_type(cls, value):
         if value not in MetricType:
             raise ValueError(f"Invalid metric type: {value}. Valid types are: {', '.join([t.value for t in MetricType])}")
@@ -458,7 +458,7 @@ class NewMetricRequest(BaseModel):
         if not isinstance(values, dict):
             return values
             
-        metric_type = values.get("metric_type")
+        metric_type = values.get("type")
         config_values = values.get("config")
         
         # Map metric types to their corresponding config classes

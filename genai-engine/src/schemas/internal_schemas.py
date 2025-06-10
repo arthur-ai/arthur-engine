@@ -26,6 +26,7 @@ from schemas.enums import (
     RuleScoringMethod,
     RuleType,
     ToxicityViolationType,
+    MetricType,
 )
 from schemas.request_schemas import NewRuleRequest, NewTaskRequest, NewMetricRequest
 from schemas.response_schemas import (
@@ -65,6 +66,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
+from schemas.metric_schemas import MetricScoreDetails
 
 from utils import constants
 
@@ -95,6 +97,7 @@ from db_models.db_models import (
     DatabaseUser,
     DatabaseMetric,
     DatabaseTaskToMetrics,
+    DatabaseMetricResult,
 )
 
 tracer = trace.get_tracer(__name__)
@@ -270,10 +273,10 @@ class Metric(BaseModel):
     id: str
     created_at: datetime
     updated_at: datetime
-    metric_type: str
-    metric_name: str
-    metric_metadata: str
-    metric_config: Optional[str] = None  # JSON-serialized config
+    type: MetricType
+    name: str
+    metric_metadata: Optional[str] = None
+    config: Optional[str] = None  # JSON-serialized config
 
     @staticmethod
     def _from_request_model(request: NewMetricRequest) -> "Metric":
@@ -285,10 +288,10 @@ class Metric(BaseModel):
             id=str(uuid.uuid4()),
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            metric_type=request.metric_type,
-            metric_name=request.metric_name,
+            type=request.type,
+            name=request.name,
             metric_metadata=request.metric_metadata,
-            metric_config=config_json,
+            config=config_json,
         )
     
     @staticmethod
@@ -297,10 +300,10 @@ class Metric(BaseModel):
             id=x.id,
             created_at=x.created_at,
             updated_at=x.updated_at,
-            metric_type=x.metric_type,
-            metric_name=x.metric_name,
+            type=x.type,
+            name=x.name,
             metric_metadata=x.metric_metadata,
-            metric_config=x.metric_config,
+            config=x.config,
         )
     
     def _to_database_model(self) -> DatabaseMetric:
@@ -308,10 +311,10 @@ class Metric(BaseModel):
             id=self.id,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            metric_type=self.metric_type,
-            metric_name=self.metric_name,
+            type=self.type,
+            name=self.name,
             metric_metadata=self.metric_metadata,
-            metric_config=self.metric_config,
+            config=self.config,
         )
     
     def _to_response_model(self) -> MetricResponse:
@@ -319,10 +322,59 @@ class Metric(BaseModel):
             id=self.id,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            metric_type=self.metric_type,
-            metric_name=self.metric_name,
+            type=self.type,
+            name=self.name,
             metric_metadata=self.metric_metadata,
-            config=self.metric_config,
+            config=self.config,
+        )
+
+
+class MetricResult(BaseModel):
+    id: str
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    metric_type: MetricType
+    details: Optional[MetricScoreDetails] = None
+    prompt_tokens: int
+    completion_tokens: int
+    latency_ms: int
+    span_id: Optional[str] = None
+    metric_id: Optional[str] = None
+
+    
+    @staticmethod
+    def _from_database_model(x: DatabaseMetricResult):
+        return MetricResult(
+            id=x.id,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+            metric_type=x.metric_type,
+            details=MetricScoreDetails.model_validate_json(x.details) if x.details else None,
+            prompt_tokens=x.prompt_tokens,
+            completion_tokens=x.completion_tokens,
+            latency_ms=x.latency_ms,
+            span_id=x.span_id,
+            metric_id=x.metric_id,
+        )
+    
+    def _to_database_model(self) -> DatabaseMetricResult:
+        if self.span_id is None or self.metric_id is None:
+            raise ValueError("span_id and metric_id must be set before converting to database model")
+            
+        details_json = None
+        if self.details:
+            details_json = self.details.model_dump_json()
+        return DatabaseMetricResult(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_type=self.metric_type,
+            details=details_json,
+            prompt_tokens=self.prompt_tokens,
+            completion_tokens=self.completion_tokens,
+            latency_ms=self.latency_ms,
+            span_id=self.span_id,
+            metric_id=self.metric_id,
         )
 
 

@@ -1,7 +1,8 @@
 import abc
 from typing import Any, Callable
 
-from schemas.metric_schemas import MetricRequest, MetricScore
+from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import MetricResult
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 
 
@@ -26,5 +27,5 @@ class RuleScorer(abc.ABC):
 class MetricScorer(abc.ABC):
     @abc.abstractmethod
     @validate_request_decorator
-    def score(self, request: MetricRequest) -> MetricScore:
+    def score(self, request: MetricRequest, config: dict) -> MetricResult:
         pass

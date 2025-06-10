@@ -23,9 +23,9 @@ def extract_span_features(span_dict):
         llm_data = extract_llm_data(attributes)
 
         # Format to expected output
-        system_prompt=None
-        query=None
-        response=None
+        system_prompt=""
+        query=""
+        response=""
     
         for message in llm_data["input_conversation"]:
             if message["role"] == "system" and not system_prompt:
@@ -34,8 +34,11 @@ def extract_span_features(span_dict):
                 # Get the latest user query
                 query = message["content"]
         
-        response = llm_data["output_conversation"][0]
-        context = llm_data["input_conversation"]
+        if llm_data["output_conversation"]:
+            response = llm_data["output_conversation"][0]
+        else:
+            response = ""
+        context = llm_data["input_conversation"] if llm_data["input_conversation"] else []
         
         if not query:
             logger.warning("No query found in the span. Attempting to fuzzy extract query from system prompt.")

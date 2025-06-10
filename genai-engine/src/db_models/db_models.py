@@ -471,13 +471,10 @@ class DatabaseMetric(Base, IsArchivable):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
-    metric_type: Mapped[str] = mapped_column(String)
-    metric_name: Mapped[str] = mapped_column(String)
+    type: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
     metric_metadata: Mapped[str] = mapped_column(String)
-    metric_config: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    # metric_config: Mapped[DatabaseMetricConfig] = relationship(
-    #     lazy="joined",
-    # )
+    config: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 class DatabaseTaskToMetrics(Base):
@@ -497,3 +494,17 @@ class DatabaseTaskToMetrics(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     task: Mapped["DatabaseTask"] = relationship(back_populates="metric_links")
     metric: Mapped["DatabaseMetric"] = relationship(lazy="joined")
+
+
+class DatabaseMetricResult(Base):
+    __tablename__ = "metric_results"
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    metric_type: Mapped[str] = mapped_column(String, nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # JSON-serialized MetricScoreDetails
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    span_id: Mapped[str] = mapped_column(String, ForeignKey("spans.id"), nullable=False, index=True)
+    metric_id: Mapped[str] = mapped_column(String, ForeignKey("metrics.id"), nullable=False, index=True)

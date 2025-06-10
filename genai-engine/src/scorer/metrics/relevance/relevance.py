@@ -5,19 +5,17 @@ from abc import ABC, abstractmethod
 
 import torch
 from bert_score import BERTScorer
-from langchain_core.runnables import RunnableSequence
 from langchain.prompts import PromptTemplate
-from langchain.schema import HumanMessage
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
 from schemas.enums import MetricType
 from schemas.metric_schemas import (
     MetricRequest,
-    MetricScore,
     MetricScoreDetails,
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
+from schemas.internal_schemas import MetricResult
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_PROMPT_TEMPLATE,
@@ -122,7 +120,7 @@ class UserQueryRelevanceScorer(MetricScorer):
         self.relevance_chain = get_query_relevance_chain()
         self.bert_scorer = QueryBertScorer()
 
-    def score(self, request: MetricRequest, config: dict) -> MetricScore:
+    def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
         use_llm_judge = config.get("use_llm_judge", False)
         query = request.user_query
@@ -130,12 +128,12 @@ class UserQueryRelevanceScorer(MetricScorer):
         # truncate the query and system prompt to 200 words
         # query = ' '.join(query.split()[:200])
         # system_prompt = ' '.join(system_prompt.split()[:200])
-
+        
         relevance_pair = {"text": system_prompt, "text_pair": query}
         res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
         metric_score = self.bert_scorer.score(request)
-        bert_f_score = metric_score.metric_details.query_relevance.bert_f_score
+        bert_f_score = metric_score.details.query_relevance.bert_f_score
 
         if use_llm_judge:
             chain_call = lambda: self.relevance_chain.invoke(
@@ -153,9 +151,10 @@ class UserQueryRelevanceScorer(MetricScorer):
                 return handle_llm_exception(e)
 
             
-            return MetricScore(
-                metric=MetricType.QUERY_RELEVANCE,
-                metric_details=MetricScoreDetails(
+            return MetricResult(
+                id="", # This will be set by the calling code
+                metric_type=MetricType.QUERY_RELEVANCE,
+                details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
                         bert_f_score=bert_f_score,
                         reranker_relevance_score=relevance_score,
@@ -166,11 +165,13 @@ class UserQueryRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,
                 completion_tokens=token_consumption.completion_tokens,
+                latency_ms=0, # This will be set by the calling code
             )
         else:
-            return MetricScore(
-                metric=MetricType.QUERY_RELEVANCE,
-                metric_details=MetricScoreDetails(
+            return MetricResult(
+                id="", # This will be set by the calling code
+                metric_type=MetricType.QUERY_RELEVANCE,
+                details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
                         bert_f_score=bert_f_score,
                         reranker_relevance_score=relevance_score,
@@ -181,6 +182,7 @@ class UserQueryRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=0,
                 completion_tokens=0,
+                latency_ms=0, # This will be set by the calling code
             )
 
     @staticmethod
@@ -195,7 +197,7 @@ class ResponseRelevanceScorer(MetricScorer):
         self.relevance_chain = get_response_relevance_chain()
         self.bert_scorer = ResponseBertScorer()
 
-    def score(self, request: MetricRequest, config: dict) -> MetricScore:
+    def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
         use_llm_judge = config.get("use_llm_judge", False)
         query = request.user_query
@@ -211,7 +213,7 @@ class ResponseRelevanceScorer(MetricScorer):
         relevance_score = res["score"]
 
         metric_score = self.bert_scorer.score(request)
-        bert_f_score = metric_score.metric_details.response_relevance.bert_f_score
+        bert_f_score = metric_score.details.response_relevance.bert_f_score
 
         if use_llm_judge:
             chain_call = lambda: self.relevance_chain.invoke(
@@ -229,9 +231,10 @@ class ResponseRelevanceScorer(MetricScorer):
             except Exception as e:
                 return handle_llm_exception(e)
 
-            return MetricScore(
-                metric=MetricType.RESPONSE_RELEVANCE,
-                metric_details=MetricScoreDetails(
+            return MetricResult(
+                id="", # This will be set by the calling code
+                metric_type=MetricType.RESPONSE_RELEVANCE,
+                details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
                         bert_f_score=bert_f_score,
                         reranker_relevance_score=relevance_score,
@@ -242,11 +245,13 @@ class ResponseRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,
                 completion_tokens=token_consumption.completion_tokens,
+                latency_ms=0, # This will be set by the calling code
             )
         else:
-            return MetricScore(
-                metric=MetricType.RESPONSE_RELEVANCE,
-                metric_details=MetricScoreDetails(
+            return MetricResult(
+                id="", # This will be set by the calling code
+                metric_type=MetricType.RESPONSE_RELEVANCE,
+                details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
                         bert_f_score=bert_f_score,
                         reranker_relevance_score=relevance_score,
@@ -257,6 +262,7 @@ class ResponseRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=0,
                 completion_tokens=0,
+                latency_ms=0, # This will be set by the calling code
             )
 
     @staticmethod
@@ -280,7 +286,7 @@ class BertRelevanceScorer(MetricScorer, ABC):
         self,
         candidate_batch: list[str],
         ground_truth_batch: list[str],
-    ) -> MetricScore:
+    ) -> MetricResult:
         """
         Scores the candidate batch against the system batch using the BERTScorer.
         """
@@ -294,11 +300,13 @@ class BertRelevanceScorer(MetricScorer, ABC):
         # Calculate the average F1 score (should always be 1 value)
         f_scores = f.mean(dim=0)
 
-        return MetricScore(
-            metric=self.get_metric_type(),
-            metric_details=self.create_metric_details(f_scores),
+        return MetricResult(
+            id="", # This will be set by the calling code
+            metric_type=self.get_metric_type(),
+            details=self.create_metric_details(f_scores),
             prompt_tokens=0,
             completion_tokens=0,
+            latency_ms=0, # This will be set by the calling code
         )
 
 
@@ -317,7 +325,7 @@ class QueryBertScorer(BertRelevanceScorer):
     def get_metric_type(self) -> MetricType:
         return MetricType.QUERY_RELEVANCE
 
-    def score(self, request: MetricRequest) -> MetricScore:
+    def score(self, request: MetricRequest) -> MetricResult:
         candidate_batch = [request.user_query]
         ground_truth_batch = [request.system_prompt]
         return super().score(candidate_batch, ground_truth_batch)
@@ -338,7 +346,7 @@ class ResponseBertScorer(BertRelevanceScorer):
     def get_metric_type(self) -> MetricType:
         return MetricType.RESPONSE_RELEVANCE
 
-    def score(self, request: MetricRequest) -> MetricScore:
+    def score(self, request: MetricRequest) -> MetricResult:
         candidate_batch = [request.response]
         ground_truth_batch = [request.system_prompt]
         return super().score(candidate_batch, ground_truth_batch)
