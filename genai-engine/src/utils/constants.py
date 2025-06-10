@@ -132,7 +132,7 @@ REGEX_MATCHES_MESSAGE = "Regex match in text."
 GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH = 12
 GENAI_ENGINE_KEYCLOAK_PASSWORD_POLICY = f"length({GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH}) and specialChars(1) and upperCase(1) and lowerCase(1)"
 ERROR_PASSWORD_POLICY_NOT_MET = f"Password should be at least {GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH} characters and contain at least one special character, lowercase character, and uppercase character."
-
+ERROR_DEFAULT_METRICS_ENGINE = "This metric could not be evaluated"
 ##################################################################
 # Headers
 RESPONSE_TRACE_ID_HEADER = "x-trace-id"

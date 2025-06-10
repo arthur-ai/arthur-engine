@@ -1,18 +1,22 @@
-import base64
 import json
 import logging
 import uuid
 from datetime import datetime
+from typing import List
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import DatabaseSpan, DatabaseMetricResult
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from repositories.metrics_repository import MetricRepository
+from dependencies import get_metrics_engine
 from schemas.enums import PaginationSortMethod
-from schemas.internal_schemas import Span
+from schemas.internal_schemas import Span, MetricResult
+from schemas.metric_schemas import MetricRequest    
 from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.orm import Session
 from utils import trace as trace_utils
@@ -21,8 +25,10 @@ tracer = trace.get_tracer(__name__)
 
 
 class SpanRepository:
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: Session, tasks_metrics_repo: TasksMetricsRepository, metrics_repo: MetricRepository):
         self.db_session = db_session
+        self.tasks_metrics_repo = tasks_metrics_repo
+        self.metrics_repo = metrics_repo
 
     @tracer.start_as_current_span("store_traces")
     def create_traces(self, trace_data: bytes):
@@ -67,6 +73,10 @@ class SpanRepository:
             if spans_data:
                 # Perform bulk insert using SQLAlchemy core
                 self.store_spans(spans_data)
+
+                # Compute metrics for each span
+                metrics_results = self.compute_metrics(spans_data)
+                self.store_metrics(metrics_results)
 
             return (
                 total_spans,
@@ -118,6 +128,99 @@ class SpanRepository:
         self.db_session.execute(stmt)
         self.db_session.commit()
         logger.debug(f"Stored {len(spans)} spans")
+
+
+    def compute_metrics(self, spans_data: list[dict]):
+        """
+        Compute metrics for a span
+        """
+        metrics_engine = get_metrics_engine()
+        metrics_results = {}
+        for span_data in spans_data:
+            task_id = span_data["task_id"]
+            s_id = span_data["id"]
+            span: MetricRequest = self.process_span(span_data)
+            metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(task_id)
+            metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
+            
+            # Get results and track which metric generated each result
+            results = metrics_engine.evaluate(span, metrics)
+            # Store results with metric mapping and set span_id and metric_id
+            metrics_results[s_id] = []
+            for i, result in enumerate(results):
+                # Assuming results are returned in the same order as metrics
+                if i < len(metrics):
+                    metric_id = metrics[i].id
+                    # Set the span_id and metric_id on the result
+                    result.span_id = s_id
+                    result.metric_id = metric_id
+                    metrics_results[s_id].append({
+                        'result': result,
+                        'metric_id': metric_id
+                    })
+            
+            logger.debug(f"Metrics results for span {s_id}:")
+            logger.debug(metrics_results[s_id])
+        return metrics_results
+
+
+    def store_metrics(self, metrics_results: dict):
+        """
+        Store metrics in the database
+        """
+        # Collect all metric results to store
+        metric_results_to_insert = []
+        
+        for span_id, result_mappings in metrics_results.items():
+            for result_mapping in result_mappings:
+                result = result_mapping['result']
+                metric_id = result_mapping['metric_id']
+                
+                # Prepare metric result for bulk insert
+                metric_results_to_insert.append({
+                    'id': result.id,
+                    'created_at': result.created_at,
+                    'updated_at': result.updated_at,
+                    'metric_type': result.metric_type.value,
+                    'details': result.details.model_dump_json() if result.details else None,
+                    'prompt_tokens': result.prompt_tokens,
+                    'completion_tokens': result.completion_tokens,
+                    'latency_ms': result.latency_ms,
+                    'span_id': span_id,
+                    'metric_id': metric_id,
+                })
+        
+        # Bulk insert metric results
+        if metric_results_to_insert:
+            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
+            self.db_session.execute(stmt)
+            
+        self.db_session.commit()
+        logger.debug(f"Stored {len(metric_results_to_insert)} metric results")
+
+    def process_span(self, span_data: dict):
+        """
+        Process a span
+        """
+        span_data = trace_utils.extract_span_features(span_data["raw_data"])
+
+        context = span_data["context"]
+
+        if "content" in span_data["response"]:
+            response = span_data["response"]["content"]
+        elif "tool_calls" in span_data["response"]:
+            # Handle case where response is a tool call
+            response = json.dumps(span_data["response"]["tool_calls"])
+        else:
+            response = json.dumps(span_data["response"])
+        
+        return MetricRequest(
+            system_prompt=span_data["system_prompt"],
+            user_query=span_data["user_query"],
+            context=context,
+            response=response,
+        )
+    
 
     
     def _build_spans_query(

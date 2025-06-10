@@ -2,6 +2,9 @@ import logging
 import os
 from typing import Generator
 
+# Disable tokenizers parallelism to avoid fork warnings in threaded environments
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.jwk_client import JWKClient
@@ -19,7 +22,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from repositories.configuration_repository import ConfigurationRepository
-from schemas.enums import DocumentStorageEnvironment, RuleType
+from schemas.enums import DocumentStorageEnvironment, RuleType, MetricType
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
@@ -32,7 +35,11 @@ from scorer import (
     RegexScorer,
     SensitiveDataCustomExamples,
     ToxicityScorer,
+    UserQueryRelevanceScorer,
+    ResponseRelevanceScorer,
+    ToolSelectionCorrectnessScorer,
 )
+from metrics_engine import MetricsEngine
 from scorer.score import ScorerClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -57,6 +64,7 @@ SINGLETON_GRADER_LLM = None
 SINGLETON_INFERENCE_REPOSITORY = None
 SINGLETON_DB_ENGINE = None
 SINGLETON_SCORER_CLIENT = None
+SINGLETON_METRICS_ENGINE = None
 SINGLETON_JWK_CLIENT = None
 SINGLETON_OAUTH_CLIENT = None
 API_KEY_CACHE = None
@@ -150,9 +158,20 @@ def get_scorer_client():
                     harmful_request_model=None,
                     harmful_request_tokenizer=None,
                 ),
+                MetricType.QUERY_RELEVANCE: UserQueryRelevanceScorer(),
+                MetricType.RESPONSE_RELEVANCE: ResponseRelevanceScorer(),
+                MetricType.TOOL_SELECTION: ToolSelectionCorrectnessScorer(),
             },
         )
     return SINGLETON_SCORER_CLIENT
+
+
+def get_metrics_engine():
+    global SINGLETON_METRICS_ENGINE
+    if not SINGLETON_METRICS_ENGINE:
+        scorer_client = get_scorer_client()
+        SINGLETON_METRICS_ENGINE = MetricsEngine(scorer_client)
+    return SINGLETON_METRICS_ENGINE
 
 
 def get_jwk_client():
