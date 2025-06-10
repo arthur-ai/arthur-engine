@@ -6,10 +6,10 @@ from schemas.common_schemas import LLMTokenConsumption
 from schemas.enums import MetricType, ToolClassEnum
 from schemas.metric_schemas import (
     MetricRequest,
-    MetricScore,
     MetricScoreDetails,
     ToolSelectionCorrectnessMetric,
 )
+from schemas.internal_schemas import MetricResult
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_SELECTION_PROMPT_TEMPLATE,
@@ -147,7 +147,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
 
         return tool_response, total_tokens
 
-    def score(self, request: MetricRequest, config: dict) -> MetricScore:
+    def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores tool selection and tool use by the assistant in relevance to the user's query"""
         # Config is not used in this scorer
         _ = config
@@ -165,9 +165,10 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         tool_selection_enum = ToolClassEnum(tool_response["tool_selection"])
         tool_usage_enum = ToolClassEnum(tool_response["tool_usage"])
 
-        return MetricScore(
-            metric=MetricType.TOOL_SELECTION,
-            metric_details=MetricScoreDetails(
+        return MetricResult(
+            id="", # This will be set by the calling code
+            metric_type=MetricType.TOOL_SELECTION,
+            details=MetricScoreDetails(
                 tool_selection=ToolSelectionCorrectnessMetric(
                     tool_selection=tool_selection_enum,
                     tool_selection_reason=tool_response["tool_selection_reason"],
@@ -177,4 +178,5 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             ),
             prompt_tokens=total_tokens["prompt_tokens"],
             completion_tokens=total_tokens["completion_tokens"],
+            latency_ms=0, # This will be set by the calling code
         ) 

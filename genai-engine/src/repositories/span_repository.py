@@ -2,8 +2,9 @@ import json
 import logging
 import uuid
 from datetime import datetime
+from typing import List
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import DatabaseSpan, DatabaseMetricResult
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
@@ -14,8 +15,8 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.metrics_repository import MetricRepository
 from dependencies import get_metrics_engine
 from schemas.enums import PaginationSortMethod
-from schemas.internal_schemas import Span
-from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import Span, MetricResult
+from schemas.metric_schemas import MetricRequest    
 from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.orm import Session
 from utils import trace as trace_utils
@@ -141,7 +142,23 @@ class SpanRepository:
             span: MetricRequest = self.process_span(span_data)
             metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(task_id)
             metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
-            metrics_results[s_id] = metrics_engine.evaluate(span, metrics)
+            
+            # Get results and track which metric generated each result
+            results = metrics_engine.evaluate(span, metrics)
+            # Store results with metric mapping and set span_id and metric_id
+            metrics_results[s_id] = []
+            for i, result in enumerate(results):
+                # Assuming results are returned in the same order as metrics
+                if i < len(metrics):
+                    metric_id = metrics[i].id
+                    # Set the span_id and metric_id on the result
+                    result.span_id = s_id
+                    result.metric_id = metric_id
+                    metrics_results[s_id].append({
+                        'result': result,
+                        'metric_id': metric_id
+                    })
+            
             logger.debug(f"Metrics results for span {s_id}:")
             logger.debug(metrics_results[s_id])
         return metrics_results
@@ -151,11 +168,35 @@ class SpanRepository:
         """
         Store metrics in the database
         """
-        # TODO: Implement this
-        # stmt = insert(DatabaseMetricResult).values(metrics_results)
-        # self.db_session.execute(stmt)
-        # self.db_session.commit()
-        pass
+        # Collect all metric results to store
+        metric_results_to_insert = []
+        
+        for span_id, result_mappings in metrics_results.items():
+            for result_mapping in result_mappings:
+                result = result_mapping['result']
+                metric_id = result_mapping['metric_id']
+                
+                # Prepare metric result for bulk insert
+                metric_results_to_insert.append({
+                    'id': result.id,
+                    'created_at': result.created_at,
+                    'updated_at': result.updated_at,
+                    'metric_type': result.metric_type.value,
+                    'details': result.details.model_dump_json() if result.details else None,
+                    'prompt_tokens': result.prompt_tokens,
+                    'completion_tokens': result.completion_tokens,
+                    'latency_ms': result.latency_ms,
+                    'span_id': span_id,
+                    'metric_id': metric_id,
+                })
+        
+        # Bulk insert metric results
+        if metric_results_to_insert:
+            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
+            self.db_session.execute(stmt)
+            
+        self.db_session.commit()
+        logger.debug(f"Stored {len(metric_results_to_insert)} metric results")
 
     def process_span(self, span_data: dict):
         """

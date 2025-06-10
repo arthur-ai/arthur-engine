@@ -1,5 +1,9 @@
 from logging import getLogger
 from multiprocessing import Pool
+import os
+
+# Disable tokenizers parallelism to avoid fork warnings in threaded environments
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer

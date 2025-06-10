@@ -2,6 +2,9 @@ import logging
 import os
 from typing import Generator
 
+# Disable tokenizers parallelism to avoid fork warnings in threaded environments
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.jwk_client import JWKClient
@@ -19,7 +22,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from repositories.configuration_repository import ConfigurationRepository
-from schemas.enums import DocumentStorageEnvironment, RuleType
+from schemas.enums import DocumentStorageEnvironment, RuleType, MetricType
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
@@ -36,7 +39,6 @@ from scorer import (
     ResponseRelevanceScorer,
     ToolSelectionCorrectnessScorer,
 )
-from schemas.metric_schemas import MetricType
 from metrics_engine import MetricsEngine
 from scorer.score import ScorerClient
 from sqlalchemy import create_engine, text
