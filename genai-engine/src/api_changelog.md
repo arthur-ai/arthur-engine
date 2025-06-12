@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 06/11/2025
+- **CHANGE** for **URL**: /v1/spans/query  endpoint added
+- **CHANGE** for **URL**: /v1/traces  endpoint added
+
 # 03/25/2025
 - **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/eval_completion' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/usage/tokens  added the required property '/items/count/eval_prompt' to the response with the '200' status
