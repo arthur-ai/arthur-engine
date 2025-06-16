@@ -114,9 +114,9 @@ missing_ml_engine_vars() {
   return 1
 }
 
-echo "┌───────────────────────────────────────────────────┐"
-echo "│     Welcome to the Arthur GenAI Engine Setup!     │"
-echo "└───────────────────────────────────────────────────┘"
+echo "┌─────────────────────────────────────────────┐"
+echo "│     Welcome to the Arthur Engine Setup!     │"
+echo "└─────────────────────────────────────────────┘"
 
 check_docker_compose
 
