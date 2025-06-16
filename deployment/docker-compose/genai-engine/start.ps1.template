@@ -1,4 +1,4 @@
-# PowerShell Script: quick-setup-arthur-engine.ps1
+# PowerShell Script: start.ps1
 
 @"
 GENAI_ENGINE_OPENAI_PROVIDER=OpenAI
