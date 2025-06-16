@@ -68,7 +68,7 @@ class LLMExecutor:
             llm_config.GENAI_ENGINE_OPENAI_PROVIDER.value
             == GenaiEngineOpenAIProvider.AZURE.value
         )
-        self.openai_enable = (
+        self.openai_enabled = (
             llm_config.GENAI_ENGINE_OPENAI_PROVIDER.value
             == GenaiEngineOpenAIProvider.OPENAI.value
         )
@@ -125,7 +125,7 @@ class LLMExecutor:
                 temperature=chat_temperature,
                 api_version=self.api_version,
             )
-        elif self.openai_enable:
+        elif self.openai_enabled:
             if endpoint:
                 logger.info(
                     f"""
@@ -157,7 +157,7 @@ class LLMExecutor:
         
         if self.azure_openai_enabled and model.deployment_name in constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS:
             return constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.deployment_name]
-        elif self.openai_enable and model.model_name in constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS:
+        elif self.openai_enabled and model.model_name in constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS:
             return constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.model_name]
         
         return -1
@@ -173,7 +173,7 @@ class LLMExecutor:
                 azure_endpoint=endpoint,
                 openai_api_key=key,
             )
-        elif self.openai_enable:
+        elif self.openai_enabled:
             model = OpenAIEmbeddings(
                 model=model_name,
                 base_url=endpoint,
