@@ -24,6 +24,7 @@ from duckdb import DuckDBPyConnection
 )
 def test_inference_null_count(
     get_balloons_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     column_name: str,
     expected_null_count: int,
 ):
@@ -46,3 +47,18 @@ def test_inference_null_count(
     assert result.dimensions[0].name == "column_name"
     total_count = sum([point.value for point in result.values])
     assert total_count == expected_null_count
+
+    # test dataset with prompt version column
+    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    metrics = inference_null_counter.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        nullable_col="classification_gt",
+    )
+    assert len(metrics) == 1
+    assert metrics[0].name == "null_count"
+    results = metrics[0].numeric_series
+    for group in results:
+        dims = {r.name: r.value for r in group.dimensions}
+        assert "prompt_version_id" in dims

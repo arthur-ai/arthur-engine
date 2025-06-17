@@ -70,19 +70,36 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
         escaped_timestamp_col_id = escape_identifier(timestamp_col)
         escaped_numeric_col_id = escape_identifier(numeric_col)
         numeric_col_name_str = escape_str_literal(numeric_col)
-        data_query = f" \
-            select {escaped_timestamp_col_id} as ts, \
-                   {escaped_numeric_col_id}, \
-                   {numeric_col_name_str} as column_name \
-            from {dataset.dataset_table_name} \
-            where {escaped_numeric_col_id} is not null \
-        "
+        dims = ["column_name"]
+
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            data_query = f" \
+                select {escaped_timestamp_col_id} as ts, \
+                       {escaped_numeric_col_id}, \
+                       {numeric_col_name_str} as column_name, \
+                        prompt_version_id \
+                from {dataset.dataset_table_name} \
+                where {escaped_numeric_col_id} is not null \
+            "
+            dims.append("prompt_version_id")
+        else:
+            data_query = f" \
+                select {escaped_timestamp_col_id} as ts, \
+                       {escaped_numeric_col_id}, \
+                       {numeric_col_name_str} as column_name \
+                from {dataset.dataset_table_name} \
+                where {escaped_numeric_col_id} is not null \
+            "
         results = ddb_conn.sql(data_query).df()
 
         series = self.group_query_results_to_sketch_metrics(
             results,
             numeric_col,
-            ["column_name"],
+            dims,
             "ts",
         )
 

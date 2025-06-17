@@ -73,26 +73,49 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
     ) -> list[NumericMetric]:
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_pred_col = escape_identifier(prediction_col)
-        query = f"""
-            SELECT
-                time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                {escaped_pred_col} as prediction,
-                COUNT(*) as count
-            FROM {dataset.dataset_table_name}
-            GROUP BY
-                ts,
-                -- group by raw column name instead of alias in select
-                -- in case table has a column called 'prediction'
-                {escaped_pred_col}
-            ORDER BY ts
-        """
+        dims = ["prediction"]
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            query = f"""
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+                    {escaped_pred_col} as prediction,
+                    COUNT(*) as count,
+                    prompt_version_id
+                FROM {dataset.dataset_table_name}
+                GROUP BY
+                    ts,
+                    -- group by raw column name instead of alias in select
+                    -- in case table has a column called 'prediction'
+                    {escaped_pred_col},
+                    prompt_version_id
+                ORDER BY ts
+            """
+            dims.append("prompt_version_id")
+        else:
+            query = f"""
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+                    {escaped_pred_col} as prediction,
+                    COUNT(*) as count
+                FROM {dataset.dataset_table_name}
+                GROUP BY
+                    ts,
+                    -- group by raw column name instead of alias in select
+                    -- in case table has a column called 'prediction'
+                    {escaped_pred_col}
+                ORDER BY ts
+            """
 
         result = ddb_conn.sql(query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            ["prediction"],
+            dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)
@@ -180,26 +203,49 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
     ) -> list[NumericMetric]:
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
-        query = f"""
-            SELECT
-                time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
-                COUNT(*) as count
-            FROM {dataset.dataset_table_name}
-            GROUP BY
-                ts,
-                -- group by raw column name instead of alias in select
-                -- in case table has a column called 'prediction'
-                {escaped_prediction_col}
-            ORDER BY ts
-        """
+        dims = ["prediction"]
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            query = f"""
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+                    CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
+                    COUNT(*) as count,
+                    prompt_version_id
+                FROM {dataset.dataset_table_name}
+                GROUP BY
+                    ts,
+                    -- group by raw column name instead of alias in select
+                    -- in case table has a column called 'prediction'
+                    {escaped_prediction_col},
+                    prompt_version_id
+                ORDER BY ts
+            """
+            dims.append("prompt_version_id")
+        else:
+            query = f"""
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+                    CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
+                    COUNT(*) as count
+                FROM {dataset.dataset_table_name}
+                GROUP BY
+                    ts,
+                    -- group by raw column name instead of alias in select
+                    -- in case table has a column called 'prediction'
+                    {escaped_prediction_col}
+                ORDER BY ts
+            """
 
         result = ddb_conn.sql(query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            ["prediction"],
+            dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)

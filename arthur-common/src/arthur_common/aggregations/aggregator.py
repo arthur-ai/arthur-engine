@@ -43,6 +43,16 @@ class AggregationFunction(ABC):
             value = "null"
         return Dimension(name=name, value=str(value))
 
+    @staticmethod
+    def has_col_by_name(
+        ddb_conn: DuckDBPyConnection,
+        dataset_table_name: str,
+        col_name: str,
+    ) -> bool:
+        """returns true if the table has a column by the specified name"""
+        table_desc = ddb_conn.sql(f"DESCRIBE {dataset_table_name}").df()
+        return col_name in table_desc["column_name"].values
+
 
 class NumericAggregationFunction(AggregationFunction, ABC):
     def aggregation_type(self) -> Type[NumericMetric]:
@@ -73,6 +83,15 @@ class NumericAggregationFunction(AggregationFunction, ABC):
         From there, iterate over the group turning each data point to a *Point. At the end, this single instance of the group metrics
         and the list of points (values) are merged to one *TimeSeries
         """
+        if not dim_columns:
+            return [
+                NumericAggregationFunction._dimensionless_query_results_to_numeric_metrics(
+                    data,
+                    value_col,
+                    timestamp_col,
+                ),
+            ]
+
         calculated_metrics: list[NumericTimeSeries] = []
         # make sure dropna is False or rows with "null" as a dimension value will be dropped
         groups = data.groupby(dim_columns, dropna=False)
@@ -99,7 +118,7 @@ class NumericAggregationFunction(AggregationFunction, ABC):
         return calculated_metrics
 
     @staticmethod
-    def dimensionless_query_results_to_numeric_metrics(
+    def _dimensionless_query_results_to_numeric_metrics(
         data: pd.DataFrame,
         value_col: str,
         timestamp_col: str,
