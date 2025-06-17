@@ -62,9 +62,10 @@ Parameters:
     Description: 'GenAI Engine Postgres client connection poolmax overflow'
     Default: 15
   ArthurApiHost:
-    Description: 'Arthur API Host'
+    Description: 'URL for the Arthur Platform'
     Type: String
-    AllowedPattern: '.+'
+    AllowedPattern: 'https://.+'
+    Default: 'https://platform.arthur.ai'
   MLEngineClientId:
     Description: 'Client ID for the ML Engine'
     Type: String
@@ -679,7 +680,7 @@ Metadata:
       GenaiEngineCacheTaskRulesCacheTTL:
         default: 'Task rules cache TTL in seconds'
       ArthurApiHost:
-        default: 'Arthur API Host'
+        default: 'Arthur Platform URL'
       MLEngineClientId:
         default: 'ML Engine Client ID'
       MLEngineClientSecret:
