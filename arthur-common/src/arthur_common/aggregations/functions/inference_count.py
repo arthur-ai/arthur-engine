@@ -53,17 +53,33 @@ class InferenceCountAggregationFunction(NumericAggregationFunction):
         ],
     ) -> list[NumericMetric]:
         escaped_timestamp_col = escape_identifier(timestamp_col)
-        count_query = f" \
-            select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-            count(*) as count \
-            from {dataset.dataset_table_name} \
-            group by ts \
-        "
+        dims = []
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                count(*) as count, \
+                prompt_version_id \
+                from {dataset.dataset_table_name} \
+                group by ts, prompt_version_id \
+            "
+            dims.append("prompt_version_id")
+        else:
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                count(*) as count \
+                from {dataset.dataset_table_name} \
+                group by ts \
+            "
         results = ddb_conn.sql(count_query).df()
-        series = self.dimensionless_query_results_to_numeric_metrics(
+        series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
+            dims,
             "ts",
         )
-        metric = self.series_to_metric(self.METRIC_NAME, [series])
+        metric = self.series_to_metric(self.METRIC_NAME, series)
         return [metric]

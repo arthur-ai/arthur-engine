@@ -7,6 +7,7 @@ from duckdb import DuckDBPyConnection
 
 def test_multiclass_str_count_by_class(
     get_vehicle_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
 ):
     conn, dataset_ref = get_vehicle_dataset_conn
     cm_aggregator = MulticlassClassifierCountByClassAggregationFunction()
@@ -38,3 +39,13 @@ def test_multiclass_str_count_by_class(
 
         # verify sum of series matches the expected count for that label
         assert sum([v.value for v in series.values]) == expected_counts[predicted_label]
+
+    # make sure agg doesn't error with prompt version by id column
+    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    cm_aggregator = MulticlassClassifierCountByClassAggregationFunction()
+    cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="Timestamp",
+        prediction_col="classification_pred",
+    )

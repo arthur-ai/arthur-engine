@@ -79,32 +79,52 @@ class MeanSquaredErrorAggregationFunction(NumericAggregationFunction):
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_ground_truth_col = escape_identifier(ground_truth_col)
-        count_query = f" \
-            SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-            SUM(POW({escaped_prediction_col} - {escaped_ground_truth_col}, 2)) as squared_error, \
-            COUNT(*) as count \
-            FROM {dataset.dataset_table_name} \
-            WHERE {escaped_prediction_col} IS NOT NULL \
-            AND {escaped_ground_truth_col} IS NOT NULL \
-            GROUP BY ts order by ts desc \
-        "
+        dims = []
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            count_query = f" \
+                SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                SUM(POW({escaped_prediction_col} - {escaped_ground_truth_col}, 2)) as squared_error, \
+                COUNT(*) as count, \
+                prompt_version_id \
+                FROM {dataset.dataset_table_name} \
+                WHERE {escaped_prediction_col} IS NOT NULL \
+                AND {escaped_ground_truth_col} IS NOT NULL \
+                GROUP BY ts, prompt_version_id order by ts desc \
+            "
+            dims.append("prompt_version_id")
+        else:
+            count_query = f" \
+                SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                SUM(POW({escaped_prediction_col} - {escaped_ground_truth_col}, 2)) as squared_error, \
+                COUNT(*) as count \
+                FROM {dataset.dataset_table_name} \
+                WHERE {escaped_prediction_col} IS NOT NULL \
+                AND {escaped_ground_truth_col} IS NOT NULL \
+                GROUP BY ts order by ts desc \
+            "
 
         results = ddb_conn.sql(count_query).df()
-        count_series = self.dimensionless_query_results_to_numeric_metrics(
+        count_series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
+            dims,
             "ts",
         )
-        squared_error_series = self.dimensionless_query_results_to_numeric_metrics(
+        squared_error_series = self.group_query_results_to_numeric_metrics(
             results,
             "squared_error",
+            dims,
             "ts",
         )
 
-        count_metric = self.series_to_metric("squared_error_count", [count_series])
+        count_metric = self.series_to_metric("squared_error_count", count_series)
         absolute_error_metric = self.series_to_metric(
             "squared_error_sum",
-            [squared_error_series],
+            squared_error_series,
         )
 
         return [count_metric, absolute_error_metric]

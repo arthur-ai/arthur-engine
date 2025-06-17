@@ -19,6 +19,7 @@ LOW_ACCURACY_COUNTS = (9, 24991)
 )
 def test_int_bool_count_by_class(
     get_networking_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     prediction_col: str,
     true_count: int,
     false_count: int,
@@ -44,6 +45,16 @@ def test_int_bool_count_by_class(
         Dimension(name="prediction", value="True"),
     ]
 
+    # validate no error on prompt version dataset
+    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    cm_aggregator = BinaryClassifierCountByClassAggregationFunction()
+    cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        prediction_col="classification_pred",
+    )
+
 
 @pytest.mark.parametrize(
     "prediction_col,true_count,false_count",
@@ -54,6 +65,7 @@ def test_int_bool_count_by_class(
 )
 def test_prediction_threshold_count_by_class(
     get_networking_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     prediction_col: str,
     true_count: int,
     false_count: int,
@@ -99,3 +111,30 @@ def test_prediction_threshold_count_by_class(
     assert metrics[0].numeric_series[1].dimensions == [
         Dimension(name="prediction", value="yeetyeetyes"),
     ]
+
+    # validate no error on prompt version dataset
+    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    conn.sql(
+        f"""
+        ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
+    """,
+    )
+    conn.sql(
+        f"""
+        UPDATE {dataset_ref.dataset_table_name}
+        SET "classification_pred float value" = CASE
+            WHEN "classification_pred" = 'functional' THEN 0.93
+            ELSE 0.85
+        END;
+    """,
+    )
+    cm_aggregator = BinaryClassifierCountThresholdClassAggregationFunction()
+    cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        prediction_col=f"classification_pred float value",
+        threshold=0.93,
+        true_label="yes",
+        false_label="no",
+    )

@@ -67,21 +67,39 @@ class NumericSumAggregationFunction(NumericAggregationFunction):
     ) -> list[NumericMetric]:
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_numeric_col = escape_identifier(numeric_col)
-        count_query = f" \
-            select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-            sum({escaped_numeric_col}) as sum \
-            from {dataset.dataset_table_name} \
-            where {escaped_numeric_col} is not null \
-            group by ts \
-        "
+        dims = []
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                sum({escaped_numeric_col}) as sum, \
+                prompt_version_id \
+                from {dataset.dataset_table_name} \
+                where {escaped_numeric_col} is not null \
+                group by ts, prompt_version_id \
+            "
+        else:
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                sum({escaped_numeric_col}) as sum \
+                from {dataset.dataset_table_name} \
+                where {escaped_numeric_col} is not null \
+                group by ts \
+            "
         results = ddb_conn.sql(count_query).df()
 
-        series = self.dimensionless_query_results_to_numeric_metrics(
+        series = self.group_query_results_to_numeric_metrics(
             results,
             "sum",
+            dims,
             "ts",
         )
-        series.dimensions = [Dimension(name="column_name", value=numeric_col)]
+        # preserve dimension that identifies the name of the numeric column used for the aggregation
+        for point in series:
+            point.dimensions.append(Dimension(name="column_name", value=numeric_col))
 
-        metric = self.series_to_metric(self.METRIC_NAME, [series])
+        metric = self.series_to_metric(self.METRIC_NAME, series)
         return [metric]
