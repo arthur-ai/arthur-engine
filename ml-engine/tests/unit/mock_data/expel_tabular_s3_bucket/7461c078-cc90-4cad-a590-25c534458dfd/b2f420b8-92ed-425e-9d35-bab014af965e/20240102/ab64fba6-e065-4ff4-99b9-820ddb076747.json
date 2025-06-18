@@ -1,0 +1,33 @@
+{
+  "expel_alert_id": "460f05c0-b04c-4d15-b5bb-b7ac0ae2a8ff",
+  "organization_id": "3e30350b-065c-4ec0-945e-52827a26ffcb",
+  "pred_not_marketing": 0.5008529474539727,
+  "pred_marketing": 0.4991470525460273,
+  "predicted_label": "NOT_MARKETING",
+  "timestamp": "2024-01-02 05:48:26",
+  "features": {
+    "severity": "LOW",
+    "email_colorfulness": 0.266463504018143,
+    "domain_age": 19534.254158944757,
+    "has_sus_sender_domain": true,
+    "return_path_match": false,
+    "is_personal_domain_sender": true,
+    "is_bad_corp": true,
+    "count_domains": 7,
+    "count_urls": 2,
+    "subject_has_marketing": false,
+    "sender_has_marketing": false,
+    "body_count_marketing": 4,
+    "subject_count_marketing": 0,
+    "body_count_malicious": 3,
+    "unsubscribe_ind": false,
+    "has_attachments": false,
+    "has_attachment_attack_surface": false,
+    "count_attachments": 0,
+    "len_text_body": 2427,
+    "text_body_rendered": true,
+    "language": "de",
+    "count_bad_words": 9,
+    "is_phishing_sim": false
+  }
+}
