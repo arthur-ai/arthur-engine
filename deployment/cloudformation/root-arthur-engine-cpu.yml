@@ -35,7 +35,7 @@ Parameters:
     Type: String
     NoEcho: true
   OpenAIGPTModelNamesEndpointsAndKeys:
-    Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\"). The endpoint URLs must end with '/'. Many may be specified."
+    Description: "Connection strings for OpenAI GPT model endpoints. Must be in form \"DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2\". The endpoint URLs must end with '/' (e.g. https://api.openai.com/v1/). Many may be specified."
     Type: String
     NoEcho: true
     AllowedPattern: '.+'
