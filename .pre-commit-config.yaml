@@ -11,7 +11,16 @@ repos:
       - id: debug-statements
       - id: name-tests-test
         args: ["--pytest-test-first"]
-        exclude: ^(genai-engine/tests/mocks|genai-engine/tests/constants.py|genai-engine/tests/clients|arthur-common/tests/test_data/)
+        exclude: |
+          (?x)^(
+            genai-engine/tests/mocks|
+            genai-engine/tests/constants.py|
+            genai-engine/tests/clients|
+            arthur-common/tests/test_data/|
+            ml-engine/tests/unit/connectors/helpers.py|
+            ml-engine/tests/unit/mock_data/mock_data_generator.py|
+            ml-engine/tests/unit/mock_data/api_mock_helpers.py
+          )
   - repo: https://github.com/pycqa/autoflake
     rev: v2.2.1
     hooks:
@@ -73,3 +82,11 @@ repos:
         pass_filenames: false
         always_run: false
         files: ^arthur-common/src/
+      - id: ml-engine-pytest-check
+        name: "ml-engine: pytest unit tests"
+        entry: poetry -C ml-engine run pytest tests/unit
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: false
+        files: ^ml-engine/src/

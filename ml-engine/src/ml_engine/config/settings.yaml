@@ -1,0 +1,15 @@
+###############################################
+# Auth settings
+ARTHUR_CLIENT_ID: data-plane-d775e380-a904-4604-ac44-8778977501f8
+ARTHUR_CLIENT_SECRET: replace_me
+ARTHUR_API_HOST: https://platform.arthur.ai
+###############################################
+# General settings
+FETCH_RAW_DATA_ENABLED: true
+###############################################
+# Engine Internal Shield Connection
+GENAI_ENGINE_INTERNAL_API_KEY: ""
+# host for connecting within the data plane
+GENAI_ENGINE_INTERNAL_HOST: ""
+# host for connecting to shield from users, may be different for envs like docker compose
+GENAI_ENGINE_INTERNAL_INGRESS_HOST: ""
