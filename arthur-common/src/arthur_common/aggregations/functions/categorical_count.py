@@ -68,21 +68,40 @@ class CategoricalCountAggregationFunction(NumericAggregationFunction):
         timestamp_col_escaped = escape_identifier(timestamp_col)
         categorical_col_escaped = escape_identifier(categorical_col)
         categorical_col_name_escaped = escape_str_literal(categorical_col)
-        count_query = f" \
-            select time_bucket(INTERVAL '5 minutes', {timestamp_col_escaped}) as ts, \
-            count(*) as count, \
-            {categorical_col_escaped} as category, \
-            {categorical_col_name_escaped} as column_name \
-            from {dataset.dataset_table_name} \
-            where ts is not null \
-            group by ts, category  \
-        "
+        dims = ["column_name", "category"]
+
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {timestamp_col_escaped}) as ts, \
+                count(*) as count, \
+                {categorical_col_escaped} as category, \
+                {categorical_col_name_escaped} as column_name, \
+                prompt_version_id \
+                from {dataset.dataset_table_name} \
+                where ts is not null \
+                group by ts, category, prompt_version_id  \
+            "
+            dims.append("prompt_version_id")
+        else:
+            count_query = f" \
+                select time_bucket(INTERVAL '5 minutes', {timestamp_col_escaped}) as ts, \
+                count(*) as count, \
+                {categorical_col_escaped} as category, \
+                {categorical_col_name_escaped} as column_name \
+                from {dataset.dataset_table_name} \
+                where ts is not null \
+                group by ts, category  \
+            "
         results = ddb_conn.sql(count_query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
-            ["column_name", "category"],
+            dims,
             timestamp_col="ts",
         )
         metric = self.series_to_metric(self.METRIC_NAME, series)

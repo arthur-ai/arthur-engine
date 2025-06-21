@@ -139,51 +139,81 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_gt_values_col = escape_identifier(gt_values_col)
-        confusion_matrix_query = f"""
-            WITH normalized_data AS (
+        dims = ["class_label"]
+        if self.has_col_by_name(
+            ddb_conn,
+            dataset.dataset_table_name,
+            "prompt_version_id",
+        ):
+            confusion_matrix_query = f"""
+                WITH normalized_data AS (
+                    SELECT
+                        {escaped_timestamp_col} AS timestamp,
+                        {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
+                        {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value,
+                        prompt_version_id
+                    FROM {dataset.dataset_table_name}
+                    WHERE {escaped_timestamp_col} IS NOT NULL
+                )
                 SELECT
-                    {escaped_timestamp_col} AS timestamp,
-                    {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
-                    {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value
-                FROM {dataset.dataset_table_name}
-                WHERE {escaped_timestamp_col} IS NOT NULL
-            )
-            SELECT
-                time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
-                SUM(CASE WHEN prediction = 1 AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
-                SUM(CASE WHEN prediction = 1 AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
-                SUM(CASE WHEN prediction = 0 AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
-                SUM(CASE WHEN prediction = 0 AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count,
-                any_value({escaped_positive_class_label}) as class_label
-            FROM normalized_data
-            GROUP BY ts
-            ORDER BY ts
-        """
+                    time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
+                    SUM(CASE WHEN prediction = 1 AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
+                    SUM(CASE WHEN prediction = 1 AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
+                    SUM(CASE WHEN prediction = 0 AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
+                    SUM(CASE WHEN prediction = 0 AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count,
+                    any_value({escaped_positive_class_label}) as class_label,
+                    prompt_version_id
+                FROM normalized_data
+                GROUP BY ts, prompt_version_id
+                ORDER BY ts
+            """
+            dims.append("prompt_version_id")
+        else:
+            confusion_matrix_query = f"""
+                WITH normalized_data AS (
+                    SELECT
+                        {escaped_timestamp_col} AS timestamp,
+                        {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
+                        {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value
+                    FROM {dataset.dataset_table_name}
+                    WHERE {escaped_timestamp_col} IS NOT NULL
+                )
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
+                    SUM(CASE WHEN prediction = 1 AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
+                    SUM(CASE WHEN prediction = 1 AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
+                    SUM(CASE WHEN prediction = 0 AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
+                    SUM(CASE WHEN prediction = 0 AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count,
+                    any_value({escaped_positive_class_label}) as class_label
+                FROM normalized_data
+                GROUP BY ts
+                ORDER BY ts
+            """
 
         results = ddb_conn.sql(confusion_matrix_query).df()
 
         tp = self.group_query_results_to_numeric_metrics(
             results,
             "true_positive_count",
-            dim_columns=["class_label"],
+            dim_columns=dims,
             timestamp_col="ts",
         )
         fp = self.group_query_results_to_numeric_metrics(
             results,
             "false_positive_count",
-            dim_columns=["class_label"],
+            dim_columns=dims,
             timestamp_col="ts",
         )
         fn = self.group_query_results_to_numeric_metrics(
             results,
             "false_negative_count",
-            dim_columns=["class_label"],
+            dim_columns=dims,
             timestamp_col="ts",
         )
         tn = self.group_query_results_to_numeric_metrics(
             results,
             "true_negative_count",
-            dim_columns=["class_label"],
+            dim_columns=dims,
             timestamp_col="ts",
         )
         tp_metric = self.series_to_metric(
