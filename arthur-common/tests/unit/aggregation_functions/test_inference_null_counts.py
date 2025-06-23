@@ -5,6 +5,8 @@ from arthur_common.aggregations.functions.inference_null_count import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "column_name, expected_null_count",
@@ -48,17 +50,12 @@ def test_inference_null_count(
     total_count = sum([point.value for point in result.values])
     assert total_count == expected_null_count
 
-    # test dataset with prompt version column
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    # test with segmentation
     metrics = inference_null_counter.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        nullable_col="classification_gt",
+        timestamp_col="flight start",
+        nullable_col=column_name,
+        segmentation_cols=["weather conditions"],
     )
-    assert len(metrics) == 1
-    assert metrics[0].name == "null_count"
-    results = metrics[0].numeric_series
-    for group in results:
-        dims = {r.name: r.value for r in group.dimensions}
-        assert "prompt_version_id" in dims
+    assert_dimension_in_metric(metrics[0], "weather conditions")

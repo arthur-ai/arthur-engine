@@ -6,6 +6,8 @@ from arthur_common.aggregations.functions.inference_count_by_class import (
 from arthur_common.models.metrics import DatasetReference, Dimension
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 HIGH_ACCURACY_COUNTS = (743, 24257)
 LOW_ACCURACY_COUNTS = (9, 24991)
 
@@ -19,7 +21,6 @@ LOW_ACCURACY_COUNTS = (9, 24991)
 )
 def test_int_bool_count_by_class(
     get_networking_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     prediction_col: str,
     true_count: int,
     false_count: int,
@@ -45,15 +46,15 @@ def test_int_bool_count_by_class(
         Dimension(name="prediction", value="True"),
     ]
 
-    # validate no error on prompt version dataset
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    cm_aggregator = BinaryClassifierCountByClassAggregationFunction()
-    cm_aggregator.aggregate(
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        prediction_col="classification_pred",
+        timestamp_col="sent timestamp",
+        prediction_col=prediction_col,
+        segmentation_cols=["packet type"],
     )
+    assert_dimension_in_metric(metrics[0], "packet type")
 
 
 @pytest.mark.parametrize(
@@ -65,7 +66,6 @@ def test_int_bool_count_by_class(
 )
 def test_prediction_threshold_count_by_class(
     get_networking_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
     prediction_col: str,
     true_count: int,
     false_count: int,
@@ -112,29 +112,15 @@ def test_prediction_threshold_count_by_class(
         Dimension(name="prediction", value="yeetyeetyes"),
     ]
 
-    # validate no error on prompt version dataset
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    conn.sql(
-        f"""
-        ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
-    """,
-    )
-    conn.sql(
-        f"""
-        UPDATE {dataset_ref.dataset_table_name}
-        SET "classification_pred float value" = CASE
-            WHEN "classification_pred" = 'functional' THEN 0.93
-            ELSE 0.85
-        END;
-    """,
-    )
-    cm_aggregator = BinaryClassifierCountThresholdClassAggregationFunction()
-    cm_aggregator.aggregate(
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        prediction_col=f"classification_pred float value",
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} float value",
         threshold=0.93,
-        true_label="yes",
+        true_label="yeetyeetyes",
         false_label="no",
+        segmentation_cols=["packet type"],
     )
+    assert_dimension_in_metric(metrics[0], "packet type")
