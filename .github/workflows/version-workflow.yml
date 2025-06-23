@@ -28,14 +28,83 @@ on:
         type: string
 
 jobs:
-  bump-and-tag-version:
+  bump-arthur-common-version:
     environment: shared-protected-branch-secrets
     if: |
       github.event_name != 'pull_request' &&
       (github.ref == 'refs/heads/dev') &&
-      !contains(github.event.head_commit.message, 'Increment version to') &&
+      !contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
       (
-        github.event_name == 'push' ||
+        (github.event_name == 'push' && contains(toJSON(github.event.commits.*.modified), 'arthur-common/')) ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
+      )
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: arthur-common
+      - name: Bump Arthur Common Version
+        run: |
+          set -e
+
+          # Vars to externalize if needed
+          export SUFFIX="-dev"
+          export BUMP_COMMAND="patch"
+          export BRANCH_NAME="arthur-common-version-bump/$(date +%Y%m%d-%H%M%S)"
+
+          # Update files in the arthur-common directory
+          cd arthur-common
+
+          # Set version vars with no suffix
+          export CURRENT_VERSION=$(poetry version -s)
+          export NEW_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
+
+          # Validate version variables are set
+          if [ -z "$CURRENT_VERSION" ] || [ -z "$NEW_VERSION" ]; then
+            echo "Error: Version variables not set. CURRENT_VERSION='$CURRENT_VERSION', NEW_VERSION='$NEW_VERSION'"
+            exit 1
+          fi
+
+          # Create and checkout new branch
+          git checkout -b "$BRANCH_NAME"
+
+          # Add and commit changes
+          git add pyproject.toml
+          git status
+          git diff --cached
+          git commit --no-verify -m "Increment arthur-common version to ${NEW_VERSION}"
+
+          # Push the new branch with the commit
+          git push -u origin "$BRANCH_NAME"
+
+      - name: Create Arthur Common Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd arthur-common
+          NEW_VERSION=$(poetry version -s)
+          gh pr create \
+            --title "Increment arthur-common version to ${NEW_VERSION}" \
+            --body "Increment arthur-common version to ${NEW_VERSION}" \
+            --base ${GITHUB_REF#refs/heads/} \
+            --head "$BRANCH_NAME"
+
+  bump-arthur-engine-version:
+    environment: shared-protected-branch-secrets
+    if: |
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/dev') &&
+      !contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      (
+        (github.event_name == 'push' && contains(toJSON(github.event.commits.*.modified), 'genai-engine/')) ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
       )
     runs-on: ubuntu-latest
@@ -51,7 +120,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-      - name: Bump Version
+      - name: Bump Arthur Engine Version
         env:
           GENAI_ENGINE_HELM_CHART_YAML_PATH: "../deployment/helm/genai-engine/Chart.yaml"
           GENAI_ENGINE_HELM_VALUES_YAML_PATH: "../deployment/helm/genai-engine/values.yaml.template"
@@ -67,28 +136,15 @@ jobs:
           # Vars to externalize if needed
           export SUFFIX="-dev"
           export BUMP_COMMAND="patch"
-          export BRANCH_NAME="version-bump/$(date +%Y%m%d-%H%M%S)"
-
-          # Update files in the arthur-common directory
-          cd arthur-common
-
-          # Set version vars with no suffix
-          export CURRENT_VERSION=$(poetry version -s)
-          export NEW_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
-
-          # Validate version variables are set
-          if [ -z "$CURRENT_VERSION" ] || [ -z "$NEW_VERSION" ]; then
-            echo "Error: Version variables not set. CURRENT_VERSION='$CURRENT_VERSION', NEW_VERSION='$NEW_VERSION'"
-            exit 1
-          fi
+          export BRANCH_NAME="genai-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
 
           # Update files in the genai-engine directory
-          cd ../genai-engine
+          cd genai-engine
           export NEW_GENAI_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
 
-          # validate new genai version is the same as new arthur common version
-          if [ -z "$NEW_GENAI_VERSION" ] || [ "$NEW_VERSION" != "$NEW_GENAI_VERSION" ]; then
-            echo "Error: New Gen AI version and new Arthur Common versions are not the same. NEW_GENAI_VERSION='$NEW_GENAI_VERSION', NEW_ARTHUR_COMMON_VERSION='$NEW_VERSION'"
+          # Validate version variable is set
+          if [ -z "$NEW_GENAI_VERSION" ]; then
+            echo "Error: New GenAI version not set. NEW_GENAI_VERSION='$NEW_GENAI_VERSION'"
             exit 1
           fi
 
@@ -96,35 +152,35 @@ jobs:
           git checkout -b "$BRANCH_NAME"
 
           # Rest of the version update logic
-          export GIT_TAG=$NEW_VERSION$SUFFIX
-          echo "New version will be ${NEW_VERSION}[${SUFFIX}]"
-          echo $NEW_VERSION > version
-          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_VERSION'|" "$GENAI_ENGINE_HELM_VALUES_YAML_PATH"
-          sed -i "s|version:.*|version: $NEW_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
-          sed -i "s|appVersion:.*|appVersion: $NEW_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
+          export GIT_TAG=$NEW_GENAI_VERSION$SUFFIX
+          echo "New version will be ${NEW_GENAI_VERSION}[${SUFFIX}]"
+          echo $NEW_GENAI_VERSION > version
+          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_GENAI_VERSION'|" "$GENAI_ENGINE_HELM_VALUES_YAML_PATH"
+          sed -i "s|version:.*|version: $NEW_GENAI_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
+          sed -i "s|appVersion:.*|appVersion: $NEW_GENAI_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
 
-          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH"
-          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_VERSION/" "$ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
-          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: $NEW_VERSION|" "$ARTHUR_ENGINE_VALUES_YAML_PATH"
-          sed -i "s|version:.*|version: $NEW_VERSION|" "$ARTHUR_ENGINE_CHART_YAML_PATH"
+          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_GENAI_VERSION/" "$ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH"
+          sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_GENAI_VERSION/" "$ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_GENAI_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_GENAI_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
+          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: $NEW_GENAI_VERSION|" "$ARTHUR_ENGINE_VALUES_YAML_PATH"
+          sed -i "s|version:.*|version: $NEW_GENAI_VERSION|" "$ARTHUR_ENGINE_CHART_YAML_PATH"
 
           # Add and commit changes
-          git add version pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH ../arthur-common/pyproject.toml
+          git add version pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH
           git status
           git diff --cached
-          git commit --no-verify -m "Increment version to ${NEW_VERSION}"
+          git commit --no-verify -m "Increment arthur-engine version to ${NEW_GENAI_VERSION}"
 
           # Push the new branch with the commit
           git push -u origin "$BRANCH_NAME"
 
-      - name: Create Pull Request
+      - name: Create Arthur Engine Pull Request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr create \
-            --title "Increment version to $(cat genai-engine/version)" \
-            --body "Increment version to $(cat genai-engine/version)" \
+            --title "Increment arthur-engine version to $(cat genai-engine/version)" \
+            --body "Increment arthur-engine version to $(cat genai-engine/version)" \
             --base ${GITHUB_REF#refs/heads/} \
             --head "$BRANCH_NAME"
