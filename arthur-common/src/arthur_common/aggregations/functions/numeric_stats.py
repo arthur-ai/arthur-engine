@@ -66,40 +66,62 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
                 description="A column containing numeric values to calculate a data sketch on.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[SketchMetric]:
-        escaped_timestamp_col_id = escape_identifier(timestamp_col)
-        escaped_numeric_col_id = escape_identifier(numeric_col)
-        numeric_col_name_str = escape_str_literal(numeric_col)
-        dims = ["column_name"]
-
-        if self.has_col_by_name(
-            ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            data_query = f" \
-                select {escaped_timestamp_col_id} as ts, \
-                       {escaped_numeric_col_id}, \
-                       {numeric_col_name_str} as column_name, \
-                        prompt_version_id \
-                from {dataset.dataset_table_name} \
-                where {escaped_numeric_col_id} is not null \
-            "
-            dims.append("prompt_version_id")
-        else:
-            data_query = f" \
-                select {escaped_timestamp_col_id} as ts, \
+        """Executed SQL with no segmentation columns:
+                    select {escaped_timestamp_col_id} as ts, \
                        {escaped_numeric_col_id}, \
                        {numeric_col_name_str} as column_name \
                 from {dataset.dataset_table_name} \
                 where {escaped_numeric_col_id} is not null \
-            "
+        """
+        escaped_timestamp_col_id = escape_identifier(timestamp_col)
+        escaped_numeric_col_id = escape_identifier(numeric_col)
+        numeric_col_name_str = escape_str_literal(numeric_col)
+
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
+            ddb_conn,
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        all_select_clause_cols = [
+            f"{escaped_timestamp_col_id} as ts",
+            f"{escaped_numeric_col_id}",
+            f"{numeric_col_name_str} as column_name",
+        ] + escaped_segmentation_cols
+        extra_dims = ["column_name"]
+
+        # build query
+        data_query = f"""
+                    select {", ".join(all_select_clause_cols)}
+                    from {dataset.dataset_table_name}
+                    where {escaped_numeric_col_id} is not null
+                """
+
         results = ddb_conn.sql(data_query).df()
 
         series = self.group_query_results_to_sketch_metrics(
             results,
             numeric_col,
-            dims,
+            filtered_seg_cols + extra_dims,
             "ts",
         )
 

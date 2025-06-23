@@ -81,10 +81,26 @@ class MulticlassClassifierCountByClassAggregationFunction(
                 description="A column containing boolean, integer, or string labelled prediction values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
         return super().aggregate(
             ddb_conn=ddb_conn,
             dataset=dataset,
             timestamp_col=timestamp_col,
             prediction_col=prediction_col,
+            segmentation_cols=segmentation_cols,
         )

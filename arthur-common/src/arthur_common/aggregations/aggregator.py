@@ -44,14 +44,29 @@ class AggregationFunction(ABC):
         return Dimension(name=name, value=str(value))
 
     @staticmethod
-    def has_col_by_name(
+    def _has_col_by_name(
         ddb_conn: DuckDBPyConnection,
-        dataset_table_name: str,
+        dataset: DatasetReference,
         col_name: str,
     ) -> bool:
         """returns true if the table has a column by the specified name"""
-        table_desc = ddb_conn.sql(f"DESCRIBE {dataset_table_name}").df()
+        table_desc = ddb_conn.sql(f"DESCRIBE {dataset.dataset_table_name}").df()
         return col_name in table_desc["column_name"].values
+
+    @staticmethod
+    def filter_segmentation_column_specs(
+        ddb_conn: DuckDBPyConnection,
+        dataset: DatasetReference,
+        segmentation_cols: list[str],
+    ) -> list[str]:
+        # Filter segmentation columns to only include those that exist in the dataset -
+        # [HACK] - needed while we add `prompt_version_id` by default, in future should be validated at metric
+        # config time
+        return [
+            col
+            for col in segmentation_cols
+            if AggregationFunction._has_col_by_name(ddb_conn, dataset, col)
+        ]
 
 
 class NumericAggregationFunction(AggregationFunction, ABC):

@@ -75,29 +75,23 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
                 description="A column containing float typed ground truth values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
-        escaped_timestamp_col = escape_identifier(timestamp_col)
-        escaped_prediction_col = escape_identifier(prediction_col)
-        escaped_ground_truth_col = escape_identifier(ground_truth_col)
-        dims = []
-        if self.has_col_by_name(
-            ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            count_query = f" \
-                SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-                SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae, \
-                COUNT(*) as count, \
-                prompt_version_id \
-                FROM {dataset.dataset_table_name} \
-                WHERE {escaped_prediction_col} IS NOT NULL \
-                AND {escaped_ground_truth_col} IS NOT NULL \
-                GROUP BY ts, prompt_version_id order by ts desc \
-            "
-            dims.append("prompt_version_id")
-        else:
-            count_query = f" \
+        """Executed SQL with no segmentation columns:
                 SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
                 SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae, \
                 COUNT(*) as count \
@@ -105,19 +99,47 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
                 WHERE {escaped_prediction_col} IS NOT NULL \
                 AND {escaped_ground_truth_col} IS NOT NULL \
                 GROUP BY ts order by ts desc \
-            "
+                """
+        escaped_timestamp_col = escape_identifier(timestamp_col)
+        escaped_prediction_col = escape_identifier(prediction_col)
+        escaped_ground_truth_col = escape_identifier(ground_truth_col)
 
-        results = ddb_conn.sql(count_query).df()
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
+            ddb_conn,
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = ["ts"] + escaped_segmentation_cols
+
+        # build query
+        mae_query = f"""
+            SELECT {", ".join(all_select_clause_cols)}
+            FROM {dataset.dataset_table_name}
+            WHERE {escaped_prediction_col} IS NOT NULL
+                  AND {escaped_ground_truth_col} IS NOT NULL
+            GROUP BY {", ".join(all_group_by_cols)} order by ts desc
+        """
+
+        results = ddb_conn.sql(mae_query).df()
         count_series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
-            dims,
+            filtered_seg_cols,
             "ts",
         )
         absolute_error_series = self.group_query_results_to_numeric_metrics(
             results,
             "ae",
-            dims,
+            filtered_seg_cols,
             "ts",
         )
 
