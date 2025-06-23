@@ -15,7 +15,7 @@ jobs:
     # written from guide: https://johnfraney.ca/blog/how-to-publish-a-python-package-with-poetry-and-github-actions/
     name: Build release for PyPI
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -50,7 +50,7 @@ jobs:
     needs: pypi-build
     # does not run on dev—https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers:~:text=Local%20version%20identifiers%20SHOULD%20NOT%20be%20used%20when%20publishing%20upstream%20projects%20to%20a%20public%20index%20server%2C%20but%20MAY%20be%20used%20to%20identify%20private%20builds%20created%20directly%20from%20the%20project%20source.
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
       (github.ref == 'refs/heads/main')
     name: Upload release to PyPI
     runs-on: ubuntu-latest
