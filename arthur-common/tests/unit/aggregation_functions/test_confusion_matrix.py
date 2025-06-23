@@ -7,42 +7,10 @@ from arthur_common.aggregations.functions.confusion_matrix import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 HIGH_ACCURACY_COUNTS = (477, 266, 24256, 1)
 LOW_ACCURACY_COUNTS = (9, 0, 24522, 469)
-
-
-def _add_int_cols_to_equipment_dataset(
-    conn: DuckDBPyConnection,
-    dataset_ref: DatasetReference,
-) -> None:
-    conn.sql(
-        f"""
-                    ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred int value" INT;
-                """,
-    )
-    conn.sql(
-        f"""
-                        ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_gt int value" INT;
-                    """,
-    )
-    conn.sql(
-        f"""
-                    UPDATE {dataset_ref.dataset_table_name}
-                    SET "classification_pred int value" = CASE
-                        WHEN "classification_pred" = 'functional' THEN 1
-                        ELSE 0
-                    END;
-                """,
-    )
-    conn.sql(
-        f"""
-                        UPDATE {dataset_ref.dataset_table_name}
-                        SET "classification_gt int value" = CASE
-                            WHEN "classification_gt" = 'functional' THEN 1
-                            ELSE 0
-                        END;
-                    """,
-    )
 
 
 @pytest.mark.parametrize(
@@ -80,22 +48,16 @@ def test_int_bool_confusion_matrix(
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
 
-
-def test_int_bool_confusion_matrix_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    _add_int_cols_to_equipment_dataset(conn, dataset_ref)
-
-    # make sure aggregation doesn't error
-    cm_aggregator = BinaryClassifierIntBoolConfusionMatrixAggregationFunction()
-    cm_aggregator.aggregate(
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        prediction_col="classification_pred int value",
-        gt_values_col="classification_gt int value",
+        timestamp_col="sent timestamp",
+        prediction_col=prediction_col,
+        gt_values_col="malicious",
+        segmentation_cols=["packet type"],
     )
+    assert_dimension_in_metric(metrics[0], "packet type")
 
 
 @pytest.mark.parametrize(
@@ -170,22 +132,18 @@ def test_str_label_confusion_matrix(
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
 
-
-def test_str_label_confusion_matrix_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    # make sure aggregation doesn't error
-    cm_aggregator = BinaryClassifierStringLabelConfusionMatrixAggregationFunction()
-    cm_aggregator.aggregate(
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        prediction_col=f"classification_pred",
-        gt_values_col="classification_gt",
-        true_label="functional",
-        false_label="broken",
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} str label",
+        gt_values_col="malicious str label",
+        true_label="MALICIOUS",
+        false_label="NOT_MALICIOUS",
+        segmentation_cols=["packet type"],
     )
+    assert_dimension_in_metric(metrics[0], "packet type")
 
 
 @pytest.mark.parametrize(
@@ -243,49 +201,14 @@ def test_prediction_threshold_confusion_matrix(
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
 
-
-def test_pred_threshold_confusion_matrix_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    conn.sql(
-        f"""
-                        ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
-                    """,
-    )
-    conn.sql(
-        f"""
-                            ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_gt int value" INT;
-                        """,
-    )
-    conn.sql(
-        f"""
-                        UPDATE {dataset_ref.dataset_table_name}
-                        SET "classification_pred float value" = CASE
-                            WHEN "classification_pred" = 'functional' THEN 0.94
-                            ELSE 0.2
-                        END;
-                    """,
-    )
-    conn.sql(
-        f"""
-                            UPDATE {dataset_ref.dataset_table_name}
-                            SET "classification_gt int value" = CASE
-                                WHEN "classification_gt" = 'functional' THEN 1
-                                ELSE 0
-                            END;
-                        """,
-    )
-    # make sure aggregation doesn't error
-    cm_aggregator = (
-        BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction()
-    )
-
-    cm_aggregator.aggregate(
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        prediction_col=f"classification_pred float value",
-        gt_values_col="classification_gt int value",
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} float value",
+        gt_values_col="malicious",
         threshold=0.93,
+        segmentation_cols=["packet type"],
     )
+    assert_dimension_in_metric(metrics[0], "packet type")

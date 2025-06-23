@@ -5,6 +5,8 @@ from arthur_common.aggregations.functions.mean_absolute_error import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "city,expected_consumption_mae",
@@ -59,47 +61,13 @@ def test_mean_absolute_error(
         round(absolute_error_sum / absolute_error_count, 2) == expected_consumption_mae
     )
 
-
-def test_mae_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    mae_aggregator = MeanAbsoluteErrorAggregationFunction()
-
-    conn.sql(
-        f"""
-                ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
-            """,
-    )
-    conn.sql(
-        f"""
-                    ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_gt float value" FLOAT;
-                """,
-    )
-    conn.sql(
-        f"""
-                UPDATE {dataset_ref.dataset_table_name}
-                SET "classification_pred float value" = CASE
-                    WHEN "classification_pred" = 'functional' THEN 0.93
-                    ELSE 0.85
-                END;
-            """,
-    )
-    conn.sql(
-        f"""
-                    UPDATE {dataset_ref.dataset_table_name}
-                    SET "classification_gt float value" = CASE
-                        WHEN "classification_gt" = 'functional' THEN 0.93
-                        ELSE 0.85
-                    END;
-                """,
-    )
-
-    # make sure aggregation doesn't error
-    mae_aggregator.aggregate(
+    # test with segmentation
+    metrics = mae_aggregator.aggregate(
         conn,
         dataset_ref,
         timestamp_col="timestamp",
-        prediction_col="classification_pred float value",
-        ground_truth_col="classification_gt float value",
+        prediction_col="expected energy consumption",
+        ground_truth_col="energy usage consumption",
+        segmentation_cols=["city"],
     )
+    assert_dimension_in_metric(metrics[0], "city")

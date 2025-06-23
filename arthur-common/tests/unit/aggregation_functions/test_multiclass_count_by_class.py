@@ -4,6 +4,8 @@ from arthur_common.aggregations.functions.multiclass_inference_count_by_class im
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 def test_multiclass_str_count_by_class(
     get_vehicle_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
@@ -40,12 +42,13 @@ def test_multiclass_str_count_by_class(
         # verify sum of series matches the expected count for that label
         assert sum([v.value for v in series.values]) == expected_counts[predicted_label]
 
-    # make sure agg doesn't error with prompt version by id column
+    # test agg with default segmentation
     conn, dataset_ref = get_equipment_inspection_dataset_conn
     cm_aggregator = MulticlassClassifierCountByClassAggregationFunction()
-    cm_aggregator.aggregate(
+    metrics = cm_aggregator.aggregate(
         conn,
         dataset_ref,
         timestamp_col="Timestamp",
         prediction_col="classification_pred",
     )
+    assert_dimension_in_metric(metrics[0], "prompt_version_id")

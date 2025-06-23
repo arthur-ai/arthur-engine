@@ -40,7 +40,7 @@ def test_string_categorical_count(
     }
 
 
-def test_cv_categorical_count(
+def test_cv_categorical_count_with_dimensions(
     get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
 ):
     conn, dataset_ref = get_equipment_inspection_dataset_conn

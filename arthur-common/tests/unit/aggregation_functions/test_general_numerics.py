@@ -12,6 +12,8 @@ from arthur_common.models.metrics import DatasetReference
 from datasketches import kll_floats_sketch
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "column_name, expected_sum",
@@ -43,33 +45,15 @@ def test_inference_sum(
     calculated_sum = sum([r.value for r in result.values])
     assert math.isclose(calculated_sum, expected_sum, abs_tol=1e-4)
 
-
-def test_inference_sum_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    conn.sql(
-        f"""
-            ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
-        """,
-    )
-    conn.sql(
-        f"""
-            UPDATE {dataset_ref.dataset_table_name}
-            SET "classification_pred float value" = CASE
-                WHEN "classification_pred" = 'functional' THEN 0.93
-                ELSE 0.85
-            END;
-        """,
-    )
-    inference_sum = NumericSumAggregationFunction()
-    # make sure aggregation doesn't error
-    inference_sum.aggregate(
+    # test with segmentation
+    metrics = inference_sum.aggregate(
         conn,
         dataset_ref,
-        timestamp_col="timestamp",
-        numeric_col="classification_pred float value",
+        timestamp_col="flight start",
+        numeric_col=column_name,
+        segmentation_cols=["weather conditions"],
     )
+    assert_dimension_in_metric(metrics[0], "weather conditions")
 
 
 @pytest.mark.parametrize(
@@ -119,30 +103,12 @@ def test_inference_numeric_sketch(
     assert math.isclose(max(max_values), expected_max, abs_tol=1e-4)
     assert math.isclose(min(min_values), expected_min, abs_tol=1e-4)
 
-
-def test_inference_numeric_sketch_with_prompt_version(
-    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
-):
-    conn, dataset_ref = get_equipment_inspection_dataset_conn
-    conn.sql(
-        f"""
-            ALTER TABLE {dataset_ref.dataset_table_name} ADD COLUMN "classification_pred float value" FLOAT;
-        """,
-    )
-    conn.sql(
-        f"""
-            UPDATE {dataset_ref.dataset_table_name}
-            SET "classification_pred float value" = CASE
-                WHEN "classification_pred" = 'functional' THEN 0.93
-                ELSE 0.85
-            END;
-        """,
-    )
-    numeric_sketch_func = NumericSketchAggregationFunction()
-    # make sure aggregation doesn't error
-    numeric_sketch_func.aggregate(
+    # test with segmentation
+    metrics = numeric_sketch_func.aggregate(
         conn,
         dataset_ref,
-        "timestamp",
-        "classification_pred float value",
+        "flight start",
+        column_name,
+        segmentation_cols=["weather conditions"],
     )
+    assert_dimension_in_metric(metrics[0], "weather conditions")
