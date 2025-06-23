@@ -56,7 +56,7 @@ Arthur recommends running the GenAI Engine on GPUs for any production-grade depl
 8. (Skip if you provided Route 53 parameter values) Once the `GenaiEngineLBStack` deployment is complete, create an `A` record that routes the Arthur GenAI Engine service
    ingress DNS URL to the GenAI Engine ALB created by the CloudFormation template
 
-## Architecture
+## GenAI Engine Architecture
 ![alt text](images/genai-engine-architecture-diagram.png "GenAI Engine Architecture")
 
 ## FAQs
