@@ -51,34 +51,57 @@ class InferenceCountAggregationFunction(NumericAggregationFunction):
                 description="A column containing timestamp values to bucket by.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+            select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                    count(*) as count \
+                    from {dataset.dataset_table_name} \
+                    group by ts \
+        """
         escaped_timestamp_col = escape_identifier(timestamp_col)
-        dims = []
-        if self.has_col_by_name(
+
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
             ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            count_query = f" \
-                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-                count(*) as count, \
-                prompt_version_id \
-                from {dataset.dataset_table_name} \
-                group by ts, prompt_version_id \
-            "
-            dims.append("prompt_version_id")
-        else:
-            count_query = f" \
-                select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-                count(*) as count \
-                from {dataset.dataset_table_name} \
-                group by ts \
-            "
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"count(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = ["ts"] + escaped_segmentation_cols
+
+        # build query
+        count_query = f"""
+            select {", ".join(all_select_clause_cols)}
+            from {dataset.dataset_table_name}
+            group by {", ".join(all_group_by_cols)}
+        """
+
         results = ddb_conn.sql(count_query).df()
         series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
-            dims,
+            filtered_seg_cols,
             "ts",
         )
         metric = self.series_to_metric(self.METRIC_NAME, series)

@@ -70,52 +70,69 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
                 description="A column containing boolean, integer, or string labelled prediction values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+        SELECT
+            time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+            {escaped_pred_col} as prediction,
+            COUNT(*) as count
+        FROM {dataset.dataset_table_name}
+        GROUP BY
+            ts,
+            -- group by raw column name instead of alias in select
+            -- in case table has a column called 'prediction'
+            {escaped_pred_col}
+        ORDER BY ts
+        """
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_pred_col = escape_identifier(prediction_col)
-        dims = ["prediction"]
-        if self.has_col_by_name(
+
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
             ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            query = f"""
-                SELECT
-                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                    {escaped_pred_col} as prediction,
-                    COUNT(*) as count,
-                    prompt_version_id
-                FROM {dataset.dataset_table_name}
-                GROUP BY
-                    ts,
-                    -- group by raw column name instead of alias in select
-                    -- in case table has a column called 'prediction'
-                    {escaped_pred_col},
-                    prompt_version_id
-                ORDER BY ts
-            """
-            dims.append("prompt_version_id")
-        else:
-            query = f"""
-                SELECT
-                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                    {escaped_pred_col} as prediction,
-                    COUNT(*) as count
-                FROM {dataset.dataset_table_name}
-                GROUP BY
-                    ts,
-                    -- group by raw column name instead of alias in select
-                    -- in case table has a column called 'prediction'
-                    {escaped_pred_col}
-                ORDER BY ts
-            """
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"{escaped_pred_col} as prediction",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = ["ts", f"{escaped_pred_col}"] + escaped_segmentation_cols
+        extra_dims = ["prediction"]
+
+        # build query
+        query = f"""
+                    SELECT {", ".join(all_select_clause_cols)}
+                    FROM {dataset.dataset_table_name}
+                    GROUP BY {", ".join(all_group_by_cols)}
+                    ORDER BY ts
+                """
 
         result = ddb_conn.sql(query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            dims,
+            filtered_seg_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)
@@ -200,52 +217,71 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
                 description="The label denoting a negative classification.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+            SELECT
+            time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+            CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
+            COUNT(*) as count
+        FROM {dataset.dataset_table_name}
+        GROUP BY
+            ts,
+            -- group by raw column name instead of alias in select
+            -- in case table has a column called 'prediction'
+            {escaped_prediction_col}
+        ORDER BY ts
+        """
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
-        dims = ["prediction"]
-        if self.has_col_by_name(
+
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
             ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            query = f"""
-                SELECT
-                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                    CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
-                    COUNT(*) as count,
-                    prompt_version_id
-                FROM {dataset.dataset_table_name}
-                GROUP BY
-                    ts,
-                    -- group by raw column name instead of alias in select
-                    -- in case table has a column called 'prediction'
-                    {escaped_prediction_col},
-                    prompt_version_id
-                ORDER BY ts
-            """
-            dims.append("prompt_version_id")
-        else:
-            query = f"""
-                SELECT
-                    time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                    CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
-                    COUNT(*) as count
-                FROM {dataset.dataset_table_name}
-                GROUP BY
-                    ts,
-                    -- group by raw column name instead of alias in select
-                    -- in case table has a column called 'prediction'
-                    {escaped_prediction_col}
-                ORDER BY ts
-            """
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = [
+            "ts",
+            f"{escaped_prediction_col}",
+        ] + escaped_segmentation_cols
+        extra_dims = ["prediction"]
+
+        query = f"""
+            SELECT {", ".join(all_select_clause_cols)}
+            FROM {dataset.dataset_table_name}
+            GROUP BY {", ".join(all_group_by_cols)}
+            ORDER BY ts
+        """
 
         result = ddb_conn.sql(query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            dims,
+            filtered_seg_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)

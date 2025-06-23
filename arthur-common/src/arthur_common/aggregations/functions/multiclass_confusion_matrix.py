@@ -90,6 +90,21 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
                 description="The label indicating a positive class.",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+            ),
+        ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
         escaped_positive_class_label = escape_str_literal(positive_class_label)
         normalization_case = f"""
@@ -107,6 +122,7 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
             normalization_case,
             dataset,
             escaped_positive_class_label,
+            segmentation_cols,
         )
 
     def generate_confusion_matrix_metrics(
@@ -119,6 +135,7 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
         gt_normalization_case: str,
         dataset: DatasetReference,
         escaped_positive_class_label: str,
+        segmentation_cols: list[str],
     ) -> list[NumericMetric]:
         """
         Generate a SQL query to compute confusion matrix metrics over time.
@@ -132,45 +149,12 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
             gt_normalization_case: SQL CASE statement for normalizing ground truth values to 0 / 1 / null using 'value' as the target column name
             dataset: DatasetReference containing dataset metadata
             escaped_positive_class_label: escaped label for the class to include in the dimensions
+            segmentation_cols: List of columns to segment by
 
         Returns:
             str: SQL query that computes confusion matrix metrics
-        """
-        escaped_timestamp_col = escape_identifier(timestamp_col)
-        escaped_prediction_col = escape_identifier(prediction_col)
-        escaped_gt_values_col = escape_identifier(gt_values_col)
-        dims = ["class_label"]
-        if self.has_col_by_name(
-            ddb_conn,
-            dataset.dataset_table_name,
-            "prompt_version_id",
-        ):
-            confusion_matrix_query = f"""
-                WITH normalized_data AS (
-                    SELECT
-                        {escaped_timestamp_col} AS timestamp,
-                        {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
-                        {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value,
-                        prompt_version_id
-                    FROM {dataset.dataset_table_name}
-                    WHERE {escaped_timestamp_col} IS NOT NULL
-                )
-                SELECT
-                    time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
-                    SUM(CASE WHEN prediction = 1 AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
-                    SUM(CASE WHEN prediction = 1 AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
-                    SUM(CASE WHEN prediction = 0 AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
-                    SUM(CASE WHEN prediction = 0 AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count,
-                    any_value({escaped_positive_class_label}) as class_label,
-                    prompt_version_id
-                FROM normalized_data
-                GROUP BY ts, prompt_version_id
-                ORDER BY ts
-            """
-            dims.append("prompt_version_id")
-        else:
-            confusion_matrix_query = f"""
-                WITH normalized_data AS (
+            Returns the following SQL with no segmentation:
+            WITH normalized_data AS (
                     SELECT
                         {escaped_timestamp_col} AS timestamp,
                         {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
@@ -188,32 +172,74 @@ class MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFuncti
                 FROM normalized_data
                 GROUP BY ts
                 ORDER BY ts
-            """
+
+        """
+        escaped_timestamp_col = escape_identifier(timestamp_col)
+        escaped_prediction_col = escape_identifier(prediction_col)
+        escaped_gt_values_col = escape_identifier(gt_values_col)
+
+        # build query components with segmentation columns
+        filtered_seg_cols = self.filter_segmentation_column_specs(
+            ddb_conn,
+            dataset,
+            segmentation_cols,
+        )
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in filtered_seg_cols
+        ]
+        first_subquery_select_cols = [
+            f"{escaped_timestamp_col} AS timestamp",
+            f"{prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction",
+            f"{gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value",
+        ] + escaped_segmentation_cols
+        second_subquery_select_cols = [
+            "time_bucket(INTERVAL '5 minutes', timestamp) AS ts",
+            "SUM(CASE WHEN prediction = 1 AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count",
+            "SUM(CASE WHEN prediction = 1 AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count",
+            "SUM(CASE WHEN prediction = 0 AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count",
+            "SUM(CASE WHEN prediction = 0 AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count",
+            f"any_value({escaped_positive_class_label}) as class_label",
+        ] + escaped_segmentation_cols
+        second_subquery_group_by_cols = ["ts"] + escaped_segmentation_cols
+        extra_dims = ["class_label"]
+
+        # build query
+        confusion_matrix_query = f"""
+        WITH normalized_data AS (
+            SELECT {", ".join(first_subquery_select_cols)}
+            FROM {dataset.dataset_table_name}
+            WHERE {escaped_timestamp_col} IS NOT NULL
+        )
+        SELECT {", ".join(second_subquery_select_cols)}
+        FROM normalized_data
+        GROUP BY {", ".join(second_subquery_group_by_cols)}
+        ORDER BY ts
+"""
 
         results = ddb_conn.sql(confusion_matrix_query).df()
 
         tp = self.group_query_results_to_numeric_metrics(
             results,
             "true_positive_count",
-            dim_columns=dims,
+            dim_columns=filtered_seg_cols + extra_dims,
             timestamp_col="ts",
         )
         fp = self.group_query_results_to_numeric_metrics(
             results,
             "false_positive_count",
-            dim_columns=dims,
+            dim_columns=filtered_seg_cols + extra_dims,
             timestamp_col="ts",
         )
         fn = self.group_query_results_to_numeric_metrics(
             results,
             "false_negative_count",
-            dim_columns=dims,
+            dim_columns=filtered_seg_cols + extra_dims,
             timestamp_col="ts",
         )
         tn = self.group_query_results_to_numeric_metrics(
             results,
             "true_negative_count",
-            dim_columns=dims,
+            dim_columns=filtered_seg_cols + extra_dims,
             timestamp_col="ts",
         )
         tp_metric = self.series_to_metric(

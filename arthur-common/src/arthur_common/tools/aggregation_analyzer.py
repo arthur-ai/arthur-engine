@@ -44,6 +44,9 @@ class FunctionAnalyzer:
             return DType.UUID
         elif t is DatasetReference:
             return DType.UUID
+        elif typing.get_origin(t) is list:
+            args = typing.get_args(t)
+            return FunctionAnalyzer._python_type_to_scope_dtype(args[0])
         else:
             raise ValueError(f"Parameter type {t} is not supported.")
 
