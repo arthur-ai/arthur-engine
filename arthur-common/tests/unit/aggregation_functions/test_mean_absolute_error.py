@@ -5,6 +5,8 @@ from arthur_common.aggregations.functions.mean_absolute_error import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "city,expected_consumption_mae",
@@ -58,3 +60,14 @@ def test_mean_absolute_error(
     assert (
         round(absolute_error_sum / absolute_error_count, 2) == expected_consumption_mae
     )
+
+    # test with segmentation
+    metrics = mae_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        prediction_col="expected energy consumption",
+        ground_truth_col="energy usage consumption",
+        segmentation_cols=["city"],
+    )
+    assert_dimension_in_metric(metrics[0], "city")
