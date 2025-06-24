@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -8,6 +8,7 @@ from arthur_common.models.schema_definitions import (
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -76,8 +77,8 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -90,7 +91,7 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         """Executed SQL with no segmentation columns:
                 SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
@@ -101,18 +102,14 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
                 AND {escaped_ground_truth_col} IS NOT NULL \
                 GROUP BY ts order by ts desc \
                 """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_ground_truth_col = escape_identifier(ground_truth_col)
 
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         all_select_clause_cols = [
             f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
@@ -134,13 +131,13 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
         count_series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
-            filtered_seg_cols,
+            segmentation_cols,
             "ts",
         )
         absolute_error_series = self.group_query_results_to_numeric_metrics(
             results,
             "ae",
-            filtered_seg_cols,
+            segmentation_cols,
             "ts",
         )
 

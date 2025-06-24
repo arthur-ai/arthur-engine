@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -9,6 +9,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -61,17 +62,13 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
                 GROUP BY ts
                 ORDER BY ts
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_gt_values_col = escape_identifier(gt_values_col)
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         first_subquery_select_cols = [
             f"{escaped_timestamp_col} AS timestamp",
@@ -105,25 +102,25 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
         tp = self.group_query_results_to_numeric_metrics(
             results,
             "true_positive_count",
-            dim_columns=filtered_seg_cols,
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
         fp = self.group_query_results_to_numeric_metrics(
             results,
             "false_positive_count",
-            dim_columns=filtered_seg_cols,
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
         fn = self.group_query_results_to_numeric_metrics(
             results,
             "false_negative_count",
-            dim_columns=filtered_seg_cols,
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
         tn = self.group_query_results_to_numeric_metrics(
             results,
             "true_negative_count",
-            dim_columns=filtered_seg_cols,
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
         tp_metric = self.series_to_metric("confusion_matrix_true_positive_count", tp)
@@ -198,8 +195,8 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -212,8 +209,9 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_prediction_col = escape_identifier(prediction_col)
         # Get the type of prediction column
         type_query = f"SELECT typeof({escaped_prediction_col}) as col_type FROM {dataset.dataset_table_name} LIMIT 1"
@@ -333,8 +331,8 @@ class BinaryClassifierStringLabelConfusionMatrixAggregationFunction(
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -347,8 +345,9 @@ class BinaryClassifierStringLabelConfusionMatrixAggregationFunction(
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         normalization_case = f"""
                 CASE
                     WHEN value = '{true_label}' THEN 1
@@ -440,8 +439,8 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -454,7 +453,7 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         escaped_gt_values_col = escape_identifier(gt_values_col)
         prediction_normalization_case = f"""

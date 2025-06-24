@@ -71,7 +71,7 @@ def test_multiclass_single_class_confusion_matrix(
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == expected_tn
 
 
-def test_multiclass_with_default_segmentation(
+def test_multiclass_with_segmentation(
     get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
 ):
     conn, dataset_ref = get_equipment_inspection_dataset_conn
@@ -85,5 +85,6 @@ def test_multiclass_with_default_segmentation(
         prediction_col="classification_pred",
         gt_values_col="classification_gt",
         positive_class_label="functional",
+        segmentation_cols=["prompt_version_id"],
     )
     assert_dimension_in_metric(metrics[0], "prompt_version_id")

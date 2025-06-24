@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.functions.inference_count_by_class import (
@@ -10,6 +10,7 @@ from arthur_common.models.schema_definitions import (
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -82,8 +83,8 @@ class MulticlassClassifierCountByClassAggregationFunction(
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -96,7 +97,7 @@ class MulticlassClassifierCountByClassAggregationFunction(
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         return super().aggregate(
             ddb_conn=ddb_conn,
