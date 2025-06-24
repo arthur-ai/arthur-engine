@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import uuid4
 
 import pytest
@@ -92,7 +92,7 @@ class HappyPathAggregation(SketchAggregationFunction):
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
+            Optional[list[str]],
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="source_dataset",
                 allowed_column_types=[
@@ -106,7 +106,7 @@ class HappyPathAggregation(SketchAggregationFunction):
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = [],
+        ] = None,
     ) -> list[SketchTimeSeries]:
         pass
 
