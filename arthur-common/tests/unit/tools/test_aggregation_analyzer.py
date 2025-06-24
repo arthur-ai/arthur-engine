@@ -6,6 +6,7 @@ from arthur_common.aggregations import SketchAggregationFunction
 from arthur_common.models.metrics import (
     AggregationMetricType,
     DatasetReference,
+    MetricsColumnListParameterSchema,
     MetricsColumnParameterSchema,
     MetricsDatasetParameterSchema,
     MetricsLiteralParameterSchema,
@@ -17,6 +18,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -89,6 +91,22 @@ class HappyPathAggregation(SketchAggregationFunction):
                 description="The source dataset to analyze",
             ),
         ],
+        segmentation_cols: Annotated[
+            list[str],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="source_dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = [],
     ) -> list[SketchTimeSeries]:
         pass
 
@@ -96,7 +114,7 @@ class HappyPathAggregation(SketchAggregationFunction):
 def test_aggregation_analyzer_happy_path():
     aggregation = FunctionAnalyzer.analyze_aggregation_function(HappyPathAggregation)
 
-    assert len(aggregation.aggregate_args) == 5
+    assert len(aggregation.aggregate_args) == 6
     assert len(aggregation.init_args) == 1
 
     assert isinstance(aggregation.init_args[0], MetricsLiteralParameterSchema)
@@ -145,6 +163,21 @@ def test_aggregation_analyzer_happy_path():
     assert aggregation.aggregate_args[4].optional == False
     assert aggregation.aggregate_args[4].friendly_name == "Source Dataset"
     assert aggregation.aggregate_args[4].description == "The source dataset to analyze"
+
+    assert isinstance(aggregation.aggregate_args[5], MetricsColumnListParameterSchema)
+    assert aggregation.aggregate_args[5].parameter_key == "segmentation_cols"
+    assert aggregation.aggregate_args[5].allowed_column_types == [
+        ScalarType(dtype=DType.INT),
+        ScalarType(dtype=DType.BOOL),
+        ScalarType(dtype=DType.STRING),
+        ScalarType(dtype=DType.UUID),
+    ]
+    assert aggregation.aggregate_args[5].friendly_name == "Segmentation Columns"
+    assert (
+        aggregation.aggregate_args[5].description
+        == "All columns to include as dimensions for segmentation."
+    )
+    assert aggregation.aggregate_args[5].optional == True
 
     assert aggregation.name == "Happy Path Aggregation"
     assert aggregation.id == id1

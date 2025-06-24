@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -7,6 +7,7 @@ from arthur_common.models.schema_definitions import (
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -65,8 +66,8 @@ class NumericSumAggregationFunction(NumericAggregationFunction):
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -79,7 +80,7 @@ class NumericSumAggregationFunction(NumericAggregationFunction):
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         """Executed SQL with no segmentation columns:
                 select time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
@@ -88,17 +89,13 @@ class NumericSumAggregationFunction(NumericAggregationFunction):
                 where {escaped_numeric_col} is not null \
                 group by ts \
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_numeric_col = escape_identifier(numeric_col)
 
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         all_select_clause_cols = [
             f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
@@ -119,7 +116,7 @@ class NumericSumAggregationFunction(NumericAggregationFunction):
         series = self.group_query_results_to_numeric_metrics(
             results,
             "sum",
-            filtered_seg_cols,
+            segmentation_cols,
             "ts",
         )
         # preserve dimension that identifies the name of the numeric column used for the aggregation

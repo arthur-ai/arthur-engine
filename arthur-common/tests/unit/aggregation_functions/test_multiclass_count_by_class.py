@@ -42,7 +42,7 @@ def test_multiclass_str_count_by_class(
         # verify sum of series matches the expected count for that label
         assert sum([v.value for v in series.values]) == expected_counts[predicted_label]
 
-    # test agg with default segmentation
+    # test agg with segmentation
     conn, dataset_ref = get_equipment_inspection_dataset_conn
     cm_aggregator = MulticlassClassifierCountByClassAggregationFunction()
     metrics = cm_aggregator.aggregate(
@@ -50,5 +50,6 @@ def test_multiclass_str_count_by_class(
         dataset_ref,
         timestamp_col="Timestamp",
         prediction_col="classification_pred",
+        segmentation_cols=["prompt_version_id"],
     )
     assert_dimension_in_metric(metrics[0], "prompt_version_id")

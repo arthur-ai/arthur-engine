@@ -13,6 +13,7 @@ from arthur_common.models.metrics import (
     AggregationMetricType,
     AggregationSpecSchema,
     DatasetReference,
+    MetricsColumnListParameterSchema,
     MetricsColumnParameterSchema,
     MetricsDatasetParameterSchema,
     MetricsLiteralParameterSchema,
@@ -23,6 +24,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     MetricsParameterAnnotationUnion,
 )
 
@@ -45,8 +47,18 @@ class FunctionAnalyzer:
         elif t is DatasetReference:
             return DType.UUID
         elif typing.get_origin(t) is list:
+            return DType.JSON
+        elif typing.get_origin(t) is typing.Union:
+            # handle union types to add support for Optional types only
+            # extract the non-None type from Optional[T] = Union[T, None]
             args = typing.get_args(t)
-            return FunctionAnalyzer._python_type_to_scope_dtype(args[0])
+            non_none_args = [arg for arg in args if arg is not type(None)]
+            if len(non_none_args) == 1:
+                return FunctionAnalyzer._python_type_to_scope_dtype(non_none_args[0])
+            else:
+                raise ValueError(
+                    f"Union type {t} is not supported (only Optional[T] is supported).",
+                )
         else:
             raise ValueError(f"Parameter type {t} is not supported.")
 
@@ -72,7 +84,7 @@ class FunctionAnalyzer:
     @staticmethod
     def _get_scope_metric_parameter_from_annotation(
         param_name: str,
-        param_dtype: DType,
+        param_dtype: typing.Optional[DType],
         optional: bool,
         annotation: typing.Annotated,  # type: ignore
     ) -> MetricsParameterSchemaUnion:
@@ -103,6 +115,21 @@ class FunctionAnalyzer:
                 friendly_name=annotation.friendly_name,
                 description=annotation.description,
                 model_problem_type=annotation.model_problem_type,
+            )
+        elif isinstance(annotation, MetricMultipleColumnParameterAnnotation):
+            if param_dtype != DType.JSON:
+                raise ValueError(
+                    f"Dataset parameter {param_name} has type {param_dtype}, but should be a JSON type (valid list expected).",
+                )
+            return MetricsColumnListParameterSchema(
+                parameter_key=param_name,
+                tag_hints=annotation.tag_hints,
+                optional=optional,
+                source_dataset_parameter_key=annotation.source_dataset_parameter_key,
+                allowed_column_types=annotation.allowed_column_types,
+                allow_any_column_type=annotation.allow_any_column_type,
+                friendly_name=annotation.friendly_name,
+                description=annotation.description,
             )
         elif isinstance(annotation, MetricColumnParameterAnnotation):
             if param_dtype != DType.STRING:

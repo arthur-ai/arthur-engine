@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import SketchAggregationFunction
@@ -7,6 +7,7 @@ from arthur_common.models.schema_definitions import (
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -67,8 +68,8 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -81,7 +82,7 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[SketchMetric]:
         """Executed SQL with no segmentation columns:
                     select {escaped_timestamp_col_id} as ts, \
@@ -90,18 +91,14 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
                 from {dataset.dataset_table_name} \
                 where {escaped_numeric_col_id} is not null \
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col_id = escape_identifier(timestamp_col)
         escaped_numeric_col_id = escape_identifier(numeric_col)
         numeric_col_name_str = escape_str_literal(numeric_col)
 
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         all_select_clause_cols = [
             f"{escaped_timestamp_col_id} as ts",
@@ -122,7 +119,7 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
         series = self.group_query_results_to_sketch_metrics(
             results,
             numeric_col,
-            filtered_seg_cols + extra_dims,
+            segmentation_cols + extra_dims,
             "ts",
         )
 

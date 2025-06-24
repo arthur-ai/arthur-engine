@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -9,6 +9,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -71,8 +72,8 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -85,7 +86,7 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         """Executed SQL with no segmentation columns:
         SELECT
@@ -100,17 +101,13 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
             {escaped_pred_col}
         ORDER BY ts
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_pred_col = escape_identifier(prediction_col)
 
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         all_select_clause_cols = [
             f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
@@ -133,7 +130,7 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            filtered_seg_cols + extra_dims,
+            segmentation_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)
@@ -219,8 +216,8 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
             ),
         ],
         segmentation_cols: Annotated[
-            list[str],
-            MetricColumnParameterAnnotation(
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=[
                     ScalarType(dtype=DType.INT),
@@ -233,7 +230,7 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
             ),
-        ] = ["prompt_version_id"],
+        ] = None,
     ) -> list[NumericMetric]:
         """Executed SQL with no segmentation columns:
             SELECT
@@ -248,17 +245,13 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
             {escaped_prediction_col}
         ORDER BY ts
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
 
         # build query components with segmentation columns
-        filtered_seg_cols = self.filter_segmentation_column_specs(
-            ddb_conn,
-            dataset,
-            segmentation_cols,
-        )
         escaped_segmentation_cols = [
-            escape_identifier(col) for col in filtered_seg_cols
+            escape_identifier(col) for col in segmentation_cols
         ]
         all_select_clause_cols = [
             f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
@@ -283,7 +276,7 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            filtered_seg_cols + extra_dims,
+            segmentation_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)

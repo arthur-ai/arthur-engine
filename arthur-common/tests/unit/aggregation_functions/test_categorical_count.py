@@ -51,6 +51,7 @@ def test_cv_categorical_count_with_dimensions(
         dataset_ref,
         timestamp_col="timestamp",
         categorical_col="classification_pred",
+        segmentation_cols=["prompt_version_id"],
     )
     assert len(metric) == 1
     assert metric[0].name == "categorical_count"
