@@ -79,6 +79,7 @@ class NumericSketchAggregationFunction(SketchAggregationFunction):
                 tag_hints=[],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
+                optional=True,
             ),
         ] = ["prompt_version_id"],
     ) -> list[SketchMetric]:

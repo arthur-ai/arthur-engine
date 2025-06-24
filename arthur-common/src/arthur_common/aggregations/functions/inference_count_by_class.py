@@ -83,6 +83,7 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
                 tag_hints=[],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
+                optional=True,
             ),
         ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
@@ -230,6 +231,7 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
                 tag_hints=[],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
+                optional=True,
             ),
         ] = ["prompt_version_id"],
     ) -> list[NumericMetric]:
