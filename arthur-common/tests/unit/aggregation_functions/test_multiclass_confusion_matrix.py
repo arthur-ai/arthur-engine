@@ -5,6 +5,8 @@ from arthur_common.aggregations.functions.multiclass_confusion_matrix import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "positive_label,expected_tp,expected_fp,expected_tn,expected_fn",
@@ -67,3 +69,22 @@ def test_multiclass_single_class_confusion_matrix(
     assert sum([v.value for v in metrics[1].numeric_series[0].values]) == expected_fp
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == expected_fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == expected_tn
+
+
+def test_multiclass_with_segmentation(
+    get_equipment_inspection_dataset_conn: tuple[DuckDBPyConnection, DatasetReference],
+):
+    conn, dataset_ref = get_equipment_inspection_dataset_conn
+    cm_aggregator = (
+        MulticlassClassifierStringLabelSingleClassConfusionMatrixAggregationFunction()
+    )
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        prediction_col="classification_pred",
+        gt_values_col="classification_gt",
+        positive_class_label="functional",
+        segmentation_cols=["prompt_version_id"],
+    )
+    assert_dimension_in_metric(metrics[0], "prompt_version_id")

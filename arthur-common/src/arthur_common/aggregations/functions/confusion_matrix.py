@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -9,6 +9,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -26,6 +27,7 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
         prediction_normalization_case: str,
         gt_normalization_case: str,
         dataset: DatasetReference,
+        segmentation_cols: list[str],
     ) -> list[NumericMetric]:
         """
         Generate a SQL query to compute confusion matrix metrics over time.
@@ -37,59 +39,94 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
             prediction_normalization_case: SQL CASE statement for normalizing predictions to 0 / 1 / null using 'value' as the target column name
             gt_normalization_case: SQL CASE statement for normalizing ground truth values to 0 / 1 / null using 'value' as the target column name
             dataset: DatasetReference containing dataset metadata
+            segmentation_cols: list of columns to segment by
 
         Returns:
             str: SQL query that computes confusion matrix metrics
+            Without segmentation, this is the query:
+                WITH normalized_data AS (
+                    SELECT
+                        {escaped_timestamp_col} AS timestamp,
+                        {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
+                        {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value
+                    FROM {dataset.dataset_table_name}
+                    WHERE {escaped_timestamp_col} IS NOT NULL
+                )
+                SELECT
+                    time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
+                    SUM(CASE WHEN prediction = actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
+                    SUM(CASE WHEN prediction != actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
+                    SUM(CASE WHEN prediction != actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
+                    SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count
+                FROM normalized_data
+                GROUP BY ts
+                ORDER BY ts
         """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_gt_values_col = escape_identifier(gt_values_col)
+        # build query components with segmentation columns
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in segmentation_cols
+        ]
+        first_subquery_select_cols = [
+            f"{escaped_timestamp_col} AS timestamp",
+            f"{prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction",
+            f"{gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value",
+        ] + escaped_segmentation_cols
+        second_subquery_select_cols = [
+            "time_bucket(INTERVAL '5 minutes', timestamp) AS ts",
+            "SUM(CASE WHEN prediction = actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count",
+            "SUM(CASE WHEN prediction != actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count",
+            "SUM(CASE WHEN prediction != actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count",
+            "SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count",
+        ] + escaped_segmentation_cols
+        second_subquery_group_by_cols = ["ts"] + escaped_segmentation_cols
+
+        # build query
         confusion_matrix_query = f"""
-            WITH normalized_data AS (
-                SELECT
-                    {escaped_timestamp_col} AS timestamp,
-                    {prediction_normalization_case.replace('value', escaped_prediction_col)} AS prediction,
-                    {gt_normalization_case.replace('value', escaped_gt_values_col)} AS actual_value
-                FROM {dataset.dataset_table_name}
-                WHERE {escaped_timestamp_col} IS NOT NULL
-            )
-            SELECT
-                time_bucket(INTERVAL '5 minutes', timestamp) AS ts,
-                SUM(CASE WHEN prediction = actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
-                SUM(CASE WHEN prediction != actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
-                SUM(CASE WHEN prediction != actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
-                SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count
-            FROM normalized_data
-            GROUP BY ts
-            ORDER BY ts
-        """
+                WITH normalized_data AS (
+                    SELECT {", ".join(first_subquery_select_cols)}
+                    FROM {dataset.dataset_table_name}
+                    WHERE {escaped_timestamp_col} IS NOT NULL
+                )
+                SELECT {", ".join(second_subquery_select_cols)}
+                FROM normalized_data
+                GROUP BY {", ".join(second_subquery_group_by_cols)}
+                ORDER BY ts
+            """
 
         results = ddb_conn.sql(confusion_matrix_query).df()
 
-        tp = self.dimensionless_query_results_to_numeric_metrics(
+        tp = self.group_query_results_to_numeric_metrics(
             results,
             "true_positive_count",
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
-        fp = self.dimensionless_query_results_to_numeric_metrics(
+        fp = self.group_query_results_to_numeric_metrics(
             results,
             "false_positive_count",
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
-        fn = self.dimensionless_query_results_to_numeric_metrics(
+        fn = self.group_query_results_to_numeric_metrics(
             results,
             "false_negative_count",
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
-        tn = self.dimensionless_query_results_to_numeric_metrics(
+        tn = self.group_query_results_to_numeric_metrics(
             results,
             "true_negative_count",
+            dim_columns=segmentation_cols,
             timestamp_col="ts",
         )
-        tp_metric = self.series_to_metric("confusion_matrix_true_positive_count", [tp])
-        fp_metric = self.series_to_metric("confusion_matrix_false_positive_count", [fp])
-        fn_metric = self.series_to_metric("confusion_matrix_false_negative_count", [fn])
-        tn_metric = self.series_to_metric("confusion_matrix_true_negative_count", [tn])
+        tp_metric = self.series_to_metric("confusion_matrix_true_positive_count", tp)
+        fp_metric = self.series_to_metric("confusion_matrix_false_positive_count", fp)
+        fn_metric = self.series_to_metric("confusion_matrix_false_negative_count", fn)
+        tn_metric = self.series_to_metric("confusion_matrix_true_negative_count", tn)
         return [tp_metric, fp_metric, fn_metric, tn_metric]
 
 
@@ -157,7 +194,24 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
                 description="A column containing boolean or integer ground truth values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_prediction_col = escape_identifier(prediction_col)
         # Get the type of prediction column
         type_query = f"SELECT typeof({escaped_prediction_col}) as col_type FROM {dataset.dataset_table_name} LIMIT 1"
@@ -194,6 +248,7 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
             normalization_case,
             normalization_case,
             dataset,
+            segmentation_cols,
         )
 
 
@@ -275,7 +330,24 @@ class BinaryClassifierStringLabelConfusionMatrixAggregationFunction(
                 description="The label indicating a negative classification to normalize to 0.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         normalization_case = f"""
                 CASE
                     WHEN value = '{true_label}' THEN 1
@@ -291,6 +363,7 @@ class BinaryClassifierStringLabelConfusionMatrixAggregationFunction(
             normalization_case,
             normalization_case,
             dataset,
+            segmentation_cols,
         )
 
 
@@ -365,6 +438,22 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
                 description="The threshold to classify predictions to 0 or 1.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
         escaped_gt_values_col = escape_identifier(gt_values_col)
         prediction_normalization_case = f"""
@@ -409,4 +498,5 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
             prediction_normalization_case,
             gt_normalization_case,
             dataset,
+            segmentation_cols,
         )
