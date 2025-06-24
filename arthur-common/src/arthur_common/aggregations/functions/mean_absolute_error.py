@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -8,6 +8,7 @@ from arthur_common.models.schema_definitions import (
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -75,36 +76,75 @@ class MeanAbsoluteErrorAggregationFunction(NumericAggregationFunction):
                 description="A column containing float typed ground truth values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+                SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
+                SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae, \
+                COUNT(*) as count \
+                FROM {dataset.dataset_table_name} \
+                WHERE {escaped_prediction_col} IS NOT NULL \
+                AND {escaped_ground_truth_col} IS NOT NULL \
+                GROUP BY ts order by ts desc \
+                """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
         escaped_ground_truth_col = escape_identifier(ground_truth_col)
-        count_query = f" \
-            SELECT time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts, \
-            SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae, \
-            COUNT(*) as count \
-            FROM {dataset.dataset_table_name} \
-            WHERE {escaped_prediction_col} IS NOT NULL \
-            AND {escaped_ground_truth_col} IS NOT NULL \
-            GROUP BY ts order by ts desc \
-        "
 
-        results = ddb_conn.sql(count_query).df()
-        count_series = self.dimensionless_query_results_to_numeric_metrics(
+        # build query components with segmentation columns
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in segmentation_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"SUM(ABS({escaped_prediction_col} - {escaped_ground_truth_col})) as ae",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = ["ts"] + escaped_segmentation_cols
+
+        # build query
+        mae_query = f"""
+            SELECT {", ".join(all_select_clause_cols)}
+            FROM {dataset.dataset_table_name}
+            WHERE {escaped_prediction_col} IS NOT NULL
+                  AND {escaped_ground_truth_col} IS NOT NULL
+            GROUP BY {", ".join(all_group_by_cols)} order by ts desc
+        """
+
+        results = ddb_conn.sql(mae_query).df()
+        count_series = self.group_query_results_to_numeric_metrics(
             results,
             "count",
+            segmentation_cols,
             "ts",
         )
-        absolute_error_series = self.dimensionless_query_results_to_numeric_metrics(
+        absolute_error_series = self.group_query_results_to_numeric_metrics(
             results,
             "ae",
+            segmentation_cols,
             "ts",
         )
 
-        count_metric = self.series_to_metric("absolute_error_count", [count_series])
+        count_metric = self.series_to_metric("absolute_error_count", count_series)
         absolute_error_metric = self.series_to_metric(
             "absolute_error_sum",
-            [absolute_error_series],
+            absolute_error_series,
         )
 
         return [count_metric, absolute_error_metric]
