@@ -1,0 +1,53 @@
+name: ML Engine CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-dev'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  run-linter:
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+        !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      )
+    runs-on: ubuntu-latest
+    container: python:3.13-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: ml-engine
+      - name: Generate GenAI Client
+        uses: openapi-generators/openapitools-generator-action@v1.5.0
+        with:
+          generator: python
+          openapi-file: genai-engine/staging.openapi.json
+          command-args: >
+            --skip-validate-spec
+            -o ml-engine/src/genai_client
+            --package-name genai_client
+      - name: Run linters
+        run: |
+          poetry -C ml-engine run pre-commit install
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          echo "$CHANGED_FILES" | xargs poetry -C ml-engine run pre-commit run --color always --verbose --files
