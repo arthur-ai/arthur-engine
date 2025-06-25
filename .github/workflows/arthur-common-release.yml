@@ -8,6 +8,15 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to publish from (only dev branch is allowed for manual triggers)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
 
 jobs:
   pypi-build:
@@ -15,8 +24,9 @@ jobs:
     # written from guide: https://johnfraney.ca/blog/how-to-publish-a-python-package-with-poetry-and-github-actions/
     name: Build release for PyPI
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.branch == 'dev') ||
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')) &&
+       contains(github.event.head_commit.message, 'Increment arthur-common version to')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,6 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -50,8 +61,10 @@ jobs:
     needs: pypi-build
     # does not run on dev—https://packaging.python.org/en/latest/specifications/version-specifiers/#version-specifiers:~:text=Local%20version%20identifiers%20SHOULD%20NOT%20be%20used%20when%20publishing%20upstream%20projects%20to%20a%20public%20index%20server%2C%20but%20MAY%20be%20used%20to%20identify%20private%20builds%20created%20directly%20from%20the%20project%20source.
     if: |
-      contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
-      (github.ref == 'refs/heads/main')
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.branch == 'dev') ||
+      (github.event_name == 'push' &&
+       contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
+       (github.ref == 'refs/heads/main'))
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:  # must be the same as what is set for the trusted publisher in PyPI
