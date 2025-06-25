@@ -166,7 +166,7 @@ class MetricsColumnParameterSchema(MetricsParameterSchema):
 
 
 # Not used /implemented yet. Might turn into group by column list
-class MetricsColumnListParameterSchema(MetricsParameterSchema):
+class MetricsColumnListParameterSchema(MetricsColumnParameterSchema):
     parameter_type: Literal["column_list"] = "column_list"
 
 
@@ -202,13 +202,6 @@ class AggregationSpecSchema(BaseModel):
         description="List of parameters to the aggregation's aggregate function.",
     )
 
-    def parameter_is_column_reference(self, parameter_name: str) -> bool:
-        return any(
-            param.parameter_key == parameter_name
-            and isinstance(param, MetricsColumnParameterSchema)
-            for param in self.aggregate_args
-        )
-
     @model_validator(mode="after")
     def column_dataset_references_exist(self) -> Self:
         dataset_parameter_keys = [
@@ -218,7 +211,10 @@ class AggregationSpecSchema(BaseModel):
         ]
         for param in self.aggregate_args:
             if (
-                isinstance(param, MetricsColumnParameterSchema)
+                isinstance(
+                    param,
+                    (MetricsColumnParameterSchema, MetricsColumnListParameterSchema),
+                )
                 and param.source_dataset_parameter_key not in dataset_parameter_keys
             ):
                 raise ValueError(
