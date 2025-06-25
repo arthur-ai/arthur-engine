@@ -13,7 +13,7 @@ from arthur_common.models.schema_definitions import (
     ScalarType,
     ScopeSchemaTag,
 )
-from arthur_common.tools.duckdb_data_loader import escape_identifier
+from arthur_common.tools.duckdb_data_loader import escape_identifier, escape_str_literal
 from duckdb import DuckDBPyConnection
 
 
@@ -57,7 +57,8 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
                     SUM(CASE WHEN prediction = actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS true_positive_count,
                     SUM(CASE WHEN prediction != actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count,
                     SUM(CASE WHEN prediction != actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count,
-                    SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count
+                    SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count,
+                    {escaped_prediction_col_name} as prediction_column_name
                 FROM normalized_data
                 GROUP BY ts
                 ORDER BY ts
@@ -65,6 +66,7 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
         segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
+        escaped_prediction_col_name = escape_str_literal(prediction_col)
         escaped_gt_values_col = escape_identifier(gt_values_col)
         # build query components with segmentation columns
         escaped_segmentation_cols = [
@@ -81,8 +83,10 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
             "SUM(CASE WHEN prediction != actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS false_positive_count",
             "SUM(CASE WHEN prediction != actual_value AND actual_value = 1 THEN 1 ELSE 0 END) AS false_negative_count",
             "SUM(CASE WHEN prediction = actual_value AND actual_value = 0 THEN 1 ELSE 0 END) AS true_negative_count",
+            f"{escaped_prediction_col_name} as prediction_column_name",
         ] + escaped_segmentation_cols
         second_subquery_group_by_cols = ["ts"] + escaped_segmentation_cols
+        extra_dims = ["prediction_column_name"]
 
         # build query
         confusion_matrix_query = f"""
@@ -102,25 +106,25 @@ class ConfusionMatrixAggregationFunction(NumericAggregationFunction):
         tp = self.group_query_results_to_numeric_metrics(
             results,
             "true_positive_count",
-            dim_columns=segmentation_cols,
+            dim_columns=segmentation_cols + extra_dims,
             timestamp_col="ts",
         )
         fp = self.group_query_results_to_numeric_metrics(
             results,
             "false_positive_count",
-            dim_columns=segmentation_cols,
+            dim_columns=segmentation_cols + extra_dims,
             timestamp_col="ts",
         )
         fn = self.group_query_results_to_numeric_metrics(
             results,
             "false_negative_count",
-            dim_columns=segmentation_cols,
+            dim_columns=segmentation_cols + extra_dims,
             timestamp_col="ts",
         )
         tn = self.group_query_results_to_numeric_metrics(
             results,
             "true_negative_count",
-            dim_columns=segmentation_cols,
+            dim_columns=segmentation_cols + extra_dims,
             timestamp_col="ts",
         )
         tp_metric = self.series_to_metric("confusion_matrix_true_positive_count", tp)
