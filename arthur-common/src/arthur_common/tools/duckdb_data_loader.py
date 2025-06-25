@@ -291,7 +291,7 @@ def _make_schema(
                 return "DOUBLE"
             case DType.BOOL:
                 return "BOOLEAN"
-            case DType.STRING:
+            case DType.STRING | DType.IMAGE:
                 return "VARCHAR"
             case DType.UUID:
                 return "UUID"
