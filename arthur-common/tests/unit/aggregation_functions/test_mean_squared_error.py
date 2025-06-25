@@ -5,6 +5,8 @@ from arthur_common.aggregations.functions.mean_squared_error import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 
 @pytest.mark.parametrize(
     "city,expected_consumption_mse",
@@ -56,3 +58,14 @@ def test_mean_squared_error(
     squared_error_sum = sum([v.value for v in metrics[1].numeric_series[0].values])
 
     assert round(squared_error_sum / squared_error_count, 2) == expected_consumption_mse
+
+    # test with segmentation
+    metrics = mae_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="timestamp",
+        prediction_col="expected energy consumption",
+        ground_truth_col="energy usage consumption",
+        segmentation_cols=["city"],
+    )
+    assert_dimension_in_metric(metrics[0], "city")
