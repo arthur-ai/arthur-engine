@@ -4361,14 +4361,14 @@ murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
 name = "presidio-analyzer"
-version = "2.2.356"
+version = "2.2.358"
 description = "Presidio Analyzer package"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "presidio_analyzer-2.2.356-py3-none-any.whl", hash = "sha256:4f75006f0e2768e1248cc58bd41cc697976663070670060c24ce4d9fd2d580f8"},
+    {file = "presidio_analyzer-2.2.358-py3-none-any.whl", hash = "sha256:21f0b56feb61c91f80a50662da4446a040080bb8989b20bccf9cb826189e4b93"},
 ]
 
 [package.dependencies]
@@ -4380,8 +4380,9 @@ tldextract = "*"
 
 [package.extras]
 azure-ai-language = ["azure-ai-textanalytics", "azure-core"]
+gliner = ["gliner (>=0.2.13,<1.0.0) ; python_version >= \"3.10\"", "huggingface_hub", "onnxruntime (>=1.19) ; python_version >= \"3.10\"", "transformers"]
 server = ["flask (>=1.1)", "gunicorn"]
-stanza = ["spacy_stanza", "stanza"]
+stanza = ["stanza (>=1.10.1,<2.0.0)"]
 transformers = ["huggingface_hub", "spacy_huggingface_pipelines", "transformers"]
 
 [[package]]
@@ -7174,4 +7175,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "d8a27505311daf0c3953ea235e994b2475e2001253fb7e8fa4b8e232f6d1cbf8"
+content-hash = "0d8831f595bb65cd7a8b94067428f92578fc0d6be8efe9d1f39e36bb163cc8ab"
