@@ -209,7 +209,7 @@ jobs:
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        uses: aws-actions/configure-aws-credentials@3d8cba388a057b13744d61818a337e40a119b1a7
         with:
           role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
           role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
