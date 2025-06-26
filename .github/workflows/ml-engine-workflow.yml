@@ -38,15 +38,12 @@ jobs:
         with:
           working-directory: ml-engine
       - name: Generate GenAI Client
-        uses: addnab/docker-run-action@v3
-        with:
-          image: docker.io/openapitools/openapi-generator-cli:latest
-          options: -v ${{ github.workspace }}:/github/workspace
-          run: |
-            java -jar /opt/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar generate -g python \
-              -i /github/workspace/genai-engine/staging.openapi.json \
-              -o /github/workspace/ml-engine/src/genai_client \
-              --skip-validate-spec
+        run: |
+          pip install openapi-generator-cli[jdk4py]
+          openapi-generator-cli generate -g python \
+            -i ${{github.workspace}}/genai-engine/staging.openapi.json \
+            -o ${{github.workspace}}/ml-engine/src/genai_client \
+            --skip-validate-spec --package-name genai_client
       - name: Run linters
         run: |
           poetry -C ml-engine install --with linters
@@ -78,15 +75,12 @@ jobs:
         with:
           working-directory: ml-engine
       - name: Generate GenAI Client
-        uses: addnab/docker-run-action@v3
-        with:
-          image: docker.io/openapitools/openapi-generator-cli:latest
-          options: -v ${{ github.workspace }}:/github/workspace
-          run: |
-            java -jar /opt/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar generate -g python \
-              -i /github/workspace/genai-engine/staging.openapi.json \
-              -o /github/workspace/ml-engine/src/genai_client \
-              --skip-validate-spec
+        run: |
+          pip install openapi-generator-cli[jdk4py]
+          openapi-generator-cli generate -g python \
+            -i ${{github.workspace}}/genai-engine/staging.openapi.json \
+            -o ${{github.workspace}}/ml-engine/src/genai_client \
+            --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
-          poetry -C ml-engine run pytest tests
+          poetry -C ml-engine run pytest
