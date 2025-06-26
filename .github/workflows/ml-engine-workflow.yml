@@ -83,4 +83,5 @@ jobs:
             --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
+          ls -la ${{github.workspace}}/ml-engine/src/genai_client
           poetry -C ml-engine run pytest
