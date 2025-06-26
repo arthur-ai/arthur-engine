@@ -41,8 +41,8 @@ jobs:
         run: |
           pip install openapi-generator-cli[jdk4py]
           openapi-generator-cli generate -g python \
-            -i ${{github.workspace}}/genai-engine/staging.openapi.json \
-            -o ${{github.workspace}}/ml-engine/src/genai_client \
+            -i ./genai-engine/staging.openapi.json \
+            -o ./ml-engine/src/genai_client \
             --skip-validate-spec --package-name genai_client
       - name: Run linters
         run: |
@@ -75,16 +75,12 @@ jobs:
         with:
           working-directory: ml-engine
       - name: Generate GenAI Client
-        working-directory: ${{github.workspace}}
         run: |
-          pwd
-          ls -al ${{github.workspace}}
           pip install openapi-generator-cli[jdk4py]
           openapi-generator-cli generate -g python \
-            -i ${{github.workspace}}/genai-engine/staging.openapi.json \
-            -o ${{github.workspace}}/ml-engine/src/genai_client \
+            -i ./genai-engine/staging.openapi.json \
+            -o ./ml-engine/src/genai_client \
             --skip-validate-spec --package-name genai_client
       - name: Run unit-tests
         run: |
-          ls -la ${{github.workspace}}/ml-engine/src/genai_client
           poetry -C ml-engine run pytest
