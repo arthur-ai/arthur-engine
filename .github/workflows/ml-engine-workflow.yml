@@ -77,7 +77,8 @@ jobs:
       - name: Generate GenAI Client
         working-directory: ${{github.workspace}}
         run: |
-          ls -al ${{github.workspace}}/genai-engine/
+          pwd
+          ls -al ${{github.workspace}}
           pip install openapi-generator-cli[jdk4py]
           openapi-generator-cli generate -g python \
             -i ${{github.workspace}}/genai-engine/staging.openapi.json \
