@@ -29,6 +29,11 @@ def _get_dataset(name: str) -> pd.DataFrame | list[dict]:
             current_dir,
             "../../test_data/vehicles/vehicle_classification_data.csv",
         )
+    elif name == "equipment_inspection":
+        csv_path = os.path.join(
+            current_dir,
+            "../../test_data/equipment_inspection/inferences.csv",
+        )
     else:
         raise ValueError(f"Dataset {name} doesn't exist.")
     data = pd.read_csv(csv_path)
@@ -51,6 +56,19 @@ def get_balloons_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
     conn = _get_dataset("balloons")
     dataset_reference = DatasetReference(
         dataset_name="balloons",
+        dataset_table_name="inferences",
+        dataset_id=uuid4(),
+    )
+    return conn, dataset_reference
+
+
+@pytest.fixture
+def get_equipment_inspection_dataset_conn() -> (
+    tuple[DuckDBPyConnection, DatasetReference]
+):
+    conn = _get_dataset("equipment_inspection")
+    dataset_reference = DatasetReference(
+        dataset_name="equipment_inspection",
         dataset_table_name="inferences",
         dataset_id=uuid4(),
     )
