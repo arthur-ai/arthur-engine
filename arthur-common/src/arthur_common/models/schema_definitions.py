@@ -30,6 +30,7 @@ class DType(str, Enum):
     TIMESTAMP = "timestamp"
     DATE = "date"
     JSON = "json"
+    IMAGE = "image"
 
 
 class MetricParameterAnnotation(BaseModel):

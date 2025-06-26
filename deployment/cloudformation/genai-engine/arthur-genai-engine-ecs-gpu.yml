@@ -148,13 +148,13 @@ Parameters:
   GenaiEngineECSDeploymentMaximumPercent:
     Type: Number
     Description: 'Maximum percentage of tasks that can be running during a deployment'
-    Default: 100
+    Default: 200
     MinValue: 0
     MaxValue: 200
   GenaiEngineECSDeploymentMinimumHealthyPercent:
     Type: Number
     Description: 'Minimum percentage of tasks that must remain healthy during a deployment. Note: If the number of tasks is one, this should be equal to 0 or 100.'
-    Default: 50
+    Default: 100
     MinValue: 0
     MaxValue: 100
   GenaiEngineECSClusterWarmPoolEnabled:

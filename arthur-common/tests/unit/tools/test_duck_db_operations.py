@@ -232,6 +232,50 @@ def test_multitype_list_columns_created():
     assert d is not None
 
 
+def test_cv_schema_with_image_col_loads():
+    schema = DatasetSchema(
+        alias_mask={},
+        columns=[
+            DatasetColumn(
+                id=uuid4(),
+                source_name="prompt_version_id",
+                definition=DatasetScalarType(id=uuid4(), dtype=DType.STRING),
+            ),
+            DatasetColumn(
+                id=uuid4(),
+                source_name="timestamp",
+                definition=DatasetScalarType(id=uuid4(), dtype=DType.TIMESTAMP),
+            ),
+            DatasetColumn(
+                id=uuid4(),
+                source_name="image",
+                definition=DatasetScalarType(id=uuid4(), dtype=DType.IMAGE),
+            ),
+        ],
+    )
+    data = [
+        {
+            "id": "991ff637-2c13-4289-ba17-a23c1c2b20b9",
+            "timestamp": "2024-07-29T13:46:12+0000",
+            "image": "iVBORw0KGgoAAAANSUhEUgAAAOAAAADgCAIAAACVT/22AAADGUlEQVR4nO3doU5cQRiAUbYhQaBJaisRCBKSprLVvEUNpk9TU8MTYNG0rmmCQyD7AGgEahDYltuwe/d+DeeoFTczI778K3ZndzXG2IGqN0sfAJ4jUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZK2u/QB2Iyjn9dLbX3z4WS+xU1Q0gRKmkBJEyhpAiVNoKQJlDSBkiZQ0gRKmkBJEyhpAiVNoKQJlDSBkuYLy/+Hu73b5x+42tnf1F6fftxvaqn1rcYYS5+BaZOBbtDBw+HW9prkLZ40gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASZvl2vHJ+xn/OOdvrn8t9kdBzMcEJW1igv4+O93OOeCPTFDSBEqaQEkTKGkCJc3PL7KuL58/Tj7z9fz7yxY3QUkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGmzfNR5cfz26cW7b5dzrM/rYYKSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDS3OpkXS++sfkvTFDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQElbjTGWPgPT7vZut7bXwcPh1vaaZIKSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQElzaY40E5Q0gZImUNIESppASRMoaY+euCcrkiFutgAAAABJRU5ErkJggg==",
+        },
+        {
+            "id": "991ff637-2c13-4289-ba17-a23c1c2b20b8",
+            "timestamp": "2024-07-28T13:46:12+0000",
+            "image": "iVBORw0KGgoAAAANSUhEUgAAAOAAAADgCAIAAACVT/22AAADKElEQVR4nO3cMWoVURiA0YmkFAVrGzsrC60tUoS4ALHTTsEduAR3IFhaBhcgpEhhb2HlAtxAxH6sRQgTmJn7+TinfcPcn8fHHRjeu0fzPE9QdWv0AHAdgZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZQ0gZImUNIESppASRMoaQIlTaCkCZS049EDLPXj/HL0CDfw8MXJ6BEOhB2UNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSdjx6gHW8Pns5eoS/Xa1/y693f65/0zw7KGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGkCJW38Xz4+PP615LKTd1sPUrfwi9rU2293dl5xfKALXb5/ct3HZ3vNwb484kkTKGkCJU2gpAmUNIGSJlDSBEqaQEkTKGlH8zyPnmEFT6/ujx5hc45fhJz/5sciDPf7y8flF99+9maVRe2gpAmUNIGSJlDSBEqaQEnb/DXTq8+Ptl5imqbpdI9F2J8dlDSBkiZQ0gRKmkBJEyhpAiVNoKQJlDSBkiZQ0gRKmkBJEyhpAiVNoKQJlDSBkiZQ0g7k6JsHF/e2XuLT8+9bL8G/7KCkCZQ0gZImUNIESppASRMoaQfyHpQdrHWq943YQUkTKGkCJU2gpAmUNIGS9gcCZCCbtvyg7QAAAABJRU5ErkJggg==",
+        },
+    ]
+
+    conn = DuckDBOperator.load_data_to_duckdb(
+        data,
+        preprocess_schema=False,
+        schema=schema,
+    )
+    DuckDBOperator.apply_alias_mask(table_name="inferences", conn=conn, schema=schema)
+    d = conn.sql("SELECT image from inferences").df()
+    assert d is not None
+
+
 def test_tabular_schema():
     current_dir = os.path.dirname(__file__)
     csv_path = os.path.join(current_dir, "../../test_data/balloons/flights.csv")

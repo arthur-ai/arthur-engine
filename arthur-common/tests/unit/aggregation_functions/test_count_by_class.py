@@ -6,6 +6,8 @@ from arthur_common.aggregations.functions.inference_count_by_class import (
 from arthur_common.models.metrics import DatasetReference, Dimension
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 HIGH_ACCURACY_COUNTS = (743, 24257)
 LOW_ACCURACY_COUNTS = (9, 24991)
 
@@ -43,6 +45,16 @@ def test_int_bool_count_by_class(
     assert metrics[0].numeric_series[1].dimensions == [
         Dimension(name="prediction", value="True"),
     ]
+
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="sent timestamp",
+        prediction_col=prediction_col,
+        segmentation_cols=["packet type"],
+    )
+    assert_dimension_in_metric(metrics[0], "packet type")
 
 
 @pytest.mark.parametrize(
@@ -99,3 +111,16 @@ def test_prediction_threshold_count_by_class(
     assert metrics[0].numeric_series[1].dimensions == [
         Dimension(name="prediction", value="yeetyeetyes"),
     ]
+
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} float value",
+        threshold=0.93,
+        true_label="yeetyeetyes",
+        false_label="no",
+        segmentation_cols=["packet type"],
+    )
+    assert_dimension_in_metric(metrics[0], "packet type")
