@@ -53,3 +53,40 @@ jobs:
           poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
           poetry -C ml-engine run isort src/ml_engine --profile black
           poetry -C ml-engine run black src/ml_engine
+
+  run-unit-tests:
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+        !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+      )
+    runs-on: ubuntu-latest
+    container: python:3.13-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: ml-engine
+      - name: Generate GenAI Client
+        uses: addnab/docker-run-action@v3
+        with:
+          image: docker.io/openapitools/openapi-generator-cli:latest
+          options: -v ${{ github.workspace }}:/github/workspace
+          run: |
+            java -jar /opt/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar generate -g python \
+              -i /github/workspace/genai-engine/staging.openapi.json \
+              -o /github/workspace/ml-engine/src/genai_client \
+              --skip-validate-spec
+      - name: Run unit-tests
+        run: |
+          poetry -C ml-engine run pytest tests
