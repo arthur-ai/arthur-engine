@@ -135,14 +135,13 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
       - name: Push tag
         run: |
-          VERSION=$(cat genai-engine/version)
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            VERSION="${VERSION}-dev"
-          fi
-          git tag -a "$VERSION" -m "Create tag $VERSION"
-          git push origin "$VERSION"
+          git tag -a "${{ env.TAGGED_VERSION }}" -m "Create tag for GenAI Engine ${{ env.VERSION }}"
+            git push origin "${{ env.TAGGED_VERSION }}"
 
   build-docker-images:
     needs: push-tag
@@ -159,13 +158,9 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
-      - name: Set version
-        run: |
-          VERSION=$(cat genai-engine/version)
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            VERSION="${VERSION}-dev"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
@@ -204,13 +199,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-git
-      - name: Set version
-        run: |
-          VERSION=$(cat genai-engine/version)
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            VERSION="${VERSION}-dev"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
         with:
@@ -240,13 +231,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-helm
-      - name: Set version
-        run: |
-          VERSION=$(cat genai-engine/version)
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            VERSION="${VERSION}-dev"
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+      - uses: ./.github/workflows/composite-actions/set-version
+        with:
+          version-prefix: "genai-engine-"
       - name: Login to GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
