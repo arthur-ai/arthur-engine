@@ -1,0 +1,27 @@
+name: 'Set Version'
+description: 'Read version from file and set it as environment variable, optionally appending -dev suffix for non-main branches'
+
+inputs:
+  version-file:
+    description: 'Path to the version file (default: version)'
+    required: false
+    default: 'version'
+  version-prefix:
+    description: 'Prefix to add before the version (e.g., "ml-engine-", "genai-engine-")'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set version
+      shell: bash
+      run: |
+        VERSION=$(cat ${{ inputs.version-file }})
+        if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+          VERSION="${VERSION}-dev"
+        fi
+        echo "VERSION=${VERSION}" >> $GITHUB_ENV
+        if [[ -n "${{ inputs.version-prefix }}" ]]; then
+          echo "TAGGED_VERSION=${{ inputs.version-prefix }}${VERSION}" >> $GITHUB_ENV
+        fi
