@@ -12,6 +12,7 @@ from arthur_common.models.schema_definitions import (
     ScopeSchemaTag,
 )
 from arthur_common.tools.duckdb_data_loader import DuckDBOperator, escape_identifier
+from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 
 
 class SchemaInferer:
@@ -38,14 +39,21 @@ class SchemaInferer:
         self.conn.sql(
             f"CREATE OR REPLACE TEMP TABLE {escaped_col} AS SELECT UNNEST({escaped_col}) as {escaped_col} FROM {table}",
         )
-        return self._infer_schema(escaped_col)
+        return self._infer_schema(escaped_col, is_nested_col=True)
 
-    def _infer_schema(self, table: str = "root") -> DatasetObjectType:
+    def _infer_schema(
+        self,
+        table: str = "root",
+        is_nested_col: bool = False,
+    ) -> DatasetObjectType:
+        """is_nested_col indicates whether the function is being called on an unnested/flattened table that represents
+        a struct column or list column in the root table."""
         ddb_schema: list[tuple[Any, Any, Any]] = self.conn.sql(
             f"DESCRIBE {table}",
         ).fetchall()
 
         obj = DatasetObjectType(id=uuid4(), object={}, nullable=False)
+        # object has a dict of each column
         timestamp_cols = []
 
         for column in ddb_schema:
@@ -94,6 +102,16 @@ class SchemaInferer:
                         timestamp_cols.append(scalar_schema)
                     case _:
                         raise NotImplementedError(f"Type {col_type} not mappable.")
+
+                # tag column as a possible segmentation column if it meets criteria
+                if not is_nested_col and is_column_possible_segmentation(
+                    self.conn,
+                    table,
+                    col_name,
+                    scalar_schema.dtype,
+                ):
+                    scalar_schema.tag_hints.append(ScopeSchemaTag.POSSIBLE_SEGMENTATION)
+
                 obj.object[col_name] = scalar_schema
 
         # auto assign primary timestamp tag if there's only one timestamp column

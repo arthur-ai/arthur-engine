@@ -18,6 +18,7 @@ class ScopeSchemaTag(str, Enum):
     PREDICTION = "prediction"
     GROUND_TRUTH = "ground_truth"
     PIN_IN_DEEP_DIVE = "pin_in_deep_dive"
+    POSSIBLE_SEGMENTATION = "possible_segmentation"
 
 
 class DType(str, Enum):
@@ -420,3 +421,8 @@ def SHIELD_SCHEMA() -> DatasetSchema:
 
 SHIELD_RESPONSE_SCHEMA = create_shield_response_schema().to_base_type()
 SHIELD_PROMPT_SCHEMA = create_shield_prompt_schema().to_base_type()
+
+SEGMENTATION_ALLOWED_DTYPES = [DType.INT, DType.BOOL, DType.STRING, DType.UUID]
+SEGMENTATION_ALLOWED_COLUMN_TYPES = [
+    ScalarType(dtype=d_type) for d_type in SEGMENTATION_ALLOWED_DTYPES
+]
