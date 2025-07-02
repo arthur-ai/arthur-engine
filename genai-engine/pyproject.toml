@@ -18,7 +18,7 @@ packages = [
 [tool.poetry.dependencies]
 python = "3.12.*"
 openai = "1.59.6"
-fastapi = "0.115.6"
+fastapi = "0.115.14"
 uvicorn = "0.34.0"
 pydantic = "2.10.5"
 sse-starlette = "2.2.1"
