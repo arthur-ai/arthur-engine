@@ -219,6 +219,7 @@ jobs:
           sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-cpu.yml
           sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-gpu.yml
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
+          aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
   push-helm-chart-to-github-dev:
     needs: [push-tag, build-docker-images]
