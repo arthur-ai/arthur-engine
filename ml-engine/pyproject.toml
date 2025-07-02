@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "3.13.*"
 croniter = "6.0.0"
-flask = "3.1.0"
+flask = "3.1.1"
 gcsfs = "2025.3.2"
 google-cloud-bigquery = "3.32.0"
 pandas = "2.2.3"
