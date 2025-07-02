@@ -35,6 +35,8 @@ MSSQL_CONNECTOR_DATABASE_FIELD = "database"
 MSSQL_CONNECTOR_USERNAME_FIELD = "username"
 MSSQL_CONNECTOR_PASSWORD_FIELD = "password"
 MSSQL_CONNECTOR_DRIVER_FIELD = "driver"
+MSSQL_CONNECTOR_TABLE_NAME_FIELD = "table_name"
+
 
 # dataset (connector type dependent) constants
 SHIELD_DATASET_TASK_ID_FIELD = "task_id"
