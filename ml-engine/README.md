@@ -16,7 +16,7 @@
 ### Install prerequisite
 1. Install Poetry
 ```bash
-pip install poetry==2.1.3
+pip install "poetry>=2,<3"
 ```
 
 ### Set Up Python Environment
