@@ -2846,14 +2846,14 @@ dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pyte
 
 [[package]]
 name = "types-croniter"
-version = "6.0.0.20250411"
+version = "6.0.0.20250626"
 description = "Typing stubs for croniter"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "types_croniter-6.0.0.20250411-py3-none-any.whl", hash = "sha256:4acdaccf4190017daa51699bd3110a0617c5df72459e62dea8b72549c62fad90"},
-    {file = "types_croniter-6.0.0.20250411.tar.gz", hash = "sha256:ee97025b7768f2cc556ef52a2f10c97c503c1634f372fd3e9683d8f7c960eeb7"},
+    {file = "types_croniter-6.0.0.20250626-py3-none-any.whl", hash = "sha256:3e8c37b54b541f323b2c487f3a1c9dcb27a7092333a2d5c09fff0c4d41c68380"},
+    {file = "types_croniter-6.0.0.20250626.tar.gz", hash = "sha256:c32243b16d4dfa7c9989a5eadc6762459d093dded023f3c363fdee6b96578a77"},
 ]
 
 [[package]]
@@ -3181,4 +3181,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "3b95820f8842e36df75d63c6be606ff0e9ab573d10f99fbe4cc06366a0a2839d"
+content-hash = "d0799c6bc1c50ec62e9e1b3471fea69c55118fd3e63a1501337f888a6d8993dc"
