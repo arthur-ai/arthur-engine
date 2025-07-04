@@ -2448,14 +2448,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "locust"
-version = "2.37.10"
+version = "2.37.11"
 description = "Developer-friendly load testing framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 files = [
-    {file = "locust-2.37.10-py3-none-any.whl", hash = "sha256:e315a32503bb397cb696c27e2d35d591810a581714fed7a8c5514b36cc5c7958"},
-    {file = "locust-2.37.10.tar.gz", hash = "sha256:4ae1df1f5155cc7df5aa3eee333c1fa87c1a3ac4815a47f7e62d8cdeadc1fd45"},
+    {file = "locust-2.37.11-py3-none-any.whl", hash = "sha256:b826f95fbfd5d9a32df6ab1b74672b88e65bbc33ec99fdc10af98079952ad517"},
+    {file = "locust-2.37.11.tar.gz", hash = "sha256:89c79bc599aa57160bd41dd3876e35d8b9dee5abded78e35008d01fd8f1640ed"},
 ]
 
 [package.dependencies]
@@ -2465,7 +2465,7 @@ flask-cors = ">=3.0.10"
 flask-login = ">=0.6.3"
 gevent = ">=24.10.1,<26.0.0"
 geventhttpclient = ">=2.3.1"
-locust-cloud = ">=1.23.1"
+locust-cloud = ">=1.23.2"
 msgpack = ">=1.0.0"
 psutil = ">=5.9.1"
 pywin32 = {version = "*", markers = "sys_platform == \"win32\""}
