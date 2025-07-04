@@ -1921,14 +1921,14 @@ blobfile = ["blobfile (>=2)"]
 
 [[package]]
 name = "tokencost"
-version = "0.1.21"
+version = "0.1.24"
 description = "To calculate token and translated USD cost of string and message calls to OpenAI, for example when used by AI agents"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "tokencost-0.1.21-py3-none-any.whl", hash = "sha256:754ee867b483c6a41c5d34760947feb3f1252db752c6f92b0ac1f4bcdc23342b"},
-    {file = "tokencost-0.1.21.tar.gz", hash = "sha256:4ba6291212e3edcdb960c2077955ea4f4c3525b267b4ae84b823d1d02c3803dc"},
+    {file = "tokencost-0.1.24-py3-none-any.whl", hash = "sha256:928d1af30c4dc8e7251571fd374ecff862af0c4814954a4986222140a88fbdab"},
+    {file = "tokencost-0.1.24.tar.gz", hash = "sha256:0cde4531f9014c3d7d3b089863c088b3afd191d7dabea5dfc4194796f0c6361e"},
 ]
 
 [package.dependencies]
@@ -1937,7 +1937,7 @@ anthropic = ">=0.34.0"
 tiktoken = ">=0.9.0"
 
 [package.extras]
-dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pytest (>=7.4.4)", "tabulate (>=0.9.0)", "tach (>=0.6.9)"]
+dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pytest (>=7.4.4)", "python-dotenv (>=1.0.0)", "tabulate (>=0.9.0)", "tach (>=0.6.9)"]
 
 [[package]]
 name = "types-python-dateutil"
@@ -2166,4 +2166,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "077299c31cca160bb7d32b9fb20df0e8f8fbb5b9f727d026ead5fad94b918a8e"
+content-hash = "e8799699f09c8f964ca8ca0416494016ca6d9f14985be363c96d9831a8dde3b1"
