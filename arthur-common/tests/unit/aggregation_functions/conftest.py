@@ -128,7 +128,7 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
         CREATE TABLE {dataset_ref.dataset_table_name} (
             created_at BIGINT,
             inference_prompt STRUCT(tokens BIGINT),
-            inference_response STRUCT(tokens BIGINT)
+            inference_response STRUCT(tokens BIGINT, response_rule_results STRUCT(rule_type STRING, result STRING)[])
         )
         """,
     )
@@ -140,19 +140,34 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
         (
             1704067200000,  # 2024-01-01 00:00:00
             {"tokens": 40},
-            {"tokens": 60},
+            {
+                "tokens": 60,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Pass"},
+                ],
+            },
         ),
         # Second 5-minute interval
         (
             1704067500000,  # 2024-01-01 00:05:00
             {"tokens": 30},
-            {"tokens": 50},
+            {
+                "tokens": 50,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Pass"},
+                ],
+            },
         ),
         # Third 5-minute interval
         (
             1704067800000,  # 2024-01-01 00:10:00
             {"tokens": 30},
-            {"tokens": 40},
+            {
+                "tokens": 40,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Fail"},
+                ],
+            },
         ),
     ]
 
@@ -164,7 +179,7 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
             VALUES (
                 {created_at},
                 ROW({prompt['tokens']}),
-                ROW({response['tokens']})
+                ROW({response['tokens']}, {response['response_rule_results']})
             )
             """,
         )

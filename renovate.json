@@ -9,7 +9,8 @@
         "minor",
         "patch"
       ],
-      "automerge": true
+      "automerge": true,
+      "autoApprove": true
     },
     {
       "matchPackageNames": [
