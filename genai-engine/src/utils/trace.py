@@ -4,11 +4,83 @@ import logging
 import json
 import re
 
+
 logger = logging.getLogger(__name__)
+
+# Compile regex patterns once for better performance
+_QUERY_PATTERNS = [
+    # Direct query indicators
+    re.compile(r'(?:query|Query):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:prompt|Prompt):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:question|Question):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:task|Task):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:request|Request):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    
+    # User-specific patterns
+    re.compile(r'(?:user query|User query|USER QUERY):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:user prompt|User prompt|USER PROMPT):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:user question|User question|USER QUESTION):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:user asks?|User asks?):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:user wants? to know|User wants? to know):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:user is asking|User is asking):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    
+    # Context-based patterns
+    re.compile(r'(?:based on the following|Based on the following):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:given the following|Given the following):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:answer the following|Answer the following):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:respond to|Respond to):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:help with|Help with):\s*(.+?)(?:\n|$)', re.IGNORECASE | re.DOTALL),
+    
+    # Quoted content (might be the actual query)
+    re.compile(r'"([^"]+)"'),
+    re.compile(r"'([^']+)'"),
+    
+    # Multi-line patterns with newlines
+    re.compile(r'(?:query|Query):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)', re.IGNORECASE | re.DOTALL),
+    re.compile(r'(?:prompt|Prompt):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)', re.IGNORECASE | re.DOTALL),
+    
+    # Fallback: look for sentences that seem like questions or requests
+    re.compile(r'([^.!?]*\?[^.!?]*)'),  # Questions
+    re.compile(r'((?:please|Please|can you|Can you|could you|Could you|would you|Would you)[^.!?]*[.!?])', re.IGNORECASE),  # Polite requests
+]
+
+_WHITESPACE_PATTERN = re.compile(r'\s+')
+_PREFIX_PATTERNS = [
+    re.compile(r'^(?:the\s+)?(?:user\s+)?(?:query|prompt|question|task|request)(?:\s+is)?:?\s*', re.IGNORECASE),
+    re.compile(r'^(?:please\s+)?(?:help\s+)?(?:me\s+)?(?:with\s+)?', re.IGNORECASE),
+    re.compile(r'^(?:i\s+)?(?:need\s+)?(?:you\s+)?(?:to\s+)?', re.IGNORECASE),
+]
+
+# Additional compiled patterns for fallback sentence extraction
+_SENTENCE_SPLIT_PATTERN = re.compile(r'[.!?]+')
+
+def clean_extracted_text(text: str) -> str:
+    """
+    Clean extracted text by removing extra whitespace and formatting.
+    Uses compiled regex patterns for better performance.
+    
+    Args:
+        text: Raw extracted text
+        
+    Returns:
+        Cleaned text string
+    """
+    if not text:
+        return ""
+    
+    # Remove extra whitespace and newlines using compiled pattern
+    cleaned = _WHITESPACE_PATTERN.sub(' ', text.strip())
+    
+    # Remove common prefixes using compiled patterns
+    for prefix_pattern in _PREFIX_PATTERNS:
+        cleaned = prefix_pattern.sub('', cleaned)
+    
+    return cleaned.strip()
 
 def extract_span_features(span_dict):
     """
     Extract and clean LLM-specific features from a span dictionary.
+    Optimized version with early exits and caching.
     
     Args:
         span_dict: Dictionary containing span data including attributes
@@ -22,37 +94,54 @@ def extract_span_features(span_dict):
         # Extract LLM-specific data
         llm_data = extract_llm_data(attributes)
 
-        # Format to expected output
-        system_prompt=""
-        query=""
-        response=""
-    
+        # Early exit if no conversation data
+        if not llm_data["input_conversation"]:
+            return {
+                "system_prompt": "",
+                "user_query": "",
+                "response": "",
+                "context": [],
+            }
+
+        # Extract data with optimized logic
+        system_prompt = ""
+        query = ""
+        
+        # Use more efficient extraction
         for message in llm_data["input_conversation"]:
             if message["role"] == "system" and not system_prompt:
-                system_prompt = message["content"]
+                system_prompt = message.get("content", "")
             elif message["role"] == "user" and not query:
-                # Get the latest user query
-                query = message["content"]
+                query = message.get("content", "")
+            
+            # Early exit if we have both
+            if system_prompt and query:
+                break
         
+        # Extract response more efficiently
+        response = ""
         if llm_data["output_conversation"]:
-            response = llm_data["output_conversation"][0]
-        else:
-            response = ""
-        context = llm_data["input_conversation"] if llm_data["input_conversation"] else []
+            first_output = llm_data["output_conversation"][0]
+            if isinstance(first_output, dict):
+                if "content" in first_output:
+                    response = first_output["content"]
+                elif "tool_calls" in first_output:
+                    response = json.dumps(first_output["tool_calls"])
+                else:
+                    response = json.dumps(first_output)
+            else:
+                response = str(first_output)
         
-        if not query:
-            logger.warning("No query found in the span. Attempting to fuzzy extract query from system prompt.")
+        # Only use fuzzy extraction if query is still empty
+        if not query and system_prompt:
             query = fuzzy_extract_query(system_prompt)
 
-        formatted_llm_data = {
+        return {
             "system_prompt": system_prompt,
             "user_query": query,
             "response": response,
-            "context": context,
+            "context": llm_data["input_conversation"],
         }
-
-
-        return formatted_llm_data
     
     except Exception as e:
         logger.error(f"Error extracting span features: {e}")
@@ -60,7 +149,8 @@ def extract_span_features(span_dict):
 
 def fuzzy_extract_query(system_prompt: str) -> str:
     """
-    Extract a user query from a system prompt using fuzzy pattern matching.
+    Extract a user query from a system prompt using compiled regex patterns.
+    Optimized version with early exits and pattern reuse.
     
     Args:
         system_prompt: The system prompt text to extract query from
@@ -68,63 +158,30 @@ def fuzzy_extract_query(system_prompt: str) -> str:
     Returns:
         Extracted query string, or empty string if no query found
     """
-    if not system_prompt:
+    if not system_prompt or len(system_prompt) < 10:
         return ""
-    
-    # Common patterns that indicate a user query follows
-    query_patterns = [
-        # Direct query indicators
-        r'(?:query|Query):\s*(.+?)(?:\n|$)',
-        r'(?:prompt|Prompt):\s*(.+?)(?:\n|$)',
-        r'(?:question|Question):\s*(.+?)(?:\n|$)',
-        r'(?:task|Task):\s*(.+?)(?:\n|$)',
-        r'(?:request|Request):\s*(.+?)(?:\n|$)',
-        
-        # User-specific patterns
-        r'(?:user query|User query|USER QUERY):\s*(.+?)(?:\n|$)',
-        r'(?:user prompt|User prompt|USER PROMPT):\s*(.+?)(?:\n|$)',
-        r'(?:user question|User question|USER QUESTION):\s*(.+?)(?:\n|$)',
-        r'(?:user asks?|User asks?):\s*(.+?)(?:\n|$)',
-        r'(?:user wants? to know|User wants? to know):\s*(.+?)(?:\n|$)',
-        r'(?:user is asking|User is asking):\s*(.+?)(?:\n|$)',
-        
-        # Context-based patterns
-        r'(?:based on the following|Based on the following):\s*(.+?)(?:\n|$)',
-        r'(?:given the following|Given the following):\s*(.+?)(?:\n|$)',
-        r'(?:answer the following|Answer the following):\s*(.+?)(?:\n|$)',
-        r'(?:respond to|Respond to):\s*(.+?)(?:\n|$)',
-        r'(?:help with|Help with):\s*(.+?)(?:\n|$)',
-        
-        # Quoted content (might be the actual query)
-        r'"([^"]+)"',
-        r"'([^']+)'",
-        
-        # Multi-line patterns with newlines
-        r'(?:query|Query):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)',
-        r'(?:prompt|Prompt):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)',
-        
-        # Fallback: look for sentences that seem like questions or requests
-        r'([^.!?]*\?[^.!?]*)',  # Questions
-        r'((?:please|Please|can you|Can you|could you|Could you|would you|Would you)[^.!?]*[.!?])',  # Polite requests
-    ]
     
     candidates = []
     
-    # Try each pattern
-    for pattern in query_patterns:
-        matches = re.findall(pattern, system_prompt, re.IGNORECASE | re.DOTALL)
+    # Try compiled patterns for better performance
+    for pattern in _QUERY_PATTERNS:
+        matches = pattern.findall(system_prompt)
         for match in matches:
             if isinstance(match, tuple):
                 match = match[0] if match else ""
             
-            # Clean up the extracted text
+            # Use optimized cleaning function
             cleaned = clean_extracted_text(match)
-            if cleaned and len(cleaned) > 10:  # Only consider meaningful extracts
+            if cleaned and len(cleaned) > 10:
                 candidates.append((cleaned, len(cleaned)))
+                
+                # Early exit if we find a good candidate
+                if len(cleaned) > 50:
+                    return cleaned
     
+    # Fallback: try to extract the first meaningful sentence
     if not candidates:
-        # Fallback: try to extract the first meaningful sentence
-        sentences = re.split(r'[.!?]+', system_prompt)
+        sentences = _SENTENCE_SPLIT_PATTERN.split(system_prompt)
         for sentence in sentences:
             cleaned = clean_extracted_text(sentence)
             if cleaned and len(cleaned) > 20:  # Longer threshold for fallback
@@ -136,34 +193,6 @@ def fuzzy_extract_query(system_prompt: str) -> str:
         return max(candidates, key=lambda x: x[1])[0]
     
     return ""
-
-def clean_extracted_text(text: str) -> str:
-    """
-    Clean extracted text by removing extra whitespace and formatting.
-    
-    Args:
-        text: Raw extracted text
-        
-    Returns:
-        Cleaned text string
-    """
-    if not text:
-        return ""
-    
-    # Remove extra whitespace and newlines
-    cleaned = re.sub(r'\s+', ' ', text.strip())
-    
-    # Remove common prefixes that might have been captured
-    prefixes_to_remove = [
-        r'^(?:the\s+)?(?:user\s+)?(?:query|prompt|question|task|request)(?:\s+is)?:?\s*',
-        r'^(?:please\s+)?(?:help\s+)?(?:me\s+)?(?:with\s+)?',
-        r'^(?:i\s+)?(?:need\s+)?(?:you\s+)?(?:to\s+)?',
-    ]
-    
-    for prefix_pattern in prefixes_to_remove:
-        cleaned = re.sub(prefix_pattern, '', cleaned, flags=re.IGNORECASE)
-    
-    return cleaned.strip()
 
 # For timestamps in nanoseconds (OpenTelemetry default)
 def timestamp_ns_to_datetime(timestamp_ns: int) -> datetime:
