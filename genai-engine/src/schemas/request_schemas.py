@@ -415,7 +415,8 @@ class NewMetricRequest(BaseModel):
         examples=["UserQueryRelevance"],
     )
     name: str = Field(
-        description="Name of metric", examples=["My User Query Relevance"]
+        description="Name of metric",
+        examples=["My User Query Relevance"],
     )
     metric_metadata: str = Field(description="Additional metadata for the metric")
     config: Optional[RelevanceMetricConfig] = Field(
@@ -442,14 +443,14 @@ class NewMetricRequest(BaseModel):
                 "metric_metadata": "This is a test metric metadata",
                 "config": {"use_llm_judge": True},
             },
-        }
+        },
     )
 
     @field_validator("type")
     def validate_metric_type(cls, value):
         if value not in MetricType:
             raise ValueError(
-                f"Invalid metric type: {value}. Valid types are: {', '.join([t.value for t in MetricType])}"
+                f"Invalid metric type: {value}. Valid types are: {', '.join([t.value for t in MetricType])}",
             )
         return value
 

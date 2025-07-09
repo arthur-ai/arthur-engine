@@ -12,11 +12,13 @@ class ScorerClient:
     def __init__(
         self,
         name_version_mapping: Dict[
-            Union[RuleType, MetricType], Union[RuleScorer, MetricScorer]
+            Union[RuleType, MetricType],
+            Union[RuleScorer, MetricScorer],
         ],
     ):
         self.NAME_VERSION_MAPPING: Dict[
-            Union[RuleType, MetricType], Union[RuleScorer, MetricScorer]
+            Union[RuleType, MetricType],
+            Union[RuleScorer, MetricScorer],
         ] = name_version_mapping
 
     def score(self, score_request: ScoreRequest) -> RuleScore:
@@ -35,7 +37,9 @@ class ScorerClient:
         return scorer_obj.score(score_request)
 
     def score_metric(
-        self, metric_request: MetricRequest, metric: Metric
+        self,
+        metric_request: MetricRequest,
+        metric: Metric,
     ) -> MetricResult:
         """Scores any request with the provided metric
 

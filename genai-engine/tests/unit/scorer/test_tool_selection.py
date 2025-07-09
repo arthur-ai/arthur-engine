@@ -20,7 +20,10 @@ os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1:
 @patch("scorer.metrics.tool_selection.tool_selection.LLMChain")
 @pytest.mark.unit_tests
 def test_tool_selection_correctness_scorer_init(
-    mock_llm_chain, mock_prompt_template, mock_fixing_parser, mock_get_model
+    mock_llm_chain,
+    mock_prompt_template,
+    mock_fixing_parser,
+    mock_get_model,
 ):
     # Arrange & Act
     scorer = ToolSelectionCorrectnessScorer()
@@ -189,7 +192,7 @@ async def test_score_with_successful_tool_selection_and_usage(
 
     # Mock the token consumption
     mocker.patch(
-        "scorer.metrics.tool_selection.tool_selection.get_llm_executor"
+        "scorer.metrics.tool_selection.tool_selection.get_llm_executor",
     ).return_value.execute.side_effect = [
         (
             {
@@ -247,7 +250,7 @@ async def test_score_with_no_tool_selection(
 
     # Mock the token consumption
     mocker.patch(
-        "scorer.metrics.tool_selection.tool_selection.get_llm_executor"
+        "scorer.metrics.tool_selection.tool_selection.get_llm_executor",
     ).return_value.execute.side_effect = [
         (
             {

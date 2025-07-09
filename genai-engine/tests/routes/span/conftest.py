@@ -82,7 +82,7 @@ def _create_span(
     # Add model-specific attributes for LLM spans
     if span_type == "LLM":
         attributes.append(
-            KeyValue(key="llm.model_name", value=AnyValue(string_value=model_name))
+            KeyValue(key="llm.model_name", value=AnyValue(string_value=model_name)),
         )
 
     # Metadata with or without task ID

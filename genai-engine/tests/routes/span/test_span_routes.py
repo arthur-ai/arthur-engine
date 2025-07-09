@@ -128,7 +128,8 @@ def test_spans_with_parent_id_but_no_task_id(
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_happy_path(
-    client: GenaiEngineTestClientBase, create_test_spans
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
 ):
     # Test basic query with task IDs
     status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
@@ -140,7 +141,8 @@ def test_query_spans_with_metrics_happy_path(
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_multiple_task_ids(
-    client: GenaiEngineTestClientBase, create_test_spans
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
 ):
     # Test querying spans for multiple tasks
     status_code, response = client.query_spans_with_metrics(task_ids=["task1", "task2"])
@@ -153,7 +155,8 @@ def test_query_spans_with_metrics_multiple_task_ids(
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_with_date_filters(
-    client: GenaiEngineTestClientBase, create_test_spans
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
 ):
     base_time = datetime.now()
 
@@ -175,11 +178,15 @@ def test_query_spans_with_metrics_with_date_filters(
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_pagination(
-    client: GenaiEngineTestClientBase, create_test_spans
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
 ):
     # Test pagination parameters
     status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"], page=0, page_size=2, sort="desc"
+        task_ids=["task1", "task2", "task3"],
+        page=0,
+        page_size=2,
+        sort="desc",
     )
     assert status_code == 200
     assert response.count == 2  # page size is 2
@@ -187,14 +194,20 @@ def test_query_spans_with_metrics_pagination(
 
     # Test second page
     status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"], page=1, page_size=2, sort="desc"
+        task_ids=["task1", "task2", "task3"],
+        page=1,
+        page_size=2,
+        sort="desc",
     )
     assert status_code == 200
     assert len(response.spans) == 2  # second page should have 2 spans
 
     # Test third page
     status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"], page=2, page_size=2, sort="desc"
+        task_ids=["task1", "task2", "task3"],
+        page=2,
+        page_size=2,
+        sort="desc",
     )
     assert status_code == 200
     assert len(response.spans) == 1  # third page should have 1 span
@@ -225,7 +238,7 @@ def test_query_spans_with_metrics_server_error(client: GenaiEngineTestClientBase
 def test_query_spans_with_metrics_no_spans_found(client: GenaiEngineTestClientBase):
     # Test querying for non-existent task IDs
     status_code, response = client.query_spans_with_metrics(
-        task_ids=["non_existent_task"]
+        task_ids=["non_existent_task"],
     )
     assert status_code == 200
     assert response.count == 0
@@ -234,12 +247,13 @@ def test_query_spans_with_metrics_no_spans_found(client: GenaiEngineTestClientBa
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_task_id_propagation(
-    client: GenaiEngineTestClientBase, create_span_hierarchy_for_propagation
+    client: GenaiEngineTestClientBase,
+    create_span_hierarchy_for_propagation,
 ):
     """Test that task IDs are propagated to child spans when querying with metrics."""
     # Query spans for the task - this should trigger task ID propagation
     status_code, response = client.query_spans_with_metrics(
-        task_ids=["propagation_test_task"]
+        task_ids=["propagation_test_task"],
     )
     assert status_code == 200
 

@@ -69,7 +69,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.TIMESTAMP(), nullable=False),
         sa.Column("metric_type", sa.String(), nullable=False),
         sa.Column(
-            "details", sa.String(), nullable=True
+            "details",
+            sa.String(),
+            nullable=True,
         ),  # JSON-serialized MetricScoreDetails
         sa.Column("prompt_tokens", sa.Integer(), nullable=False),
         sa.Column("completion_tokens", sa.Integer(), nullable=False),
@@ -87,7 +89,10 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        op.f("ix_metric_results_span_id"), "metric_results", ["span_id"], unique=False
+        op.f("ix_metric_results_span_id"),
+        "metric_results",
+        ["span_id"],
+        unique=False,
     )
     op.create_index(
         op.f("ix_metric_results_metric_id"),

@@ -111,6 +111,6 @@ class MetricRepository:
         ]
 
         logger.debug(
-            f"Returned {len(ordered_metrics)} metrics ({len(cached_metrics)} from cache, {len(uncached_metrics)} from DB)"
+            f"Returned {len(ordered_metrics)} metrics ({len(cached_metrics)} from cache, {len(uncached_metrics)} from DB)",
         )
         return ordered_metrics

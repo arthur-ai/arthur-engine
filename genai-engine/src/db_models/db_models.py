@@ -511,15 +511,22 @@ class DatabaseMetricResult(Base):
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
     metric_type: Mapped[str] = mapped_column(String, nullable=False)
     details: Mapped[Optional[str]] = mapped_column(
-        String, nullable=True
+        String,
+        nullable=True,
     )  # JSON-serialized MetricScoreDetails
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     span_id: Mapped[str] = mapped_column(
-        String, ForeignKey("spans.id"), nullable=False, index=True
+        String,
+        ForeignKey("spans.id"),
+        nullable=False,
+        index=True,
     )
     metric_id: Mapped[str] = mapped_column(
-        String, ForeignKey("metrics.id"), nullable=False, index=True
+        String,
+        ForeignKey("metrics.id"),
+        nullable=False,
+        index=True,
     )
     span: Mapped["DatabaseSpan"] = relationship(back_populates="metric_results")
