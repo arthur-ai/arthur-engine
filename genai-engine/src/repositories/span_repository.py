@@ -17,7 +17,7 @@ from dependencies import get_metrics_engine
 from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import Span, MetricResult
 from schemas.metric_schemas import MetricRequest    
-from sqlalchemy import and_, asc, desc, insert, select
+from sqlalchemy import and_, asc, desc, insert, select, text
 from sqlalchemy.orm import Session
 from utils import trace as trace_utils
 logger = logging.getLogger(__name__)
@@ -97,12 +97,53 @@ class SpanRepository:
         task_ids: list[str] = None,
         start_time: datetime = None,
         end_time: datetime = None,
+        propagate_task_ids: bool = True,
+        include_metrics: bool = False,
     ) -> list[Span]:
         """
-        Query spans with efficient filtering and pagination.
-        Only loads necessary fields and applies filters at the database level.
+        Unified method to query spans with optional metrics computation and task ID propagation.
+        
+        This method provides a single entry point for all span queries, handling both basic span
+        retrieval and metrics computation. It automatically propagates task IDs to child spans
+        when task_ids are provided, ensuring consistent task association across the span hierarchy.
+        
+        Args:
+            sort: Sort order for the results (ascending or descending by creation time)
+            page: Page number for pagination (0-based)
+            page_size: Number of items per page
+            trace_ids: Optional list of trace IDs to filter by
+            span_ids: Optional list of span IDs to filter by
+            task_ids: Optional list of task IDs to filter by. When provided, task ID propagation
+                     is automatically applied to ensure child spans inherit task IDs from parents.
+            start_time: Optional start time filter (inclusive)
+            end_time: Optional end time filter (exclusive)
+            propagate_task_ids: Whether to propagate task IDs to child spans before querying.
+                              Defaults to True. Only applies when task_ids are provided.
+            include_metrics: Whether to compute and include metrics for the returned spans.
+                           Defaults to False. When True, metrics are computed for LLM spans
+                           that don't already have them.
+        
+        Returns:
+            list[Span]: List of spans matching the query criteria. If include_metrics is True,
+                       spans will have their metric_results field populated.
+        
+        Raises:
+            ValueError: If task_ids is required but not provided (when include_metrics=True)
+        
+
         """
-        # Build the query
+        # Validate required parameters
+        if include_metrics and not task_ids:
+            raise ValueError("task_ids are required when include_metrics=True")
+        
+        # Centralized task ID propagation
+        total_propagated = 0
+        if propagate_task_ids and task_ids:
+            total_propagated = self._propagate_task_ids_for_tasks(task_ids)
+            if total_propagated > 0:
+                logger.info(f"Propagated task_ids to {total_propagated} child spans before querying")
+        
+        # Build and execute the base query
         query = self._build_spans_query(
             trace_ids=trace_ids,
             span_ids=span_ids,
@@ -115,9 +156,78 @@ class SpanRepository:
         )
 
         # Execute query and transform results
-        # Use unique() to handle joined eager loads against collections
         results = self.db_session.execute(query).scalars().unique().all()
-        return [Span._from_database_model(span) for span in results]
+        spans = [Span._from_database_model(span) for span in results]
+        
+        if not spans:
+            return []
+        
+        # Handle metrics computation if requested
+        if include_metrics:
+            spans = self._add_metrics_to_spans(spans)
+            
+        return spans
+
+    def _propagate_task_ids_for_tasks(self, task_ids: list[str]) -> int:
+        """
+        Propagate task IDs to child spans for multiple tasks.
+        
+        This is a centralized method that handles task ID propagation for multiple tasks
+        in a single operation, providing better error handling and logging.
+        
+        Args:
+            task_ids: List of task IDs to propagate to child spans
+            
+        Returns:
+            int: Total number of spans updated across all tasks
+        """
+        total_updated = 0
+        
+        for task_id in task_ids:
+            try:
+                count = self.populate_task_ids_for_task(task_id)
+                total_updated += count
+            except Exception as e:
+                logger.error(f"Failed to propagate task_id {task_id}: {e}")
+        
+        if total_updated > 0:
+            logger.info(f"Propagated task_ids for {len(task_ids)} tasks, updated {total_updated} spans total")
+        
+        return total_updated
+
+    def _add_metrics_to_spans(self, spans: list[Span]) -> list[Span]:
+        """
+        Add metrics to spans by computing missing metrics and embedding all results.
+        
+        Args:
+            spans: List of spans to add metrics to
+            
+        Returns:
+            list[Span]: Spans with metric_results populated
+        """
+        # Get existing metric results for these spans
+        span_ids = [span.id for span in spans]
+        existing_metric_results = self._get_metric_results_for_spans(span_ids)
+        
+        # Identify spans that need metrics computed
+        spans_without_metrics = []
+        for span in spans:
+            if span.id not in existing_metric_results:
+                spans_without_metrics.append(span)
+        
+        # Compute metrics for spans that don't have them
+        if spans_without_metrics:
+            logger.debug(f"Computing metrics for {len(spans_without_metrics)} spans")
+            new_metric_results = self._compute_metrics_for_spans(spans_without_metrics)
+            self._store_metric_results(new_metric_results)
+            # Update existing results with newly computed ones
+            existing_metric_results.update(new_metric_results)
+        
+        # Embed metrics into spans
+        for span in spans:
+            span.metric_results = existing_metric_results.get(span.id, [])
+            
+        return spans
 
     def store_spans(self, spans: list[dict], commit: bool = True):
         """
@@ -133,6 +243,100 @@ class SpanRepository:
             self.db_session.commit()
             
         logger.debug(f"Stored {len(spans)} spans (commit={commit})")
+
+    def populate_task_ids_for_task(self, task_id: str) -> int:
+        """
+        Populate task_ids for spans within subtrees of a specific task using recursive CTE.
+        
+        This method implements a hierarchical task ID propagation algorithm that ensures all
+        child spans within a trace inherit the task ID from their parent spans. The algorithm
+        uses a recursive Common Table Expression (CTE) to efficiently traverse the span hierarchy
+        and update child spans that are missing task IDs.
+        
+        Args:
+            task_id: The task ID to propagate to child spans within the same trace
+            
+        Returns:
+            int: Number of spans updated with the propagated task_id
+            
+        Algorithm Details:
+        ------------------
+        The propagation algorithm works as follows:
+        
+        1. **Base Case (Initialization)**:
+           - Starts with all spans that already have the specified task_id
+           - These spans serve as the "roots" of the propagation tree
+           - Each root span is assigned a depth of 1
+        
+        2. **Recursive Case (Propagation)**:
+           - For each span in the current iteration, finds all child spans that:
+             * Belong to the same trace (trace_id match)
+             * Have the current span as their parent (parent_span_id match)
+             * Currently have no task_id (task_id IS NULL)
+             * Are within the maximum depth limit (depth <= 100)
+           - Child spans inherit the task_id from their parent and get depth + 1
+        
+        3. **Termination Conditions**:
+           - No more child spans are found (natural termination)
+           - Maximum depth limit is reached (safety termination)
+           - All child spans already have task_ids (no work needed)
+        
+        4. **Update Operation**:
+           - All identified child spans are updated in a single SQL UPDATE
+           - Only spans with task_id IS NULL are updated (idempotent operation)
+           - updated_at timestamp is set to CURRENT_TIMESTAMP
+        
+        Example Hierarchy Before:
+        ```
+        Root Span (task_id: "task_123")
+        ├── Child A (task_id: NULL)
+        │   ├── Grandchild A1 (task_id: NULL)
+        │   └── Grandchild A2 (task_id: NULL)
+        └── Child B (task_id: NULL)
+            └── Grandchild B1 (task_id: NULL)
+        ```
+        
+        Example Hierarchy After:
+        ```
+        Root Span (task_id: "task_123")
+        ├── Child A (task_id: "task_123") ← Updated
+        │   ├── Grandchild A1 (task_id: "task_123") ← Updated
+        │   └── Grandchild A2 (task_id: "task_123") ← Updated
+        └── Child B (task_id: "task_123") ← Updated
+            └── Grandchild B1 (task_id: "task_123") ← Updated
+        ```
+        """
+        sql = text("""
+        WITH RECURSIVE task_span_hierarchy AS (
+            -- Base case: spans with the specific task_id (these are the "roots" of task subtrees)
+            SELECT span_id, task_id, parent_span_id, trace_id, 1 as depth
+            FROM spans 
+            WHERE task_id = :task_id
+            
+            UNION ALL
+            
+            -- Recursive case: find children without task_id within same trace
+            SELECT s.span_id, h.task_id, s.parent_span_id, s.trace_id, h.depth + 1
+            FROM spans s
+            JOIN task_span_hierarchy h ON s.parent_span_id = h.span_id 
+                AND s.trace_id = h.trace_id
+            WHERE s.task_id IS NULL 
+                AND h.depth <= 100  -- Prevent infinite recursion
+        )
+        UPDATE spans 
+        SET task_id = task_span_hierarchy.task_id,
+            updated_at = CURRENT_TIMESTAMP
+        FROM task_span_hierarchy
+        WHERE spans.span_id = task_span_hierarchy.span_id 
+            AND spans.task_id IS NULL
+        """)
+        
+        result = self.db_session.execute(sql, {"task_id": task_id})
+        self.db_session.commit()
+        updated_count = result.rowcount
+        logger.debug(f"Propagated task_id {task_id} to {updated_count} child spans")
+        return updated_count
+
 
     def _build_spans_query(
         self,
@@ -303,59 +507,6 @@ class SpanRepository:
             
         return span_dict
 
-    def query_spans_with_metrics(
-        self,
-        task_ids: list[str],
-        sort: PaginationSortMethod,
-        page: int,
-        page_size: int = 10,
-        start_time: datetime = None,
-        end_time: datetime = None,
-    ) -> list[Span]:
-        """
-        Query spans with metrics for the given task IDs.
-        Computes metrics for spans that don't have them and returns spans with embedded metrics.
-        """
-        if not task_ids:
-            raise ValueError("At least one task_id is required")
-            
-        # Get spans for the specified tasks
-        spans = self.query_spans(
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
-            sort=sort,
-            page=page,
-            page_size=page_size,
-        )
-        
-        if not spans:
-            return []
-            
-        # Get existing metric results for these spans
-        span_ids = [span.id for span in spans]
-        existing_metric_results = self._get_metric_results_for_spans(span_ids)
-        
-        # Identify spans that need metrics computed
-        spans_without_metrics = []
-        for span in spans:
-            if span.id not in existing_metric_results:
-                spans_without_metrics.append(span)
-        
-        # Compute metrics for spans that don't have them
-        if spans_without_metrics:
-            logger.debug(f"Computing metrics for {len(spans_without_metrics)} spans")
-            new_metric_results = self._compute_metrics_for_spans(spans_without_metrics)
-            self._store_metric_results(new_metric_results)
-            # Update existing results with newly computed ones
-            existing_metric_results.update(new_metric_results)
-        
-        # Embed metrics into spans
-        for span in spans:
-            span.metric_results = existing_metric_results.get(span.id, [])
-            
-        return spans
-    
     def _get_metric_results_for_spans(self, span_ids: list[str]) -> dict[str, list[MetricResult]]:
         """
         Get existing metric results for the given span IDs.

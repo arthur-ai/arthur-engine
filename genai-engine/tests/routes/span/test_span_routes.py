@@ -10,7 +10,10 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.metrics_repository import MetricRepository
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
-
+from tests.conftest import override_get_db_session
+from schemas.internal_schemas import Span as InternalSpan
+from tests.routes.span.conftest import _delete_spans_from_db
+import uuid
 
 @pytest.mark.unit_tests
 def test_receive_traces_happy_path(
@@ -207,7 +210,7 @@ def test_query_spans_with_metrics_missing_task_ids(client: GenaiEngineTestClient
 def test_query_spans_with_metrics_server_error(client: GenaiEngineTestClientBase):
     # Test with data that causes server error
     with patch(
-        "repositories.span_repository.SpanRepository.query_spans_with_metrics",
+        "repositories.span_repository.SpanRepository.query_spans",
         side_effect=Exception("Test error"),
     ):
         status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
@@ -222,3 +225,180 @@ def test_query_spans_with_metrics_no_spans_found(client: GenaiEngineTestClientBa
     assert status_code == 200
     assert response.count == 0
     assert len(response.spans) == 0
+
+
+@pytest.mark.unit_tests
+def test_query_spans_with_metrics_task_id_propagation(client: GenaiEngineTestClientBase, create_span_hierarchy_for_propagation):
+    """Test that task IDs are propagated to child spans when querying with metrics."""
+    # Query spans for the task - this should trigger task ID propagation
+    status_code, response = client.query_spans_with_metrics(task_ids=["propagation_test_task"])
+    assert status_code == 200
+    
+    # Should return all 6 spans (root + 2 children + 3 grandchildren)
+    assert response.count == 6
+    assert len(response.spans) == 6
+    
+    # All spans should have the propagated task_id
+    for span in response.spans:
+        assert span.task_id == "propagation_test_task", f"Span {span.span_id} should have task_id 'propagation_test_task', got {span.task_id}"
+    
+    # Verify we have the expected span hierarchy
+    span_ids = {span.span_id for span in response.spans}
+    expected_span_ids = {"root_span", "child_a", "child_b", "grandchild_a1", "grandchild_a2", "grandchild_b1"}
+    assert span_ids == expected_span_ids
+    
+    # Verify span kinds are preserved
+    span_kinds = {span.span_id: span.span_kind for span in response.spans}
+    assert span_kinds["root_span"] == "LLM"
+    assert span_kinds["child_a"] == "CHAIN"
+    assert span_kinds["child_b"] == "AGENT"
+    assert span_kinds["grandchild_a1"] == "TOOL"
+    assert span_kinds["grandchild_a2"] == "RETRIEVER"
+    assert span_kinds["grandchild_b1"] == "EMBEDDING"
+
+
+@pytest.mark.unit_tests
+def test_task_id_propagation_direct_repository(create_span_hierarchy_for_propagation):
+    """Test task ID propagation directly in the repository layer."""
+    from schemas.enums import PaginationSortMethod
+    
+    db_session = override_get_db_session()
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    
+    # Query spans without metrics first to see the original state
+    spans_before = span_repo.query_spans(
+        task_ids=["propagation_test_task"],
+        sort=PaginationSortMethod.DESCENDING,
+        page=0,
+        page_size=10,
+        include_metrics=False,
+        propagate_task_ids=False  # Disable propagation to see original state
+    )
+    
+    # Should only return the root span initially (others don't have task_id)
+    assert len(spans_before) == 1
+    assert spans_before[0].span_id == "root_span"
+    assert spans_before[0].task_id == "propagation_test_task"
+    
+    # Now query with propagation enabled
+    spans_after = span_repo.query_spans(
+        task_ids=["propagation_test_task"],
+        sort=PaginationSortMethod.DESCENDING,
+        page=0,
+        page_size=10,
+        include_metrics=False,
+        propagate_task_ids=True  # Enable propagation
+    )
+    
+    # Should return all 6 spans with propagated task_ids
+    assert len(spans_after) == 6
+    for span in spans_after:
+        assert span.task_id == "propagation_test_task"
+    
+    # Verify the propagation actually updated the database
+    # Query again without propagation to confirm the database was updated
+    spans_verify = span_repo.query_spans(
+        task_ids=["propagation_test_task"],
+        sort=PaginationSortMethod.DESCENDING,
+        page=0,
+        page_size=10,
+        include_metrics=False,
+        propagate_task_ids=False  # Disable propagation to verify database state
+    )
+    
+    # Should still return all 6 spans because the database was updated
+    assert len(spans_verify) == 6
+    for span in spans_verify:
+        assert span.task_id == "propagation_test_task"
+
+
+@pytest.mark.unit_tests
+def test_task_id_propagation_with_metrics(create_span_hierarchy_for_propagation):
+    """Test that task ID propagation works correctly when including metrics."""
+    from schemas.enums import PaginationSortMethod
+    
+    db_session = override_get_db_session()
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    
+    # Query spans with metrics and propagation enabled
+    spans = span_repo.query_spans(
+        task_ids=["propagation_test_task"],
+        sort=PaginationSortMethod.DESCENDING,
+        page=0,
+        page_size=10,
+        include_metrics=True,
+        propagate_task_ids=True
+    )
+    
+    # Should return all 6 spans with propagated task_ids
+    assert len(spans) == 6
+    for span in spans:
+        assert span.task_id == "propagation_test_task"
+    
+    # Verify that LLM spans have metric_results field (even if empty)
+    llm_spans = [span for span in spans if span.span_kind == "LLM"]
+    assert len(llm_spans) == 1
+    assert llm_spans[0].span_id == "root_span"
+    assert hasattr(llm_spans[0], 'metric_results')
+    assert llm_spans[0].metric_results is not None
+
+
+@pytest.mark.unit_tests
+def test_task_id_propagation_multiple_tasks(create_span_hierarchy_for_propagation):
+    """Test task ID propagation with multiple tasks."""
+    from schemas.enums import PaginationSortMethod
+    
+    db_session = override_get_db_session()
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    
+    # Create an additional span with a different task_id
+    additional_span = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="other_trace",
+        span_id="other_span",
+        task_id="other_task",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=datetime.now(),
+        end_time=datetime.now() + timedelta(seconds=1),
+        raw_data={"model": "gpt-4"},
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+    )
+    
+    # Store the additional span
+    additional_span_dict = additional_span.model_dump()
+    additional_span_dict.pop("metric_results")
+    span_repo.store_spans([additional_span_dict])
+    
+    try:
+        # Query spans for both tasks
+        spans = span_repo.query_spans(
+            task_ids=["propagation_test_task", "other_task"],
+            sort=PaginationSortMethod.DESCENDING,
+            page=0,
+            page_size=20,
+            include_metrics=False,
+            propagate_task_ids=True
+        )
+        
+        # Should return 7 spans total (6 from propagation_test_task + 1 from other_task)
+        assert len(spans) == 7
+        
+        # Verify task distribution
+        propagation_spans = [span for span in spans if span.task_id == "propagation_test_task"]
+        other_spans = [span for span in spans if span.task_id == "other_task"]
+        
+        assert len(propagation_spans) == 6
+        assert len(other_spans) == 1
+        assert other_spans[0].span_id == "other_span"
+        
+    finally:
+        # Cleanup the additional span
+        _delete_spans_from_db(db_session, ["other_span"])
