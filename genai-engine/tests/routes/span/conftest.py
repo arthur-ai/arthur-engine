@@ -399,3 +399,133 @@ def sample_span_with_parent_id() -> bytes:
     span_ids = [span.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
+
+
+@pytest.fixture(scope="function")
+def create_span_hierarchy_for_propagation() -> Generator[List[InternalSpan], None, None]:
+    """Create a complex span hierarchy to test task ID propagation.
+    
+    Creates the following structure:
+    - Root span (task_id: "propagation_test_task") - LLM
+      ├── Child A (task_id: NULL) - CHAIN
+      │   ├── Grandchild A1 (task_id: NULL) - TOOL
+      │   └── Grandchild A2 (task_id: NULL) - RETRIEVER
+      └── Child B (task_id: NULL) - AGENT
+          └── Grandchild B1 (task_id: NULL) - EMBEDDING
+    """
+    db_session = override_get_db_session()
+    application_config = get_application_config(session=db_session)
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+    # Create spans with different attributes
+    spans = []
+    base_time = datetime.now()
+
+    # Root span with task_id
+    root_span = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="root_span",
+        task_id="propagation_test_task",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time,
+        end_time=base_time + timedelta(seconds=1),
+        raw_data={"model": "gpt-4"},
+        created_at=base_time,
+        updated_at=base_time,
+    )
+    spans.append(root_span)
+
+    # Child A without task_id
+    child_a = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="child_a",
+        task_id=None,  # No task_id - should be propagated from parent
+        parent_span_id="root_span",
+        span_kind="CHAIN",
+        start_time=base_time + timedelta(seconds=1),
+        end_time=base_time + timedelta(seconds=2),
+        raw_data={"model": "gpt-3.5"},
+        created_at=base_time + timedelta(seconds=1),
+        updated_at=base_time + timedelta(seconds=1),
+    )
+    spans.append(child_a)
+
+    # Grandchild A1 without task_id
+    grandchild_a1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="grandchild_a1",
+        task_id=None,  # No task_id - should be propagated from grandparent
+        parent_span_id="child_a",
+        span_kind="TOOL",
+        start_time=base_time + timedelta(seconds=2),
+        end_time=base_time + timedelta(seconds=3),
+        raw_data={"tool": "calculator"},
+        created_at=base_time + timedelta(seconds=2),
+        updated_at=base_time + timedelta(seconds=2),
+    )
+    spans.append(grandchild_a1)
+
+    # Grandchild A2 without task_id
+    grandchild_a2 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="grandchild_a2",
+        task_id=None,  # No task_id - should be propagated from grandparent
+        parent_span_id="child_a",
+        span_kind="RETRIEVER",
+        start_time=base_time + timedelta(seconds=3),
+        end_time=base_time + timedelta(seconds=4),
+        raw_data={"retriever": "vector_db"},
+        created_at=base_time + timedelta(seconds=3),
+        updated_at=base_time + timedelta(seconds=3),
+    )
+    spans.append(grandchild_a2)
+
+    # Child B without task_id
+    child_b = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="child_b",
+        task_id=None,  # No task_id - should be propagated from parent
+        parent_span_id="root_span",
+        span_kind="AGENT",
+        start_time=base_time + timedelta(seconds=4),
+        end_time=base_time + timedelta(seconds=5),
+        raw_data={"agent": "reasoning"},
+        created_at=base_time + timedelta(seconds=4),
+        updated_at=base_time + timedelta(seconds=4),
+    )
+    spans.append(child_b)
+
+    # Grandchild B1 without task_id
+    grandchild_b1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="propagation_trace",
+        span_id="grandchild_b1",
+        task_id=None,  # No task_id - should be propagated from grandparent
+        parent_span_id="child_b",
+        span_kind="EMBEDDING",
+        start_time=base_time + timedelta(seconds=5),
+        end_time=base_time + timedelta(seconds=6),
+        raw_data={"embedding": "text-embedding"},
+        created_at=base_time + timedelta(seconds=5),
+        updated_at=base_time + timedelta(seconds=5),
+    )
+    spans.append(grandchild_b1)
+
+    # Store spans in database
+    spans_to_store = [span.model_dump() for span in spans]
+    [span.pop('metric_results') for span in spans_to_store]
+    span_repo.store_spans(spans_to_store)
+
+    yield spans
+
+    # Cleanup: Delete all created spans from the database after the test
+    span_ids = [span.span_id for span in spans]
+    _delete_spans_from_db(db_session, span_ids)

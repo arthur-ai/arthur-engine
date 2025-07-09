@@ -88,13 +88,15 @@ def query_spans_with_metrics(
 ):
     try:
         span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
-        spans = span_repo.query_spans_with_metrics(
+        spans = span_repo.query_spans(
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
+            propagate_task_ids=True,
+            include_metrics=True,
         )
         spans = [span._to_metrics_response_model() for span in spans]
         return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
