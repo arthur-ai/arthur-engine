@@ -269,6 +269,9 @@ class SpanRepository:
                         rejected_reasons.append(
                             "Invalid span data. Span must have a task_id or a parent_id.",
                         )
+                        logger.debug(
+                            f"Rejected span {processed_span['span_id']}: \n{span_data}",
+                        )
 
         return spans_data, (
             total_spans,
