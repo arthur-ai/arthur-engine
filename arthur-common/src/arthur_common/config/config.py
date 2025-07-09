@@ -21,14 +21,14 @@ class Config:
     def convert_to_int(value: str | int, setting_name: str) -> int:
         if isinstance(value, int):
             return value
-        elif settings.AUTHN_SMTP_PORT == "":
+        elif value == "":
             raise ValueError(
                 f"Config setting {setting_name} could not be cast to an int.",
             )
 
         # attempt to convert setting to int
         try:
-            return int(settings.AUTHN_SMTP_PORT.strip())
+            return int(value.strip())
         except TypeError:
             raise ValueError(
                 f"Config setting {setting_name} could not be cast to an int.",
