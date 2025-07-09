@@ -28,6 +28,44 @@ span_routes = APIRouter(
 )
 
 
+def _get_span_repository(db_session: Session) -> SpanRepository:
+    """Create and return a SpanRepository instance with required dependencies."""
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    return SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+
+def _create_response(
+    total_spans: int,
+    accepted_spans: int,
+    rejected_spans: int,
+    rejected_reasons: list[str],
+) -> Response:
+    """Create standardized response for trace processing results."""
+    content = {
+        "total_spans": total_spans,
+        "accepted_spans": accepted_spans,
+        "rejected_spans": rejected_spans,
+        "rejection_reasons": rejected_reasons,
+    }
+
+    if rejected_spans == 0:
+        content["status"] = "success"
+        status_code = status.HTTP_200_OK
+    elif accepted_spans > 0:
+        content["status"] = "partial_success"
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+    else:
+        content["status"] = "failure"
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    return Response(
+        content=json.dumps(content),
+        status_code=status_code,
+        media_type="application/json",
+    )
+
+
 @span_routes.post(
     "/traces",
     description="Receiver for OpenInference trace standard.",
@@ -41,12 +79,11 @@ def receive_traces(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """Receive and process OpenInference trace data."""
     try:
-        tasks_metrics_repo = TasksMetricsRepository(db_session)
-        metrics_repo = MetricRepository(db_session)
-        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+        span_repo = _get_span_repository(db_session)
         span_results = span_repo.create_traces(body)
-        return response_handler(*span_results)
+        return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
         raise HTTPException(status_code=400, detail="Invalid protobuf message format")
@@ -86,12 +123,9 @@ def query_spans_with_metrics(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """Query spans with metrics for specified task IDs."""
     try:
-        span_repo = SpanRepository(
-            db_session,
-            TasksMetricsRepository(db_session),
-            MetricRepository(db_session),
-        )
+        span_repo = _get_span_repository(db_session)
         spans = span_repo.query_spans(
             task_ids=task_ids,
             start_time=start_time,
@@ -112,38 +146,3 @@ def query_spans_with_metrics(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
-
-
-def response_handler(
-    total_spans,
-    accepted_spans,
-    rejected_spans,
-    rejected_reasons,
-):
-    content = {
-        "total_spans": total_spans,
-        "accepted_spans": accepted_spans,
-        "rejected_spans": rejected_spans,
-        "rejection_reasons": rejected_reasons,
-    }
-    status_value = None
-    status_code = None
-
-    if rejected_spans == 0:
-        status_value = "success"
-        status_code = status.HTTP_200_OK
-
-    elif accepted_spans > 0:
-        status_value = "partial_success"
-        status_code = status.HTTP_206_PARTIAL_CONTENT
-
-    else:
-        status_value = "failure"
-        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-
-    content["status"] = status_value
-    return Response(
-        content=json.dumps(content),
-        status_code=status_code,
-        media_type="application/json",
-    )

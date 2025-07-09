@@ -118,16 +118,21 @@ def clean_extracted_text(text: str) -> str:
 def extract_span_features(span_dict):
     """
     Extract and clean LLM-specific features from a span dictionary.
-    Optimized version with early exits and caching.
+    Optimized version that expects normalized attributes.
 
     Args:
-        span_dict: Dictionary containing span data including attributes
+        span_dict: Dictionary containing span data with normalized attributes
 
     Returns:
         Dictionary containing processed span with extracted LLM features
     """
     try:
-        attributes = extract_attributes_from_raw_data(span_dict)
+        # Get normalized attributes (should already be normalized)
+        attributes = span_dict.get("attributes", {})
+
+        # Fallback for backward compatibility with OpenTelemetry format
+        if isinstance(attributes, list):
+            attributes = extract_attributes_from_raw_data(span_dict)
 
         # Extract LLM-specific data
         llm_data = extract_llm_data(attributes)
@@ -436,14 +441,38 @@ def extract_llm_data(attributes):
 
 def extract_attributes_from_raw_data(span_dict):
     """
-    Extract attributes from a span dictionary.
+    Extract and normalize attributes from a span dictionary.
+
+    This function converts OpenTelemetry attribute format (list of key-value pairs)
+    to a flat dictionary format for easier querying and processing.
+
+    Args:
+        span_dict: Dictionary containing span data with attributes
+
+    Returns:
+        dict: Normalized attributes as flat key-value pairs
+
+    Example:
+        Input (OpenTelemetry format):
+        {
+            "attributes": [
+                {"key": "input.value", "value": {"stringValue": "test"}},
+                {"key": "llm.model_name", "value": {"stringValue": "gpt-4"}}
+            ]
+        }
+
+        Output (normalized format):
+        {
+            "input.value": "test",
+            "llm.model_name": "gpt-4"
+        }
     """
     raw_attributes = span_dict.get("attributes", {})
     attributes = {}
+
     # Convert attributes to flat dictionary format
     if isinstance(raw_attributes, list):
         # Handle OpenTelemetry format: list of {key: str, value: {stringValue: str, ...}}
-
         for attr in raw_attributes:
             key = attr.get("key")
             value_dict = attr.get("value", {})
@@ -459,7 +488,7 @@ def extract_attributes_from_raw_data(span_dict):
                 # This is still in OpenTelemetry structured format
                 attributes[key] = value_dict_to_value(value)
             else:
-                # Already converted
+                # Already converted to flat format
                 attributes[key] = value
     else:
         attributes = {}

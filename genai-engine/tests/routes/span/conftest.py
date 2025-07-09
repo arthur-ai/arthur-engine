@@ -134,8 +134,8 @@ def create_span() -> Generator[InternalSpan, None, None]:
 
     # Convert to dict for insertion
     span_dict = span.model_dump()
-
-    span_repo.store_spans([span_dict])
+    span_dict.pop("metric_results")
+    span_repo._store_spans([span_dict])
 
     yield span
 
@@ -235,9 +235,10 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         updated_at=base_time + timedelta(days=2),
     )
     spans.append(span5)
+    # Store spans in database
     spans_to_store = [span.model_dump() for span in spans]
     [span.pop("metric_results") for span in spans_to_store]
-    span_repo.store_spans(spans_to_store)
+    span_repo._store_spans(spans_to_store)
 
     yield spans
 
@@ -534,7 +535,7 @@ def create_span_hierarchy_for_propagation() -> (
     # Store spans in database
     spans_to_store = [span.model_dump() for span in spans]
     [span.pop("metric_results") for span in spans_to_store]
-    span_repo.store_spans(spans_to_store)
+    span_repo._store_spans(spans_to_store)
 
     yield spans
 

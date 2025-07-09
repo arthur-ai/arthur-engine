@@ -407,7 +407,7 @@ def test_task_id_propagation_multiple_tasks(create_span_hierarchy_for_propagatio
     # Store the additional span
     additional_span_dict = additional_span.model_dump()
     additional_span_dict.pop("metric_results")
-    span_repo.store_spans([additional_span_dict])
+    span_repo._store_spans([additional_span_dict])
 
     try:
         # Query spans for both tasks
