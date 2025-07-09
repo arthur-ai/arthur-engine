@@ -40,7 +40,7 @@ class SpanRepository:
             trace_data: Raw protobuf trace data
 
         Returns:
-        tuple: (total_spans, accepted_spans, unnecessary_spans, rejected_spans, rejected_reasons)
+        tuple: (total_spans, accepted_spans, rejected_spans, rejected_reasons)
         """
         total_spans = 0
         accepted_spans = 0
@@ -65,7 +65,7 @@ class SpanRepository:
                             accepted_spans += 1
                         else:
                             rejected_spans += 1
-                            rejected_reasons.append("Invalid span data")
+                            rejected_reasons.append("Invalid span data. Span must have a task_id or a parent_id.")
 
             if spans_data:
                 # Store all spans
@@ -259,7 +259,7 @@ class SpanRepository:
     def _clean_span_data(self, span_data: dict) -> dict:
         """
         Clean and process span data, returning None if the span data is invalid.
-        Now accepts spans without task IDs if they have parent spans.
+        Spans are accepted if they have a task_id OR a parent_id.
         """
         # Extract basic span data
         span_dict = {
@@ -292,13 +292,14 @@ class SpanRepository:
             if task_id:
                 logger.debug(f"Using task ID from parent span {parent_span_id}: {task_id}")
         
-        # Store the span even if it doesn't have a task ID (it might be a child span)
+        # Set the task_id (may be None)
         span_dict["task_id"] = task_id
         span_dict["raw_data"] = span_data
         
-        # Log warning for spans without task ID but don't skip them
-        if not task_id:
-            logger.warning(f"No task ID found for span {span_dict['span_id']} (parent: {parent_span_id}). Storing anyway.")
+        # Check acceptance criteria: span must have either task_id OR parent_id
+        if not task_id and not parent_span_id:
+            logger.warning(f"Span {span_dict['span_id']} rejected: no task_id and no parent_id")
+            return None
             
         return span_dict
 

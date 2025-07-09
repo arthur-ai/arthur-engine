@@ -14,7 +14,7 @@ from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import QuerySpansResponse, QuerySpansWithMetricsResponse
+from schemas.response_schemas import QuerySpansWithMetricsResponse
 from sqlalchemy.orm import Session
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -52,63 +52,6 @@ def receive_traces(
         raise HTTPException(status_code=400, detail="Invalid protobuf message format")
     except Exception as e:
         logger.error(f"Error processing traces: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
-
-@span_routes.get(
-    "/spans/query",
-    description="Query spans with filters for trace_id, span_id, task_id, and creation_time",
-    response_model=QuerySpansResponse,
-    response_model_exclude_none=True,
-    tags=["Spans"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
-def query_spans(
-    pagination_parameters: Annotated[
-        PaginationParameters,
-        Depends(common_pagination_parameters),
-    ],
-    trace_ids: list[str] = Query(
-        None,
-        description="Trace ID to filter on.",
-    ),
-    span_ids: list[str] = Query(
-        None,
-        description="Span ID to filter on.",
-    ),
-    task_ids: list[str] = Query(
-        None,
-        description="Task ID to filter on.",
-    ),
-    start_time: datetime = Query(
-        None,
-        description="Inclusive start date in ISO8601 string format.",
-    ),
-    end_time: datetime = Query(
-        None,
-        description="Exclusive end date in ISO8601 string format.",
-    ),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    try:
-        span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
-        spans = span_repo.query_spans(
-            trace_ids=trace_ids,
-            span_ids=span_ids,
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
-            sort=pagination_parameters.sort,
-            page=pagination_parameters.page,
-            page_size=pagination_parameters.page_size,
-        )
-        spans = [span._to_response_model() for span in spans]
-        return QuerySpansResponse(count=len(spans), spans=spans)
-    except Exception as e:
-        logger.error(f"Error querying spans: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
