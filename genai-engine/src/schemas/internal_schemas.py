@@ -6,6 +6,36 @@ from typing import List, Optional
 from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
+
+from db_models.db_models import (
+    DatabaseApiKey,
+    DatabaseApplicationConfiguration,
+    DatabaseDocument,
+    DatabaseEmbedding,
+    DatabaseEmbeddingReference,
+    DatabaseHallucinationClaim,
+    DatabaseInference,
+    DatabaseInferenceFeedback,
+    DatabaseInferencePrompt,
+    DatabaseInferencePromptContent,
+    DatabaseInferenceResponse,
+    DatabaseInferenceResponseContent,
+    DatabaseKeywordEntity,
+    DatabaseMetric,
+    DatabaseMetricResult,
+    DatabasePIIEntity,
+    DatabasePromptRuleResult,
+    DatabaseRegexEntity,
+    DatabaseResponseRuleResult,
+    DatabaseRule,
+    DatabaseRuleResultDetail,
+    DatabaseSpan,
+    DatabaseTask,
+    DatabaseTaskToMetrics,
+    DatabaseTaskToRules,
+    DatabaseToxicityScore,
+    DatabaseUser,
+)
 from schemas.common_schemas import (
     AuthUserRole,
     ExampleConfig,
@@ -19,6 +49,7 @@ from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
     InferenceFeedbackTarget,
+    MetricType,
     PIIEntityTypes,
     RuleDataType,
     RuleResultEnum,
@@ -26,9 +57,9 @@ from schemas.enums import (
     RuleScoringMethod,
     RuleType,
     ToxicityViolationType,
-    MetricType,
 )
-from schemas.request_schemas import NewRuleRequest, NewTaskRequest, NewMetricRequest
+from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
 from schemas.response_schemas import (
     ApiKeyResponse,
     ApplicationConfigurationResponse,
@@ -45,16 +76,18 @@ from schemas.response_schemas import (
     InferenceFeedbackResponse,
     KeywordDetailsResponse,
     KeywordSpanResponse,
+    MetricResponse,
+    MetricResultResponse,
     PIIDetailsResponse,
     PIIEntitySpanResponse,
     RegexDetailsResponse,
     RegexSpanResponse,
     RuleResponse,
     SpanResponse,
+    SpanWithMetricsResponse,
     TaskResponse,
     ToxicityDetailsResponse,
     UserResponse,
-    MetricResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -66,39 +99,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
-from schemas.metric_schemas import MetricScoreDetails
-
 from utils import constants
-
-from db_models.db_models import (
-    DatabaseApiKey,
-    DatabaseApplicationConfiguration,
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
-    DatabaseHallucinationClaim,
-    DatabaseInference,
-    DatabaseInferenceFeedback,
-    DatabaseInferencePrompt,
-    DatabaseInferencePromptContent,
-    DatabaseInferenceResponse,
-    DatabaseInferenceResponseContent,
-    DatabaseKeywordEntity,
-    DatabasePIIEntity,
-    DatabasePromptRuleResult,
-    DatabaseRegexEntity,
-    DatabaseResponseRuleResult,
-    DatabaseRule,
-    DatabaseRuleResultDetail,
-    DatabaseSpan,
-    DatabaseTask,
-    DatabaseTaskToRules,
-    DatabaseToxicityScore,
-    DatabaseUser,
-    DatabaseMetric,
-    DatabaseTaskToMetrics,
-    DatabaseMetricResult,
-)
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -283,7 +284,7 @@ class Metric(BaseModel):
         config_json = None
         if request.config:
             config_json = request.config.model_dump_json()
-            
+
         return Metric(
             id=str(uuid.uuid4()),
             created_at=datetime.now(),
@@ -293,7 +294,7 @@ class Metric(BaseModel):
             metric_metadata=request.metric_metadata,
             config=config_json,
         )
-    
+
     @staticmethod
     def _from_database_model(x: DatabaseMetric):
         return Metric(
@@ -305,7 +306,7 @@ class Metric(BaseModel):
             metric_metadata=x.metric_metadata,
             config=x.config,
         )
-    
+
     def _to_database_model(self) -> DatabaseMetric:
         return DatabaseMetric(
             id=self.id,
@@ -316,7 +317,7 @@ class Metric(BaseModel):
             metric_metadata=self.metric_metadata,
             config=self.config,
         )
-    
+
     def _to_response_model(self) -> MetricResponse:
         return MetricResponse(
             id=self.id,
@@ -341,7 +342,6 @@ class MetricResult(BaseModel):
     span_id: Optional[str] = None
     metric_id: Optional[str] = None
 
-    
     @staticmethod
     def _from_database_model(x: DatabaseMetricResult):
         return MetricResult(
@@ -349,18 +349,22 @@ class MetricResult(BaseModel):
             created_at=x.created_at,
             updated_at=x.updated_at,
             metric_type=x.metric_type,
-            details=MetricScoreDetails.model_validate_json(x.details) if x.details else None,
+            details=(
+                MetricScoreDetails.model_validate_json(x.details) if x.details else None
+            ),
             prompt_tokens=x.prompt_tokens,
             completion_tokens=x.completion_tokens,
             latency_ms=x.latency_ms,
             span_id=x.span_id,
             metric_id=x.metric_id,
         )
-    
+
     def _to_database_model(self) -> DatabaseMetricResult:
         if self.span_id is None or self.metric_id is None:
-            raise ValueError("span_id and metric_id must be set before converting to database model")
-            
+            raise ValueError(
+                "span_id and metric_id must be set before converting to database model",
+            )
+
         details_json = None
         if self.details:
             details_json = self.details.model_dump_json()
@@ -375,6 +379,21 @@ class MetricResult(BaseModel):
             latency_ms=self.latency_ms,
             span_id=self.span_id,
             metric_id=self.metric_id,
+        )
+
+    def _to_response_model(self):
+
+        return MetricResultResponse(
+            id=self.id,
+            metric_type=self.metric_type,
+            details=self.details.model_dump_json() if self.details else None,
+            prompt_tokens=self.prompt_tokens,
+            completion_tokens=self.completion_tokens,
+            latency_ms=self.latency_ms,
+            span_id=self.span_id,
+            metric_id=self.metric_id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
 
 
@@ -393,6 +412,7 @@ class TaskToRuleLink(BaseModel):
             rule=Rule._from_database_model(x.rule),
         )
 
+
 class TaskToMetricLink(BaseModel):
     task_id: str
     metric_id: str
@@ -407,6 +427,8 @@ class TaskToMetricLink(BaseModel):
             enabled=x.enabled,
             metric=Metric._from_database_model(x.metric),
         )
+
+
 class Task(BaseModel):
     id: str
     name: str
@@ -414,7 +436,6 @@ class Task(BaseModel):
     updated_at: datetime
     rule_links: Optional[List[TaskToRuleLink]] = None
     metric_links: Optional[List[TaskToMetricLink]] = None
-    
 
     @staticmethod
     def _from_request_model(x: NewTaskRequest):
@@ -1439,12 +1460,15 @@ class Span(BaseModel):
     id: str
     trace_id: str
     span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
     raw_data: dict
     created_at: datetime
     updated_at: datetime
+    metric_results: Optional[List[MetricResult]] = None
 
     @staticmethod
     def _from_database_model(db_span: DatabaseSpan) -> "Span":
@@ -1452,12 +1476,18 @@ class Span(BaseModel):
             id=db_span.id,
             trace_id=db_span.trace_id,
             span_id=db_span.span_id,
+            parent_span_id=db_span.parent_span_id,
+            span_kind=db_span.span_kind,
             start_time=db_span.start_time,
             end_time=db_span.end_time,
             task_id=db_span.task_id,
             raw_data=db_span.raw_data,
             created_at=db_span.created_at,
             updated_at=db_span.updated_at,
+            metric_results=[
+                MetricResult._from_database_model(m)
+                for m in (db_span.metric_results or [])
+            ],
         )
 
     def _to_database_model(self) -> DatabaseSpan:
@@ -1465,6 +1495,8 @@ class Span(BaseModel):
             id=self.id,
             trace_id=self.trace_id,
             span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
@@ -1478,12 +1510,34 @@ class Span(BaseModel):
             id=self.id,
             trace_id=self.trace_id,
             span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
+        )
+
+    def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
+        from schemas.response_schemas import SpanWithMetricsResponse
+
+        return SpanWithMetricsResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            task_id=self.task_id,
+            raw_data=self.raw_data,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            metric_results=[
+                result._to_response_model() for result in (self.metric_results or [])
+            ],
         )
 
     @staticmethod
@@ -1493,12 +1547,18 @@ class Span(BaseModel):
             id=str(uuid.uuid4()),
             trace_id=span_data["trace_id"],
             span_id=span_data["span_id"],
+            parent_span_id=span_data.get("parent_span_id"),
+            span_kind=span_data.get("span_kind"),
             start_time=span_data["start_time"],
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
             updated_at=datetime.now(),
+            metric_results=[
+                MetricResult._from_database_model(m)
+                for m in span_data.get("metric_results", [])
+            ],
         )
 
 

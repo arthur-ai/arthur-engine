@@ -3,22 +3,22 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from dependencies import get_db_session
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
+from sqlalchemy.orm import Session
+
+from dependencies import get_db_session
+from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import QuerySpansResponse
-from sqlalchemy.orm import Session
+from schemas.response_schemas import QuerySpansWithMetricsResponse
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
-
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,44 @@ span_routes = APIRouter(
     prefix="/v1",
     route_class=GenaiEngineRoute,
 )
+
+
+def _get_span_repository(db_session: Session) -> SpanRepository:
+    """Create and return a SpanRepository instance with required dependencies."""
+    tasks_metrics_repo = TasksMetricsRepository(db_session)
+    metrics_repo = MetricRepository(db_session)
+    return SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+
+def _create_response(
+    total_spans: int,
+    accepted_spans: int,
+    rejected_spans: int,
+    rejected_reasons: list[str],
+) -> Response:
+    """Create standardized response for trace processing results."""
+    content = {
+        "total_spans": total_spans,
+        "accepted_spans": accepted_spans,
+        "rejected_spans": rejected_spans,
+        "rejection_reasons": rejected_reasons,
+    }
+
+    if rejected_spans == 0:
+        content["status"] = "success"
+        status_code = status.HTTP_200_OK
+    elif accepted_spans > 0:
+        content["status"] = "partial_success"
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+    else:
+        content["status"] = "failure"
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    return Response(
+        content=json.dumps(content),
+        status_code=status_code,
+        media_type="application/json",
+    )
 
 
 @span_routes.post(
@@ -41,12 +79,11 @@ def receive_traces(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """Receive and process OpenInference trace data."""
     try:
-        tasks_metrics_repo = TasksMetricsRepository(db_session)
-        metrics_repo = MetricRepository(db_session)
-        span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+        span_repo = _get_span_repository(db_session)
         span_results = span_repo.create_traces(body)
-        return response_handler(*span_results)
+        return _create_response(*span_results)
     except DecodeError as e:
         logger.error(f"Failed to decode protobuf message: {e}")
         raise HTTPException(status_code=400, detail="Invalid protobuf message format")
@@ -58,29 +95,22 @@ def receive_traces(
 
 
 @span_routes.get(
-    "/spans/query",
-    description="Query spans with filters for trace_id, span_id, task_id, and creation_time",
-    response_model=QuerySpansResponse,
+    "/spans/metrics/query",
+    description="Query spans with metrics for specified task IDs",
+    response_model=QuerySpansWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
-def query_spans(
+def query_spans_with_metrics(
     pagination_parameters: Annotated[
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    trace_ids: list[str] = Query(
-        None,
-        description="Trace ID to filter on.",
-    ),
-    span_ids: list[str] = Query(
-        None,
-        description="Span ID to filter on.",
-    ),
     task_ids: list[str] = Query(
-        None,
-        description="Task ID to filter on.",
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
     ),
     start_time: datetime = Query(
         None,
@@ -93,59 +123,26 @@ def query_spans(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """Query spans with metrics for specified task IDs."""
     try:
-        span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
+        span_repo = _get_span_repository(db_session)
         spans = span_repo.query_spans(
-            trace_ids=trace_ids,
-            span_ids=span_ids,
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
+            propagate_task_ids=True,
+            include_metrics=True,
         )
-        spans = [span._to_response_model() for span in spans]
-        return QuerySpansResponse(count=len(spans), spans=spans)
+        spans = [span._to_metrics_response_model() for span in spans]
+        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Error querying spans: {e}")
+        logger.error(f"Error querying spans with metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()
-
-
-def response_handler(
-    total_spans,
-    accepted_spans,
-    unnecessary_spans,
-    rejected_spans,
-    rejected_reasons,
-):
-    content = {
-        "total_spans": total_spans,
-        "accepted_spans": accepted_spans,
-        "unnecessary_spans": unnecessary_spans,
-        "rejected_spans": rejected_spans,
-        "rejection_reasons": rejected_reasons,
-    }
-    status_value = None
-    status_code = None
-
-    if rejected_spans == 0:
-        status_value = "success"
-        status_code = status.HTTP_200_OK
-
-    elif accepted_spans > 0:
-        status_value = "partial_success"
-        status_code = status.HTTP_206_PARTIAL_CONTENT
-
-    else:
-        status_value = "failure"
-        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-
-    content["status"] = status_value
-    return Response(
-        content=json.dumps(content),
-        status_code=status_code,
-        media_type="application/json",
-    )

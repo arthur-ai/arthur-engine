@@ -1,20 +1,17 @@
 import concurrent.futures
 import logging
-import re
 import time
-from typing import List, Optional
 import uuid
+from typing import List
 
 from dotenv import load_dotenv
 from opentelemetry import trace
-from schemas.internal_schemas import Metric
+
+from schemas.internal_schemas import Metric, MetricResult
 from schemas.metric_schemas import MetricRequest
-from schemas.internal_schemas import MetricResult
 from scorer.score import ScorerClient
-from utils import constants
 from utils.metric_counters import METRIC_FAILURE_COUNTER
-from utils.token_count import TokenCounter
-from utils.utils import TracedThreadPoolExecutor, get_env_var
+from utils.utils import TracedThreadPoolExecutor
 
 tracer = trace.get_tracer(__name__)
 
@@ -68,8 +65,7 @@ class MetricsEngine:
             exc = future.exception()
             if exc is not None:
                 logger.error(
-                    "Metric evaluation failed. Metric: %s"
-                    % (metric.model_dump_json()),
+                    "Metric evaluation failed. Metric: %s" % (metric.model_dump_json()),
                 )
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
@@ -99,12 +95,11 @@ class MetricsEngine:
         except Exception as e:
             logger.error(f"Error scoring metric {metric.type}: {str(e)}")
             raise e
-            
+
         end_time = time.time()
-        
+
         # Update the score with the correct id and latency
         score.id = str(uuid.uuid4())
         score.latency_ms = int((end_time - start_time) * 1000)
-        
-        return score
 
+        return score
