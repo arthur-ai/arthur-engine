@@ -29,6 +29,11 @@ def _get_dataset(name: str) -> pd.DataFrame | list[dict]:
             current_dir,
             "../../test_data/vehicles/vehicle_classification_data.csv",
         )
+    elif name == "equipment_inspection":
+        csv_path = os.path.join(
+            current_dir,
+            "../../test_data/equipment_inspection/inferences.csv",
+        )
     else:
         raise ValueError(f"Dataset {name} doesn't exist.")
     data = pd.read_csv(csv_path)
@@ -51,6 +56,19 @@ def get_balloons_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
     conn = _get_dataset("balloons")
     dataset_reference = DatasetReference(
         dataset_name="balloons",
+        dataset_table_name="inferences",
+        dataset_id=uuid4(),
+    )
+    return conn, dataset_reference
+
+
+@pytest.fixture
+def get_equipment_inspection_dataset_conn() -> (
+    tuple[DuckDBPyConnection, DatasetReference]
+):
+    conn = _get_dataset("equipment_inspection")
+    dataset_reference = DatasetReference(
+        dataset_name="equipment_inspection",
         dataset_table_name="inferences",
         dataset_id=uuid4(),
     )
@@ -110,7 +128,7 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
         CREATE TABLE {dataset_ref.dataset_table_name} (
             created_at BIGINT,
             inference_prompt STRUCT(tokens BIGINT),
-            inference_response STRUCT(tokens BIGINT)
+            inference_response STRUCT(tokens BIGINT, response_rule_results STRUCT(rule_type STRING, result STRING)[])
         )
         """,
     )
@@ -122,19 +140,34 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
         (
             1704067200000,  # 2024-01-01 00:00:00
             {"tokens": 40},
-            {"tokens": 60},
+            {
+                "tokens": 60,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Pass"},
+                ],
+            },
         ),
         # Second 5-minute interval
         (
             1704067500000,  # 2024-01-01 00:05:00
             {"tokens": 30},
-            {"tokens": 50},
+            {
+                "tokens": 50,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Pass"},
+                ],
+            },
         ),
         # Third 5-minute interval
         (
             1704067800000,  # 2024-01-01 00:10:00
             {"tokens": 30},
-            {"tokens": 40},
+            {
+                "tokens": 40,
+                "response_rule_results": [
+                    {"rule_type": "ModelHallucinationRuleV2", "result": "Fail"},
+                ],
+            },
         ),
     ]
 
@@ -146,7 +179,7 @@ def get_shield_dataset_conn() -> tuple[DuckDBPyConnection, DatasetReference]:
             VALUES (
                 {created_at},
                 ROW({prompt['tokens']}),
-                ROW({response['tokens']})
+                ROW({response['tokens']}, {response['response_rule_results']})
             )
             """,
         )

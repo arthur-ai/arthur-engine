@@ -11,6 +11,7 @@ from schemas.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
 from scorer.score import ScorerClient
+from scorer.llm_client import get_llm_executor
 from utils import constants
 from utils.metric_counters import RULE_FAILURE_COUNTER
 from utils.token_count import TokenCounter
@@ -42,6 +43,15 @@ class RuleEngine:
     def __init__(self, scorer_client: ScorerClient):
         self.scorer = scorer_client
         self.token_counter = TokenCounter()
+        self.hallucination_token_limit = self.set_hallucination_token_limit()
+
+    def set_hallucination_token_limit(self):
+        token_limit = get_llm_executor().get_gpt_model_token_limit()
+
+        if token_limit == -1:
+            return MAX_HALLUCINATION_TOKEN_LIMIT
+        
+        return token_limit
 
     def evaluate(
         self,
@@ -221,11 +231,11 @@ class RuleEngine:
             total_tokens = self.token_counter.count(
                 request.response + " " + (request.context or ""),
             )
-            if total_tokens > MAX_HALLUCINATION_TOKEN_LIMIT:
+            if total_tokens > self.hallucination_token_limit:
                 return RuleScore(
                     result=RuleResultEnum.SKIPPED,
                     details=ScorerRuleDetails(
-                        message=f"Max Token length exceeded for hallucination (max {MAX_HALLUCINATION_TOKEN_LIMIT} tokens for context and response)",
+                        message=f"Max Token length exceeded for hallucination (max {self.hallucination_token_limit} tokens for context and response)",
                     ),
                 )
             # Make sure hallucination rules have context

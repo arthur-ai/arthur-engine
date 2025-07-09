@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import UUID
 
 from arthur_common.aggregations.aggregator import NumericAggregationFunction
@@ -9,6 +9,7 @@ from arthur_common.models.schema_definitions import (
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
     MetricLiteralParameterAnnotation,
+    MetricMultipleColumnParameterAnnotation,
     ScalarType,
     ScopeSchemaTag,
 )
@@ -70,29 +71,66 @@ class BinaryClassifierCountByClassAggregationFunction(NumericAggregationFunction
                 description="A column containing boolean, integer, or string labelled prediction values.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+        SELECT
+            time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+            {escaped_pred_col} as prediction,
+            COUNT(*) as count
+        FROM {dataset.dataset_table_name}
+        GROUP BY
+            ts,
+            -- group by raw column name instead of alias in select
+            -- in case table has a column called 'prediction'
+            {escaped_pred_col}
+        ORDER BY ts
+        """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_pred_col = escape_identifier(prediction_col)
+
+        # build query components with segmentation columns
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in segmentation_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"{escaped_pred_col} as prediction",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = ["ts", f"{escaped_pred_col}"] + escaped_segmentation_cols
+        extra_dims = ["prediction"]
+
+        # build query
         query = f"""
-            SELECT
-                time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                {escaped_pred_col} as prediction,
-                COUNT(*) as count
-            FROM {dataset.dataset_table_name}
-            GROUP BY
-                ts,
-                -- group by raw column name instead of alias in select
-                -- in case table has a column called 'prediction'
-                {escaped_pred_col}
-            ORDER BY ts
-        """
+                    SELECT {", ".join(all_select_clause_cols)}
+                    FROM {dataset.dataset_table_name}
+                    GROUP BY {", ".join(all_group_by_cols)}
+                    ORDER BY ts
+                """
 
         result = ddb_conn.sql(query).df()
 
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            ["prediction"],
+            segmentation_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)
@@ -177,20 +215,59 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
                 description="The label denoting a negative classification.",
             ),
         ],
+        segmentation_cols: Annotated[
+            Optional[list[str]],
+            MetricMultipleColumnParameterAnnotation(
+                source_dataset_parameter_key="dataset",
+                allowed_column_types=[
+                    ScalarType(dtype=DType.INT),
+                    ScalarType(dtype=DType.BOOL),
+                    ScalarType(dtype=DType.STRING),
+                    ScalarType(dtype=DType.UUID),
+                ],
+                tag_hints=[],
+                friendly_name="Segmentation Columns",
+                description="All columns to include as dimensions for segmentation.",
+                optional=True,
+            ),
+        ] = None,
     ) -> list[NumericMetric]:
+        """Executed SQL with no segmentation columns:
+            SELECT
+            time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
+            CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
+            COUNT(*) as count
+        FROM {dataset.dataset_table_name}
+        GROUP BY
+            ts,
+            -- group by raw column name instead of alias in select
+            -- in case table has a column called 'prediction'
+            {escaped_prediction_col}
+        ORDER BY ts
+        """
+        segmentation_cols = [] if not segmentation_cols else segmentation_cols
         escaped_timestamp_col = escape_identifier(timestamp_col)
         escaped_prediction_col = escape_identifier(prediction_col)
+
+        # build query components with segmentation columns
+        escaped_segmentation_cols = [
+            escape_identifier(col) for col in segmentation_cols
+        ]
+        all_select_clause_cols = [
+            f"time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts",
+            f"CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction",
+            f"COUNT(*) as count",
+        ] + escaped_segmentation_cols
+        all_group_by_cols = [
+            "ts",
+            f"{escaped_prediction_col}",
+        ] + escaped_segmentation_cols
+        extra_dims = ["prediction"]
+
         query = f"""
-            SELECT
-                time_bucket(INTERVAL '5 minutes', {escaped_timestamp_col}) as ts,
-                CASE WHEN {escaped_prediction_col} >= {threshold} THEN '{true_label}' ELSE '{false_label}' END as prediction,
-                COUNT(*) as count
+            SELECT {", ".join(all_select_clause_cols)}
             FROM {dataset.dataset_table_name}
-            GROUP BY
-                ts,
-                -- group by raw column name instead of alias in select
-                -- in case table has a column called 'prediction'
-                {escaped_prediction_col}
+            GROUP BY {", ".join(all_group_by_cols)}
             ORDER BY ts
         """
 
@@ -199,7 +276,7 @@ class BinaryClassifierCountThresholdClassAggregationFunction(
         series = self.group_query_results_to_numeric_metrics(
             result,
             "count",
-            ["prediction"],
+            segmentation_cols + extra_dims,
             "ts",
         )
         metric = self.series_to_metric(self._metric_name(), series)
