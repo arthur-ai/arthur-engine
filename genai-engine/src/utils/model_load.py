@@ -1,6 +1,6 @@
+import os
 from logging import getLogger
 from multiprocessing import Pool
-import os
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

@@ -3,20 +3,20 @@ from datetime import datetime, timedelta
 from typing import Generator, List
 
 import pytest
-from dependencies import get_application_config
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
-from repositories.span_repository import SpanRepository
-from repositories.tasks_metrics_repository import TasksMetricsRepository
-from repositories.metrics_repository import MetricRepository
-from schemas.internal_schemas import Span as InternalSpan
 
 from db_models.db_models import DatabaseSpan
-from tests.clients.unit_test_client import get_genai_engine_test_client
+from dependencies import get_application_config
+from repositories.metrics_repository import MetricRepository
+from repositories.span_repository import SpanRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
+from schemas.internal_schemas import Span as InternalSpan
 from tests.clients.base_test_client import override_get_db_session
+from tests.clients.unit_test_client import get_genai_engine_test_client
 
 
 @pytest.fixture(scope="function")
@@ -50,7 +50,15 @@ def _create_base_trace_request():
     return trace_request, resource_span, scope_span
 
 
-def _create_span(trace_id, span_id, name, span_type="LLM", include_task_id=True, model_name="gpt-4", parent_span_id=None):
+def _create_span(
+    trace_id,
+    span_id,
+    name,
+    span_type="LLM",
+    include_task_id=True,
+    model_name="gpt-4",
+    parent_span_id=None,
+):
     """Helper function to create a span with specified type and optional parent ID."""
     span = Span()
     span.trace_id = trace_id
@@ -73,7 +81,9 @@ def _create_span(trace_id, span_id, name, span_type="LLM", include_task_id=True,
 
     # Add model-specific attributes for LLM spans
     if span_type == "LLM":
-        attributes.append(KeyValue(key="llm.model_name", value=AnyValue(string_value=model_name)))
+        attributes.append(
+            KeyValue(key="llm.model_name", value=AnyValue(string_value=model_name))
+        )
 
     # Metadata with or without task ID
     metadata = {
@@ -124,7 +134,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
 
     # Convert to dict for insertion
     span_dict = span.model_dump()
-    
+
     span_repo.store_spans([span_dict])
 
     yield span
@@ -226,7 +236,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     )
     spans.append(span5)
     spans_to_store = [span.model_dump() for span in spans]
-    [span.pop('metric_results') for span in spans_to_store]
+    [span.pop("metric_results") for span in spans_to_store]
     span_repo.store_spans(spans_to_store)
 
     yield spans
@@ -402,9 +412,11 @@ def sample_span_with_parent_id() -> bytes:
 
 
 @pytest.fixture(scope="function")
-def create_span_hierarchy_for_propagation() -> Generator[List[InternalSpan], None, None]:
+def create_span_hierarchy_for_propagation() -> (
+    Generator[List[InternalSpan], None, None]
+):
     """Create a complex span hierarchy to test task ID propagation.
-    
+
     Creates the following structure:
     - Root span (task_id: "propagation_test_task") - LLM
       ├── Child A (task_id: NULL) - CHAIN
@@ -521,7 +533,7 @@ def create_span_hierarchy_for_propagation() -> Generator[List[InternalSpan], Non
 
     # Store spans in database
     spans_to_store = [span.model_dump() for span in spans]
-    [span.pop('metric_results') for span in spans_to_store]
+    [span.pop("metric_results") for span in spans_to_store]
     span_repo.store_spans(spans_to_store)
 
     yield spans

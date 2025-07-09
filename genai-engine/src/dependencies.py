@@ -5,11 +5,18 @@ from typing import Generator
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+from authlib.integrations.starlette_client import OAuth
+from cachetools import TTLCache
+from dotenv import load_dotenv
+from fastapi import Depends, HTTPException
+from psycopg2 import OperationalError as Psycopg2OperationalError
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import sessionmaker
+
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.jwk_client import JWKClient
-from authlib.integrations.starlette_client import OAuth
-from cachetools import TTLCache
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from clients.auth.keycloak_client import KeycloakClient
 from clients.s3.azure_client import AzureBlobStorageClient
@@ -18,11 +25,10 @@ from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
-from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
-from psycopg2 import OperationalError as Psycopg2OperationalError
+from db_models.db_models import Base
+from metrics_engine import MetricsEngine
 from repositories.configuration_repository import ConfigurationRepository
-from schemas.enums import DocumentStorageEnvironment, RuleType, MetricType
+from schemas.enums import DocumentStorageEnvironment, MetricType, RuleType
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
@@ -33,17 +39,13 @@ from scorer import (
     HallucinationClaimsV2,
     KeywordScorer,
     RegexScorer,
+    ResponseRelevanceScorer,
     SensitiveDataCustomExamples,
+    ToolSelectionCorrectnessScorer,
     ToxicityScorer,
     UserQueryRelevanceScorer,
-    ResponseRelevanceScorer,
-    ToolSelectionCorrectnessScorer,
 )
-from metrics_engine import MetricsEngine
 from scorer.score import ScorerClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
 from utils import constants
 from utils.model_load import (
     CLAIM_CLASSIFIER_EMBEDDING_MODEL,
@@ -58,7 +60,6 @@ from utils.utils import (
     is_local_environment,
     seed_database,
 )
-from db_models.db_models import Base
 
 SINGLETON_GRADER_LLM = None
 SINGLETON_INFERENCE_REPOSITORY = None

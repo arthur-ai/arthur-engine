@@ -3,7 +3,6 @@ from typing import List, Optional
 
 import pgvector.sqlalchemy
 import sqlalchemy.types as types
-from db_models.custom_types import RoleType
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -18,6 +17,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from db_models.custom_types import RoleType
 from utils import constants
 from utils.utils import get_env_var
 
@@ -509,10 +510,16 @@ class DatabaseMetricResult(Base):
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
     metric_type: Mapped[str] = mapped_column(String, nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # JSON-serialized MetricScoreDetails
+    details: Mapped[Optional[str]] = mapped_column(
+        String, nullable=True
+    )  # JSON-serialized MetricScoreDetails
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
-    span_id: Mapped[str] = mapped_column(String, ForeignKey("spans.id"), nullable=False, index=True)
-    metric_id: Mapped[str] = mapped_column(String, ForeignKey("metrics.id"), nullable=False, index=True)
+    span_id: Mapped[str] = mapped_column(
+        String, ForeignKey("spans.id"), nullable=False, index=True
+    )
+    metric_id: Mapped[str] = mapped_column(
+        String, ForeignKey("metrics.id"), nullable=False, index=True
+    )
     span: Mapped["DatabaseSpan"] = relationship(back_populates="metric_results")

@@ -5,8 +5,10 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from config.database_config import DatabaseConfig
 from pydantic import TypeAdapter
+from sqlalchemy.orm import sessionmaker
+
+from config.database_config import DatabaseConfig
 from schemas.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -41,6 +43,8 @@ from schemas.response_schemas import (
     FileUploadResult,
     QueryFeedbackResponse,
     QueryInferencesResponse,
+    QuerySpansResponse,
+    QuerySpansWithMetricsResponse,
     RuleResponse,
     SearchRulesResponse,
     SearchTasksResponse,
@@ -48,10 +52,7 @@ from schemas.response_schemas import (
     TokenUsageResponse,
     UserResponse,
     ValidationResult,
-    QuerySpansResponse,
-    QuerySpansWithMetricsResponse
 )
-from sqlalchemy.orm import sessionmaker
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -1232,6 +1233,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,
     page: int = None,
@@ -1255,4 +1257,3 @@ def log_response(response: httpx.Response):
         print(
             f"\tResponse trace id: {response.headers[constants.RESPONSE_TRACE_ID_HEADER]}",
         )
-
