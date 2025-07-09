@@ -1,13 +1,20 @@
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
+
 from schemas.enums import ToolClassEnum
 
 
 class RelevanceMetricConfig(BaseModel):
     """Configuration for relevance metrics including QueryRelevance and ResponseRelevance"""
-    relevance_threshold: Optional[float] = Field(default=None, description="Threshold for determining relevance when not using LLM judge")
-    use_llm_judge: bool = Field(default=True, description="Whether to use LLM as a judge for relevance scoring")
+
+    relevance_threshold: Optional[float] = Field(
+        default=None,
+        description="Threshold for determining relevance when not using LLM judge",
+    )
+    use_llm_judge: bool = Field(
+        default=True, description="Whether to use LLM as a judge for relevance scoring"
+    )
 
 
 class QueryRelevanceMetric(BaseModel):
@@ -54,26 +61,17 @@ class MetricRequest(BaseModel):
         description="Conversation history and additional context to be used by GenAI Engine for computing metrics.",
         default=[],
         example=[
-            {
-                "role": "user",
-                "value": "What is the weather in Tokyo?"
-            },
-            {
-                "role": "assistant",
-                "value": "WeatherTool",
-                "args": {
-                    "city": "Tokyo"
-                }
-            },
+            {"role": "user", "value": "What is the weather in Tokyo?"},
+            {"role": "assistant", "value": "WeatherTool", "args": {"city": "Tokyo"}},
             {
                 "role": "tool",
-                "value": "[{\"name\": \"WeatherTool\", \"result\": {\"temperature\": \"20°C\", \"humidity\": \"50%\", \"condition\": \"sunny\"}}]",
+                "value": '[{"name": "WeatherTool", "result": {"temperature": "20°C", "humidity": "50%", "condition": "sunny"}}]',
             },
             {
                 "role": "assistant",
-                "value": "The weather in Tokyo is sunny and the temperature is 20°C."
-            }
-        ]
+                "value": "The weather in Tokyo is sunny and the temperature is 20°C.",
+            },
+        ],
     )
     response: Optional[str] = Field(
         description="Response to be used by GenAI Engine for computing metrics.",

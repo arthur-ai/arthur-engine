@@ -3,22 +3,22 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from dependencies import get_db_session
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
+from sqlalchemy.orm import Session
+
+from dependencies import get_db_session
+from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.response_schemas import QuerySpansWithMetricsResponse
-from sqlalchemy.orm import Session
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
-
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,9 @@ def query_spans_with_metrics(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     try:
-        span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
+        span_repo = SpanRepository(
+            db_session, TasksMetricsRepository(db_session), MetricRepository(db_session)
+        )
         spans = span_repo.query_spans(
             task_ids=task_ids,
             start_time=start_time,

@@ -1,8 +1,8 @@
 import abc
 from typing import Any, Callable
 
-from schemas.metric_schemas import MetricRequest
 from schemas.internal_schemas import MetricResult
+from schemas.metric_schemas import MetricRequest
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 
 

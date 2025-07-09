@@ -1,15 +1,15 @@
-from langchain_core.runnables import RunnableSequence
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
+
 from schemas.common_schemas import LLMTokenConsumption
 from schemas.enums import MetricType, ToolClassEnum
+from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import (
     MetricRequest,
     MetricScoreDetails,
     ToolSelectionCorrectnessMetric,
 )
-from schemas.internal_schemas import MetricResult
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_SELECTION_PROMPT_TEMPLATE,
@@ -166,7 +166,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         tool_usage_enum = ToolClassEnum(tool_response["tool_usage"])
 
         return MetricResult(
-            id="", # This will be set by the calling code
+            id="",  # This will be set by the calling code
             metric_type=MetricType.TOOL_SELECTION,
             details=MetricScoreDetails(
                 tool_selection=ToolSelectionCorrectnessMetric(
@@ -178,5 +178,5 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
             ),
             prompt_tokens=total_tokens["prompt_tokens"],
             completion_tokens=total_tokens["completion_tokens"],
-            latency_ms=0, # This will be set by the calling code
-        ) 
+            latency_ms=0,  # This will be set by the calling code
+        )
