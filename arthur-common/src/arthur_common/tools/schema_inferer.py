@@ -104,6 +104,8 @@ class SchemaInferer:
                         raise NotImplementedError(f"Type {col_type} not mappable.")
 
                 # tag column as a possible segmentation column if it meets criteria
+                # we only support top-level column aggregations right now (ie you can't aggregate on a nested column)
+                # so we don't want to tag nested columns as possible segmentation columns
                 if not is_nested_col and is_column_possible_segmentation(
                     self.conn,
                     table,
