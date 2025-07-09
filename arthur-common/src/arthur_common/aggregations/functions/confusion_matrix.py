@@ -204,7 +204,7 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=SEGMENTATION_ALLOWED_COLUMN_TYPES,
-                tag_hints=[],
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
@@ -438,7 +438,7 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
                 allowed_column_types=SEGMENTATION_ALLOWED_COLUMN_TYPES,
-                tag_hints=[],
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,

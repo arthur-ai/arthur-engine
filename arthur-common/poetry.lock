@@ -1830,6 +1830,28 @@ urllib3 = ">=1.25.10,<3.0"
 tests = ["coverage (>=6.0.0)", "flake8", "mypy", "pytest (>=7.0.0)", "pytest-asyncio", "pytest-cov", "pytest-httpserver", "tomli ; python_version < \"3.11\"", "tomli-w", "types-PyYAML", "types-requests"]
 
 [[package]]
+name = "simple-settings"
+version = "1.2.0"
+description = "A simple way to manage your project settings."
+optional = false
+python-versions = ">=3.6.1,<4.0"
+groups = ["main"]
+files = [
+    {file = "simple-settings-1.2.0.tar.gz", hash = "sha256:db96809e44557672660c7b5a467941d953b6f4f54699425ff25ecb879758d416"},
+    {file = "simple_settings-1.2.0-py3-none-any.whl", hash = "sha256:e6855358ef072c94fe973400ff56ae551eb8e92a4ead35b9eae8a5182409e771"},
+]
+
+[package.extras]
+all = ["PyYAML (==6.0)", "SQLAlchemy (==1.4.26)", "boto3 (>=1.20.26,<2.0.0)", "jsonpickle (==2.0.0)", "pymemcache (==3.5.0)", "redis (==3.5.3)", "six (==1.16.0)", "toml (==0.10.2)"]
+database = ["SQLAlchemy (==1.4.26)"]
+dynamic-settings = ["jsonpickle (==2.0.0)"]
+memcache = ["pymemcache (==3.5.0)", "six (==1.16.0)"]
+redis = ["redis (==3.5.3)"]
+s3 = ["boto3 (>=1.20.26,<2.0.0)"]
+toml = ["toml (==0.10.2)"]
+yaml = ["PyYAML (==6.0)"]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -2166,4 +2188,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "e8799699f09c8f964ca8ca0416494016ca6d9f14985be363c96d9831a8dde3b1"
+content-hash = "aa88d224d98319fa2e702d0a4838b6afe05384716e0e9252b7ffca069fa10d96"
