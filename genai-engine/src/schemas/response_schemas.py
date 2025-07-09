@@ -17,8 +17,8 @@ from schemas.enums import (
     RuleScope,
     RuleType,
     ToxicityViolationType,
+    MetricType,
 )
-from schemas.enums import MetricType
 
 
 class HTTPError(BaseModel):
@@ -582,6 +582,8 @@ class SpanResponse(BaseModel):
     id: str
     trace_id: str
     span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
@@ -614,4 +616,77 @@ class ComputeMetricsResponse(BaseModel):
     span_count: int = Field(description="Number of spans matching the filters")
     spans: list[SpanResponse] = Field(description="List of spans used for metric computation")
     filters_applied: ComputeMetricsFiltersResponse = Field(description="Filters that were applied to the data")
+
+
+class MetricResultResponse(BaseModel):
+    id: str = Field(description="ID of the metric result")
+    metric_type: MetricType = Field(description="Type of the metric")
+    details: Optional[str] = Field(description="JSON-serialized metric details", default=None)
+    prompt_tokens: int = Field(description="Number of prompt tokens used")
+    completion_tokens: int = Field(description="Number of completion tokens used")
+    latency_ms: int = Field(description="Latency in milliseconds")
+    span_id: str = Field(description="ID of the span this result belongs to")
+    metric_id: str = Field(description="ID of the metric that generated this result")
+    created_at: datetime = Field(description="Time the result was created")
+    updated_at: datetime = Field(description="Time the result was last updated")
+
+
+class SpanWithMetricsResponse(BaseModel):
+    id: str
+    trace_id: str
+    span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+    metric_results: list[MetricResultResponse] = Field(
+        description="List of metric results for this span",
+        default=[],
+    )
+
+
+class QuerySpansWithMetricsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of spans matching the query parameters",
+    )
+    spans: list[SpanWithMetricsResponse] = Field(
+        description="List of spans with metrics matching the search filters",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "count": 1,
+                "spans": [
+                    {
+                        "id": "957df309-c907-4b77-abe5-15dd00c081f7",
+                        "trace_id": "trace-123",
+                        "span_id": "span-456",
+                        "start_time": "2024-01-01T12:00:00Z",
+                        "end_time": "2024-01-01T12:00:01Z",
+                        "task_id": "task-789",
+                        "created_at": "2024-01-01T12:00:00Z",
+                        "updated_at": "2024-01-01T12:00:00Z",
+                        "raw_data": {},
+                        "metric_results": [
+                            {
+                                "id": "metric-123",
+                                "name": "Query Relevance",
+                                "type": "QueryRelevance",
+                                "metric_metadata": "Relevance score for user query",
+                                "config": None,
+                                "created_at": "2024-01-01T12:00:00Z",
+                                "updated_at": "2024-01-01T12:00:00Z",
+                                "enabled": True,
+                            }
+                        ],
+                    },
+                ],
+            },
+        },
+    )
 

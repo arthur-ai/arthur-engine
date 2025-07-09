@@ -446,6 +446,8 @@ class DatabaseSpan(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    parent_span_id: Mapped[str] = mapped_column(String, nullable=True, index=True)
+    span_kind: Mapped[str] = mapped_column(String, nullable=True)
     start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     task_id: Mapped[str] = mapped_column(
@@ -463,6 +465,11 @@ class DatabaseSpan(Base):
     updated_at: Mapped[TIMESTAMP] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
+    )
+    metric_results: Mapped[List["DatabaseMetricResult"]] = relationship(
+        "DatabaseMetricResult",
+        back_populates="span",
+        lazy="joined",
     )
 
 
@@ -508,3 +515,4 @@ class DatabaseMetricResult(Base):
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     span_id: Mapped[str] = mapped_column(String, ForeignKey("spans.id"), nullable=False, index=True)
     metric_id: Mapped[str] = mapped_column(String, ForeignKey("metrics.id"), nullable=False, index=True)
+    span: Mapped["DatabaseSpan"] = relationship(back_populates="metric_results")

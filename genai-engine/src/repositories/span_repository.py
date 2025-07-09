@@ -44,7 +44,6 @@ class SpanRepository:
         """
         total_spans = 0
         accepted_spans = 0
-        unnecessary_spans = 0
         rejected_spans = 0
         rejected_reasons = []
 
@@ -58,46 +57,29 @@ class SpanRepository:
                 for scope_span in resource_span.get("scopeSpans", []):
                     for span_data in scope_span.get("spans", []):
                         total_spans += 1
-                        if self._is_llm_span(span_data):
-                            span_dict = self._clean_span_data(span_data)
-                            # None if Task ID missing. This raises a warning
-                            if span_dict:
-                                span_dict["id"] = str(uuid.uuid4())
-                                spans_data.append(span_dict)
-                                accepted_spans += 1
-                            else:
-                                rejected_spans += 1
-                                rejected_reasons.append("Missing task ID")
+                        span_dict = self._clean_span_data(span_data)
+                        # span_dict will be None only if span data is invalid
+                        if span_dict:
+                            span_dict["id"] = str(uuid.uuid4())
+                            spans_data.append(span_dict)
+                            accepted_spans += 1
                         else:
-                            unnecessary_spans += 1
+                            rejected_spans += 1
+                            rejected_reasons.append("Invalid span data")
 
             if spans_data:
-                # OPTIMIZATION: Use single transaction for all operations
+                # Store all spans
                 try:
-                    logger.debug(f"Processing {len(spans_data)} spans in single transaction")
-                    
-                    # Store all spans (no commit yet)
-                    self.store_spans(spans_data, commit=False)
+                    logger.debug(f"Processing {len(spans_data)} spans")
+                    self.store_spans(spans_data, commit=True)
                     logger.debug("Spans stored successfully")
-
-                    # Compute and store metrics for all spans (no commit yet)
-                    metrics_results = self.compute_metrics(spans_data)
-                    self.store_metrics(metrics_results, commit=False)
-                    logger.debug("Metrics computed and stored successfully")
-                    
-                    # Single commit for all operations
-                    self.db_session.commit()
-                    logger.debug("Transaction committed successfully")
-                    
                 except Exception as e:
-                    logger.error(f"Error in transaction, rolling back: {e}")
-                    self.db_session.rollback()
+                    logger.error(f"Error storing spans: {e}")
                     raise e
 
             return (
                 total_spans,
                 accepted_spans,
-                unnecessary_spans,
                 rejected_spans,
                 rejected_reasons,
             )
@@ -133,7 +115,8 @@ class SpanRepository:
         )
 
         # Execute query and transform results
-        results = self.db_session.execute(query).scalars().all()
+        # Use unique() to handle joined eager loads against collections
+        results = self.db_session.execute(query).scalars().unique().all()
         return [Span._from_database_model(span) for span in results]
 
     def store_spans(self, spans: list[dict], commit: bool = True):
@@ -151,120 +134,6 @@ class SpanRepository:
             
         logger.debug(f"Stored {len(spans)} spans (commit={commit})")
 
-    def compute_metrics(self, spans_data: list[dict]):
-        """
-        Compute metrics for all spans.
-        """
-        if not spans_data:
-            return {}
-            
-        metrics_engine = get_metrics_engine()
-        metrics_results = {}
-        
-        logger.debug(f"Computing metrics for {len(spans_data)} spans")
-        
-        for span_data in spans_data:
-            task_id = span_data["task_id"]
-            s_id = span_data["id"]
-            
-            try:
-                span: MetricRequest = self.process_span(span_data)
-                metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(task_id)
-                metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
-                
-                if not metrics:
-                    logger.debug(f"No metrics found for task {task_id}")
-                    continue
-                
-                # Get results and track which metric generated each result
-                results = metrics_engine.evaluate(span, metrics)
-                
-                # Store results with metric mapping and set span_id and metric_id
-                metrics_results[s_id] = []
-                for i, result in enumerate(results):
-                    # Assuming results are returned in the same order as metrics
-                    if i < len(metrics):
-                        metric_id = metrics[i].id
-                        # Set the span_id and metric_id on the result
-                        result.span_id = s_id
-                        result.metric_id = metric_id
-                        metrics_results[s_id].append({
-                            'result': result,
-                            'metric_id': metric_id
-                        })
-                
-                logger.debug(f"Computed {len(results)} metrics for span {s_id}")
-                
-            except Exception as e:
-                logger.error(f"Error computing metrics for span {s_id}: {e}")
-                # Continue processing other spans even if one fails
-                continue
-        
-        logger.debug(f"Total metrics computed: {sum(len(results) for results in metrics_results.values())}")
-        return metrics_results
-
-    def store_metrics(self, metrics_results: dict, commit: bool = True):
-        """
-        Store metrics in the database with optional commit control.
-        """
-        if not metrics_results:
-            return
-            
-        # Collect all metric results to store
-        metric_results_to_insert = []
-        
-        for span_id, result_mappings in metrics_results.items():
-            for result_mapping in result_mappings:
-                result = result_mapping['result']
-                metric_id = result_mapping['metric_id']
-                
-                # Prepare metric result for bulk insert
-                metric_results_to_insert.append({
-                    'id': result.id,
-                    'created_at': result.created_at,
-                    'updated_at': result.updated_at,
-                    'metric_type': result.metric_type.value,
-                    'details': result.details.model_dump_json() if result.details else None,
-                    'prompt_tokens': result.prompt_tokens,
-                    'completion_tokens': result.completion_tokens,
-                    'latency_ms': result.latency_ms,
-                    'span_id': span_id,
-                    'metric_id': metric_id,
-                })
-        
-        # Bulk insert metric results
-        if metric_results_to_insert:
-            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
-            self.db_session.execute(stmt)
-            
-        if commit:
-            self.db_session.commit()
-            
-        logger.debug(f"Stored {len(metric_results_to_insert)} metric results (commit={commit})")
-
-    def process_span(self, span_data: dict):
-        """
-        Process a span to extract features for metric computation.
-        """
-        span_features = trace_utils.extract_span_features(span_data["raw_data"])
-
-        context = span_features["context"]
-
-        if "content" in span_features["response"]:
-            response = span_features["response"]["content"]
-        elif "tool_calls" in span_features["response"]:
-            # Handle case where response is a tool call
-            response = json.dumps(span_features["response"]["tool_calls"])
-        else:
-            response = json.dumps(span_features["response"])
-        
-        return MetricRequest(
-            system_prompt=span_features["system_prompt"],
-            user_query=span_features["user_query"],
-            context=context,
-            response=response,
-        )
-    
     def _build_spans_query(
         self,
         page: int,
@@ -320,17 +189,41 @@ class SpanRepository:
         except DecodeError as e:
             raise DecodeError("Failed to decode protobuf message.") from e
 
-    def _is_llm_span(self, span_data: dict) -> bool:
-        """Check if a span is an LLM span"""
+    def _get_span_kind(self, span_data: dict) -> str:
+        """Extract span kind from span data"""
         if "attributes" not in span_data:
-            return False
+            return None
 
         for attr in span_data.get("attributes", []):
             key = attr.get("key")
             value = attr.get("value", {})
-            if key == "openinference.span.kind" and value.get("stringValue") == "LLM":
-                return True
-        return False
+            if key == "openinference.span.kind":
+                return value.get("stringValue")
+        return None
+
+    def _get_parent_span_id(self, span_data: dict) -> str:
+        """Extract parent span ID from span data"""
+        if "parentSpanId" in span_data:
+            return trace_utils.convert_id_to_hex(span_data.get("parentSpanId"))
+        return None
+
+    def _get_task_id_from_parent(self, parent_span_id: str) -> str:
+        """
+        Get the task ID from a parent span if it exists in the database
+        """
+        if not parent_span_id:
+            return None
+            
+        try:
+            parent_span = (
+                self.db_session.query(DatabaseSpan)
+                .filter(DatabaseSpan.span_id == parent_span_id)
+                .first()
+            )
+            return parent_span.task_id if parent_span else None
+        except Exception as e:
+            logger.warning(f"Error retrieving parent span {parent_span_id}: {e}")
+            return None
 
     def _extract_timestamps(self, span_data: dict) -> tuple[datetime, datetime]:
         """Extract and convert timestamps from span data"""
@@ -365,14 +258,24 @@ class SpanRepository:
 
     def _clean_span_data(self, span_data: dict) -> dict:
         """
-        Clean and process span data, returning None if not an LLM span
-        or if the span data is invalid.
+        Clean and process span data, returning None if the span data is invalid.
+        Now accepts spans without task IDs if they have parent spans.
         """
         # Extract basic span data
         span_dict = {
             "trace_id": trace_utils.convert_id_to_hex(span_data.get("traceId")),
             "span_id": trace_utils.convert_id_to_hex(span_data.get("spanId")),
         }
+
+        # Extract parent span ID
+        parent_span_id = self._get_parent_span_id(span_data)
+        if parent_span_id:
+            span_dict["parent_span_id"] = parent_span_id
+
+        # Extract span kind
+        span_kind = self._get_span_kind(span_data)
+        if span_kind:
+            span_dict["span_kind"] = span_kind
 
         # Extract timestamps
         start_time, end_time = self._extract_timestamps(span_data)
@@ -382,9 +285,212 @@ class SpanRepository:
         # Extract attributes and metadata
         metadata = self._get_metadata(span_data)
         task_id = self._get_task_id(metadata)
-        if not task_id:
-            logger.warning(f"No task ID found for span {span_dict['span_id']}. Skipping.")
-            return None
+        
+        # If no task ID in current span, try to get it from parent span
+        if not task_id and parent_span_id:
+            task_id = self._get_task_id_from_parent(parent_span_id)
+            if task_id:
+                logger.debug(f"Using task ID from parent span {parent_span_id}: {task_id}")
+        
+        # Store the span even if it doesn't have a task ID (it might be a child span)
         span_dict["task_id"] = task_id
         span_dict["raw_data"] = span_data
+        
+        # Log warning for spans without task ID but don't skip them
+        if not task_id:
+            logger.warning(f"No task ID found for span {span_dict['span_id']} (parent: {parent_span_id}). Storing anyway.")
+            
         return span_dict
+
+    def query_spans_with_metrics(
+        self,
+        task_ids: list[str],
+        sort: PaginationSortMethod,
+        page: int,
+        page_size: int = 10,
+        start_time: datetime = None,
+        end_time: datetime = None,
+    ) -> list[Span]:
+        """
+        Query spans with metrics for the given task IDs.
+        Computes metrics for spans that don't have them and returns spans with embedded metrics.
+        """
+        if not task_ids:
+            raise ValueError("At least one task_id is required")
+            
+        # Get spans for the specified tasks
+        spans = self.query_spans(
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        
+        if not spans:
+            return []
+            
+        # Get existing metric results for these spans
+        span_ids = [span.id for span in spans]
+        existing_metric_results = self._get_metric_results_for_spans(span_ids)
+        
+        # Identify spans that need metrics computed
+        spans_without_metrics = []
+        for span in spans:
+            if span.id not in existing_metric_results:
+                spans_without_metrics.append(span)
+        
+        # Compute metrics for spans that don't have them
+        if spans_without_metrics:
+            logger.debug(f"Computing metrics for {len(spans_without_metrics)} spans")
+            new_metric_results = self._compute_metrics_for_spans(spans_without_metrics)
+            self._store_metric_results(new_metric_results)
+            # Update existing results with newly computed ones
+            existing_metric_results.update(new_metric_results)
+        
+        # Embed metrics into spans
+        for span in spans:
+            span.metric_results = existing_metric_results.get(span.id, [])
+            
+        return spans
+    
+    def _get_metric_results_for_spans(self, span_ids: list[str]) -> dict[str, list[MetricResult]]:
+        """
+        Get existing metric results for the given span IDs.
+        Returns a dict mapping span_id to list of MetricResult objects.
+        """
+        if not span_ids:
+            return {}
+        
+        metric_results = (
+            self.db_session.query(DatabaseMetricResult)
+            .filter(DatabaseMetricResult.span_id.in_(span_ids))
+            .all()
+        )
+        
+        # Group by span_id
+        results_by_span = {}
+        for db_result in metric_results:
+            span_id = db_result.span_id
+            if span_id not in results_by_span:
+                results_by_span[span_id] = []
+            results_by_span[span_id].append(MetricResult._from_database_model(db_result))
+            
+        return results_by_span
+
+    def _compute_metrics_for_spans(self, spans: list[Span]) -> dict[str, list[MetricResult]]:
+        """
+        Compute metrics for the given spans.
+        Returns a dict mapping span_id to list of MetricResult objects.
+        """
+        if not spans:
+            return {}
+            
+        metrics_engine = get_metrics_engine()
+        metrics_results = {}
+        
+        logger.debug(f"Computing metrics for {len(spans)} spans")
+        
+        for span in spans:
+            task_id = span.task_id
+            if not task_id:
+                logger.warning(f"Span {span.id} has no task_id, skipping metric computation")
+                continue
+            
+            # Only compute metrics for LLM spans
+            span_kind = span.span_kind
+            if span_kind != "LLM":
+                logger.debug(f"Skipping metric computation for span {span.id} - span kind is {span_kind}, not LLM")
+                continue
+                
+            try:
+                # Convert span to MetricRequest format
+                span_request = self._span_to_metric_request(span)
+                
+                # Get metrics for this task
+                metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(task_id)
+                metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
+                
+                if not metrics:
+                    logger.debug(f"No metrics found for task {task_id}")
+                    continue
+                
+                # Compute metrics
+                results = metrics_engine.evaluate(span_request, metrics)
+                
+                # Set span_id and metric_id on results
+                metrics_results[span.id] = []
+                for i, result in enumerate(results):
+                    if i < len(metrics):
+                        metric_id = metrics[i].id
+                        result.span_id = span.id
+                        result.metric_id = metric_id
+                        metrics_results[span.id].append(result)
+                
+                logger.debug(f"Computed {len(results)} metrics for span {span.id}")
+                
+            except Exception as e:
+                logger.error(f"Error computing metrics for span {span.id}: {e}")
+                # Continue processing other spans even if one fails
+                continue
+        
+        logger.debug(f"Total metrics computed: {sum(len(results) for results in metrics_results.values())}")
+        return metrics_results
+
+    def _span_to_metric_request(self, span: Span) -> MetricRequest:
+        """
+        Convert a Span to MetricRequest format for metric computation.
+        """
+        span_features = trace_utils.extract_span_features(span.raw_data)
+
+        context = span_features["context"]
+
+        if "content" in span_features["response"]:
+            response = span_features["response"]["content"]
+        elif "tool_calls" in span_features["response"]:
+            # Handle case where response is a tool call
+            response = json.dumps(span_features["response"]["tool_calls"])
+        else:
+            response = json.dumps(span_features["response"])
+        
+        return MetricRequest(
+            system_prompt=span_features["system_prompt"],
+            user_query=span_features["user_query"],
+            context=context,
+            response=response,
+        )
+
+    def _store_metric_results(self, metrics_results: dict[str, list[MetricResult]]):
+        """
+        Store metric results in the database.
+        """
+        if not metrics_results:
+            return
+            
+        # Collect all metric results to store
+        metric_results_to_insert = []
+        
+        for span_id, results in metrics_results.items():
+            for result in results:
+                # Prepare metric result for bulk insert
+                metric_results_to_insert.append({
+                    'id': result.id,
+                    'created_at': result.created_at,
+                    'updated_at': result.updated_at,
+                    'metric_type': result.metric_type.value,
+                    'details': result.details.model_dump_json() if result.details else None,
+                    'prompt_tokens': result.prompt_tokens,
+                    'completion_tokens': result.completion_tokens,
+                    'latency_ms': result.latency_ms,
+                    'span_id': span_id,
+                    'metric_id': result.metric_id,
+                })
+        
+        # Bulk insert metric results
+        if metric_results_to_insert:
+            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
+            self.db_session.execute(stmt)
+            self.db_session.commit()
+            
+        logger.debug(f"Stored {len(metric_results_to_insert)} metric results")

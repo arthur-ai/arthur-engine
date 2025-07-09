@@ -14,7 +14,7 @@ from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import QuerySpansResponse
+from schemas.response_schemas import QuerySpansResponse, QuerySpansWithMetricsResponse
 from sqlalchemy.orm import Session
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -114,17 +114,66 @@ def query_spans(
         db_session.close()
 
 
+@span_routes.get(
+    "/spans/metrics/query",
+    description="Query spans with metrics for specified task IDs",
+    response_model=QuerySpansWithMetricsResponse,
+    response_model_exclude_none=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def query_spans_with_metrics(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
+    try:
+        span_repo = SpanRepository(db_session, TasksMetricsRepository(db_session), MetricRepository(db_session))
+        spans = span_repo.query_spans_with_metrics(
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=pagination_parameters.sort,
+            page=pagination_parameters.page,
+            page_size=pagination_parameters.page_size,
+        )
+        spans = [span._to_metrics_response_model() for span in spans]
+        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error querying spans with metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
 def response_handler(
     total_spans,
     accepted_spans,
-    unnecessary_spans,
     rejected_spans,
     rejected_reasons,
 ):
     content = {
         "total_spans": total_spans,
         "accepted_spans": accepted_spans,
-        "unnecessary_spans": unnecessary_spans,
         "rejected_spans": rejected_spans,
         "rejection_reasons": rejected_reasons,
     }
