@@ -28,14 +28,16 @@ _QUERY_PATTERNS = [
         re.IGNORECASE | re.DOTALL,
     ),
     re.compile(
-        r"(?:user asks?|User asks?):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL
+        r"(?:user asks?|User asks?):\s*(.+?)(?:\n|$)",
+        re.IGNORECASE | re.DOTALL,
     ),
     re.compile(
         r"(?:user wants? to know|User wants? to know):\s*(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
     re.compile(
-        r"(?:user is asking|User is asking):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL
+        r"(?:user is asking|User is asking):\s*(.+?)(?:\n|$)",
+        re.IGNORECASE | re.DOTALL,
     ),
     # Context-based patterns
     re.compile(
@@ -51,7 +53,8 @@ _QUERY_PATTERNS = [
         re.IGNORECASE | re.DOTALL,
     ),
     re.compile(
-        r"(?:respond to|Respond to):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL
+        r"(?:respond to|Respond to):\s*(.+?)(?:\n|$)",
+        re.IGNORECASE | re.DOTALL,
     ),
     re.compile(r"(?:help with|Help with):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
     # Quoted content (might be the actual query)
@@ -311,7 +314,7 @@ def extract_llm_data(attributes):
     # Extract invocation parameters
     if "llm.invocation_parameters" in attributes:
         llm_data["invocation_parameters"] = json_to_dict(
-            attributes["llm.invocation_parameters"]
+            attributes["llm.invocation_parameters"],
         )
 
     def extract_tool_calls(attributes, base_key):
@@ -351,7 +354,7 @@ def extract_llm_data(attributes):
                     tool_call["name"] = attributes[f"{tool_base_key}.name"]
                 if f"{tool_base_key}.arguments" in attributes:
                     tool_call["arguments"] = json_to_dict(
-                        attributes[f"{tool_base_key}.arguments"]
+                        attributes[f"{tool_base_key}.arguments"],
                     )
 
                 if tool_call:  # Only add if we found any tool call data
@@ -395,7 +398,7 @@ def extract_llm_data(attributes):
     # Extract input messages
     input_keys = [k for k in attributes.keys() if k.startswith("llm.input_messages.")]
     input_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in input_keys)
+        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in input_keys),
     )
     tool_queue = []
     for msg_idx in input_indices:
@@ -413,7 +416,7 @@ def extract_llm_data(attributes):
     # Extract output messages
     output_keys = [k for k in attributes.keys() if k.startswith("llm.output_messages.")]
     output_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in output_keys)
+        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in output_keys),
     )
     tool_queue = []
     for msg_idx in output_indices:

@@ -415,16 +415,18 @@ class MetricResponse(BaseModel):
     type: MetricType = Field(description="Type of the Metric")
     metric_metadata: str = Field(description="Metadata of the Metric")
     config: Optional[str] = Field(
-        description="JSON-serialized configuration for the Metric", default=None
+        description="JSON-serialized configuration for the Metric",
+        default=None,
     )
     created_at: datetime = Field(
-        description="Time the Metric was created in unix milliseconds"
+        description="Time the Metric was created in unix milliseconds",
     )
     updated_at: datetime = Field(
-        description="Time the Metric was updated in unix milliseconds"
+        description="Time the Metric was updated in unix milliseconds",
     )
     enabled: Optional[bool] = Field(
-        description="Whether the Metric is enabled", default=None
+        description="Whether the Metric is enabled",
+        default=None,
     )
 
 
@@ -439,7 +441,7 @@ class TaskResponse(BaseModel):
     )
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
     metrics: List[MetricResponse] = Field(
-        description="List of all the metrics for the task."
+        description="List of all the metrics for the task.",
     )
 
 
@@ -616,13 +618,16 @@ class QuerySpansResponse(BaseModel):
 
 class ComputeMetricsFiltersResponse(BaseModel):
     start_time: Optional[datetime] = Field(
-        description="Start time filter applied", default=None
+        description="Start time filter applied",
+        default=None,
     )
     end_time: Optional[datetime] = Field(
-        description="End time filter applied", default=None
+        description="End time filter applied",
+        default=None,
     )
     conversation_id: Optional[str] = Field(
-        description="Conversation ID filter applied", default=None
+        description="Conversation ID filter applied",
+        default=None,
     )
     user_id: Optional[str] = Field(description="User ID filter applied", default=None)
     page: int = Field(description="Page number used for pagination")
@@ -632,14 +637,14 @@ class ComputeMetricsFiltersResponse(BaseModel):
 class ComputeMetricsResponse(BaseModel):
     task_id: str = Field(description="ID of the task for which metrics were computed")
     metrics: list[MetricResponse] = Field(
-        description="List of metrics associated with the task"
+        description="List of metrics associated with the task",
     )
     span_count: int = Field(description="Number of spans matching the filters")
     spans: list[SpanResponse] = Field(
-        description="List of spans used for metric computation"
+        description="List of spans used for metric computation",
     )
     filters_applied: ComputeMetricsFiltersResponse = Field(
-        description="Filters that were applied to the data"
+        description="Filters that were applied to the data",
     )
 
 
@@ -647,7 +652,8 @@ class MetricResultResponse(BaseModel):
     id: str = Field(description="ID of the metric result")
     metric_type: MetricType = Field(description="Type of the metric")
     details: Optional[str] = Field(
-        description="JSON-serialized metric details", default=None
+        description="JSON-serialized metric details",
+        default=None,
     )
     prompt_tokens: int = Field(description="Number of prompt tokens used")
     completion_tokens: int = Field(description="Number of completion tokens used")
@@ -709,7 +715,7 @@ class QuerySpansWithMetricsResponse(BaseModel):
                                 "created_at": "2024-01-01T12:00:00Z",
                                 "updated_at": "2024-01-01T12:00:00Z",
                                 "enabled": True,
-                            }
+                            },
                         ],
                     },
                 ],

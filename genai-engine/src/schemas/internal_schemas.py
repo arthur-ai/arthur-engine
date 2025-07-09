@@ -362,7 +362,7 @@ class MetricResult(BaseModel):
     def _to_database_model(self) -> DatabaseMetricResult:
         if self.span_id is None or self.metric_id is None:
             raise ValueError(
-                "span_id and metric_id must be set before converting to database model"
+                "span_id and metric_id must be set before converting to database model",
             )
 
         details_json = None

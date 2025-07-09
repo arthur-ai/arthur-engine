@@ -72,7 +72,7 @@ class SpanRepository:
                         else:
                             rejected_spans += 1
                             rejected_reasons.append(
-                                "Invalid span data. Span must have a task_id or a parent_id."
+                                "Invalid span data. Span must have a task_id or a parent_id.",
                             )
 
             if spans_data:
@@ -150,7 +150,7 @@ class SpanRepository:
             total_propagated = self._propagate_task_ids_for_tasks(task_ids)
             if total_propagated > 0:
                 logger.info(
-                    f"Propagated task_ids to {total_propagated} child spans before querying"
+                    f"Propagated task_ids to {total_propagated} child spans before querying",
                 )
 
         # Build and execute the base query
@@ -202,7 +202,7 @@ class SpanRepository:
 
         if total_updated > 0:
             logger.info(
-                f"Propagated task_ids for {len(task_ids)} tasks, updated {total_updated} spans total"
+                f"Propagated task_ids for {len(task_ids)} tasks, updated {total_updated} spans total",
             )
 
         return total_updated
@@ -342,7 +342,7 @@ class SpanRepository:
         FROM task_span_hierarchy
         WHERE spans.span_id = task_span_hierarchy.span_id
             AND spans.task_id IS NULL
-        """
+        """,
         )
 
         result = self.db_session.execute(sql, {"task_id": task_id})
@@ -508,7 +508,7 @@ class SpanRepository:
             task_id = self._get_task_id_from_parent(parent_span_id)
             if task_id:
                 logger.debug(
-                    f"Using task ID from parent span {parent_span_id}: {task_id}"
+                    f"Using task ID from parent span {parent_span_id}: {task_id}",
                 )
 
         # Set the task_id (may be None)
@@ -518,14 +518,15 @@ class SpanRepository:
         # Check acceptance criteria: span must have either task_id OR parent_id
         if not task_id and not parent_span_id:
             logger.warning(
-                f"Span {span_dict['span_id']} rejected: no task_id and no parent_id"
+                f"Span {span_dict['span_id']} rejected: no task_id and no parent_id",
             )
             return None
 
         return span_dict
 
     def _get_metric_results_for_spans(
-        self, span_ids: list[str]
+        self,
+        span_ids: list[str],
     ) -> dict[str, list[MetricResult]]:
         """
         Get existing metric results for the given span IDs.
@@ -547,13 +548,14 @@ class SpanRepository:
             if span_id not in results_by_span:
                 results_by_span[span_id] = []
             results_by_span[span_id].append(
-                MetricResult._from_database_model(db_result)
+                MetricResult._from_database_model(db_result),
             )
 
         return results_by_span
 
     def _compute_metrics_for_spans(
-        self, spans: list[Span]
+        self,
+        spans: list[Span],
     ) -> dict[str, list[MetricResult]]:
         """
         Compute metrics for the given spans.
@@ -571,7 +573,7 @@ class SpanRepository:
             task_id = span.task_id
             if not task_id:
                 logger.warning(
-                    f"Span {span.id} has no task_id, skipping metric computation"
+                    f"Span {span.id} has no task_id, skipping metric computation",
                 )
                 continue
 
@@ -579,7 +581,7 @@ class SpanRepository:
             span_kind = span.span_kind
             if span_kind != "LLM":
                 logger.debug(
-                    f"Skipping metric computation for span {span.id} - span kind is {span_kind}, not LLM"
+                    f"Skipping metric computation for span {span.id} - span kind is {span_kind}, not LLM",
                 )
                 continue
 
@@ -589,7 +591,7 @@ class SpanRepository:
 
                 # Get metrics for this task
                 metric_ids = self.tasks_metrics_repo.get_task_metrics_ids_cached(
-                    task_id
+                    task_id,
                 )
                 metrics = self.metrics_repo.get_metrics_by_metric_id(metric_ids)
 
@@ -617,7 +619,7 @@ class SpanRepository:
                 continue
 
         logger.debug(
-            f"Total metrics computed: {sum(len(results) for results in metrics_results.values())}"
+            f"Total metrics computed: {sum(len(results) for results in metrics_results.values())}",
         )
         return metrics_results
 
@@ -671,7 +673,7 @@ class SpanRepository:
                         "latency_ms": result.latency_ms,
                         "span_id": span_id,
                         "metric_id": result.metric_id,
-                    }
+                    },
                 )
 
         # Bulk insert metric results

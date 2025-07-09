@@ -13,7 +13,8 @@ class RelevanceMetricConfig(BaseModel):
         description="Threshold for determining relevance when not using LLM judge",
     )
     use_llm_judge: bool = Field(
-        default=True, description="Whether to use LLM as a judge for relevance scoring"
+        default=True,
+        description="Whether to use LLM as a judge for relevance scoring",
     )
 
 

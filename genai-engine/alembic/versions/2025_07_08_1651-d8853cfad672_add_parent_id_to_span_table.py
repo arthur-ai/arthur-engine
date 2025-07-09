@@ -21,7 +21,10 @@ def upgrade() -> None:
     # Add parent_span_id column
     op.add_column("spans", sa.Column("parent_span_id", sa.String(), nullable=True))
     op.create_index(
-        op.f("ix_spans_parent_span_id"), "spans", ["parent_span_id"], unique=False
+        op.f("ix_spans_parent_span_id"),
+        "spans",
+        ["parent_span_id"],
+        unique=False,
     )
 
     # Add span_kind column

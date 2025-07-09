@@ -88,7 +88,9 @@ def query_spans_with_metrics(
 ):
     try:
         span_repo = SpanRepository(
-            db_session, TasksMetricsRepository(db_session), MetricRepository(db_session)
+            db_session,
+            TasksMetricsRepository(db_session),
+            MetricRepository(db_session),
         )
         spans = span_repo.query_spans(
             task_ids=task_ids,
