@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 from abc import ABC, abstractmethod
 
 import torch
@@ -8,25 +6,22 @@ from bert_score import BERTScorer
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
+from transformers import TextClassificationPipeline
+
 from schemas.enums import MetricType
+from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import (
     MetricRequest,
     MetricScoreDetails,
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
-from schemas.internal_schemas import MetricResult
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_PROMPT_TEMPLATE,
     USER_QUERY_RELEVANCE_PROMPT_TEMPLATE,
 )
 from scorer.scorer import MetricScorer
-from transformers import (
-    AutoTokenizer,
-    TextClassificationPipeline,
-    XLMRobertaForSequenceClassification,
-)
 from utils.classifiers import get_device
 from utils.model_load import get_relevance_model, get_relevance_tokenizer
 
@@ -74,7 +69,7 @@ def get_relevance_reranker() -> TextClassificationPipeline:
     # Use the model_load functionality to get or download models
     model = get_relevance_model()
     tokenizer = get_relevance_tokenizer()
-    
+
     return TextClassificationPipeline(
         model=model,
         tokenizer=tokenizer,
@@ -128,7 +123,7 @@ class UserQueryRelevanceScorer(MetricScorer):
         # truncate the query and system prompt to 200 words
         # query = ' '.join(query.split()[:200])
         # system_prompt = ' '.join(system_prompt.split()[:200])
-        
+
         relevance_pair = {"text": system_prompt, "text_pair": query}
         res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
@@ -150,9 +145,8 @@ class UserQueryRelevanceScorer(MetricScorer):
             except Exception as e:
                 return handle_llm_exception(e)
 
-            
             return MetricResult(
-                id="", # This will be set by the calling code
+                id="",  # This will be set by the calling code
                 metric_type=MetricType.QUERY_RELEVANCE,
                 details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
@@ -165,11 +159,11 @@ class UserQueryRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,
                 completion_tokens=token_consumption.completion_tokens,
-                latency_ms=0, # This will be set by the calling code
+                latency_ms=0,  # This will be set by the calling code
             )
         else:
             return MetricResult(
-                id="", # This will be set by the calling code
+                id="",  # This will be set by the calling code
                 metric_type=MetricType.QUERY_RELEVANCE,
                 details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
@@ -182,7 +176,7 @@ class UserQueryRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=0,
                 completion_tokens=0,
-                latency_ms=0, # This will be set by the calling code
+                latency_ms=0,  # This will be set by the calling code
             )
 
     @staticmethod
@@ -232,7 +226,7 @@ class ResponseRelevanceScorer(MetricScorer):
                 return handle_llm_exception(e)
 
             return MetricResult(
-                id="", # This will be set by the calling code
+                id="",  # This will be set by the calling code
                 metric_type=MetricType.RESPONSE_RELEVANCE,
                 details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
@@ -245,11 +239,11 @@ class ResponseRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,
                 completion_tokens=token_consumption.completion_tokens,
-                latency_ms=0, # This will be set by the calling code
+                latency_ms=0,  # This will be set by the calling code
             )
         else:
             return MetricResult(
-                id="", # This will be set by the calling code
+                id="",  # This will be set by the calling code
                 metric_type=MetricType.RESPONSE_RELEVANCE,
                 details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
@@ -262,7 +256,7 @@ class ResponseRelevanceScorer(MetricScorer):
                 ),
                 prompt_tokens=0,
                 completion_tokens=0,
-                latency_ms=0, # This will be set by the calling code
+                latency_ms=0,  # This will be set by the calling code
             )
 
     @staticmethod
@@ -301,12 +295,12 @@ class BertRelevanceScorer(MetricScorer, ABC):
         f_scores = f.mean(dim=0)
 
         return MetricResult(
-            id="", # This will be set by the calling code
+            id="",  # This will be set by the calling code
             metric_type=self.get_metric_type(),
             details=self.create_metric_details(f_scores),
             prompt_tokens=0,
             completion_tokens=0,
-            latency_ms=0, # This will be set by the calling code
+            latency_ms=0,  # This will be set by the calling code
         )
 
 

@@ -1,16 +1,25 @@
-from typing import Dict, Union
 import json
-from schemas.enums import RuleType, MetricType
-from schemas.internal_schemas import Metric
-from schemas.scorer_schemas import RuleScore, ScoreRequest
+from typing import Dict, Union
+
+from schemas.enums import MetricType, RuleType
+from schemas.internal_schemas import Metric, MetricResult
 from schemas.metric_schemas import MetricRequest
-from schemas.internal_schemas import MetricResult
-from scorer.scorer import RuleScorer, MetricScorer
+from schemas.scorer_schemas import RuleScore, ScoreRequest
+from scorer.scorer import MetricScorer, RuleScorer
 
 
 class ScorerClient:
-    def __init__(self, name_version_mapping: Dict[Union[RuleType, MetricType], Union[RuleScorer, MetricScorer]]):
-        self.NAME_VERSION_MAPPING: Dict[Union[RuleType, MetricType], Union[RuleScorer, MetricScorer]] = name_version_mapping
+    def __init__(
+        self,
+        name_version_mapping: Dict[
+            Union[RuleType, MetricType],
+            Union[RuleScorer, MetricScorer],
+        ],
+    ):
+        self.NAME_VERSION_MAPPING: Dict[
+            Union[RuleType, MetricType],
+            Union[RuleScorer, MetricScorer],
+        ] = name_version_mapping
 
     def score(self, score_request: ScoreRequest) -> RuleScore:
         """Scores any request with the provided rule
@@ -27,7 +36,11 @@ class ScorerClient:
 
         return scorer_obj.score(score_request)
 
-    def score_metric(self, metric_request: MetricRequest, metric: Metric) -> MetricResult:
+    def score_metric(
+        self,
+        metric_request: MetricRequest,
+        metric: Metric,
+    ) -> MetricResult:
         """Scores any request with the provided metric
 
         :param metric_request: metric request object
