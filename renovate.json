@@ -2,5 +2,23 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "automerge": true,
+      "autoApprove": true
+    },
+    {
+      "matchPackageNames": [
+        "python",
+        "torch",
+        "numpy"
+      ],
+      "enabled": false
+    }
   ]
 }

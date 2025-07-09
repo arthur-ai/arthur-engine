@@ -7,6 +7,8 @@ from arthur_common.aggregations.functions.confusion_matrix import (
 from arthur_common.models.metrics import DatasetReference
 from duckdb import DuckDBPyConnection
 
+from .helpers import *
+
 HIGH_ACCURACY_COUNTS = (477, 266, 24256, 1)
 LOW_ACCURACY_COUNTS = (9, 0, 24522, 469)
 
@@ -45,6 +47,19 @@ def test_int_bool_confusion_matrix(
     assert sum([v.value for v in metrics[1].numeric_series[0].values]) == fp
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
+
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="sent timestamp",
+        prediction_col=prediction_col,
+        gt_values_col="malicious",
+        segmentation_cols=["packet type"],
+    )
+    assert_dimension_in_metric(metrics[0], "packet type")
+    # prediction column name should be included as a dimension
+    assert_dimension_in_metric(metrics[0], "prediction_column_name", {prediction_col})
 
 
 @pytest.mark.parametrize(
@@ -118,6 +133,25 @@ def test_str_label_confusion_matrix(
     assert sum([v.value for v in metrics[1].numeric_series[0].values]) == fp
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
+    # prediction column name should be included as a dimension
+    assert_dimension_in_metric(
+        metrics[0],
+        "prediction_column_name",
+        {f"{prediction_col} str label"},
+    )
+
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} str label",
+        gt_values_col="malicious str label",
+        true_label="MALICIOUS",
+        false_label="NOT_MALICIOUS",
+        segmentation_cols=["packet type"],
+    )
+    assert_dimension_in_metric(metrics[0], "packet type")
 
 
 @pytest.mark.parametrize(
@@ -174,3 +208,21 @@ def test_prediction_threshold_confusion_matrix(
     assert sum([v.value for v in metrics[1].numeric_series[0].values]) == fp
     assert sum([v.value for v in metrics[2].numeric_series[0].values]) == fn
     assert sum([v.value for v in metrics[3].numeric_series[0].values]) == tn
+    # prediction column name should be included as a dimension
+    assert_dimension_in_metric(
+        metrics[0],
+        "prediction_column_name",
+        {f"{prediction_col} float value"},
+    )
+
+    # test with segmentation
+    metrics = cm_aggregator.aggregate(
+        conn,
+        dataset_ref,
+        timestamp_col="sent timestamp",
+        prediction_col=f"{prediction_col} float value",
+        gt_values_col="malicious",
+        threshold=0.93,
+        segmentation_cols=["packet type"],
+    )
+    assert_dimension_in_metric(metrics[0], "packet type")

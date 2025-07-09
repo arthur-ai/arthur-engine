@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-common"
-version = "2.1.44"
+version = "2.1.50"
 description = "Utility code common to Arthur platform components."
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -16,7 +16,7 @@ datasketches = ">=5.1.0"
 types-requests = ">=2.32.0.20241016"
 types-python-dateutil = ">=2.9.0"
 fsspec = ">=2024.10.0"
-tokencost = "0.1.21"
+tokencost = "0.1.24"
 fastapi = ">=0.115.8"
 
 

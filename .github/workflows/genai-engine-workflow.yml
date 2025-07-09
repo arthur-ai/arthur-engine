@@ -16,7 +16,8 @@ on:
 jobs:
   run-linter:
     if: |
-      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+       !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
@@ -44,7 +45,8 @@ jobs:
 
   run-changelog-cop:
     if: |
-      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+       !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
@@ -82,7 +84,8 @@ jobs:
 
   run-unit-tests:
     if: |
-      (!contains(github.event.head_commit.message, 'Increment version to')) &&
+      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+       !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
@@ -119,7 +122,7 @@ jobs:
 
   push-tag:
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -142,7 +145,7 @@ jobs:
     needs: push-tag
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     strategy:
@@ -185,7 +188,7 @@ jobs:
     needs: [push-tag, build-docker-images]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
@@ -206,7 +209,7 @@ jobs:
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502
+        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
         with:
           role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
           role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
@@ -224,7 +227,7 @@ jobs:
     needs: [push-tag, build-docker-images]
     environment: shared-protected-branch-secrets
     if: |
-      contains(github.event.head_commit.message, 'Increment version to') &&
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:

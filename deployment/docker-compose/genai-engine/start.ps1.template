@@ -1,0 +1,9 @@
+# PowerShell Script: start.ps1
+
+@"
+GENAI_ENGINE_OPENAI_PROVIDER=OpenAI
+GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::::my_api_key
+"@ | Set-Content -Path ".env" -Encoding UTF8
+
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/arthur-ai/arthur-engine/refs/heads/main/deployment/docker-compose/genai-engine/docker-compose.yml" -UseBasicParsing -OutFile "docker-compose.yml"
+docker compose -f "docker-compose.yml" up --pull always
