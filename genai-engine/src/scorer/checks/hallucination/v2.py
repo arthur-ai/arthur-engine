@@ -20,7 +20,8 @@ from schemas.scorer_schemas import (
 )
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
-from scorer.checks.hallucination.hallucination_prompts import get_claim_flagging_prompt, get_flagged_claim_explanation_prompt, get_structured_output_prompt
+from scorer.checks.hallucination.v2_legacy_prompts import get_claim_flagging_prompt, get_flagged_claim_explanation_prompt
+from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
 from sentence_transformers import SentenceTransformer
 from utils import constants, utils
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
@@ -270,7 +271,7 @@ class HallucinationClaimsV2(RuleScorer):
         if get_llm_executor().supports_structured_outputs():
             return self.validate_claim_batch_structured_output(context, claim_batch)
         else:
-            return self.validate_claim_batch_old(context, claim_batch)
+            return self.validate_claim_batch_legacy(context, claim_batch)
 
     def validate_claim_batch_structured_output(
         self,
@@ -355,7 +356,7 @@ class HallucinationClaimsV2(RuleScorer):
                 RuleResultEnum.PARTIALLY_UNAVAILABLE,
             )
         
-    def validate_claim_batch_old(
+    def validate_claim_batch_legacy(
         self,
         context: str,
         claim_batch: list[OrderedClaim],
