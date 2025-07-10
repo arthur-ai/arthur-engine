@@ -9,6 +9,7 @@ from arthur_common.models.schema_definitions import (
     DatasetScalarType,
     DatasetSchema,
     DType,
+    ScopeSchemaTag,
 )
 from arthur_common.tools.schema_inferer import SchemaInferer
 
@@ -44,6 +45,10 @@ def test_schema_inference():
     assert set(hash(col) for col in schema.columns) == set(
         hash(col) for col in expected_schema.columns
     )
+
+    # validate all columns were marked as possible for segmentation—hash doesn't check this
+    for col in schema.columns:
+        assert col.definition.tag_hints == [ScopeSchemaTag.POSSIBLE_SEGMENTATION]
 
 
 def test_col_names_with_spaces_schema_inference():
@@ -95,6 +100,12 @@ def test_col_names_with_spaces_schema_inference():
     assert set(hash(col) for col in schema.columns) == set(
         hash(col) for col in expected_schema.columns
     )
+    # validate no tag hints were created - hash doesn't properly check this
+    for col in schema.columns:
+        assert col.definition.tag_hints == []
+        if isinstance(col.definition, DatasetObjectType):
+            for obj in col.definition.object.values():
+                assert obj.tag_hints == []
 
 
 def test_nested_schema_inference():
@@ -186,6 +197,12 @@ def test_nested_schema_inference():
     assert set(hash(col) for col in schema.columns) == set(
         hash(col) for col in expected_schema.columns
     )
+
+    for col in schema.columns:
+        if col.source_name == "model" or col.source_name == "is_cool":
+            assert col.definition.tag_hints == [ScopeSchemaTag.POSSIBLE_SEGMENTATION]
+        else:
+            assert col.definition.tag_hints == []
 
 
 def test_multivalue_list_schema_inference():
@@ -307,3 +324,21 @@ def test_tabular_schema():
     assert set(hash(col) for col in schema.columns) == set(
         hash(col) for col in expected_schema.columns
     )
+
+
+def test_schema_exceeds_unique_values_segmentation_limit_col() -> None:
+    data = [
+        {
+            "id": "991ff637-2c13-4289-ba17-a23c1c2b20b9",
+            "some_number": num,
+        }
+        for num in list(range(150))
+    ]
+    # validate some_number column, which would otherwise be marked as possible for segmentation, is not tagged as
+    # possible to segment because it has too many unique values
+    schema = SchemaInferer(data).infer_schema()
+    for col in schema.columns:
+        if col.source_name == "some_number":
+            assert col.definition.tag_hints == []
+        else:
+            assert col.definition.tag_hints == [ScopeSchemaTag.POSSIBLE_SEGMENTATION]

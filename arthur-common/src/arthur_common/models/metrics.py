@@ -177,6 +177,10 @@ MetricsParameterSchemaUnion = (
     | MetricsColumnListParameterSchema
 )
 
+MetricsColumnSchemaUnion = (
+    MetricsColumnParameterSchema | MetricsColumnListParameterSchema
+)
+
 
 @dataclass
 class DatasetReference:
