@@ -76,11 +76,13 @@ def get_structured_output_prompt():
             ]""",
         },
         {
-            "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding in systems for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
+            "context": "What are common data drift metrics?",
             "num_texts": "1",
-            "text_list_str": "- I don't know what machine learning frameworks that Arthur integrates with.",
+            "text_list_str": "- Kullback-Leibler Divergence (KL Divergence)\n- Kolmogorov-Smirnov (KS) Test\n- Precision / Recall / F1 Score",
             "output": """[
-                LLMClaimResult(claim_text="I don't know what machine learning frameworks that Arthur integrates with.", is_hallucination=False, explanation="The claim expresses uncertainty and makes no factual assertion.")
+                LLMClaimResult(claim_text="Kullback-Leibler Divergence (KL Divergence)", is_hallucination=False, explanation="This is a common data drift metric."),
+                LLMClaimResult(claim_text="Kolmogorov-Smirnov (KS) Test", is_hallucination=False, explanation="This is also a common data drift metric."),
+                LLMClaimResult(claim_text="Precision / Recall / F1 Score", is_hallucination=True, explanation="These are not common data drift metrics.")
             ]""",
         },
         {
@@ -92,15 +94,6 @@ def get_structured_output_prompt():
                 LLMClaimResult(claim_text="BERT is an NLP model", is_hallucination=False, explanation="The context directly states this."),
                 LLMClaimResult(claim_text="LLMs are also NLP models", is_hallucination=True, explanation="LLMs are not mentioned in the context."),
                 LLMClaimResult(claim_text="ChatGPT is a great new NLP model", is_hallucination=True, explanation="ChatGPT is not referenced in the context.")
-            ]""",
-        },
-        {
-            "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-            "num_texts": "2",
-            "text_list_str": "- Hello!\n- How can I assist you today?",
-            "output": """[
-                LLMClaimResult(claim_text="Hello!", is_hallucination=False, explanation="This is a general greeting and not a factual claim."),
-                LLMClaimResult(claim_text="How can I assist you today?", is_hallucination=False, explanation="This is a generic dialog line, not a factual claim.")
             ]""",
         },
         {
@@ -128,18 +121,6 @@ def get_structured_output_prompt():
             ]"""
         },
         {
-            "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
-            "num_texts": "1",
-            "text_list_str": "- I don't know what machine learning frameworks that Arthur integrates with.",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="I don't know what machine learning frameworks that Arthur integrates with.",
-                    is_hallucination=False,
-                    explanation="The claim is supported because the LLM is explaining that it cannot answer, so it is not hallucinating."
-                )
-            ]"""
-        },
-        {
             "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
             "num_texts": "1",
             "text_list_str": "- ChatGPT is a great new LLM.",
@@ -160,18 +141,6 @@ def get_structured_output_prompt():
                     claim_text="BERT is a solid model.",
                     is_hallucination=False,
                     explanation="The claim is supported because it references BERT, the advanced NLP model mentioned in the context."
-                )
-            ]"""
-        },
-        {
-            "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-            "num_texts": "1",
-            "text_list_str": "- Hello!",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="Hello!",
-                    is_hallucination=False,
-                    explanation="The claim is supported because this is just dialog and not a factual assertion."
                 )
             ]"""
         },
@@ -263,22 +232,16 @@ def get_claim_flagging_prompt():
             "output": "0,0,1",
         },
         {
-            "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding in systems for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
+            "context": "What are common data drift metrics?",
             "num_texts": "1",
-            "text_list_str": "- I don't know what machine learning frameworks that Arthur integrates with.",
-            "output": "0",
+            "text_list_str": "- Kullback-Leibler Divergence (KL Divergence)\n- Kolmogorov-Smirnov (KS) Test\n- Precision / Recall / F1 Score",
+            "output": "0,0,1",
         },
         {
             "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
             "num_texts": "4",
             "text_list_str": "- BERT came out in 2019\n- BERT is an NLP model\n- LLMs are also NLP models\n- ChatGPT is a great new NLP model",
             "output": "0,0,1,1",
-        },
-        {
-            "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-            "num_texts": "2",
-            "text_list_str": "- Hello!\n- How can I assist you today?",
-            "output": "0,0",
         },
     ]
 
@@ -302,7 +265,7 @@ def get_flagged_claim_explanation_prompt():
         {
             "context": "There are two dogs eating my shoes and it hurts",
             "flagged_claim": "it does not hurt",
-            "output": "the claim is unspported because the context mentions that it hurts, but the claim mentions it does not, which is a contradiction",
+            "output": "the claim is unsupported because the context mentions that it hurts, but the claim mentions it does not, which is a contradiction",
         },
         {
             "context": "After the terrible performer released an awful movie, they inexplicably won an Oscar.",
@@ -310,9 +273,9 @@ def get_flagged_claim_explanation_prompt():
             "output": "the claim is unsupported because the context mentions that the actor is bad, but not because of a lack of movies",
         },
         {
-            "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
-            "flagged_claim": "I don't know what machine learning frameworks that Arthur integrates with.",
-            "output": "the claim is supported because the LLM is explaining that it cannot answer so it is not hallucinating",
+            "context": "What are common data drift metrics?",
+            "flagged_claim": "Precision / Recall / F1 Score",
+            "output": "the claim is unsupported because these are not common data drift metrics",
         },
         {
             "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
