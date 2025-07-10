@@ -101,7 +101,7 @@ class HappyPathAggregation(SketchAggregationFunction):
                     ScalarType(dtype=DType.STRING),
                     ScalarType(dtype=DType.UUID),
                 ],
-                tag_hints=[],
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
@@ -178,6 +178,9 @@ def test_aggregation_analyzer_happy_path():
         == "All columns to include as dimensions for segmentation."
     )
     assert aggregation.aggregate_args[5].optional == True
+    assert aggregation.aggregate_args[5].tag_hints == [
+        ScopeSchemaTag.POSSIBLE_SEGMENTATION,
+    ]
 
     assert aggregation.name == "Happy Path Aggregation"
     assert aggregation.id == id1
