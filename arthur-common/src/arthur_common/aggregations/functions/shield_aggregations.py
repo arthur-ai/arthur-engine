@@ -210,9 +210,7 @@ class ShieldInferenceHallucinationCountAggregation(NumericAggregationFunction):
         ",
         ).df()
 
-        series = [
-            self.dimensionless_query_results_to_numeric_metrics(results, "count", "ts"),
-        ]
+        series = self.group_query_results_to_numeric_metrics(results, "count", [], "ts")
         metric = self.series_to_metric(self.METRIC_NAME, series)
         return [metric]
 

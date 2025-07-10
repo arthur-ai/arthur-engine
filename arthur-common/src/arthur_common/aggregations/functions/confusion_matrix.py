@@ -5,6 +5,7 @@ from arthur_common.aggregations.aggregator import NumericAggregationFunction
 from arthur_common.models.datasets import ModelProblemType
 from arthur_common.models.metrics import DatasetReference, NumericMetric
 from arthur_common.models.schema_definitions import (
+    SEGMENTATION_ALLOWED_COLUMN_TYPES,
     DType,
     MetricColumnParameterAnnotation,
     MetricDatasetParameterAnnotation,
@@ -202,13 +203,8 @@ class BinaryClassifierIntBoolConfusionMatrixAggregationFunction(
             Optional[list[str]],
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
-                allowed_column_types=[
-                    ScalarType(dtype=DType.INT),
-                    ScalarType(dtype=DType.BOOL),
-                    ScalarType(dtype=DType.STRING),
-                    ScalarType(dtype=DType.UUID),
-                ],
-                tag_hints=[],
+                allowed_column_types=SEGMENTATION_ALLOWED_COLUMN_TYPES,
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
@@ -338,13 +334,8 @@ class BinaryClassifierStringLabelConfusionMatrixAggregationFunction(
             Optional[list[str]],
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
-                allowed_column_types=[
-                    ScalarType(dtype=DType.INT),
-                    ScalarType(dtype=DType.BOOL),
-                    ScalarType(dtype=DType.STRING),
-                    ScalarType(dtype=DType.UUID),
-                ],
-                tag_hints=[],
+                allowed_column_types=SEGMENTATION_ALLOWED_COLUMN_TYPES,
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
@@ -446,13 +437,8 @@ class BinaryClassifierProbabilityThresholdConfusionMatrixAggregationFunction(
             Optional[list[str]],
             MetricMultipleColumnParameterAnnotation(
                 source_dataset_parameter_key="dataset",
-                allowed_column_types=[
-                    ScalarType(dtype=DType.INT),
-                    ScalarType(dtype=DType.BOOL),
-                    ScalarType(dtype=DType.STRING),
-                    ScalarType(dtype=DType.UUID),
-                ],
-                tag_hints=[],
+                allowed_column_types=SEGMENTATION_ALLOWED_COLUMN_TYPES,
+                tag_hints=[ScopeSchemaTag.POSSIBLE_SEGMENTATION],
                 friendly_name="Segmentation Columns",
                 description="All columns to include as dimensions for segmentation.",
                 optional=True,
