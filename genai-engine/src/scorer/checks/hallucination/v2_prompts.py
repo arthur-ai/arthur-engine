@@ -40,13 +40,13 @@ def get_structured_output_prompt():
             ]""",
         },
         {
-            "context": "What are common data drift metrics?",
+            "context": "A couple common data drift metrics are: Kullback-Leibler Divergence (KL Divergence) and Kolmogorov-Smirnov (KS) Test",
             "num_texts": "1",
             "text_list_str": "- Kullback-Leibler Divergence (KL Divergence)\n- Kolmogorov-Smirnov (KS) Test\n- Precision / Recall / F1 Score",
             "output": """[
                 LLMClaimResult(claim_text="Kullback-Leibler Divergence (KL Divergence)", is_hallucination=False, explanation="This is a common data drift metric."),
                 LLMClaimResult(claim_text="Kolmogorov-Smirnov (KS) Test", is_hallucination=False, explanation="This is also a common data drift metric."),
-                LLMClaimResult(claim_text="Precision / Recall / F1 Score", is_hallucination=True, explanation="These are not common data drift metrics.")
+                LLMClaimResult(claim_text="Precision / Recall / F1 Score", is_hallucination=True, explanation="These metrics were not mentioned in the context.")
             ]""",
         },
         {
@@ -59,54 +59,6 @@ def get_structured_output_prompt():
                 LLMClaimResult(claim_text="LLMs are also NLP models", is_hallucination=True, explanation="LLMs are not mentioned in the context."),
                 LLMClaimResult(claim_text="ChatGPT is a great new NLP model", is_hallucination=True, explanation="ChatGPT is not referenced in the context.")
             ]""",
-        },
-        {
-            "context": "There are two dogs eating my shoes and it hurts",
-            "num_texts": "1",
-            "text_list_str": "- it does not hurt",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="it does not hurt",
-                    is_hallucination=True,
-                    explanation="The claim is unsupported because the context mentions that it hurts, but the claim mentions it does not, which is a contradiction."
-                )
-            ]"""
-        },
-        {
-            "context": "After the terrible performer released an awful movie, they inexplicably won an Oscar.",
-            "num_texts": "1",
-            "text_list_str": "- the actor is terrible because they have released no movies",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="the actor is terrible because they have released no movies",
-                    is_hallucination=True,
-                    explanation="The claim is unsupported because the context mentions that the actor is bad, but not because of a lack of movies."
-                )
-            ]"""
-        },
-        {
-            "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-            "num_texts": "1",
-            "text_list_str": "- ChatGPT is a great new LLM.",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="ChatGPT is a great new LLM.",
-                    is_hallucination=True,
-                    explanation="The claim is unsupported because ChatGPT is not mentioned in the context."
-                )
-            ]"""
-        },
-        {
-            "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-            "num_texts": "1",
-            "text_list_str": "- BERT is a solid model.",
-            "output": """[
-                LLMClaimResult(
-                    claim_text="BERT is a solid model.",
-                    is_hallucination=False,
-                    explanation="The claim is supported because it references BERT, the advanced NLP model mentioned in the context."
-                )
-            ]"""
         },
         {
             "context": "Generate a sentence with line breaks.",

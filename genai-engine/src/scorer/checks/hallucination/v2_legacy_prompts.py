@@ -62,7 +62,7 @@ def get_claim_flagging_prompt():
             "output": "0,0,1",
         },
         {
-            "context": "What are common data drift metrics?",
+            "context": "A couple common data drift metrics are: Kullback-Leibler Divergence (KL Divergence) and Kolmogorov-Smirnov (KS) Test",
             "num_texts": "1",
             "text_list_str": "- Kullback-Leibler Divergence (KL Divergence)\n- Kolmogorov-Smirnov (KS) Test\n- Precision / Recall / F1 Score",
             "output": "0,0,1",
@@ -103,9 +103,9 @@ def get_flagged_claim_explanation_prompt():
             "output": "the claim is unsupported because the context mentions that the actor is bad, but not because of a lack of movies",
         },
         {
-            "context": "What are common data drift metrics?",
+            "context": "A couple common data drift metrics are: Kullback-Leibler Divergence (KL Divergence) and Kolmogorov-Smirnov (KS) Test",
             "flagged_claim": "Precision / Recall / F1 Score",
-            "output": "the claim is unsupported because these are not common data drift metrics",
+            "output": "the claim is unsupported because these metrics are not mentioned in the context.",
         },
         {
             "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
