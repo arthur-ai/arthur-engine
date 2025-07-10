@@ -16,9 +16,6 @@ on:
       - 'genai-engine/requirements-gpu.txt'
       - 'deployment/cloudformation/**/*'
       - 'deployment/helm/**/*'
-      - 'arthur-common/src/**/*'
-      - 'arthur-common/tests/**/*'
-      - 'arthur-common/pyproject.toml'
   workflow_dispatch:
     inputs:
       intent:
@@ -28,75 +25,6 @@ on:
         type: string
 
 jobs:
-  bump-arthur-common-version:
-    environment: shared-protected-branch-secrets
-    if: |
-      github.event_name != 'pull_request' &&
-      (github.ref == 'refs/heads/dev') &&
-      !contains(github.event.head_commit.message, 'Increment arthur-common version to') &&
-      (
-        (github.event_name == 'push' && contains(toJSON(github.event.commits.*.modified), 'arthur-common/')) ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version')
-      )
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/workflows/composite-actions/setup-git
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: arthur-common
-      - name: Bump Arthur Common Version
-        run: |
-          set -e
-
-          # Vars to externalize if needed
-          export SUFFIX="-dev"
-          export BUMP_COMMAND="patch"
-          export BRANCH_NAME="arthur-common-version-bump/$(date +%Y%m%d-%H%M%S)"
-
-          # Update files in the arthur-common directory
-          cd arthur-common
-
-          # Set version vars with no suffix
-          export CURRENT_VERSION=$(poetry version -s)
-          export NEW_VERSION="$(poetry version "${BUMP_COMMAND}" -s)"
-
-          # Validate version variables are set
-          if [ -z "$CURRENT_VERSION" ] || [ -z "$NEW_VERSION" ]; then
-            echo "Error: Version variables not set. CURRENT_VERSION='$CURRENT_VERSION', NEW_VERSION='$NEW_VERSION'"
-            exit 1
-          fi
-
-          # Create and checkout new branch
-          git checkout -b "$BRANCH_NAME"
-
-          # Add and commit changes
-          git add pyproject.toml
-          git status
-          git diff --cached
-          git commit --no-verify -m "Increment arthur-common version to ${NEW_VERSION}"
-
-          # Push the new branch with the commit
-          git push -u origin "$BRANCH_NAME"
-
-      - name: Create Arthur Common Pull Request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          cd arthur-common
-          NEW_VERSION=$(poetry version -s)
-          gh pr create \
-            --title "Increment arthur-common version to ${NEW_VERSION}" \
-            --body "Increment arthur-common version to ${NEW_VERSION}" \
-            --base ${GITHUB_REF#refs/heads/} \
-            --head "$BRANCH_NAME"
-
   bump-arthur-engine-version:
     environment: shared-protected-branch-secrets
     if: |
