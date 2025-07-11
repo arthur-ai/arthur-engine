@@ -161,6 +161,19 @@ class LLMExecutor:
             return constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.model_name]
         
         return -1
+    
+    def supports_structured_outputs(self) -> bool:
+        model = self.get_gpt_model()
+
+        if model is None:
+            return False
+        
+        if self.azure_openai_enabled:
+            return model.deployment_name in constants.AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS
+        elif self.openai_enabled:
+            return model.model_name in constants.OPENAI_STRUCTURED_OUTPUT_MODELS
+        
+        return False
 
     def get_embeddings_model(self) -> AzureOpenAIEmbeddings | OpenAIEmbeddings | None:
         model_name, endpoint, key = self._get_random_connection_details(
