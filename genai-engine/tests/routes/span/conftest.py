@@ -1,3 +1,4 @@
+import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
@@ -542,3 +543,98 @@ def create_span_hierarchy_for_propagation() -> (
     # Cleanup: Delete all created spans from the database after the test
     span_ids = [span.span_id for span in spans]
     _delete_spans_from_db(db_session, span_ids)
+
+
+@pytest.fixture(scope="function")
+def sample_llm_span_with_features() -> bytes:
+    """Create a sample LLM span with conversation features for testing."""
+    trace_request, resource_span, scope_span = _create_base_trace_request()
+
+    # Create span with LLM features
+    span = Span()
+    span.trace_id = b"test_trace_id_123"
+    span.span_id = b"test_span_id_456"
+    span.name = "test_llm_span"
+    span.kind = Span.SPAN_KIND_INTERNAL
+    span.start_time_unix_nano = int(datetime.now().timestamp() * 1e9)
+    span.end_time_unix_nano = int(
+        (datetime.now() + timedelta(seconds=1)).timestamp() * 1e9,
+    )
+
+    # Add LLM-specific attributes
+    input_messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is the weather like today?"},
+    ]
+
+    output_messages = [
+        {
+            "role": "assistant",
+            "content": "I don't have access to real-time weather information.",
+        },
+    ]
+
+    attributes = [
+        KeyValue(key="openinference.span.kind", value=AnyValue(string_value="LLM")),
+        KeyValue(key="llm.model_name", value=AnyValue(string_value="gpt-4")),
+        KeyValue(
+            key="input.mime_type",
+            value=AnyValue(string_value="application/json"),
+        ),
+        KeyValue(
+            key="input.value",
+            value=AnyValue(string_value=json.dumps(input_messages)),
+        ),
+        KeyValue(
+            key="output.mime_type",
+            value=AnyValue(string_value="application/json"),
+        ),
+        KeyValue(
+            key="output.value",
+            value=AnyValue(string_value=json.dumps(output_messages)),
+        ),
+        KeyValue(
+            key="metadata",
+            value=AnyValue(string_value='{"arthur.task": "test_task"}'),
+        ),
+    ]
+
+    span.attributes.extend(attributes)
+    scope_span.spans.append(span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    return trace_request.SerializeToString()
+
+
+@pytest.fixture(scope="function")
+def sample_non_llm_span() -> bytes:
+    """Create a sample non-LLM span for testing."""
+    trace_request, resource_span, scope_span = _create_base_trace_request()
+
+    # Create span without LLM features
+    span = Span()
+    span.trace_id = b"test_trace_id_789"
+    span.span_id = b"test_span_id_012"
+    span.name = "test_chain_span"
+    span.kind = Span.SPAN_KIND_INTERNAL
+    span.start_time_unix_nano = int(datetime.now().timestamp() * 1e9)
+    span.end_time_unix_nano = int(
+        (datetime.now() + timedelta(seconds=1)).timestamp() * 1e9,
+    )
+
+    # Add non-LLM attributes
+    attributes = [
+        KeyValue(key="openinference.span.kind", value=AnyValue(string_value="CHAIN")),
+        KeyValue(
+            key="metadata",
+            value=AnyValue(string_value='{"arthur.task": "test_task"}'),
+        ),
+    ]
+
+    span.attributes.extend(attributes)
+    scope_span.spans.append(span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    return trace_request.SerializeToString()

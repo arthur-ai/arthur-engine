@@ -95,8 +95,68 @@ def receive_traces(
 
 
 @span_routes.get(
-    "/traces/metrics/query",
-    description="Query traces with metrics for specified task IDs.",
+    "/traces/query",
+    description="Query spans with filters. Returns spans with any existing metrics but does not compute new ones.",
+    response_model=QuerySpansWithMetricsResponse,
+    response_model_exclude_none=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def query_spans(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    trace_ids: list[str] = Query(
+        None,
+        description="Trace IDs to filter on.",
+    ),
+    span_ids: list[str] = Query(
+        None,
+        description="Span IDs to filter on.",
+    ),
+    task_ids: list[str] = Query(
+        None,
+        description="Task IDs to filter on.",
+    ),
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
+    """Query spans with filters. Returns spans with any existing metrics but does not compute new ones."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        spans = span_repo.query_spans(
+            trace_ids=trace_ids,
+            span_ids=span_ids,
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=pagination_parameters.sort,
+            page=pagination_parameters.page,
+            page_size=pagination_parameters.page_size,
+            include_metrics=True,  # Include existing metrics
+            compute_new_metrics=False,  # Don't compute new metrics
+        )
+        spans = [span._to_metrics_response_model() for span in spans]
+        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+    except Exception as e:
+        logger.error(f"Error querying spans: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/traces/metrics/",
+    description="Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.",
     response_model=QuerySpansWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
@@ -123,7 +183,7 @@ def query_spans_with_metrics(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Query spans with metrics for specified task IDs."""
+    """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces."""
     try:
         span_repo = _get_span_repository(db_session)
         spans = span_repo.query_spans(
@@ -133,8 +193,8 @@ def query_spans_with_metrics(
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
-            propagate_task_ids=True,
             include_metrics=True,
+            compute_new_metrics=True,
         )
         spans = [span._to_metrics_response_model() for span in spans]
         return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
@@ -143,6 +203,35 @@ def query_spans_with_metrics(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error querying spans with metrics: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@span_routes.get(
+    "/span/{span_id}/metrics",
+    description="Compute metrics for a single span. Validates that the span is an LLM span.",
+    response_model=QuerySpansWithMetricsResponse,
+    response_model_exclude_none=True,
+    tags=["Spans"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
+def compute_span_metrics(
+    span_id: str,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
+    """Compute metrics for a single span. Validates that the span is an LLM span."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        spans = span_repo.query_spans_by_span_id_with_metrics(span_id)
+        spans = [span._to_metrics_response_model() for span in spans]
+        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error computing span metrics: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()

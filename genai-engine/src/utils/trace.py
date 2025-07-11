@@ -4,6 +4,8 @@ import logging
 import re
 from datetime import datetime
 
+from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
+
 logger = logging.getLogger(__name__)
 
 # Compile regex patterns once for better performance
@@ -89,6 +91,30 @@ _PREFIX_PATTERNS = [
 
 # Additional compiled patterns for fallback sentence extraction
 _SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
+
+
+def validate_span_version(raw_data: dict) -> bool:
+    """
+    Validate that a span's raw data contains the expected version.
+
+    Args:
+        raw_data: The raw span data dictionary
+
+    Returns:
+        bool: True if the span has the expected version, False otherwise
+    """
+    if not isinstance(raw_data, dict):
+        logger.warning("Span has invalid raw_data format")
+        return False
+
+    version = raw_data.get(SPAN_VERSION_KEY)
+    if version != EXPECTED_SPAN_VERSION:
+        logger.warning(
+            f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
+        )
+        return False
+
+    return True
 
 
 def clean_extracted_text(text: str) -> str:

@@ -605,6 +605,11 @@ class SpanResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
 
 
 class QuerySpansResponse(BaseModel):
@@ -676,6 +681,11 @@ class SpanWithMetricsResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
     metric_results: list[MetricResultResponse] = Field(
         description="List of metric results for this span",
         default=[],

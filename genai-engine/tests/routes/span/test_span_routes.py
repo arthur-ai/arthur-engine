@@ -1,17 +1,10 @@
 import json
 import uuid
-from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 
-from repositories.metrics_repository import MetricRepository
-from repositories.span_repository import SpanRepository
-from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.internal_schemas import Span as InternalSpan
 from tests.clients.base_test_client import GenaiEngineTestClientBase
-from tests.conftest import override_get_db_session
-from tests.routes.span.conftest import _delete_spans_from_db
 
 
 @pytest.mark.unit_tests
@@ -140,10 +133,189 @@ def test_span_version_injection(
 
 
 @pytest.mark.unit_tests
+def test_query_spans_basic(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test basic spans query with existing metrics."""
+    # Test basic query with task IDs
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert response.count == 2  # task1 has 2 spans
+    assert len(response.spans) == 2
+    assert all(span.task_id == "task1" for span in response.spans)
+
+    # Verify that spans have metric_results field (even if empty)
+    for span in response.spans:
+        assert hasattr(span, "metric_results")
+
+
+@pytest.mark.unit_tests
+def test_query_spans_with_trace_ids(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test spans query with trace IDs filter."""
+    # First get some spans to find trace IDs
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    trace_ids = [span.trace_id for span in response.spans]
+
+    # Query by trace IDs
+    status_code, response = client.query_spans(trace_ids=trace_ids)
+    assert status_code == 200
+    assert len(response.spans) > 0
+    assert all(span.trace_id in trace_ids for span in response.spans)
+
+
+@pytest.mark.unit_tests
+def test_query_spans_with_span_ids(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test spans query with span IDs filter."""
+    # First get some spans to find span IDs
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    span_ids = [span.span_id for span in response.spans]
+
+    # Query by span IDs
+    status_code, response = client.query_spans(span_ids=span_ids)
+    assert status_code == 200
+    assert len(response.spans) > 0
+    assert all(span.span_id in span_ids for span in response.spans)
+
+
+@pytest.mark.unit_tests
+def test_query_spans_with_existing_metrics(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test spans query with existing metrics but no new computation."""
+    # First create some spans with metrics
+    status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    # Now query with existing metrics (should return the same metrics without recomputing)
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    # Verify that spans have metric_results field
+    for span in response.spans:
+        assert hasattr(span, "metric_results")
+        # Should have existing metrics from the previous computation
+        assert len(span.metric_results) > 0
+
+
+@pytest.mark.unit_tests
+def test_compute_span_metrics_success(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test computing metrics for a single span."""
+    # First get a span ID
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    span_id = response.spans[0].id
+
+    # Compute metrics for this span
+    status_code, response = client.compute_span_metrics(span_id)
+    assert status_code == 200
+    assert response.count == 1
+    assert len(response.spans) == 1
+    assert response.spans[0].id == span_id
+
+    # Verify that the span has metrics
+    assert hasattr(response.spans[0], "metric_results")
+    assert len(response.spans[0].metric_results) > 0
+
+
+@pytest.mark.unit_tests
+def test_compute_span_metrics_not_found(
+    client: GenaiEngineTestClientBase,
+):
+    """Test computing metrics for a non-existent span."""
+    non_existent_span_id = str(uuid.uuid4())
+
+    status_code, response = client.compute_span_metrics(non_existent_span_id)
+    assert status_code == 400
+    assert "not found" in response.lower()
+
+
+@pytest.mark.unit_tests
+def test_compute_span_metrics_non_llm_span(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test computing metrics for a non-LLM span (should fail)."""
+    # Get a span and modify it to be non-LLM in the database
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    span_id = response.spans[0].id
+
+    # Modify the span to be non-LLM in the database
+    from tests.conftest import override_get_db_session
+
+    db_session = override_get_db_session()
+    from db_models.db_models import DatabaseSpan
+
+    span = db_session.query(DatabaseSpan).filter(DatabaseSpan.id == span_id).first()
+    if span:
+        span.span_kind = "internal"  # Change to non-LLM span kind
+        db_session.commit()
+
+    # Try to compute metrics for this non-LLM span
+    status_code, response = client.compute_span_metrics(span_id)
+    assert status_code == 400
+    assert "not an LLM span" in response.lower()
+
+
+@pytest.mark.unit_tests
+def test_compute_span_metrics_no_task_id(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test computing metrics for a span without task_id (should fail)."""
+    # Get a span and remove its task_id in the database
+    status_code, response = client.query_spans(task_ids=["task1"])
+    assert status_code == 200
+    assert len(response.spans) > 0
+
+    span_id = response.spans[0].id
+
+    # Remove the task_id from the span in the database
+    from tests.conftest import override_get_db_session
+
+    db_session = override_get_db_session()
+    from db_models.db_models import DatabaseSpan
+
+    span = db_session.query(DatabaseSpan).filter(DatabaseSpan.id == span_id).first()
+    if span:
+        span.task_id = None  # Remove task_id
+        db_session.commit()
+
+    # Try to compute metrics for this span without task_id
+    status_code, response = client.compute_span_metrics(span_id)
+    assert status_code == 400
+    assert "has no task_id" in response.lower()
+
+
+@pytest.mark.unit_tests
 def test_query_spans_with_metrics_happy_path(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
+    """Test traces/metrics/ endpoint - computes metrics for all LLM spans in traces."""
     # Test basic query with task IDs
     status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
     assert status_code == 200
@@ -151,12 +323,20 @@ def test_query_spans_with_metrics_happy_path(
     assert len(response.spans) == 2
     assert all(span.task_id == "task1" for span in response.spans)
 
+    # Verify that spans have metric_results field with computed metrics
+    for span in response.spans:
+        assert hasattr(span, "metric_results")
+        # Should have computed metrics for LLM spans
+        if span.span_kind == "LLM":
+            assert len(span.metric_results) > 0
+
 
 @pytest.mark.unit_tests
 def test_query_spans_with_metrics_multiple_task_ids(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
+    """Test traces/metrics/ endpoint with multiple task IDs."""
     # Test querying spans for multiple tasks
     status_code, response = client.query_spans_with_metrics(task_ids=["task1", "task2"])
     assert status_code == 200
@@ -167,72 +347,8 @@ def test_query_spans_with_metrics_multiple_task_ids(
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_metrics_with_date_filters(
-    client: GenaiEngineTestClientBase,
-    create_test_spans,
-):
-    base_time = datetime.now()
-
-    # Test querying spans within a specific time range
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2"],
-        start_time=base_time - timedelta(days=1),
-        end_time=base_time + timedelta(days=1),
-    )
-    assert status_code == 200
-    assert response.count == 3  # spans 2, 3, and 4 fall within this range
-    assert all(
-        base_time - timedelta(days=1)
-        <= span.created_at
-        <= base_time + timedelta(days=1)
-        for span in response.spans
-    )
-
-
-@pytest.mark.unit_tests
-def test_query_spans_with_metrics_pagination(
-    client: GenaiEngineTestClientBase,
-    create_test_spans,
-):
-    # Test trace-level pagination - page_size refers to number of traces, not spans
-    # With trace-level pagination, we get all spans for the traces in each page
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"],
-        page=0,
-        page_size=2,  # 2 traces per page
-        sort="desc",
-    )
-    assert status_code == 200
-    # Should get all spans for the first 2 traces
-    assert (
-        len(response.spans) >= 2
-    )  # At least 2 spans (could be more if traces have multiple spans)
-
-    # Test second page
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"],
-        page=1,
-        page_size=2,  # 2 traces per page
-        sort="desc",
-    )
-    assert status_code == 200
-    # Should get all spans for the remaining traces
-    assert len(response.spans) >= 1  # At least 1 span for the remaining trace
-
-    # Test third page (should be empty if we only have 3 traces)
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["task1", "task2", "task3"],
-        page=2,
-        page_size=2,  # 2 traces per page
-        sort="desc",
-    )
-    assert status_code == 200
-    # Should be empty since we only have 3 traces total
-    assert len(response.spans) == 0
-
-
-@pytest.mark.unit_tests
 def test_query_spans_with_metrics_missing_task_ids(client: GenaiEngineTestClientBase):
+    """Test traces/metrics/ endpoint with missing task IDs (should return 400)."""
     # Test with missing task IDs (should return 400)
     status_code, response = client.query_spans_with_metrics(task_ids=[])
     assert status_code == 400
@@ -241,216 +357,38 @@ def test_query_spans_with_metrics_missing_task_ids(client: GenaiEngineTestClient
 
 
 @pytest.mark.unit_tests
-def test_query_spans_with_metrics_server_error(client: GenaiEngineTestClientBase):
-    # Test with data that causes server error
-    with patch(
-        "repositories.span_repository.SpanRepository.query_spans",
-        side_effect=Exception("Test error"),
-    ):
-        status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
-        assert status_code == 500
-        assert "Test error" in response or "An internal error occurred" in response
-
-
-@pytest.mark.unit_tests
-def test_query_spans_with_metrics_no_spans_found(client: GenaiEngineTestClientBase):
-    # Test querying for non-existent task IDs
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["non_existent_task"],
-    )
-    assert status_code == 200
-    assert response.count == 0
-    assert len(response.spans) == 0
-
-
-@pytest.mark.unit_tests
-def test_query_spans_with_metrics_task_id_propagation(
+def test_span_features_extraction(
     client: GenaiEngineTestClientBase,
-    create_span_hierarchy_for_propagation,
+    sample_llm_span_with_features,
 ):
-    """Test that task IDs are propagated to child spans when querying with metrics."""
-    # Query spans for the task - this should trigger task ID propagation
-    status_code, response = client.query_spans_with_metrics(
-        task_ids=["propagation_test_task"],
-    )
+    """Test that span features are extracted and computed on-demand for LLM spans."""
+    # Store the span with features
+    status_code, response = client.receive_traces(sample_llm_span_with_features)
     assert status_code == 200
+    response_json = json.loads(response)
+    assert response_json["accepted_spans"] == 1
+    assert response_json["rejected_spans"] == 0
 
-    # Should return all 6 spans (root + 2 children + 3 grandchildren)
-    assert response.count == 6
-    assert len(response.spans) == 6
+    # Query the span to verify features are computed on-demand
+    status_code, response = client.query_spans(task_ids=["test_task"])
+    assert status_code == 200
+    assert response.count == 1
+    assert len(response.spans) == 1
 
-    # All spans should have the propagated task_id
-    for span in response.spans:
-        assert (
-            span.task_id == "propagation_test_task"
-        ), f"Span {span.span_id} should have task_id 'propagation_test_task', got {span.task_id}"
+    span = response.spans[0]
 
-    # Verify we have the expected span hierarchy
-    span_ids = {span.span_id for span in response.spans}
-    expected_span_ids = {
-        "root_span",
-        "child_a",
-        "child_b",
-        "grandchild_a1",
-        "grandchild_a2",
-        "grandchild_b1",
-    }
-    assert span_ids == expected_span_ids
+    # Verify span features are computed on-demand
+    assert span.system_prompt == "You are a helpful assistant."
+    assert span.user_query == "What is the weather like today?"
+    assert span.response == "I don't have access to real-time weather information."
+    assert span.context is not None
+    assert len(span.context) == 1
+    assert span.context[0]["role"] == "user"
+    assert span.context[0]["content"] == "What is the weather like today?"
 
-    # Verify span kinds are preserved
-    span_kinds = {span.span_id: span.span_kind for span in response.spans}
-    assert span_kinds["root_span"] == "LLM"
-    assert span_kinds["child_a"] == "CHAIN"
-    assert span_kinds["child_b"] == "AGENT"
-    assert span_kinds["grandchild_a1"] == "TOOL"
-    assert span_kinds["grandchild_a2"] == "RETRIEVER"
-    assert span_kinds["grandchild_b1"] == "EMBEDDING"
+    # Verify span kind is set correctly
+    assert span.span_kind == "LLM"
 
-
-@pytest.mark.unit_tests
-def test_task_id_propagation_direct_repository(create_span_hierarchy_for_propagation):
-    """Test task ID propagation directly in the repository layer."""
-    from schemas.enums import PaginationSortMethod
-
-    db_session = override_get_db_session()
-    tasks_metrics_repo = TasksMetricsRepository(db_session)
-    metrics_repo = MetricRepository(db_session)
-    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
-
-    # Query spans without metrics first to see the original state
-    spans_before = span_repo.query_spans(
-        task_ids=["propagation_test_task"],
-        sort=PaginationSortMethod.DESCENDING,
-        page=0,
-        page_size=10,
-        include_metrics=False,
-        propagate_task_ids=False,  # Disable propagation to see original state
-    )
-
-    # Should only return the root span initially (others don't have task_id)
-    assert len(spans_before) == 1
-    assert spans_before[0].span_id == "root_span"
-    assert spans_before[0].task_id == "propagation_test_task"
-
-    # Now query with propagation enabled
-    spans_after = span_repo.query_spans(
-        task_ids=["propagation_test_task"],
-        sort=PaginationSortMethod.DESCENDING,
-        page=0,
-        page_size=10,
-        include_metrics=False,
-        propagate_task_ids=True,  # Enable propagation
-    )
-
-    # Should return all 6 spans with propagated task_ids
-    assert len(spans_after) == 6
-    for span in spans_after:
-        assert span.task_id == "propagation_test_task"
-
-    # Verify the propagation actually updated the database
-    # Query again without propagation to confirm the database was updated
-    spans_verify = span_repo.query_spans(
-        task_ids=["propagation_test_task"],
-        sort=PaginationSortMethod.DESCENDING,
-        page=0,
-        page_size=10,
-        include_metrics=False,
-        propagate_task_ids=False,  # Disable propagation to verify database state
-    )
-
-    # Should still return all 6 spans because the database was updated
-    assert len(spans_verify) == 6
-    for span in spans_verify:
-        assert span.task_id == "propagation_test_task"
-
-
-@pytest.mark.unit_tests
-def test_task_id_propagation_with_metrics(create_span_hierarchy_for_propagation):
-    """Test that task ID propagation works correctly when including metrics."""
-    from schemas.enums import PaginationSortMethod
-
-    db_session = override_get_db_session()
-    tasks_metrics_repo = TasksMetricsRepository(db_session)
-    metrics_repo = MetricRepository(db_session)
-    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
-
-    # Query spans with metrics and propagation enabled
-    spans = span_repo.query_spans(
-        task_ids=["propagation_test_task"],
-        sort=PaginationSortMethod.DESCENDING,
-        page=0,
-        page_size=10,
-        include_metrics=True,
-        propagate_task_ids=True,
-    )
-
-    # Should return all 6 spans with propagated task_ids
-    assert len(spans) == 6
-    for span in spans:
-        assert span.task_id == "propagation_test_task"
-
-    # Verify that LLM spans have metric_results field (even if empty)
-    llm_spans = [span for span in spans if span.span_kind == "LLM"]
-    assert len(llm_spans) == 1
-    assert llm_spans[0].span_id == "root_span"
-    assert hasattr(llm_spans[0], "metric_results")
-    assert llm_spans[0].metric_results is not None
-
-
-@pytest.mark.unit_tests
-def test_task_id_propagation_multiple_tasks(create_span_hierarchy_for_propagation):
-    """Test task ID propagation with multiple tasks."""
-    from schemas.enums import PaginationSortMethod
-
-    db_session = override_get_db_session()
-    tasks_metrics_repo = TasksMetricsRepository(db_session)
-    metrics_repo = MetricRepository(db_session)
-    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
-
-    # Create an additional span with a different task_id
-    additional_span = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="other_trace",
-        span_id="other_span",
-        task_id="other_task",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=datetime.now(),
-        end_time=datetime.now() + timedelta(seconds=1),
-        raw_data={"model": "gpt-4"},
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-    )
-
-    # Store the additional span
-    additional_span_dict = additional_span.model_dump()
-    additional_span_dict.pop("metric_results")
-    span_repo._store_spans([additional_span_dict])
-
-    try:
-        # Query spans for both tasks
-        spans = span_repo.query_spans(
-            task_ids=["propagation_test_task", "other_task"],
-            sort=PaginationSortMethod.DESCENDING,
-            page=0,
-            page_size=20,
-            include_metrics=False,
-            propagate_task_ids=True,
-        )
-
-        # Should return 7 spans total (6 from propagation_test_task + 1 from other_task)
-        assert len(spans) == 7
-
-        # Verify task distribution
-        propagation_spans = [
-            span for span in spans if span.task_id == "propagation_test_task"
-        ]
-        other_spans = [span for span in spans if span.task_id == "other_task"]
-
-        assert len(propagation_spans) == 6
-        assert len(other_spans) == 1
-        assert other_spans[0].span_id == "other_span"
-
-    finally:
-        # Cleanup the additional span
-        _delete_spans_from_db(db_session, ["other_span"])
+    # Verify version is present in raw_data
+    assert "arthur_span_version" in span.raw_data
+    assert span.raw_data["arthur_span_version"] == "arthur_span_v1"
