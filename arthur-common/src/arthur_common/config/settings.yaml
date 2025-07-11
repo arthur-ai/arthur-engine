@@ -1,4 +1,0 @@
-# add arthur-common default settings here
-################################################
-# Aggregation Configurations
-SEGMENTATION_COL_UNIQUE_VALUE_LIMIT: 100
