@@ -100,6 +100,7 @@ from schemas.scorer_schemas import (
     ScorerToxicityScore,
 )
 from utils import constants
+from utils.constants import SPAN_KIND_LLM
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -1470,6 +1471,67 @@ class Span(BaseModel):
     updated_at: datetime
     metric_results: Optional[List[MetricResult]] = None
 
+    @property
+    def system_prompt(self) -> Optional[str]:
+        """Get system prompt from span features if this is an LLM span with valid version."""
+        if self._should_extract_features():
+            try:
+                span_features = self._extract_span_features()
+                return span_features.get("system_prompt")
+            except Exception:
+                return None
+        return None
+
+    @property
+    def user_query(self) -> Optional[str]:
+        """Get user query from span features if this is an LLM span with valid version."""
+        if self._should_extract_features():
+            try:
+                span_features = self._extract_span_features()
+                return span_features.get("user_query")
+            except Exception:
+                return None
+        return None
+
+    @property
+    def response(self) -> Optional[str]:
+        """Get response from span features if this is an LLM span with valid version."""
+        if self._should_extract_features():
+            try:
+                span_features = self._extract_span_features()
+                return span_features.get("response")
+            except Exception:
+                return None
+        return None
+
+    @property
+    def context(self) -> Optional[List[dict]]:
+        """Get context from span features if this is an LLM span with valid version."""
+        if self._should_extract_features():
+            try:
+                span_features = self._extract_span_features()
+                return span_features.get("context")
+            except Exception:
+                return None
+        return None
+
+    def _should_extract_features(self) -> bool:
+        """Check if we should extract features for this span."""
+        # Only extract for LLM spans
+        if self.span_kind != SPAN_KIND_LLM:
+            return False
+
+        # Check version
+        from utils import trace as trace_utils
+
+        return trace_utils.validate_span_version(self.raw_data)
+
+    def _extract_span_features(self) -> dict:
+        """Extract span features from raw data."""
+        from utils import trace as trace_utils
+
+        return trace_utils.extract_span_features(self.raw_data)
+
     @staticmethod
     def _from_database_model(db_span: DatabaseSpan) -> "Span":
         return Span(
@@ -1518,6 +1580,10 @@ class Span(BaseModel):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            system_prompt=self.system_prompt,
+            user_query=self.user_query,
+            response=self.response,
+            context=self.context,
         )
 
     def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
@@ -1535,6 +1601,10 @@ class Span(BaseModel):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            system_prompt=self.system_prompt,
+            user_query=self.user_query,
+            response=self.response,
+            context=self.context,
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],

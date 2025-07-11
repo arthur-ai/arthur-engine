@@ -288,3 +288,11 @@ AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS = {
 }
 
 ##################################################################
+
+# Span-related constants
+SPAN_KIND_LLM = "LLM"
+SPAN_VERSION_KEY = "arthur_span_version"
+EXPECTED_SPAN_VERSION = "arthur_span_v1"
+TASK_ID_KEY = "arthur.task"
+METADATA_KEY = "metadata"
+SPAN_KIND_KEY = "openinference.span.kind"
