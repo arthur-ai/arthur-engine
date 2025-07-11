@@ -27,11 +27,13 @@ tracer = trace.get_tracer(__name__)
 
 # Constants
 MAX_RECURSION_DEPTH = 100
-DEFAULT_PAGE_SIZE = 10
+DEFAULT_PAGE_SIZE = 5  # Reduced from 10 for trace-level pagination
 SPAN_KIND_LLM = "LLM"
 TASK_ID_KEY = "arthur.task"
 METADATA_KEY = "metadata"
 SPAN_KIND_KEY = "openinference.span.kind"
+SPAN_VERSION_KEY = "arthur_span_version"
+EXPECTED_SPAN_VERSION = "arthur_span_v1"
 
 
 class SpanRepository:
@@ -90,14 +92,17 @@ class SpanRepository:
         retrieval and metrics computation. It automatically propagates task IDs to child spans
         when task_ids are provided, ensuring consistent task association across the span hierarchy.
 
+        When task_ids are provided, this method finds all traces associated with those task_ids
+        and returns all spans for those traces, implementing trace-level pagination.
+
         Args:
             sort: Sort order for the results (ascending or descending by creation time)
             page: Page number for pagination (0-based)
-            page_size: Number of items per page
+            page_size: Number of traces per page (trace-level pagination)
             trace_ids: Optional list of trace IDs to filter by
             span_ids: Optional list of span IDs to filter by
-            task_ids: Optional list of task IDs to filter by. When provided, task ID propagation
-                     is automatically applied to ensure child spans inherit task IDs from parents.
+            task_ids: Optional list of task IDs to filter by. When provided, finds all traces
+                     associated with these task_ids and returns all spans for those traces.
             start_time: Optional start time filter (inclusive)
             end_time: Optional end time filter (exclusive)
             propagate_task_ids: Whether to propagate task IDs to child spans before querying.
@@ -116,6 +121,15 @@ class SpanRepository:
         if include_metrics and not task_ids:
             raise ValueError("task_ids are required when include_metrics=True")
 
+        # If task_ids are provided, find all trace_ids associated with them
+        if task_ids:
+            associated_trace_ids = self._get_trace_ids_for_task_ids(task_ids)
+            if trace_ids:
+                # Intersect with provided trace_ids if both are specified
+                trace_ids = list(set(trace_ids) & set(associated_trace_ids))
+            else:
+                trace_ids = associated_trace_ids
+
         # Propagate task IDs if requested
         if propagate_task_ids and task_ids:
             total_propagated = self._propagate_task_ids_for_tasks(task_ids)
@@ -124,16 +138,30 @@ class SpanRepository:
                     f"Propagated task_ids to {total_propagated} child spans before querying",
                 )
 
-        # Build and execute query
+        # For trace-level pagination, we need to paginate by trace_ids first
+        if trace_ids and page_size is not None:
+            # Paginate trace_ids
+            start_idx = page * page_size
+            end_idx = start_idx + page_size
+            paginated_trace_ids = trace_ids[start_idx:end_idx]
+
+            # If no trace_ids in this page, return empty list
+            if not paginated_trace_ids:
+                return []
+
+            # Update trace_ids to only include the paginated subset
+            trace_ids = paginated_trace_ids
+
+        # Build and execute query for spans
         query = self._build_spans_query(
+            page=None,  # No span-level pagination since we're doing trace-level
             trace_ids=trace_ids,
             span_ids=span_ids,
-            task_ids=task_ids,
+            task_ids=None,  # Don't filter by task_ids in the span query since we already handled it
             start_time=start_time,
             end_time=end_time,
             sort=sort,
-            page=page,
-            page_size=page_size,
+            page_size=None,  # No span-level pagination since we're doing trace-level
         )
 
         results = self.db_session.execute(query).scalars().unique().all()
@@ -142,11 +170,21 @@ class SpanRepository:
         if not spans:
             return []
 
-        # Add metrics if requested
-        if include_metrics:
-            spans = self._add_metrics_to_spans(spans)
+        # Validate span versions
+        valid_spans = []
+        for span in spans:
+            if self._validate_span_version(span):
+                valid_spans.append(span)
+            else:
+                logger.warning(
+                    f"Skipping span {span.id} due to version validation failure",
+                )
 
-        return spans
+        # Add metrics if requested
+        if include_metrics and valid_spans:
+            valid_spans = self._add_metrics_to_spans(valid_spans)
+
+        return valid_spans
 
     def populate_task_ids_for_task(self, task_id: str) -> int:
         """
@@ -267,10 +305,10 @@ class SpanRepository:
                     else:
                         rejected_spans += 1
                         rejected_reasons.append(
-                            "Invalid span data. Span must have a task_id or a parent_id.",
+                            "Invalid span data format.",
                         )
                         logger.debug(
-                            f"Rejected span {processed_span['span_id']}: \n{span_data}",
+                            f"Rejected span due to invalid format: \n{span_data}",
                         )
 
         return spans_data, (
@@ -335,14 +373,14 @@ class SpanRepository:
 
     def _build_spans_query(
         self,
-        page: int,
+        page: Optional[int],
         trace_ids: Optional[list[str]] = None,
         span_ids: Optional[list[str]] = None,
         task_ids: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page_size: int = DEFAULT_PAGE_SIZE,
+        page_size: Optional[int] = DEFAULT_PAGE_SIZE,
     ) -> select:
         """Build a query for spans with the given filters."""
         query = select(DatabaseSpan)
@@ -370,7 +408,7 @@ class SpanRepository:
         elif sort == PaginationSortMethod.ASCENDING:
             query = query.order_by(asc(DatabaseSpan.created_at))
 
-        # Apply pagination
+        # Apply pagination only if both page and page_size are provided
         if page is not None and page_size is not None:
             query = query.offset(page * page_size).limit(page_size)
 
@@ -399,16 +437,13 @@ class SpanRepository:
         )
         span_dict["task_id"] = task_id
 
+        # Inject version into raw data
+        normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
+
         # Store the normalized span data
         span_dict["raw_data"] = normalized_span_data
 
-        # Check acceptance criteria: span must have either task_id OR parent_id
-        if not task_id and not span_dict.get("parent_span_id"):
-            logger.warning(
-                f"Span {span_dict['span_id']} rejected: no task_id and no parent_id",
-            )
-            return None
-
+        # Accept all spans - no discrimination on task_id or parent_id
         return span_dict
 
     def _extract_basic_span_info(self, span_data: dict) -> dict:
@@ -699,3 +734,35 @@ class SpanRepository:
             self.db_session.commit()
 
         logger.debug(f"Stored {len(metric_results_to_insert)} metric results")
+
+    def _validate_span_version(self, span: Span) -> bool:
+        """Validate that a span's raw data contains the expected version."""
+        raw_data = span.raw_data
+        if not isinstance(raw_data, dict):
+            logger.warning(f"Span {span.id} has invalid raw_data format")
+            return False
+
+        version = raw_data.get(SPAN_VERSION_KEY)
+        if version != EXPECTED_SPAN_VERSION:
+            logger.warning(
+                f"Span {span.id} has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
+            )
+            return False
+
+        return True
+
+    def _get_trace_ids_for_task_ids(self, task_ids: list[str]) -> list[str]:
+        """Get all trace IDs associated with the given task IDs."""
+        if not task_ids:
+            return []
+
+        # Query to find all trace_ids that have spans with the given task_ids
+        trace_ids_query = (
+            self.db_session.query(DatabaseSpan.trace_id)
+            .filter(DatabaseSpan.task_id.in_(task_ids))
+            .distinct()
+        )
+
+        trace_ids = [row[0] for row in trace_ids_query.all()]
+        logger.debug(f"Found {len(trace_ids)} trace IDs for task IDs: {task_ids}")
+        return trace_ids

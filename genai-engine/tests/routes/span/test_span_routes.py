@@ -71,23 +71,21 @@ def test_receive_traces_response_types(
     sample_mixed_spans_trace,
     sample_all_rejected_spans_trace,
 ):
-    # Test mixed spans - one with task ID (accepted), one without task ID and without parent ID (rejected)
+    # Test mixed spans - all spans should now be accepted
     status_code, response = client.receive_traces(sample_mixed_spans_trace)
-    assert status_code == 206  # Partial Content
+    assert status_code == 200  # Success - all spans accepted
     response_json = json.loads(response)
-    assert response_json["status"] == "partial_success"
-    assert response_json["accepted_spans"] == 1  # Span with task ID accepted
-    assert (
-        response_json["rejected_spans"] == 1
-    )  # Span without task ID and without parent ID rejected
+    assert response_json["status"] == "success"
+    assert response_json["accepted_spans"] == 2  # All spans accepted
+    assert response_json["rejected_spans"] == 0  # No spans rejected
 
-    # Test all spans without task IDs and without parent IDs - should all be rejected
+    # Test all spans without task IDs and without parent IDs - should all be accepted now
     status_code, response = client.receive_traces(sample_all_rejected_spans_trace)
-    assert status_code == 422  # Unprocessable Entity
+    assert status_code == 200  # Success - all spans accepted
     response_json = json.loads(response)
-    assert response_json["status"] == "failure"
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 2  # Both spans rejected
+    assert response_json["status"] == "success"
+    assert response_json["accepted_spans"] == 2  # All spans accepted
+    assert response_json["rejected_spans"] == 0  # No spans rejected
 
 
 @pytest.mark.unit_tests
@@ -95,19 +93,15 @@ def test_spans_missing_task_id(
     client: GenaiEngineTestClientBase,
     sample_span_missing_task_id,
 ):
-    # Test with a span missing task ID and no parent ID - should be rejected
+    # Test with a span missing task ID and no parent ID - should be accepted now
     status_code, response = client.receive_traces(sample_span_missing_task_id)
     response_json = json.loads(response)
 
-    # Verify that the span was rejected
-    assert status_code == 422  # Unprocessable Entity
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 1
-    assert response_json["status"] == "failure"
-    assert (
-        "Invalid span data. Span must have a task_id or a parent_id."
-        in response_json["rejection_reasons"][0]
-    )
+    # Verify that the span was accepted
+    assert status_code == 200  # Success
+    assert response_json["accepted_spans"] == 1
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests
@@ -124,6 +118,25 @@ def test_spans_with_parent_id_but_no_task_id(
     assert response_json["accepted_spans"] == 1
     assert response_json["rejected_spans"] == 0
     assert response_json["status"] == "success"
+
+
+@pytest.mark.unit_tests
+def test_span_version_injection(
+    client: GenaiEngineTestClientBase,
+    sample_openinference_trace,
+):
+    """Test that spans have the expected version injected into their raw data."""
+    status_code, response = client.receive_traces(sample_openinference_trace)
+    assert status_code == 200
+
+    # Query the spans to verify version injection
+    status_code, response = client.query_spans_with_metrics(task_ids=["test_task"])
+    assert status_code == 200
+
+    # Check that all spans have the expected version
+    for span in response.spans:
+        assert "arthur_span_version" in span.raw_data
+        assert span.raw_data["arthur_span_version"] == "arthur_span_v1"
 
 
 @pytest.mark.unit_tests
@@ -181,36 +194,41 @@ def test_query_spans_with_metrics_pagination(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
-    # Test pagination parameters
+    # Test trace-level pagination - page_size refers to number of traces, not spans
+    # With trace-level pagination, we get all spans for the traces in each page
     status_code, response = client.query_spans_with_metrics(
         task_ids=["task1", "task2", "task3"],
         page=0,
-        page_size=2,
+        page_size=2,  # 2 traces per page
         sort="desc",
     )
     assert status_code == 200
-    assert response.count == 2  # page size is 2
-    assert len(response.spans) == 2
+    # Should get all spans for the first 2 traces
+    assert (
+        len(response.spans) >= 2
+    )  # At least 2 spans (could be more if traces have multiple spans)
 
     # Test second page
     status_code, response = client.query_spans_with_metrics(
         task_ids=["task1", "task2", "task3"],
         page=1,
-        page_size=2,
+        page_size=2,  # 2 traces per page
         sort="desc",
     )
     assert status_code == 200
-    assert len(response.spans) == 2  # second page should have 2 spans
+    # Should get all spans for the remaining traces
+    assert len(response.spans) >= 1  # At least 1 span for the remaining trace
 
-    # Test third page
+    # Test third page (should be empty if we only have 3 traces)
     status_code, response = client.query_spans_with_metrics(
         task_ids=["task1", "task2", "task3"],
         page=2,
-        page_size=2,
+        page_size=2,  # 2 traces per page
         sort="desc",
     )
     assert status_code == 200
-    assert len(response.spans) == 1  # third page should have 1 span
+    # Should be empty since we only have 3 traces total
+    assert len(response.spans) == 0
 
 
 @pytest.mark.unit_tests

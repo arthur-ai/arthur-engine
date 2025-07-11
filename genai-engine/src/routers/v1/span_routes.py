@@ -95,8 +95,8 @@ def receive_traces(
 
 
 @span_routes.get(
-    "/spans/metrics/query",
-    description="Query spans with metrics for specified task IDs",
+    "/traces/metrics/query",
+    description="Query traces with metrics for specified task IDs.",
     response_model=QuerySpansWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
