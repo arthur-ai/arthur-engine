@@ -2,16 +2,10 @@ import logging
 import os
 import threading
 from itertools import repeat
-from typing import Tuple
+from typing import Tuple, List
 
 import torch
 from langchain_core.messages.ai import AIMessage
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    HumanMessagePromptTemplate,
-    PromptTemplate,
-    SystemMessagePromptTemplate,
-)
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
@@ -26,6 +20,8 @@ from schemas.scorer_schemas import (
 )
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
+from scorer.checks.hallucination.v2_legacy_prompts import get_claim_flagging_prompt, get_flagged_claim_explanation_prompt
+from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
 from sentence_transformers import SentenceTransformer
 from utils import constants, utils
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
@@ -84,172 +80,6 @@ def get_claim_classifier(
         },
     )
 
-
-# claim flagging
-
-flagging_examples = [
-    {
-        "context": "There are two dogs eating my shoes and it hurts",
-        "num_texts": "2",
-        "text_list_str": "- there are dogs eating my shoes\n- it hurts",
-        "output": "0,0",
-    },
-    {
-        "context": "There are two dogs eating my shoes and it hurts",
-        "num_texts": "2",
-        "text_list_str": "- there are dogs eating my shoes\n- it does not hurt",
-        "output": "0,1",
-    },
-    {
-        "context": "There are two dogs eating my shoes and it hurts",
-        "num_texts": "2",
-        "text_list_str": "- there is no pain\n - there are two animals",
-        "output": "1,0",
-    },
-    {
-        "context": "After the terrible performer released an awful movie, they inexplicably won an Oscar.",
-        "num_texts": "3",
-        "text_list_str": "- the actor is terrible\n- the actor didnt deserve an award\n- the actor is terrible because they have released no movies",
-        "output": "0,0,1",
-    },
-    {
-        "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding in systems for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
-        "num_texts": "1",
-        "text_list_str": "- I don't know what machine learning frameworks that Arthur integrates with.",
-        "output": "0",
-    },
-    {
-        "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-        "num_texts": "4",
-        "text_list_str": "- BERT came out in 2019\n- BERT is an NLP model\n- LLMs are also NLP models\n- ChatGPT is a great new NLP model",
-        "output": "0,0,1,1",
-    },
-    {
-        "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-        "num_texts": "2",
-        "text_list_str": "- Hello!\n- How can I assist you today?",
-        "output": "0,0",
-    },
-]
-
-flagging_instruction = """
-You took a batch of texts and flagged the ones that lacked supporting evidence in the context.
-If a text was valid, you labeled it a 0. If a text did not have any supporting evidence in the context, you labeled it a 1.
-
-It did not matter if a text was true according to your training data - the only information that mattered was the context.
-Claims about people, places, events, software needed to occur in the context for you to have allowed it in a text.
-If something is mentioned in the text that is not in the context, you label it a 1.
-You did not do anything else other than labeling.
-=Examples=
-"""
-
-flagging_example_template = PromptTemplate.from_template(
-    "\n=\nContext: {context}\n{num_texts} Texts\n{text_list_str}\n{num_texts} Labels: ",
-)
-
-flagging_prompt_template_messages = [
-    SystemMessagePromptTemplate.from_template("You are a helpful AI Assistant"),
-    HumanMessagePromptTemplate.from_template(flagging_instruction),
-]
-
-for example in flagging_examples:
-    formatted_flagging_example_template = flagging_example_template.format(
-        context=example["context"],
-        num_texts=example["num_texts"],
-        text_list_str=example["text_list_str"],
-    )
-    human_message = HumanMessagePromptTemplate.from_template(
-        formatted_flagging_example_template,
-    )
-    system_message = SystemMessagePromptTemplate.from_template(example["output"])
-    flagging_prompt_template_messages.extend([human_message, system_message])
-
-flagging_prompt_template_messages.append(
-    HumanMessagePromptTemplate.from_template(
-        "=Now the real thing=\nMake sure that you include only {num_texts} labels or else you will fail.\nContext: {context}\n{num_texts} Texts\n{text_list_str}\n{num_texts} Labels: ",
-    ),
-)
-
-flag_text_batch_template = ChatPromptTemplate.from_messages(
-    flagging_prompt_template_messages,
-)
-
-# flagged claim explanation
-
-explanation_examples = [
-    {
-        "context": "There are two dogs eating my shoes and it hurts",
-        "flagged_claim": "it does not hurt",
-        "output": "the claim is unspported because the context mentions that it hurts, but the claim mentions it does not, which is a contradiction",
-    },
-    {
-        "context": "After the terrible performer released an awful movie, they inexplicably won an Oscar.",
-        "flagged_claim": "the actor is terrible because they have released no movies",
-        "output": "the claim is unsupported because the context mentions that the actor is bad, but not because of a lack of movies",
-    },
-    {
-        "context": "Furthermore see our blog post https www arthur ai blog automating data drift thresholding for an overview of data on how Arthur automates the choice of thresholding for drift metrics",
-        "flagged_claim": "I don't know what machine learning frameworks that Arthur integrates with.",
-        "output": "the claim is supported because the LLM is explaining that it cannot answer so it is not hallucinating",
-    },
-    {
-        "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-        "flagged_claim": "ChatGPT is a great new LLM.",
-        "output": "the claim is unsupported because ChatGPT is not mentioned in the context",
-    },
-    {
-        "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-        "flagged_claim": "BERT is a solid model.",
-        "output": "the claim is supported because it references BERT the advanced NLP model",
-    },
-    {
-        "context": "This software library is only usable in the context of NLP, and the most advanced NLP model to date so far (2019) is BERT from Google.",
-        "flagged_claim": "Hello!",
-        "output": "the claim is supported because this is just dialog",
-    },
-]
-
-explanation_instruction = """
-You explained why claims were flagged as unsupported by the contexts they were evaluated against.
-The reader needed to be able to understand in a lot of detail which parts of the claims were OK,
-and which parts of the claims lacked evidence within the context, and why the evidence was lacking.
-You only offer explanations and did not offer additional assistance other than the explanation.
-
-That is why you generated useful explanations like this:
-=Examples=
-"""
-
-explanation_example_template = PromptTemplate.from_template(
-    "\n=\nContext: {context}\nFlagged Claim: {claim}\nExplanation: ",
-)
-
-explanation_prompt_template_messages = [
-    SystemMessagePromptTemplate.from_template("You are a helpful AI Assistant"),
-    HumanMessagePromptTemplate.from_template(explanation_instruction),
-]
-
-for example in explanation_examples:
-    formatted_explanation_example_template = explanation_example_template.format(
-        context=example["context"],
-        claim=example["flagged_claim"],
-    )
-    human_message = HumanMessagePromptTemplate.from_template(
-        formatted_explanation_example_template,
-    )
-    system_message = SystemMessagePromptTemplate.from_template(example["output"])
-    explanation_prompt_template_messages.extend([human_message, system_message])
-
-explanation_prompt_template_messages.append(
-    HumanMessagePromptTemplate.from_template(
-        "Now the real thing\n=\nContext: {context}\nFlagged Claim: {claim}\nExplanation: ",
-    ),
-)
-
-explanation_template = ChatPromptTemplate.from_messages(
-    explanation_prompt_template_messages,
-)
-
-
 class LabelledClaim(BaseModel):
     claim: str
     hallucination: bool
@@ -266,11 +96,26 @@ class ClaimBatchValidation(BaseModel):
     token_consumption: LLMTokenConsumption
 
 
+########################################################
+# Classes used as structured output responses
+########################################################
+class LLMClaimResult(BaseModel):
+    claim_text: str
+    is_hallucination: bool
+    explanation: str
+
+class ReturnClaimFlags(BaseModel):
+    results: List[LLMClaimResult]
+########################################################
+
 class HallucinationClaimsV2(RuleScorer):
     def __init__(self, sentence_transformer: SentenceTransformer | None):
         self.claim_classifier = get_claim_classifier(sentence_transformer)
         self.model = get_llm_executor().get_gpt_model()
         self.claim_parser = ClaimParser()
+        self.flag_text_batch_template = get_claim_flagging_prompt()
+        self.explanation_template = get_flagged_claim_explanation_prompt()
+        self.structured_output_prompt = get_structured_output_prompt()
 
     def _download_sentence_transformer(self):
         global CLAIM_CLASSIFIER_EMBEDDING_MODEL
@@ -423,9 +268,100 @@ class HallucinationClaimsV2(RuleScorer):
         context: str,
         claim_batch: list[OrderedClaim],
     ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
-        prompt = flag_text_batch_template
-        llm = get_llm_executor().get_gpt_model()
-        flag_text_batch_chain = prompt | llm
+        if get_llm_executor().supports_structured_outputs():
+            return self.validate_claim_batch_structured_output(context, claim_batch)
+        else:
+            return self.validate_claim_batch_legacy(context, claim_batch)
+
+    def validate_claim_batch_structured_output(
+        self,
+        context: str,
+        claim_batch: list[OrderedClaim],
+    ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
+        flag_text_batch_chain = self.structured_output_prompt | self.model.with_structured_output(ReturnClaimFlags)
+        
+        text_value = [claim.text for claim in claim_batch]
+
+        claim_batch_str = "".join(["- " + x + "\n" for x in text_value])
+        claim_count = len(claim_batch)
+        net_token_consumption = LLMTokenConsumption(
+            prompt_tokens=0,
+            completion_tokens=0,
+        )
+
+        call = lambda: flag_text_batch_chain.invoke(
+            {
+                "context": context,
+                "num_texts": claim_count,
+                "text_list_str": claim_batch_str,
+            },
+        )
+
+        return_claim_flags: AIMessage
+        token_consumption: LLMTokenConsumption
+        return_claim_flags, token_consumption = get_llm_executor().execute(
+            call,
+            "hallucinationv2 claim validation",
+        )
+
+        results = return_claim_flags.results
+        net_token_consumption.add(token_consumption)
+
+        if len(results) == claim_count:
+            labelled_claims: list[LabelledClaim] = []
+            rule_result = RuleResultEnum.PASS
+
+            for i, llm_claim_result in enumerate(results):
+                if llm_claim_result.is_hallucination:
+                    rule_result = RuleResultEnum.FAIL
+
+                explanation = llm_claim_result.explanation if llm_claim_result.is_hallucination else "No hallucination detected!"
+
+                labelled_claims.append(
+                    LabelledClaim(
+                        claim=claim_batch[i].text,
+                        hallucination=llm_claim_result.is_hallucination,
+                        reason=explanation,
+                        order_number=claim_batch[i].index_number,
+                    )
+                )
+            
+            return (
+                ClaimBatchValidation(
+                    labelled_claims=labelled_claims,
+                    token_consumption=net_token_consumption,
+                ),
+                rule_result,
+            )
+        else:
+            # if we fail to get the expected number of labels,
+            # return "indeterminate label" message for all claims in this batch
+            logger.warning(
+                "Mismatch between claim batch and labels. Returning PARTIALLY_UNAVAILABLE",
+            )
+            labelled_claims = [
+                LabelledClaim(
+                    claim=c.text,
+                    order_number=c.index_number,
+                    hallucination=False,
+                    reason=constants.HALLUCINATION_INDETERMINATE_LABEL_MESSAGE,
+                )
+                for c in claim_batch
+            ]
+            return (
+                ClaimBatchValidation(
+                    labelled_claims=labelled_claims,
+                    token_consumption=net_token_consumption,
+                ),
+                RuleResultEnum.PARTIALLY_UNAVAILABLE,
+            )
+        
+    def validate_claim_batch_legacy(
+        self,
+        context: str,
+        claim_batch: list[OrderedClaim],
+    ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
+        flag_text_batch_chain = self.flag_text_batch_template | self.model
 
         text_value = [claim.text for claim in claim_batch]
 
@@ -534,9 +470,7 @@ class HallucinationClaimsV2(RuleScorer):
     ) -> LabelledClaim:
         if not labelled_claim.hallucination:
             return labelled_claim
-        llm = get_llm_executor().get_gpt_model()
-        prompt = explanation_template
-        explain_flagged_claim_chain = prompt | llm
+        explain_flagged_claim_chain = self.explanation_template | self.model
         explain_call = lambda: explain_flagged_claim_chain.invoke(
             {
                 "context": context,
