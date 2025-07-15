@@ -1,12 +1,9 @@
 import logging
 import os
-from unittest.mock import patch
 
-import pytest
 import pytz
 from arthur_client.api_bindings import (
     AvailableDataset,
-    ConnectorFieldDataType,
     ConnectorSpec,
     DataResultFilter,
     DataResultFilterOp,
@@ -18,7 +15,7 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from connectors.s3_connector import S3Connector
-from helpers import *
+from mock_data.connector_helpers import *
 
 logger = logging.getLogger("job_logger")
 
