@@ -118,7 +118,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
 
     now = datetime.now()
 
-    # Create a test span
+    # Create a test span with proper raw_data structure matching real spans
     span = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="test_trace_id",
@@ -128,7 +128,24 @@ def create_span() -> Generator[InternalSpan, None, None]:
         span_kind="LLM",
         start_time=now,
         end_time=now + timedelta(seconds=1),
-        raw_data={},
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "ChatOpenAI",
+            "spanId": "test_span_id",
+            "traceId": "test_trace_id",
+            "attributes": {
+                "openinference.span.kind": "LLM",
+                "llm.model_name": "gpt-4",
+                "llm.input_messages.0.message.role": "system",
+                "llm.input_messages.0.message.content": "You are a helpful assistant.",
+                "llm.input_messages.1.message.role": "user",
+                "llm.input_messages.1.message.content": "What is the weather like today?",
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "metadata": '{"arthur.task": "test_task", "ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
         created_at=now,
         updated_at=now,
     )
@@ -157,7 +174,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans = []
     base_time = datetime.now()
 
-    # Span 1: User1, Task1, Trace1 - LLM span
+    # Span 1: Task1, Trace1 - LLM span with features
     span1 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace1",
@@ -167,85 +184,202 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         span_kind="LLM",
         start_time=base_time - timedelta(days=2),
         end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
-        raw_data={"model": "gpt-4"},
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "ChatOpenAI",
+            "spanId": "span1",
+            "traceId": "trace1",
+            "attributes": {
+                "openinference.span.kind": "LLM",
+                "llm.model_name": "gpt-4",
+                "llm.input_messages.0.message.role": "system",
+                "llm.input_messages.0.message.content": "You are a helpful assistant.",
+                "llm.input_messages.1.message.role": "user",
+                "llm.input_messages.1.message.content": "What is the weather like today?",
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "metadata": '{"arthur.task": "task1", "ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
         created_at=base_time - timedelta(days=2),
         updated_at=base_time - timedelta(days=2),
     )
     spans.append(span1)
 
-    # Span 2: User1, Task2, Trace1 - CHAIN span with parent
+    # Span 2: Task1, Trace1 - CHAIN span with parent (no task_id propagation)
     span2 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace1",
         span_id="span2",
-        task_id="task2",
+        task_id=None,  # No task_id - should not be propagated from parent
         parent_span_id="span1",
         span_kind="CHAIN",
         start_time=base_time - timedelta(days=1),
         end_time=base_time - timedelta(days=1) + timedelta(seconds=1),
-        raw_data={"model": "gpt-3.5"},
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Chain",
+            "spanId": "span2",
+            "traceId": "trace1",
+            "attributes": {
+                "openinference.span.kind": "CHAIN",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
         created_at=base_time - timedelta(days=1) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=1) + timedelta(seconds=1),
     )
     spans.append(span2)
 
-    # Span 3: User2, Task1, Trace2 - AGENT span
+    # Span 3: Task2, Trace2 - AGENT span
     span3 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace2",
         span_id="span3",
-        task_id="task1",
+        task_id="task2",
         parent_span_id=None,
         span_kind="AGENT",
         start_time=base_time,
         end_time=base_time + timedelta(seconds=1),
-        raw_data={"model": "gpt-4"},
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Agent",
+            "spanId": "span3",
+            "traceId": "trace2",
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "metadata": '{"arthur.task": "task2", "ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
         created_at=base_time,
         updated_at=base_time,
     )
     spans.append(span3)
 
-    # Span 4: User2, Task2, Trace2 - RETRIEVER span with parent
+    # Span 4: Task2, Trace2 - RETRIEVER span with parent (no task_id propagation)
     span4 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace2",
         span_id="span4",
-        task_id="task2",
+        task_id=None,  # No task_id - should not be propagated from parent
         parent_span_id="span3",
         span_kind="RETRIEVER",
         start_time=base_time + timedelta(days=1),
         end_time=base_time + timedelta(days=1) - timedelta(seconds=1),
-        raw_data={"model": "gpt-3.5"},
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Retriever",
+            "spanId": "span4",
+            "traceId": "trace2",
+            "attributes": {
+                "openinference.span.kind": "RETRIEVER",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
         created_at=base_time + timedelta(days=1) - timedelta(seconds=1),
         updated_at=base_time + timedelta(days=1) - timedelta(seconds=1),
     )
     spans.append(span4)
 
-    # Span 5: User3, Task3, Trace3 - TOOL span
-    span5 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="trace3",
-        span_id="span5",
-        task_id="task3",
-        parent_span_id=None,
-        span_kind="TOOL",
-        start_time=base_time + timedelta(days=2),
-        end_time=base_time + timedelta(days=2) + timedelta(seconds=1),
-        raw_data={"model": "gpt-4"},
-        created_at=base_time + timedelta(days=2),
-        updated_at=base_time + timedelta(days=2),
-    )
-    spans.append(span5)
     # Store spans in database
     spans_to_store = [span.model_dump() for span in spans]
     [span.pop("metric_results") for span in spans_to_store]
     span_repo._store_spans(spans_to_store)
+
+    # Create metrics and metric results for LLM spans
+    from db_models.db_models import (
+        DatabaseMetric,
+        DatabaseMetricResult,
+        DatabaseTask,
+        DatabaseTaskToMetrics,
+    )
+    from schemas.enums import MetricType
+
+    # Create tasks first
+    task1 = DatabaseTask(
+        id="task1",
+        name="Test Task 1",
+        created_at=base_time,
+        updated_at=base_time,
+    )
+    task2 = DatabaseTask(
+        id="task2",
+        name="Test Task 2",
+        created_at=base_time,
+        updated_at=base_time,
+    )
+    db_session.add(task1)
+    db_session.add(task2)
+    db_session.commit()
+
+    # Create a test metric
+    test_metric = DatabaseMetric(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        type=MetricType.QUERY_RELEVANCE.value,
+        name="Test Query Relevance",
+        metric_metadata="Test metric for LLM spans",
+        config=None,
+    )
+    db_session.add(test_metric)
+    db_session.commit()
+
+    # Create task-to-metric links for task1 and task2
+    task1_metric_link = DatabaseTaskToMetrics(
+        task_id="task1",
+        metric_id=test_metric.id,
+        enabled=True,
+    )
+    task2_metric_link = DatabaseTaskToMetrics(
+        task_id="task2",
+        metric_id=test_metric.id,
+        enabled=True,
+    )
+    db_session.add(task1_metric_link)
+    db_session.add(task2_metric_link)
+    db_session.commit()
+
+    # Create metric results for the LLM span (span1)
+    metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.QUERY_RELEVANCE.value,
+        details=json.dumps({"score": 0.85, "reason": "Query is relevant to the task"}),
+        prompt_tokens=100,
+        completion_tokens=50,
+        latency_ms=1500,
+        span_id=span1.id,
+        metric_id=test_metric.id,
+    )
+    db_session.add(metric_result)
+    db_session.commit()
 
     yield spans
 
     # Cleanup: Delete all created spans from the database after the test
     span_ids = [span.span_id for span in spans]
     _delete_spans_from_db(db_session, span_ids)
+
+    # Cleanup: Delete metric results, task-to-metric links, metrics, and tasks
+    db_session.query(DatabaseMetricResult).filter(
+        DatabaseMetricResult.span_id.in_([span.id for span in spans]),
+    ).delete(synchronize_session=False)
+    db_session.query(DatabaseTaskToMetrics).filter(
+        DatabaseTaskToMetrics.task_id.in_(["task1", "task2"]),
+    ).delete(synchronize_session=False)
+    db_session.query(DatabaseMetric).filter(DatabaseMetric.id == test_metric.id).delete(
+        synchronize_session=False,
+    )
+    db_session.query(DatabaseTask).filter(
+        DatabaseTask.id.in_(["task1", "task2"]),
+    ).delete(synchronize_session=False)
+    db_session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -313,8 +447,10 @@ def sample_span_missing_task_id() -> bytes:
 
     yield trace_request.SerializeToString()
 
-    # Cleanup - span will be rejected since it has no task ID and no parent ID
-    # No cleanup needed as the span won't be stored
+    # Cleanup - span will be accepted since all spans are now accepted
+    span_ids = [span.span_id.hex()]
+    db_session = override_get_db_session()
+    _delete_spans_from_db(db_session, span_ids)
 
 
 @pytest.fixture(scope="function")
@@ -346,8 +482,8 @@ def sample_mixed_spans_trace() -> bytes:
 
     yield trace_request.SerializeToString()
 
-    # Cleanup - only the valid span will be stored, invalid span will be rejected
-    span_ids = [valid_span.span_id.hex()]
+    # Cleanup - both spans will be accepted since all spans are now accepted
+    span_ids = [valid_span.span_id.hex(), invalid_span.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
 
@@ -382,8 +518,10 @@ def sample_all_rejected_spans_trace() -> bytes:
 
     yield trace_request.SerializeToString()
 
-    # Cleanup - both spans will be rejected since they have no task IDs and no parent IDs
-    # No cleanup needed as the spans won't be stored
+    # Cleanup - both spans will be accepted since all spans are now accepted
+    span_ids = [rejected_span1.span_id.hex(), rejected_span2.span_id.hex()]
+    db_session = override_get_db_session()
+    _delete_spans_from_db(db_session, span_ids)
 
 
 @pytest.fixture(scope="function")
@@ -407,234 +545,7 @@ def sample_span_with_parent_id() -> bytes:
 
     yield trace_request.SerializeToString()
 
-    # Cleanup - span will be stored since it has a parent ID
+    # Cleanup - span will be accepted since all spans are now accepted
     span_ids = [span.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
-
-
-@pytest.fixture(scope="function")
-def create_span_hierarchy_for_propagation() -> (
-    Generator[List[InternalSpan], None, None]
-):
-    """Create a complex span hierarchy to test task ID propagation.
-
-    Creates the following structure:
-    - Root span (task_id: "propagation_test_task") - LLM
-      ├── Child A (task_id: NULL) - CHAIN
-      │   ├── Grandchild A1 (task_id: NULL) - TOOL
-      │   └── Grandchild A2 (task_id: NULL) - RETRIEVER
-      └── Child B (task_id: NULL) - AGENT
-          └── Grandchild B1 (task_id: NULL) - EMBEDDING
-    """
-    db_session = override_get_db_session()
-    application_config = get_application_config(session=db_session)
-    tasks_metrics_repo = TasksMetricsRepository(db_session)
-    metrics_repo = MetricRepository(db_session)
-    span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
-
-    # Create spans with different attributes
-    spans = []
-    base_time = datetime.now()
-
-    # Root span with task_id
-    root_span = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="root_span",
-        task_id="propagation_test_task",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time,
-        end_time=base_time + timedelta(seconds=1),
-        raw_data={"model": "gpt-4"},
-        created_at=base_time,
-        updated_at=base_time,
-    )
-    spans.append(root_span)
-
-    # Child A without task_id
-    child_a = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="child_a",
-        task_id=None,  # No task_id - should be propagated from parent
-        parent_span_id="root_span",
-        span_kind="CHAIN",
-        start_time=base_time + timedelta(seconds=1),
-        end_time=base_time + timedelta(seconds=2),
-        raw_data={"model": "gpt-3.5"},
-        created_at=base_time + timedelta(seconds=1),
-        updated_at=base_time + timedelta(seconds=1),
-    )
-    spans.append(child_a)
-
-    # Grandchild A1 without task_id
-    grandchild_a1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="grandchild_a1",
-        task_id=None,  # No task_id - should be propagated from grandparent
-        parent_span_id="child_a",
-        span_kind="TOOL",
-        start_time=base_time + timedelta(seconds=2),
-        end_time=base_time + timedelta(seconds=3),
-        raw_data={"tool": "calculator"},
-        created_at=base_time + timedelta(seconds=2),
-        updated_at=base_time + timedelta(seconds=2),
-    )
-    spans.append(grandchild_a1)
-
-    # Grandchild A2 without task_id
-    grandchild_a2 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="grandchild_a2",
-        task_id=None,  # No task_id - should be propagated from grandparent
-        parent_span_id="child_a",
-        span_kind="RETRIEVER",
-        start_time=base_time + timedelta(seconds=3),
-        end_time=base_time + timedelta(seconds=4),
-        raw_data={"retriever": "vector_db"},
-        created_at=base_time + timedelta(seconds=3),
-        updated_at=base_time + timedelta(seconds=3),
-    )
-    spans.append(grandchild_a2)
-
-    # Child B without task_id
-    child_b = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="child_b",
-        task_id=None,  # No task_id - should be propagated from parent
-        parent_span_id="root_span",
-        span_kind="AGENT",
-        start_time=base_time + timedelta(seconds=4),
-        end_time=base_time + timedelta(seconds=5),
-        raw_data={"agent": "reasoning"},
-        created_at=base_time + timedelta(seconds=4),
-        updated_at=base_time + timedelta(seconds=4),
-    )
-    spans.append(child_b)
-
-    # Grandchild B1 without task_id
-    grandchild_b1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="propagation_trace",
-        span_id="grandchild_b1",
-        task_id=None,  # No task_id - should be propagated from grandparent
-        parent_span_id="child_b",
-        span_kind="EMBEDDING",
-        start_time=base_time + timedelta(seconds=5),
-        end_time=base_time + timedelta(seconds=6),
-        raw_data={"embedding": "text-embedding"},
-        created_at=base_time + timedelta(seconds=5),
-        updated_at=base_time + timedelta(seconds=5),
-    )
-    spans.append(grandchild_b1)
-
-    # Store spans in database
-    spans_to_store = [span.model_dump() for span in spans]
-    [span.pop("metric_results") for span in spans_to_store]
-    span_repo._store_spans(spans_to_store)
-
-    yield spans
-
-    # Cleanup: Delete all created spans from the database after the test
-    span_ids = [span.span_id for span in spans]
-    _delete_spans_from_db(db_session, span_ids)
-
-
-@pytest.fixture(scope="function")
-def sample_llm_span_with_features() -> bytes:
-    """Create a sample LLM span with conversation features for testing."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Create span with LLM features
-    span = Span()
-    span.trace_id = b"test_trace_id_123"
-    span.span_id = b"test_span_id_456"
-    span.name = "test_llm_span"
-    span.kind = Span.SPAN_KIND_INTERNAL
-    span.start_time_unix_nano = int(datetime.now().timestamp() * 1e9)
-    span.end_time_unix_nano = int(
-        (datetime.now() + timedelta(seconds=1)).timestamp() * 1e9,
-    )
-
-    # Add LLM-specific attributes
-    input_messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is the weather like today?"},
-    ]
-
-    output_messages = [
-        {
-            "role": "assistant",
-            "content": "I don't have access to real-time weather information.",
-        },
-    ]
-
-    attributes = [
-        KeyValue(key="openinference.span.kind", value=AnyValue(string_value="LLM")),
-        KeyValue(key="llm.model_name", value=AnyValue(string_value="gpt-4")),
-        KeyValue(
-            key="input.mime_type",
-            value=AnyValue(string_value="application/json"),
-        ),
-        KeyValue(
-            key="input.value",
-            value=AnyValue(string_value=json.dumps(input_messages)),
-        ),
-        KeyValue(
-            key="output.mime_type",
-            value=AnyValue(string_value="application/json"),
-        ),
-        KeyValue(
-            key="output.value",
-            value=AnyValue(string_value=json.dumps(output_messages)),
-        ),
-        KeyValue(
-            key="metadata",
-            value=AnyValue(string_value='{"arthur.task": "test_task"}'),
-        ),
-    ]
-
-    span.attributes.extend(attributes)
-    scope_span.spans.append(span)
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    return trace_request.SerializeToString()
-
-
-@pytest.fixture(scope="function")
-def sample_non_llm_span() -> bytes:
-    """Create a sample non-LLM span for testing."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Create span without LLM features
-    span = Span()
-    span.trace_id = b"test_trace_id_789"
-    span.span_id = b"test_span_id_012"
-    span.name = "test_chain_span"
-    span.kind = Span.SPAN_KIND_INTERNAL
-    span.start_time_unix_nano = int(datetime.now().timestamp() * 1e9)
-    span.end_time_unix_nano = int(
-        (datetime.now() + timedelta(seconds=1)).timestamp() * 1e9,
-    )
-
-    # Add non-LLM attributes
-    attributes = [
-        KeyValue(key="openinference.span.kind", value=AnyValue(string_value="CHAIN")),
-        KeyValue(
-            key="metadata",
-            value=AnyValue(string_value='{"arthur.task": "test_task"}'),
-        ),
-    ]
-
-    span.attributes.extend(attributes)
-    scope_span.spans.append(span)
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    return trace_request.SerializeToString()
