@@ -16,11 +16,9 @@ repos:
             genai-engine/tests/mocks|
             genai-engine/tests/constants.py|
             genai-engine/tests/clients|
-            arthur-common/tests/test_data/|
             ml-engine/tests/unit/connectors/helpers.py|
             ml-engine/tests/unit/mock_data/mock_data_generator.py|
-            ml-engine/tests/unit/mock_data/api_mock_helpers.py|
-            arthur-common/tests/unit/aggregation_functions/helpers.py
+            ml-engine/tests/unit/mock_data/api_mock_helpers.py
           )
   - repo: https://github.com/pycqa/autoflake
     rev: v2.2.1
@@ -75,14 +73,6 @@ repos:
         language: system
         always_run: false
         files: ^genai-engine/src/schemas/
-      - id: arthur-common-pytest-check
-        name: "arthur-common: pytest unit tests and coverage"
-        entry: poetry -C arthur-common run pytest tests/ --cov=arthur_common --cov-fail-under=45
-        language: system
-        types: [python]
-        pass_filenames: false
-        always_run: false
-        files: ^arthur-common/src/
       - id: ml-engine-pytest-check
         name: "ml-engine: pytest unit tests"
         entry: poetry -C ml-engine run pytest tests/unit
