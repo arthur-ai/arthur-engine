@@ -1,5 +1,6 @@
 import pathlib
 
+from arthur_common.config.config import Config as arthur_common_config
 from simple_settings import LazySettings
 
 # get the current directory of this file
@@ -25,3 +26,10 @@ class Config:
         if isinstance(value, str):
             return value.lower() in ["true", "1", "yes"]
         raise ValueError(f"Invalid value for {key}: {value}")
+
+    @staticmethod
+    def segmentation_col_count_limit() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.SEGMENTATION_COL_COUNT_LIMIT,
+            "SEGMENTATION_COL_COUNT_LIMIT",
+        )

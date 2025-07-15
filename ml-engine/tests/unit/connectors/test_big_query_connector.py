@@ -1,15 +1,12 @@
-import json
 import logging
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 import pytz
 from arthur_client.api_bindings import (
-    ConnectorFieldDataType,
     ConnectorSpec,
-    ConnectorType,
     Dataset,
     DatasetColumn,
     DatasetLocator,
@@ -17,7 +14,6 @@ from arthur_client.api_bindings import (
     DatasetScalarType,
     DatasetSchema,
     Definition,
-    ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
     BIG_QUERY_DATASET_DATASET_ID_FIELD,
@@ -26,124 +22,9 @@ from arthur_common.models.connectors import (
 )
 from arthur_common.models.datasets import ModelProblemType
 from connectors.big_query_connector import BigQueryConnector
+from mock_data.connector_helpers import *
 
 logger = logging.getLogger("job_logger")
-
-
-@pytest.fixture
-def mock_bigquery_client():
-    with patch("google.cloud.bigquery.Client") as mock_client, patch(
-        "google.oauth2.service_account.Credentials.from_service_account_info",
-    ) as mock_creds:
-        mock_creds.return_value = Mock()
-        yield mock_client.return_value
-
-
-MOCK_BQ_CONNECTOR_SPEC = {
-    "created_at": datetime.now(timezone.utc),
-    "updated_at": datetime.now(timezone.utc),
-    "id": str(uuid4()),
-    "connector_type": ConnectorType.BIGQUERY.value,
-    "name": "Mock Big Query Connector Spec",
-    "temporary": False,
-    "fields": [
-        {
-            "key": "project_id",
-            "value": "my_project_id",
-            "is_sensitive": False,
-            "d_type": ConnectorFieldDataType.STRING.value,
-        },
-        {
-            "key": "credentials",
-            "value": json.dumps(
-                {
-                    "type": "service_account",
-                    "project_id": "my_project_id",
-                    "private_key_id": "mock_private_key_id",
-                    "private_key": "-----BEGIN PRIVATE KEY-----\nMOCK_PRIVATE_KEY\n-----END PRIVATE KEY-----\n",
-                    "client_email": "mock-service-account@my-project.iam.gserviceaccount.com",
-                    "client_id": "123456789",
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                },
-            ),
-            "is_sensitive": True,
-            "d_type": ConnectorFieldDataType.DICT.value,
-        },
-    ],
-    "last_updated_by_user": None,
-    "connector_check_result": None,
-    "project_id": str(uuid4()),
-    "data_plane_id": str(uuid4()),
-}
-
-MOCK_BQ_DATASET = {
-    "id": str(uuid4()),
-    "created_at": datetime.now(timezone.utc),
-    "updated_at": datetime.now(timezone.utc),
-    "project_id": str(uuid4()),
-    "connector_id": str(uuid4()),
-    "data_plane_id": str(uuid4()),
-    "dataset_locator": DatasetLocator(
-        fields=[
-            DatasetLocatorField(
-                key=BIG_QUERY_DATASET_TABLE_NAME_FIELD,
-                value="test_table",
-            ),
-            DatasetLocatorField(
-                key=BIG_QUERY_DATASET_DATASET_ID_FIELD,
-                value="test_dataset",
-            ),
-        ],
-    ),
-    "model_problem_type": ModelProblemType.BINARY_CLASSIFICATION.value,
-    "dataset_schema": DatasetSchema(
-        alias_mask={},
-        columns=[
-            DatasetColumn(
-                id="6715c83c-7653-4fbd-9bd7-3d1ebc60049b",
-                source_name="id",
-                definition=Definition(
-                    DatasetScalarType(
-                        tag_hints=[],
-                        nullable=False,
-                        id="bccf8f64-8910-4786-8c41-a266fe42c349",
-                        dtype="uuid",
-                    ),
-                ),
-            ),
-            DatasetColumn(
-                id="981a56d2-921e-4d64-9ead-b22b6923a69b",
-                source_name="name",
-                definition=Definition(
-                    DatasetScalarType(
-                        tag_hints=[],
-                        nullable=False,
-                        id="dbb003d7-8980-4a62-92d5-49835cd4d942",
-                        dtype="str",
-                    ),
-                ),
-            ),
-            DatasetColumn(
-                id="782fd973-efef-43cb-a3da-f864d9142ea4",
-                source_name="timestamp",
-                definition=Definition(
-                    DatasetScalarType(
-                        tag_hints=[ScopeSchemaTag.PRIMARY_TIMESTAMP],
-                        nullable=False,
-                        id="c51e8d04-eaa7-460c-9c39-6eed75d16401",
-                        dtype="timestamp",
-                    ),
-                ),
-            ),
-        ],
-        column_names={
-            "id": "6715c83c-7653-4fbd-9bd7-3d1ebc60049b",
-            "name": "981a56d2-921e-4d64-9ead-b22b6923a69b",
-            "timestamp": "782fd973-efef-43cb-a3da-f864d9142ea4",
-        },
-    ),
-}
 
 
 MOCK_BQ_DATASET_NO_TIMESTAMP_TAG = {
