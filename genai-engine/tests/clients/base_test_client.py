@@ -1171,21 +1171,19 @@ class GenaiEngineTestClientBase(httpx.Client):
 
     def query_spans(
         self,
+        task_ids: list[str],
         trace_ids: list[str] | None = None,
-        span_ids: list[str] | None = None,
-        task_ids: list[str] | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
     ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
-        """Query spans with filters. Returns spans with any existing metrics but does not compute new ones.
+        """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
 
         Args:
-            trace_ids: Trace IDs to filter on
-            span_ids: Span IDs to filter on
-            task_ids: Task IDs to filter on
+            task_ids: Task IDs to filter on (required)
+            trace_ids: Trace IDs to filter on (optional)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
@@ -1195,13 +1193,9 @@ class GenaiEngineTestClientBase(httpx.Client):
         Returns:
             tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
         """
-        params = {}
+        params = {"task_ids": task_ids}
         if trace_ids is not None:
             params["trace_ids"] = trace_ids
-        if span_ids is not None:
-            params["span_ids"] = span_ids
-        if task_ids is not None:
-            params["task_ids"] = task_ids
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:

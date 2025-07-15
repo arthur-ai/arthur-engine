@@ -96,7 +96,7 @@ def receive_traces(
 
 @span_routes.get(
     "/traces/query",
-    description="Query spans with filters. Returns spans with any existing metrics but does not compute new ones.",
+    description="Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
     response_model=QuerySpansWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
@@ -107,17 +107,14 @@ def query_spans(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
     trace_ids: list[str] = Query(
         None,
-        description="Trace IDs to filter on.",
-    ),
-    span_ids: list[str] = Query(
-        None,
-        description="Span IDs to filter on.",
-    ),
-    task_ids: list[str] = Query(
-        None,
-        description="Task IDs to filter on.",
+        description="Trace IDs to filter on. Optional.",
     ),
     start_time: datetime = Query(
         None,
@@ -130,13 +127,12 @@ def query_spans(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Query spans with filters. Returns spans with any existing metrics but does not compute new ones."""
+    """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
     try:
         span_repo = _get_span_repository(db_session)
         spans = span_repo.query_spans(
-            trace_ids=trace_ids,
-            span_ids=span_ids,
             task_ids=task_ids,
+            trace_ids=trace_ids,
             start_time=start_time,
             end_time=end_time,
             sort=pagination_parameters.sort,
@@ -147,6 +143,9 @@ def query_spans(
         )
         spans = [span._to_metrics_response_model() for span in spans]
         return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+    except ValueError as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error querying spans: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -73,7 +73,6 @@ class SpanRepository:
         page: int,
         page_size: int = DEFAULT_PAGE_SIZE,
         trace_ids: Optional[list[str]] = None,
-        span_ids: Optional[list[str]] = None,
         task_ids: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
@@ -82,6 +81,9 @@ class SpanRepository:
     ) -> list[Span]:
         """Query spans with optional metrics computation."""
         # Validate parameters
+        if not task_ids:
+            raise ValueError("task_ids are required for span queries")
+
         if include_metrics and compute_new_metrics and not task_ids:
             raise ValueError(
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
@@ -98,7 +100,6 @@ class SpanRepository:
         # Query spans from database
         spans = self._query_spans_from_db(
             trace_ids=trace_ids,
-            span_ids=span_ids,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
@@ -169,7 +170,6 @@ class SpanRepository:
     def _query_spans_from_db(
         self,
         trace_ids: Optional[list[str]] = None,
-        span_ids: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
@@ -177,7 +177,6 @@ class SpanRepository:
         """Query spans from database with given filters."""
         query = self._build_spans_query(
             trace_ids=trace_ids,
-            span_ids=span_ids,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
@@ -296,7 +295,12 @@ class SpanRepository:
         if not spans:
             return {}
 
-        metrics_engine = get_metrics_engine()
+        try:
+            metrics_engine = get_metrics_engine()
+        except Exception as e:
+            logger.error(f"Error getting metrics engine: {e}")
+            return {}
+
         metrics_results = {}
 
         logger.debug(f"Computing metrics for {len(spans)} spans")
@@ -436,7 +440,6 @@ class SpanRepository:
     def _build_spans_query(
         self,
         trace_ids: Optional[list[str]] = None,
-        span_ids: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
@@ -448,8 +451,6 @@ class SpanRepository:
         conditions = []
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
-        if span_ids:
-            conditions.append(DatabaseSpan.span_id.in_(span_ids))
         if start_time:
             conditions.append(DatabaseSpan.created_at >= start_time)
         if end_time:
