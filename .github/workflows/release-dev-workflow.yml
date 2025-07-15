@@ -1,0 +1,133 @@
+name: Release Dev
+
+on:
+  workflow_run:
+    workflows: ["Version Management"]
+    types:
+      - completed
+    branches:
+      - dev
+
+jobs:
+  build-docker-images-genai-engine:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        torch_device: [cpu, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/get-version
+        with:
+          environment-suffix: "-dev"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: "{{defaultContext}}:genai-engine"
+          file: dockerfile
+          build-args: |
+            TORCH_DEVICE=${{ matrix.torch_device }}
+            ENABLE_TELEMETRY='false'
+          tags: |
+            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+          push: true
+          platforms: linux/amd64
+
+  build-docker-images-ml-engine:
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/get-version
+        with:
+          environment-suffix: "-dev"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.10.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: "{{defaultContext}}:ml-engine"
+          file: dockerfile
+          build-args: |
+            tags: |
+              arthurplatform/ml-engine:${{ env.VERSION }}
+          push: true
+          platforms: linux/amd64
+
+  push-cf-template:
+    needs: [build-docker-images-genai-engine, build-docker-images-ml-engine]
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-2
+      BUCKET_NAME: arthur-cft
+      TEMPLATES_DIRECTORY: arthur-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-git
+      - uses: ./.github/workflows/composite-actions/get-version
+        with:
+          environment-suffix: "-dev"
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: push cf template
+        run: |
+          echo "Pushing Cloudformation template for ${{ env.VERSION }}"
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-cpu.yml
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-gpu.yml
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-cpu.yml
+          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-gpu.yml
+          aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
+          aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
+
+  push-helm-chart-to-github-dev:
+    needs: [build-docker-images-genai-engine, build-docker-images-ml-engine]
+    environment: shared-protected-branch-secrets
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/workflows/composite-actions/setup-helm
+      - uses: ./.github/workflows/composite-actions/get-version
+        with:
+          environment-suffix: "-dev"
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Package and Push Helm chart
+        env:
+          CHART_PATH_GENAI_ENGINE: "deployment/helm/genai-engine"
+          CHART_PATH_ML_ENGINE: "deployment/helm/ml-engine"
+          CHART_NAMESPACE: charts-dev
+        run: |
+          helm package ${CHART_PATH_GENAI_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
+          helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
+          helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
+          helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}

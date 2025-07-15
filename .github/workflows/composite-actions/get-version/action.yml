@@ -1,0 +1,16 @@
+name: 'Get Version'
+description: 'Gets the version from the version file'
+
+inputs:
+  environment-suffix:
+    description: 'Suffix to add to the version (e.g., "-dev" or "")'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Get version'
+      shell: bash
+      run: |
+        echo "VERSION=$(cat version)${{ inputs.environment-suffix }}" >> $GITHUB_ENV
