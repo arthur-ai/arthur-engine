@@ -1,7 +1,7 @@
 FROM python:3.13-slim AS install
 
 # install poetry
-RUN pip install poetry==2.1.3
+RUN pip install "poetry>=2"
 
 # install dependencies
 COPY pyproject.toml /app/
