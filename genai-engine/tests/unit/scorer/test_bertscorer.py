@@ -6,7 +6,8 @@ import torch
 from langchain.chat_models import AzureChatOpenAI
 
 from schemas.enums import MetricType
-from schemas.metric_schemas import MetricRequest, MetricResult
+from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import MetricResult
 from scorer.metrics.relevance.relevance import QueryBertScorer, ResponseBertScorer
 from utils import utils
 
@@ -34,7 +35,7 @@ def test_relevance_bertscorer_init(
 @pytest.mark.unit_tests
 def test_user_query_bertscore(mock_bert_model):
     # Arrange
-    expected_f_score = 0.6568
+    expected_f_score = 0.66
     mock_bert_model.return_value.score.return_value = (
         None,
         None,
@@ -42,21 +43,21 @@ def test_user_query_bertscore(mock_bert_model):
     )
 
     scorer = QueryBertScorer()
-    mock_request = Mock(user_prompt="Test prompt", system_prompt="Test system prompt")
+    mock_request = Mock(user_query="Test prompt", system_prompt="Test system prompt")
 
     # Act
     score = scorer.score(mock_request)
 
     # Assert
     mock_bert_model.return_value.score.assert_called_once_with(
-        [mock_request.user_prompt],
+        [mock_request.user_query],
         [mock_request.system_prompt],
         verbose=False,
     )
 
     assert isinstance(score, MetricResult)
     assert score.metric_type == MetricType.QUERY_RELEVANCE
-    assert round(score.details.query_relevance.bert_f_score, 4) == expected_f_score
+    assert score.details.query_relevance.bert_f_score == expected_f_score
     assert score.prompt_tokens == 0
     assert score.completion_tokens == 0
 
@@ -66,7 +67,7 @@ def test_user_query_bertscore(mock_bert_model):
 @pytest.mark.unit_tests
 def test_user_response_bertscore(mock_bert_model):
     # Arrange
-    expected_f_score = 0.6568
+    expected_f_score = 0.66
     mock_bert_model.return_value.score.return_value = (
         None,
         None,
@@ -75,9 +76,9 @@ def test_user_response_bertscore(mock_bert_model):
 
     scorer = ResponseBertScorer()
     mock_request = Mock(
-        user_prompt="Test prompt",
+        user_query="Test prompt",
         system_prompt="Test system prompt",
-        llm_response="Test response",
+        response="Test response",
     )
 
     # Act
@@ -85,14 +86,14 @@ def test_user_response_bertscore(mock_bert_model):
 
     # Assert
     mock_bert_model.return_value.score.assert_called_once_with(
-        [mock_request.llm_response],
+        [mock_request.response],
         [mock_request.system_prompt],
         verbose=False,
     )
 
     assert isinstance(score, MetricResult)
     assert score.metric_type == MetricType.RESPONSE_RELEVANCE
-    assert round(score.details.response_relevance.bert_f_score, 4) == expected_f_score
+    assert score.details.response_relevance.bert_f_score == expected_f_score
     assert score.prompt_tokens == 0
     assert score.completion_tokens == 0
 
