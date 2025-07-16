@@ -98,9 +98,13 @@ jobs:
         with:
           working-directory: genai-engine
       - name: Run unit tests
+        shell: bash
         run: |
           set -o pipefail
-          poetry -C genai-engine run pytest --cov --cov=genai-engine/src --cov-report term --junitxml=report.xml -m "unit_tests" | tee pytest-coverage.txt
+          poetry -C genai-engine run pytest --cov --cov=genai-engine/src \
+            --cov-report term \
+            --junitxml=genai-engine/report.xml \
+            -m "unit_tests" | tee pytest-coverage.txt
       - name: Pytest coverage comment
         if: always()
         uses: MishaKav/pytest-coverage-comment@main
