@@ -2,6 +2,22 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 07/16/2025
+- **BREAKING CHANGE** for **URL**: /v1/spans/query  api path removed without deprecation
+- **CHANGE** for Component/Schema:  removed the schema 'QuerySpansResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'SpanResponse'
+- **CHANGE** for **URL**: /api/v2/tasks  added the required property '/items/metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks  added the required property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/search  added the required property 'tasks/items/metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added the required property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added the required property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /v1/traces/metrics/  endpoint added
+- **CHANGE** for **URL**: /v1/traces/query  endpoint added
+
 # 06/11/2025
 - **CHANGE** for **URL**: /v1/spans/query  endpoint added
 - **CHANGE** for **URL**: /v1/traces  endpoint added

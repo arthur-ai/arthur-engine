@@ -537,10 +537,7 @@ class SpanRepository:
         span_dict = self._extract_basic_span_info(normalized_span_data)
 
         # Extract and validate task_id
-        task_id = self._extract_and_validate_task_id(
-            normalized_span_data,
-            span_dict.get("parent_span_id"),
-        )
+        task_id = self._extract_and_validate_task_id(normalized_span_data)
         span_dict["task_id"] = task_id
 
         # Inject version into raw data
@@ -579,22 +576,11 @@ class SpanRepository:
     def _extract_and_validate_task_id(
         self,
         span_data: dict,
-        parent_span_id: Optional[str],
     ) -> Optional[str]:
-        """Extract task_id from span data or parent span."""
+        """Extract task_id from span data."""
         # Extract metadata and task_id from normalized attributes
         metadata = self._get_metadata(span_data)
-        task_id = metadata.get(TASK_ID_KEY)
-
-        # If no task ID in current span, try to get it from parent span
-        if not task_id and parent_span_id:
-            task_id = self._get_task_id_from_parent(parent_span_id)
-            if task_id:
-                logger.debug(
-                    f"Using task ID from parent span {parent_span_id}: {task_id}",
-                )
-
-        return task_id
+        return metadata.get(TASK_ID_KEY)
 
     def _normalize_span_attributes(self, span_data: dict) -> dict:
         """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
@@ -635,22 +621,6 @@ class SpanRepository:
         if "parentSpanId" in span_data:
             return trace_utils.convert_id_to_hex(span_data.get("parentSpanId"))
         return None
-
-    def _get_task_id_from_parent(self, parent_span_id: str) -> Optional[str]:
-        """Get the task ID from a parent span if it exists in the database."""
-        if not parent_span_id:
-            return None
-
-        try:
-            parent_span = (
-                self.db_session.query(DatabaseSpan)
-                .filter(DatabaseSpan.span_id == parent_span_id)
-                .first()
-            )
-            return parent_span.task_id if parent_span else None
-        except Exception as e:
-            logger.warning(f"Error retrieving parent span {parent_span_id}: {e}")
-            return None
 
     def _extract_timestamps(
         self,

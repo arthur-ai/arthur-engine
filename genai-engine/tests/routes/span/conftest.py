@@ -207,12 +207,12 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     )
     spans.append(span1)
 
-    # Span 2: Task1, Trace1 - CHAIN span with parent (no task_id propagation)
+    # Span 2: Task1, Trace1 - CHAIN span with parent
     span2 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace1",
         span_id="span2",
-        task_id=None,  # No task_id - should not be propagated from parent
+        task_id=None,  # No task_id - spans without task_id are not processed for metrics
         parent_span_id="span1",
         span_kind="CHAIN",
         start_time=base_time - timedelta(days=1),
@@ -259,12 +259,12 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     )
     spans.append(span3)
 
-    # Span 4: Task2, Trace2 - RETRIEVER span with parent (no task_id propagation)
+    # Span 4: Task2, Trace2 - RETRIEVER span with parent
     span4 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace2",
         span_id="span4",
-        task_id=None,  # No task_id - should not be propagated from parent
+        task_id=None,  # No task_id - spans without task_id are not processed for metrics
         parent_span_id="span3",
         span_kind="RETRIEVER",
         start_time=base_time + timedelta(days=1),
