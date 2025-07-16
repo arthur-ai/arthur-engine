@@ -30,6 +30,14 @@ logger = logging.getLogger()
 DEFAULT_MODEL = "microsoft/deberta-xlarge-mnli"
 
 
+def round_score(score) -> float:
+    """
+    Rounds a score to consistent precision for all relevance metrics.
+    Single source of truth for score rounding precision.
+    """
+    return round(float(score), 2)
+
+
 # Schemas to force JSON output to the right format
 class QueryRelevanceResponseSchema(BaseModel):
     relevance_score: float = Field(
@@ -117,7 +125,7 @@ class UserQueryRelevanceScorer(MetricScorer):
 
     def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
-        use_llm_judge = config.get("use_llm_judge", False)
+        use_llm_judge = config.get("use_llm_judge", True)
         query = request.user_query
         system_prompt = request.system_prompt
         # truncate the query and system prompt to 200 words
@@ -150,9 +158,9 @@ class UserQueryRelevanceScorer(MetricScorer):
                 metric_type=MetricType.QUERY_RELEVANCE,
                 details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
-                        bert_f_score=bert_f_score,
-                        reranker_relevance_score=relevance_score,
-                        llm_relevance_score=llm_judge_response["relevance_score"],
+                        bert_f_score=round_score(bert_f_score),
+                        reranker_relevance_score=round_score(relevance_score),
+                        llm_relevance_score=round_score(llm_judge_response["relevance_score"]),
                         reason=llm_judge_response["justification"],
                         refinement=llm_judge_response["suggested_refinement"],
                     ),
@@ -167,8 +175,8 @@ class UserQueryRelevanceScorer(MetricScorer):
                 metric_type=MetricType.QUERY_RELEVANCE,
                 details=MetricScoreDetails(
                     query_relevance=QueryRelevanceMetric(
-                        bert_f_score=bert_f_score,
-                        reranker_relevance_score=relevance_score,
+                        bert_f_score=round_score(bert_f_score),
+                        reranker_relevance_score=round_score(relevance_score),
                         llm_relevance_score=0,
                         reason=None,
                         refinement=None,
@@ -193,7 +201,7 @@ class ResponseRelevanceScorer(MetricScorer):
 
     def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
-        use_llm_judge = config.get("use_llm_judge", False)
+        use_llm_judge = config.get("use_llm_judge", True)
         query = request.user_query
         response = request.response
         system_prompt = request.system_prompt
@@ -230,9 +238,9 @@ class ResponseRelevanceScorer(MetricScorer):
                 metric_type=MetricType.RESPONSE_RELEVANCE,
                 details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
-                        bert_f_score=bert_f_score,
-                        reranker_relevance_score=relevance_score,
-                        llm_relevance_score=llm_judge_response["relevance_score"],
+                        bert_f_score=round_score(bert_f_score),
+                        reranker_relevance_score=round_score(relevance_score),
+                        llm_relevance_score=round_score(llm_judge_response["relevance_score"]),
                         reason=llm_judge_response["justification"],
                         refinement=llm_judge_response["suggested_refinement"],
                     ),
@@ -247,8 +255,8 @@ class ResponseRelevanceScorer(MetricScorer):
                 metric_type=MetricType.RESPONSE_RELEVANCE,
                 details=MetricScoreDetails(
                     response_relevance=ResponseRelevanceMetric(
-                        bert_f_score=bert_f_score,
-                        reranker_relevance_score=relevance_score,
+                        bert_f_score=round_score(bert_f_score),
+                        reranker_relevance_score=round_score(relevance_score),
                         llm_relevance_score=0,
                         reason=None,
                         refinement=None,
@@ -308,7 +316,7 @@ class QueryBertScorer(BertRelevanceScorer):
     def create_metric_details(self, f_scores) -> MetricScoreDetails:
         return MetricScoreDetails(
             query_relevance=QueryRelevanceMetric(
-                bert_f_score=f_scores,
+                bert_f_score=round_score(f_scores),
                 reranker_relevance_score=0,
                 llm_relevance_score=None,
                 reason=None,
@@ -329,7 +337,7 @@ class ResponseBertScorer(BertRelevanceScorer):
     def create_metric_details(self, f_scores) -> MetricScoreDetails:
         return MetricScoreDetails(
             response_relevance=ResponseRelevanceMetric(
-                bert_f_score=f_scores,
+                bert_f_score=round_score(f_scores),
                 reranker_relevance_score=0,
                 llm_relevance_score=None,
                 reason=None,

@@ -99,15 +99,17 @@ jobs:
           working-directory: genai-engine
       - name: Run unit tests
         run: |
+          set -o pipefail
           poetry -C genai-engine run pytest --cov --cov=genai-engine/src --cov-report term --junitxml=report.xml -m "unit_tests" | tee pytest-coverage.txt
       - name: Pytest coverage comment
+        if: always()
         uses: MishaKav/pytest-coverage-comment@main
         with:
           pytest-coverage-path: pytest-coverage.txt
           junitxml-path: genai-engine/report.xml
           title: Coverage Report
       - name: Upload coverage report
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
