@@ -1,4 +1,5 @@
-TOOL_SELECTION_PROMPT_TEMPLATE = """
+# Structured output prompt templates (without format_instructions)
+TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE = """
     You are tasked with evaluating whether an AI agent correctly selected a tool to respond to a user's question. You do **not** need to evaluate how the tool was used—only whether the correct tool was selected.
 
     **Inputs:**
@@ -20,8 +21,6 @@ TOOL_SELECTION_PROMPT_TEMPLATE = """
     - If multiple tools are valid, indicate the best choice and why.
 
     ---
-    {format_instructions}
-    ---
     Now, perform this evaluation based on the following inputs:
 
     **System Prompt:**
@@ -34,7 +33,7 @@ TOOL_SELECTION_PROMPT_TEMPLATE = """
     {context}
 """
 
-TOOL_USAGE_PROMPT_TEMPLATE = """
+TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE = """
     You are tasked with evaluating whether an AI agent correctly **used** a tool to respond to a user's question,, i.e. the right parameters were provided to the tool. You do **not** need to evaluate whether the correct tool was chosen — only whether the tool used was executed correctly.
 
     **Inputs:**
@@ -57,9 +56,6 @@ TOOL_USAGE_PROMPT_TEMPLATE = """
     - If the query is ambiguous, note if the AI should have asked for clarification.
 
     ---
-    {format_instructions}
-
-    ---
     Now, perform this evaluation based on the following inputs:
 
     **System Prompt:**
@@ -70,4 +66,24 @@ TOOL_USAGE_PROMPT_TEMPLATE = """
 
     **Context:**
     {context}
-""" 
+"""
+
+# Legacy prompt templates (with format_instructions)
+TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE = (
+    TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE
+    + """
+
+    ---
+    {format_instructions}
+    ---"""
+)
+
+TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE = (
+    TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE
+    + """
+
+    ---
+    {format_instructions}
+
+    ---"""
+)

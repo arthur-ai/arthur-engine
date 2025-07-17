@@ -16,19 +16,6 @@ from utils.utils import TracedThreadPoolExecutor
 tracer = trace.get_tracer(__name__)
 
 load_dotenv()
-# PROMPT_INJECTION_TOKEN_WARNING_LIMIT = 512
-# MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
-#     get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
-# )
-# MAX_HALLUCINATION_TOKEN_LIMIT = int(
-#     get_env_var(constants.GENAI_ENGINE_HALLUCINATION_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
-# )
-# MAX_TOXICITY_TOKEN_LIMIT = int(
-#     get_env_var(constants.GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT_ENV_VAR, True)
-#     or 1200,
-# )
-
-# ZERO_TOKEN_CONSUMPTION = LLMTokenConsumption(prompt_tokens=0, completion_tokens=0)
 
 logger = logging.getLogger(__name__)
 

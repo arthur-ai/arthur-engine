@@ -12,8 +12,10 @@ from schemas.metric_schemas import (
 )
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.tool_selection.prompt_templates import (
-    TOOL_SELECTION_PROMPT_TEMPLATE,
-    TOOL_USAGE_PROMPT_TEMPLATE,
+    TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
+    TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
+    TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE,
+    TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
 )
 from scorer.scorer import MetricScorer
 
@@ -41,8 +43,32 @@ def get_model(temperature=0.0):
     return get_llm_executor().get_gpt_model(chat_temperature=temperature)
 
 
-# Chain to evaluate tool selection
-def get_tool_selection_chain(temperature=0.0):
+# Structured output chains
+def get_tool_selection_chain_structured(temperature=0.0):
+    """Structured output chain for tool selection"""
+    model = get_model(temperature)
+    pt = PromptTemplate(
+        input_variables=["system_prompt", "user_query", "context"],
+        template=TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE,
+    )
+    evaluation_chain = pt | model.with_structured_output(ToolSelectionResponseSchema)
+    return evaluation_chain
+
+
+def get_tool_usage_chain_structured(temperature=0.0):
+    """Structured output chain for tool usage"""
+    model = get_model(temperature)
+    pt = PromptTemplate(
+        input_variables=["system_prompt", "user_query", "context"],
+        template=TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
+    )
+    evaluation_chain = pt | model.with_structured_output(ToolUsageResponseSchema)
+    return evaluation_chain
+
+
+# Legacy chains with JSON parser
+def get_tool_selection_chain_legacy(temperature=0.0):
+    """Legacy chain for tool selection with JSON parser"""
     model = get_model(temperature)
     parser = JsonOutputParser(pydantic_object=ToolSelectionResponseSchema)
     pt = PromptTemplate(
@@ -50,14 +76,14 @@ def get_tool_selection_chain(temperature=0.0):
         partial_variables={
             "format_instructions": parser.get_format_instructions(),
         },
-        template=TOOL_SELECTION_PROMPT_TEMPLATE,
+        template=TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,
     )
     evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
-# Chain to evaluate tool usage
-def get_tool_usage_chain(temperature=0.0):
+def get_tool_usage_chain_legacy(temperature=0.0):
+    """Legacy chain for tool usage with JSON parser"""
     model = get_model(temperature)
 
     parser = JsonOutputParser(pydantic_object=ToolUsageResponseSchema)
@@ -66,18 +92,43 @@ def get_tool_usage_chain(temperature=0.0):
         partial_variables={
             "format_instructions": parser.get_format_instructions(),
         },
-        template=TOOL_USAGE_PROMPT_TEMPLATE,
+        template=TOOL_USAGE_NON_STRUCTURED_PROMPT_TEMPLATE,
     )
 
     evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
+# Legacy functions for backward compatibility
+def get_tool_selection_chain(temperature=0.0):
+    """Legacy function - uses structured outputs if supported, falls back to legacy"""
+    if get_llm_executor().supports_structured_outputs():
+        return get_tool_selection_chain_structured(temperature)
+    else:
+        return get_tool_selection_chain_legacy(temperature)
+
+
+def get_tool_usage_chain(temperature=0.0):
+    """Legacy function - uses structured outputs if supported, falls back to legacy"""
+    if get_llm_executor().supports_structured_outputs():
+        return get_tool_usage_chain_structured(temperature)
+    else:
+        return get_tool_usage_chain_legacy(temperature)
+
+
 class ToolSelectionCorrectnessScorer(MetricScorer):
     def __init__(self):
         super().__init__()
-        self.tool_selection_chain = get_tool_selection_chain()
-        self.tool_usage_chain = get_tool_usage_chain()
+
+    def _get_chains(self):
+        """Get the appropriate chains based on structured output support"""
+        if get_llm_executor().supports_structured_outputs():
+            return (
+                get_tool_selection_chain_structured(),
+                get_tool_usage_chain_structured(),
+            )
+        else:
+            return get_tool_selection_chain_legacy(), get_tool_usage_chain_legacy()
 
     @staticmethod
     def prompt_llm(f, operation_name: str):
@@ -85,8 +136,10 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         return get_llm_executor().execute(f, operation_name)
 
     def invoke_chain(self, user_query, system_prompt, context):
+        tool_selection_chain, tool_usage_chain = self._get_chains()
+
         # Create lambda for tool selection chain
-        tool_selection_call = lambda: self.tool_selection_chain.invoke(
+        tool_selection_call = lambda: tool_selection_chain.invoke(
             {
                 "system_prompt": system_prompt,
                 "user_query": user_query,
@@ -95,7 +148,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         )
 
         # Create lambda for tool usage chain
-        tool_usage_call = lambda: self.tool_usage_chain.invoke(
+        tool_usage_call = lambda: tool_usage_chain.invoke(
             {
                 "system_prompt": system_prompt,
                 "user_query": user_query,

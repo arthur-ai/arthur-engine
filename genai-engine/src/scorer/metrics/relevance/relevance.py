@@ -18,8 +18,10 @@ from schemas.metric_schemas import (
 )
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.metrics.relevance.prompt_templates import (
-    RESPONSE_RELEVANCE_PROMPT_TEMPLATE,
-    USER_QUERY_RELEVANCE_PROMPT_TEMPLATE,
+    RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
+    RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
+    USER_QUERY_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
+    USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
 )
 from scorer.scorer import MetricScorer
 from utils.classifiers import get_device
@@ -85,7 +87,19 @@ def get_relevance_reranker() -> TextClassificationPipeline:
     )
 
 
-def get_query_relevance_chain(temperature=0.0):
+def get_query_relevance_chain_structured(temperature=0.0):
+    """Structured output chain for query relevance"""
+    model = get_model(temperature)
+    pt = PromptTemplate(
+        input_variables=["system_prompt", "user_query"],
+        template=USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
+    )
+    evaluation_chain = pt | model.with_structured_output(QueryRelevanceResponseSchema)
+    return evaluation_chain
+
+
+def get_query_relevance_chain_legacy(temperature=0.0):
+    """Legacy chain for query relevance with JSON parser"""
     model = get_model(temperature)
 
     parser = JsonOutputParser(pydantic_object=QueryRelevanceResponseSchema)
@@ -94,13 +108,27 @@ def get_query_relevance_chain(temperature=0.0):
         partial_variables={
             "format_instructions": parser.get_format_instructions(),
         },
-        template=USER_QUERY_RELEVANCE_PROMPT_TEMPLATE,
+        template=USER_QUERY_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
     )
     evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
-def get_response_relevance_chain(temperature=0.0):
+def get_response_relevance_chain_structured(temperature=0.0):
+    """Structured output chain for response relevance"""
+    model = get_model(temperature)
+    pt = PromptTemplate(
+        input_variables=["system_prompt", "user_query", "response"],
+        template=RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
+    )
+    evaluation_chain = pt | model.with_structured_output(
+        ResponseRelevanceResponseSchema,
+    )
+    return evaluation_chain
+
+
+def get_response_relevance_chain_legacy(temperature=0.0):
+    """Legacy chain for response relevance with JSON parser"""
     model = get_model(temperature)
 
     parser = JsonOutputParser(pydantic_object=ResponseRelevanceResponseSchema)
@@ -109,19 +137,42 @@ def get_response_relevance_chain(temperature=0.0):
         partial_variables={
             "format_instructions": parser.get_format_instructions(),
         },
-        template=RESPONSE_RELEVANCE_PROMPT_TEMPLATE,
+        template=RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
     )
 
     evaluation_chain = pt | model | parser
     return evaluation_chain
 
 
+# Legacy functions for backward compatibility
+def get_query_relevance_chain(temperature=0.0):
+    """Legacy function - uses structured outputs if supported, falls back to legacy"""
+    if get_llm_executor().supports_structured_outputs():
+        return get_query_relevance_chain_structured(temperature)
+    else:
+        return get_query_relevance_chain_legacy(temperature)
+
+
+def get_response_relevance_chain(temperature=0.0):
+    """Legacy function - uses structured outputs if supported, falls back to legacy"""
+    if get_llm_executor().supports_structured_outputs():
+        return get_response_relevance_chain_structured(temperature)
+    else:
+        return get_response_relevance_chain_legacy(temperature)
+
+
 class UserQueryRelevanceScorer(MetricScorer):
     def __init__(self):
         super().__init__()
         self.relevance_reranker = get_relevance_reranker()
-        self.relevance_chain = get_query_relevance_chain()
         self.bert_scorer = QueryBertScorer()
+
+    def _get_relevance_chain(self):
+        """Get the appropriate relevance chain based on structured output support"""
+        if get_llm_executor().supports_structured_outputs():
+            return get_query_relevance_chain_structured()
+        else:
+            return get_query_relevance_chain_legacy()
 
     def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
@@ -139,7 +190,8 @@ class UserQueryRelevanceScorer(MetricScorer):
         bert_f_score = metric_score.details.query_relevance.bert_f_score
 
         if use_llm_judge:
-            chain_call = lambda: self.relevance_chain.invoke(
+            relevance_chain = self._get_relevance_chain()
+            chain_call = lambda: relevance_chain.invoke(
                 {
                     "user_query": request.user_query,
                     "system_prompt": request.system_prompt,
@@ -160,7 +212,9 @@ class UserQueryRelevanceScorer(MetricScorer):
                     query_relevance=QueryRelevanceMetric(
                         bert_f_score=round_score(bert_f_score),
                         reranker_relevance_score=round_score(relevance_score),
-                        llm_relevance_score=round_score(llm_judge_response["relevance_score"]),
+                        llm_relevance_score=round_score(
+                            llm_judge_response["relevance_score"],
+                        ),
                         reason=llm_judge_response["justification"],
                         refinement=llm_judge_response["suggested_refinement"],
                     ),
@@ -196,8 +250,14 @@ class ResponseRelevanceScorer(MetricScorer):
     def __init__(self):
         super().__init__()
         self.relevance_reranker = get_relevance_reranker()
-        self.relevance_chain = get_response_relevance_chain()
         self.bert_scorer = ResponseBertScorer()
+
+    def _get_relevance_chain(self):
+        """Get the appropriate relevance chain based on structured output support"""
+        if get_llm_executor().supports_structured_outputs():
+            return get_response_relevance_chain_structured()
+        else:
+            return get_response_relevance_chain_legacy()
 
     def score(self, request: MetricRequest, config: dict) -> MetricResult:
         """Scores user's query against system prompt for relevance"""
@@ -218,7 +278,8 @@ class ResponseRelevanceScorer(MetricScorer):
         bert_f_score = metric_score.details.response_relevance.bert_f_score
 
         if use_llm_judge:
-            chain_call = lambda: self.relevance_chain.invoke(
+            relevance_chain = self._get_relevance_chain()
+            chain_call = lambda: relevance_chain.invoke(
                 {
                     "user_query": request.user_query,
                     "system_prompt": request.system_prompt,
@@ -240,7 +301,9 @@ class ResponseRelevanceScorer(MetricScorer):
                     response_relevance=ResponseRelevanceMetric(
                         bert_f_score=round_score(bert_f_score),
                         reranker_relevance_score=round_score(relevance_score),
-                        llm_relevance_score=round_score(llm_judge_response["relevance_score"]),
+                        llm_relevance_score=round_score(
+                            llm_judge_response["relevance_score"],
+                        ),
                         reason=llm_judge_response["justification"],
                         refinement=llm_judge_response["suggested_refinement"],
                     ),
