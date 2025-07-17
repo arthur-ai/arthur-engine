@@ -18,7 +18,8 @@ repos:
             genai-engine/tests/clients|
             ml-engine/tests/unit/connectors/helpers.py|
             ml-engine/tests/unit/mock_data/mock_data_generator.py|
-            ml-engine/tests/unit/mock_data/api_mock_helpers.py
+            ml-engine/tests/unit/mock_data/api_mock_helpers.py|
+            ml-engine/tests/unit/mock_data/connector_helpers.py
           )
   - repo: https://github.com/pycqa/autoflake
     rev: v2.2.1

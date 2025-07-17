@@ -13,3 +13,7 @@ GENAI_ENGINE_INTERNAL_API_KEY: ""
 GENAI_ENGINE_INTERNAL_HOST: ""
 # host for connecting to shield from users, may be different for envs like docker compose
 GENAI_ENGINE_INTERNAL_INGRESS_HOST: ""
+###############################################
+# Aggregation Config settings
+SEGMENTATION_COL_COUNT_LIMIT: 3
+SEGMENTATION_COL_UNIQUE_VALUE_LIMIT: 100
