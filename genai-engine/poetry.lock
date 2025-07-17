@@ -157,14 +157,14 @@ tz = ["tzdata"]
 
 [[package]]
 name = "amplitude-analytics"
-version = "1.1.5"
+version = "1.2.0"
 description = "The official Amplitude backend Python SDK for server-side instrumentation."
 optional = false
 python-versions = "<4,>=3.6"
 groups = ["main"]
 files = [
-    {file = "amplitude_analytics-1.1.5-py3-none-any.whl", hash = "sha256:da7db1985087d2b9ef0456115d116525888f416e174ef79b53e1532be7a0b3bd"},
-    {file = "amplitude_analytics-1.1.5.tar.gz", hash = "sha256:2836fcf88d75506a1f266a5582253fdf592e14fafaf5783017baeec2118369d4"},
+    {file = "amplitude_analytics-1.2.0-py3-none-any.whl", hash = "sha256:bd3b43ba9a9249c13e61fef30afccc19435829d1f103cd2f26ab1692b28b282f"},
+    {file = "amplitude_analytics-1.2.0.tar.gz", hash = "sha256:99e5ac8a9c12cb0646eaeddf24dd89676b51355f311153922e5aafe5de88d80f"},
 ]
 
 [[package]]
