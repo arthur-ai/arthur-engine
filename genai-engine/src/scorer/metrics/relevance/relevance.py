@@ -205,6 +205,18 @@ class UserQueryRelevanceScorer(MetricScorer):
             except Exception as e:
                 return handle_llm_exception(e)
 
+            # Handle both structured output (Pydantic model) and legacy (dict) responses
+            if isinstance(llm_judge_response, QueryRelevanceResponseSchema):
+                # Structured output - use attribute access
+                relevance_score_llm = llm_judge_response.relevance_score
+                justification = llm_judge_response.justification
+                suggested_refinement = llm_judge_response.suggested_refinement
+            else:
+                # Legacy output - use dictionary access
+                relevance_score_llm = llm_judge_response["relevance_score"]
+                justification = llm_judge_response["justification"]
+                suggested_refinement = llm_judge_response["suggested_refinement"]
+
             return MetricResult(
                 id="",  # This will be set by the calling code
                 metric_type=MetricType.QUERY_RELEVANCE,
@@ -212,11 +224,9 @@ class UserQueryRelevanceScorer(MetricScorer):
                     query_relevance=QueryRelevanceMetric(
                         bert_f_score=round_score(bert_f_score),
                         reranker_relevance_score=round_score(relevance_score),
-                        llm_relevance_score=round_score(
-                            llm_judge_response["relevance_score"],
-                        ),
-                        reason=llm_judge_response["justification"],
-                        refinement=llm_judge_response["suggested_refinement"],
+                        llm_relevance_score=round_score(relevance_score_llm),
+                        reason=justification,
+                        refinement=suggested_refinement,
                     ),
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,
@@ -294,6 +304,18 @@ class ResponseRelevanceScorer(MetricScorer):
             except Exception as e:
                 return handle_llm_exception(e)
 
+            # Handle both structured output (Pydantic model) and legacy (dict) responses
+            if isinstance(llm_judge_response, ResponseRelevanceResponseSchema):
+                # Structured output - use attribute access
+                relevance_score_llm = llm_judge_response.relevance_score
+                justification = llm_judge_response.justification
+                suggested_refinement = llm_judge_response.suggested_refinement
+            else:
+                # Legacy output - use dictionary access
+                relevance_score_llm = llm_judge_response["relevance_score"]
+                justification = llm_judge_response["justification"]
+                suggested_refinement = llm_judge_response["suggested_refinement"]
+
             return MetricResult(
                 id="",  # This will be set by the calling code
                 metric_type=MetricType.RESPONSE_RELEVANCE,
@@ -301,11 +323,9 @@ class ResponseRelevanceScorer(MetricScorer):
                     response_relevance=ResponseRelevanceMetric(
                         bert_f_score=round_score(bert_f_score),
                         reranker_relevance_score=round_score(relevance_score),
-                        llm_relevance_score=round_score(
-                            llm_judge_response["relevance_score"],
-                        ),
-                        reason=llm_judge_response["justification"],
-                        refinement=llm_judge_response["suggested_refinement"],
+                        llm_relevance_score=round_score(relevance_score_llm),
+                        reason=justification,
+                        refinement=suggested_refinement,
                     ),
                 ),
                 prompt_tokens=token_consumption.prompt_tokens,

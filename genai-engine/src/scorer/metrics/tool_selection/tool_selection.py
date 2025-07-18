@@ -171,6 +171,9 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
                 tool_selection_call,
                 "Tool Selection Check",
             )
+            # Convert Pydantic model to dict if using structured outputs
+            if isinstance(tool_selection_response, ToolSelectionResponseSchema):
+                tool_selection_response = tool_selection_response.model_dump()
         except Exception as e:
             tool_selection_response, selection_tokens = (
                 default_tool_selection,
@@ -184,6 +187,9 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
                     tool_usage_call,
                     "Tool Usage Check",
                 )
+                # Convert Pydantic model to dict if using structured outputs
+                if isinstance(tool_usage_response, ToolUsageResponseSchema):
+                    tool_usage_response = tool_usage_response.model_dump()
             else:
                 tool_usage_response, usage_tokens = default_tool_usage, default_tokens
         except Exception as e:
