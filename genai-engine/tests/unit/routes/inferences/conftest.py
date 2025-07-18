@@ -4,6 +4,7 @@ import pytest
 from db_models.db_models import DatabaseInference
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.enums import RuleResultEnum, RuleScope
@@ -29,7 +30,8 @@ def create_task() -> Generator[Task, None, None]:
     application_config = get_application_config(session=db_session)
     request = NewTaskRequest(name="dummy_task_name")
     rules_repo = RuleRepository(db_session)
-    tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+    metric_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
     task = Task._from_request_model(request)
     task = tasks_repo.create_task(task)
 
@@ -67,7 +69,8 @@ def create_rule(create_task: Task) -> Generator[Rule, None, None]:
         apply_to_response=True,
     )
     rules_repo = RuleRepository(db_session)
-    tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+    metric_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
     new_rule = rules_repo.create_rule(
         Rule._from_request_model(request, scope=RuleScope.TASK),
     )

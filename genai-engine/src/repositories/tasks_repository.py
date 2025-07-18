@@ -1,12 +1,14 @@
-from db_models.db_models import DatabaseRule, DatabaseTask, DatabaseTaskToRules
+from db_models.db_models import DatabaseRule, DatabaseTask, DatabaseTaskToRules, DatabaseTaskToMetrics
 from fastapi import HTTPException
 from opentelemetry import trace
 from repositories.rules_repository import RuleRepository
+from repositories.metrics_repository import MetricRepository
 from schemas.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 from utils import constants
+from typing import Optional
 
 tracer = trace.get_tracer(__name__)
 
@@ -23,12 +25,14 @@ class TaskRepository:
         self,
         db_session: Session,
         rule_repository: RuleRepository,
+        metric_repository: MetricRepository,
         application_config: ApplicationConfiguration,
     ):
         self.db_session = db_session
         self.rule_repository = rule_repository
+        self.metric_repository = metric_repository
         self.app_config = application_config
-
+        
     @tracer.start_as_current_span("query_tasks")
     def query_tasks(
         self,
@@ -98,6 +102,9 @@ class TaskRepository:
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
+        
+        for link in db_task.metric_links:
+            self.metric_repository.archive_metric(link.metric_id)
         db_task.archived = True
         self.db_session.commit()
 
@@ -231,3 +238,27 @@ class TaskRepository:
                 status_code=400,
                 detail=constants.ERROR_TOO_MANY_LLM_RULES_PER_TASK % max_llm_rule_count,
             )
+
+    def link_metric_to_task(self, task_id: str, metric_id: str):
+        new_link = DatabaseTaskToMetrics(
+            task_id=task_id,
+            metric_id=metric_id,
+            enabled=True
+        )
+        self.db_session.add(new_link)
+        self.db_session.commit()
+
+    def toggle_task_metric_enabled(self, task_id: str, metric_id: str, enabled: bool):
+        task = self.get_db_task_by_id(task_id)
+        for metric_link in task.metric_links:
+            if metric_link.metric_id == metric_id:
+                metric_link.enabled = enabled
+        self.db_session.commit()
+        return
+    
+    def archive_metric_link(self, task_id: str, metric_id: str):
+        task = self.get_db_task_by_id(task_id)
+        for metric_link in task.metric_links:
+            if metric_link.metric_id == metric_id:
+                self.db_session.delete(metric_link)
+        self.db_session.commit()
