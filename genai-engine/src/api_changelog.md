@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 07/21/2025
+- **CHANGE** for **URL**: /api/v2/tasks  added task_type to the request, and response
+- **CHANGE** for **URL**: /api/v2/tasks/search  added task_type as a search filter and part of the task response body
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}  added task_type to the response
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/rules/{rule_id}  added task_type to the response
+
 # 06/11/2025
 - **CHANGE** for **URL**: /v1/spans/query  endpoint added
 - **CHANGE** for **URL**: /v1/traces  endpoint added
