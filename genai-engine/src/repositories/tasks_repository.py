@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseRule, DatabaseTask, DatabaseTaskToRules
 from repositories.rules_repository import RuleRepository
-from schemas.enums import PaginationSortMethod, RuleScope, RuleType, TaskType
+from schemas.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
 
@@ -35,7 +35,7 @@ class TaskRepository:
         self,
         ids: list[str] = None,
         task_name: str = None,
-        task_type: TaskType = None,
+        is_agentic: bool = None,
         include_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
@@ -46,8 +46,8 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:
             stmt = stmt.where(DatabaseTask.name.ilike(f"%{task_name}%"))
-        if task_type is not None:
-            stmt = stmt.where(DatabaseTask.task_type == task_type)
+        if is_agentic is not None:
+            stmt = stmt.where(DatabaseTask.is_agentic == is_agentic)
         if not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
         if sort == PaginationSortMethod.DESCENDING:

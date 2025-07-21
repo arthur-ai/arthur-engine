@@ -42,7 +42,7 @@ rules_types = [rule.value for rule in RuleType]
 @task_management_routes.post(
     "/tasks",
     description="Register a new task. When a new task is created, all existing default rules will be "
-    "auto-applied for this new task. Specify task type as LLM or Agent.",
+    "auto-applied for this new task. Optionally specify if the task is agentic.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -101,7 +101,7 @@ def get_all_tasks(
 
 @task_management_routes.post(
     "/tasks/search",
-    description="Search tasks. Can filter by task IDs, task name substring, and task type (LLM or Agent).",
+    description="Search tasks. Can filter by task IDs, task name substring, and agentic status.",
     response_model=SearchTasksResponse,
     tags=["Tasks"],
 )
@@ -122,7 +122,7 @@ def search_tasks(
         db_tasks, count = tasks_repo.query_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
-            task_type=request.task_type,
+            is_agentic=request.is_agentic,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,

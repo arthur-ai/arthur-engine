@@ -52,7 +52,6 @@ from schemas.enums import (
     RuleScope,
     RuleScoringMethod,
     RuleType,
-    TaskType,
     ToxicityViolationType,
 )
 from schemas.request_schemas import NewRuleRequest, NewTaskRequest
@@ -284,7 +283,7 @@ class Task(BaseModel):
     name: str
     created_at: datetime
     updated_at: datetime
-    task_type: TaskType = TaskType.LLM
+    is_agentic: bool = False
     rule_links: Optional[List[TaskToRuleLink]] = None
 
     @staticmethod
@@ -294,7 +293,7 @@ class Task(BaseModel):
             name=x.name,
             created_at=datetime.now(),
             updated_at=datetime.now(),
-            task_type=x.task_type,
+            is_agentic=x.is_agentic,
         )
 
     @staticmethod
@@ -304,7 +303,7 @@ class Task(BaseModel):
             name=x.name,
             created_at=x.created_at,
             updated_at=x.updated_at,
-            task_type=x.task_type,
+            is_agentic=x.is_agentic,
             rule_links=[
                 TaskToRuleLink._from_database_model(link) for link in x.rule_links
             ],
@@ -316,7 +315,7 @@ class Task(BaseModel):
             name=self.name,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            task_type=self.task_type,
+            is_agentic=self.is_agentic,
         )
 
     def _to_response_model(self):
@@ -331,7 +330,7 @@ class Task(BaseModel):
             name=self.name,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
-            task_type=self.task_type,
+            is_agentic=self.is_agentic,
             rules=response_rules,
         )
 

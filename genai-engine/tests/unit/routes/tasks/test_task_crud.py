@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from schemas.enums import RuleScope, RuleType, TaskType
+from schemas.enums import RuleScope, RuleType
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -14,12 +14,12 @@ def test_user_story_create_task_get_task(client: GenaiEngineTestClientBase):
     assert status_code == 200
 
     assert task_response.name == task_name
-    assert task_response.task_type == TaskType.LLM  # Default should be LLM
+    assert task_response.is_agentic == False  # Default should be False
 
     status_code, task = client.get_task(task_response.id)
 
     assert len(task.rules) > 0
-    assert task.task_type == TaskType.LLM
+    assert task.is_agentic == False
 
 
 @pytest.mark.unit_tests
@@ -58,83 +58,79 @@ def test_user_story_create_task_rule_update_rule(client: GenaiEngineTestClientBa
 
 
 @pytest.mark.unit_tests
-def test_create_agent_task(client: GenaiEngineTestClientBase):
-    """Test creating a task with task_type=Agent"""
+def test_create_agentic_task(client: GenaiEngineTestClientBase):
+    """Test creating a task with is_agentic=True"""
     task_name = str(random.random())
-    status_code, task_response = client.create_task(task_name, task_type=TaskType.AGENT)
+    status_code, task_response = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
     assert task_response.name == task_name
-    assert task_response.task_type == TaskType.AGENT
+    assert task_response.is_agentic == True
 
     # Verify by getting the task
     status_code, task = client.get_task(task_response.id)
     assert status_code == 200
-    assert task.task_type == TaskType.AGENT
+    assert task.is_agentic == True
 
 
 @pytest.mark.unit_tests
-def test_create_llm_task_explicit(client: GenaiEngineTestClientBase):
-    """Test creating a task with task_type=LLM explicitly"""
+def test_create_non_agentic_task_explicit(client: GenaiEngineTestClientBase):
+    """Test creating a task with is_agentic=False explicitly"""
     task_name = str(random.random())
-    status_code, task_response = client.create_task(task_name, task_type=TaskType.LLM)
+    status_code, task_response = client.create_task(task_name, is_agentic=False)
     assert status_code == 200
 
     assert task_response.name == task_name
-    assert task_response.task_type == TaskType.LLM
+    assert task_response.is_agentic == False
 
     # Verify by getting the task
     status_code, task = client.get_task(task_response.id)
     assert status_code == 200
-    assert task.task_type == TaskType.LLM
+    assert task.is_agentic == False
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_by_task_type(client: GenaiEngineTestClientBase):
-    """Test filtering tasks by task type"""
-    # Create some Agent and LLM tasks
-    agent_task_ids = []
-    llm_task_ids = []
+def test_search_tasks_by_agentic_status(client: GenaiEngineTestClientBase):
+    """Test filtering tasks by agentic status"""
+    # Create some agentic and non-agentic tasks
+    agentic_task_ids = []
+    non_agentic_task_ids = []
 
     for i in range(3):
-        # Create Agent tasks
+        # Create agentic tasks
+        status_code, task = client.create_task(f"agentic_task_{i}", is_agentic=True)
+        assert status_code == 200
+        agentic_task_ids.append(task.id)
+
+        # Create non-agentic tasks
         status_code, task = client.create_task(
-            f"agent_task_{i}",
-            task_type=TaskType.AGENT,
+            f"non_agentic_task_{i}",
+            is_agentic=False,
         )
         assert status_code == 200
-        agent_task_ids.append(task.id)
+        non_agentic_task_ids.append(task.id)
 
-        # Create LLM tasks
-        status_code, task = client.create_task(f"llm_task_{i}", task_type=TaskType.LLM)
-        assert status_code == 200
-        llm_task_ids.append(task.id)
-
-    # Search for Agent tasks only
-    status_code, search_response = client.search_tasks(
-        task_type=TaskType.AGENT,
-        page_size=50,
-    )
+    # Search for agentic tasks only
+    status_code, search_response = client.search_tasks(is_agentic=True, page_size=50)
     assert status_code == 200
 
-    agent_results = [
-        task for task in search_response.tasks if task.id in agent_task_ids
+    agentic_results = [
+        task for task in search_response.tasks if task.id in agentic_task_ids
     ]
-    assert len(agent_results) == 3
-    for task in agent_results:
-        assert task.task_type == TaskType.AGENT
+    assert len(agentic_results) == 3
+    for task in agentic_results:
+        assert task.is_agentic == True
 
-    # Search for LLM tasks only
-    status_code, search_response = client.search_tasks(
-        task_type=TaskType.LLM,
-        page_size=50,
-    )
+    # Search for non-agentic tasks only
+    status_code, search_response = client.search_tasks(is_agentic=False, page_size=50)
     assert status_code == 200
 
-    llm_results = [task for task in search_response.tasks if task.id in llm_task_ids]
-    assert len(llm_results) == 3
-    for task in llm_results:
-        assert task.task_type == TaskType.LLM
+    non_agentic_results = [
+        task for task in search_response.tasks if task.id in non_agentic_task_ids
+    ]
+    assert len(non_agentic_results) == 3
+    for task in non_agentic_results:
+        assert task.is_agentic == False
 
     # Search without filter should return both types
     status_code, search_response = client.search_tasks(page_size=50)
@@ -143,6 +139,6 @@ def test_search_tasks_by_task_type(client: GenaiEngineTestClientBase):
     all_test_tasks = [
         task
         for task in search_response.tasks
-        if task.id in agent_task_ids + llm_task_ids
+        if task.id in agentic_task_ids + non_agentic_task_ids
     ]
     assert len(all_test_tasks) == 6
