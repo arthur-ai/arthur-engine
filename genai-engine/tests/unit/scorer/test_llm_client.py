@@ -9,6 +9,7 @@ from langchain_openai import (
     ChatOpenAI,
     OpenAIEmbeddings,
 )
+
 from schemas.custom_exceptions import (
     LLMContentFilterException,
     LLMExecutionException,
@@ -51,6 +52,8 @@ def test_get_embeddings_model(expected_instance, openai_executor: LLMExecutor):
     ):
         embedding_model = openai_executor.get_embeddings_model()
         assert isinstance(embedding_model, expected_instance)
+
+    assert False
 
 
 @pytest.mark.parametrize(
