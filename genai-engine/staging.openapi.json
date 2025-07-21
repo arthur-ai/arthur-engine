@@ -1022,7 +1022,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task",
-                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Specify task type as LLM or Agent.",
+                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.",
                 "operationId": "create_task_api_v2_tasks_post",
                 "requestBody": {
                     "content": {
@@ -1069,7 +1069,7 @@
                     "Tasks"
                 ],
                 "summary": "Search Tasks",
-                "description": "Search tasks. Can filter by task IDs, task name substring, and task type (LLM or Agent).",
+                "description": "Search tasks. Can filter by task IDs, task name substring, and agentic status.",
                 "operationId": "search_tasks_api_v2_tasks_search_post",
                 "security": [
                     {
@@ -4142,10 +4142,11 @@
                         "title": "Name",
                         "description": "Name of the task."
                     },
-                    "task_type": {
-                        "$ref": "#/components/schemas/TaskType",
-                        "description": "Type of the task (LLM or Agent).",
-                        "default": "LLM"
+                    "is_agentic": {
+                        "type": "boolean",
+                        "title": "Is Agentic",
+                        "description": "Whether the task is agentic or not.",
+                        "default": false
                     }
                 },
                 "type": "object",
@@ -5003,16 +5004,17 @@
                         "title": "Task Name",
                         "description": "Task name substring search string."
                     },
-                    "task_type": {
+                    "is_agentic": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/TaskType"
+                                "type": "boolean"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Filter tasks by type (LLM or Agent). If not provided, returns all task types."
+                        "title": "Is Agentic",
+                        "description": "Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks."
                     }
                 },
                 "type": "object",
@@ -5126,9 +5128,10 @@
                         "title": "Updated At",
                         "description": "Time the task was created in unix milliseconds"
                     },
-                    "task_type": {
-                        "$ref": "#/components/schemas/TaskType",
-                        "description": "Type of the task"
+                    "is_agentic": {
+                        "type": "boolean",
+                        "title": "Is Agentic",
+                        "description": "Whether the task is agentic or not"
                     },
                     "rules": {
                         "items": {
@@ -5145,18 +5148,10 @@
                     "name",
                     "created_at",
                     "updated_at",
-                    "task_type",
+                    "is_agentic",
                     "rules"
                 ],
                 "title": "TaskResponse"
-            },
-            "TaskType": {
-                "type": "string",
-                "enum": [
-                    "LLM",
-                    "Agent"
-                ],
-                "title": "TaskType"
             },
             "TokenUsageCount": {
                 "properties": {
