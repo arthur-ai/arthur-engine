@@ -18,18 +18,18 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Add task_type column to tasks table with default value "LLM"
+    # Add is_agentic column to tasks table with default value False
     op.add_column(
         "tasks",
         sa.Column(
-            "task_type",
-            sa.String(),
+            "is_agentic",
+            sa.Boolean(),
             nullable=False,
-            server_default=sa.text("'LLM'"),
+            server_default=sa.text("false"),
         ),
     )
 
 
 def downgrade() -> None:
-    # Remove task_type column from tasks table
-    op.drop_column("tasks", "task_type")
+    # Remove is_agentic column from tasks table
+    op.drop_column("tasks", "is_agentic")

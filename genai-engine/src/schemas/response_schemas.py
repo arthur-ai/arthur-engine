@@ -17,7 +17,6 @@ from schemas.enums import (
     RuleResultEnum,
     RuleScope,
     RuleType,
-    TaskType,
     ToxicityViolationType,
 )
 
@@ -418,7 +417,7 @@ class TaskResponse(BaseModel):
     updated_at: int = Field(
         description="Time the task was created in unix milliseconds",
     )
-    task_type: TaskType = Field(description="Type of the task")
+    is_agentic: bool = Field(description="Whether the task is agentic or not")
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
 
 
