@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.44"
+        "version": "2.1.46"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -1022,7 +1022,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task",
-                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task.",
+                "description": "Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Specify task type as LLM or Agent.",
                 "operationId": "create_task_api_v2_tasks_post",
                 "requestBody": {
                     "content": {
@@ -1069,7 +1069,7 @@
                     "Tasks"
                 ],
                 "summary": "Search Tasks",
-                "description": "Search tasks.",
+                "description": "Search tasks. Can filter by task IDs, task name substring, and task type (LLM or Agent).",
                 "operationId": "search_tasks_api_v2_tasks_search_post",
                 "security": [
                     {
@@ -4141,6 +4141,11 @@
                         "minLength": 1,
                         "title": "Name",
                         "description": "Name of the task."
+                    },
+                    "task_type": {
+                        "$ref": "#/components/schemas/TaskType",
+                        "description": "Type of the task (LLM or Agent).",
+                        "default": "LLM"
                     }
                 },
                 "type": "object",
@@ -4997,6 +5002,17 @@
                         ],
                         "title": "Task Name",
                         "description": "Task name substring search string."
+                    },
+                    "task_type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/TaskType"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Filter tasks by type (LLM or Agent). If not provided, returns all task types."
                     }
                 },
                 "type": "object",
@@ -5071,7 +5087,6 @@
                         "title": "Updated At"
                     },
                     "raw_data": {
-                        "additionalProperties": true,
                         "type": "object",
                         "title": "Raw Data"
                     }
@@ -5111,6 +5126,10 @@
                         "title": "Updated At",
                         "description": "Time the task was created in unix milliseconds"
                     },
+                    "task_type": {
+                        "$ref": "#/components/schemas/TaskType",
+                        "description": "Type of the task"
+                    },
                     "rules": {
                         "items": {
                             "$ref": "#/components/schemas/RuleResponse"
@@ -5126,9 +5145,18 @@
                     "name",
                     "created_at",
                     "updated_at",
+                    "task_type",
                     "rules"
                 ],
                 "title": "TaskResponse"
+            },
+            "TaskType": {
+                "type": "string",
+                "enum": [
+                    "LLM",
+                    "Agent"
+                ],
+                "title": "TaskType"
             },
             "TokenUsageCount": {
                 "properties": {
