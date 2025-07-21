@@ -23,6 +23,7 @@ from schemas.enums import (
     RuleResultEnum,
     RuleScope,
     RuleType,
+    TaskType,
     TokenUsageScope,
 )
 from schemas.request_schemas import (
@@ -278,7 +279,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int = None,
         task_ids: list[str] = None,
         task_name: str = None,
-        is_agentic: bool = None,
+        task_type: TaskType = None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -291,8 +292,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             body.task_ids = task_ids
         if task_name:
             body.task_name = task_name
-        if is_agentic is not None:
-            body.is_agentic = is_agentic
+        if task_type is not None:
+            body.task_type = task_type
 
         resp = self.base_client.post(
             "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
@@ -358,12 +359,12 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_task(
         self,
         name: str = None,
-        is_agentic: bool = False,
+        task_type: TaskType = TaskType.LLM,
         empty_rules: bool = False,
         user_id: str = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name, is_agentic=is_agentic)
+        request = NewTaskRequest(name=name, task_type=task_type)
 
         resp = self.base_client.post(
             "/api/v2/tasks",

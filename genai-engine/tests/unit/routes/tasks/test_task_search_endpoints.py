@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from schemas.enums import PaginationSortMethod
+from schemas.enums import PaginationSortMethod, TaskType
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -35,11 +35,11 @@ def test_search_tasks(
     assert sc == 200
     assert len(task_resp_base.tasks) == expected_count
 
-    # Verify all tasks have is_agentic field (should default to False)
+    # Verify all tasks have task_type field (should default to LLM)
     for task in task_resp_base.tasks:
-        assert hasattr(task, "is_agentic")
-        # Since we didn't specify is_agentic in create_task, they should all be False
-        assert task.is_agentic == False
+        assert hasattr(task, "task_type")
+        # Since we didn't specify task_type in create_task, they should all be LLM
+        assert task.task_type == TaskType.LLM
 
     if page:
         sc, task_resp = client.search_tasks(
@@ -111,141 +111,143 @@ def test_search_task_name(
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_by_is_agentic_filter(client: GenaiEngineTestClientBase):
-    """Test searching tasks specifically by is_agentic filter"""
-    unique_prefix = str(random.random()) + "agentic_test_"
+def test_search_tasks_by_task_type_filter(client: GenaiEngineTestClientBase):
+    """Test searching tasks specifically by task_type filter"""
+    unique_prefix = str(random.random()) + "task_type_test_"
 
-    # Create a mix of agentic and non-agentic tasks
-    agentic_task_ids = []
-    non_agentic_task_ids = []
+    # Create a mix of Agent and LLM tasks
+    agent_task_ids = []
+    llm_task_ids = []
 
     for i in range(5):
-        # Create agentic tasks
+        # Create Agent tasks
         sc, task = client.create_task(
-            name=f"{unique_prefix}agentic_{i}",
-            is_agentic=True,
+            name=f"{unique_prefix}agent_{i}",
+            task_type=TaskType.AGENT,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        agent_task_ids.append(task.id)
 
-        # Create non-agentic tasks
+        # Create LLM tasks
         sc, task = client.create_task(
-            name=f"{unique_prefix}non_agentic_{i}",
-            is_agentic=False,
+            name=f"{unique_prefix}llm_{i}",
+            task_type=TaskType.LLM,
         )
         assert sc == 200
-        non_agentic_task_ids.append(task.id)
+        llm_task_ids.append(task.id)
 
-    # Test 1: Search for only agentic tasks
-    sc, agentic_response = client.search_tasks(is_agentic=True, page_size=50)
+    # Test 1: Search for only Agent tasks
+    sc, agent_response = client.search_tasks(task_type=TaskType.AGENT, page_size=50)
     assert sc == 200
 
     # Filter to only our test tasks
-    found_agentic = [
-        task for task in agentic_response.tasks if task.id in agentic_task_ids
-    ]
-    assert len(found_agentic) == 5
+    found_agent = [task for task in agent_response.tasks if task.id in agent_task_ids]
+    assert len(found_agent) == 5
 
-    for task in found_agentic:
-        assert task.is_agentic == True
-        assert task.id in agentic_task_ids
+    for task in found_agent:
+        assert task.task_type == TaskType.AGENT
+        assert task.id in agent_task_ids
 
-    # Test 2: Search for only non-agentic tasks
-    sc, non_agentic_response = client.search_tasks(is_agentic=False, page_size=50)
+    # Test 2: Search for only LLM tasks
+    sc, llm_response = client.search_tasks(task_type=TaskType.LLM, page_size=50)
     assert sc == 200
 
     # Filter to only our test tasks
-    found_non_agentic = [
-        task for task in non_agentic_response.tasks if task.id in non_agentic_task_ids
-    ]
-    assert len(found_non_agentic) == 5
+    found_llm = [task for task in llm_response.tasks if task.id in llm_task_ids]
+    assert len(found_llm) == 5
 
-    for task in found_non_agentic:
-        assert task.is_agentic == False
-        assert task.id in non_agentic_task_ids
+    for task in found_llm:
+        assert task.task_type == TaskType.LLM
+        assert task.id in llm_task_ids
 
-    # Test 3: Search without is_agentic filter should return both types
+    # Test 3: Search without task_type filter should return both types
     sc, all_response = client.search_tasks(page_size=50)
     assert sc == 200
 
     all_our_tasks = [
-        task
-        for task in all_response.tasks
-        if task.id in agentic_task_ids + non_agentic_task_ids
+        task for task in all_response.tasks if task.id in agent_task_ids + llm_task_ids
     ]
     assert len(all_our_tasks) == 10
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_agentic_with_other_filters(client: GenaiEngineTestClientBase):
-    """Test combining is_agentic filter with other search filters"""
+def test_search_tasks_task_type_with_other_filters(client: GenaiEngineTestClientBase):
+    """Test combining task_type filter with other search filters"""
     unique_prefix = str(random.random()) + "combined_test_"
 
     # Create tasks with specific names
-    agentic_task_ids = []
+    agent_task_ids = []
     for i in range(3):
         sc, task = client.create_task(
-            name=f"{unique_prefix}special_agentic_{i}",
-            is_agentic=True,
+            name=f"{unique_prefix}special_agent_{i}",
+            task_type=TaskType.AGENT,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        agent_task_ids.append(task.id)
 
-    # Also create some non-agentic tasks with similar names
+    # Also create some LLM tasks with similar names
     for i in range(2):
         sc, task = client.create_task(
-            name=f"{unique_prefix}special_non_agentic_{i}",
-            is_agentic=False,
+            name=f"{unique_prefix}special_llm_{i}",
+            task_type=TaskType.LLM,
         )
         assert sc == 200
 
-    # Test combining name search with is_agentic filter
+    # Test combining name search with task_type filter
     sc, response = client.search_tasks(
         task_name=f"{unique_prefix}special",
-        is_agentic=True,
+        task_type=TaskType.AGENT,
         page_size=50,
     )
     assert sc == 200
 
-    # Should only find agentic tasks with "special" in the name
-    found_tasks = [task for task in response.tasks if task.id in agentic_task_ids]
+    # Should only find Agent tasks with "special" in the name
+    found_tasks = [task for task in response.tasks if task.id in agent_task_ids]
     assert len(found_tasks) == 3
 
     for task in found_tasks:
-        assert task.is_agentic == True
+        assert task.task_type == TaskType.AGENT
         assert "special" in task.name.lower()
 
 
 @pytest.mark.unit_tests
-def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase):
-    """Test is_agentic filter with pagination"""
+def test_search_tasks_task_type_with_pagination(client: GenaiEngineTestClientBase):
+    """Test task_type filter with pagination"""
     unique_prefix = str(random.random()) + "pagination_test_"
 
-    # Create more agentic tasks than page size
-    agentic_task_ids = []
+    # Create more Agent tasks than page size
+    agent_task_ids = []
     for i in range(7):  # More than our page size of 3
         sc, task = client.create_task(
-            name=f"{unique_prefix}agentic_{i}",
-            is_agentic=True,
+            name=f"{unique_prefix}agent_{i}",
+            task_type=TaskType.AGENT,
         )
         assert sc == 200
-        agentic_task_ids.append(task.id)
+        agent_task_ids.append(task.id)
 
     # Test first page
-    sc, page1_response = client.search_tasks(is_agentic=True, page=0, page_size=3)
+    sc, page1_response = client.search_tasks(
+        task_type=TaskType.AGENT,
+        page=0,
+        page_size=3,
+    )
     assert sc == 200
 
     page1_our_tasks = [
-        task for task in page1_response.tasks if task.id in agentic_task_ids
+        task for task in page1_response.tasks if task.id in agent_task_ids
     ]
     assert len(page1_our_tasks) <= 3
 
     # Test second page
-    sc, page2_response = client.search_tasks(is_agentic=True, page=1, page_size=3)
+    sc, page2_response = client.search_tasks(
+        task_type=TaskType.AGENT,
+        page=1,
+        page_size=3,
+    )
     assert sc == 200
 
     page2_our_tasks = [
-        task for task in page2_response.tasks if task.id in agentic_task_ids
+        task for task in page2_response.tasks if task.id in agent_task_ids
     ]
 
     # Ensure no overlap between pages
@@ -253,6 +255,6 @@ def test_search_tasks_agentic_with_pagination(client: GenaiEngineTestClientBase)
     page2_ids = [task.id for task in page2_our_tasks]
     assert len(set(page1_ids).intersection(set(page2_ids))) == 0
 
-    # All found tasks should be agentic
+    # All found tasks should be Agent type
     for task in page1_our_tasks + page2_our_tasks:
-        assert task.is_agentic == True
+        assert task.task_type == TaskType.AGENT

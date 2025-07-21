@@ -248,3 +248,8 @@ class APIKeysRolesEnum(Enum):
     VALIDATION_USER: str = constants.VALIDATION_USER
     ORG_AUDITOR: str = constants.ORG_AUDITOR
     ORG_ADMIN: str = constants.ORG_ADMIN
+
+
+class TaskType(str, Enum):
+    LLM = "LLM"
+    AGENT = "Agent"

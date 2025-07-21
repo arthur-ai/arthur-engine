@@ -54,7 +54,7 @@ class DatabaseTask(Base, IsArchivable):
     name: Mapped[str] = mapped_column(String)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    task_type: Mapped[str] = mapped_column(String, nullable=False, default="LLM")
     rule_links: Mapped[List["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
         lazy="joined",

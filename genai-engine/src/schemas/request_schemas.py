@@ -17,6 +17,7 @@ from schemas.enums import (
     PIIEntityTypes,
     RuleScope,
     RuleType,
+    TaskType,
 )
 from utils import constants
 
@@ -247,8 +248,8 @@ class SearchTasksRequest(BaseModel):
         description="Task name substring search string.",
         default=None,
     )
-    is_agentic: Optional[bool] = Field(
-        description="Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.",
+    task_type: Optional[TaskType] = Field(
+        description="Filter tasks by type (LLM or Agent). If not provided, returns all task types.",
         default=None,
     )
 
@@ -278,9 +279,9 @@ class SearchRulesRequest(BaseModel):
 
 class NewTaskRequest(BaseModel):
     name: str = Field(description="Name of the task.", min_length=1)
-    is_agentic: bool = Field(
-        description="Whether the task is agentic or not.",
-        default=False,
+    task_type: TaskType = Field(
+        description="Type of the task (LLM or Agent).",
+        default=TaskType.LLM,
     )
 
 
