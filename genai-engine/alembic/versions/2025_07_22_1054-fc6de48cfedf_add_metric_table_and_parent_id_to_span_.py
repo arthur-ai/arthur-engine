@@ -1,8 +1,8 @@
-"""create_metrics_tables
+"""add_metric_table_and_parent_id_to_span_table
 
-Revision ID: 4be90136e983
-Revises: 7747edf460b3
-Create Date: 2025-05-16 17:09:02.310159
+Revision ID: fc6de48cfedf
+Revises: 862b72075d60
+Create Date: 2025-07-22 10:54:43.726022
 
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "4be90136e983"
-down_revision = "7747edf460b3"
+revision = "fc6de48cfedf"
+down_revision = "862b72075d60"
 branch_labels = None
 depends_on = None
 
@@ -101,8 +101,27 @@ def upgrade() -> None:
         unique=False,
     )
 
+    # Add parent_span_id column to spans table
+    op.add_column("spans", sa.Column("parent_span_id", sa.String(), nullable=True))
+    op.create_index(
+        op.f("ix_spans_parent_span_id"),
+        "spans",
+        ["parent_span_id"],
+        unique=False,
+    )
+
+    # Add span_kind column to spans table
+    op.add_column("spans", sa.Column("span_kind", sa.String(), nullable=True))
+
 
 def downgrade() -> None:
+    # Drop span_kind column
+    op.drop_column("spans", "span_kind")
+
+    # Drop parent_span_id column and its index
+    op.drop_index(op.f("ix_spans_parent_span_id"), table_name="spans")
+    op.drop_column("spans", "parent_span_id")
+
     # Drop metric_results table
     op.drop_index(op.f("ix_metric_results_metric_id"), table_name="metric_results")
     op.drop_index(op.f("ix_metric_results_span_id"), table_name="metric_results")
