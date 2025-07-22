@@ -1183,7 +1183,7 @@
                     "Tasks"
                 ],
                 "summary": "Search Tasks",
-                "description": "Search tasks.",
+                "description": "Search tasks. Can filter by task IDs, task name substring, and agentic status.",
                 "operationId": "search_tasks_api_v2_tasks_search_post",
                 "security": [
                     {
@@ -1560,7 +1560,7 @@
                     "Tasks"
                 ],
                 "summary": "Create Task Metric",
-                "description": "Create metrics for a task.",
+                "description": "Create metrics for a task. Only agentic tasks can have metrics.",
                 "operationId": "create_task_metric_api_v2_tasks__task_id__metrics_post",
                 "security": [
                     {
@@ -5839,10 +5839,17 @@
                         "description": "List of all the rule for the task."
                     },
                     "metrics": {
-                        "items": {
-                            "$ref": "#/components/schemas/MetricResponse"
-                        },
-                        "type": "array",
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/MetricResponse"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Metrics",
                         "description": "List of all the metrics for the task."
                     }
@@ -5853,9 +5860,9 @@
                     "name",
                     "created_at",
                     "updated_at",
+                    "is_agentic",
                     "rules",
-                    "metrics",
-                    "is_agentic"
+                    "metrics"
                 ],
                 "title": "TaskResponse"
             },
