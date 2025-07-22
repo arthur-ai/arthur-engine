@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Type
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
 from schemas.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -246,6 +247,10 @@ class SearchTasksRequest(BaseModel):
         description="Task name substring search string.",
         default=None,
     )
+    is_agentic: Optional[bool] = Field(
+        description="Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.",
+        default=None,
+    )
 
 
 class SearchRulesRequest(BaseModel):
@@ -273,6 +278,10 @@ class SearchRulesRequest(BaseModel):
 
 class NewTaskRequest(BaseModel):
     name: str = Field(description="Name of the task.", min_length=1)
+    is_agentic: bool = Field(
+        description="Whether the task is agentic or not.",
+        default=False,
+    )
 
 
 class NewApiKeyRequest(BaseModel):

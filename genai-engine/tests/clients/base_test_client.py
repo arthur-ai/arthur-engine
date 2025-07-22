@@ -5,8 +5,10 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from config.database_config import DatabaseConfig
 from pydantic import TypeAdapter
+from sqlalchemy.orm import sessionmaker
+
+from config.database_config import DatabaseConfig
 from schemas.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -41,6 +43,7 @@ from schemas.response_schemas import (
     FileUploadResult,
     QueryFeedbackResponse,
     QueryInferencesResponse,
+    QuerySpansResponse,
     RuleResponse,
     SearchRulesResponse,
     SearchTasksResponse,
@@ -48,9 +51,7 @@ from schemas.response_schemas import (
     TokenUsageResponse,
     UserResponse,
     ValidationResult,
-    QuerySpansResponse
 )
-from sqlalchemy.orm import sessionmaker
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -277,6 +278,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int = None,
         task_ids: list[str] = None,
         task_name: str = None,
+        is_agentic: bool = None,
     ) -> tuple[int, SearchTasksResponse]:
         path = "api/v2/tasks/search?"
         params = get_base_pagination_parameters(
@@ -289,6 +291,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             body.task_ids = task_ids
         if task_name:
             body.task_name = task_name
+        if is_agentic is not None:
+            body.is_agentic = is_agentic
 
         resp = self.base_client.post(
             "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
@@ -354,11 +358,12 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_task(
         self,
         name: str = None,
+        is_agentic: bool = False,
         empty_rules: bool = False,
         user_id: str = None,
     ) -> tuple[int, TaskResponse]:
         name = name if name else str(random.random())
-        request = NewTaskRequest(name=name)
+        request = NewTaskRequest(name=name, is_agentic=is_agentic)
 
         resp = self.base_client.post(
             "/api/v2/tasks",
@@ -1182,6 +1187,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+
 def get_base_pagination_parameters(
     sort: PaginationSortMethod = None,
     page: int = None,
@@ -1205,4 +1211,3 @@ def log_response(response: httpx.Response):
         print(
             f"\tResponse trace id: {response.headers[constants.RESPONSE_TRACE_ID_HEADER]}",
         )
-
