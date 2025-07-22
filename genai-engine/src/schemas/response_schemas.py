@@ -443,6 +443,7 @@ class TaskResponse(BaseModel):
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
     metrics: Optional[List[MetricResponse]] = Field(
         description="List of all the metrics for the task.",
+        default=None,
     )
 
 
