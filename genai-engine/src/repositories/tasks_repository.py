@@ -1,12 +1,13 @@
 from db_models.db_models import DatabaseRule, DatabaseTask, DatabaseTaskToRules, DatabaseTaskToMetrics
 from fastapi import HTTPException
 from opentelemetry import trace
+from sqlalchemy import asc, desc
+from sqlalchemy.orm import Session
+
 from repositories.rules_repository import RuleRepository
 from repositories.metrics_repository import MetricRepository
 from schemas.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
-from sqlalchemy import asc, desc
-from sqlalchemy.orm import Session
 from utils import constants
 from typing import Optional
 
@@ -38,6 +39,7 @@ class TaskRepository:
         self,
         ids: list[str] = None,
         task_name: str = None,
+        is_agentic: bool = None,
         include_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
@@ -48,6 +50,8 @@ class TaskRepository:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
         if task_name:
             stmt = stmt.where(DatabaseTask.name.ilike(f"%{task_name}%"))
+        if is_agentic is not None:
+            stmt = stmt.where(DatabaseTask.is_agentic == is_agentic)
         if not include_archived:
             stmt = stmt.where(DatabaseTask.archived == False)
         if sort == PaginationSortMethod.DESCENDING:
