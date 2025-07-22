@@ -3,7 +3,6 @@ from typing import List
 
 import pgvector.sqlalchemy
 import sqlalchemy.types as types
-from db_models.custom_types import RoleType
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -18,6 +17,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from db_models.custom_types import RoleType
 from utils import constants
 from utils.utils import get_env_var
 
@@ -53,6 +54,7 @@ class DatabaseTask(Base, IsArchivable):
     name: Mapped[str] = mapped_column(String)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rule_links: Mapped[List["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
         lazy="joined",

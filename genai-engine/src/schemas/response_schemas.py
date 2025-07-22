@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from schemas.common_schemas import (
     AuthUserRole,
     ExamplesConfig,
@@ -416,6 +417,7 @@ class TaskResponse(BaseModel):
     updated_at: int = Field(
         description="Time the task was created in unix milliseconds",
     )
+    is_agentic: bool = Field(description="Whether the task is agentic or not")
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
 
 
