@@ -390,6 +390,78 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def create_task_metric(
+        self,
+        task_id: str,
+        metric_type: str = "QueryRelevance",
+        metric_name: str = "Test Metric",
+        metric_metadata: str = "Test metric for testing",
+        config: dict = None,
+        user_id: str = None,
+    ) -> tuple[int, dict | None]:
+        """Create a metric for a task."""
+        request = {
+            "type": metric_type,
+            "name": metric_name,
+            "metric_metadata": metric_metadata,
+            "config": config,
+        }
+
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/metrics",
+            json=request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 201 else None,
+        )
+
+    def update_task_metric(
+        self,
+        task_id: str,
+        metric_id: str,
+        enabled: bool,
+        user_id: str = None,
+    ) -> tuple[int, dict | None]:
+        """Update a task metric's enabled status."""
+        request = {"enabled": enabled}
+
+        resp = self.base_client.patch(
+            f"/api/v2/tasks/{task_id}/metrics/{metric_id}",
+            json=request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def archive_task_metric(
+        self,
+        task_id: str,
+        metric_id: str,
+        user_id: str = None,
+    ) -> tuple[int, str | None]:
+        """Archive a task metric."""
+        resp = self.base_client.delete(
+            f"/api/v2/tasks/{task_id}/metrics/{metric_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.text if resp.status_code != 204 else None,
+        )
+
     def create_rule(
         self,
         name: str,

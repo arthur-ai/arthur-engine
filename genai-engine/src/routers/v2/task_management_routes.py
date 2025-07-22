@@ -13,24 +13,23 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
+from repositories.tasks_metrics_repository import TasksMetricsRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
-from repositories.metrics_repository import MetricRepository
-from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum, RuleScope, RuleType
-from schemas.internal_schemas import ApplicationConfiguration, Rule, Task, User, Metric
+from schemas.internal_schemas import ApplicationConfiguration, Metric, Rule, Task, User
 from schemas.request_schemas import (
+    NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
     SearchTasksRequest,
-    UpdateRuleRequest,
-    NewMetricRequest,
     UpdateMetricRequest,
-
+    UpdateRuleRequest,
 )
 from schemas.response_schemas import RuleResponse, SearchTasksResponse, TaskResponse
 from utils import constants
@@ -46,6 +45,7 @@ rules_types = [rule.value for rule in RuleType]
 ################################
 #### Task Management Routes ####
 ################################
+
 
 @task_management_routes.post(
     "/tasks",
@@ -70,7 +70,12 @@ def create_task(
             )
 
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
+        )
         task = Task._from_request_model(request)
         task = tasks_repo.create_task(task)
 
@@ -97,7 +102,12 @@ def get_all_tasks(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
+        )
         tasks = tasks_repo.get_all_tasks()
 
         return [task._to_response_model() for task in tasks]
@@ -121,7 +131,12 @@ def archive_task(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
+        )
         tasks_repo.archive_task(str(task_id))
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -176,6 +191,7 @@ def redirect_to_tasks():
 #### Task Search Routes ####
 ############################
 
+
 @task_management_routes.post(
     "/tasks/search",
     description="Search tasks. Can filter by task IDs, task name substring, and agentic status.",
@@ -196,7 +212,12 @@ def search_tasks(
     try:
         rules_repo = RuleRepository(db_session)
         metrics_repo = MetricRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, metrics_repo, application_config)
+        tasks_repo = TaskRepository(
+            db_session,
+            rules_repo,
+            metrics_repo,
+            application_config,
+        )
         db_tasks, count = tasks_repo.query_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
@@ -334,7 +355,12 @@ def archive_task_rule(
                 detail=constants.ERROR_UNRELATED_TASK_RULE,
             )
 
-        task_repo = TaskRepository(db_session, rule_repo, MetricRepository(db_session), application_config)
+        task_repo = TaskRepository(
+            db_session,
+            rule_repo,
+            MetricRepository(db_session),
+            application_config,
+        )
 
         task_repo.delete_rule_link(str(task_id), str(rule_id))
 
@@ -354,9 +380,10 @@ def archive_task_rule(
 #### Task Metrics Routes ####
 #############################
 
+
 @task_management_routes.post(
     "/tasks/{task_id}/metrics",
-    description="Create metrics for a task.",
+    description="Create metrics for a task. Only agentic tasks can have metrics.",
     status_code=status.HTTP_201_CREATED,
     tags=["Tasks"],
 )
@@ -445,7 +472,7 @@ def archive_task_metric(
         tasks_metrics_repo = TasksMetricsRepository(db_session)
         # task_repo.archive_metric_link(str(task_id), str(metric_id))
         # return Response(status_code=status.HTTP_204_NO_CONTENT)
-    
+
         task_metrics = tasks_metrics_repo._get_task_metrics_ids(
             str(task_id),
             only_enabled=False,
@@ -465,4 +492,3 @@ def archive_task_metric(
         raise
     finally:
         db_session.close()
-

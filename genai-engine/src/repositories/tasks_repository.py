@@ -1,15 +1,19 @@
-from db_models.db_models import DatabaseRule, DatabaseTask, DatabaseTaskToRules, DatabaseTaskToMetrics
 from fastapi import HTTPException
 from opentelemetry import trace
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from repositories.rules_repository import RuleRepository
+from db_models.db_models import (
+    DatabaseRule,
+    DatabaseTask,
+    DatabaseTaskToMetrics,
+    DatabaseTaskToRules,
+)
 from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
 from schemas.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
-from typing import Optional
 
 tracer = trace.get_tracer(__name__)
 
@@ -33,7 +37,7 @@ class TaskRepository:
         self.rule_repository = rule_repository
         self.metric_repository = metric_repository
         self.app_config = application_config
-        
+
     @tracer.start_as_current_span("query_tasks")
     def query_tasks(
         self,
@@ -106,7 +110,7 @@ class TaskRepository:
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
-        
+
         for link in db_task.metric_links:
             self.metric_repository.archive_metric(link.metric_id)
         db_task.archived = True
@@ -244,22 +248,38 @@ class TaskRepository:
             )
 
     def link_metric_to_task(self, task_id: str, metric_id: str):
+        # Check if task is agentic before allowing metric linkage
+        db_task = self.get_db_task_by_id(task_id)
+        if not db_task.is_agentic:
+            raise HTTPException(
+                status_code=400,
+                detail=constants.ERROR_NON_AGENTIC_TASK_METRIC,
+            )
+
         new_link = DatabaseTaskToMetrics(
             task_id=task_id,
             metric_id=metric_id,
-            enabled=True
+            enabled=True,
         )
         self.db_session.add(new_link)
         self.db_session.commit()
 
     def toggle_task_metric_enabled(self, task_id: str, metric_id: str, enabled: bool):
         task = self.get_db_task_by_id(task_id)
+
+        # Check if task is agentic when enabling a metric
+        if enabled and not task.is_agentic:
+            raise HTTPException(
+                status_code=400,
+                detail=constants.ERROR_NON_AGENTIC_TASK_METRIC,
+            )
+
         for metric_link in task.metric_links:
             if metric_link.metric_id == metric_id:
                 metric_link.enabled = enabled
         self.db_session.commit()
         return
-    
+
     def archive_metric_link(self, task_id: str, metric_id: str):
         task = self.get_db_task_by_id(task_id)
         for metric_link in task.metric_links:
