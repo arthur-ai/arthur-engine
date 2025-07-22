@@ -441,7 +441,7 @@ class TaskResponse(BaseModel):
     )
     is_agentic: bool = Field(description="Whether the task is agentic or not")
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
-    metrics: List[MetricResponse] = Field(
+    metrics: Optional[List[MetricResponse]] = Field(
         description="List of all the metrics for the task.",
     )
 

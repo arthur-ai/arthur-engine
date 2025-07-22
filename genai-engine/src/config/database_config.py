@@ -18,8 +18,8 @@ class DatabaseConfig(BaseSettings):
     POSTGRES_PORT: int | str | None = None
     POSTGRES_USER: str | None = None
     POSTGRES_USE_SSL: bool = False
-    POSTGRES_CLIENT_CONNECTION_POOL_SIZE: int = 10
-    POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW: int = 20
+    POSTGRES_CLIENT_CONNECTION_POOL_SIZE: int = 5
+    POSTGRES_CLIENT_CONNECTION_POOL_MAX_OVERFLOW: int = 15
     TEST_DATABASE: bool = False
 
     @property
