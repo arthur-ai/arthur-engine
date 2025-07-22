@@ -1,7 +1,6 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
-
 # 07/22/2025
 - **CHANGE** for **URL**: /api/v2/tasks Added optional metrics to the task response
 - **CHANGE** for **URL**: /api/v2/tasks/search  Added optional metrics to the task response
