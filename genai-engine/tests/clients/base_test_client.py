@@ -43,7 +43,7 @@ from schemas.response_schemas import (
     FileUploadResult,
     QueryFeedbackResponse,
     QueryInferencesResponse,
-    QuerySpansResponse,
+    QuerySpansWithMetricsResponse,
     RuleResponse,
     SearchRulesResponse,
     SearchTasksResponse,
@@ -388,6 +388,78 @@ class GenaiEngineTestClientBase(httpx.Client):
                 if resp.status_code == 200
                 else None
             ),
+        )
+
+    def create_task_metric(
+        self,
+        task_id: str,
+        metric_type: str = "QueryRelevance",
+        metric_name: str = "Test Metric",
+        metric_metadata: str = "Test metric for testing",
+        config: dict = None,
+        user_id: str = None,
+    ) -> tuple[int, dict | None]:
+        """Create a metric for a task."""
+        request = {
+            "type": metric_type,
+            "name": metric_name,
+            "metric_metadata": metric_metadata,
+            "config": config,
+        }
+
+        resp = self.base_client.post(
+            f"/api/v2/tasks/{task_id}/metrics",
+            json=request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 201 else None,
+        )
+
+    def update_task_metric(
+        self,
+        task_id: str,
+        metric_id: str,
+        enabled: bool,
+        user_id: str = None,
+    ) -> tuple[int, dict | None]:
+        """Update a task metric's enabled status."""
+        request = {"enabled": enabled}
+
+        resp = self.base_client.patch(
+            f"/api/v2/tasks/{task_id}/metrics/{metric_id}",
+            json=request,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.json() if resp.status_code == 200 else None,
+        )
+
+    def archive_task_metric(
+        self,
+        task_id: str,
+        metric_id: str,
+        user_id: str = None,
+    ) -> tuple[int, str | None]:
+        """Archive a task metric."""
+        resp = self.base_client.delete(
+            f"/api/v2/tasks/{task_id}/metrics/{metric_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            resp.text if resp.status_code != 204 else None,
         )
 
     def create_rule(
@@ -1124,25 +1196,19 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
         return resp.status_code, resp.text
 
-    def query_spans(
+    def query_spans_with_metrics(
         self,
-        user_id: str | None = None,
-        trace_ids: list[str] | None = None,
-        span_ids: list[str] | None = None,
-        task_ids: list[str] | None = None,
+        task_ids: list[str],
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
-    ) -> tuple[int, QuerySpansResponse | str]:
-        """Query spans with various filters.
+    ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
+        """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
 
         Args:
-            user_id: Filter by user ID
-            trace_ids: Filter by trace IDs
-            span_ids: Filter by span IDs
-            task_ids: Filter by task IDs
+            task_ids: Task IDs to filter on (required)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
@@ -1150,17 +1216,9 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, QuerySpansResponse | str]: Status code and response
+            tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
         """
-        params = {}
-        if user_id is not None:
-            params["user_id"] = user_id
-        if trace_ids is not None:
-            params["trace_ids"] = trace_ids
-        if span_ids is not None:
-            params["span_ids"] = span_ids
-        if task_ids is not None:
-            params["task_ids"] = task_ids
+        params = {"task_ids": task_ids}
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:
@@ -1173,7 +1231,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
 
         resp = self.base_client.get(
-            f"/v1/spans/query?{urllib.parse.urlencode(params, doseq=True)}",
+            f"/v1/traces/metrics/?{urllib.parse.urlencode(params, doseq=True)}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -1181,7 +1239,87 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                QuerySpansResponse.model_validate(resp.json())
+                QuerySpansWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def query_spans(
+        self,
+        task_ids: list[str],
+        trace_ids: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
+        """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            trace_ids: Trace IDs to filter on (optional)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            f"/v1/traces/query?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                QuerySpansWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def compute_span_metrics(
+        self,
+        span_id: str,
+    ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
+        """Compute metrics for a single span. Validates that the span is an LLM span.
+
+        Args:
+            span_id: The span ID to compute metrics for
+
+        Returns:
+            tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/v1/span/{span_id}/metrics",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                QuerySpansWithMetricsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

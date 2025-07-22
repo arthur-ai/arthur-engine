@@ -1063,90 +1063,6 @@
                 ]
             }
         },
-        "/api/v2/tasks/search": {
-            "post": {
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "Search Tasks",
-                "description": "Search tasks. Can filter by task IDs, task name substring, and agentic status.",
-                "operationId": "search_tasks_api_v2_tasks_search_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/SearchTasksRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/SearchTasksResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v2/tasks/{task_id}": {
             "delete": {
                 "tags": [
@@ -1224,6 +1140,110 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/TaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/task": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Redirect To Tasks",
+                "description": "Redirect to /tasks endpoint.",
+                "operationId": "redirect_to_tasks_api_v2_task_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tasks/search": {
+            "post": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Search Tasks",
+                "description": "Search tasks. Can filter by task IDs, task name substring, and agentic status.",
+                "operationId": "search_tasks_api_v2_tasks_search_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SearchTasksRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchTasksResponse"
                                 }
                             }
                         }
@@ -1534,20 +1554,202 @@
                 }
             }
         },
-        "/api/v2/task": {
+        "/api/v2/tasks/{task_id}/metrics": {
             "post": {
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Redirect To Tasks",
-                "description": "Redirect to /tasks endpoint.",
-                "operationId": "redirect_to_tasks_api_v2_task_post",
+                "summary": "Create Task Metric",
+                "description": "Create metrics for a task. Only agentic tasks can have metrics.",
+                "operationId": "create_task_metric_api_v2_tasks__task_id__metrics_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewMetricRequest"
+                            },
+                            "examples": {
+                                "example1": {
+                                    "type": "QueryRelevance",
+                                    "name": "My User Query Relevance",
+                                    "metric_metadata": "This is a test metric metadata"
+                                },
+                                "example2": {
+                                    "type": "QueryRelevance",
+                                    "name": "My User Query Relevance with Config",
+                                    "metric_metadata": "This is a test metric metadata",
+                                    "config": {
+                                        "relevance_threshold": 0.8,
+                                        "use_llm_judge": false
+                                    }
+                                },
+                                "example3": {
+                                    "type": "ResponseRelevance",
+                                    "name": "My Response Relevance",
+                                    "metric_metadata": "This is a test metric metadata",
+                                    "config": {
+                                        "use_llm_judge": true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/tasks/{task_id}/metrics/{metric_id}": {
+            "patch": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Update Task Metric",
+                "description": "Update a task metric.",
+                "operationId": "update_task_metric_api_v2_tasks__task_id__metrics__metric_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "metric_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Metric Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateMetricRequest"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
                                 "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Archive Task Metric",
+                "description": "Archive a task metric.",
+                "operationId": "archive_task_metric_api_v2_tasks__task_id__metrics__metric_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "metric_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Metric Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
                             }
                         }
                     }
@@ -2028,20 +2230,35 @@
                 ]
             }
         },
-        "/v1/spans/query": {
+        "/v1/traces/query": {
             "get": {
                 "tags": [
                     "Spans"
                 ],
                 "summary": "Query Spans",
-                "description": "Query spans with filters for trace_id, span_id, task_id, and creation_time",
-                "operationId": "query_spans_v1_spans_query_get",
+                "description": "Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
+                "operationId": "query_spans_v1_traces_query_get",
                 "security": [
                     {
                         "API Key": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
                     {
                         "name": "trace_ids",
                         "in": "query",
@@ -2051,38 +2268,10 @@
                             "items": {
                                 "type": "string"
                             },
-                            "description": "Trace ID to filter on.",
+                            "description": "Trace IDs to filter on. Optional.",
                             "title": "Trace Ids"
                         },
-                        "description": "Trace ID to filter on."
-                    },
-                    {
-                        "name": "span_ids",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "Span ID to filter on.",
-                            "title": "Span Ids"
-                        },
-                        "description": "Span ID to filter on."
-                    },
-                    {
-                        "name": "task_ids",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "Task ID to filter on.",
-                            "title": "Task Ids"
-                        },
-                        "description": "Task ID to filter on."
+                        "description": "Trace IDs to filter on. Optional."
                     },
                     {
                         "name": "start_time",
@@ -2150,7 +2339,168 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/QuerySpansResponse"
+                                    "$ref": "#/components/schemas/QuerySpansWithMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/traces/metrics/": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Query Spans With Metrics",
+                "description": "Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.",
+                "operationId": "query_spans_with_metrics_v1_traces_metrics__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format.",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format.",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansWithMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/span/{span_id}/metrics": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Compute Span Metrics",
+                "description": "Compute metrics for a single span. Validates that the span is an LLM span.",
+                "operationId": "compute_span_metrics_v1_span__span_id__metrics_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "span_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Span Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansWithMetricsResponse"
                                 }
                             }
                         }
@@ -3921,6 +4271,159 @@
                     ]
                 }
             },
+            "MetricResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the Metric"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the Metric"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/MetricType",
+                        "description": "Type of the Metric"
+                    },
+                    "metric_metadata": {
+                        "type": "string",
+                        "title": "Metric Metadata",
+                        "description": "Metadata of the Metric"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Config",
+                        "description": "JSON-serialized configuration for the Metric"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Time the Metric was created in unix milliseconds"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Time the Metric was updated in unix milliseconds"
+                    },
+                    "enabled": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enabled",
+                        "description": "Whether the Metric is enabled"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "metric_metadata",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "MetricResponse"
+            },
+            "MetricResultResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "ID of the metric result"
+                    },
+                    "metric_type": {
+                        "$ref": "#/components/schemas/MetricType",
+                        "description": "Type of the metric"
+                    },
+                    "details": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Details",
+                        "description": "JSON-serialized metric details"
+                    },
+                    "prompt_tokens": {
+                        "type": "integer",
+                        "title": "Prompt Tokens",
+                        "description": "Number of prompt tokens used"
+                    },
+                    "completion_tokens": {
+                        "type": "integer",
+                        "title": "Completion Tokens",
+                        "description": "Number of completion tokens used"
+                    },
+                    "latency_ms": {
+                        "type": "integer",
+                        "title": "Latency Ms",
+                        "description": "Latency in milliseconds"
+                    },
+                    "span_id": {
+                        "type": "string",
+                        "title": "Span Id",
+                        "description": "ID of the span this result belongs to"
+                    },
+                    "metric_id": {
+                        "type": "string",
+                        "title": "Metric Id",
+                        "description": "ID of the metric that generated this result"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Time the result was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "Time the result was last updated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "metric_type",
+                    "prompt_tokens",
+                    "completion_tokens",
+                    "latency_ms",
+                    "span_id",
+                    "metric_id",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "MetricResultResponse"
+            },
+            "MetricType": {
+                "type": "string",
+                "enum": [
+                    "QueryRelevance",
+                    "ResponseRelevance",
+                    "ToolSelection"
+                ],
+                "title": "MetricType"
+            },
             "NewApiKeyRequest": {
                 "properties": {
                     "description": {
@@ -3956,6 +4459,70 @@
                 },
                 "type": "object",
                 "title": "NewApiKeyRequest"
+            },
+            "NewMetricRequest": {
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/MetricType",
+                        "description": "Type of the metric. It can only be one of QueryRelevance, ResponseRelevance, ToolSelection",
+                        "examples": [
+                            "UserQueryRelevance"
+                        ]
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of metric",
+                        "examples": [
+                            "My User Query Relevance"
+                        ]
+                    },
+                    "metric_metadata": {
+                        "type": "string",
+                        "title": "Metric Metadata",
+                        "description": "Additional metadata for the metric"
+                    },
+                    "config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RelevanceMetricConfig"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Configuration for the metric. Currently only applies to UserQueryRelevance and ResponseRelevance metric types."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "name",
+                    "metric_metadata"
+                ],
+                "title": "NewMetricRequest",
+                "example1": {
+                    "metric_metadata": "This is a test metric metadata",
+                    "name": "My User Query Relevance",
+                    "type": "QueryRelevance"
+                },
+                "example2": {
+                    "config": {
+                        "relevance_threshold": 0.8,
+                        "use_llm_judge": false
+                    },
+                    "metric_metadata": "This is a test metric metadata",
+                    "name": "My User Query Relevance with Config",
+                    "type": "QueryRelevance"
+                },
+                "example3": {
+                    "config": {
+                        "use_llm_judge": true
+                    },
+                    "metric_metadata": "This is a test metric metadata",
+                    "name": "My Response Relevance",
+                    "type": "ResponseRelevance"
+                }
             },
             "NewRuleRequest": {
                 "properties": {
@@ -4617,7 +5184,7 @@
                     ]
                 }
             },
-            "QuerySpansResponse": {
+            "QuerySpansWithMetricsResponse": {
                 "properties": {
                     "count": {
                         "type": "integer",
@@ -4626,11 +5193,11 @@
                     },
                     "spans": {
                         "items": {
-                            "$ref": "#/components/schemas/SpanResponse"
+                            "$ref": "#/components/schemas/SpanWithMetricsResponse"
                         },
                         "type": "array",
                         "title": "Spans",
-                        "description": "List of spans matching the search filters"
+                        "description": "List of spans with metrics matching the search filters"
                     }
                 },
                 "type": "object",
@@ -4638,7 +5205,34 @@
                     "count",
                     "spans"
                 ],
-                "title": "QuerySpansResponse"
+                "title": "QuerySpansWithMetricsResponse",
+                "example": {
+                    "count": 1,
+                    "spans": [
+                        {
+                            "created_at": "2024-01-01T12:00:00Z",
+                            "end_time": "2024-01-01T12:00:01Z",
+                            "id": "957df309-c907-4b77-abe5-15dd00c081f7",
+                            "metric_results": [
+                                {
+                                    "created_at": "2024-01-01T12:00:00Z",
+                                    "enabled": true,
+                                    "id": "metric-123",
+                                    "metric_metadata": "Relevance score for user query",
+                                    "name": "Query Relevance",
+                                    "type": "QueryRelevance",
+                                    "updated_at": "2024-01-01T12:00:00Z"
+                                }
+                            ],
+                            "raw_data": {},
+                            "span_id": "span-456",
+                            "start_time": "2024-01-01T12:00:00Z",
+                            "task_id": "task-789",
+                            "trace_id": "trace-123",
+                            "updated_at": "2024-01-01T12:00:00Z"
+                        }
+                    ]
+                }
             },
             "RegexConfig": {
                 "properties": {
@@ -4727,6 +5321,31 @@
                     "matching_text"
                 ],
                 "title": "RegexSpanResponse"
+            },
+            "RelevanceMetricConfig": {
+                "properties": {
+                    "relevance_threshold": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Relevance Threshold",
+                        "description": "Threshold for determining relevance when not using LLM judge"
+                    },
+                    "use_llm_judge": {
+                        "type": "boolean",
+                        "title": "Use Llm Judge",
+                        "description": "Whether to use LLM as a judge for relevance scoring",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "title": "RelevanceMetricConfig",
+                "description": "Configuration for relevance metrics including QueryRelevance and ResponseRelevance"
             },
             "ResponseValidationRequest": {
                 "properties": {
@@ -5043,7 +5662,7 @@
                 ],
                 "title": "SearchTasksResponse"
             },
-            "SpanResponse": {
+            "SpanWithMetricsResponse": {
                 "properties": {
                     "id": {
                         "type": "string",
@@ -5056,6 +5675,28 @@
                     "span_id": {
                         "type": "string",
                         "title": "Span Id"
+                    },
+                    "parent_span_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Span Id"
+                    },
+                    "span_kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Kind"
                     },
                     "start_time": {
                         "type": "string",
@@ -5091,6 +5732,62 @@
                     "raw_data": {
                         "type": "object",
                         "title": "Raw Data"
+                    },
+                    "system_prompt": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "System Prompt"
+                    },
+                    "user_query": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Query"
+                    },
+                    "response": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Response"
+                    },
+                    "context": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Context"
+                    },
+                    "metric_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/MetricResultResponse"
+                        },
+                        "type": "array",
+                        "title": "Metric Results",
+                        "description": "List of metric results for this span",
+                        "default": []
                     }
                 },
                 "type": "object",
@@ -5104,7 +5801,7 @@
                     "updated_at",
                     "raw_data"
                 ],
-                "title": "SpanResponse"
+                "title": "SpanWithMetricsResponse"
             },
             "TaskResponse": {
                 "properties": {
@@ -5140,6 +5837,21 @@
                         "type": "array",
                         "title": "Rules",
                         "description": "List of all the rule for the task."
+                    },
+                    "metrics": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/MetricResponse"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Metrics",
+                        "description": "List of all the metrics for the task."
                     }
                 },
                 "type": "object",
@@ -5321,6 +6033,20 @@
                     "unknown"
                 ],
                 "title": "ToxicityViolationType"
+            },
+            "UpdateMetricRequest": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Boolean value to enable or disable the metric. "
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "title": "UpdateMetricRequest"
             },
             "UpdateRuleRequest": {
                 "properties": {
