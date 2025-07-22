@@ -31,7 +31,6 @@ class MetricsEngine:
     ) -> List[MetricResult]:
         if not metrics:
             return []
-        logger.info(f"Metric Request: {request.model_dump_json()}")
         metric_results = self.run_metrics(request, metrics)
         return metric_results
 
@@ -52,7 +51,7 @@ class MetricsEngine:
             exc = future.exception()
             if exc is not None:
                 logger.error(
-                    "Metric evaluation failed. Metric: %s" % (metric.model_dump_json()),
+                    "Metric evaluation failed. Metric: %s" % (metric.type),
                 )
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
