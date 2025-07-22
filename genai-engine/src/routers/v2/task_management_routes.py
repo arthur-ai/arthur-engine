@@ -1,6 +1,11 @@
 from typing import Annotated
 from uuid import UUID
 
+from fastapi import APIRouter, Body, Depends, HTTPException
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import RedirectResponse, Response
+
 from clients.telemetry.telemetry_client import (
     TelemetryEventTypes,
     send_telemetry_event,
@@ -8,7 +13,6 @@ from clients.telemetry.telemetry_client import (
 )
 from config.cache_config import cache_config
 from dependencies import get_application_config, get_db_session
-from fastapi import APIRouter, Body, Depends, HTTPException
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
@@ -24,9 +28,6 @@ from schemas.request_schemas import (
     UpdateRuleRequest,
 )
 from schemas.response_schemas import RuleResponse, SearchTasksResponse, TaskResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import RedirectResponse, Response
 from utils import constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint
@@ -41,7 +42,7 @@ rules_types = [rule.value for rule in RuleType]
 @task_management_routes.post(
     "/tasks",
     description="Register a new task. When a new task is created, all existing default rules will be "
-    "auto-applied for this new task.",
+    "auto-applied for this new task. Optionally specify if the task is agentic.",
     response_model=TaskResponse,
     tags=["Tasks"],
 )
@@ -100,7 +101,7 @@ def get_all_tasks(
 
 @task_management_routes.post(
     "/tasks/search",
-    description="Search tasks.",
+    description="Search tasks. Can filter by task IDs, task name substring, and agentic status.",
     response_model=SearchTasksResponse,
     tags=["Tasks"],
 )
@@ -121,6 +122,7 @@ def search_tasks(
         db_tasks, count = tasks_repo.query_tasks(
             ids=request.task_ids,
             task_name=request.task_name,
+            is_agentic=request.is_agentic,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
