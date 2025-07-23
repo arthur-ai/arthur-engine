@@ -2,9 +2,23 @@ import base64
 import json
 import logging
 import re
+import uuid
 from datetime import datetime
+from typing import Optional, Tuple
 
-from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
+from google.protobuf.json_format import MessageToDict
+from google.protobuf.message import DecodeError
+from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
+    ExportTraceServiceRequest,
+)
+
+from utils.constants import (
+    EXPECTED_SPAN_VERSION,
+    METADATA_KEY,
+    SPAN_KIND_KEY,
+    SPAN_VERSION_KEY,
+    TASK_ID_KEY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -527,3 +541,168 @@ def json_to_dict(json_str):
         return json.loads(json_str)
     except json.JSONDecodeError:
         return json_str
+
+
+# ============================================================================
+# Trace Data Processing Functions
+# ============================================================================
+
+
+def grpc_trace_to_dict(trace_data: bytes) -> dict:
+    """Convert gRPC trace data to dictionary format."""
+    try:
+        trace_request = ExportTraceServiceRequest()
+        trace_request.ParseFromString(trace_data)
+        return MessageToDict(trace_request)
+    except DecodeError as e:
+        raise DecodeError("Failed to decode protobuf message.") from e
+
+
+def normalize_span_attributes(span_data: dict) -> dict:
+    """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
+    normalized_span = span_data.copy()
+
+    if "attributes" in normalized_span:
+        normalized_attributes = extract_attributes_from_raw_data(normalized_span)
+        normalized_span["attributes"] = normalized_attributes
+
+    return normalized_span
+
+
+def get_attribute_value(span_data: dict, attribute_key: str) -> Optional[str]:
+    """Extract a specific attribute value from span data."""
+    attributes = span_data.get("attributes", {})
+
+    # Attributes should already be normalized (flat dict)
+    if isinstance(attributes, dict):
+        return attributes.get(attribute_key)
+
+    # Fallback for backward compatibility with OpenTelemetry format
+    if isinstance(attributes, list):
+        for attr in attributes:
+            key = attr.get("key")
+            value = attr.get("value", {})
+            if key == attribute_key:
+                return value.get("stringValue")
+
+    return None
+
+
+def get_parent_span_id(span_data: dict) -> Optional[str]:
+    """Extract parent span ID from span data."""
+    if "parentSpanId" in span_data:
+        return convert_id_to_hex(span_data.get("parentSpanId"))
+    return None
+
+
+def extract_timestamps(
+    span_data: dict,
+) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """Extract and convert timestamps from span data."""
+    start_time = None
+    end_time = None
+
+    if "startTimeUnixNano" in span_data:
+        start_time_ns = int(span_data.get("startTimeUnixNano", 0))
+        start_time = timestamp_ns_to_datetime(start_time_ns)
+
+    if "endTimeUnixNano" in span_data:
+        end_time_ns = int(span_data.get("endTimeUnixNano", 0))
+        end_time = timestamp_ns_to_datetime(end_time_ns)
+
+    return start_time, end_time
+
+
+def get_metadata(span_data: dict) -> dict:
+    """Get the metadata from the span data."""
+    metadata_str = get_attribute_value(span_data, METADATA_KEY)
+    if metadata_str:
+        try:
+            return json.loads(metadata_str)
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def extract_basic_span_info(span_data: dict) -> dict:
+    """Extract basic span information from normalized span data."""
+    span_dict = {
+        "trace_id": convert_id_to_hex(span_data.get("traceId")),
+        "span_id": convert_id_to_hex(span_data.get("spanId")),
+    }
+
+    # Extract parent span ID
+    parent_span_id = get_parent_span_id(span_data)
+    if parent_span_id:
+        span_dict["parent_span_id"] = parent_span_id
+
+    # Extract span kind
+    span_kind = get_attribute_value(span_data, SPAN_KIND_KEY)
+    if span_kind:
+        span_dict["span_kind"] = span_kind
+
+    # Extract timestamps
+    start_time, end_time = extract_timestamps(span_data)
+    span_dict["start_time"] = start_time
+    span_dict["end_time"] = end_time
+
+    return span_dict
+
+
+def extract_and_validate_task_id(span_data: dict) -> Optional[str]:
+    """Extract task_id from span data."""
+    metadata = get_metadata(span_data)
+    return metadata.get(TASK_ID_KEY)
+
+
+def process_span_data(span_data: dict) -> Optional[dict]:
+    """Process and clean span data, returning None if the span data is invalid."""
+    normalized_span_data = normalize_span_attributes(span_data)
+
+    # Extract basic span information
+    span_dict = extract_basic_span_info(normalized_span_data)
+
+    # Extract and validate task_id
+    task_id = extract_and_validate_task_id(normalized_span_data)
+    span_dict["task_id"] = task_id
+
+    # Inject version into raw data
+    normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
+
+    # Store the normalized span data
+    span_dict["raw_data"] = normalized_span_data
+
+    return span_dict
+
+
+def extract_and_process_spans(
+    json_traces: dict,
+) -> Tuple[list[dict], Tuple[int, int, int, list[str]]]:
+    """Extract and process spans from JSON trace data."""
+    total_spans = 0
+    accepted_spans = 0
+    rejected_spans = 0
+    rejected_reasons = []
+    spans_data = []
+
+    for resource_span in json_traces.get("resourceSpans", []):
+        for scope_span in resource_span.get("scopeSpans", []):
+            for span_data in scope_span.get("spans", []):
+                total_spans += 1
+                processed_span = process_span_data(span_data)
+
+                if processed_span:
+                    processed_span["id"] = str(uuid.uuid4())
+                    spans_data.append(processed_span)
+                    accepted_spans += 1
+                else:
+                    rejected_spans += 1
+                    rejected_reasons.append("Invalid span data format.")
+                    logger.debug(f"Rejected span due to invalid format: \n{span_data}")
+
+    return spans_data, (
+        total_spans,
+        accepted_spans,
+        rejected_spans,
+        rejected_reasons,
+    )

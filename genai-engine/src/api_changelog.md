@@ -1,6 +1,9 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 07/23/2025
+- **CHANGE** for **URL**: /v1/traces/metrics/  Updated the response object for traces/metrics and traces/query to a traces object containing a list of reconstructed traces (nested and sorted by span start time, traces reverse-sorted by trace start time).
 # 07/22/2025
 - **CHANGE** for **URL**: /api/v2/tasks Added optional metrics to the task response
 - **CHANGE** for **URL**: /api/v2/tasks/search  Added optional metrics to the task response

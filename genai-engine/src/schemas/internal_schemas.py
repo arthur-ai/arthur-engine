@@ -1615,6 +1615,35 @@ class Span(BaseModel):
             ],
         )
 
+    def _to_nested_metrics_response_model(
+        self,
+        children: list = None,
+    ) -> "NestedSpanWithMetricsResponse":
+        """Convert span to nested response model with optional children."""
+        from schemas.response_schemas import NestedSpanWithMetricsResponse
+
+        return NestedSpanWithMetricsResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            task_id=self.task_id,
+            raw_data=self.raw_data,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            system_prompt=self.system_prompt,
+            user_query=self.user_query,
+            response=self.response,
+            context=self.context,
+            metric_results=[
+                result._to_response_model() for result in (self.metric_results or [])
+            ],
+            children=children or [],
+        )
+
     @staticmethod
     def from_span_data(span_data: dict, user_id: str) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""

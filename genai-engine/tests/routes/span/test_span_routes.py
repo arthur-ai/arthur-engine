@@ -6,6 +6,26 @@ import pytest
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
+def _extract_spans_from_traces(traces_response):
+    """Helper function to extract flat spans from hierarchical traces response."""
+    spans = []
+    for trace in traces_response.traces:
+        for root_span in trace.root_spans:
+            spans.append(root_span)
+            spans.extend(_extract_spans_recursively(root_span))
+    return spans
+
+
+def _extract_spans_recursively(span):
+    """Recursively extract all child spans from a nested span structure."""
+    spans = []
+    if hasattr(span, "children") and span.children:
+        for child in span.children:
+            spans.append(child)
+            spans.extend(_extract_spans_recursively(child))
+    return spans
+
+
 @pytest.mark.unit_tests
 def test_receive_traces_all_spans_accepted(
     client: GenaiEngineTestClientBase,
@@ -121,11 +141,14 @@ def test_span_version_injection(
     assert status_code == 200
 
     # Query the spans to verify version injection
-    status_code, response = client.query_spans(task_ids=["test_task"])
+    status_code, response = client.query_traces(task_ids=["test_task"])
     assert status_code == 200
 
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+
     # Check that all spans have the expected version
-    for span in response.spans:
+    for span in spans:
         assert "arthur_span_version" in span.raw_data
         assert span.raw_data["arthur_span_version"] == "arthur_span_v1"
 
@@ -192,11 +215,14 @@ def test_span_version_injection_without_existing_version(
     assert status_code == 200
 
     # Query the span to verify version was injected
-    status_code, response = client.query_spans(task_ids=["version_test_task"])
+    status_code, response = client.query_traces(task_ids=["version_test_task"])
     assert status_code == 200
-    assert len(response.spans) == 1
 
-    span = response.spans[0]
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 1
+
+    span = spans[0]
     assert "arthur_span_version" in span.raw_data
     assert span.raw_data["arthur_span_version"] == "arthur_span_v1"
 
@@ -212,17 +238,19 @@ def test_query_spans_basic(
     create_test_spans,
 ):
     """Test basic spans query - returns all spans associated with the task's trace IDs."""
-    status_code, response = client.query_spans(task_ids=["task2"])
+    status_code, response = client.query_traces(task_ids=["task2"])
     assert status_code == 200
-    assert response.count == 2
-    assert len(response.spans) == 2
 
-    trace_ids = {span.trace_id for span in response.spans}
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2
+
+    trace_ids = {span.trace_id for span in spans}
     assert len(trace_ids) == 1
     assert "trace2" in trace_ids
 
     # Verify that spans have metric_results field (even if empty)
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             assert hasattr(span, "metric_results")
             assert len(span.metric_results) == 0
@@ -235,17 +263,19 @@ def test_query_spans_with_trace_ids(
 ):
     """Test spans query with trace IDs filter."""
     # First get some spans to find trace IDs
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
-    trace_ids = [span.trace_id for span in response.spans]
+    trace_ids = [span.trace_id for span in spans]
 
     # Query by trace IDs (must also provide task_ids)
-    status_code, response = client.query_spans(task_ids=["task1"], trace_ids=trace_ids)
+    status_code, response = client.query_traces(task_ids=["task1"], trace_ids=trace_ids)
     assert status_code == 200
-    assert len(response.spans) > 0
-    assert all(span.trace_id in trace_ids for span in response.spans)
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
+    assert all(span.trace_id in trace_ids for span in spans)
 
 
 @pytest.mark.unit_tests
@@ -253,18 +283,20 @@ def test_query_spans_with_existing_metrics(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
-    """Test that query_spans returns existing metrics but doesn't compute new ones."""
+    """Test that query_traces returns existing metrics but doesn't compute new ones."""
     # First create some spans with metrics
-    status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
+    status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
     # Now query with existing metrics (should return the same metrics without recomputing)
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
     # Verify that spans have metric_results field
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             assert hasattr(span, "metric_results")
             assert len(span.metric_results) > 0
@@ -275,14 +307,15 @@ def test_query_spans_without_metrics_computation(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
-    """Test that query_spans doesn't compute new metrics even for LLM spans without existing metrics."""
+    """Test that query_traces doesn't compute new metrics even for LLM spans without existing metrics."""
     # Query spans without any prior metric computation
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
     # Verify that spans have metric_results field
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             assert hasattr(span, "metric_results")
             assert len(span.metric_results) == 1
@@ -295,12 +328,13 @@ def test_query_spans_without_any_filters(
 ):
     """Test span query without any filters (should return all spans)."""
     # Query without any filters (must provide task_ids)
-    status_code, response = client.query_spans(task_ids=["task1", "task2"])
+    status_code, response = client.query_traces(task_ids=["task1", "task2"])
     assert status_code == 200
-    assert len(response.spans) > 0  # Should return some spans
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0  # Should return some spans
 
     # Verify that all returned spans have the expected structure
-    for span in response.spans:
+    for span in spans:
         assert hasattr(span, "id")
         assert hasattr(span, "trace_id")
         assert hasattr(span, "span_id")
@@ -318,17 +352,19 @@ def test_query_spans_with_invalid_filters(
 ):
     """Test span query with invalid filters (should return empty results, not errors)."""
     # Test with invalid trace ID
-    status_code, response = client.query_spans(
+    status_code, response = client.query_traces(
         task_ids=["task1"],
         trace_ids=["invalid_trace_id"],
     )
     assert status_code == 200
-    assert len(response.spans) == 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 0
 
     # Test with invalid task ID
-    status_code, response = client.query_spans(task_ids=["invalid_task_id"])
+    status_code, response = client.query_traces(task_ids=["invalid_task_id"])
     assert status_code == 200
-    assert len(response.spans) == 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 0
 
 
 @pytest.mark.unit_tests
@@ -338,10 +374,10 @@ def test_pagination_behavior(
 ):
     """Test pagination behavior for span queries."""
     # Test first page
-    status_code, response = client.query_spans(task_ids=["task1"], page=0, page_size=1)
+    status_code, response = client.query_traces(task_ids=["task1"], page=0, page_size=1)
     assert status_code == 200
-    assert len(response.spans) == 2  # task1 has 2 spans
-    assert response.count == 2
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2  # task1 has 2 spans
 
 
 @pytest.mark.unit_tests
@@ -351,14 +387,16 @@ def test_sorting_behavior(
 ):
     """Test sorting behavior for span queries."""
     # Test descending sort (default)
-    status_code, response = client.query_spans(task_ids=["task1"], sort="desc")
+    status_code, response = client.query_traces(task_ids=["task1"], sort="desc")
     assert status_code == 200
-    assert len(response.spans) == 2
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2
 
     # Test ascending sort
-    status_code, response = client.query_spans(task_ids=["task1"], sort="asc")
+    status_code, response = client.query_traces(task_ids=["task1"], sort="asc")
     assert status_code == 200
-    assert len(response.spans) == 2
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2
 
 
 @pytest.mark.unit_tests
@@ -373,29 +411,32 @@ def test_time_filtering(
     now = datetime.now()
 
     # Test filtering by start time
-    status_code, response = client.query_spans(
+    status_code, response = client.query_traces(
         task_ids=["task1"],
         start_time=now - timedelta(days=3),
     )
     assert status_code == 200
-    assert len(response.spans) == 2  # All spans should be within this range
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2  # All spans should be within this range
 
     # Test filtering by end time
-    status_code, response = client.query_spans(
+    status_code, response = client.query_traces(
         task_ids=["task1"],
         end_time=now + timedelta(days=1),
     )
     assert status_code == 200
-    assert len(response.spans) == 2  # All spans should be within this range
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2  # All spans should be within this range
 
     # Test filtering by both start and end time
-    status_code, response = client.query_spans(
+    status_code, response = client.query_traces(
         task_ids=["task1"],
         start_time=now - timedelta(days=3),
         end_time=now + timedelta(days=1),
     )
     assert status_code == 200
-    assert len(response.spans) == 2  # All spans should be within this range
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2  # All spans should be within this range
 
 
 @pytest.mark.unit_tests
@@ -405,14 +446,16 @@ def test_span_features_extraction_llm_span(
 ):
     """Test that LLM span features are extracted and computed on-demand."""
     # Query the LLM span to verify features are computed on-demand
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == 2  # task1 has 2 spans
-    assert len(response.spans) == 2
+
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2  # task1 has 2 spans
 
     # Find the LLM span
     llm_span = None
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             llm_span = span
             break
@@ -445,14 +488,16 @@ def test_span_features_extraction_non_llm_span(
 ):
     """Test that non-LLM spans don't have features extracted."""
     # Query spans to find a non-LLM span
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == 2
-    assert len(response.spans) == 2
+
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 2
 
     # Find the non-LLM span (CHAIN span)
     non_llm_span = None
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "CHAIN":
             non_llm_span = span
             break
@@ -480,20 +525,22 @@ def test_query_spans_with_metrics_happy_path(
 ):
     """Test traces/metrics/ endpoint - computes metrics for all LLM spans in traces associated with task IDs."""
     # Test basic query with task IDs
-    status_code, response = client.query_spans_with_metrics(task_ids=["task1"])
+    status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
+
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
     assert (
-        response.count == 2
+        len(spans) == 2
     )  # task1 has 2 spans (one with task_id, one without but in same trace)
-    assert len(response.spans) == 2
 
     # Verify that we get spans from the same trace, regardless of task_id
-    trace_ids = {span.trace_id for span in response.spans}
+    trace_ids = {span.trace_id for span in spans}
     assert len(trace_ids) == 1  # All spans should be from the same trace
     assert "trace1" in trace_ids
 
     # Verify that spans have metric_results field with computed metrics
-    for span in response.spans:
+    for span in spans:
         assert hasattr(span, "metric_results")
         # Should have computed metrics for LLM spans
         if span.span_kind == "LLM":
@@ -507,11 +554,13 @@ def test_query_spans_with_metrics_multiple_task_ids(
 ):
     """Test traces/metrics/ endpoint with multiple task IDs."""
     # Test querying spans for multiple tasks
-    status_code, response = client.query_spans_with_metrics(task_ids=["task1", "task2"])
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"],
+    )
     assert status_code == 200
-    assert response.count == 4  # task1 has 2 spans, task2 has 2 spans
-    assert len(response.spans) == 4
-    task_ids = {span.task_id for span in response.spans}
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) == 4  # task1 has 2 spans, task2 has 2 spans
+    task_ids = {span.task_id for span in spans}
 
     # Spans not associated with a task, but in the same trace are included,
     # and have a task_id of None
@@ -524,7 +573,7 @@ def test_query_spans_with_metrics_missing_task_ids(
 ):
     """Test traces/metrics/ endpoint with missing task IDs (should return 400)."""
     # Test with missing task IDs (should return 400)
-    status_code, response = client.query_spans_with_metrics(task_ids=[])
+    status_code, response = client.query_traces_with_metrics(task_ids=[])
     assert status_code == 400
     response_json = json.loads(response)
     assert "Field required" in response_json["detail"]
@@ -537,13 +586,16 @@ def test_metrics_computation_only_for_llm_spans(
 ):
     """Test that metrics are only computed for LLM spans, not other span types."""
     # Query spans with metrics computation
-    status_code, response = client.query_spans_with_metrics(task_ids=["task1", "task2"])
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"],
+    )
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
     # Verify that only LLM spans have computed metrics
-    llm_spans = [span for span in response.spans if span.span_kind == "LLM"]
-    non_llm_spans = [span for span in response.spans if span.span_kind != "LLM"]
+    llm_spans = [span for span in spans if span.span_kind == "LLM"]
+    non_llm_spans = [span for span in spans if span.span_kind != "LLM"]
 
     # LLM spans should have computed metrics
     for span in llm_spans:
@@ -566,12 +618,13 @@ def test_metrics_computation_error_handling(
         side_effect=Exception("Metrics engine error"),
     ):
         # This should not fail the entire request, just skip metrics computation
-        status_code, response = client.query_spans_with_metrics(task_ids=["task2"])
+        status_code, response = client.query_traces_with_metrics(task_ids=["task2"])
         assert status_code == 200
-        assert len(response.spans) > 0
+        spans = _extract_spans_from_traces(response)
+        assert len(spans) > 0
 
         # Spans should be returned but without metrics
-        for span in response.spans:
+        for span in spans:
             if span.span_kind == "LLM":
                 assert hasattr(span, "metric_results")
                 assert len(span.metric_results) == 0
@@ -584,13 +637,14 @@ def test_compute_span_metrics_success(
 ):
     """Test computing metrics for a single span."""
     # First get a span ID - specifically get an LLM span
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
     # Find an LLM span specifically
     llm_span = None
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             llm_span = span
             break
@@ -611,29 +665,20 @@ def test_compute_span_metrics_success(
 
 
 @pytest.mark.unit_tests
-def test_compute_span_metrics_not_found(
-    client: GenaiEngineTestClientBase,
-):
-    """Test computing metrics for a non-existent span."""
-    non_existent_span_id = "non_existent_span_id"  # Use a string span_id
-
-    status_code, response = client.compute_span_metrics(non_existent_span_id)
-    assert status_code == 400
-    assert "not found" in response.lower()
-
-
-@pytest.mark.unit_tests
 def test_compute_span_metrics_non_llm_span(
     client: GenaiEngineTestClientBase,
     create_test_spans,
 ):
     """Test computing metrics for a non-LLM span (should fail)."""
     # Get a span and modify it to be non-LLM in the database
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
 
-    span_id = response.spans[0].span_id  # Use span_id, not id
+    # Extract spans from hierarchical traces
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
+
+    span_id = spans[0].span_id  # Use span_id, not id
 
     # Modify the span to be non-LLM in the database
     from tests.conftest import override_get_db_session
@@ -661,13 +706,14 @@ def test_compute_span_metrics_no_task_id(
 ):
     """Test computing metrics for a span without task_id (should fail)."""
     # Get a span and remove its task_id in the database
-    status_code, response = client.query_spans(task_ids=["task1"])
+    status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.spans) > 0
+    spans = _extract_spans_from_traces(response)
+    assert len(spans) > 0
 
     # Find an LLM span specifically
     llm_span = None
-    for span in response.spans:
+    for span in spans:
         if span.span_kind == "LLM":
             llm_span = span
             break
@@ -698,9 +744,192 @@ def test_compute_span_metrics_no_task_id(
 def test_query_spans_missing_task_ids(
     client: GenaiEngineTestClientBase,
 ):
-    """Test that query_spans endpoint requires task_ids."""
+    """Test that query_traces endpoint requires task_ids."""
     # Test with empty task_ids list (should return 422 due to min_length=1)
-    status_code, response = client.query_spans(task_ids=[])
+    status_code, response = client.query_traces(task_ids=[])
     assert status_code == 400
     response_json = json.loads(response)
     assert "Field required" in response_json["detail"]
+
+
+@pytest.mark.unit_tests
+def test_compute_span_metrics_not_found(
+    client: GenaiEngineTestClientBase,
+):
+    """Test computing metrics for a non-existent span."""
+    non_existent_span_id = "non_existent_span_id"  # Use a string span_id
+
+    status_code, response = client.compute_span_metrics(non_existent_span_id)
+    assert status_code == 400
+    assert "not found" in response.lower()
+
+
+# ============================================================================
+# Span Reconstruction Tests
+# ============================================================================
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_basic_structure(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test that traces are properly reconstructed with hierarchical structure."""
+    status_code, response = client.query_traces(task_ids=["task1"])
+    assert status_code == 200
+
+    # Verify we get hierarchical traces, not flat spans
+    assert hasattr(response, "traces")
+    assert hasattr(response, "count")
+    assert len(response.traces) == 1  # task1 has 1 trace
+
+    trace = response.traces[0]
+    assert hasattr(trace, "trace_id")
+    assert hasattr(trace, "start_time")
+    assert hasattr(trace, "end_time")
+    assert hasattr(trace, "root_spans")
+
+    # Verify trace has the expected structure
+    assert trace.trace_id == "trace1"
+    assert len(trace.root_spans) > 0
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_parent_child_relationships(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test that parent-child relationships are properly reconstructed."""
+    status_code, response = client.query_traces(task_ids=["task1"])
+    assert status_code == 200
+
+    trace = response.traces[0]
+    root_spans = trace.root_spans
+
+    # Find the root span (should have no parent_span_id)
+    root_span = None
+    for span in root_spans:
+        if span.parent_span_id is None:
+            root_span = span
+            break
+
+    assert root_span is not None, "Should have at least one root span"
+
+    # Verify child spans are nested under parent
+    if hasattr(root_span, "children") and root_span.children:
+        child_span = root_span.children[0]
+        # The child's parent_span_id should match the root span's span_id
+        assert child_span.parent_span_id == root_span.span_id
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_multiple_traces(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test reconstruction of multiple traces."""
+    status_code, response = client.query_traces(task_ids=["task1", "task2"])
+    assert status_code == 200
+
+    # Should get 2 traces (one for each task)
+    assert len(response.traces) == 2
+
+    trace_ids = {trace.trace_id for trace in response.traces}
+    assert "trace1" in trace_ids
+    assert "trace2" in trace_ids
+
+    # Each trace should have proper structure
+    for trace in response.traces:
+        assert hasattr(trace, "trace_id")
+        assert hasattr(trace, "root_spans")
+        assert len(trace.root_spans) > 0
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_with_metrics(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test that trace reconstruction preserves metrics in the hierarchical structure."""
+    status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
+    assert status_code == 200
+
+    trace = response.traces[0]
+
+    # Extract all spans from the hierarchical structure
+    all_spans = []
+    for root_span in trace.root_spans:
+        all_spans.append(root_span)
+        all_spans.extend(_extract_spans_recursively(root_span))
+
+    # Verify that LLM spans have metrics
+    llm_spans = [span for span in all_spans if span.span_kind == "LLM"]
+    assert len(llm_spans) > 0
+
+    for llm_span in llm_spans:
+        assert hasattr(llm_span, "metric_results")
+        assert len(llm_span.metric_results) > 0
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_span_ordering(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test that spans are properly ordered by start_time within traces."""
+    status_code, response = client.query_traces(task_ids=["task1"])
+    assert status_code == 200
+
+    trace = response.traces[0]
+
+    # Check that root spans are ordered by start_time (ascending)
+    root_spans = trace.root_spans
+    if len(root_spans) > 1:
+        for i in range(len(root_spans) - 1):
+            assert root_spans[i].start_time <= root_spans[i + 1].start_time
+
+    # Check that child spans are ordered by start_time
+    for root_span in root_spans:
+        if hasattr(root_span, "children") and len(root_span.children) > 1:
+            children = root_span.children
+            for i in range(len(children) - 1):
+                assert children[i].start_time <= children[i + 1].start_time
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_timestamp_calculation(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test that trace-level timestamps are correctly calculated from spans."""
+    status_code, response = client.query_traces(task_ids=["task1"])
+    assert status_code == 200
+
+    trace = response.traces[0]
+
+    # Extract all spans from the trace
+    all_spans = []
+    for root_span in trace.root_spans:
+        all_spans.append(root_span)
+        all_spans.extend(_extract_spans_recursively(root_span))
+
+    # Verify trace start_time is the minimum span start_time
+    min_start_time = min(span.start_time for span in all_spans)
+    assert trace.start_time == min_start_time
+
+    # Verify trace end_time is the maximum span end_time
+    max_end_time = max(span.end_time for span in all_spans)
+    assert trace.end_time == max_end_time
+
+
+@pytest.mark.unit_tests
+def test_trace_reconstruction_empty_result(
+    client: GenaiEngineTestClientBase,
+):
+    """Test trace reconstruction with no matching spans."""
+    status_code, response = client.query_traces(task_ids=["nonexistent_task"])
+    assert status_code == 200
+
+    # Should return empty traces array
+    assert len(response.traces) == 0
+    assert response.count == 0

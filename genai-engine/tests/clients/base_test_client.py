@@ -44,6 +44,7 @@ from schemas.response_schemas import (
     QueryFeedbackResponse,
     QueryInferencesResponse,
     QuerySpansWithMetricsResponse,
+    QueryTracesWithMetricsResponse,
     RuleResponse,
     SearchRulesResponse,
     SearchTasksResponse,
@@ -1196,7 +1197,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
         return resp.status_code, resp.text
 
-    def query_spans_with_metrics(
+    def query_traces_with_metrics(
         self,
         task_ids: list[str],
         start_time: datetime | None = None,
@@ -1204,8 +1205,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
-    ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
-        """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
+    ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
+        """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces and returns hierarchical trace structure.
 
         Args:
             task_ids: Task IDs to filter on (required)
@@ -1216,7 +1217,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
+            tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
         """
         params = {"task_ids": task_ids}
         if start_time is not None:
@@ -1239,13 +1240,13 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                QuerySpansWithMetricsResponse.model_validate(resp.json())
+                QueryTracesWithMetricsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
         )
 
-    def query_spans(
+    def query_traces(
         self,
         task_ids: list[str],
         trace_ids: list[str] | None = None,
@@ -1254,8 +1255,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
-    ) -> tuple[int, QuerySpansWithMetricsResponse | str]:
-        """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
+    ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
+        """Query traces with nested spans and filters. Task IDs are required. Returns traces with hierarchical span structure and any existing metrics but does not compute new ones.
 
         Args:
             task_ids: Task IDs to filter on (required)
@@ -1267,7 +1268,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, QuerySpansWithMetricsResponse | str]: Status code and response
+            tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
         """
         params = {"task_ids": task_ids}
         if trace_ids is not None:
@@ -1292,11 +1293,20 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                QuerySpansWithMetricsResponse.model_validate(resp.json())
+                QueryTracesWithMetricsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
         )
+
+    # Backward compatibility aliases - deprecated, use query_traces and query_traces_with_metrics instead
+    def query_spans(self, *args, **kwargs):
+        """Deprecated: Use query_traces() instead."""
+        return self.query_traces(*args, **kwargs)
+
+    def query_spans_with_metrics(self, *args, **kwargs):
+        """Deprecated: Use query_traces_with_metrics() instead."""
+        return self.query_traces_with_metrics(*args, **kwargs)
 
     def compute_span_metrics(
         self,

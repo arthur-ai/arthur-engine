@@ -1,5 +1,6 @@
 import json
 import logging
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Annotated
 
@@ -16,7 +17,10 @@ from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import QuerySpansWithMetricsResponse
+from schemas.response_schemas import (
+    QuerySpansWithMetricsResponse,
+    QueryTracesWithMetricsResponse,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -33,6 +37,22 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     return SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+
+
+@contextmanager
+def _handle_span_errors(operation_name: str, db_session: Session = None):
+    """Context manager for consistent error handling in span operations."""
+    try:
+        yield
+    except ValueError as e:
+        logger.error(f"Validation error in {operation_name}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in {operation_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if db_session:
+            db_session.close()
 
 
 def _create_response(
@@ -96,8 +116,8 @@ def receive_traces(
 
 @span_routes.get(
     "/traces/query",
-    description="Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
-    response_model=QuerySpansWithMetricsResponse,
+    description="Query traces with nested spans and filters. Task IDs are required. Returns traces with hierarchical span structure and any existing metrics but does not compute new ones.",
+    response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -127,10 +147,10 @@ def query_spans(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
-    try:
+    """Query traces with nested spans and filters. Task IDs are required. Returns traces with hierarchical span structure and any existing metrics but does not compute new ones."""
+    with _handle_span_errors("query traces", db_session):
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        traces = span_repo.query_traces(
             task_ids=task_ids,
             trace_ids=trace_ids,
             start_time=start_time,
@@ -138,25 +158,16 @@ def query_spans(
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
-            include_metrics=True,  # Include existing metrics
-            compute_new_metrics=False,  # Don't compute new metrics
+            include_metrics=True,
+            compute_new_metrics=False,
         )
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error querying spans: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
+        return QueryTracesWithMetricsResponse(count=len(traces), traces=traces)
 
 
 @span_routes.get(
     "/traces/metrics/",
-    description="Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.",
-    response_model=QuerySpansWithMetricsResponse,
+    description="Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces and returns hierarchical trace structure.",
+    response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -182,10 +193,10 @@ def query_spans_with_metrics(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces."""
-    try:
+    """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces and returns hierarchical trace structure."""
+    with _handle_span_errors("query traces with metrics", db_session):
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        traces = span_repo.query_traces(
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
@@ -195,16 +206,7 @@ def query_spans_with_metrics(
             include_metrics=True,
             compute_new_metrics=True,
         )
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error querying spans with metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
+        return QueryTracesWithMetricsResponse(count=len(traces), traces=traces)
 
 
 @span_routes.get(
@@ -221,16 +223,11 @@ def compute_span_metrics(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """Compute metrics for a single span. Validates that the span is an LLM span."""
-    try:
+    with _handle_span_errors("compute span metrics", db_session):
         span_repo = _get_span_repository(db_session)
         spans = span_repo.query_spans_by_span_id_with_metrics(span_id)
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
-    except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error computing span metrics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
+        response_spans = [span._to_metrics_response_model() for span in spans]
+        return QuerySpansWithMetricsResponse(
+            count=len(response_spans),
+            spans=response_spans,
+        )

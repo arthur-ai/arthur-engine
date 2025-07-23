@@ -1,15 +1,10 @@
 import json
 import logging
-import uuid
 from datetime import datetime
 from typing import Optional, Tuple, Union
 
-from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
-from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
-    ExportTraceServiceRequest,
-)
 from sqlalchemy import and_, asc, desc, insert, select
 from sqlalchemy.orm import Session
 
@@ -21,14 +16,7 @@ from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import MetricResult, Span
 from schemas.metric_schemas import MetricRequest
 from utils import trace as trace_utils
-from utils.constants import (
-    EXPECTED_SPAN_VERSION,
-    METADATA_KEY,
-    SPAN_KIND_KEY,
-    SPAN_KIND_LLM,
-    SPAN_VERSION_KEY,
-    TASK_ID_KEY,
-)
+from utils.constants import SPAN_KIND_LLM
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -38,6 +26,8 @@ DEFAULT_PAGE_SIZE = 5
 
 
 class SpanRepository:
+    """Repository for managing spans with improved organization and responsibility separation."""
+
     def __init__(
         self,
         db_session: Session,
@@ -56,8 +46,8 @@ class SpanRepository:
     def create_traces(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and store in database."""
         try:
-            json_traces = self._grpc_trace_to_dict(trace_data)
-            spans_data, stats = self._extract_and_process_spans(json_traces)
+            json_traces = trace_utils.grpc_trace_to_dict(trace_data)
+            spans_data, stats = trace_utils.extract_and_process_spans(json_traces)
 
             if spans_data:
                 self._store_spans(spans_data, commit=True)
@@ -80,33 +70,29 @@ class SpanRepository:
         compute_new_metrics: bool = True,
     ) -> list[Span]:
         """Query spans with optional metrics computation."""
-        # Validate parameters
-        if not task_ids:
-            raise ValueError("task_ids are required for span queries")
+        # Validate input parameters
+        self._validate_query_parameters(task_ids, include_metrics, compute_new_metrics)
 
-        if include_metrics and compute_new_metrics and not task_ids:
-            raise ValueError(
-                "task_ids are required when include_metrics=True and compute_new_metrics=True",
-            )
-
-        # Handle task ID to trace ID resolution
-        trace_ids = self._resolve_trace_ids_for_task_ids(task_ids, trace_ids)
-
-        # Apply trace-level pagination
-        trace_ids = self._apply_trace_level_pagination(trace_ids, page, page_size)
-        if not trace_ids:
+        # Resolve and paginate trace IDs
+        resolved_trace_ids = self._resolve_and_paginate_trace_ids(
+            task_ids,
+            trace_ids,
+            page,
+            page_size,
+        )
+        if not resolved_trace_ids:
             return []
 
-        # Query spans from database
+        # Query and validate spans
         spans = self._query_spans_from_db(
-            trace_ids=trace_ids,
+            trace_ids=resolved_trace_ids,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
         )
-
-        # Validate spans and add metrics if requested
         valid_spans = self._validate_spans(spans)
+
+        # Add metrics if requested
         if include_metrics and valid_spans:
             valid_spans = self._add_metrics_to_spans(valid_spans, compute_new_metrics)
 
@@ -114,28 +100,50 @@ class SpanRepository:
 
     def query_spans_by_span_id_with_metrics(self, span_id: str) -> list[Span]:
         """Query a single span by span_id and compute metrics for it."""
-        # Query the specific span directly from database
-        query = select(DatabaseSpan).where(DatabaseSpan.span_id == span_id)
-        results = self.db_session.execute(query).scalars().unique().all()
+        span = self._get_span_by_id(span_id)
+        self._validate_span_for_metrics_computation(span, span_id)
+        return self._add_metrics_to_spans([span], compute_new_metrics=True)
 
-        if not results:
-            raise ValueError(f"Span with ID {span_id} not found")
-
-        span = Span._from_database_model(results[0])
-
-        # Validate span version
-        if not trace_utils.validate_span_version(span.raw_data):
-            raise ValueError(f"Span {span_id} failed version validation")
-
-        # Validate that this is an LLM span
-        self._validate_span_for_metrics(span, span_id)
-
-        # Compute metrics for this span
-        return self._add_metrics_to_spans([span])
+    def query_traces(
+        self,
+        sort: PaginationSortMethod,
+        page: int,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        include_metrics: bool = False,
+        compute_new_metrics: bool = True,
+    ) -> list:
+        """Query spans and return them as reconstructed traces with hierarchical structure."""
+        spans = self.query_spans(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+            trace_ids=trace_ids,
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            include_metrics=include_metrics,
+            compute_new_metrics=compute_new_metrics,
+        )
+        return self._reconstruct_traces_from_spans(spans)
 
     # ============================================================================
-    # Private Helper Methods - Query Logic
+    # Query and Database Operations
     # ============================================================================
+
+    def _resolve_and_paginate_trace_ids(
+        self,
+        task_ids: Optional[list[str]],
+        trace_ids: Optional[list[str]],
+        page: int,
+        page_size: int,
+    ) -> Optional[list[str]]:
+        """Resolve trace IDs for task IDs and apply pagination."""
+        resolved_trace_ids = self._resolve_trace_ids_for_task_ids(task_ids, trace_ids)
+        return self._apply_trace_level_pagination(resolved_trace_ids, page, page_size)
 
     def _resolve_trace_ids_for_task_ids(
         self,
@@ -167,6 +175,21 @@ class SpanRepository:
 
         return paginated_trace_ids if paginated_trace_ids else None
 
+    def _get_trace_ids_for_task_ids(self, task_ids: list[str]) -> list[str]:
+        """Get all trace IDs associated with the given task IDs."""
+        if not task_ids:
+            return []
+
+        trace_ids_query = (
+            self.db_session.query(DatabaseSpan.trace_id)
+            .filter(DatabaseSpan.task_id.in_(task_ids))
+            .distinct()
+        )
+
+        trace_ids = [row[0] for row in trace_ids_query.all()]
+        logger.debug(f"Found {len(trace_ids)} trace IDs for task IDs: {task_ids}")
+        return trace_ids
+
     def _query_spans_from_db(
         self,
         trace_ids: Optional[list[str]] = None,
@@ -185,49 +208,62 @@ class SpanRepository:
         results = self.db_session.execute(query).scalars().unique().all()
         return [Span._from_database_model(span) for span in results]
 
-    def _validate_spans(self, spans: list[Span]) -> list[Span]:
-        """Validate spans and return only valid ones."""
-        valid_spans = []
-        for span in spans:
-            if trace_utils.validate_span_version(span.raw_data):
-                valid_spans.append(span)
-            else:
-                logger.warning(
-                    f"Skipping span {span.id} due to version validation failure",
-                )
-        return valid_spans
+    def _build_spans_query(
+        self,
+        trace_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+    ) -> select:
+        """Build a query for spans with the given filters."""
+        query = select(DatabaseSpan)
 
-    def _validate_span_for_metrics(self, span: Span, span_id: str):
-        """Validate that a span can have metrics computed for it."""
-        if span.span_kind != SPAN_KIND_LLM:
-            raise ValueError(
-                f"Span {span_id} is not an LLM span (span_kind: {span.span_kind})",
-            )
+        # Build filter conditions
+        conditions = []
+        if trace_ids:
+            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if start_time:
+            conditions.append(DatabaseSpan.created_at >= start_time)
+        if end_time:
+            conditions.append(DatabaseSpan.created_at <= end_time)
 
-        if not span.task_id:
-            raise ValueError(f"Span {span_id} has no task_id")
+        # Apply filters if any conditions exist
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        # Apply sorting
+        if sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(DatabaseSpan.created_at))
+        elif sort == PaginationSortMethod.ASCENDING:
+            query = query.order_by(asc(DatabaseSpan.created_at))
+
+        return query
+
+    def _get_span_by_id(self, span_id: str) -> Span:
+        """Query a single span by span_id."""
+        query = select(DatabaseSpan).where(DatabaseSpan.span_id == span_id)
+        results = self.db_session.execute(query).scalars().unique().all()
+
+        if not results:
+            raise ValueError(f"Span with ID {span_id} not found")
+
+        return Span._from_database_model(results[0])
+
+    def _store_spans(self, spans: list[dict], commit: bool = True):
+        """Store spans in the database with optional commit control."""
+        if not spans:
+            return
+
+        stmt = insert(DatabaseSpan).values(spans)
+        self.db_session.execute(stmt)
+
+        if commit:
+            self.db_session.commit()
+
+        logger.debug(f"Stored {len(spans)} spans (commit={commit})")
 
     # ============================================================================
-    # Private Helper Methods - Task ID Resolution
-    # ============================================================================
-
-    def _get_trace_ids_for_task_ids(self, task_ids: list[str]) -> list[str]:
-        """Get all trace IDs associated with the given task IDs."""
-        if not task_ids:
-            return []
-
-        trace_ids_query = (
-            self.db_session.query(DatabaseSpan.trace_id)
-            .filter(DatabaseSpan.task_id.in_(task_ids))
-            .distinct()
-        )
-
-        trace_ids = [row[0] for row in trace_ids_query.all()]
-        logger.debug(f"Found {len(trace_ids)} trace IDs for task IDs: {task_ids}")
-        return trace_ids
-
-    # ============================================================================
-    # Private Helper Methods - Metrics Computation
+    # Metrics Computation Operations
     # ============================================================================
 
     def _add_metrics_to_spans(
@@ -236,10 +272,13 @@ class SpanRepository:
         compute_new_metrics: bool = True,
     ) -> list[Span]:
         """Add metrics to spans by computing missing metrics and embedding all results."""
+        if not spans:
+            return spans
+
         span_ids = [span.id for span in spans]
         existing_metric_results = self._get_metric_results_for_spans(span_ids)
 
-        # Compute metrics for spans that don't have them (only if requested)
+        # Compute metrics for spans that don't have them
         if compute_new_metrics:
             spans_without_metrics = [
                 span for span in spans if span.id not in existing_metric_results
@@ -299,10 +338,12 @@ class SpanRepository:
             metrics_engine = get_metrics_engine()
         except Exception as e:
             logger.error(f"Error getting metrics engine: {e}")
+            metrics_engine = None
+
+        if not metrics_engine:
             return {}
 
         metrics_results = {}
-
         logger.debug(f"Computing metrics for {len(spans)} spans")
 
         for span in spans:
@@ -434,218 +475,134 @@ class SpanRepository:
         logger.debug(f"Stored {len(metric_results_to_insert)} metric results")
 
     # ============================================================================
-    # Private Helper Methods - Database Operations
+    # Validation Operations
     # ============================================================================
 
-    def _build_spans_query(
+    def _validate_query_parameters(
         self,
-        trace_ids: Optional[list[str]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-    ) -> select:
-        """Build a query for spans with the given filters."""
-        query = select(DatabaseSpan)
+        task_ids: Optional[list[str]],
+        include_metrics: bool,
+        compute_new_metrics: bool,
+    ):
+        """Validate query parameters."""
+        if not task_ids:
+            raise ValueError("task_ids are required for span queries")
 
-        # Build filter conditions
-        conditions = []
-        if trace_ids:
-            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
-        if start_time:
-            conditions.append(DatabaseSpan.created_at >= start_time)
-        if end_time:
-            conditions.append(DatabaseSpan.created_at <= end_time)
+        if include_metrics and compute_new_metrics and not task_ids:
+            raise ValueError(
+                "task_ids are required when include_metrics=True and compute_new_metrics=True",
+            )
 
-        # Apply filters if any conditions exist
-        if conditions:
-            query = query.where(and_(*conditions))
+    def _validate_spans(self, spans: list[Span]) -> list[Span]:
+        """Validate spans and return only valid ones."""
+        valid_spans = []
+        for span in spans:
+            if trace_utils.validate_span_version(span.raw_data):
+                valid_spans.append(span)
+            else:
+                logger.warning(
+                    f"Skipping span {span.id} due to version validation failure",
+                )
+        return valid_spans
 
-        # Apply sorting
-        if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseSpan.created_at))
-        elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(DatabaseSpan.created_at))
+    def _validate_span_for_metrics_computation(self, span: Span, span_id: str):
+        """Validate that a span can have metrics computed for it."""
+        if not trace_utils.validate_span_version(span.raw_data):
+            raise ValueError(f"Span {span_id} failed version validation")
 
-        return query
+        if span.span_kind != SPAN_KIND_LLM:
+            raise ValueError(
+                f"Span {span_id} is not an LLM span (span_kind: {span.span_kind})",
+            )
 
-    def _store_spans(self, spans: list[dict], commit: bool = True):
-        """Store spans in the database with optional commit control."""
+        if not span.task_id:
+            raise ValueError(f"Span {span_id} has no task_id")
+
+    # ============================================================================
+    # Trace Reconstruction Operations
+    # ============================================================================
+
+    def _reconstruct_traces_from_spans(self, spans: list[Span]) -> list:
+        """Reconstruct traces with nested span structure from a flat list of spans."""
+
         if not spans:
-            return
+            return []
 
-        stmt = insert(DatabaseSpan).values(spans)
-        self.db_session.execute(stmt)
+        # Group spans by trace_id
+        traces_dict = {}
+        for span in spans:
+            trace_id = span.trace_id
+            if trace_id not in traces_dict:
+                traces_dict[trace_id] = []
+            traces_dict[trace_id].append(span)
 
-        if commit:
-            self.db_session.commit()
+        # Build nested structure for each trace
+        traces = []
+        for trace_id, trace_spans in traces_dict.items():
+            trace = self._build_single_trace(trace_id, trace_spans)
+            traces.append(trace)
 
-        logger.debug(f"Stored {len(spans)} spans (commit={commit})")
+        # Sort traces by start_time in reverse order (latest first)
+        traces.sort(key=lambda t: t.start_time, reverse=True)
 
-    # ============================================================================
-    # Private Helper Methods - Trace Processing
-    # ============================================================================
+        return traces
 
-    def _extract_and_process_spans(
-        self,
-        json_traces: dict,
-    ) -> Tuple[list[dict], Tuple[int, int, int, list[str]]]:
-        """Extract and process spans from JSON trace data."""
-        total_spans = 0
-        accepted_spans = 0
-        rejected_spans = 0
-        rejected_reasons = []
-        spans_data = []
+    def _build_single_trace(self, trace_id: str, trace_spans: list[Span]):
+        """Build a single trace with nested span structure."""
+        from schemas.response_schemas import TraceResponse
 
-        for resource_span in json_traces.get("resourceSpans", []):
-            for scope_span in resource_span.get("scopeSpans", []):
-                for span_data in scope_span.get("spans", []):
-                    total_spans += 1
-                    processed_span = self._process_span_data(span_data)
+        # Sort spans within trace by start_time (ascending - earliest first)
+        trace_spans.sort(key=lambda s: s.start_time)
 
-                    if processed_span:
-                        processed_span["id"] = str(uuid.uuid4())
-                        spans_data.append(processed_span)
-                        accepted_spans += 1
-                    else:
-                        rejected_spans += 1
-                        rejected_reasons.append("Invalid span data format.")
-                        logger.debug(
-                            f"Rejected span due to invalid format: \n{span_data}",
-                        )
+        # Build tree structure
+        nested_trace = self._build_span_tree(trace_spans)
 
-        return spans_data, (
-            total_spans,
-            accepted_spans,
-            rejected_spans,
-            rejected_reasons,
+        # Calculate trace start and end times
+        trace_start_time = min(span.start_time for span in trace_spans)
+        trace_end_time = max(span.end_time for span in trace_spans)
+
+        return TraceResponse(
+            trace_id=trace_id,
+            start_time=trace_start_time,
+            end_time=trace_end_time,
+            root_spans=nested_trace,
         )
 
-    def _grpc_trace_to_dict(self, trace_data: bytes) -> dict:
-        """Convert gRPC trace data to dictionary format."""
-        try:
-            trace_request = ExportTraceServiceRequest()
-            trace_request.ParseFromString(trace_data)
-            return MessageToDict(trace_request)
-        except DecodeError as e:
-            raise DecodeError("Failed to decode protobuf message.") from e
+    def _build_span_tree(self, spans: list[Span]) -> list:
+        """Build a nested tree structure from a list of spans."""
 
-    def _process_span_data(self, span_data: dict) -> Optional[dict]:
-        """Process and clean span data, returning None if the span data is invalid."""
-        normalized_span_data = self._normalize_span_attributes(span_data)
+        # Create a mapping to store children for each span
+        children_by_parent = {}
+        root_spans = []
 
-        # Extract basic span information
-        span_dict = self._extract_basic_span_info(normalized_span_data)
+        # First pass: identify parent-child relationships
+        for span in spans:
+            parent_id = span.parent_span_id
+            if parent_id is None:
+                # This is a root span
+                root_spans.append(span)
+            else:
+                # This span has a parent
+                if parent_id not in children_by_parent:
+                    children_by_parent[parent_id] = []
+                children_by_parent[parent_id].append(span)
 
-        # Extract and validate task_id
-        task_id = self._extract_and_validate_task_id(normalized_span_data)
-        span_dict["task_id"] = task_id
+        # Second pass: build nested structure recursively
+        def build_nested_span(span: Span):
+            # Get children for this span (if any)
+            children_spans = children_by_parent.get(span.span_id, [])
 
-        # Inject version into raw data
-        normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
+            # Sort children by start_time (ascending)
+            children_spans.sort(key=lambda s: s.start_time)
 
-        # Store the normalized span data
-        span_dict["raw_data"] = normalized_span_data
+            # Recursively build nested children
+            nested_children = [build_nested_span(child) for child in children_spans]
 
-        # Accept all spans - no discrimination on task_id or parent_id
-        return span_dict
+            # Convert span to nested response model with children
+            return span._to_nested_metrics_response_model(children=nested_children)
 
-    def _extract_basic_span_info(self, span_data: dict) -> dict:
-        """Extract basic span information from normalized span data."""
-        span_dict = {
-            "trace_id": trace_utils.convert_id_to_hex(span_data.get("traceId")),
-            "span_id": trace_utils.convert_id_to_hex(span_data.get("spanId")),
-        }
+        # Sort root spans by start_time (ascending)
+        root_spans.sort(key=lambda s: s.start_time)
 
-        # Extract parent span ID
-        parent_span_id = self._get_parent_span_id(span_data)
-        if parent_span_id:
-            span_dict["parent_span_id"] = parent_span_id
-
-        # Extract span kind
-        span_kind = self._get_attribute_value(span_data, SPAN_KIND_KEY)
-        if span_kind:
-            span_dict["span_kind"] = span_kind
-
-        # Extract timestamps
-        start_time, end_time = self._extract_timestamps(span_data)
-        span_dict["start_time"] = start_time
-        span_dict["end_time"] = end_time
-
-        return span_dict
-
-    def _extract_and_validate_task_id(
-        self,
-        span_data: dict,
-    ) -> Optional[str]:
-        """Extract task_id from span data."""
-        # Extract metadata and task_id from normalized attributes
-        metadata = self._get_metadata(span_data)
-        return metadata.get(TASK_ID_KEY)
-
-    def _normalize_span_attributes(self, span_data: dict) -> dict:
-        """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
-        normalized_span = span_data.copy()
-
-        if "attributes" in normalized_span:
-            normalized_attributes = trace_utils.extract_attributes_from_raw_data(
-                normalized_span,
-            )
-            normalized_span["attributes"] = normalized_attributes
-
-        return normalized_span
-
-    def _get_attribute_value(
-        self,
-        span_data: dict,
-        attribute_key: str,
-    ) -> Optional[str]:
-        """Extract a specific attribute value from span data."""
-        attributes = span_data.get("attributes", {})
-
-        # Attributes should already be normalized (flat dict)
-        if isinstance(attributes, dict):
-            return attributes.get(attribute_key)
-
-        # Fallback for backward compatibility with OpenTelemetry format
-        if isinstance(attributes, list):
-            for attr in attributes:
-                key = attr.get("key")
-                value = attr.get("value", {})
-                if key == attribute_key:
-                    return value.get("stringValue")
-
-        return None
-
-    def _get_parent_span_id(self, span_data: dict) -> Optional[str]:
-        """Extract parent span ID from span data."""
-        if "parentSpanId" in span_data:
-            return trace_utils.convert_id_to_hex(span_data.get("parentSpanId"))
-        return None
-
-    def _extract_timestamps(
-        self,
-        span_data: dict,
-    ) -> Tuple[Optional[datetime], Optional[datetime]]:
-        """Extract and convert timestamps from span data."""
-        start_time = None
-        end_time = None
-
-        if "startTimeUnixNano" in span_data:
-            start_time_ns = int(span_data.get("startTimeUnixNano", 0))
-            start_time = trace_utils.timestamp_ns_to_datetime(start_time_ns)
-
-        if "endTimeUnixNano" in span_data:
-            end_time_ns = int(span_data.get("endTimeUnixNano", 0))
-            end_time = trace_utils.timestamp_ns_to_datetime(end_time_ns)
-
-        return start_time, end_time
-
-    def _get_metadata(self, span_data: dict) -> dict:
-        """Get the metadata from the span data."""
-        metadata_str = self._get_attribute_value(span_data, METADATA_KEY)
-        if metadata_str:
-            try:
-                return json.loads(metadata_str)
-            except json.JSONDecodeError:
-                return {}
-        return {}
+        # Build nested structure for root spans
+        return [build_nested_span(root_span) for root_span in root_spans]

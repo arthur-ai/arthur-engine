@@ -734,3 +734,103 @@ class QuerySpansWithMetricsResponse(BaseModel):
             },
         },
     )
+
+
+class NestedSpanWithMetricsResponse(BaseModel):
+    """A span with metrics and its children spans nested within it."""
+
+    id: str
+    trace_id: str
+    span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
+    metric_results: list[MetricResultResponse] = Field(
+        description="List of metric results for this span",
+        default=[],
+    )
+    children: List["NestedSpanWithMetricsResponse"] = Field(
+        description="Child spans nested under this span",
+        default=[],
+    )
+
+
+class TraceResponse(BaseModel):
+    """A trace containing a hierarchical tree of spans."""
+
+    trace_id: str = Field(description="ID of the trace")
+    start_time: datetime = Field(
+        description="Start time of the earliest span in the trace",
+    )
+    end_time: datetime = Field(description="End time of the latest span in the trace")
+    root_spans: List[NestedSpanWithMetricsResponse] = Field(
+        description="Root spans (spans with no parent) in the trace, with their children nested",
+        default=[],
+    )
+
+
+class QueryTracesWithMetricsResponse(BaseModel):
+    """Response for querying traces with nested span structure."""
+
+    count: int = Field(
+        description="The total number of traces matching the query parameters",
+    )
+    traces: list[TraceResponse] = Field(
+        description="List of traces with nested spans matching the search filters",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "count": 1,
+                "traces": [
+                    {
+                        "trace_id": "trace-123",
+                        "start_time": "2024-01-01T12:00:00Z",
+                        "end_time": "2024-01-01T12:00:05Z",
+                        "root_spans": [
+                            {
+                                "id": "957df309-c907-4b77-abe5-15dd00c081f7",
+                                "trace_id": "trace-123",
+                                "span_id": "span-456",
+                                "parent_span_id": None,
+                                "start_time": "2024-01-01T12:00:00Z",
+                                "end_time": "2024-01-01T12:00:05Z",
+                                "task_id": "task-789",
+                                "created_at": "2024-01-01T12:00:00Z",
+                                "updated_at": "2024-01-01T12:00:00Z",
+                                "raw_data": {},
+                                "metric_results": [],
+                                "children": [
+                                    {
+                                        "id": "child-span-id",
+                                        "trace_id": "trace-123",
+                                        "span_id": "child-span-456",
+                                        "parent_span_id": "span-456",
+                                        "start_time": "2024-01-01T12:00:01Z",
+                                        "end_time": "2024-01-01T12:00:02Z",
+                                        "task_id": "task-789",
+                                        "created_at": "2024-01-01T12:00:01Z",
+                                        "updated_at": "2024-01-01T12:00:01Z",
+                                        "raw_data": {},
+                                        "metric_results": [],
+                                        "children": [],
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+        },
+    )
