@@ -694,43 +694,55 @@ class SpanWithMetricsResponse(BaseModel):
     )
 
 
-class QuerySpansWithMetricsResponse(BaseModel):
+class NestedSpanWithMetricsResponse(BaseModel):
+    """Nested span response with children for building span trees"""
+
+    id: str
+    trace_id: str
+    span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
+    metric_results: list[MetricResultResponse] = Field(
+        description="List of metric results for this span",
+        default=[],
+    )
+    children: list["NestedSpanWithMetricsResponse"] = Field(
+        description="Child spans nested under this span",
+        default=[],
+    )
+
+
+class TraceResponse(BaseModel):
+    """Response model for a single trace containing nested spans"""
+
+    trace_id: str = Field(description="ID of the trace")
+    start_time: datetime = Field(
+        description="Start time of the earliest span in this trace",
+    )
+    end_time: datetime = Field(description="End time of the latest span in this trace")
+    root_spans: list[NestedSpanWithMetricsResponse] = Field(
+        description="Root spans (spans with no parent) in this trace, with children nested",
+        default=[],
+    )
+
+
+class QueryTracesWithMetricsResponse(BaseModel):
+    """New response format that groups spans into traces with nested structure"""
+
     count: int = Field(
         description="The total number of spans matching the query parameters",
     )
-    spans: list[SpanWithMetricsResponse] = Field(
-        description="List of spans with metrics matching the search filters",
-    )
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "count": 1,
-                "spans": [
-                    {
-                        "id": "957df309-c907-4b77-abe5-15dd00c081f7",
-                        "trace_id": "trace-123",
-                        "span_id": "span-456",
-                        "start_time": "2024-01-01T12:00:00Z",
-                        "end_time": "2024-01-01T12:00:01Z",
-                        "task_id": "task-789",
-                        "created_at": "2024-01-01T12:00:00Z",
-                        "updated_at": "2024-01-01T12:00:00Z",
-                        "raw_data": {},
-                        "metric_results": [
-                            {
-                                "id": "metric-123",
-                                "name": "Query Relevance",
-                                "type": "QueryRelevance",
-                                "metric_metadata": "Relevance score for user query",
-                                "config": None,
-                                "created_at": "2024-01-01T12:00:00Z",
-                                "updated_at": "2024-01-01T12:00:00Z",
-                                "enabled": True,
-                            },
-                        ],
-                    },
-                ],
-            },
-        },
+    traces: list[TraceResponse] = Field(
+        description="List of traces containing nested spans matching the search filters",
     )
