@@ -78,6 +78,7 @@ from schemas.response_schemas import (
     KeywordSpanResponse,
     MetricResponse,
     MetricResultResponse,
+    NestedSpanWithMetricsResponse,
     PIIDetailsResponse,
     PIIEntitySpanResponse,
     RegexDetailsResponse,
@@ -100,6 +101,7 @@ from schemas.scorer_schemas import (
     ScorerToxicityScore,
 )
 from utils import constants
+from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
 tracer = trace.get_tracer(__name__)
@@ -1526,14 +1528,10 @@ class Span(BaseModel):
         if self.span_kind != SPAN_KIND_LLM:
             return False
 
-        # Check version
-        from utils import trace as trace_utils
-
         return trace_utils.validate_span_version(self.raw_data)
 
     def _extract_span_features(self) -> dict:
         """Extract span features from raw data."""
-        from utils import trace as trace_utils
 
         return trace_utils.extract_span_features(self.raw_data)
 
@@ -1592,8 +1590,6 @@ class Span(BaseModel):
         )
 
     def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
-        from schemas.response_schemas import SpanWithMetricsResponse
-
         return SpanWithMetricsResponse(
             id=self.id,
             trace_id=self.trace_id,
@@ -1619,8 +1615,6 @@ class Span(BaseModel):
         self,
         children: Optional[List["NestedSpanWithMetricsResponse"]] = None,
     ) -> "NestedSpanWithMetricsResponse":
-        from schemas.response_schemas import NestedSpanWithMetricsResponse
-
         return NestedSpanWithMetricsResponse(
             id=self.id,
             trace_id=self.trace_id,

@@ -20,6 +20,7 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import MetricResult, Span
 from schemas.metric_schemas import MetricRequest
+from schemas.response_schemas import TraceResponse
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -162,7 +163,7 @@ class SpanRepository:
 
         # Group spans by trace and build nested structure
         traces = self._group_spans_into_traces(spans)
-        return len(spans), traces
+        return len(traces), traces
 
     def query_spans_with_metrics_as_traces(
         self,
@@ -728,7 +729,6 @@ class SpanRepository:
             root_spans = self._build_span_tree(trace_spans)
 
             # Create trace response
-            from schemas.response_schemas import TraceResponse
 
             trace_response = TraceResponse(
                 trace_id=trace_id,
