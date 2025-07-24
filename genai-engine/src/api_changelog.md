@@ -1,6 +1,10 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 07/23/2025
+- **CHANGE** for **URL**: /v1/spans/{span_id}/metrics/ now returns the span object itself instead of a list of Span objects of len 1
+- **CHANGE** for **URL**: /v1/traces/metrics/ and /v1/traces/query updated to return a nested traces object instead of a flat list of spans
 # 07/22/2025
 - **CHANGE** for **URL**: /api/v2/tasks Added optional metrics to the task response
 - **CHANGE** for **URL**: /api/v2/tasks/search  Added optional metrics to the task response

@@ -78,6 +78,7 @@ from schemas.response_schemas import (
     KeywordSpanResponse,
     MetricResponse,
     MetricResultResponse,
+    NestedSpanWithMetricsResponse,
     PIIDetailsResponse,
     PIIEntitySpanResponse,
     RegexDetailsResponse,
@@ -100,6 +101,7 @@ from schemas.scorer_schemas import (
     ScorerToxicityScore,
 )
 from utils import constants
+from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
 tracer = trace.get_tracer(__name__)
@@ -1526,14 +1528,10 @@ class Span(BaseModel):
         if self.span_kind != SPAN_KIND_LLM:
             return False
 
-        # Check version
-        from utils import trace as trace_utils
-
         return trace_utils.validate_span_version(self.raw_data)
 
     def _extract_span_features(self) -> dict:
         """Extract span features from raw data."""
-        from utils import trace as trace_utils
 
         return trace_utils.extract_span_features(self.raw_data)
 
@@ -1592,8 +1590,6 @@ class Span(BaseModel):
         )
 
     def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
-        from schemas.response_schemas import SpanWithMetricsResponse
-
         return SpanWithMetricsResponse(
             id=self.id,
             trace_id=self.trace_id,
@@ -1613,6 +1609,32 @@ class Span(BaseModel):
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],
+        )
+
+    def _to_nested_metrics_response_model(
+        self,
+        children: Optional[List["NestedSpanWithMetricsResponse"]] = None,
+    ) -> "NestedSpanWithMetricsResponse":
+        return NestedSpanWithMetricsResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            task_id=self.task_id,
+            raw_data=self.raw_data,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            system_prompt=self.system_prompt,
+            user_query=self.user_query,
+            response=self.response,
+            context=self.context,
+            metric_results=[
+                result._to_response_model() for result in (self.metric_results or [])
+            ],
+            children=children or [],
         )
 
     @staticmethod

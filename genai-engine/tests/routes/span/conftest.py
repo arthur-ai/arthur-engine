@@ -403,7 +403,7 @@ def sample_openinference_trace() -> bytes:
         span_id=b"test_span_id_456",
         name="test_llm_span",
         span_type="LLM",
-        include_task_id=True,
+        include_task_id=False,
         model_name="gpt-4-turbo",
         parent_span_id=b"parent_span_id_789",
     )
@@ -449,77 +449,6 @@ def sample_span_missing_task_id() -> bytes:
 
     # Cleanup - span will be accepted since all spans are now accepted
     span_ids = [span.span_id.hex()]
-    db_session = override_get_db_session()
-    _delete_spans_from_db(db_session, span_ids)
-
-
-@pytest.fixture(scope="function")
-def sample_mixed_spans_trace() -> bytes:
-    """Create a sample with mixed valid and invalid spans for testing partial success."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Valid span with task ID (AGENT)
-    valid_span = _create_span(
-        trace_id=b"valid_trace_id_123",
-        span_id=b"valid_span_id_456",
-        name="valid_agent_span",
-        span_type="AGENT",
-        include_task_id=True,
-    )
-
-    # Invalid span without task ID and without parent ID (RERANKER)
-    invalid_span = _create_span(
-        trace_id=b"invalid_trace_id_789",
-        span_id=b"invalid_span_id_012",
-        name="invalid_reranker_span",
-        span_type="RERANKER",
-        include_task_id=False,
-    )
-
-    scope_span.spans.extend([valid_span, invalid_span])
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    yield trace_request.SerializeToString()
-
-    # Cleanup - both spans will be accepted since all spans are now accepted
-    span_ids = [valid_span.span_id.hex(), invalid_span.span_id.hex()]
-    db_session = override_get_db_session()
-    _delete_spans_from_db(db_session, span_ids)
-
-
-@pytest.fixture(scope="function")
-def sample_all_rejected_spans_trace() -> bytes:
-    """Create a sample with all spans being rejected (missing task IDs and parent IDs)."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Create two invalid spans without task IDs and without parent IDs
-    rejected_span1 = _create_span(
-        trace_id=b"rejected_trace_id_123",
-        span_id=b"rejected_span_id_456",
-        name="rejected_embedding_span",
-        span_type="EMBEDDING",
-        include_task_id=False,
-        model_name="gpt-4",
-    )
-
-    rejected_span2 = _create_span(
-        trace_id=b"rejected_trace_id_789",
-        span_id=b"rejected_span_id_012",
-        name="rejected_evaluator_span",
-        span_type="EVALUATOR",
-        include_task_id=False,
-        model_name="gpt-3.5-turbo",
-    )
-
-    scope_span.spans.extend([rejected_span1, rejected_span2])
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    yield trace_request.SerializeToString()
-
-    # Cleanup - both spans will be accepted since all spans are now accepted
-    span_ids = [rejected_span1.span_id.hex(), rejected_span2.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
 
