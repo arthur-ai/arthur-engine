@@ -132,8 +132,7 @@ def test_query_traces_basic_functionality(
     # Test basic query
     status_code, response = client.query_traces(task_ids=["task2"])
     assert status_code == 200
-    assert response.count == 2
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
     # Verify trace structure
     trace = response.traces[0]
@@ -146,8 +145,7 @@ def test_query_traces_basic_functionality(
     # Test pagination
     status_code, response = client.query_traces(task_ids=["task1"], page=0, page_size=1)
     assert status_code == 200
-    assert len(response.traces) == 1
-    assert response.count == 2
+    assert response.count == len(response.traces) == 1
 
     # Test time filtering
     now = datetime.now()
@@ -157,7 +155,7 @@ def test_query_traces_basic_functionality(
         end_time=now + timedelta(days=1),
     )
     assert status_code == 200
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
 
 @pytest.mark.unit_tests
@@ -172,11 +170,11 @@ def test_query_traces_edge_cases(
         trace_ids=["invalid_trace_id"],
     )
     assert status_code == 200
-    assert len(response.traces) == 0
+    assert response.count == len(response.traces) == 0
 
     status_code, response = client.query_traces(task_ids=["invalid_task_id"])
     assert status_code == 200
-    assert len(response.traces) == 0
+    assert response.count == len(response.traces) == 0
 
     # Test missing task_ids
     status_code, response = client.query_traces(task_ids=[])
@@ -194,7 +192,7 @@ def test_query_traces_span_features(
 
     status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == 2
+    assert response.count == len(response.traces) == 1
 
     all_spans = get_all_spans_from_traces(response.traces)
     llm_span = find_span_by_kind(all_spans, "LLM")
@@ -226,7 +224,7 @@ def test_query_traces_sorting(
 
     status_code, response = client.query_traces(task_ids=["task1", "task2"])
     assert status_code == 200
-    assert len(response.traces) == 2
+    assert response.count == len(response.traces) == 2
 
     # Verify traces are sorted by start_time DESCENDING (most recent first)
     trace_ids = [trace.trace_id for trace in response.traces]
@@ -254,8 +252,7 @@ def test_query_traces_with_metrics(
     # Test basic query with metrics computation
     status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == 2
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
     all_spans = get_all_spans_from_traces(response.traces)
     assert len(all_spans) == 2
@@ -295,7 +292,7 @@ def test_metrics_computation_error_handling(
         # This should not fail the entire request, just skip metrics computation
         status_code, response = client.query_traces_with_metrics(task_ids=["task2"])
         assert status_code == 200
-        assert len(response.traces) > 0
+        assert response.count > 0
 
         # Extract spans and verify they are returned but without metrics
         all_spans = get_all_spans_from_traces(response.traces)
@@ -320,7 +317,7 @@ def test_compute_span_metrics(
     # Get a span ID - specifically get an LLM span
     status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.traces) > 0
+    assert response.count > 0
 
     all_spans = get_all_spans_from_traces(response.traces)
     llm_span = find_span_by_kind(all_spans, "LLM")
@@ -358,7 +355,7 @@ def test_nested_structure_basic(
     # Query by task1 to get the LLM span and its child
     status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
     trace = response.traces[0]
     assert len(trace.root_spans) == 1
@@ -378,7 +375,7 @@ def test_nested_structure_basic(
     # Query by task2 to get the AGENT span and its child
     status_code, response = client.query_traces(task_ids=["task2"])
     assert status_code == 200
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
     trace = response.traces[0]
     assert len(trace.root_spans) == 1
@@ -409,7 +406,7 @@ def test_nested_structure_with_metrics(
 
     status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
-    assert len(response.traces) == 1
+    assert response.count == len(response.traces) == 1
 
     trace = response.traces[0]
     root_span = trace.root_spans[0]
@@ -434,8 +431,7 @@ def test_nested_structure_with_metrics(
         task_ids=["task1", "task2"],
     )
     assert status_code == 200
-    assert response.count == 4
-    assert len(response.traces) == 2
+    assert response.count == len(response.traces) == 2
 
     # Verify trace IDs
     trace_ids = {trace.trace_id for trace in response.traces}
