@@ -20,6 +20,7 @@ from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import MetricResult, Span
 from schemas.metric_schemas import MetricRequest
+from schemas.response_schemas import TraceResponse
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -112,7 +113,7 @@ class SpanRepository:
 
         return valid_spans
 
-    def query_spans_by_span_id_with_metrics(self, span_id: str) -> list[Span]:
+    def query_span_by_span_id_with_metrics(self, span_id: str) -> Span:
         """Query a single span by span_id and compute metrics for it."""
         # Query the specific span directly from database
         query = select(DatabaseSpan).where(DatabaseSpan.span_id == span_id)
@@ -131,7 +132,61 @@ class SpanRepository:
         self._validate_span_for_metrics(span, span_id)
 
         # Compute metrics for this span
-        return self._add_metrics_to_spans([span])
+        spans_with_metrics = self._add_metrics_to_spans([span])
+        return spans_with_metrics[0]  # Return the single span
+
+    def query_spans_as_traces(
+        self,
+        sort: PaginationSortMethod,
+        page: int,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        include_metrics: bool = False,
+        compute_new_metrics: bool = True,
+    ) -> tuple[int, list]:
+        """Query spans grouped by traces with nested structure."""
+        # Get spans using existing logic
+        spans = self.query_spans(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+            trace_ids=trace_ids,
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            include_metrics=include_metrics,
+            compute_new_metrics=compute_new_metrics,
+        )
+
+        # Group spans by trace and build nested structure
+        traces = self._group_spans_into_traces(spans)
+        return len(traces), traces
+
+    def query_spans_with_metrics_as_traces(
+        self,
+        sort: PaginationSortMethod,
+        page: int,
+        page_size: int = DEFAULT_PAGE_SIZE,
+        trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list]:
+        """Query spans with metrics grouped by traces with nested structure."""
+        return self.query_spans_as_traces(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+            trace_ids=trace_ids,
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
+            include_metrics=True,
+            compute_new_metrics=True,
+        )
 
     # ============================================================================
     # Private Helper Methods - Query Logic
@@ -649,3 +704,75 @@ class SpanRepository:
             except json.JSONDecodeError:
                 return {}
         return {}
+
+    def _group_spans_into_traces(self, spans: list[Span]) -> list:
+        """Group spans into a nested trace structure."""
+        if not spans:
+            return []
+
+        # Group spans by trace_id
+        traces_dict = {}
+        for span in spans:
+            trace_id = span.trace_id
+            if trace_id not in traces_dict:
+                traces_dict[trace_id] = []
+            traces_dict[trace_id].append(span)
+
+        # Build trace responses
+        traces = []
+        for trace_id, trace_spans in traces_dict.items():
+            # Calculate trace start and end times
+            start_time = min(span.start_time for span in trace_spans)
+            end_time = max(span.end_time for span in trace_spans)
+
+            # Build nested spans for this trace
+            root_spans = self._build_span_tree(trace_spans)
+
+            # Create trace response
+
+            trace_response = TraceResponse(
+                trace_id=trace_id,
+                start_time=start_time,
+                end_time=end_time,
+                root_spans=root_spans,
+            )
+            traces.append(trace_response)
+
+        # Sort traces by start_time
+        traces.sort(key=lambda t: t.start_time, reverse=True)
+        return traces
+
+    def _build_span_tree(self, spans: list[Span]) -> list:
+        """Build a nested tree structure from a list of spans."""
+        if not spans:
+            return []
+
+        # Create a mapping to store children for each span
+        children_by_parent = {}
+        root_spans = []
+
+        # First pass: identify parent-child relationships
+        for span in spans:
+            parent_id = span.parent_span_id
+            if parent_id is None:
+                # This is a root span
+                root_spans.append(span)
+            else:
+                # This span has a parent
+                if parent_id not in children_by_parent:
+                    children_by_parent[parent_id] = []
+                children_by_parent[parent_id].append(span)
+
+        # Second pass: build nested structure recursively
+        def build_nested_span(span: Span):
+            # Get children for this span (if any)
+            children_spans = children_by_parent.get(span.span_id, [])
+            children_spans.sort(key=lambda s: s.start_time)
+            # Recursively build nested children
+            nested_children = [build_nested_span(child) for child in children_spans]
+
+            return span._to_nested_metrics_response_model(children=nested_children)
+
+        # Sort root spans by start_time (ascending)
+        root_spans.sort(key=lambda s: s.start_time)
+        return [build_nested_span(root_span) for root_span in root_spans]

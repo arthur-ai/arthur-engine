@@ -16,7 +16,10 @@ from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import QuerySpansWithMetricsResponse
+from schemas.response_schemas import (
+    QueryTracesWithMetricsResponse,
+    SpanWithMetricsResponse,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -97,7 +100,7 @@ def receive_traces(
 @span_routes.get(
     "/traces/query",
     description="Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
-    response_model=QuerySpansWithMetricsResponse,
+    response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -130,7 +133,7 @@ def query_spans(
     """Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
     try:
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        span_count, traces = span_repo.query_spans_as_traces(
             task_ids=task_ids,
             trace_ids=trace_ids,
             start_time=start_time,
@@ -141,8 +144,7 @@ def query_spans(
             include_metrics=True,  # Include existing metrics
             compute_new_metrics=False,  # Don't compute new metrics
         )
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+        return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -156,7 +158,7 @@ def query_spans(
 @span_routes.get(
     "/traces/metrics/",
     description="Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.",
-    response_model=QuerySpansWithMetricsResponse,
+    response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -185,18 +187,15 @@ def query_spans_with_metrics(
     """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces."""
     try:
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        span_count, traces = span_repo.query_spans_with_metrics_as_traces(
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
-            include_metrics=True,
-            compute_new_metrics=True,
         )
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+        return QueryTracesWithMetricsResponse(count=span_count, traces=traces)
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -210,7 +209,7 @@ def query_spans_with_metrics(
 @span_routes.get(
     "/span/{span_id}/metrics",
     description="Compute metrics for a single span. Validates that the span is an LLM span.",
-    response_model=QuerySpansWithMetricsResponse,
+    response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -223,9 +222,10 @@ def compute_span_metrics(
     """Compute metrics for a single span. Validates that the span is an LLM span."""
     try:
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans_by_span_id_with_metrics(span_id)
-        spans = [span._to_metrics_response_model() for span in spans]
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=spans)
+        span = span_repo.query_span_by_span_id_with_metrics(span_id)
+
+        # Return the single span with metrics
+        return span._to_metrics_response_model()
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
