@@ -1,19 +1,11 @@
-import json
 import logging
 import os
-from unittest.mock import patch
 
-import pytest
 import pytz
-from arthur_client.api_bindings import (
-    ConnectorFieldDataType,
-    ConnectorSpec,
-    DataResultFilter,
-    Dataset,
-)
+from arthur_client.api_bindings import ConnectorSpec, DataResultFilter, Dataset
 from arthur_common.models.connectors import ConnectorPaginationOptions
 from connectors.gcs_connector import GCSConnector
-from helpers import *
+from mock_data.connector_helpers import *
 
 logger = logging.getLogger("job_logger")
 

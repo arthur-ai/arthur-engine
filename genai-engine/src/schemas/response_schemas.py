@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
+
 from schemas.common_schemas import (
     AuthUserRole,
     ExamplesConfig,
@@ -12,6 +13,7 @@ from schemas.common_schemas import (
 )
 from schemas.enums import (
     InferenceFeedbackTarget,
+    MetricType,
     PIIEntityTypes,
     RuleResultEnum,
     RuleScope,
@@ -407,6 +409,27 @@ class QueryInferencesResponse(BaseModel):
     )
 
 
+class MetricResponse(BaseModel):
+    id: str = Field(description="ID of the Metric")
+    name: str = Field(description="Name of the Metric")
+    type: MetricType = Field(description="Type of the Metric")
+    metric_metadata: str = Field(description="Metadata of the Metric")
+    config: Optional[str] = Field(
+        description="JSON-serialized configuration for the Metric",
+        default=None,
+    )
+    created_at: datetime = Field(
+        description="Time the Metric was created in unix milliseconds",
+    )
+    updated_at: datetime = Field(
+        description="Time the Metric was updated in unix milliseconds",
+    )
+    enabled: Optional[bool] = Field(
+        description="Whether the Metric is enabled",
+        default=None,
+    )
+
+
 class TaskResponse(BaseModel):
     id: str = Field(description=" ID of the task")
     name: str = Field(description="Name of the task")
@@ -416,7 +439,12 @@ class TaskResponse(BaseModel):
     updated_at: int = Field(
         description="Time the task was created in unix milliseconds",
     )
+    is_agentic: bool = Field(description="Whether the task is agentic or not")
     rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
+    metrics: Optional[List[MetricResponse]] = Field(
+        description="List of all the metrics for the task.",
+        default=None,
+    )
 
 
 class SearchTasksResponse(BaseModel):
@@ -571,12 +599,19 @@ class SpanResponse(BaseModel):
     id: str
     trace_id: str
     span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
 
 
 class QuerySpansResponse(BaseModel):
@@ -585,4 +620,129 @@ class QuerySpansResponse(BaseModel):
     )
     spans: list[SpanResponse] = Field(
         description="List of spans matching the search filters",
+    )
+
+
+class ComputeMetricsFiltersResponse(BaseModel):
+    start_time: Optional[datetime] = Field(
+        description="Start time filter applied",
+        default=None,
+    )
+    end_time: Optional[datetime] = Field(
+        description="End time filter applied",
+        default=None,
+    )
+    conversation_id: Optional[str] = Field(
+        description="Conversation ID filter applied",
+        default=None,
+    )
+    user_id: Optional[str] = Field(description="User ID filter applied", default=None)
+    page: int = Field(description="Page number used for pagination")
+    page_size: int = Field(description="Page size used for pagination")
+
+
+class ComputeMetricsResponse(BaseModel):
+    task_id: str = Field(description="ID of the task for which metrics were computed")
+    metrics: list[MetricResponse] = Field(
+        description="List of metrics associated with the task",
+    )
+    span_count: int = Field(description="Number of spans matching the filters")
+    spans: list[SpanResponse] = Field(
+        description="List of spans used for metric computation",
+    )
+    filters_applied: ComputeMetricsFiltersResponse = Field(
+        description="Filters that were applied to the data",
+    )
+
+
+class MetricResultResponse(BaseModel):
+    id: str = Field(description="ID of the metric result")
+    metric_type: MetricType = Field(description="Type of the metric")
+    details: Optional[str] = Field(
+        description="JSON-serialized metric details",
+        default=None,
+    )
+    prompt_tokens: int = Field(description="Number of prompt tokens used")
+    completion_tokens: int = Field(description="Number of completion tokens used")
+    latency_ms: int = Field(description="Latency in milliseconds")
+    span_id: str = Field(description="ID of the span this result belongs to")
+    metric_id: str = Field(description="ID of the metric that generated this result")
+    created_at: datetime = Field(description="Time the result was created")
+    updated_at: datetime = Field(description="Time the result was last updated")
+
+
+class SpanWithMetricsResponse(BaseModel):
+    id: str
+    trace_id: str
+    span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
+    metric_results: list[MetricResultResponse] = Field(
+        description="List of metric results for this span",
+        default=[],
+    )
+
+
+class NestedSpanWithMetricsResponse(BaseModel):
+    """Nested span response with children for building span trees"""
+
+    id: str
+    trace_id: str
+    span_id: str
+    parent_span_id: Optional[str] = None
+    span_kind: Optional[str] = None
+    start_time: datetime
+    end_time: datetime
+    task_id: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    raw_data: dict
+    # Span features for LLM spans (computed on-demand)
+    system_prompt: Optional[str] = None
+    user_query: Optional[str] = None
+    response: Optional[str] = None
+    context: Optional[List[dict]] = None
+    metric_results: list[MetricResultResponse] = Field(
+        description="List of metric results for this span",
+        default=[],
+    )
+    children: list["NestedSpanWithMetricsResponse"] = Field(
+        description="Child spans nested under this span",
+        default=[],
+    )
+
+
+class TraceResponse(BaseModel):
+    """Response model for a single trace containing nested spans"""
+
+    trace_id: str = Field(description="ID of the trace")
+    start_time: datetime = Field(
+        description="Start time of the earliest span in this trace",
+    )
+    end_time: datetime = Field(description="End time of the latest span in this trace")
+    root_spans: list[NestedSpanWithMetricsResponse] = Field(
+        description="Root spans (spans with no parent) in this trace, with children nested",
+        default=[],
+    )
+
+
+class QueryTracesWithMetricsResponse(BaseModel):
+    """New response format that groups spans into traces with nested structure"""
+
+    count: int = Field(
+        description="The total number of spans matching the query parameters",
+    )
+    traces: list[TraceResponse] = Field(
+        description="List of traces containing nested spans matching the search filters",
     )
