@@ -1,8 +1,9 @@
 import logging
 
 import bcrypt
-from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from cachetools import TTLCache
+
+from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from repositories.api_key_repository import ApiKeyRepository
 from schemas.internal_schemas import User
 
@@ -23,17 +24,18 @@ class UserGenAPIKeyValidator(APIKeyValidator):
         if cached_key := self.api_key_cache.get(api_key):
             logger.debug("API key used for authentication [cached value]")
             return cached_key
-
-        # get all active keys from db
-        db_api_keys = self.api_key_repo.get_all_active_api_keys()
-
-        # iterate over all the active keys to check if the user provided key is valid
-        for key in db_api_keys:
-            # check if the stored hash matches for the api key sent by the user. bcrypt library allows us to do this without hasing the user supplied key again.
-            if bcrypt.checkpw(api_key.encode("utf-8"), key.key_hash.encode("utf-8")):
-                self.api_key_cache[api_key] = (
-                    key.get_user_representation()
-                )  # Store in cache for future use
-                logger.debug("API key used for authentication")
+        try:
+            if db_api_key := self.api_key_repo.validate_key(api_key):
+                self.api_key_cache[api_key] = db_api_key.get_user_representation()
                 return self.api_key_cache[api_key]
+            return None
+        except AttributeError:
+            db_api_keys = self.api_key_repo.get_all_active_api_keys()
+            for db_api_key in db_api_keys:
+                if bcrypt.checkpw(
+                    api_key.encode("utf-8"),
+                    db_api_key.key_hash.encode("utf-8"),
+                ):
+                    self.api_key_cache[api_key] = db_api_key.get_user_representation()
+                    return self.api_key_cache[api_key]
         return None
