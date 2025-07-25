@@ -1,13 +1,18 @@
+import base64
+import logging
 import secrets
 import uuid
 
 import bcrypt
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
 from config.config import Config
 from db_models.db_models import DatabaseApiKey
-from fastapi import HTTPException
 from schemas.enums import APIKeysRolesEnum
 from schemas.internal_schemas import ApiKey
-from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 
 class ApiKeyRepository:
@@ -40,8 +45,11 @@ class ApiKeyRepository:
         self.db_session.add(db_api_key)
         self.db_session.commit()
 
+        key_with_id = base64.b64encode(f"{db_api_key.id}:{key}".encode("utf-8")).decode(
+            "utf-8",
+        )
         api_key = ApiKey._from_database_model(db_api_key)
-        api_key.set_key(key)
+        api_key.set_key(key_with_id)
 
         return api_key
 
@@ -83,3 +91,25 @@ class ApiKeyRepository:
         return bcrypt.hashpw(key.encode("utf-8"), bcrypt.gensalt(rounds=9)).decode(
             "utf-8",
         )
+
+    def validate_key(self, api_key: str) -> ApiKey | None:
+        try:
+            api_key_id, api_key_value = (
+                base64.b64decode(api_key).decode("utf-8").split(":")
+            )
+        except (UnicodeEncodeError, base64.binascii.Error, ValueError):
+            logger.debug(f"Invalid API key: {api_key}")
+            raise AttributeError("Invalid API key")
+        db_api_key = (
+            self.db_session.query(DatabaseApiKey)
+            .filter(DatabaseApiKey.id == api_key_id)
+            .filter(DatabaseApiKey.is_active == True)
+            .first()
+        )
+        if db_api_key:
+            if bcrypt.checkpw(
+                api_key_value.encode("utf-8"),
+                db_api_key.key_hash.encode("utf-8"),
+            ):
+                return ApiKey._from_database_model(db_api_key)
+        return None
