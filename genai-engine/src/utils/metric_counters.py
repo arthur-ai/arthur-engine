@@ -30,3 +30,11 @@ RULE_FAILURE_COUNTER = metrics.get_meter(
     unit="failures",
     description="Number of rule evaluation failures.",
 )
+
+METRIC_FAILURE_COUNTER = metrics.get_meter(
+    "opentelemetry.instrumentation.custom",
+).create_counter(
+    constants.NEWRELIC_CUSTOM_METRIC_RULE_FAILURES,
+    unit="failures",
+    description="Number of metric evaluation failures.",
+)
