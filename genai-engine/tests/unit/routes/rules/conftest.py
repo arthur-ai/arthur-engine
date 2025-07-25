@@ -2,6 +2,7 @@ from typing import Generator
 
 import pytest
 from dependencies import get_application_config
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from schemas.enums import RuleScope
@@ -21,7 +22,8 @@ def create_experimental_hallucination_rule():
         apply_to_response=True,
     )
     rules_repo = RuleRepository(db_session)
-    tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+    metric_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
     rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
     rule = rules_repo.create_rule(rule)
     tasks_repo.update_all_tasks_add_default_rule(rule)
@@ -43,7 +45,8 @@ def create_default_rule() -> Generator[Rule, None, None]:
         apply_to_response=True,
     )
     rules_repo = RuleRepository(db_session)
-    tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+    metric_repo = MetricRepository(db_session)
+    tasks_repo = TaskRepository(db_session, rules_repo, metric_repo, application_config)
     rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
     rule = rules_repo.create_rule(rule)
     tasks_repo.update_all_tasks_add_default_rule(rule)

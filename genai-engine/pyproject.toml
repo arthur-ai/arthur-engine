@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.46"
+version = "2.1.48"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -66,6 +66,7 @@ gunicorn = "^23.0.0"
 fastapi-pagination = "0.12.34"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
+bert-score = "0.3.13"
 langchain = "0.3.26"
 langchain-community = "0.3.27"
 langchain-openai = "0.3.27"
