@@ -27,7 +27,7 @@ types-psutil = "7.0.0.20250401"
 types-requests = "2.32.0.20250328"
 psutil = "7.0.0"
 pyarrow = ">=18.1.0"
-arthur-client = "1.4.1055"
+arthur-client = "1.4.1229"
 arthur-common = "2.1.51"
 gunicorn = "^23.0.0"
 
