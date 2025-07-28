@@ -73,7 +73,7 @@ langchain-openai = "0.3.31"
 cloudpickle = "3.1.1"
 amplitude-analytics = "^1.1.5"
 sentencepiece = "0.2.1"
-
+fastmcp = "^2.10.6"
 
 [[tool.poetry.source]]
 name = "PyPI"
