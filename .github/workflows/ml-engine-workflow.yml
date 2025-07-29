@@ -81,6 +81,14 @@ jobs:
         with:
           safe-directory: ${{ runner.workspace }}
       - uses: ./.github/workflows/composite-actions/set-version
+      - name: Generate GenAI Client
+        run: |
+          pip install openapi-generator-cli[jdk4py]
+          openapi-generator-cli generate -g python \
+            -i ./genai-engine/staging.openapi.json \
+            -o ./ml-engine/src/genai_client \
+            --skip-validate-spec --package-name genai_client
+          sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
