@@ -8,13 +8,21 @@ on:
         required: true
         default: 'bump_version'
         type: string
+      bump_command:
+        description: 'Version bump type (patch, minor, major)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   bump-arthur-engine-version:
     environment: shared-protected-branch-secrets
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
       pull-requests: write
@@ -23,63 +31,114 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/workflows/composite-actions/setup-git
-              - name: Bump Arthur Engine Version
-          env:
-            GENAI_ENGINE_HELM_CHART_YAML_PATH: "deployment/helm/genai-engine/Chart.yaml"
-            GENAI_ENGINE_HELM_VALUES_YAML_PATH: "deployment/helm/genai-engine/values.yaml.template"
-            ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH: "deployment/helm/arthur-engine/start.sh.template.cpu"
-            ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH: "deployment/helm/arthur-engine/start.sh.template.gpu"
-            ARTHUR_ENGINE_CFT_CPU_HTML_PATH: "deployment/cloudformation/start-cpu-stack.html"
-            ARTHUR_ENGINE_CFT_GPU_HTML_PATH: "deployment/cloudformation/start-gpu-stack.html"
-            ARTHUR_ENGINE_CHART_YAML_PATH: "deployment/helm/arthur-engine/Chart.yaml"
-            ARTHUR_ENGINE_VALUES_YAML_PATH: "deployment/helm/arthur-engine/values.yaml.template"
+      - name: Bump Arthur Engine Version
+        env:
+          ARTHUR_ENGINE_CFT_CPU_HTML_PATH: "deployment/cloudformation/start-cpu-stack.html"
+          ARTHUR_ENGINE_CFT_GPU_HTML_PATH: "deployment/cloudformation/start-gpu-stack.html"
+
+          ARTHUR_ENGINE_CHART_YAML_PATH: "deployment/helm/arthur-engine/Chart.yaml"
+          ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH: "deployment/helm/arthur-engine/start.sh.template.cpu"
+          ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH: "deployment/helm/arthur-engine/start.sh.template.gpu"
+          ARTHUR_ENGINE_VALUES_YAML_PATH: "deployment/helm/arthur-engine/values.yaml.template"
+
+          GENAI_ENGINE_HELM_CHART_YAML_PATH: "deployment/helm/genai-engine/Chart.yaml"
+          GENAI_ENGINE_HELM_VALUES_YAML_PATH: "deployment/helm/genai-engine/values.yaml.template"
+
+          ML_ENGINE_CHART_YAML_PATH: "deployment/helm/ml-engine/Chart.yaml"
+          ML_ENGINE_VALUES_YAML_PATH: "deployment/helm/ml-engine/values.yaml.template"
+
         run: |
           set -e
 
-          # Vars to externalize if needed
-          export SUFFIX="-dev"
-          export BUMP_COMMAND="patch"
+          export BUMP_COMMAND="${{ github.event.inputs.bump_command }}"
           export BRANCH_NAME="genai-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
 
           # Read current version and bump it
           CURRENT_VERSION=$(cat version)
+          echo "Current version: ${CURRENT_VERSION}"
+
+          # Split the current version into major, minor, and patch parts
           IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
           MAJOR=${VERSION_PARTS[0]}
           MINOR=${VERSION_PARTS[1]}
           PATCH=${VERSION_PARTS[2]}
           
-          # Bump patch version
-          NEW_PATCH=$((PATCH + 1))
-          export NEW_ARTHUR_ENGINE_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          # Bump version based on command
+          case "$BUMP_COMMAND" in
+            "major")
+              NEW_MAJOR=$((MAJOR + 1))
+              export NEW_ARTHUR_ENGINE_VERSION="${NEW_MAJOR}.0.0"
+              ;;
+            "minor")
+              NEW_MINOR=$((MINOR + 1))
+              export NEW_ARTHUR_ENGINE_VERSION="${MAJOR}.${NEW_MINOR}.0"
+              ;;
+            "patch")
+              NEW_PATCH=$((PATCH + 1))
+              export NEW_ARTHUR_ENGINE_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+              ;;
+            *)
+              echo "Error: Invalid bump command '$BUMP_COMMAND'. Must be major, minor, or patch."
+              exit 1
+              ;;
+          esac
 
           # Validate version variable is set
           if [ -z "$NEW_ARTHUR_ENGINE_VERSION" ]; then
             echo "Error: New GenAI version not set. NEW_ARTHUR_ENGINE_VERSION='$NEW_ARTHUR_ENGINE_VERSION'"
             exit 1
           fi
+          echo "New Version: ${NEW_ARTHUR_ENGINE_VERSION}"
 
-          # Create and checkout new branch
+          # Create and checkout a new branch
+          echo "New Branch Name: ${BRANCH_NAME}"
           git checkout -b "$BRANCH_NAME"
 
-          # Rest of the version update logic
+          # Update the top-level version file
           echo $NEW_ARTHUR_ENGINE_VERSION > version
-          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_ARTHUR_ENGINE_VERSION'|" "$GENAI_ENGINE_HELM_VALUES_YAML_PATH"
-          sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
-          sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
 
+          # Update the cft deployment start scripts
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_ARTHUR_ENGINE_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
+          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_ARTHUR_ENGINE_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
+
+          # Update the helm files
+          # Include all version fields in the arthur-engine Chart.yaml
+          sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|g" "$ARTHUR_ENGINE_CHART_YAML_PATH"
+          # Include the helm deployment start scripts
           sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_ARTHUR_ENGINE_VERSION/" "$ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH"
           sed -i "s/ARTHUR_ENGINE_VERSION=.*/ARTHUR_ENGINE_VERSION=$NEW_ARTHUR_ENGINE_VERSION/" "$ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_ARTHUR_ENGINE_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_GPU_HTML_PATH"
-          sed -i "s|arthur-engine/templates/[0-9]\+\.[0-9]\+\.[0-9]\+/root-arthur-engine|arthur-engine/templates/$NEW_ARTHUR_ENGINE_VERSION/root-arthur-engine|" "$ARTHUR_ENGINE_CFT_CPU_HTML_PATH"
+          # Include the values.yaml
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$ARTHUR_ENGINE_VALUES_YAML_PATH"
-          sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$ARTHUR_ENGINE_CHART_YAML_PATH"
+
+          # Include the genai-engine Chart.yaml and values.yaml
+          sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
+          sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
+          sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_ARTHUR_ENGINE_VERSION'|" "$GENAI_ENGINE_HELM_VALUES_YAML_PATH"
+          
+          # Include the ml-engine Chart.yaml and values.yaml
+          sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
+          sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
+          sed -i "s|containerImageVersion:.*|containerImageVersion: \"$NEW_ARTHUR_ENGINE_VERSION\"|" "$ML_ENGINE_VALUES_YAML_PATH"
+    
+          # Update the genai and ml engine pyproject.toml files and the openapi json
+          sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/pyproject.toml
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/staging.openapi.json
+          
+          sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" ml-engine/pyproject.toml
+
+          # Update genai openapi json version
+
+          #
+
+
+
+
 
           # Update pyproject.toml files in subdirectories
-          sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/pyproject.toml
-          sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" ml-engine/pyproject.toml
+
           
           # Add and commit changes
-          git add version genai-engine/pyproject.toml ml-engine/pyproject.toml $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH
+          git add version genai-engine/pyproject.toml ml-engine/pyproject.toml genai-engine/staging.openapi.json $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH $ML_ENGINE_CHART_YAML_PATH $ML_ENGINE_VALUES_YAML_PATH
           git status
           git diff --cached
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
