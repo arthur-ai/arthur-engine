@@ -1,17 +1,17 @@
-# name: GenAI Engine CI
+name: GenAI Engine CI
 
-# on:
-#   push:
-#     branches:
-#       - main
-#       - dev
-#     tags:
-#       - '[0-9]+.[0-9]+.[0-9]+'
-#       - '[0-9]+.[0-9]+.[0-9]+-dev'
-#   pull_request:
-#     branches:
-#       - main
-#       - dev
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-dev'
+  pull_request:
+    branches:
+      - main
+      - dev
 
 # jobs:
 #   run-changelog-cop:
