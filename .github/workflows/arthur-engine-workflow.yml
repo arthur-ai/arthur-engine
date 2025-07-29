@@ -288,8 +288,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/composite-actions/setup-git
       - uses: ./.github/workflows/composite-actions/set-version
-        with:
-          version-prefix: "genai-engine-"
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
         with:
@@ -306,7 +304,7 @@ jobs:
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
           aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
 
-  push-helm-chart-to-github-dev:
+  push-all-helm-charts-to-github:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
     environment: shared-protected-branch-secrets
     if: |
@@ -335,8 +333,6 @@ jobs:
           helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
           helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
-
-
 
   push-tag:
     needs: [push-all-cfts, push-helm-chart-to-github-dev]
