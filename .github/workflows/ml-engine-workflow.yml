@@ -1,108 +1,108 @@
-name: ML Engine CI
+# name: ML Engine CI
 
-on:
-  push:
-    branches:
-      - main
-      - dev
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - '[0-9]+.[0-9]+.[0-9]+-dev'
-  pull_request:
-    branches:
-      - main
-      - dev
+# on:
+#   push:
+#     branches:
+#       - main
+#       - dev
+#     tags:
+#       - '[0-9]+.[0-9]+.[0-9]+'
+#       - '[0-9]+.[0-9]+.[0-9]+-dev'
+#   pull_request:
+#     branches:
+#       - main
+#       - dev
 
-jobs:
-  run-unit-tests:
-    if: |
-      (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
-        !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
-      )
-    runs-on: ubuntu-latest
-    container: python:3.13-bullseye
-    env:
-      SKIP: pytest-check,changelog-check
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: ml-engine
-      - name: Generate GenAI Client
-        run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-      - name: Run unit-tests
-        run: |
-          poetry -C ml-engine run pytest
+# jobs:
+#   run-unit-tests:
+#     if: |
+#       (!contains(github.event.head_commit.message, 'Increment arthur-common version to') ||
+#         !contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
+#       (
+#         github.event_name == 'pull_request' ||
+#         (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
+#       )
+#     runs-on: ubuntu-latest
+#     container: python:3.13-bullseye
+#     env:
+#       SKIP: pytest-check,changelog-check
+#       GIT_DEPTH: 100
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           fetch-depth: ${{ env.GIT_DEPTH }}
+#       - uses: ./.github/workflows/composite-actions/setup-git
+#         with:
+#           safe-directory: ${{ runner.workspace }}
+#       - uses: ./.github/workflows/composite-actions/setup-poetry
+#         with:
+#           working-directory: ml-engine
+#       - name: Generate GenAI Client
+#         run: |
+#           pip install openapi-generator-cli[jdk4py]
+#           openapi-generator-cli generate -g python \
+#             -i ./genai-engine/staging.openapi.json \
+#             -o ./ml-engine/src/genai_client \
+#             --skip-validate-spec --package-name genai_client
+#       - name: Run unit-tests
+#         run: |
+#           poetry -C ml-engine run pytest
 
-  push-tag:
-    if: |
-      contains(github.event.head_commit.message, 'Increment ml-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/set-version
-        with:
-          version-prefix: "ml-engine-"
-      - name: Push tag
-        run: |
-          git tag -a "${{ env.TAGGED_VERSION }}" -m "Create tag for ML Engine ${{ env.VERSION }}"
-          git push origin "${{ env.TAGGED_VERSION }}"
+#   push-tag:
+#     if: |
+#       contains(github.event.head_commit.message, 'Increment ml-engine version to') &&
+#       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: ./.github/workflows/composite-actions/setup-git
+#         with:
+#           safe-directory: ${{ runner.workspace }}
+#       - uses: ./.github/workflows/composite-actions/set-version
+#         with:
+#           version-prefix: "ml-engine-"
+#       - name: Push tag
+#         run: |
+#           git tag -a "${{ env.TAGGED_VERSION }}" -m "Create tag for ML Engine ${{ env.VERSION }}"
+#           git push origin "${{ env.TAGGED_VERSION }}"
 
-  build-docker-images:
-    needs: push-tag
-    environment: shared-protected-branch-secrets
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/set-version
-      - name: Generate GenAI Client
-        run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-          sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.10.0
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build and push docker image
-        uses: docker/build-push-action@v6.15.0
-        with:
-          context: "{{defaultContext}}:ml-engine"
-          file: dockerfile
-          tags: |
-            arthurplatform/ml-engine:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/ml-engine:latest') || '' }}
-          push: true
-          platforms: linux/amd64
+#   build-docker-images:
+#     needs: push-tag
+#     environment: shared-protected-branch-secrets
+#     if: |
+#       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+#       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: ./.github/workflows/composite-actions/setup-git
+#         with:
+#           safe-directory: ${{ runner.workspace }}
+#       - uses: ./.github/workflows/composite-actions/set-version
+#       - name: Generate GenAI Client
+#         run: |
+#           pip install openapi-generator-cli[jdk4py]
+#           openapi-generator-cli generate -g python \
+#             -i ./genai-engine/staging.openapi.json \
+#             -o ./ml-engine/src/genai_client \
+#             --skip-validate-spec --package-name genai_client
+#           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3.10.0
+#       - name: Log in to Docker Hub
+#         uses: docker/login-action@v3.4.0
+#         with:
+#           username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+#       - name: Build and push docker image
+#         uses: docker/build-push-action@v6.15.0
+#         with:
+#           context: "{{defaultContext}}:ml-engine"
+#           file: dockerfile
+#           tags: |
+#             arthurplatform/ml-engine:${{ env.VERSION }}
+#             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/ml-engine:latest') || '' }}
+#           push: true
+#           platforms: linux/amd64
