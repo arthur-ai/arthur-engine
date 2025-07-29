@@ -1,21 +1,6 @@
 name: Version Management
 
 on:
-  push:
-    branches:
-      - dev
-      - main
-    paths:
-      - '.github/workflows/**/*'
-      - 'genai-engine/alembic/**/*'
-      - 'genai-engine/src/**/*'
-      - 'genai-engine/tests/**/*'
-      - 'genai-engine/.env'
-      - 'genai-engine/dockerfile'
-      - 'genai-engine/pyproject.toml'
-      - 'genai-engine/requirements-gpu.txt'
-      - 'deployment/cloudformation/**/*'
-      - 'deployment/helm/**/*'
   workflow_dispatch:
     inputs:
       intent:
