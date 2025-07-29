@@ -8,7 +8,7 @@ on:
         required: true
         default: 'bump_version'
         type: string
-      bump_command:
+      bump_type:
         description: 'Version bump type (patch, minor, major)'
         required: true
         default: 'patch'
@@ -50,8 +50,8 @@ jobs:
         run: |
           set -e
 
-          export BUMP_COMMAND="${{ github.event.inputs.bump_command }}"
-          export BRANCH_NAME="genai-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
+          export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
+          export BRANCH_NAME="arthur-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
 
           # Read current version and bump it
           CURRENT_VERSION=$(cat version)
