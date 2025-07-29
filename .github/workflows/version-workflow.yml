@@ -21,7 +21,7 @@ on:
 jobs:
   bump-arthur-engine-version:
     environment: shared-protected-branch-secrets
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref == 'refs/heads/dev'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
