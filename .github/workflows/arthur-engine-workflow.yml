@@ -1,0 +1,80 @@
+name: Arthur Engine CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths-ignore:
+      - '**/version.txt'
+      - '**/CHANGELOG.md'
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  run-genai-engine-linter:
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      )
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Run pre-commit
+        run: |
+          poetry -C genai-engine run pre-commit install
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
+
+
+  run-ml-engine-linter:
+    if: |
+      (!contains(github.event.head_commit.message, 'Increment arthur-engine version to')) &&
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      )
+    runs-on: ubuntu-latest
+    container: python:3.13-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: ml-engine
+      - name: Generate GenAI Client
+        run: |
+          pip install openapi-generator-cli[jdk4py]
+          openapi-generator-cli generate -g python \
+            -i ./genai-engine/staging.openapi.json \
+            -o ./ml-engine/src/genai_client \
+            --skip-validate-spec --package-name genai_client
+      - name: Run linters
+        run: |
+          poetry -C ml-engine install --with linters
+          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
+          poetry -C ml-engine run isort src/ml_engine --profile black
+          poetry -C ml-engine run black src/ml_engine
