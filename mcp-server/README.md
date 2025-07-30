@@ -47,3 +47,25 @@ Run
 ```
 npx @modelcontextprotocol/inspector@latest python arthur_engine_mcp.py
 ```
+
+## Integrations
+
+### Cursor
+1. Go to `Cursor` -> `Settings` -> `Cursor Settings` -> `Tools & Integrations` -> `New MCP Server` and add the below configuration.
+```
+{
+  "mcpServers": {
+    "Arthur Engine": {
+      "command": "python",
+      "args": ["/Users/nori/github/arthur-engine/mcp-server/arthur_engine_mcp.py"],
+      "env": {
+        "GENAI_ENGINE_API_KEY": "changeme123",
+        "GENAI_ENGINE_BASEURL": "http://localhost:8000",
+        "GENAI_ENGINE_TASK_ID": "my_task_id"
+      },
+      "transport": "stdio"
+    }
+  }
+}
+```
+2. Make sure the "Arthur Engine" MCP is enabled with more than one tool enabled.
