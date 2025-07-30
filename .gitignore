@@ -30,5 +30,4 @@ new.openapi.json
 Chart.lock
 values.yaml
 
-ml-engine/src/genai_client/*
-!ml-engine/src/genai_client/README.md
+ml-engine/src/genai_client/**
