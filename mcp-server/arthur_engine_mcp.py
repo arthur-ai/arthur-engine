@@ -18,6 +18,16 @@ mcp = FastMCP(
     """,
 )
 
+RULE_TYPE_NAMES = {
+    "ModelSensitiveDataRule": "Sensitive Data",
+    "RegexRule": "Regex",
+    "KeywordRule": "Keyword",
+    "PromptInjectionRule": "Prompt Injection",
+    "ModelHallucinationRuleV2": "Hallucination",
+    "PIIDataRule": "PII",
+    "ToxicityRule": "Toxicity",
+}
+
 
 def validate_prompt(prompt, task_id):
     validate_prompt_url = f"{GENAI_ENGINE_BASEURL}/tasks/{task_id}/validate_prompt"
@@ -63,14 +73,20 @@ def run_guardrails_on_prompt(user_input_text: str):
     response_json = response.json()
 
     if "rule_results" not in response_json:
-        return f"Failed to validate prompt: {response.status_code} {response.text}"
+        return f"Failed to find rule_results in prompt response: {response.status_code} {response.text}"
 
     rule_results = response_json["rule_results"]
+    failed_rules = []
+
     for rule_result in rule_results:
         if rule_result["result"] != "Pass":
-            return f"{rule_result['rule_type']} Failed"
+            rule_name = RULE_TYPE_NAMES[rule_result["rule_type"]]
+            failed_rules.append(rule_name)
 
-    return f"All rules passed!"
+    if len(failed_rules) == 0:
+        return f"All rules passed!"
+
+    return f"Failed rules: {', '.join(failed_rules)}"
 
 
 @mcp.tool
@@ -84,20 +100,26 @@ def run_guardrails_on_response(llm_response_text: str):
         llm_response_text (str) - The generated response from the LLM.
     """
     response = validate_response(llm_response_text, "", GENAI_ENGINE_TASK_ID)
-    if response.status_code == 200:
-        response_json = response.json()
+    if response.status_code != 200:
+        return f"Failed to validate response: {response.status_code} {response.text}"
 
-        if "rule_results" not in response_json:
-            return (
-                f"Failed to validate response: {response.status_code} {response.text}"
-            )
+    response_json = response.json()
 
-        rule_results = response_json["rule_results"]
-        for rule_result in rule_results:
-            if rule_result["result"] != "Pass":
-                return f"{rule_result['rule_type']} Failed"
+    if "rule_results" not in response_json:
+        return f"Failed to find rule_results in response: {response.status_code} {response.text}"
 
+    rule_results = response_json["rule_results"]
+    failed_rules = []
+
+    for rule_result in rule_results:
+        if rule_result["result"] != "Pass":
+            rule_name = RULE_TYPE_NAMES[rule_result["rule_type"]]
+            failed_rules.append(rule_name)
+
+    if len(failed_rules) == 0:
         return f"All rules passed!"
+
+    return f"Failed rules: {', '.join(failed_rules)}"
 
 
 @mcp.tool
