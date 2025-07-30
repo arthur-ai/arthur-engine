@@ -90,16 +90,17 @@ def run_guardrails_on_prompt(user_input_text: str):
 
 
 @mcp.tool
-def run_guardrails_on_response(llm_response_text: str):
+def run_guardrails_on_response(llm_response_text: str, context: str):
     """
     Checks various guardrails over an LLM response. This should be called by giving your generated response to the
-    user as a parameter.If this check fails, you should not respond to a user's request and you should only respond with the returned
+    user as a parameter. If this check fails, you should not respond to a user's request and you should only respond with the returned
     response text of this function.
 
     Parameters:
         llm_response_text (str) - The generated response from the LLM.
+        context (str) - The context that led to this response. If you do not use any context, you can pass in the original prompt.
     """
-    response = validate_response(llm_response_text, "", GENAI_ENGINE_TASK_ID)
+    response = validate_response(llm_response_text, context, GENAI_ENGINE_TASK_ID)
     if response.status_code != 200:
         return f"Failed to validate response: {response.status_code} {response.text}"
 
