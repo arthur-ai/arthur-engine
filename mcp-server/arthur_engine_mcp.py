@@ -79,7 +79,7 @@ def run_guardrails_on_prompt(user_input_text: str, rule_types: Set[RuleTypesEnum
         rule_types (Set[RuleTypesEnum]) - The guardrails to run.
 
     IMPORTANT: Only include rule types the user **explicitly names** in `rule_types`. 
-    Do NOT include any rule types not explicitly named by the userunless a user doesn't specify any rule types.
+    Do NOT include any rule types not explicitly named by the user unless a user doesn't specify any rule types.
 
     Examples:
         user_input_text: "Tell me a joke and check this prompt for toxicity" -> ONLY CHECK FOR TOXICITY
@@ -123,7 +123,7 @@ def run_guardrails_on_response(llm_response_text: str, context: str, rule_types:
         rule_types (Set[RuleTypesEnum]) - The guardrails to run.
 
     IMPORTANT: Only include rule types the user **explicitly names** in `rule_types`. 
-    Do NOT include any rule types not explicitly named by the userunless a user doesn't specify any rule types.
+    Do NOT include any rule types not explicitly named by the user unless a user doesn't specify any rule types.
 
     Examples:
         User's Request: "Tell me a joke and check it for toxicity" -> ONLY CHECK FOR TOXICITY
