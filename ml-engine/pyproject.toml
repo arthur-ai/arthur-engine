@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.50"
+version = "2.1.51"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
