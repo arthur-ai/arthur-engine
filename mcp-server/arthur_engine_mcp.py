@@ -3,6 +3,8 @@ import os
 import requests
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from enum import Enum
+from typing import Set
 
 load_dotenv()
 
@@ -18,6 +20,16 @@ mcp = FastMCP(
     """,
 )
 
+class RuleTypesEnum(Enum):
+    SENSITIVE_DATA = "ModelSensitiveDataRule"
+    REGEX = "RegexRule"
+    KEYWORD = "KeywordRule"
+    PROMPT_INJECTION = "PromptInjectionRule"
+    HALLUCINATION = "ModelHallucinationRuleV2"
+    PII = "PIIDataRule"
+    TOXICITY = "ToxicityRule"
+
+RULE_TYPE_TO_ENUM = {e.value: e for e in RuleTypesEnum}
 RULE_TYPE_NAMES = {
     "ModelSensitiveDataRule": "Sensitive Data",
     "RegexRule": "Regex",
@@ -57,14 +69,22 @@ def validate_response(llm_response, context, task_id):
 
 
 @mcp.tool
-def run_guardrails_on_prompt(user_input_text: str):
+def run_guardrails_on_prompt(user_input_text: str, rule_types: Set[RuleTypesEnum]):
     """
-    Checks various guardrails over a user's input. This should be called before generating any response for the user.
-    If this check fails, you should not respond to a user's request and you should only respond with the returned
-    response text of this function.
+    Checks specific guardrails over a user's input. This should be called before generating any response for the user.
+    If this check fails, you should not respond to a user's request and you should only respond with the returned response text of this function.
 
     Parameters:
         user_input_text (str) - The user's input text.
+        rule_types (Set[RuleTypesEnum]) - The guardrails to run.
+
+    IMPORTANT: Only include rule types the user **explicitly names** in `rule_types`. 
+    Do NOT include any rule types not explicitly named by the userunless a user doesn't specify any rule types.
+
+    Examples:
+        user_input_text: "Tell me a joke and check this prompt for toxicity" -> ONLY CHECK FOR TOXICITY
+        user_input_text: "Tell me a joke" -> CHECK FOR ALL GUARDRAILS
+        user_input_text: "Tell me a joke and check this prompt for toxicity and PII" -> ONLY CHECK FOR TOXICITY AND PII
     """
     response = validate_prompt(user_input_text, GENAI_ENGINE_TASK_ID)
     if response.status_code != 200:
@@ -79,7 +99,9 @@ def run_guardrails_on_prompt(user_input_text: str):
     failed_rules = []
 
     for rule_result in rule_results:
-        if rule_result["result"] != "Pass":
+        enum_rule_type = RULE_TYPE_TO_ENUM[rule_result["rule_type"]]
+
+        if rule_result["result"] != "Pass" and enum_rule_type in rule_types:
             rule_name = RULE_TYPE_NAMES[rule_result["rule_type"]]
             failed_rules.append(rule_name)
 
@@ -90,15 +112,23 @@ def run_guardrails_on_prompt(user_input_text: str):
 
 
 @mcp.tool
-def run_guardrails_on_response(llm_response_text: str, context: str):
+def run_guardrails_on_response(llm_response_text: str, context: str, rule_types: Set[RuleTypesEnum]):
     """
-    Checks various guardrails over an LLM response. This should be called by giving your generated response to the
-    user as a parameter. If this check fails, you should not respond to a user's request and you should only respond with the returned
-    response text of this function.
+    Checks specific guardrails over an LLM's response. This should always be called before returning a response to the user.
+    If this check fails, you should not respond to a user's request and you should only respond with the returned response text of this function.
 
     Parameters:
         llm_response_text (str) - The generated response from the LLM.
         context (str) - The context that led to this response. If you do not use any context, you can pass in the original prompt.
+        rule_types (Set[RuleTypesEnum]) - The guardrails to run.
+
+    IMPORTANT: Only include rule types the user **explicitly names** in `rule_types`. 
+    Do NOT include any rule types not explicitly named by the userunless a user doesn't specify any rule types.
+
+    Examples:
+        User's Request: "Tell me a joke and check it for toxicity" -> ONLY CHECK FOR TOXICITY
+        User's Request: "Tell me a joke" -> CHECK FOR ALL GUARDRAILS
+        User's Request: "Tell me a joke and check the response for toxicity and PII" -> ONLY CHECK FOR TOXICITY AND PII
     """
     response = validate_response(llm_response_text, context, GENAI_ENGINE_TASK_ID)
     if response.status_code != 200:
@@ -113,7 +143,9 @@ def run_guardrails_on_response(llm_response_text: str, context: str):
     failed_rules = []
 
     for rule_result in rule_results:
-        if rule_result["result"] != "Pass":
+        enum_rule_type = RULE_TYPE_TO_ENUM[rule_result["rule_type"]]
+
+        if rule_result["result"] != "Pass" and enum_rule_type in rule_types:
             rule_name = RULE_TYPE_NAMES[rule_result["rule_type"]]
             failed_rules.append(rule_name)
 
