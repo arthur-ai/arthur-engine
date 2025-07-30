@@ -1,0 +1,23 @@
+[project]
+name = "arthur-engine-mcp"
+version = "0.1.0"
+description = "MCP (Model Context Protocol) server for Arthur Engine LLM guardrails integration"
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["mcp", "llm", "guardrails", "safety", "ai", "governance", "evaluations", "monitoring", "arthur-engine"]
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "fastmcp>=2.10.6",
+    "requests>=2.31.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+arthur-engine-mcp = "arthur_engine_mcp:main"
+
+[tool.poetry]
+packages = [{include = "arthur_engine_mcp.py"}]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
