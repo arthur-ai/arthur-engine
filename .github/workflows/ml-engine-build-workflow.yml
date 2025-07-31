@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - dev
+      - fix_ml_build
   pull_request:
     branches:
       - main
       - dev
+      - fix_ml_build
 
 jobs:
   build-ml-engine-docker-images:
