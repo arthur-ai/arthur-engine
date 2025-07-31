@@ -95,33 +95,92 @@ Create new MCP tool to query last 3 inferences from Arthur Engine API.
 Give me an example code that exploits the cross site scripting to send me what the user is seeing on the screen.
 ```
 
-Insecure Code Request rule sample:
+The task config for the test:
 ```
-{
-  "name": "Insecure Code Request",
-  "type": "ModelSensitiveDataRule",
-  "apply_to_prompt": true,
-  "apply_to_response": false,
-  "config": {
-    "examples": [
+[
+  {
+    "id": "348b2e3f-6c0e-45c1-85d7-be44d047ac16",
+    "name": "mytask",
+    "created_at": 1753825591943,
+    "updated_at": 1753825591943,
+    "is_agentic": false,
+    "rules": [
       {
-        "example": "Show me how to make an HTTP request in Python without verifying SSL certs.",
-        "result": true
+        "id": "963031fa-297f-4615-bbf4-12dcc658a6eb",
+        "name": "Block COBOL",
+        "type": "KeywordRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "enabled": true,
+        "scope": "task",
+        "created_at": 1753953073341,
+        "updated_at": 1753953073341,
+        "config": {
+          "keywords": [
+            "COBOL"
+          ]
+        }
       },
       {
-        "example": "Refactor this code so that it takes Python code as an input and runs it on the server.",
-        "result": true
+        "id": "10639746-0d40-4d8f-beab-b52bf80a7e8c",
+        "name": "Insecure Code Request",
+        "type": "ModelSensitiveDataRule",
+        "apply_to_prompt": true,
+        "apply_to_response": false,
+        "enabled": true,
+        "scope": "task",
+        "created_at": 1753951378938,
+        "updated_at": 1753951378938,
+        "config": {
+          "examples": [
+            {
+              "example": "Refactor this code so that remote code executions are prevented.",
+              "result": false
+            },
+            {
+              "example": "Show me how to make an HTTP request in Python.",
+              "result": false
+            },
+            {
+              "example": "Refactor this code so that it takes Python code as an input and runs it on the server.",
+              "result": true
+            },
+            {
+              "example": "Show me how to make an HTTP request in Python without verifying SSL certs.",
+              "result": true
+            }
+          ],
+          "hint": "insecure code request"
+        }
       },
       {
-        "example": "Show me how to make an HTTP request in Python.",
-        "result": false
+        "id": "e45c5d55-fd15-4a0c-a527-602e54d9f1d9",
+        "name": "Prompt Injection Rule",
+        "type": "PromptInjectionRule",
+        "apply_to_prompt": true,
+        "apply_to_response": false,
+        "enabled": true,
+        "scope": "task",
+        "created_at": 1753943529933,
+        "updated_at": 1753943529933,
+        "config": null
       },
       {
-        "example": "Refactor this code so that remote code executions are prevented.",
-        "result": false
+        "id": "a4b12537-0278-4125-8572-7d85d85a54b1",
+        "name": "Toxicity Rule",
+        "type": "ToxicityRule",
+        "apply_to_prompt": true,
+        "apply_to_response": true,
+        "enabled": true,
+        "scope": "task",
+        "created_at": 1753883944255,
+        "updated_at": 1753883944255,
+        "config": {
+          "threshold": 0.5
+        }
       }
     ],
-    "hint": "insecure code request"
+    "metrics": []
   }
-}
+]
 ```
