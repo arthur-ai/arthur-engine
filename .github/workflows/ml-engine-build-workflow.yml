@@ -1,4 +1,4 @@
-name: Arthur Engine CI
+name: ML Engine Test
 
 on:
   push:
@@ -46,7 +46,7 @@ jobs:
         uses: docker/build-push-action@v6.15.0
         with:
           context: "{{defaultContext}}:ml-engine"
-          file: dockerfile
+          file: Dockerfile
           tags: |
             arthurplatform/ml-engine:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/ml-engine:latest') || '' }}
