@@ -34,7 +34,12 @@ jobs:
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Debug
         run: |
-          ls -lat ./ml-engine/src/genai_client
+          echo "Checking if staging.openapi.json exists:"
+          ls -la ./genai-engine/staging.openapi.json
+          echo "Checking ml-engine/src directory:"
+          ls -la ./ml-engine/src/
+          echo "Checking if genai_client was generated:"
+          ls -la ./ml-engine/src/genai_client || echo "genai_client directory not found"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
