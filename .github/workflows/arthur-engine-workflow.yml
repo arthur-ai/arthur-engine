@@ -336,5 +336,9 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
       - name: Push tag
         run: |
-          git tag -a "${{ env.TAGGED_VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
-          git push origin "${{ env.TAGGED_VERSION }}"
+          git tag -a "${{ env.VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
+          git push origin "${{ env.VERSION }}"
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            git tag -a "latest" -m "Latest tag for Arthur Engine"
+            git push origin "latest"
+          fi
