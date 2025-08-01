@@ -62,16 +62,21 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build and push docker image
-        uses: docker/build-push-action@v6.15.0
-        with:
-          context: "{{defaultContext}}:ml-engine"
-          file: Dockerfile
-          build-args: |
-            BUILDKIT_INLINE_CACHE=0
-          tags: |
-            arthurplatform/ml-engine:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/ml-engine:latest') || '' }}
-          push: true
-          platforms: linux/amd64
-          no-cache: true
+      - name: Build and push docker image (no buildx)
+        run: |
+          cd ml-engine
+          docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
+          docker push arthurplatform/ml-engine:${{ env.VERSION }}
+      # - name: Build and push docker image
+      #   uses: docker/build-push-action@v6.15.0
+      #   with:
+      #     context: "{{defaultContext}}:ml-engine"
+      #     file: Dockerfile
+      #     build-args: |
+      #       BUILDKIT_INLINE_CACHE=0
+      #     tags: |
+      #       arthurplatform/ml-engine:${{ env.VERSION }}
+      #       ${{ github.ref == 'refs/heads/main' && format('arthurplatform/ml-engine:latest') || '' }}
+      #     push: true
+      #     platforms: linux/amd64
+      #     no-cache: true
