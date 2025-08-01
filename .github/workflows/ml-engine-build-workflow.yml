@@ -40,6 +40,14 @@ jobs:
           ls -la ./ml-engine/src/
           echo "Checking if genai_client was generated:"
           ls -la ./ml-engine/src/genai_client || echo "genai_client directory not found"
+      - name: Debug before Docker build
+        run: |
+          echo "=== Final check before Docker build ==="
+          echo "Current directory: $(pwd)"
+          echo "ml-engine/src contents:"
+          ls -la ./ml-engine/src/
+          echo "genai_client contents (if exists):"
+          ls -la ./ml-engine/src/genai_client/ || echo "genai_client not found"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
