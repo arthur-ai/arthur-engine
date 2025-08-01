@@ -1,18 +1,9 @@
-import os
-
 import pytest
-from transformers import AutoTokenizer
 
+from utils.model_load import get_prompt_injection_tokenizer
 from utils.text_chunking import ChunkIterator, SlidingWindowChunkIterator
 
-CLASSIFIER_PATH = "shield/scorer/checks/toxicity/toxicity_deberta_classifier"
-TOXICITY_CLASSIFIER_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "../..",
-    CLASSIFIER_PATH,
-)
-
-tokenizer = AutoTokenizer.from_pretrained(TOXICITY_CLASSIFIER_PATH)
+tokenizer = get_prompt_injection_tokenizer()
 
 
 @pytest.mark.parametrize(
