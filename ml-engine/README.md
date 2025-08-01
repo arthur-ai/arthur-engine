@@ -49,6 +49,8 @@ The script supports:
 - **Linux (RHEL/CentOS/Fedora)** - Uses `yum`
 - **macOS** - Uses Homebrew
 
+**Note:** This script is designed for local development installations. For Docker deployments, the database dependencies are automatically installed during the Docker build process.
+
 3. Install Python dependencies
 ```bash
 poetry install
@@ -110,6 +112,10 @@ Use the provided script to install all required system dependencies:
 chmod +x install_db_dependencies.sh
 ./install_db_dependencies.sh
 ```
+
+**For Docker builds**, a simplified version is used automatically in the Dockerfile:
+- `install_db_dependencies_docker.sh` - Optimized for Debian/Ubuntu containers
+- No manual intervention needed - dependencies are installed during image build
 
 ## Using local Docker image
 1. Generate GenAI Client
