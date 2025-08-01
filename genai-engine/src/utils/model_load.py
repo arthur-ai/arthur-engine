@@ -7,12 +7,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    RobertaForSequenceClassification,
-    RobertaTokenizer,
-)
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 logger = getLogger(__name__)
 
@@ -121,7 +116,7 @@ def get_prompt_injection_tokenizer():
 def get_toxicity_model():
     global TOXICITY_MODEL
     if not TOXICITY_MODEL:
-        TOXICITY_MODEL = RobertaForSequenceClassification.from_pretrained(
+        TOXICITY_MODEL = AutoModelForSequenceClassification.from_pretrained(
             "s-nlp/roberta_toxicity_classifier",
             weights_only=False,
         )
@@ -131,9 +126,10 @@ def get_toxicity_model():
 def get_toxicity_tokenizer():
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
-        TOXICITY_TOKENIZER = RobertaTokenizer.from_pretrained(
+        TOXICITY_TOKENIZER = AutoTokenizer.from_pretrained(
             "s-nlp/roberta_toxicity_classifier",
             weights_only=False,
+            model_max_length=None,
         )
     return TOXICITY_TOKENIZER
 
