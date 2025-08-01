@@ -53,6 +53,8 @@ jobs:
           ls -la ./ml-engine/
           echo "ml-engine/src directory contents:"
           ls -la ./ml-engine/src/
+          echo "=== Checking for symlinks in genai_client ==="
+          find ./ml-engine/src/genai_client -type l -ls || echo "No symlinks found"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
