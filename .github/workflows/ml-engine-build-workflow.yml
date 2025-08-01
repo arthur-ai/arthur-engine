@@ -48,6 +48,11 @@ jobs:
           ls -la ./ml-engine/src/
           echo "genai_client contents (if exists):"
           ls -la ./ml-engine/src/genai_client/ || echo "genai_client not found"
+          echo "=== What Docker will see in build context ==="
+          echo "ml-engine directory contents:"
+          ls -la ./ml-engine/
+          echo "ml-engine/src directory contents:"
+          ls -la ./ml-engine/src/
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.10.0
       - name: Log in to Docker Hub
