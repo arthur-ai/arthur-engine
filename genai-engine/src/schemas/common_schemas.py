@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from schemas.enums import (
     PaginationSortMethod,
     PIIEntityTypes,
@@ -50,7 +51,7 @@ class RegexConfig(BaseModel):
 
 
 class ToxicityConfig(BaseModel):
-    threshold: float | None = Field(
+    threshold: float = Field(
         default=DEFAULT_TOXICITY_RULE_THRESHOLD,
         description=f"Optional. Float (0, 1) indicating the level of tolerable toxicity to consider the rule passed or failed. Min: 0 (no toxic language) Max: 1 (very toxic language). Default: {DEFAULT_TOXICITY_RULE_THRESHOLD}",
     )
@@ -60,7 +61,8 @@ class ToxicityConfig(BaseModel):
         json_schema_extra={"example": {"threshold": DEFAULT_TOXICITY_RULE_THRESHOLD}},
     )
 
-    @field_validator("threshold")
+    @field_validator("threshold", mode="before")
+    @classmethod
     def validate_toxicity_threshold(cls, v):
         if v is None:
             return DEFAULT_TOXICITY_RULE_THRESHOLD
