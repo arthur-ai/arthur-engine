@@ -54,6 +54,7 @@ TOXICITY_MODEL_BATCH_SIZE = int(
 
 # Global singletons
 _profanity_classifier = None
+_toxicity_classifier = None
 
 
 def get_toxicity_classifier(
@@ -64,15 +65,19 @@ def get_toxicity_classifier(
         model = get_toxicity_model()
     if not tokenizer:
         tokenizer = get_toxicity_tokenizer()
-    return pipeline(
-        "text-classification",
-        model=model,
-        tokenizer=tokenizer,
-        top_k=99999,
-        truncation=True,
-        max_length=512,
-        device=torch.device(get_device()),
-    )
+    
+    global _toxicity_classifier
+    if _toxicity_classifier is None:
+        _toxicity_classifier = pipeline(
+            "text-classification",
+            model=model,
+            tokenizer=tokenizer,
+            top_k=99999,
+            truncation=True,
+            max_length=512,
+            device=torch.device(get_device()),
+        )
+    return _toxicity_classifier
 
 
 def get_profanity_classifier():
