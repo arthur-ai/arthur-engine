@@ -32,10 +32,7 @@ __location__ = os.path.dirname(os.path.abspath(__file__))
 
 tracer = trace.get_tracer(__name__)
 
-PROFANITY_CLASSIFIER_PATH = os.path.join(
-    __location__,
-    "toxicity_profanity/profanity_classifier",
-)
+PROFANITY_MODEL_NAME = "tarekziade/pardonmyai"
 
 HARMFUL_REQUEST_MAX_CHUNK_SIZE = int(
     get_env_var(
@@ -83,7 +80,7 @@ def get_profanity_classifier():
     if _profanity_classifier is None:
         _profanity_classifier = pipeline(
             "text-classification",
-            model=PROFANITY_CLASSIFIER_PATH,
+            model=PROFANITY_MODEL_NAME,
             top_k=99999,
             truncation=True,
             max_length=512,
