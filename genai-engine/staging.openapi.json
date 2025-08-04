@@ -6082,14 +6082,7 @@
             "ToxicityConfig": {
                 "properties": {
                     "threshold": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "number",
                         "title": "Threshold",
                         "description": "Optional. Float (0, 1) indicating the level of tolerable toxicity to consider the rule passed or failed. Min: 0 (no toxic language) Max: 1 (very toxic language). Default: 0.5",
                         "default": 0.5

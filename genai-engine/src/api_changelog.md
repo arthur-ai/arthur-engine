@@ -1,6 +1,8 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 08/04/2025
+- **CHANGE**: Forces toxicity threshold to float
 
 # 07/23/2025
 - **CHANGE** for **URL**: /v1/spans/{span_id}/metrics/ now returns the span object itself instead of a list of Span objects of len 1

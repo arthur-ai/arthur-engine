@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
 from schemas.enums import (
     PaginationSortMethod,
     PIIEntityTypes,
@@ -60,14 +61,14 @@ class ToxicityConfig(BaseModel):
         json_schema_extra={"example": {"threshold": DEFAULT_TOXICITY_RULE_THRESHOLD}},
     )
 
-    @field_validator("threshold")
+    @field_validator("threshold", mode="before")
+    @classmethod
     def validate_toxicity_threshold(cls, v):
-        if v:
-            if (v < 0) | (v > 1):
-                raise ValueError(f'"threshold" must be between 0 and 1')
-            return v
-        else:
-            return v
+        if v is None:
+            return DEFAULT_TOXICITY_RULE_THRESHOLD
+        if (v < 0) | (v > 1):
+            raise ValueError(f'"threshold" must be between 0 and 1')
+        return v
 
 
 class PIIConfig(BaseModel):
