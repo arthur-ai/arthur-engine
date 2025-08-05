@@ -22,12 +22,19 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import SHIELD_SCHEMA
-from arthur_common.models.shield import NewRuleRequest, RuleResponse, TaskResponse
+from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
+from arthur_common.models.shield import (
+    MetricResponse,
+    NewMetricRequest,
+    NewRuleRequest,
+    RuleResponse,
+    TaskResponse,
+)
 from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
     FetchModelTaskJobSpec,
+    TaskType,
     UpdateModelTaskRulesJobSpec,
 )
 from connectors.connector import Connector
@@ -194,6 +201,50 @@ class _TaskRuleAdder:
             self.logger.warning(f"Rule {rule.name} removed")
         self.logger.warning("Rollback complete")
 
+class _TaskTraceMetricAdder:
+    def __init__(
+        self,
+        connector: ShieldBaseConnector,
+        logger: logging.Logger,
+    ) -> None:
+        self.connector = connector
+        self.logger = logger
+
+    def add_tracing_metrics_to_task(
+        self,
+        task_id: str,
+        metrics_to_add: list[NewMetricRequest],
+        rollback_on_failure: bool = True,
+    ) -> None:
+        created_metrics = []
+        try:
+            for metric in metrics_to_add:
+                self.logger.info(f"Adding metric: {metric.name}")
+                metric_resp = self.connector.add_metric_to_task(
+                    task_id=task_id,
+                    new_metric=metric,
+                )
+                created_metrics.append(metric_resp)
+                self.logger.info(f"Metric {metric.name} added")
+        except Exception:
+            if rollback_on_failure:
+                self._rollback_created_metrics(task_id, created_metrics)
+            raise
+
+    def _rollback_created_metrics(
+        self,
+        task_id: str,
+        created_metrics: list[MetricResponse],
+    ) -> None:
+        self.logger.warning(
+            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics"
+        )
+        for metric in created_metrics:
+            self.logger.warning(f"Removing metric: {metric.name}")
+            self.connector.delete_task_metric(task_id=task_id, metric_id=metric.id)
+            self.logger.warning(f"Metric {metric.name} removed")
+        self.logger.warning("Rollback complete")
+
 
 class _ValidationKeyManager:
     def __init__(
@@ -292,6 +343,14 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
         super().__init__(self.conn, self.tasks_client, self.logger)
 
     def create(self) -> Tuple[Model, Dataset]:
+        # Differentiate between agentic and shield tasks
+        if self.task.is_agentic:
+            dataset_schema = common_to_client_put_dataset_schema(AGENTIC_TRACE_SCHEMA())
+            model_problem_type = ModelProblemType.AGENTIC_TRACE
+        else:
+            dataset_schema = common_to_client_put_dataset_schema(SHIELD_SCHEMA())
+            model_problem_type = ModelProblemType.ARTHUR_SHIELD
+
         # create dataset
         dataset = self.datasets_client.post_connector_dataset(
             connector_id=self.conn.connector_config.id,
@@ -305,8 +364,8 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
                         ),
                     ],
                 ),
-                dataset_schema=common_to_client_put_dataset_schema(SHIELD_SCHEMA()),
-                model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                dataset_schema=dataset_schema,
+                model_problem_type=model_problem_type,
             ),
         )
         self.logger.info(
@@ -373,7 +432,10 @@ class TaskCreator:
 
     def create(self) -> Tuple[Model, Dataset, TaskResponse]:
         # create the task in shield
-        task_resp = self.conn.create_task(name=self.job_spec.task_name)
+        is_agentic = self.job_spec.task_type == TaskType.AGENTIC
+        task_resp = self.conn.create_task(
+            name=self.job_spec.task_name, is_agentic=is_agentic
+        )
         self.logger.info(
             f"Created task: {self.job_spec.task_name} with id {task_resp.id}",
         )
