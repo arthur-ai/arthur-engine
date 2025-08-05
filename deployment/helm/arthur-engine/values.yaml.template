@@ -102,7 +102,7 @@ arthur-genai-engine:
   # Max number of tokens GenAI Engine can process against LLM for sensitive data checks
   genaiEngineSensitiveDataCheckMaxTokenLimit: 6000
   # Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.
-  genaiEngineToxicityCheckMaxTokenLimit: 1200
+  genaiEngineToxicityCheckMaxTokenLimit: 8000
   # Enable task rules cache
   genaiEngineCacheTaskRulesCacheEnabled: true
   # Task rules cache TTL in seconds
