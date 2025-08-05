@@ -29,7 +29,7 @@ from utils.model_load import get_relevance_model, get_relevance_tokenizer
 
 logger = logging.getLogger()
 
-DEFAULT_MODEL = "microsoft/deberta-xlarge-mnli"
+DEFAULT_MODEL = "microsoft/deberta-v2-xlarge-mnli"
 
 
 def round_score(score) -> float:
@@ -71,7 +71,7 @@ def get_model(temperature=0.0):
 
 def get_bert_scorer_model(model_type: str = DEFAULT_MODEL) -> BERTScorer:
 
-    return BERTScorer(model_type=model_type, use_fast_tokenizer=False, num_layers=17)
+    return BERTScorer(model_type=model_type, use_fast_tokenizer=True, num_layers=24)
 
 
 def get_relevance_reranker() -> TextClassificationPipeline:

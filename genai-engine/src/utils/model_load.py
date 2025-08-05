@@ -67,13 +67,13 @@ def download_models(num_of_process: int):
             "tokenizer_config.json",
             "vocab.json",
         ],
-        "microsoft/deberta-xlarge-mnli": [
+        "microsoft/deberta-v2-xlarge-mnli": [
             "config.json",
+            "pytorch_model.bin",
+            "spm.model",
             "model.safetensors",
-            "special_tokens_map.json",
             "tokenizer_config.json",
             "tokenizer.json",
-            "vocab.json",
         ],
     }
 
@@ -190,7 +190,7 @@ def get_relevance_model():
     global RELEVANCE_MODEL
     if not RELEVANCE_MODEL:
         RELEVANCE_MODEL = AutoModelForSequenceClassification.from_pretrained(
-            "microsoft/deberta-xlarge-mnli",
+            "microsoft/deberta-v2-xlarge-mnli",
             weights_only=False,
         )
     return RELEVANCE_MODEL
@@ -200,7 +200,7 @@ def get_relevance_tokenizer():
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
         RELEVANCE_TOKENIZER = AutoTokenizer.from_pretrained(
-            "microsoft/deberta-xlarge-mnli",
+            "microsoft/deberta-v2-xlarge-mnli",
             weights_only=False,
         )
     return RELEVANCE_TOKENIZER
