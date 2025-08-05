@@ -73,6 +73,7 @@ def download_models(num_of_process: int):
             "spm.model",
             "model.safetensors",
             "tokenizer_config.json",
+            "tokenizer.json",
         ],
     }
 
