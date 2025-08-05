@@ -71,7 +71,7 @@ def get_model(temperature=0.0):
 
 def get_bert_scorer_model(model_type: str = DEFAULT_MODEL) -> BERTScorer:
 
-    return BERTScorer(model_type=model_type, use_fast_tokenizer=False, num_layers=24)
+    return BERTScorer(model_type=model_type, use_fast_tokenizer=True, num_layers=24)
 
 
 def get_relevance_reranker() -> TextClassificationPipeline:
