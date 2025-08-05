@@ -1,72 +1,85 @@
 # Structured output prompt templates (without format_instructions)
 TOOL_SELECTION_STRUCTURED_PROMPT_TEMPLATE = """
-    You are tasked with evaluating whether an AI agent correctly selected a tool to respond to a user's question. You do **not** need to evaluate how the tool was used—only whether the correct tool was selected.
+You are evaluating whether an AI agent selected the correct tool to answer a user's question.
 
-    **Inputs:**
-    - **System Prompt:** Instructions, constraints, and available tools for the AI agent.
-    - **User Question:** The input provided by the user.
-    - **Context:** The full chat history, including any prior tool calls and responses.
+Focus only on **tool selection**, not how the tool was used.
 
-    ---
-    ### **Your Task:**
-    Analyze the provided information and evaluate whether the AI agent:
+---
 
-    **Tool Selection**
-    - **0**: Tool Selection Incorrect (The wrong tool(s) were selected for the job)
-    - **1**: Tool Selection Correct (The right tool(s) were selected for the job)
-    - **2**: No Tool Selected/Tool Not Available (A tool was not available or the assistant did not use a tool)
+### **Evaluation Labels:**
+- **0 = Incorrect** (Wrong tool(s) chosen)
+- **1 = Correct** (Right tool(s) chosen)
+- **2 = No Tool Used / Tool Not Available**
 
-    **IMPORTANT:**
-    - Ignore the arguments or parameters passed to the tool; only determine whether the selected tool was appropriate for the task.
-    - If multiple tools are valid, indicate the best choice and why.
+---
 
-    ---
-    Now, perform this evaluation based on the following inputs:
+### **Key Principles:**
+- **Chain-Aware**: A tool can be correct even if it doesn't answer the final question directly, as long as it's a necessary step.
+- **History-Aware**: Tool choice should follow logically from earlier steps.
+- **Strategic**: A valid step in a multi-step strategy is acceptable, even if not final.
+- **Multiple Valid Tools**: If several are valid, any reasonable one is correct.
+- **Tool Availability**: Don't penalize if a needed tool wasn't available.
 
-    **System Prompt:**
-    {system_prompt}
+---
 
-    **User Question:**
-    {user_query}
+### **Ignore:**
+- Parameters passed to the tool.
+- Whether the tool was executed correctly.
 
-    **Context:**
-    {context}
+---
+
+Now evaluate the following:
+
+**System Prompt:**
+{system_prompt}
+
+**User Question:**
+{user_query}
+
+**Context:**
+{context}
 """
+
 
 TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE = """
-    You are tasked with evaluating whether an AI agent correctly **used** a tool to respond to a user's question,, i.e. the right parameters were provided to the tool. You do **not** need to evaluate whether the correct tool was chosen — only whether the tool used was executed correctly.
+You are evaluating whether a tool was **used correctly**, i.e., provided with the right parameters.
 
-    **Inputs:**
-    - **System Prompt:** Instructions, constraints, and available tools for the AI agent.
-    - **User Question:** The input provided by the user.
-    - **Context:** The full chat history, including any prior tool calls and responses.
+Focus only on **tool usage**, not tool selection.
 
-    ---
-    ### **Your Task:**
-    Analyze the provided information and evaluate whether the AI agent:
+---
 
-    **Tool Usage**
-    - **0**: Tool Usage Incorrect (The tool was passed the wrong parameters or used incorrectly)
-    - **1**: Tool Usage Correct (The tool was given the right parameters and was called correctly)
-    - **2**: No Tool Selected/Tool Not Available (A tool was not available or the assistant did not use a tool)
+### **Evaluation Labels:**
+- **0 = Incorrect** (Wrong/missing parameters)
+- **1 = Correct** (Right parameters given)
+- **2 = No Tool Used / Tool Not Available**
 
-    **IMPORTANT:**
-    - Ignore whether the correct tool was chosen; only check if the tool was used properly (i.e., correct parameters were provided).
-    - If the tool usage was incorrect, explain why (missing parameters, wrong format, etc.).
-    - If the query is ambiguous, note if the AI should have asked for clarification.
+---
 
-    ---
-    Now, perform this evaluation based on the following inputs:
+### **Key Principles:**
+- **Chain-Aware**: Parameters can be intermediate, they are not necessarily the final parameters.
+- **Context-Aware**: Evaluate parameters based on information available so far.
+- **Progressive Use**: Partial inputs are fine if they advance strategy.
+---
 
-    **System Prompt:**
-    {system_prompt}
+### **Incorrect Usage If:**
+- Wrong parameter format or values
+- Key values clearly missing (and should have been requested)
+- Tool used inconsistently with its purpose
 
-    **User Question:**
-    {user_query}
+---
 
-    **Context:**
-    {context}
+Now evaluate the following:
+
+**System Prompt:**
+{system_prompt}
+
+**User Question:**
+{user_query}
+
+**Context:**
+{context}
 """
+
 
 # Legacy prompt templates (with format_instructions)
 TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE = (
