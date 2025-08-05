@@ -5,9 +5,14 @@ from multiprocessing import Pool
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+import torch
 from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers.modeling_utils import PreTrainedModel
+from transformers.tokenization_utils import PreTrainedTokenizerBase
+
+from utils.classifiers import get_device
 
 logger = getLogger(__name__)
 
@@ -18,6 +23,8 @@ TOXICITY_MODEL = None
 TOXICITY_TOKENIZER = None
 RELEVANCE_MODEL = None
 RELEVANCE_TOKENIZER = None
+TOXICITY_CLASSIFIER = None
+PROFANITY_CLASSIFIER = None
 
 
 def download_file(args):
@@ -132,6 +139,51 @@ def get_toxicity_tokenizer():
             model_max_length=None,
         )
     return TOXICITY_TOKENIZER
+
+
+def get_toxicity_classifier(
+    model: AutoModelForSequenceClassification | None,
+    tokenizer: AutoTokenizer | None,
+):
+    if not model:
+        model = get_toxicity_model()
+    if not tokenizer:
+        tokenizer = get_toxicity_tokenizer()
+
+    global TOXICITY_CLASSIFIER
+    if TOXICITY_CLASSIFIER is None:
+        TOXICITY_CLASSIFIER = pipeline(
+            "text-classification",
+            model=model,
+            tokenizer=tokenizer,
+            top_k=99999,
+            truncation=True,
+            max_length=512,
+            device=torch.device(get_device()),
+        )
+    return TOXICITY_CLASSIFIER
+
+
+def get_profanity_classifier():
+    global PROFANITY_CLASSIFIER
+    if PROFANITY_CLASSIFIER is None:
+        PROFANITY_CLASSIFIER = pipeline(
+            "text-classification",
+            model="tarekziade/pardonmyai",
+            top_k=99999,
+            truncation=True,
+            max_length=512,
+            device=torch.device(get_device()),
+        )
+    return PROFANITY_CLASSIFIER
+
+
+def get_harmful_request_classifier(
+    model: PreTrainedModel | None,
+    tokenizer: PreTrainedTokenizerBase | None,
+):
+    if not model or not tokenizer:
+        return None
 
 
 def get_relevance_model():

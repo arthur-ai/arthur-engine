@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 import torch
 from opentelemetry import trace
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
@@ -21,8 +21,13 @@ from schemas.scorer_schemas import (
 from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
 from scorer.scorer import RuleScorer
 from utils import constants
-from utils.classifiers import get_device
-from utils.model_load import get_toxicity_model, get_toxicity_tokenizer
+from utils.model_load import (
+    get_harmful_request_classifier,
+    get_profanity_classifier,
+    get_toxicity_classifier,
+    get_toxicity_model,
+    get_toxicity_tokenizer,
+)
 from utils.text_chunking import ChunkIterator
 from utils.utils import get_env_var, list_indicator_regex, pad_text
 
@@ -31,8 +36,6 @@ logger = logging.getLogger()
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
 tracer = trace.get_tracer(__name__)
-
-PROFANITY_MODEL_NAME = "tarekziade/pardonmyai"
 
 HARMFUL_REQUEST_MAX_CHUNK_SIZE = int(
     get_env_var(
@@ -50,56 +53,6 @@ TOXICITY_MAX_CHUNK_SIZE = int(
 TOXICITY_MODEL_BATCH_SIZE = int(
     get_env_var(constants.GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE_ENV_VAR, True) or 64,
 )
-
-
-# Global singletons
-_profanity_classifier = None
-_toxicity_classifier = None
-
-
-def get_toxicity_classifier(
-    model: AutoModelForSequenceClassification | None,
-    tokenizer: AutoTokenizer | None,
-):
-    if not model:
-        model = get_toxicity_model()
-    if not tokenizer:
-        tokenizer = get_toxicity_tokenizer()
-    
-    global _toxicity_classifier
-    if _toxicity_classifier is None:
-        _toxicity_classifier = pipeline(
-            "text-classification",
-            model=model,
-            tokenizer=tokenizer,
-            top_k=99999,
-            truncation=True,
-            max_length=512,
-            device=torch.device(get_device()),
-        )
-    return _toxicity_classifier
-
-
-def get_profanity_classifier():
-    global _profanity_classifier
-    if _profanity_classifier is None:
-        _profanity_classifier = pipeline(
-            "text-classification",
-            model=PROFANITY_MODEL_NAME,
-            top_k=99999,
-            truncation=True,
-            max_length=512,
-            device=torch.device(get_device()),
-        )
-    return _profanity_classifier
-
-
-def get_harmful_request_classifier(
-    model: PreTrainedModel | None,
-    tokenizer: PreTrainedTokenizerBase | None,
-):
-    if not model or not tokenizer:
-        return None
 
 
 def replace_special_chars(match):
@@ -189,6 +142,7 @@ class ToxicityScorer(RuleScorer):
         """
         with tracer.start_as_current_span("toxicity: profanity detection"):
             for section in texts:
+                # this calls the detect_profanity function found in toxicity_profanity/profanity.py
                 if detect_profanity(section):
                     # if we detect profanity we can return early since later we check just if any profanity has been detected
                     return True
