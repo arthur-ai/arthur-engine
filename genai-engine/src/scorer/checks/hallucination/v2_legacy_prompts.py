@@ -1,10 +1,11 @@
 from langchain_core.prompts import (
+    AIMessagePromptTemplate,
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     PromptTemplate,
     SystemMessagePromptTemplate,
-    AIMessagePromptTemplate,
 )
+
 
 def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction):
     flagging_example_template = PromptTemplate.from_template(
@@ -12,7 +13,7 @@ def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction
     )
 
     flagging_prompt_template_messages = [
-        SystemMessagePromptTemplate.from_template(flagging_instruction)
+        SystemMessagePromptTemplate.from_template(flagging_instruction),
     ]
 
     for example in flagging_examples:
@@ -26,7 +27,7 @@ def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction
         flagging_prompt_template_messages.extend([human_message, ai_message])
 
     flagging_prompt_template_messages.append(
-        HumanMessagePromptTemplate.from_template(end_instruction)
+        HumanMessagePromptTemplate.from_template(end_instruction),
     )
 
     flag_text_batch_template = ChatPromptTemplate.from_messages(
@@ -34,7 +35,8 @@ def get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction
     )
 
     return flag_text_batch_template
-    
+
+
 def get_claim_flagging_prompt():
     flagging_examples = [
         {
@@ -90,6 +92,7 @@ def get_claim_flagging_prompt():
 
     return get_flagging_prompt(flagging_examples, flagging_instruction, end_instruction)
 
+
 def get_flagged_claim_explanation_prompt():
     explanation_examples = [
         {
@@ -139,7 +142,7 @@ def get_flagged_claim_explanation_prompt():
     )
 
     explanation_prompt_template_messages = [
-        SystemMessagePromptTemplate.from_template(explanation_instruction)
+        SystemMessagePromptTemplate.from_template(explanation_instruction),
     ]
 
     for example in explanation_examples:
