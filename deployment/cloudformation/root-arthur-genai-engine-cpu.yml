@@ -214,7 +214,7 @@ Parameters:
     Default: 6000
   GenaiEngineToxicityCheckMaxTokenLimit:
     Type: Number
-    Default: 1200
+    Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
   GenaiEngineOpenAIProvider:
     Type: String
