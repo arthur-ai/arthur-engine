@@ -457,15 +457,25 @@ class TaskCreator:
         self,
         task_id: str,
     ) -> Tuple[Model, Dataset, TaskResponse]:
-
-        # add rules to the task in shield
-        # skip rollback because if there's a failure the whole task will be deleted
-        rule_adder = _TaskRuleAdder(connector=self.conn, logger=self.logger)
-        rule_adder.add_rules_to_task(
-            task_id=task_id,
-            rules_to_add=self.job_spec.initial_rules,
-            rollback_on_failure=False,
-        )
+        # Add tracing metrics to an agentic task
+        if self.job_spec.task_type == TaskType.AGENTIC:
+            trace_metric_adder = _TaskTraceMetricAdder(
+                connector=self.conn, logger=self.logger
+            )
+            trace_metric_adder.add_tracing_metrics_to_task(
+                task_id=task_id,
+                metrics_to_add=self.job_spec.initial_metrics,
+                rollback_on_failure=False,
+            )
+        else:
+            # add rules to the task in shield
+            # skip rollback because if there's a failure the whole task will be deleted
+            rule_adder = _TaskRuleAdder(connector=self.conn, logger=self.logger)
+            rule_adder.add_rules_to_task(
+                task_id=task_id,
+                rules_to_add=self.job_spec.initial_rules,
+                rollback_on_failure=False,
+            )
 
         # get latest copy of task state to return after adding rules
         task = self.conn.read_task(task_id=task_id)
