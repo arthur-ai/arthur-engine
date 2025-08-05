@@ -25,7 +25,11 @@ from scorer.metrics.relevance.prompt_templates import (
 )
 from scorer.scorer import MetricScorer
 from utils.classifiers import get_device
-from utils.model_load import get_relevance_model, get_relevance_tokenizer
+from utils.model_load import (
+    get_relevance_model,
+    get_relevance_tokenizer,
+    log_model_loading,
+)
 
 logger = logging.getLogger()
 
@@ -69,11 +73,12 @@ def get_model(temperature=0.0):
     return get_llm_executor().get_gpt_model(chat_temperature=temperature)
 
 
+@log_model_loading("BERT scorer model")
 def get_bert_scorer_model(model_type: str = DEFAULT_MODEL) -> BERTScorer:
-
     return BERTScorer(model_type=model_type, use_fast_tokenizer=True, num_layers=24)
 
 
+@log_model_loading("relevance reranker pipeline")
 def get_relevance_reranker() -> TextClassificationPipeline:
     """Loads in the relevance reranker"""
     # Use the model_load functionality to get or download models
@@ -84,6 +89,7 @@ def get_relevance_reranker() -> TextClassificationPipeline:
         model=model,
         tokenizer=tokenizer,
         device=torch.device(get_device()),
+        torch_dtype=torch.float16,
     )
 
 

@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 from logging import getLogger
 from multiprocessing import Pool
 
@@ -25,6 +26,26 @@ RELEVANCE_MODEL = None
 RELEVANCE_TOKENIZER = None
 TOXICITY_CLASSIFIER = None
 PROFANITY_CLASSIFIER = None
+
+
+def log_model_loading(model_name: str):
+    """Decorator to add logging around model loading functions"""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            logger.info(f"Loading {model_name}...")
+            try:
+                result = func(*args, **kwargs)
+                logger.info(f"✅ {model_name} loaded successfully")
+                return result
+            except Exception as e:
+                logger.error(f"❌ Failed to load {model_name}: {e}")
+                raise
+
+        return wrapper
+
+    return decorator
 
 
 def download_file(args):
@@ -91,6 +112,7 @@ def download_models(num_of_process: int):
         pool.map(download_file, tasks)
 
 
+@log_model_loading("claim classifier embedding model")
 def get_claim_classifier_embedding_model():
     global CLAIM_CLASSIFIER_EMBEDDING_MODEL
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
@@ -100,6 +122,7 @@ def get_claim_classifier_embedding_model():
     return CLAIM_CLASSIFIER_EMBEDDING_MODEL
 
 
+@log_model_loading("prompt injection model")
 def get_prompt_injection_model():
     global PROMPT_INJECTION_MODEL
     if PROMPT_INJECTION_MODEL is None:
@@ -110,6 +133,7 @@ def get_prompt_injection_model():
     return PROMPT_INJECTION_MODEL
 
 
+@log_model_loading("prompt injection tokenizer")
 def get_prompt_injection_tokenizer():
     global PROMPT_INJECTION_TOKENIZER
     if PROMPT_INJECTION_TOKENIZER is None:
@@ -120,6 +144,7 @@ def get_prompt_injection_tokenizer():
     return PROMPT_INJECTION_TOKENIZER
 
 
+@log_model_loading("toxicity model")
 def get_toxicity_model():
     global TOXICITY_MODEL
     if not TOXICITY_MODEL:
@@ -130,6 +155,7 @@ def get_toxicity_model():
     return TOXICITY_MODEL
 
 
+@log_model_loading("toxicity tokenizer")
 def get_toxicity_tokenizer():
     global TOXICITY_TOKENIZER
     if not TOXICITY_TOKENIZER:
@@ -141,6 +167,7 @@ def get_toxicity_tokenizer():
     return TOXICITY_TOKENIZER
 
 
+@log_model_loading("toxicity classifier pipeline")
 def get_toxicity_classifier(
     model: AutoModelForSequenceClassification | None,
     tokenizer: AutoTokenizer | None,
@@ -164,6 +191,7 @@ def get_toxicity_classifier(
     return TOXICITY_CLASSIFIER
 
 
+@log_model_loading("profanity classifier")
 def get_profanity_classifier():
     global PROFANITY_CLASSIFIER
     if PROFANITY_CLASSIFIER is None:
@@ -186,16 +214,19 @@ def get_harmful_request_classifier(
         return None
 
 
+@log_model_loading("relevance model")
 def get_relevance_model():
     global RELEVANCE_MODEL
     if not RELEVANCE_MODEL:
         RELEVANCE_MODEL = AutoModelForSequenceClassification.from_pretrained(
             "microsoft/deberta-v2-xlarge-mnli",
             weights_only=False,
+            torch_dtype=torch.float16,
         )
     return RELEVANCE_MODEL
 
 
+@log_model_loading("relevance tokenizer")
 def get_relevance_tokenizer():
     global RELEVANCE_TOKENIZER
     if not RELEVANCE_TOKENIZER:
