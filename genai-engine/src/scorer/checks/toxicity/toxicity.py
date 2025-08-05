@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import threading
 from typing import List
@@ -6,6 +7,10 @@ from typing import List
 import numpy as np
 import torch
 from opentelemetry import trace
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers.modeling_utils import PreTrainedModel
+from transformers.tokenization_utils import PreTrainedTokenizerBase
+
 from schemas.enums import RuleResultEnum, ToxicityViolationType
 from schemas.scorer_schemas import (
     RuleScore,
@@ -15,42 +20,39 @@ from schemas.scorer_schemas import (
 )
 from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
 from scorer.scorer import RuleScorer
-from transformers import pipeline
-from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils import PreTrainedTokenizerBase
-from utils import utils
-from utils.classifiers import get_device
-from utils.model_load import get_toxicity_model, get_toxicity_tokenizer
-from utils.utils import list_indicator_regex, pad_text
+from utils import constants
+from utils.model_load import (
+    get_harmful_request_classifier,
+    get_profanity_classifier,
+    get_toxicity_classifier,
+    get_toxicity_model,
+    get_toxicity_tokenizer,
+)
+from utils.text_chunking import ChunkIterator
+from utils.utils import get_env_var, list_indicator_regex, pad_text
 
 logger = logging.getLogger()
+
+__location__ = os.path.dirname(os.path.abspath(__file__))
+
 tracer = trace.get_tracer(__name__)
 
-
-def get_toxicity_classifier(
-    model: PreTrainedModel | None,
-    tokenizer: PreTrainedTokenizerBase | None,
-):
-    if not model:
-        model = get_toxicity_model()
-    if not tokenizer:
-        tokenizer = get_toxicity_tokenizer()
-    return pipeline(
-        "text-classification",
-        model=model,
-        tokenizer=tokenizer,
-        top_k=99999,
-        truncation=True,
-        device=torch.device(get_device()),
+HARMFUL_REQUEST_MAX_CHUNK_SIZE = int(
+    get_env_var(
+        constants.GENAI_ENGINE_TOXICITY_HARMFUL_REQUESTS_CHUNK_SIZE_ENV_VAR,
+        True,
     )
+    or 512,
+)
 
+TOXICITY_MAX_CHUNK_SIZE = int(
+    get_env_var(constants.GENAI_ENGINE_TOXICITY_MAX_CHUNK_SIZE_SIZE_ENV_VAR, True)
+    or 32,
+)
 
-def get_harmful_request_classifier(
-    model: PreTrainedModel | None,
-    tokenizer: PreTrainedTokenizerBase | None,
-):
-    if not model or not tokenizer:
-        return None
+TOXICITY_MODEL_BATCH_SIZE = int(
+    get_env_var(constants.GENAI_ENGINE_TOXICITY_MODEL_BATCH_SIZE_ENV_VAR, True) or 64,
+)
 
 
 def replace_special_chars(match):
@@ -62,8 +64,8 @@ class ToxicityScorer(RuleScorer):
 
     def __init__(
         self,
-        toxicity_model: PreTrainedModel | None,
-        toxicity_tokenizer: PreTrainedTokenizerBase | None,
+        toxicity_model: AutoModelForSequenceClassification | None,
+        toxicity_tokenizer: AutoTokenizer | None,
         harmful_request_model: PreTrainedModel | None,
         harmful_request_tokenizer: PreTrainedTokenizerBase | None,
     ):
@@ -72,6 +74,10 @@ class ToxicityScorer(RuleScorer):
             harmful_request_model,
             harmful_request_tokenizer,
         )
+        self.toxicity_tokenizer = (
+            toxicity_tokenizer if toxicity_tokenizer else get_toxicity_tokenizer()
+        )
+        self.profanity_classifier = get_profanity_classifier()
 
     def _download_model_and_tokenizer(self):
         # Download the model and tokenizer using the provided methods
@@ -83,6 +89,15 @@ class ToxicityScorer(RuleScorer):
             get_toxicity_model()
         self.model = get_toxicity_classifier(TOXICITY_MODEL, TOXICITY_TOKENIZER)
         logger.info("Model and tokenizer downloaded and classifier initialized.")
+
+    def chunk_text(self, text: str, chunk_size):
+        chunk_iterator = ChunkIterator(
+            text,
+            self.toxicity_tokenizer,
+            chunk_size,
+        )
+
+        return [chunk for chunk in chunk_iterator]
 
     def split_text_into_sections(self, text: str):
         """Splits text into sections to localize where toxic text is identified
@@ -112,9 +127,38 @@ class ToxicityScorer(RuleScorer):
                 texts.extend([x.strip() for x in sections if x])
         return texts
 
-    def detect_profanity(self, texts: List[str]):
-        with tracer.start_as_current_span("toxicity: regex for profanity"):
-            return [detect_profanity(section) for section in texts]
+    def detect_profanity(self, texts: List[str], threshold: float):
+        """
+        Detects profanity using a regex function and a classifier.
+        The regex checks a blacklist of common words and their substitutions.
+        If a string doesn't contain any blacklisted words explicitly a classifier is used to detect offensive content.
+
+        Inputs:
+            texts (List[str]): List of text chunks to be checked for profanity
+            threshold (float): Toxicity threshold for the profanity classifier
+
+        Returns:
+            bool: True if profanity is detected, False otherwise.
+        """
+        with tracer.start_as_current_span("toxicity: profanity detection"):
+            for section in texts:
+                # this calls the detect_profanity function found in toxicity_profanity/profanity.py
+                if detect_profanity(section):
+                    # if we detect profanity we can return early since later we check just if any profanity has been detected
+                    return True
+
+            prof_inference_res = self.profanity_classifier(
+                texts,
+                batch_size=TOXICITY_MODEL_BATCH_SIZE,
+            )
+
+            for dicts_arr in prof_inference_res:
+                for label_dict in dicts_arr:
+                    if label_dict["label"] == "OFFENSIVE":
+                        if label_dict["score"] > threshold:
+                            return True
+
+            return False
 
     def score_harmful_request(self, texts: List[str]):
         """Scores using a harmful request classifier
@@ -144,7 +188,11 @@ class ToxicityScorer(RuleScorer):
             # note: a flaw in the model was identified Mar 18 2024
             # it was fine-tuned as a classifier on almost 0 examples of text < 20 chars
             # so for now, we apply repetition padding to the input sequences
-            tox_results = self.model(pad_text(texts, type="repetition"))
+            with torch.no_grad():
+                tox_results = self.model(
+                    pad_text(texts, type="repetition"),
+                    batch_size=TOXICITY_MODEL_BATCH_SIZE,
+                )
 
         toxscores = []
         for l in tox_results:
@@ -155,8 +203,7 @@ class ToxicityScorer(RuleScorer):
 
     def write_score_details_message(
         self,
-        texts: List[str],
-        profanity_results: List[bool],
+        profanity_results: bool,
         harmscores: List[float],
         toxscores: List[float],
         threshold: float,
@@ -174,10 +221,12 @@ class ToxicityScorer(RuleScorer):
             message: str
                 message to be provided to the user (TBD on specific presentation of details)
         """
-        scores = [np.round(max(x, y), 3) for x, y in zip(harmscores, toxscores)]
-        for i, t in sorted(enumerate(texts), key=lambda x: scores[x[0]], reverse=True):
-            if profanity_results[i] or scores[i] > threshold:
-                return "Toxicity detected"
+        if (
+            profanity_results
+            or any(np.round(s, 3) > threshold for s in harmscores)
+            or any(np.round(s, 3) > threshold for s in toxscores)
+        ):
+            return "Toxicity detected"
         return "No toxicity detected!"
 
     def score(self, request: ScoreRequest) -> RuleScore:
@@ -219,25 +268,37 @@ class ToxicityScorer(RuleScorer):
                 completion_tokens=0,
             )
 
-        text_sections = self.split_text_into_sections(request.scoring_text)
+        text_chunks = self.chunk_text(request.scoring_text, TOXICITY_MAX_CHUNK_SIZE)
+
+        harmful_request_text_chunks = self.chunk_text(
+            request.scoring_text,
+            HARMFUL_REQUEST_MAX_CHUNK_SIZE,
+        )
 
         # generate rule results & model predictions
-        profanity_results = self.detect_profanity(text_sections)
-        harmfulrequest_scores = self.score_harmful_request(text_sections)
+        profanity_results = self.detect_profanity(
+            text_chunks,
+            request.toxicity_threshold,
+        )
 
-        # run the toxicity model across sections in parallel
-        with utils.TracedThreadPoolExecutor(tracer) as executor:
-            toxicity_scores = executor.map(self.score_toxic_text, text_sections)
-        max_toxicity_scores = [max(x) for x in list(toxicity_scores)]
+        harmfulrequest_scores = []
+        toxicity_scores = []
 
         # aggregate rule results & model predictions into the returned RuleScore
-        if any(profanity_results):
+        if profanity_results:
             # return 0.9999999999... if profanity
             final_score = np.nextafter(1.0, 0.0)
             final_problem_type = ToxicityViolationType.PROFANITY  # Keep them as str
         else:
+            harmfulrequest_scores = self.score_harmful_request(
+                harmful_request_text_chunks,
+            )
+
+            # run the toxicity model in batches
+            toxicity_scores = self.score_toxic_text(text_chunks)
+
             # if no profanity, return the maximum score on any section from either of our classifiers
-            max_harm, max_tox = max(harmfulrequest_scores), max(max_toxicity_scores)
+            max_harm, max_tox = max(harmfulrequest_scores), max(toxicity_scores)
 
             final_score = 0.0
             if max_harm > max_tox:
@@ -246,14 +307,13 @@ class ToxicityScorer(RuleScorer):
             else:
                 final_score = max_tox
                 final_problem_type = ToxicityViolationType.TOXIC_CONTENT
-        bool_result = final_score > request.toxicity_threshold or any(profanity_results)
+        bool_result = final_score > request.toxicity_threshold or profanity_results
         genai_engine_results = {False: RuleResultEnum.PASS, True: RuleResultEnum.FAIL}
         genai_engine_result = genai_engine_results[bool_result]
         message = self.write_score_details_message(
-            text_sections,
             profanity_results,
             harmfulrequest_scores,
-            max_toxicity_scores,
+            toxicity_scores,
             request.toxicity_threshold,
         )
         return RuleScore(

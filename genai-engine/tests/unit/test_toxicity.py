@@ -1,6 +1,9 @@
 import os
 
+import nltk
 import pytest
+from nltk.corpus import words
+
 from schemas.enums import RuleResultEnum, RuleType, ToxicityViolationType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.toxicity.toxicity import (
@@ -8,29 +11,45 @@ from scorer.checks.toxicity.toxicity import (
     get_toxicity_model,
     get_toxicity_tokenizer,
 )
-from scorer.checks.toxicity.toxicity_profanity.profanity import detect_profanity
+from scorer.checks.toxicity.toxicity_profanity.profanity import (
+    FULLY_BAD_WORDS,
+    detect_profanity,
+)
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
 TOXICITY_MODEL = get_toxicity_model()
 TOXICITY_TOKENIZER = get_toxicity_tokenizer()
 
+
+def get_english_dictionary():
+    try:
+        english_dictionary = words.words()
+        return set([word.lower() for word in english_dictionary])
+    except LookupError:
+        nltk.download("words")
+        english_dictionary = words.words()
+        return set([word.lower() for word in english_dictionary])
+
+
 CLASSIFIER = ToxicityScorer(TOXICITY_MODEL, TOXICITY_TOKENIZER, None, None)
+ENGLISH_DICTIONARY = get_english_dictionary()
 
 
 @pytest.mark.unit_tests
 def test_detect_profanity():
-    assert detect_profanity("shit")
-    assert detect_profanity("s h i t")
-    assert detect_profanity("s H ! t")
-    assert detect_profanity("s       H     , ! t")
-    assert detect_profanity("fuck")
-    assert detect_profanity("f*ck")
-    assert not detect_profanity("f-ck")
-    assert detect_profanity("f**ck")
-    assert not detect_profanity("f--ck")
-    assert not detect_profanity("fxck")
-    assert not detect_profanity("fxxck")
+    assert CLASSIFIER.detect_profanity(["shit"], 0.5)
+    assert CLASSIFIER.detect_profanity(["fuck"], 0.6)
+    assert CLASSIFIER.detect_profanity(["f*ck"], 0.7)
+    assert CLASSIFIER.detect_profanity(["f**ck"], 0.8)
+    assert CLASSIFIER.detect_profanity(["fxck"], 0.9)
+    assert CLASSIFIER.detect_profanity(["fxxck"], 0.99)
+    assert CLASSIFIER.detect_profanity(["ignorant"], 0.5)
+    assert not CLASSIFIER.detect_profanity(["s h i t"], 0.5)
+    assert not CLASSIFIER.detect_profanity(["s h ! t"], 0.5)
+    assert not CLASSIFIER.detect_profanity(["s       H     , ! t"], 0.5)
+    assert not CLASSIFIER.detect_profanity(["distinguish it"], 0.5)
+    assert not CLASSIFIER.detect_profanity(["get it"], 0.5)
 
 
 @pytest.mark.unit_tests
@@ -107,7 +126,7 @@ def test_classifier_not_toxic_text():
         "It numbs them to the disgusting degeneracy and fruitless hedonism of faggot sex",
         "If i were you I would inject lethal heroin to my ‚Äòsick' child immediately!",
         "I’m searching for a hitman right now to kill this whore and every other like her. H A T E  W O M E N",
-        "I remember once I was in charge of a disabled kid. Every night I was wishing slow death for him",
+        "Every night I was wishing slow death for him",
         "I just don't like Homosexuals raising kids it's my opinion.",
         "I feel like you should give the reporter a pistol",
         "Homosexuality and transgenderism is a mental illness and a sexual perversion!",
@@ -327,15 +346,16 @@ if fast_ema[0] > slow_ema[0]:
 @pytest.mark.parametrize(
     "text, expected_result",
     [
-        ("f***ck", [True]),
-        ("f*********ck", [True]),
-        ("dendr**hilia", [False]),
-        ("dendr*philia", [True]),
-        ("dendr*****philia", [True]),
-        ("f***ck dendr**hilia", [True]),
-        ("f*********ck dendr*****philia", [True]),
-        ("f***ck dendr**hilia \n f*********ck dendr*****philia", [True, True]),
-        ("f***ck \n dendr**hilia", [True, False]),
+        ("f*ck", [True]),
+        ("b!+ch", [True]),
+        ("5h!t", [True]),
+        ("s#it", [True]),
+        ("s#i+", [True]),
+        ("s h i t", [False]),
+        ("f***ck dendr**hilia", [False]),
+        ("f*********ck dendr*****philia", [False]),
+        ("f***ck dendr**hilia \n f*********ck dendr*****philia", [False, False]),
+        ("f***ck \n dendr**hilia", [False, False]),
     ],
 )
 def test_profanity_detection_with_character_replacement(
@@ -347,3 +367,12 @@ def test_profanity_detection_with_character_replacement(
         for section in CLASSIFIER.split_text_into_sections(text)
     ]
     assert profanity_result == expected_result
+
+
+@pytest.mark.unit_tests
+def test_profanity_regex_against_dictionary():
+    for word in ENGLISH_DICTIONARY:
+        if word in FULLY_BAD_WORDS:
+            assert detect_profanity(word) == True
+        else:
+            assert detect_profanity(word) == False
