@@ -1,6 +1,9 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 08/05/2025
+- **CHANGE**: Updated Prompt Injection, PII and Toxicity models
+
 # 08/04/2025
 - **CHANGE**: Forces toxicity threshold to float
 

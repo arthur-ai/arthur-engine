@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 
+import torch
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -160,7 +161,8 @@ class UserQueryRelevanceScorer(MetricScorer):
         # system_prompt = ' '.join(system_prompt.split()[:200])
 
         relevance_pair = {"text": system_prompt, "text_pair": query}
-        res = self.relevance_reranker(relevance_pair)
+        with torch.no_grad():
+            res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
         metric_score = self.bert_scorer.score_query(request)
         bert_f_score = metric_score.details.query_relevance.bert_f_score
@@ -257,7 +259,8 @@ class ResponseRelevanceScorer(MetricScorer):
             "text": f"System Prompt: {system_prompt} \n User Query: {query}",
             "text_pair": response,
         }
-        res = self.relevance_reranker(relevance_pair)
+        with torch.no_grad():
+            res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
 
         metric_score = self.bert_scorer.score_response(request)
@@ -351,11 +354,12 @@ class BertRelevanceScorer(MetricScorer, ABC):
         """
         Scores the candidate batch against the system batch using the BERTScorer.
         """
-        candidate_batch_scores = self.model.score(
-            candidate_batch,
-            ground_truth_batch,
-            verbose=False,
-        )
+        with torch.no_grad():
+            candidate_batch_scores = self.model.score(
+                candidate_batch,
+                ground_truth_batch,
+                verbose=False,
+            )
         p, r, f = candidate_batch_scores
 
         # Calculate the average F1 score (should always be 1 value)
