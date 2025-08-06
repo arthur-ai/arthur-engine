@@ -56,6 +56,8 @@ from utils.model_load import (
     get_prompt_injection_tokenizer,
     get_toxicity_model,
     get_toxicity_tokenizer,
+    get_bert_scorer,
+    get_relevance_reranker,
 )
 from utils.utils import (
     get_env_var,
@@ -153,6 +155,8 @@ async def lifespan(app: FastAPI):
     get_prompt_injection_tokenizer()
     get_toxicity_model()
     get_toxicity_tokenizer()
+    get_bert_scorer()
+    get_relevance_reranker()
 
     get_scorer_client()
 
