@@ -6,12 +6,13 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 from opentelemetry import trace
+
 from schemas.common_schemas import ExamplesConfig, LLMTokenConsumption
 from schemas.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
-from scorer.score import ScorerClient
 from scorer.llm_client import get_llm_executor
+from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import RULE_FAILURE_COUNTER
 from utils.token_count import TokenCounter
@@ -22,7 +23,6 @@ logger = logging.getLogger()
 
 
 load_dotenv()
-PROMPT_INJECTION_TOKEN_WARNING_LIMIT = 512
 MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
     get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
 )
@@ -50,7 +50,7 @@ class RuleEngine:
 
         if token_limit == -1:
             return MAX_HALLUCINATION_TOKEN_LIMIT
-        
+
         return token_limit
 
     def evaluate(
@@ -276,17 +276,6 @@ class RuleEngine:
         )
 
         rule_score = self.scorer.score(score_request)
-        total_tokens = self.token_counter.count(request.prompt)
-        if total_tokens > PROMPT_INJECTION_TOKEN_WARNING_LIMIT:
-            details = ScorerRuleDetails(
-                message="Prompt has more than 512 tokens. The prompt "
-                "will be truncated from the middle.",
-            )
-            rule_score.details = details
-            logger.warning(
-                "Prompt Injection check received prompt for more than 512 tokens. Prompt was truncated to 512 tokens "
-                "from the middle for Prompt Injection check..",
-            )
         return rule_score
 
     @tracer.start_as_current_span("run pii data rule")
