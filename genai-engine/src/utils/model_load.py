@@ -8,7 +8,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import torch
 from bert_score import BERTScorer
+from gliner import GLiNER, GLiNERConfig
 from huggingface_hub import hf_hub_download
+from presidio_analyzer import AnalyzerEngine
 from sentence_transformers import SentenceTransformer
 from transformers import (
     AutoModelForSequenceClassification,
@@ -24,6 +26,13 @@ from utils.utils import relevance_models_enabled
 
 logger = getLogger(__name__)
 
+__location__ = os.path.dirname(os.path.abspath(__file__))
+
+GLINER_CONFIG_PATH = os.path.join(
+    __location__,
+    "../scorer/checks/pii/gliner/gliner_tokenizer_config.json",
+)
+
 CLAIM_CLASSIFIER_EMBEDDING_MODEL = None
 PROMPT_INJECTION_MODEL = None
 PROMPT_INJECTION_TOKENIZER = None
@@ -36,6 +45,9 @@ TOXICITY_CLASSIFIER = None
 PROFANITY_CLASSIFIER = None
 BERT_SCORER = None
 RELEVANCE_RERANKER = None
+PII_GLINER_MODEL = None
+PII_GLINER_TOKENIZER = None
+PII_PRESIDIO_ANALYZER = None
 
 
 def log_model_loading(model_name: str, global_var_name: str = None):
@@ -328,3 +340,35 @@ def get_relevance_reranker():
             torch_dtype=torch.float16,
         )
     return RELEVANCE_RERANKER
+
+
+@log_model_loading("gliner tokenizer")
+def get_gliner_tokenizer():
+    global PII_GLINER_TOKENIZER
+    if PII_GLINER_TOKENIZER is None:
+        config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
+        PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(config.model_name)
+    return PII_GLINER_TOKENIZER
+
+
+@log_model_loading("gliner model")
+def get_gliner_model():
+    global PII_GLINER_MODEL
+    if PII_GLINER_MODEL is None:
+        PII_GLINER_MODEL = GLiNER.from_pretrained(
+            "urchade/gliner_multi_pii-v1",
+            config=GLiNERConfig.from_json_file(GLINER_CONFIG_PATH),
+            tokenizer=get_gliner_tokenizer(),
+            load_tokenizer=False,
+            local_files_only=False,
+        ).to(get_device())
+        PII_GLINER_MODEL.eval()
+    return PII_GLINER_MODEL
+
+
+@log_model_loading("presidio analyzer")
+def get_presidio_analyzer():
+    global PII_PRESIDIO_ANALYZER
+    if PII_PRESIDIO_ANALYZER is None:
+        PII_PRESIDIO_ANALYZER = AnalyzerEngine()
+    return PII_PRESIDIO_ANALYZER
