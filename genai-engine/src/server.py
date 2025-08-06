@@ -8,17 +8,6 @@ from typing import Callable
 
 import torch
 import uvicorn
-from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
-from config.config import Config
-from config.extra_features import extra_feature_config
-from dependencies import (
-    get_db_engine,
-    get_db_session,
-    get_keycloak_client,
-    get_keycloak_settings,
-    get_oauth_client,
-    get_scorer_client,
-)
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -32,6 +21,20 @@ from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+
+from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
+from config.config import Config
+from config.extra_features import extra_feature_config
+from dependencies import (
+    get_db_engine,
+    get_db_session,
+    get_keycloak_client,
+    get_keycloak_settings,
+    get_oauth_client,
+    get_scorer_client,
+)
 from routers.api_key_routes import api_keys_routes
 from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
@@ -46,18 +49,16 @@ from routers.v2.routers import (
     task_management_routes,
     validate_routes,
 )
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
 from utils import constants as constants
 from utils.classifiers import get_device
 from utils.model_load import (
+    get_bert_scorer,
     get_claim_classifier_embedding_model,
     get_prompt_injection_model,
     get_prompt_injection_tokenizer,
+    get_relevance_reranker,
     get_toxicity_model,
     get_toxicity_tokenizer,
-    get_bert_scorer,
-    get_relevance_reranker,
 )
 from utils.utils import (
     get_env_var,
