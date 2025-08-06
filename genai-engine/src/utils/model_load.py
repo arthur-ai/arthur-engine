@@ -7,9 +7,15 @@ from multiprocessing import Pool
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import torch
+from bert_score import BERTScorer
 from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    TextClassificationPipeline,
+    pipeline,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
@@ -26,6 +32,8 @@ RELEVANCE_MODEL = None
 RELEVANCE_TOKENIZER = None
 TOXICITY_CLASSIFIER = None
 PROFANITY_CLASSIFIER = None
+BERT_SCORER = None
+RELEVANCE_RERANKER = None
 
 
 def log_model_loading(model_name: str):
@@ -235,3 +243,32 @@ def get_relevance_tokenizer():
             weights_only=False,
         )
     return RELEVANCE_TOKENIZER
+
+
+@log_model_loading("BERT scorer model")
+def get_bert_scorer():
+    """Get or create a shared BERT scorer instance for relevance metrics"""
+    global BERT_SCORER
+    if BERT_SCORER is None:
+        BERT_SCORER = BERTScorer(
+            model_type="microsoft/deberta-v2-xlarge-mnli",
+            use_fast_tokenizer=True,
+            num_layers=24,
+        )
+    return BERT_SCORER
+
+
+@log_model_loading("relevance reranker pipeline")
+def get_relevance_reranker():
+    """Get or create a shared relevance reranker pipeline instance"""
+    global RELEVANCE_RERANKER
+    if RELEVANCE_RERANKER is None:
+        model = get_relevance_model()
+        tokenizer = get_relevance_tokenizer()
+        RELEVANCE_RERANKER = TextClassificationPipeline(
+            model=model,
+            tokenizer=tokenizer,
+            device=torch.device(get_device()),
+            torch_dtype=torch.float16,
+        )
+    return RELEVANCE_RERANKER

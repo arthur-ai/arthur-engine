@@ -1,12 +1,9 @@
 import logging
 from abc import ABC, abstractmethod
 
-import torch
-from bert_score import BERTScorer
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
-from transformers import TextClassificationPipeline
 
 from schemas.enums import MetricType
 from schemas.internal_schemas import MetricResult
@@ -24,16 +21,9 @@ from scorer.metrics.relevance.prompt_templates import (
     USER_QUERY_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
 )
 from scorer.scorer import MetricScorer
-from utils.classifiers import get_device
-from utils.model_load import (
-    get_relevance_model,
-    get_relevance_tokenizer,
-    log_model_loading,
-)
+from utils.model_load import get_bert_scorer, get_relevance_reranker
 
 logger = logging.getLogger()
-
-DEFAULT_MODEL = "microsoft/deberta-v2-xlarge-mnli"
 
 
 def round_score(score) -> float:
@@ -71,26 +61,6 @@ class ResponseRelevanceResponseSchema(BaseModel):
 
 def get_model(temperature=0.0):
     return get_llm_executor().get_gpt_model(chat_temperature=temperature)
-
-
-@log_model_loading("BERT scorer model")
-def get_bert_scorer_model(model_type: str = DEFAULT_MODEL) -> BERTScorer:
-    return BERTScorer(model_type=model_type, use_fast_tokenizer=True, num_layers=24)
-
-
-@log_model_loading("relevance reranker pipeline")
-def get_relevance_reranker() -> TextClassificationPipeline:
-    """Loads in the relevance reranker"""
-    # Use the model_load functionality to get or download models
-    model = get_relevance_model()
-    tokenizer = get_relevance_tokenizer()
-
-    return TextClassificationPipeline(
-        model=model,
-        tokenizer=tokenizer,
-        device=torch.device(get_device()),
-        torch_dtype=torch.float16,
-    )
 
 
 def get_query_relevance_chain_structured(temperature=0.0):
@@ -171,7 +141,7 @@ class UserQueryRelevanceScorer(MetricScorer):
     def __init__(self):
         super().__init__()
         self.relevance_reranker = get_relevance_reranker()
-        self.bert_scorer = QueryBertScorer()
+        self.bert_scorer = UnifiedBertScorer(MetricType.QUERY_RELEVANCE)
 
     def _get_relevance_chain(self):
         """Get the appropriate relevance chain based on structured output support"""
@@ -192,7 +162,7 @@ class UserQueryRelevanceScorer(MetricScorer):
         relevance_pair = {"text": system_prompt, "text_pair": query}
         res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
-        metric_score = self.bert_scorer.score(request)
+        metric_score = self.bert_scorer.score_query(request)
         bert_f_score = metric_score.details.query_relevance.bert_f_score
 
         if use_llm_judge:
@@ -266,7 +236,7 @@ class ResponseRelevanceScorer(MetricScorer):
     def __init__(self):
         super().__init__()
         self.relevance_reranker = get_relevance_reranker()
-        self.bert_scorer = ResponseBertScorer()
+        self.bert_scorer = UnifiedBertScorer(MetricType.RESPONSE_RELEVANCE)
 
     def _get_relevance_chain(self):
         """Get the appropriate relevance chain based on structured output support"""
@@ -290,7 +260,7 @@ class ResponseRelevanceScorer(MetricScorer):
         res = self.relevance_reranker(relevance_pair)
         relevance_score = res["score"]
 
-        metric_score = self.bert_scorer.score(request)
+        metric_score = self.bert_scorer.score_response(request)
         bert_f_score = metric_score.details.response_relevance.bert_f_score
 
         if use_llm_judge:
@@ -363,7 +333,7 @@ class ResponseRelevanceScorer(MetricScorer):
 
 class BertRelevanceScorer(MetricScorer, ABC):
     def __init__(self):
-        self.model = get_bert_scorer_model()
+        self.model = get_bert_scorer()
 
     @abstractmethod
     def create_metric_details(self, f_scores) -> MetricScoreDetails:
@@ -401,43 +371,46 @@ class BertRelevanceScorer(MetricScorer, ABC):
         )
 
 
-class QueryBertScorer(BertRelevanceScorer):
+class UnifiedBertScorer(BertRelevanceScorer):
+    """Unified BERT scorer that can handle both query and response relevance"""
+
+    def __init__(self, metric_type: MetricType):
+        super().__init__()
+        self.metric_type = metric_type
+
     def create_metric_details(self, f_scores) -> MetricScoreDetails:
-        return MetricScoreDetails(
-            query_relevance=QueryRelevanceMetric(
-                bert_f_score=round_score(f_scores),
-                reranker_relevance_score=0,
-                llm_relevance_score=None,
-                reason=None,
-                refinement=None,
-            ),
-        )
+        if self.metric_type == MetricType.QUERY_RELEVANCE:
+            return MetricScoreDetails(
+                query_relevance=QueryRelevanceMetric(
+                    bert_f_score=round_score(f_scores),
+                    reranker_relevance_score=0,
+                    llm_relevance_score=None,
+                    reason=None,
+                    refinement=None,
+                ),
+            )
+        else:  # RESPONSE_RELEVANCE
+            return MetricScoreDetails(
+                response_relevance=ResponseRelevanceMetric(
+                    bert_f_score=round_score(f_scores),
+                    reranker_relevance_score=0,
+                    llm_relevance_score=None,
+                    reason=None,
+                    refinement=None,
+                ),
+            )
 
     def get_metric_type(self) -> MetricType:
-        return MetricType.QUERY_RELEVANCE
+        return self.metric_type
 
-    def score(self, request: MetricRequest) -> MetricResult:
+    def score_query(self, request: MetricRequest) -> MetricResult:
+        """Score query relevance"""
         candidate_batch = [request.user_query]
         ground_truth_batch = [request.system_prompt]
         return super().score(candidate_batch, ground_truth_batch)
 
-
-class ResponseBertScorer(BertRelevanceScorer):
-    def create_metric_details(self, f_scores) -> MetricScoreDetails:
-        return MetricScoreDetails(
-            response_relevance=ResponseRelevanceMetric(
-                bert_f_score=round_score(f_scores),
-                reranker_relevance_score=0,
-                llm_relevance_score=None,
-                reason=None,
-                refinement=None,
-            ),
-        )
-
-    def get_metric_type(self) -> MetricType:
-        return MetricType.RESPONSE_RELEVANCE
-
-    def score(self, request: MetricRequest) -> MetricResult:
+    def score_response(self, request: MetricRequest) -> MetricResult:
+        """Score response relevance"""
         candidate_batch = [request.response]
         ground_truth_batch = [request.system_prompt]
         return super().score(candidate_batch, ground_truth_batch)
