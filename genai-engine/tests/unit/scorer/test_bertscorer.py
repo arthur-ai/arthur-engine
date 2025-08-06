@@ -10,9 +10,8 @@ from schemas.enums import MetricType
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricRequest
 from scorer.metrics.relevance.relevance import (
-    QueryBertScorer,
-    ResponseBertScorer,
     ResponseRelevanceScorer,
+    UnifiedBertScorer,
     UserQueryRelevanceScorer,
 )
 from utils import utils
@@ -25,18 +24,18 @@ os.environ[utils.constants.GENAI_ENGINE_OPENAI_GPT_ENDPOINTS_KEYS_ENV_VAR] = "1:
 # DEFAULT_TOKEN_CONSUMPTION = LLMTokenConsumption(prompt_tokens=0, completion_tokens=0)
 
 
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 def test_relevance_bertscorer_init(
     mock_bert_model,
 ):
-    scorer = QueryBertScorer()
+    scorer = UnifiedBertScorer(MetricType.QUERY_RELEVANCE)
     assert scorer.model is mock_bert_model.return_value
-    scorer = ResponseBertScorer()
+    scorer = UnifiedBertScorer(MetricType.RESPONSE_RELEVANCE)
     assert scorer.model is mock_bert_model.return_value
 
 
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
 def test_user_query_bertscore(mock_bert_model):
@@ -48,11 +47,11 @@ def test_user_query_bertscore(mock_bert_model):
         torch.tensor([expected_f_score]),
     )
 
-    scorer = QueryBertScorer()
+    scorer = UnifiedBertScorer(MetricType.QUERY_RELEVANCE)
     mock_request = Mock(user_query="Test prompt", system_prompt="Test system prompt")
 
     # Act
-    score = scorer.score(mock_request)
+    score = scorer.score_query(mock_request)
 
     # Assert
     mock_bert_model.return_value.score.assert_called_once_with(
@@ -68,7 +67,7 @@ def test_user_query_bertscore(mock_bert_model):
     assert score.completion_tokens == 0
 
 
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
 def test_user_response_bertscore(mock_bert_model):
@@ -80,7 +79,7 @@ def test_user_response_bertscore(mock_bert_model):
         torch.tensor([expected_f_score]),
     )
 
-    scorer = ResponseBertScorer()
+    scorer = UnifiedBertScorer(MetricType.RESPONSE_RELEVANCE)
     mock_request = Mock(
         user_query="Test prompt",
         system_prompt="Test system prompt",
@@ -88,7 +87,7 @@ def test_user_response_bertscore(mock_bert_model):
     )
 
     # Act
-    score = scorer.score(mock_request)
+    score = scorer.score_response(mock_request)
 
     # Assert
     mock_bert_model.return_value.score.assert_called_once_with(
@@ -104,7 +103,7 @@ def test_user_response_bertscore(mock_bert_model):
     assert score.completion_tokens == 0
 
 
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 def test_query_bert_scorer(mock_bert_model):
     # Mock the BERTScorer model and its score method
     mock_scorer = MagicMock()
@@ -119,14 +118,14 @@ def test_query_bert_scorer(mock_bert_model):
     mock_scorer.score.return_value = (p_scores, r_scores, f_scores)
 
     # Create scorer and request
-    scorer = QueryBertScorer()
+    scorer = UnifiedBertScorer(MetricType.QUERY_RELEVANCE)
     request = MetricRequest(
         user_query="What is the weather?",
         system_prompt="You are a helpful weather assistant.",
     )
 
     # Score the request
-    result = scorer.score(request)
+    result = scorer.score_query(request)
 
     # Verify the call
     mock_scorer.score.assert_called_once_with(
@@ -143,7 +142,7 @@ def test_query_bert_scorer(mock_bert_model):
     assert result.completion_tokens == 0
 
 
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 def test_response_bert_scorer(mock_bert_model):
     # Mock the BERTScorer model and its score method
     mock_scorer = MagicMock()
@@ -158,14 +157,14 @@ def test_response_bert_scorer(mock_bert_model):
     mock_scorer.score.return_value = (p_scores, r_scores, f_scores)
 
     # Create scorer and request
-    scorer = ResponseBertScorer()
+    scorer = UnifiedBertScorer(MetricType.RESPONSE_RELEVANCE)
     request = MetricRequest(
         response="The weather is sunny and 75°F.",
         system_prompt="You are a helpful weather assistant.",
     )
 
     # Score the request
-    result = scorer.score(request)
+    result = scorer.score_response(request)
 
     # Verify the call
     mock_scorer.score.assert_called_once_with(
@@ -184,7 +183,7 @@ def test_response_bert_scorer(mock_bert_model):
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_user_query_relevance_scorer_structured_outputs(
     mock_bert_model,
@@ -246,7 +245,7 @@ def test_user_query_relevance_scorer_structured_outputs(
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_user_query_relevance_scorer_legacy_outputs(
     mock_bert_model,
@@ -308,7 +307,7 @@ def test_user_query_relevance_scorer_legacy_outputs(
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_response_relevance_scorer_structured_outputs(
     mock_bert_model,
@@ -371,7 +370,7 @@ def test_response_relevance_scorer_structured_outputs(
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_response_relevance_scorer_legacy_outputs(
     mock_bert_model,
@@ -434,7 +433,7 @@ def test_response_relevance_scorer_legacy_outputs(
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_user_query_relevance_scorer_without_llm_judge(
     mock_bert_model,
@@ -484,7 +483,7 @@ def test_user_query_relevance_scorer_without_llm_judge(
 
 @patch("scorer.metrics.relevance.relevance.get_llm_executor")
 @patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer_model")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
 @pytest.mark.unit_tests
 def test_response_relevance_scorer_without_llm_judge(
     mock_bert_model,
