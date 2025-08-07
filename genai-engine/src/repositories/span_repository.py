@@ -728,8 +728,6 @@ class SpanRepository:
             # Build nested spans for this trace
             root_spans = self._build_span_tree(trace_spans)
 
-            # Create trace response
-
             trace_response = TraceResponse(
                 trace_id=trace_id,
                 start_time=start_time,
@@ -738,15 +736,10 @@ class SpanRepository:
             )
             traces.append(trace_response)
 
-        # Sort traces by start_time according to the sort parameter
-        if sort == PaginationSortMethod.DESCENDING:
-            traces.sort(key=lambda t: t.start_time, reverse=True)
-        elif sort == PaginationSortMethod.ASCENDING:
+        if sort == PaginationSortMethod.ASCENDING:
             traces.sort(key=lambda t: t.start_time, reverse=False)
         else:
-            # Default to descending order
             traces.sort(key=lambda t: t.start_time, reverse=True)
-        
         return traces
 
     def _build_span_tree(self, spans: list[Span]) -> list:
