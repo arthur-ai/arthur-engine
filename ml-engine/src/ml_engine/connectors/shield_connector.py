@@ -216,7 +216,7 @@ class ShieldBaseConnector(Connector, ABC):
 
         while True:
             if is_agentic:
-                self.logger.info(f"Fetching page {params["page"]} of traces")
+                self.logger.info(f"Fetching page {params['page']} of traces")
                 resp = (
                     self._spans_client.query_spans_v1_traces_query_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
@@ -228,9 +228,10 @@ class ShieldBaseConnector(Connector, ABC):
                         sort=params.get(SHIELD_SORT_FILTER),
                     )
                 )
+
             else:
                 # use raw http info so we can load JSON directly to avoid API types
-                self.logger.info(f"Fetching page {params["page"]} of inferences")
+                self.logger.info(f"Fetching page {params['page']} of inferences")
                 resp = self._inferences_client.query_inferences_api_v2_inferences_query_get_with_http_info(
                     # required params
                     task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
