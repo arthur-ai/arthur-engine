@@ -10,8 +10,9 @@ from opentelemetry import trace
 from schemas.internal_schemas import Metric, MetricResult
 from schemas.metric_schemas import MetricRequest
 from scorer.score import ScorerClient
+from utils import constants
 from utils.metric_counters import METRIC_FAILURE_COUNTER
-from utils.utils import TracedThreadPoolExecutor
+from utils.utils import TracedThreadPoolExecutor, get_env_var
 
 tracer = trace.get_tracer(__name__)
 
@@ -42,7 +43,13 @@ class MetricsEngine:
     ) -> List[MetricResult]:
         # Values: (Metric, run_metric_thread)
         thread_futures: list[tuple[Metric, concurrent.futures.Future]] = []
-        with TracedThreadPoolExecutor(tracer) as executor:
+        num_threads = int(
+            get_env_var(
+                constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
+                default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
+            ),
+        )
+        with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for metric in metrics:
                 future = executor.submit(self.run_metric, request, metric)
                 thread_futures.append((metric, future))
