@@ -486,7 +486,7 @@ class NewMetricRequest(BaseModel):
             elif isinstance(config_values, dict):
                 # Handle mutually exclusive parameters
                 if (
-                    "relevance_threshold" in config_values
+                    config_values.get("relevance_threshold") is not None
                     and "use_llm_judge" in config_values
                     and config_values["use_llm_judge"]
                 ):
@@ -504,10 +504,9 @@ class NewMetricRequest(BaseModel):
                     config_values["use_llm_judge"] = False
 
                 # If neither is set, default to use_llm_judge=True
-                if (
-                    "relevance_threshold" not in config_values
-                    and "use_llm_judge" not in config_values
-                ):
+                if config_values.get(
+                    "relevance_threshold",
+                ) is None and not config_values.get("use_llm_judge", False):
                     config_values["use_llm_judge"] = True
 
             if isinstance(config_values, BaseModel):
