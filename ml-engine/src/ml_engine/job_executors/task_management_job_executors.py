@@ -154,7 +154,7 @@ class _TaskManagementJobExecutor:
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
             put_task_state_cache_request=PutTaskStateCacheRequest(
-                task=ScopeClientTypeConverter.task_response_api_to_arthur_client(task),
+                task=ScopeClientTypeConverter.task_response_api_to_scope_client(task),
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")
