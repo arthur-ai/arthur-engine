@@ -162,7 +162,7 @@ class SpanRepository:
         )
 
         # Group spans by trace and build nested structure
-        traces = self._group_spans_into_traces(spans)
+        traces = self._group_spans_into_traces(spans, sort)
         return len(traces), traces
 
     def query_spans_with_metrics_as_traces(
@@ -705,7 +705,7 @@ class SpanRepository:
                 return {}
         return {}
 
-    def _group_spans_into_traces(self, spans: list[Span]) -> list:
+    def _group_spans_into_traces(self, spans: list[Span], sort: PaginationSortMethod) -> list:
         """Group spans into a nested trace structure."""
         if not spans:
             return []
@@ -738,8 +738,15 @@ class SpanRepository:
             )
             traces.append(trace_response)
 
-        # Sort traces by start_time
-        traces.sort(key=lambda t: t.start_time, reverse=True)
+        # Sort traces by start_time according to the sort parameter
+        if sort == PaginationSortMethod.DESCENDING:
+            traces.sort(key=lambda t: t.start_time, reverse=True)
+        elif sort == PaginationSortMethod.ASCENDING:
+            traces.sort(key=lambda t: t.start_time, reverse=False)
+        else:
+            # Default to descending order
+            traces.sort(key=lambda t: t.start_time, reverse=True)
+        
         return traces
 
     def _build_span_tree(self, spans: list[Span]) -> list:
