@@ -6,12 +6,13 @@ from typing import List, Optional
 
 from dotenv import load_dotenv
 from opentelemetry import trace
+
 from schemas.common_schemas import ExamplesConfig, LLMTokenConsumption
 from schemas.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
-from scorer.score import ScorerClient
 from scorer.llm_client import get_llm_executor
+from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import RULE_FAILURE_COUNTER
 from utils.token_count import TokenCounter
@@ -50,7 +51,7 @@ class RuleEngine:
 
         if token_limit == -1:
             return MAX_HALLUCINATION_TOKEN_LIMIT
-        
+
         return token_limit
 
     def evaluate(
@@ -71,7 +72,13 @@ class RuleEngine:
     ) -> List[RuleEngineResult]:
         # Values: (Rule, run_rule_thread)
         thread_futures: list[tuple[Rule, concurrent.futures.Future]] = []
-        with TracedThreadPoolExecutor(tracer) as executor:
+        num_threads = int(
+            get_env_var(
+                constants.GENAI_ENGINE_THREAD_POOL_MAX_WORKERS_ENV_VAR,
+                default=str(constants.DEFAULT_THREAD_POOL_MAX_WORKERS),
+            ),
+        )
+        with TracedThreadPoolExecutor(tracer, max_workers=num_threads) as executor:
             for rule in rules:
                 future = executor.submit(self.run_rule, request, rule)
                 thread_futures.append((rule, future))
