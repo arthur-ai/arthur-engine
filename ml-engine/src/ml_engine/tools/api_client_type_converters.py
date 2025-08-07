@@ -33,7 +33,6 @@ from genai_client import Config
 from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig
 from genai_client.models import KeywordsConfig as ShieldKeywordsConfig
-from shield_client.models import MetricType as ShieldMetricType
 from shield_client.models import NewMetricRequest as ShieldNewMetricRequest
 from genai_client.models import NewRuleRequest as ShieldNewRuleRequest
 from genai_client.models import PIIConfig as ShieldPIIConfig
@@ -62,7 +61,6 @@ ShieldConfigTypes = Optional[
         ShieldToxicityConfig,
         ShieldPIIConfig,
         ShieldNewMetricRequest,
-        ShieldMetricType,
     ]
 ]
 ScopeConfigTypes = Optional[
@@ -112,8 +110,6 @@ class ShieldClientTypeConverter:
                 confidence_threshold=api.confidence_threshold,
                 allow_list=api.allow_list,
             )
-        elif isinstance(api, ApiMetricType):
-            return ShieldMetricType(api.value)
         else:
             raise ValueError(f"Unknown API rule config type: {type(api)}")
 
@@ -148,7 +144,7 @@ class ShieldClientTypeConverter:
 
         return ShieldNewMetricRequest(
             name=api.name,
-            type=ShieldMetricType(api.type),
+            type=api.type,
             metric_metadata=api.metric_metadata,
             config=config,
         )
