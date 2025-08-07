@@ -33,11 +33,9 @@ from genai_client import Config
 from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig
 from genai_client.models import KeywordsConfig as ShieldKeywordsConfig
-from shield_client.models import NewMetricRequest as ShieldNewMetricRequest
 from genai_client.models import NewRuleRequest as ShieldNewRuleRequest
 from genai_client.models import PIIConfig as ShieldPIIConfig
 from genai_client.models import RegexConfig as ShieldRegexConfig
-from shield_client.models import RelevanceMetricConfig as ShieldRelevanceMetricConfig
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
 
@@ -60,7 +58,6 @@ ShieldConfigTypes = Optional[
         ShieldExamplesConfig,
         ShieldToxicityConfig,
         ShieldPIIConfig,
-        ShieldNewMetricRequest,
     ]
 ]
 ScopeConfigTypes = Optional[
@@ -123,30 +120,6 @@ class ShieldClientTypeConverter:
             apply_to_prompt=api.apply_to_prompt,
             apply_to_response=api.apply_to_response,
             config=Config(cls.rule_config_api_to_shield_client(api.config)),
-        )
-
-    @classmethod
-    def relevance_metric_config_api_to_shield_client(
-        cls, api: ApiRelevanceMetricConfig
-    ) -> ShieldRelevanceMetricConfig:
-        return ShieldRelevanceMetricConfig(
-            relevance_threshold=api.relevance_threshold,
-            use_llm_judge=api.use_llm_judge,
-        )
-
-    @classmethod
-    def new_metric_request_api_to_shield_client(
-        cls, api: ApiNewMetricRequest
-    ) -> ShieldNewMetricRequest:
-        config = None
-        if api.config is not None:
-            config = cls.relevance_metric_config_api_to_shield_client(api.config)
-
-        return ShieldNewMetricRequest(
-            name=api.name,
-            type=api.type,
-            metric_metadata=api.metric_metadata,
-            config=config,
         )
 
 

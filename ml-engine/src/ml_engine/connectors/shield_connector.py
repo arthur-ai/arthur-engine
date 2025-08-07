@@ -339,7 +339,7 @@ class ShieldBaseConnector(Connector, ABC):
             page += 1
         return datasets
 
-    def create_task(self, name: str, is_agentic: bool) -> TaskResponse:
+    def create_task(self, name: str, is_agentic: bool = False) -> TaskResponse:
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
             new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic)
         )
@@ -394,9 +394,7 @@ class ShieldBaseConnector(Connector, ABC):
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
-                    new_metric
-                ),
+                new_metric_request=new_metric,
             )
             return MetricResponse.model_validate_json(response.raw_data)
         except Exception as e:
