@@ -5951,7 +5951,14 @@
                         "description": "Time the task was created in unix milliseconds"
                     },
                     "is_agentic": {
-                        "type": "boolean",
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Is Agentic",
                         "description": "Whether the task is agentic or not"
                     },
@@ -5961,7 +5968,7 @@
                         },
                         "type": "array",
                         "title": "Rules",
-                        "description": "List of all the rule for the task."
+                        "description": "List of all the rules for the task."
                     },
                     "metrics": {
                         "anyOf": [
@@ -5985,7 +5992,6 @@
                     "name",
                     "created_at",
                     "updated_at",
-                    "is_agentic",
                     "rules"
                 ],
                 "title": "TaskResponse"
