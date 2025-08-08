@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator as pydantic_field_validator
 
 from schemas.common_schemas import (
     AuthUserRole,
@@ -440,13 +440,13 @@ class TaskResponse(BaseModel):
         description="Time the task was created in unix milliseconds",
     )
     is_agentic: bool = Field(description="Whether the task is agentic or not")
-    rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
+    rules: List[RuleResponse] = Field(description="List of all the rules for the task.")
     metrics: Optional[List[MetricResponse]] = Field(
         description="List of all the metrics for the task.",
         default=None,
     )
 
-    @field_validator("is_agentic", mode="before")
+    @pydantic_field_validator("is_agentic", mode="before")
     @classmethod
     def validate_is_agentic(cls, v: Any) -> bool:
         return v or False
