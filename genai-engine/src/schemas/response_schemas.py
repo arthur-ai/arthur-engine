@@ -439,8 +439,11 @@ class TaskResponse(BaseModel):
     updated_at: int = Field(
         description="Time the task was created in unix milliseconds",
     )
-    is_agentic: bool = Field(description="Whether the task is agentic or not")
-    rules: List[RuleResponse] = Field(description="List of all the rule for the task.")
+    is_agentic: Optional[bool] = Field(
+        description="Whether the task is agentic or not",
+        default=None,
+    )
+    rules: List[RuleResponse] = Field(description="List of all the rules for the task.")
     metrics: Optional[List[MetricResponse]] = Field(
         description="List of all the metrics for the task.",
         default=None,

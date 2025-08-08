@@ -1,6 +1,9 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 08/08/2025
+- **CHANGE**: Made `is_agentic` optional
+
 # 08/04/2025
 - **CHANGE**: Forces toxicity threshold to float
 
