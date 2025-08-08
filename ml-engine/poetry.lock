@@ -238,14 +238,14 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "arthur-client"
-version = "1.4.1250"
+version = "1.4.1257"
 description = "Arthur Python API Client Library"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_client-1.4.1250-py3-none-any.whl", hash = "sha256:92e9b045837306be8fa4f87e0ee3c545a9d9988d7ae87662ef7547a7dfffb367"},
-    {file = "arthur_client-1.4.1250.tar.gz", hash = "sha256:83d93c8239c71897481766462ad987d745051f85b915bf2c945ee98a53802995"},
+    {file = "arthur_client-1.4.1257-py3-none-any.whl", hash = "sha256:ce5485ebc2fcd038028cfc93191694fecc5549526a4879156a406a4dc8e2b970"},
+    {file = "arthur_client-1.4.1257.tar.gz", hash = "sha256:fe2467dbc2220e2cb7b63b59d6f02405460451e043c028e9a4bf5e0c344b9ce9"},
 ]
 
 [package.dependencies]
@@ -260,14 +260,14 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.1.54"
+version = "2.1.55"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.1.54-py3-none-any.whl", hash = "sha256:1410481eb076efd2d7838f8436b0c25258555c4e14d50016958e77fe6bc9d1ac"},
-    {file = "arthur_common-2.1.54.tar.gz", hash = "sha256:eab1f0df50bab67f6927e608fbe3f4b538c966b0263360ed08468009fbda2a4d"},
+    {file = "arthur_common-2.1.55-py3-none-any.whl", hash = "sha256:f3a97a3c977b29d3f6a189d5c988eb66198ed9fad765f54458cfe1f444b4aa3e"},
+    {file = "arthur_common-2.1.55.tar.gz", hash = "sha256:ca9cd80641910cee11c99e2743dc8ed183a6b902ce1d91f3c0287645548fa84a"},
 ]
 
 [package.dependencies]
@@ -3410,4 +3410,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "74ae8d2e420b4d0f04d55dd8298cd235d7ca7e6006fd4cdf63200957db13c72e"
+content-hash = "98314cb17a1ddfeb5ebfd2df661aadc51ebbfdbc0aefd2d7d12b8629ac14ea2e"

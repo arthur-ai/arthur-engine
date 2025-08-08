@@ -220,6 +220,7 @@ jobs:
           tags: |
             arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
             ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
+            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: linux/amd64
 
@@ -255,6 +256,15 @@ jobs:
           cd ml-engine
           docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
           docker push arthurplatform/ml-engine:${{ env.VERSION }}
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
+            docker push arthurplatform/ml-engine:latest
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
+            docker push arthurplatform/ml-engine:latest-dev
+          fi
+
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
