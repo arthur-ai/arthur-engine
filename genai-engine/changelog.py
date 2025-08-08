@@ -14,7 +14,7 @@ logger = logging.getLogger()
 
 
 def find_url(input_data: str) -> str | None:
-    if result := re.search("[GET|POST|DELETE|PUT|PATCH] (\/.*$)", input_data):
+    if result := re.search(r"[GET|POST|DELETE|PUT|PATCH] (\/.*$)", input_data):
         return result.group(1)
     return None
 
