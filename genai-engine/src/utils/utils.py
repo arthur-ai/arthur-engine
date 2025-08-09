@@ -47,7 +47,7 @@ def relevance_models_enabled():
             constants.ENABLE_RELEVANCE_MODELS_ENV_VAR,
             none_on_missing=False,
             default="false",
-        )
+        ).lower()
         == "true"
     )
 
