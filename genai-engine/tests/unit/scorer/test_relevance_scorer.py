@@ -160,9 +160,9 @@ def test_bert_scorer_disabled(mock_bert_model):
         assert result.completion_tokens == 0
 
         if metric_type == MetricType.QUERY_RELEVANCE:
-            assert result.details.query_relevance.bert_f_score == 0.0
+            assert result.details.query_relevance.bert_f_score is None
         else:
-            assert result.details.response_relevance.bert_f_score == 0.0
+            assert result.details.response_relevance.bert_f_score is None
 
 
 # Relevance Scorer Tests

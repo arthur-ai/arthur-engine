@@ -1,5 +1,4 @@
 import logging
-from abc import ABC, abstractmethod
 from typing import Optional, Tuple
 
 from langchain.prompts import PromptTemplate
@@ -425,21 +424,43 @@ class ResponseRelevanceScorer(BaseRelevanceScorer):
             return self._create_metric_result(metric_details)
 
 
-class BertRelevanceScorer(MetricScorer, ABC):
-    """Abstract base class for BERT-based relevance scoring"""
+class BertScorer:
+    """BERT scorer that can handle both query and response relevance"""
 
-    def __init__(self):
+    def __init__(self, metric_type: MetricType):
+        self.metric_type = metric_type
         self.model = get_bert_scorer()
 
-    @abstractmethod
     def create_metric_details(self, f_scores) -> MetricScoreDetails:
-        pass
+        if self.metric_type == MetricType.QUERY_RELEVANCE:
+            return MetricScoreDetails(
+                query_relevance=QueryRelevanceMetric(
+                    bert_f_score=(
+                        round_score(f_scores) if f_scores is not None else None
+                    ),
+                    reranker_relevance_score=None,  # Not used in BERT-only scoring
+                    llm_relevance_score=None,
+                    reason=None,
+                    refinement=None,
+                ),
+            )
+        else:  # RESPONSE_RELEVANCE
+            return MetricScoreDetails(
+                response_relevance=ResponseRelevanceMetric(
+                    bert_f_score=(
+                        round_score(f_scores) if f_scores is not None else None
+                    ),
+                    reranker_relevance_score=None,  # Not used in BERT-only scoring
+                    llm_relevance_score=None,
+                    reason=None,
+                    refinement=None,
+                ),
+            )
 
-    @abstractmethod
     def get_metric_type(self) -> MetricType:
-        pass
+        return self.metric_type
 
-    def score(
+    def _score_batch(
         self,
         candidate_batch: list[str],
         ground_truth_batch: list[str],
@@ -466,39 +487,6 @@ class BertRelevanceScorer(MetricScorer, ABC):
             latency_ms=0,  # This will be set by the calling code
         )
 
-
-class BertScorer(BertRelevanceScorer):
-    """BERT scorer that can handle both query and response relevance"""
-
-    def __init__(self, metric_type: MetricType):
-        super().__init__()
-        self.metric_type = metric_type
-
-    def create_metric_details(self, f_scores) -> MetricScoreDetails:
-        if self.metric_type == MetricType.QUERY_RELEVANCE:
-            return MetricScoreDetails(
-                query_relevance=QueryRelevanceMetric(
-                    bert_f_score=round_score(f_scores),
-                    reranker_relevance_score=None,  # Not used in BERT-only scoring
-                    llm_relevance_score=None,
-                    reason=None,
-                    refinement=None,
-                ),
-            )
-        else:  # RESPONSE_RELEVANCE
-            return MetricScoreDetails(
-                response_relevance=ResponseRelevanceMetric(
-                    bert_f_score=round_score(f_scores),
-                    reranker_relevance_score=None,  # Not used in BERT-only scoring
-                    llm_relevance_score=None,
-                    reason=None,
-                    refinement=None,
-                ),
-            )
-
-    def get_metric_type(self) -> MetricType:
-        return self.metric_type
-
     def score_query(self, request: MetricRequest) -> MetricResult:
         """Score query relevance"""
         # Check if BERT scorer is available
@@ -507,7 +495,7 @@ class BertScorer(BertRelevanceScorer):
             return MetricResult(
                 id="",
                 metric_type=self.metric_type,
-                details=self.create_metric_details(0.0),  # Default score
+                details=self.create_metric_details(None),  # Default score
                 prompt_tokens=0,
                 completion_tokens=0,
                 latency_ms=0,
@@ -515,7 +503,7 @@ class BertScorer(BertRelevanceScorer):
 
         candidate_batch = [request.user_query]
         ground_truth_batch = [request.system_prompt]
-        return super().score(candidate_batch, ground_truth_batch)
+        return self._score_batch(candidate_batch, ground_truth_batch)
 
     def score_response(self, request: MetricRequest) -> MetricResult:
         """Score response relevance"""
@@ -525,7 +513,7 @@ class BertScorer(BertRelevanceScorer):
             return MetricResult(
                 id="",
                 metric_type=self.metric_type,
-                details=self.create_metric_details(0.0),  # Default score
+                details=self.create_metric_details(None),  # Default score
                 prompt_tokens=0,
                 completion_tokens=0,
                 latency_ms=0,
@@ -533,4 +521,4 @@ class BertScorer(BertRelevanceScorer):
 
         candidate_batch = [request.response]
         ground_truth_batch = [request.system_prompt]
-        return super().score(candidate_batch, ground_truth_batch)
+        return self._score_batch(candidate_batch, ground_truth_batch)
