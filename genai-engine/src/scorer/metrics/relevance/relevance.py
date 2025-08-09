@@ -14,7 +14,7 @@ from schemas.metric_schemas import (
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
-from scorer.llm_client import get_llm_executor, handle_llm_exception
+from scorer.llm_client import get_llm_executor
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,
     RESPONSE_RELEVANCE_STRUCTURED_PROMPT_TEMPLATE,
@@ -194,7 +194,8 @@ class BaseRelevanceScorer(MetricScorer):
                 f"{self.metric_type.value} Check",
             )
         except Exception as e:
-            return handle_llm_exception(e)
+            # Return default values when LLM fails
+            return None, None, None, 0, 0
 
         # Handle both structured output (Pydantic model) and legacy (dict) responses
         if isinstance(
@@ -316,7 +317,9 @@ class UserQueryRelevanceScorer(BaseRelevanceScorer):
             llm_score, reason, refinement, prompt_tokens, completion_tokens = (
                 self._get_llm_scores(request)
             )
-            metric_details.query_relevance.llm_relevance_score = round_score(llm_score)
+            metric_details.query_relevance.llm_relevance_score = (
+                round_score(llm_score) if llm_score is not None else None
+            )
             metric_details.query_relevance.reason = reason
             metric_details.query_relevance.refinement = refinement
 
@@ -403,8 +406,8 @@ class ResponseRelevanceScorer(BaseRelevanceScorer):
             llm_score, reason, refinement, prompt_tokens, completion_tokens = (
                 self._get_llm_scores(request)
             )
-            metric_details.response_relevance.llm_relevance_score = round_score(
-                llm_score,
+            metric_details.response_relevance.llm_relevance_score = (
+                round_score(llm_score) if llm_score is not None else None
             )
             metric_details.response_relevance.reason = reason
             metric_details.response_relevance.refinement = refinement
