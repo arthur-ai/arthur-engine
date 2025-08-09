@@ -8,15 +8,16 @@ import urllib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Union
 
-import utils.constants as constants
 from dotenv import load_dotenv
 from fastapi import HTTPException, Query
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
+from sqlalchemy.orm import Session
+
+import utils.constants as constants
 from schemas.common_schemas import LLMTokenConsumption, PaginationParameters
 from schemas.enums import PaginationSortMethod
-from sqlalchemy.orm import Session
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -35,6 +36,18 @@ def new_relic_enabled():
             none_on_missing=False,
             default="false",
         )
+        == "true"
+    )
+
+
+def relevance_models_enabled():
+    """Check if relevance models (BERT scorer and reranker) are enabled."""
+    return (
+        get_env_var(
+            constants.ENABLE_RELEVANCE_MODELS_ENV_VAR,
+            none_on_missing=False,
+            default="false",
+        ).lower()
         == "true"
     )
 
@@ -219,6 +232,7 @@ async def common_pagination_parameters(
     if page_size > constants.MAX_PAGE_SIZE or page_size <= 0:
         raise HTTPException(status_code=400, detail=constants.ERROR_PAGE_SIZE_TOO_LARGE)
     return PaginationParameters(sort=sort, page_size=page_size, page=page)
+
 
 def pad_text(
     text: Union[str, List[str]],
