@@ -54,9 +54,6 @@ class MetricsEngine:
                 future = executor.submit(self.run_metric, request, metric)
                 thread_futures.append((metric, future))
         metric_results: list[MetricResult] = []
-        successful_metrics = 0
-        failed_metrics = 0
-        total_latency = 0
 
         for metric, future in thread_futures:
             exc = future.exception()
@@ -67,14 +64,6 @@ class MetricsEngine:
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
                 METRIC_FAILURE_COUNTER.add(1)
-                failed_metrics += 1
-
-                print(f"Metric evaluation failed. Metric: {metric.type}")
-                print(f"Exception: {exc}")
-                print(f"Exception type: {type(exc)}")
-                print(f"Exception traceback: {exc.__traceback__}")
-                print(f"Exception traceback type: {type(exc.__traceback__)}")
-                print(f"Exception traceback: {exc.__traceback__}")
                 metric_results.append(
                     MetricResult(
                         id=str(uuid.uuid4()),
@@ -90,8 +79,6 @@ class MetricsEngine:
             else:
                 result = future.result()
                 metric_results.append(result)
-                successful_metrics += 1
-                total_latency += result.latency_ms
 
         return metric_results
 
