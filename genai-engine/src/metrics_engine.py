@@ -81,10 +81,16 @@ class MetricsEngine:
 
     def run_metric(self, request: MetricRequest, metric: Metric):
         start_time = time.time()
+
+        logger.info(f"Starting metric execution: {metric.type}")
+
         try:
             logger.debug(f"Running metric {metric.type}")
             score = self.scorer_client.score_metric(request, metric)
             logger.debug(f"Score: {score}")
+
+            logger.info(f"Completed metric execution: {metric.type}")
+
         except Exception as e:
             logger.error(f"Error scoring metric {metric.type}: {str(e)}")
             raise e

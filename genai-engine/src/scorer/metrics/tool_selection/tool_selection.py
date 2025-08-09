@@ -1,3 +1,5 @@
+import logging
+
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -18,6 +20,8 @@ from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_USAGE_STRUCTURED_PROMPT_TEMPLATE,
 )
 from scorer.scorer import MetricScorer
+
+logger = logging.getLogger(__name__)
 
 
 # Schemas to force JSON output to the right format
@@ -224,6 +228,7 @@ class ToolSelectionCorrectnessScorer(MetricScorer):
         tool_selection_enum = ToolClassEnum(tool_response["tool_selection"])
         tool_usage_enum = ToolClassEnum(tool_response["tool_usage"])
 
+        logger.info(f"Tool Selection Result: {tool_selection_enum}, {tool_usage_enum}")
         return MetricResult(
             id="",  # This will be set by the calling code
             metric_type=MetricType.TOOL_SELECTION,
