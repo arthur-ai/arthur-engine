@@ -453,15 +453,15 @@ def test_relevance_scorer_config_defaults(mock_models):
 @pytest.mark.parametrize(
     "input_score,expected_output",
     [
-        (0.123456, 0.12),
-        (0.987654, 0.99),
+        (0.123456, 0.123),
+        (0.987654, 0.988),
         (0.5, 0.5),
         (1.0, 1.0),
         (0.0, 0.0),
-        (0.999, 1.0),
-        (0.001, 0.0),
+        (0.999, 0.999),
+        (0.001, 0.001),
         ("0.75", 0.75),
-        ("0.123456", 0.12),
+        ("0.123456", 0.123),
     ],
 )
 def test_round_score_function(input_score, expected_output):

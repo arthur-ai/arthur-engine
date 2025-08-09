@@ -29,7 +29,7 @@ logger = logging.getLogger()
 
 def round_score(score: float) -> float:
     """Rounds a score to consistent precision for all relevance metrics."""
-    return round(float(score), 2)
+    return round(float(score), 3)
 
 
 # Unified schema for both query and response relevance
@@ -182,7 +182,7 @@ class BaseRelevanceScorer(MetricScorer):
                     refinement=refinement,
                 ),
             )
-        else:  # RESPONSE_RELEVANCE
+        elif self.metric_type == MetricType.RESPONSE_RELEVANCE:
             return MetricScoreDetails(
                 response_relevance=ResponseRelevanceMetric(
                     bert_f_score=(
@@ -200,6 +200,8 @@ class BaseRelevanceScorer(MetricScorer):
                     refinement=refinement,
                 ),
             )
+        else:
+            raise ValueError(f"Invalid metric type: {self.metric_type}")
 
     def _build_model_input(self, request: MetricRequest) -> dict:
         """Build input for both reranker and BERT models"""
