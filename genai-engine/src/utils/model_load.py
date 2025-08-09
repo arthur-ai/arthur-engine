@@ -20,6 +20,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
 from utils.classifiers import get_device
+from utils.utils import relevance_models_enabled
 
 logger = getLogger(__name__)
 
@@ -46,7 +47,7 @@ def log_model_loading(model_name: str, global_var_name: str = None):
             if global_var_name and globals().get(global_var_name) is not None:
                 logger.info(f"{model_name} already loaded.")
                 return func(*args, **kwargs)
-            
+
             logger.info(f"Loading {model_name}...")
             try:
                 result = func(*args, **kwargs)
@@ -101,15 +102,22 @@ def download_models(num_of_process: int):
             "tokenizer_config.json",
             "vocab.json",
         ],
-        "microsoft/deberta-v2-xlarge-mnli": [
+    }
+
+    # Only download relevance models if they are enabled
+    if relevance_models_enabled():
+        models_to_download["microsoft/deberta-v2-xlarge-mnli"] = [
             "config.json",
             "pytorch_model.bin",
             "spm.model",
             "model.safetensors",
             "tokenizer_config.json",
             "tokenizer.json",
-        ],
-    }
+        ]
+    else:
+        logger.info(
+            "Skipping relevance models download - ENABLE_RELEVANCE_MODELS is False",
+        )
 
     # Prepare a list of tasks (model_name, filename pairs)
     tasks = [
@@ -125,10 +133,14 @@ def download_models(num_of_process: int):
         pool.map(download_file, tasks)
 
 
-@log_model_loading("claim classifier embedding model", "CLAIM_CLASSIFIER_EMBEDDING_MODEL")
+@log_model_loading(
+    "claim classifier embedding model",
+    "CLAIM_CLASSIFIER_EMBEDDING_MODEL",
+)
 def get_claim_classifier_embedding_model():
     global CLAIM_CLASSIFIER_EMBEDDING_MODEL
     if not CLAIM_CLASSIFIER_EMBEDDING_MODEL:
+
         CLAIM_CLASSIFIER_EMBEDDING_MODEL = SentenceTransformer(
             "sentence-transformers/all-MiniLM-L12-v2",
         )
@@ -139,10 +151,12 @@ def get_claim_classifier_embedding_model():
 def get_prompt_injection_model():
     global PROMPT_INJECTION_MODEL
     if PROMPT_INJECTION_MODEL is None:
+
         PROMPT_INJECTION_MODEL = AutoModelForSequenceClassification.from_pretrained(
             "ProtectAI/deberta-v3-base-prompt-injection-v2",
             weights_only=False,
         )
+
     return PROMPT_INJECTION_MODEL
 
 
@@ -254,12 +268,19 @@ def get_relevance_tokenizer():
 def get_bert_scorer():
     """Get or create a shared BERT scorer instance for relevance metrics"""
     global BERT_SCORER
+
+    # Check if relevance models are enabled
+    if not relevance_models_enabled():
+        logger.info("BERT scorer disabled - ENABLE_RELEVANCE_MODELS is False")
+        return None
+
     if BERT_SCORER is None:
         BERT_SCORER = BERTScorer(
             model_type="microsoft/deberta-v2-xlarge-mnli",
             use_fast_tokenizer=True,
             num_layers=17,
         )
+
     return BERT_SCORER
 
 
@@ -267,7 +288,14 @@ def get_bert_scorer():
 def get_relevance_reranker():
     """Get or create a shared relevance reranker pipeline instance"""
     global RELEVANCE_RERANKER
+
+    # Check if relevance models are enabled
+    if not relevance_models_enabled():
+        logger.info("Relevance reranker disabled - ENABLE_RELEVANCE_MODELS is False")
+        return None
+
     if RELEVANCE_RERANKER is None:
+
         model = get_relevance_model()
         tokenizer = get_relevance_tokenizer()
         RELEVANCE_RERANKER = TextClassificationPipeline(
