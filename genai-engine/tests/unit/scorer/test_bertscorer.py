@@ -530,3 +530,287 @@ def test_response_relevance_scorer_without_llm_judge(
     assert result.details.response_relevance.refinement is None
     assert result.prompt_tokens == 0
     assert result.completion_tokens == 0
+
+
+@patch("scorer.metrics.relevance.relevance.get_llm_executor")
+@patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
+@patch("scorer.metrics.relevance.relevance.relevance_models_enabled")
+@pytest.mark.unit_tests
+def test_user_query_relevance_scorer_models_disabled(
+    mock_relevance_models_enabled,
+    mock_bert_model,
+    mock_reranker,
+    mock_llm_executor,
+):
+    """Test UserQueryRelevanceScorer when relevance models are disabled"""
+    # Arrange - models disabled, no LLM judge
+    mock_relevance_models_enabled.return_value = False
+
+    # Create scorer and request
+    scorer = UserQueryRelevanceScorer()
+    request = MetricRequest(
+        user_query="What is the weather?",
+        system_prompt="You are a helpful weather assistant.",
+    )
+    config = {"use_llm_judge": False}
+
+    # Act
+    result = scorer.score(request, config)
+
+    # Assert - should return all None values
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.QUERY_RELEVANCE
+    assert result.details.query_relevance.bert_f_score is None
+    assert result.details.query_relevance.reranker_relevance_score is None
+    assert result.details.query_relevance.llm_relevance_score is None
+    assert result.details.query_relevance.reason is None
+    assert result.details.query_relevance.refinement is None
+    assert result.prompt_tokens == 0
+    assert result.completion_tokens == 0
+
+    # Verify that models were not called
+    mock_bert_model.assert_not_called()
+    mock_reranker.assert_not_called()
+    mock_llm_executor.assert_not_called()
+
+
+@patch("scorer.metrics.relevance.relevance.get_llm_executor")
+@patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
+@patch("scorer.metrics.relevance.relevance.relevance_models_enabled")
+@pytest.mark.unit_tests
+def test_response_relevance_scorer_models_disabled(
+    mock_relevance_models_enabled,
+    mock_bert_model,
+    mock_reranker,
+    mock_llm_executor,
+):
+    """Test ResponseRelevanceScorer when relevance models are disabled"""
+    # Arrange - models disabled, no LLM judge
+    mock_relevance_models_enabled.return_value = False
+
+    # Create scorer and request
+    scorer = ResponseRelevanceScorer()
+    request = MetricRequest(
+        user_query="What is the weather?",
+        system_prompt="You are a helpful weather assistant.",
+        response="The weather is sunny and 75°F.",
+    )
+    config = {"use_llm_judge": False}
+
+    # Act
+    result = scorer.score(request, config)
+
+    # Assert - should return all None values
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.RESPONSE_RELEVANCE
+    assert result.details.response_relevance.bert_f_score is None
+    assert result.details.response_relevance.reranker_relevance_score is None
+    assert result.details.response_relevance.llm_relevance_score is None
+    assert result.details.response_relevance.reason is None
+    assert result.details.response_relevance.refinement is None
+    assert result.prompt_tokens == 0
+    assert result.completion_tokens == 0
+
+    # Verify that models were not called
+    mock_bert_model.assert_not_called()
+    mock_reranker.assert_not_called()
+    mock_llm_executor.assert_not_called()
+
+
+@patch("scorer.metrics.relevance.relevance.get_llm_executor")
+@patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
+@patch("scorer.metrics.relevance.relevance.relevance_models_enabled")
+@pytest.mark.unit_tests
+def test_user_query_relevance_scorer_models_disabled_with_llm_judge(
+    mock_relevance_models_enabled,
+    mock_bert_model,
+    mock_reranker,
+    mock_llm_executor,
+):
+    """Test UserQueryRelevanceScorer when models are disabled but LLM judge is enabled"""
+    # Arrange - models disabled, but LLM judge enabled
+    mock_relevance_models_enabled.return_value = False
+    expected_llm_score = 0.9
+
+    # Mock LLM executor - supports structured outputs
+    mock_llm_executor.return_value.supports_structured_outputs.return_value = True
+    mock_llm_executor.return_value.execute.return_value = (
+        {
+            "relevance_score": expected_llm_score,
+            "justification": "Test justification",
+            "suggested_refinement": "Test refinement",
+        },
+        LLMTokenConsumption(prompt_tokens=100, completion_tokens=50),
+    )
+
+    # Create scorer and request
+    scorer = UserQueryRelevanceScorer()
+    request = MetricRequest(
+        user_query="What is the weather?",
+        system_prompt="You are a helpful weather assistant.",
+    )
+    config = {"use_llm_judge": True}
+
+    # Act
+    result = scorer.score(request, config)
+
+    # Assert - should have LLM score but None for model scores
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.QUERY_RELEVANCE
+    assert result.details.query_relevance.bert_f_score is None
+    assert result.details.query_relevance.reranker_relevance_score is None
+    assert result.details.query_relevance.llm_relevance_score == expected_llm_score
+    assert result.details.query_relevance.reason == "Test justification"
+    assert result.details.query_relevance.refinement == "Test refinement"
+    assert result.prompt_tokens == 100
+    assert result.completion_tokens == 50
+
+    # Verify that models were not called but LLM was
+    mock_bert_model.assert_not_called()
+    mock_reranker.assert_not_called()
+    mock_llm_executor.return_value.execute.assert_called_once()
+
+
+@patch("scorer.metrics.relevance.relevance.get_llm_executor")
+@patch("scorer.metrics.relevance.relevance.get_relevance_reranker")
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
+@patch("scorer.metrics.relevance.relevance.relevance_models_enabled")
+@pytest.mark.unit_tests
+def test_response_relevance_scorer_models_disabled_with_llm_judge(
+    mock_relevance_models_enabled,
+    mock_bert_model,
+    mock_reranker,
+    mock_llm_executor,
+):
+    """Test ResponseRelevanceScorer when models are disabled but LLM judge is enabled"""
+    # Arrange - models disabled, but LLM judge enabled
+    mock_relevance_models_enabled.return_value = False
+    expected_llm_score = 0.95
+
+    # Mock LLM executor - supports structured outputs
+    mock_llm_executor.return_value.supports_structured_outputs.return_value = True
+    mock_llm_executor.return_value.execute.return_value = (
+        {
+            "relevance_score": expected_llm_score,
+            "justification": "Response is highly relevant",
+            "suggested_refinement": "No refinement needed",
+        },
+        LLMTokenConsumption(prompt_tokens=150, completion_tokens=75),
+    )
+
+    # Create scorer and request
+    scorer = ResponseRelevanceScorer()
+    request = MetricRequest(
+        user_query="What is the weather?",
+        system_prompt="You are a helpful weather assistant.",
+        response="The weather is sunny and 75°F.",
+    )
+    config = {"use_llm_judge": True}
+
+    # Act
+    result = scorer.score(request, config)
+
+    # Assert - should have LLM score but None for model scores
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.RESPONSE_RELEVANCE
+    assert result.details.response_relevance.bert_f_score is None
+    assert result.details.response_relevance.reranker_relevance_score is None
+    assert result.details.response_relevance.llm_relevance_score == expected_llm_score
+    assert result.details.response_relevance.reason == "Response is highly relevant"
+    assert result.details.response_relevance.refinement == "No refinement needed"
+    assert result.prompt_tokens == 150
+    assert result.completion_tokens == 75
+
+    # Verify that models were not called but LLM was
+    mock_bert_model.assert_not_called()
+    mock_reranker.assert_not_called()
+    mock_llm_executor.return_value.execute.assert_called_once()
+
+
+@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
+@pytest.mark.unit_tests
+def test_unified_bert_scorer_disabled(mock_bert_model):
+    """Test UnifiedBertScorer when BERT scorer is disabled (returns None)"""
+    # Arrange - BERT scorer is disabled
+    mock_bert_model.return_value = None
+
+    # Create scorer and request
+    scorer = UnifiedBertScorer(MetricType.QUERY_RELEVANCE)
+    request = MetricRequest(
+        user_query="What is the weather?",
+        system_prompt="You are a helpful weather assistant.",
+    )
+
+    # Act
+    result = scorer.score_query(request)
+
+    # Assert - should return default result
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.QUERY_RELEVANCE
+    assert result.details.query_relevance.bert_f_score == 0.0
+    assert result.prompt_tokens == 0
+    assert result.completion_tokens == 0
+
+    # Test response scorer as well
+    scorer = UnifiedBertScorer(MetricType.RESPONSE_RELEVANCE)
+    request = MetricRequest(
+        response="The weather is sunny and 75°F.",
+        system_prompt="You are a helpful weather assistant.",
+    )
+
+    result = scorer.score_response(request)
+
+    # Assert - should return default result
+    assert isinstance(result, MetricResult)
+    assert result.metric_type == MetricType.RESPONSE_RELEVANCE
+    assert result.details.response_relevance.bert_f_score == 0.0
+    assert result.prompt_tokens == 0
+    assert result.completion_tokens == 0
+
+
+@patch("utils.model_load.relevance_models_enabled")
+@patch("utils.model_load.BERTScorer")
+@pytest.mark.unit_tests
+def test_get_bert_scorer_disabled(mock_bert_scorer, mock_relevance_models_enabled):
+    """Test get_bert_scorer when relevance models are disabled"""
+    from utils.model_load import get_bert_scorer
+
+    # Arrange - models disabled
+    mock_relevance_models_enabled.return_value = False
+
+    # Act
+    result = get_bert_scorer()
+
+    # Assert - should return None
+    assert result is None
+    mock_bert_scorer.assert_not_called()
+
+
+@patch("utils.model_load.relevance_models_enabled")
+@patch("utils.model_load.TextClassificationPipeline")
+@patch("utils.model_load.get_relevance_model")
+@patch("utils.model_load.get_relevance_tokenizer")
+@pytest.mark.unit_tests
+def test_get_relevance_reranker_disabled(
+    mock_get_tokenizer,
+    mock_get_model,
+    mock_pipeline,
+    mock_relevance_models_enabled,
+):
+    """Test get_relevance_reranker when relevance models are disabled"""
+    from utils.model_load import get_relevance_reranker
+
+    # Arrange - models disabled
+    mock_relevance_models_enabled.return_value = False
+
+    # Act
+    result = get_relevance_reranker()
+
+    # Assert - should return None
+    assert result is None
+    mock_get_model.assert_not_called()
+    mock_get_tokenizer.assert_not_called()
+    mock_pipeline.assert_not_called()

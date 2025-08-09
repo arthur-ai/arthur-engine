@@ -18,20 +18,20 @@ class RelevanceMetricConfig(BaseModel):
     )
 
 
-class QueryRelevanceMetric(BaseModel):
-    bert_f_score: float
-    reranker_relevance_score: float
+class RelevanceMetric(BaseModel):
+    bert_f_score: Optional[float] = None
+    reranker_relevance_score: Optional[float] = None
     llm_relevance_score: Optional[float] = None
     reason: Optional[str] = None
     refinement: Optional[str] = None
 
 
-class ResponseRelevanceMetric(BaseModel):
-    bert_f_score: float
-    reranker_relevance_score: float
-    llm_relevance_score: Optional[float] = None
-    reason: Optional[str] = None
-    refinement: Optional[str] = None
+class QueryRelevanceMetric(RelevanceMetric):
+    pass
+
+
+class ResponseRelevanceMetric(RelevanceMetric):
+    pass
 
 
 class ToolSelectionCorrectnessMetric(BaseModel):
