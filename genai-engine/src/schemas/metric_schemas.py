@@ -27,11 +27,11 @@ class RelevanceMetric(BaseModel):
 
 
 class QueryRelevanceMetric(RelevanceMetric):
-    pass
+    """Inherits from RelevanceMetric. This class is left empty so that the openapi response schema remains the same as before, but we have a single source of truth for the relevance metric details."""
 
 
 class ResponseRelevanceMetric(RelevanceMetric):
-    pass
+    """Inherits from RelevanceMetric. This class is left empty so that the openapi response schema remains the same as before, but we have a single source of truth for the relevance metric details."""
 
 
 class ToolSelectionCorrectnessMetric(BaseModel):
