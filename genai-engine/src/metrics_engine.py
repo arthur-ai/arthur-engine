@@ -54,7 +54,6 @@ class MetricsEngine:
                 future = executor.submit(self.run_metric, request, metric)
                 thread_futures.append((metric, future))
         metric_results: list[MetricResult] = []
-
         for metric, future in thread_futures:
             exc = future.exception()
             if exc is not None:
@@ -77,9 +76,7 @@ class MetricsEngine:
                     ),
                 )
             else:
-                result = future.result()
-                metric_results.append(result)
-
+                metric_results.append(future.result())
         return metric_results
 
     def run_metric(self, request: MetricRequest, metric: Metric):
