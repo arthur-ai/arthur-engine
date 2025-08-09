@@ -18,20 +18,20 @@ class RelevanceMetricConfig(BaseModel):
     )
 
 
-class QueryRelevanceMetric(BaseModel):
-    bert_f_score: float
-    reranker_relevance_score: float
+class RelevanceMetric(BaseModel):
+    bert_f_score: Optional[float] = None
+    reranker_relevance_score: Optional[float] = None
     llm_relevance_score: Optional[float] = None
     reason: Optional[str] = None
     refinement: Optional[str] = None
 
 
-class ResponseRelevanceMetric(BaseModel):
-    bert_f_score: float
-    reranker_relevance_score: float
-    llm_relevance_score: Optional[float] = None
-    reason: Optional[str] = None
-    refinement: Optional[str] = None
+class QueryRelevanceMetric(RelevanceMetric):
+    """Inherits from RelevanceMetric. This class is left empty so that the openapi response schema remains the same as before, but we have a single source of truth for the relevance metric details."""
+
+
+class ResponseRelevanceMetric(RelevanceMetric):
+    """Inherits from RelevanceMetric. This class is left empty so that the openapi response schema remains the same as before, but we have a single source of truth for the relevance metric details."""
 
 
 class ToolSelectionCorrectnessMetric(BaseModel):

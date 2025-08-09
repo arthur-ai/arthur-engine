@@ -301,13 +301,17 @@ class SpanRepository:
             ]
 
             if spans_without_metrics:
+                logger.info(
+                    f"Need to calculate metrics for {len(spans_without_metrics)} spans",
+                )
+
                 logger.debug(
                     f"Computing metrics for {len(spans_without_metrics)} spans",
                 )
                 new_metric_results = self._compute_metrics_for_spans(
                     spans_without_metrics,
                 )
-                self._store_metric_results(new_metric_results)
+                # Results are now stored as they're computed, so we just update the existing results
                 existing_metric_results.update(new_metric_results)
 
         # Embed metrics into spans
@@ -367,6 +371,8 @@ class SpanRepository:
             try:
                 results = self._compute_metrics_for_single_span(span, metrics_engine)
                 if results:
+                    # Store results immediately as they're computed
+                    self._store_metric_results_for_span(span.id, results)
                     metrics_results[span.id] = results
             except Exception as e:
                 logger.error(f"Error computing metrics for span {span.id}: {e}")
@@ -374,6 +380,7 @@ class SpanRepository:
 
         total_metrics = sum(len(results) for results in metrics_results.values())
         logger.debug(f"Total metrics computed: {total_metrics}")
+
         return metrics_results
 
     def _should_compute_metrics_for_span(self, span: Span) -> bool:
@@ -424,6 +431,42 @@ class SpanRepository:
         logger.debug(f"Computed {len(results)} metrics for span {span.id}")
         return metric_results
 
+    def _store_metric_results_for_span(self, span_id: str, results: list[MetricResult]):
+        """Store individual metric results for a specific span."""
+        if not results:
+            return
+
+        metric_results_to_insert = [
+            {
+                "id": result.id,
+                "created_at": result.created_at,
+                "updated_at": result.updated_at,
+                "metric_type": result.metric_type.value,
+                "details": (
+                    result.details.model_dump_json() if result.details else None
+                ),
+                "prompt_tokens": result.prompt_tokens,
+                "completion_tokens": result.completion_tokens,
+                "latency_ms": result.latency_ms,
+                "span_id": span_id,
+                "metric_id": result.metric_id,
+            }
+            for result in results
+        ]
+
+        if metric_results_to_insert:
+            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
+            self.db_session.execute(stmt)
+            self.db_session.commit()
+
+            logger.info(
+                f"Stored {len(metric_results_to_insert)} metric results for span {span_id} in database",
+            )
+
+        logger.debug(
+            f"Stored {len(metric_results_to_insert)} metric results for span {span_id}",
+        )
+
     def _span_to_metric_request(self, span: Span) -> MetricRequest:
         """Convert a Span to MetricRequest format for metric computation."""
         system_prompt = span.system_prompt or ""
@@ -453,40 +496,6 @@ class SpanRepository:
                 return json.dumps(response_data)
         else:
             return str(response_data)
-
-    def _store_metric_results(self, metrics_results: dict[str, list[MetricResult]]):
-        """Store metric results in the database."""
-        if not metrics_results:
-            return
-
-        # Collect all metric results to store
-        metric_results_to_insert = []
-        for span_id, results in metrics_results.items():
-            for result in results:
-                metric_results_to_insert.append(
-                    {
-                        "id": result.id,
-                        "created_at": result.created_at,
-                        "updated_at": result.updated_at,
-                        "metric_type": result.metric_type.value,
-                        "details": (
-                            result.details.model_dump_json() if result.details else None
-                        ),
-                        "prompt_tokens": result.prompt_tokens,
-                        "completion_tokens": result.completion_tokens,
-                        "latency_ms": result.latency_ms,
-                        "span_id": span_id,
-                        "metric_id": result.metric_id,
-                    },
-                )
-
-        # Bulk insert metric results
-        if metric_results_to_insert:
-            stmt = insert(DatabaseMetricResult).values(metric_results_to_insert)
-            self.db_session.execute(stmt)
-            self.db_session.commit()
-
-        logger.debug(f"Stored {len(metric_results_to_insert)} metric results")
 
     # ============================================================================
     # Private Helper Methods - Database Operations
@@ -705,7 +714,11 @@ class SpanRepository:
                 return {}
         return {}
 
-    def _group_spans_into_traces(self, spans: list[Span], sort: PaginationSortMethod) -> list:
+    def _group_spans_into_traces(
+        self,
+        spans: list[Span],
+        sort: PaginationSortMethod,
+    ) -> list:
         """Group spans into a nested trace structure."""
         if not spans:
             return []

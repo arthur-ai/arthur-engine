@@ -54,4 +54,7 @@ class ScorerClient:
                 f"Metric type {metric.type} does not have a scorer",
             )
         config = json.loads(metric.config) if metric.config else {}
-        return scorer_obj.score(metric_request, config)
+
+        result = scorer_obj.score(metric_request, config)
+
+        return result
