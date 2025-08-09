@@ -9,6 +9,7 @@ from clients.telemetry.telemetry_client import (
 from dependencies import get_application_config, get_db_session
 from fastapi import APIRouter, Body, Depends
 from opentelemetry import trace
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
@@ -59,7 +60,7 @@ def create_default_rule(
     try:
         send_telemetry_event(TelemetryEventTypes.DEFAULT_RULE_CREATE_INITIATED)
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, application_config)
+        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
         rule = rules_repo.create_rule(rule)
         tasks_repo.update_all_tasks_add_default_rule(rule)
@@ -108,7 +109,7 @@ def archive_default_rule(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        task_repo = TaskRepository(db_session, rules_repo, application_config)
+        task_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
         rules_repo.archive_rule(rule_id=str(rule_id))
         task_repo.update_all_tasks_remove_default_rule(str(rule_id))
 

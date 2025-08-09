@@ -4,6 +4,7 @@ from datetime import datetime
 from dependencies import get_application_config, get_db_session, logger
 from fastapi import APIRouter, Depends, Query, Request
 from repositories.configuration_repository import ConfigurationRepository
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
@@ -104,6 +105,7 @@ def update_configuration(
             tasks_repo = TaskRepository(
                 db_session,
                 RuleRepository(db_session),
+                MetricRepository(db_session),
                 application_config,
             )
             tasks_repo.get_db_task_by_id(body.chat_task_id)

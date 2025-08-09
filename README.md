@@ -13,7 +13,7 @@
 
 # The Arthur Engine
 
-The Arthur Engine is a tool designed for:
+The Arthur Engine provides a **complete service** for monitoring and governing your AI/ML workloads using popular Open-Source technologies and frameworks. It is a tool designed for:
 
 - **Evaluating and Benchmarking Machine Learning models**
   - Support for a wide range of evaluation metrics (e.g., drift, accuracy, precision, recall, F1, and AUC)
@@ -32,9 +32,13 @@ The Arthur Engine is a tool designed for:
 4. Wait for the `genai-engine` container to initialize then navigate to localhost:3030/docs to see the API docs
 5. [Start building!](genai-engine/README.md#quickstart).
 
-## Arthur Platform Enterprise Version
+## Arthur Platform Free Version
 
-The Arthur Engine provides a **complete service** for monitoring and governing your AI/ML workloads using popular Open-Source technologies and frameworks (see below for further details).
+The `genai-engine` standalone deployment in the Quickstart provides powerful LLM evaluation and guardrailing features. To unlock the full capabilities of the Arthur Platform, [sign up](https://platform.arthur.ai/signup) and get started for free.
+
+![Arthur GenAI Evals](./docs/images/arthur-genai.png)
+
+## Arthur Platform Enterprise Version
 
 **The enterprise version of the Arthur Platform provides better performance, additional features, and capabilities**, including custom enterprise-ready guardrails + metrics, which can maximize the potential of AI for your organization.
 
@@ -55,15 +59,6 @@ Enterprise version of Arthur Engine leverages state-of-the-art high-performing, 
 | Prompt Injection    | deepset                        | 0.52 (0.44, 0.60)               | 0.89 (0.85, 0.93)              | 0.966                                           | 0.03                                             |
 | Prompt Injection    | Arthur’s Custom Benchmark      | 0.79 (0.62, 0.93)               | 0.85 (0.71, 0.96)              | 0.16                                            | 0.005                                            |
 | Toxicity           | Arthur’s Custom Benchmark      | 0.633 (0.45, 0.79)              | 0.89 (0.85, 0.93)              | 3.096                                           | 0.0358                                           |
-
-
-
-
-**A free SaaS version of Arthur Platform is coming soon!**
-
-If you are interested in joining the waitlist or learning more, [send us a note](https://www.arthur.ai/waitlist)
-
-![Arthur GenAI Evals](./docs/images/arthur-genai.png)
 
 ## Overview
 
@@ -94,15 +89,6 @@ The Arthur Engine can prevent data-security and compliance risks from creating n
 | CustomRules                         | Extend the service to support whatever monitoring or guardrails are applicable for your use-case                  | Build your own!                                                               | [Docs](https://shield.docs.arthur.ai/docs/custom-rules)     |
 
 _NB: We have provided open-source models for Prompt Injection and Toxicity evaluation as default in the free version of Arthur. In the case that you already have custom solutions for these evaluations and would like to use them, the models used for Prompt Injection and Toxicity are fully customizable and can be substituted out here ([PI Code Pointer](genai-engine/src/scorer/checks/prompt_injection/classifier.py#L20), [Toxicity Code Pointer](genai-engine/src/scorer/checks/toxicity/toxicity.py#L29)). If you are interested in higher performing and/or lower latency evaluations out of the box, please enquire about the enterprise version of Arthur Engine._
-### Deploying the stand-alone Guardrails
-
-The Arthur Engine can be deployed as **a stand-alone capability for building real-time guardrails for your LLM applications and agentic workflows**. Read about the guardrails capability (also formerly known as Arthur Shield) [here](https://shield.docs.arthur.ai).
-
-The guardrails capability requires the deployment of the GenAI Engine. Follow the `genai-engine` deployment instructions [here](genai-engine/README.md).
-
-### Deploying the full capabilities of the Arthur Engine with the Arthur Platform
-
-To use the Arthur Engine's full capabilities, log in to the [Arthur Platform](https://platform.arthur.ai) and follow the instructions.
 
 ## Contributing
 

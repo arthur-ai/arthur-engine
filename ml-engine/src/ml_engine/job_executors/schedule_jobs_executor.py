@@ -1,10 +1,10 @@
 import logging
 from datetime import datetime, timedelta
-from typing import cast
 
 import croniter
 from arthur_client.api_bindings import (
     Job,
+    JobKind,
     JobsV1Api,
     MetricsCalculationJobSpec,
     Model,
@@ -45,11 +45,7 @@ class ScheduleJobsExecutor:
         try:
             self._validate_job(model, job)
         except ValueError as e:
-            self.logger.error(
-                f"Validation error. Stopping this scheduled series of jobs.",
-            )
-            self._stop_job_retries(job=job)
-            raise e
+            self._handle_validation_failure(job, e)
 
         new_jobs = generate_next_job_series(
             job_spec.start_timestamp,
@@ -57,10 +53,24 @@ class ScheduleJobsExecutor:
             model.schedule,
             job.nonce,
         )
+        new_schedule_job = [
+            job for job in new_jobs if job.kind == PostJobKind.SCHEDULE_JOBS
+        ][0]
+
+        try:
+            self._validate_new_schedule_job(model, new_schedule_job)
+        except ValueError as e:
+            self._handle_validation_failure(job, e)
+
         self.jobs_client.post_submit_jobs_batch(
             project_id=model.project_id,
             post_job_batch=PostJobBatch(jobs=new_jobs),
         )
+
+    def _handle_validation_failure(self, job: Job, exc: ValueError) -> None:
+        self.logger.error(f"Validation error. Stopping this scheduled series of jobs.")
+        self._stop_job_retries(job=job)
+        raise exc
 
     def _stop_job_retries(self, job: Job) -> Job:
         """
@@ -84,7 +94,24 @@ class ScheduleJobsExecutor:
             raise ValueError("Schedule id must be defined for scheduled jobs.")
         if not job.nonce:
             raise ValueError("Nonce expected for this job type.")
+
         validate_schedule(model, job.schedule_id)
+
+    def _validate_new_schedule_job(self, model: Model, new_job: PostJob) -> None:
+        """Validates schedule job nonce is unique before submission to protect against race condition. if the job nonce
+        already exists in the jobs DB, the scheduled job has previously run successfully and already created the next
+        scheduled job and any corresponding metrics calculation jobs"""
+        jobs_with_nonce = self.jobs_client.get_jobs(
+            project_id=model.project_id,
+            nonce=new_job.nonce,
+            page=1,
+            page_size=1,
+            kinds=[JobKind.SCHEDULE_JOBS],
+        )
+        if len(jobs_with_nonce.records) > 0:
+            raise ValueError(
+                f"Job with nonce {new_job.nonce} already exists, meaning this scheduled job previously ran successfully. ",
+            )
 
 
 """
@@ -129,7 +156,7 @@ def generate_next_job_series(
     cron = croniter.croniter(schedule.cron, start_timestamp)
     new_jobs = []
     for _ in range(k):
-        end_ts = cast(datetime, cron.get_next(datetime))
+        end_ts = cron.get_next(datetime)
         start_ts = end_ts - timedelta(seconds=schedule.lookback_period_seconds)
         new_jobs.append(
             PostJob(

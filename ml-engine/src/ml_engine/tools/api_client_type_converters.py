@@ -28,7 +28,6 @@ from genai_client.models import PIIConfig as ShieldPIIConfig
 from genai_client.models import RegexConfig as ShieldRegexConfig
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
-from genai_client.models.threshold import Threshold
 
 ApiConfigTypes = Optional[
     Union[
@@ -88,7 +87,7 @@ class ShieldClientTypeConverter:
             )
         elif isinstance(api, ApiToxicityConfig):
             return ShieldToxicityConfig(
-                threshold=Threshold(api.threshold),
+                threshold=api.threshold,
             )
         elif isinstance(api, ApiPIIConfig):
             return ShieldPIIConfig(

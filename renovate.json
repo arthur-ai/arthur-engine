@@ -3,13 +3,16 @@
   "extends": [
     "config:recommended"
   ],
+  "schedule": ["before 5am"],
+  "timezone": "America/New_York",
   "packageRules": [
     {
       "matchUpdateTypes": [
         "minor",
         "patch"
       ],
-      "automerge": true
+      "automerge": true,
+      "autoApprove": true
     },
     {
       "matchPackageNames": [
