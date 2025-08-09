@@ -1,16 +1,14 @@
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 import torch
-from langchain.chat_models import AzureChatOpenAI
 
 from schemas.common_schemas import LLMTokenConsumption
 from schemas.enums import MetricType
 from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricRequest
 from scorer.metrics.relevance.relevance import (
-    BertScorer,
     ResponseRelevanceScorer,
     UserQueryRelevanceScorer,
     round_score,
@@ -57,112 +55,6 @@ def mock_models():
             "llm": mock_llm,
             "enabled": mock_enabled,
         }
-
-
-# BertScorer Tests
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-def test_bertscorer_init(mock_bert_model):
-    """Test BertScorer initialization"""
-    scorer = BertScorer(MetricType.QUERY_RELEVANCE)
-    assert scorer.model is mock_bert_model.return_value
-    scorer = BertScorer(MetricType.RESPONSE_RELEVANCE)
-    assert scorer.model is mock_bert_model.return_value
-
-
-@pytest.mark.parametrize(
-    "metric_type,expected_metric_type,score_method,request_attrs",
-    [
-        (
-            MetricType.QUERY_RELEVANCE,
-            MetricType.QUERY_RELEVANCE,
-            "score_query",
-            {"user_query": "Test prompt", "system_prompt": "Test system prompt"},
-        ),
-        (
-            MetricType.RESPONSE_RELEVANCE,
-            MetricType.RESPONSE_RELEVANCE,
-            "score_response",
-            {
-                "user_query": "Test prompt",
-                "system_prompt": "Test system prompt",
-                "response": "Test response",
-            },
-        ),
-    ],
-)
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
-@patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
-def test_bert_scorer_scoring(
-    mock_bert_model,
-    metric_type,
-    expected_metric_type,
-    score_method,
-    request_attrs,
-):
-    """Test BertScorer scoring for both query and response relevance"""
-    # Arrange
-    expected_f_score = 0.75
-    mock_bert_model.return_value.score.return_value = (
-        None,
-        None,
-        torch.tensor([expected_f_score]),
-    )
-
-    scorer = BertScorer(metric_type)
-    mock_request = Mock(**request_attrs)
-
-    # Act
-    score = getattr(scorer, score_method)(mock_request)
-
-    # Assert
-    assert isinstance(score, MetricResult)
-    assert score.metric_type == expected_metric_type
-    assert score.prompt_tokens == 0
-    assert score.completion_tokens == 0
-
-    # Check the appropriate detail field
-    if metric_type == MetricType.QUERY_RELEVANCE:
-        assert score.details.query_relevance.bert_f_score == expected_f_score
-    else:
-        assert score.details.response_relevance.bert_f_score == expected_f_score
-
-
-@patch("scorer.metrics.relevance.relevance.get_bert_scorer")
-def test_bert_scorer_disabled(mock_bert_model):
-    """Test BertScorer when model is disabled (None)"""
-    # Arrange - BERT scorer is disabled
-    mock_bert_model.return_value = None
-
-    # Test both metric types
-    for metric_type in [MetricType.QUERY_RELEVANCE, MetricType.RESPONSE_RELEVANCE]:
-        scorer = BertScorer(metric_type)
-        request = MetricRequest(
-            user_query="What is the weather?",
-            system_prompt="You are a helpful weather assistant.",
-            response=(
-                "The weather is sunny and 75°F."
-                if metric_type == MetricType.RESPONSE_RELEVANCE
-                else None
-            ),
-        )
-
-        # Act
-        if metric_type == MetricType.QUERY_RELEVANCE:
-            result = scorer.score_query(request)
-        else:
-            result = scorer.score_response(request)
-
-        # Assert - should return default result with 0.0 score
-        assert isinstance(result, MetricResult)
-        assert result.metric_type == metric_type
-        assert result.prompt_tokens == 0
-        assert result.completion_tokens == 0
-
-        if metric_type == MetricType.QUERY_RELEVANCE:
-            assert result.details.query_relevance.bert_f_score is None
-        else:
-            assert result.details.response_relevance.bert_f_score is None
 
 
 # Relevance Scorer Tests
