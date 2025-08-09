@@ -4,7 +4,7 @@ from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 
 api_key_validator_creators = [
-    APIKeyValidatorCreator(APIKeyValidatorType.USER_GEN),
     APIKeyValidatorCreator(APIKeyValidatorType.MASTER),
+    APIKeyValidatorCreator(APIKeyValidatorType.USER_GEN),
 ]
 multi_validator = MultiMethodValidator(api_key_validator_creators)

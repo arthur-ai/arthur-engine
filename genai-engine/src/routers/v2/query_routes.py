@@ -4,12 +4,13 @@ from typing import Annotated
 from dependencies import get_db_session
 from fastapi import APIRouter, Depends, HTTPException, Query
 from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum, RuleResultEnum, RuleType
 from schemas.internal_schemas import Inference, User
-from schemas.response_schemas import QueryInferencesResponse
+from schemas.response_schemas import QueryInferencesResponse, ComputeMetricsResponse
 from sqlalchemy.orm import Session
 from utils import constants as constants
 from utils.users import permission_checker
@@ -123,3 +124,4 @@ def query_inferences(
         raise
     finally:
         db_session.close()
+

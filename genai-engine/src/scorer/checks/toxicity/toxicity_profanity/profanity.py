@@ -4,11 +4,11 @@ import re
 
 __location__ = os.path.dirname(os.path.abspath(__file__))
 
-FULLY_BAD_WORDS_PATH = "level_1_words.jsonl"
+FULLY_BAD_WORDS_PATH = "profanity_blacklist.txt"
 END_PUNCTUATIONS_PATH = "end_punctuations.jsonl"
 
 with open(os.path.join(__location__, FULLY_BAD_WORDS_PATH), "r") as file:
-    FULLY_BAD_WORDS = [json.loads(line)["text"] for line in file]
+    FULLY_BAD_WORDS = set(file.read().splitlines())
 
 with open(os.path.join(__location__, END_PUNCTUATIONS_PATH), "r") as file:
     END_PUNCTUATIONS = [json.loads(line)["text"] for line in file]
@@ -44,39 +44,34 @@ letter_substitutions = {
 }
 
 
-def generate_obscured_regex(word, block_all_prefix=True, block_all_suffix=True):
-    """Generates a regex to detect a word, including attempted obscured representations of the word
+def generate_obscured_regex(word):
+    """
+    Generates a regex to match a standalone word with allowed character substitutions (e.g. f*ck, sh!t, or a55),
+    but it does not check for multiple substitutions or spaces (e.g. 's h i t' and 'f***ck' would not be flagged)
 
     Arguments:
         word: str
+
     Returns:
-        regex pattern catching direct & obscured representations of the word
-
-    Example:
-        >>> reg = generate_obscured_regex('shit')
-        >>> re.search(reg, 's,h  ! t')
-        <re.Match object; span=(0, 8), match='s,h  ! t'>
+        compiled regex pattern
     """
-    if block_all_prefix:
-        pattern = r"("
-    else:
-        pattern = r"(?:^|\W)("
-    pattern += r"\W*".join(
-        [
-            rf"(?:{letter_substitutions.get(char, re.escape(char))}+\W*)"
-            for char in word
-        ],
-    )
-    if block_all_suffix:
-        pattern += r")"
-    else:
-        pattern += r"(?=$|\W))"
 
-    return re.compile(pattern)
+    # check this word is not preceded by a word character
+    pattern = r"(?<!\w)"
+
+    # check for possible single-letter subsitutions in a word
+    pattern += "".join(
+        rf"(?:{letter_substitutions.get(c, re.escape(c))})" for c in word
+    )
+
+    # check this word is not followed by a word character
+    pattern += r"(?!\w)"
+
+    return re.compile(pattern, flags=re.IGNORECASE)
 
 
 # use the above function to generate an obscured regex to catch
-# obscured representations of the profanities in the local json files
+# obscured representations of the profanities in the local blacklist
 all_bad_word_regexes = [generate_obscured_regex(w) for w in FULLY_BAD_WORDS]
 
 

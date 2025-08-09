@@ -18,6 +18,7 @@ from repositories.documents_repository import DocumentRepository
 from repositories.embedding_repository import EmbeddingRepository
 from repositories.feedback_repository import save_feedback
 from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
@@ -368,6 +369,7 @@ def update_default_task(
         tasks_repo = TaskRepository(
             db_session,
             RuleRepository(db_session),
+            MetricRepository(db_session),
             application_config,
         )
         tasks_repo.get_db_task_by_id(body.task_id)

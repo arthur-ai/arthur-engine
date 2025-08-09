@@ -477,6 +477,7 @@ def test_shield_task_and_rule_management(
                 "created_at": int(datetime.now(timezone.utc).timestamp()),
                 "updated_at": int(datetime.now(timezone.utc).timestamp()),
                 "rules": [],
+                "is_agentic": True,
             },
         ),
         method="POST",
@@ -582,6 +583,7 @@ def test_shield_task_and_rule_management(
         "created_at": int(datetime.now(timezone.utc).timestamp()),
         "updated_at": int(datetime.now(timezone.utc).timestamp()),
         "rules": mocked_rules,
+        "is_agentic": True,
     }
 
     # mock requests to create the rules

@@ -1,9 +1,8 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import pgvector.sqlalchemy
 import sqlalchemy.types as types
-from db_models.custom_types import RoleType
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -18,6 +17,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from db_models.custom_types import RoleType
 from utils import constants
 from utils.utils import get_env_var
 
@@ -53,7 +54,12 @@ class DatabaseTask(Base, IsArchivable):
     name: Mapped[str] = mapped_column(String)
     created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
     updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rule_links: Mapped[List["DatabaseTaskToRules"]] = relationship(
+        back_populates="task",
+        lazy="joined",
+    )
+    metric_links: Mapped[List["DatabaseTaskToMetrics"]] = relationship(
         back_populates="task",
         lazy="joined",
     )
@@ -442,6 +448,8 @@ class DatabaseSpan(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    parent_span_id: Mapped[str] = mapped_column(String, nullable=True, index=True)
+    span_kind: Mapped[str] = mapped_column(String, nullable=True)
     start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     task_id: Mapped[str] = mapped_column(
@@ -460,3 +468,66 @@ class DatabaseSpan(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
     )
+    metric_results: Mapped[List["DatabaseMetricResult"]] = relationship(
+        "DatabaseMetricResult",
+        back_populates="span",
+        lazy="joined",
+    )
+
+
+class DatabaseMetric(Base, IsArchivable):
+    __tablename__ = "metrics"
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    type: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
+    metric_metadata: Mapped[str] = mapped_column(String)
+    config: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+
+class DatabaseTaskToMetrics(Base):
+    __tablename__ = "tasks_to_metrics"
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        index=True,
+        primary_key=True,
+    )
+    metric_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("metrics.id"),
+        index=True,
+        primary_key=True,
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    task: Mapped["DatabaseTask"] = relationship(back_populates="metric_links")
+    metric: Mapped["DatabaseMetric"] = relationship(lazy="joined")
+
+
+class DatabaseMetricResult(Base):
+    __tablename__ = "metric_results"
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    metric_type: Mapped[str] = mapped_column(String, nullable=False)
+    details: Mapped[Optional[str]] = mapped_column(
+        String,
+        nullable=True,
+    )  # JSON-serialized MetricScoreDetails
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    span_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("spans.id"),
+        nullable=False,
+        index=True,
+    )
+    metric_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("metrics.id"),
+        nullable=False,
+        index=True,
+    )
+    span: Mapped["DatabaseSpan"] = relationship(back_populates="metric_results")
