@@ -66,6 +66,7 @@ from utils.utils import (
     is_api_only_mode_enabled,
     is_local_environment,
     new_relic_enabled,
+    relevance_models_enabled,
 )
 
 logger = logging.getLogger()
@@ -156,8 +157,15 @@ async def lifespan(app: FastAPI):
     get_prompt_injection_tokenizer()
     get_toxicity_model()
     get_toxicity_tokenizer()
-    get_bert_scorer()
-    get_relevance_reranker()
+
+    # Conditionally load relevance models
+    if relevance_models_enabled():
+        get_bert_scorer()
+        get_relevance_reranker()
+    else:
+        logger.info(
+            "Skipping relevance models loading - ENABLE_RELEVANCE_MODELS is False",
+        )
 
     get_scorer_client()
 
