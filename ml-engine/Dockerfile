@@ -1,7 +1,10 @@
 FROM python:3.13-slim AS install
 
-# install poetry
-RUN pip install poetry==2.1.3
+# install poetry and wget
+RUN pip install poetry==2.1.3 && \
+    apt-get update && \
+    apt-get install -y wget && \
+    rm -rf /var/lib/apt/lists/*
 
 # install dependencies
 COPY pyproject.toml /app/
@@ -28,6 +31,7 @@ COPY --from=install /usr/bin/sh /usr/bin/sh
 COPY --from=install /usr/bin/bash /usr/bin/bash
 COPY --from=install /usr/bin/env /usr/bin/env
 COPY --from=install /usr/bin/printenv /usr/bin/printenv
+COPY --from=install /usr/bin/wget /usr/bin/wget
 COPY --from=install /usr/lib /usr/lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
