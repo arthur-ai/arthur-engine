@@ -2,6 +2,10 @@ name: Run Deployments
 
 on:
   workflow_dispatch:
+    branches:
+      - main
+      - dev
+      - test_deployments
     inputs:
         environment:
           required: true
