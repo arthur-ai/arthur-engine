@@ -1,0 +1,25 @@
+name: Run Deployments
+
+on:
+  workflow_dispatch:
+    inputs:
+        environment:
+          required: true
+          type: string
+          default: 'sts-arthur-test'
+        version:
+          required: true
+          type: string
+          default: 'x.y.z-dev'
+        selection:
+          required: true
+          type: string
+          default: 'all'
+
+jobs:
+  test-deployment:
+    uses: ./.github/workflows/reusable-deployments.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      version: ${{ github.event.inputs.version }}
+      selection: ${{ github.event.inputs.selection }}
