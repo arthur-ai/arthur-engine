@@ -1,0 +1,58 @@
+name: Reusable Deployments
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        default: 'sts-arthur-test'
+      version:
+        required: true
+        type: string
+        default: 'x.y.z-dev'
+      selection:
+        required: true
+        type: string
+        default: 'all'
+
+jobs:
+  deploy-genai-engine:
+    if: inputs.selection == 'all'
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    env:
+      SKIP: pytest-check,changelog-check
+      GIT_DEPTH: 100
+    steps:
+      - name: Settings
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Version: ${{ inputs.version }}"
+          echo "Selection: ${{ inputs.selection }}"
+      # - uses: actions/checkout@v4
+      #   with:
+      #     fetch-depth: ${{ env.GIT_DEPTH }}
+      # - uses: ./.github/workflows/composite-actions/setup-git
+      #   with:
+      #     safe-directory: ${{ runner.workspace }}
+
+  deploy-ml-engine:
+    if: inputs.selection == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Settings
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Version: ${{ inputs.version }}"
+          echo "Selection: ${{ inputs.selection }}"
+
+  deploy-arthur-engine:
+    if: inputs.selection == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Settings
+        run: |
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Version: ${{ inputs.version }}"
+          echo "Selection: ${{ inputs.selection }}"
