@@ -4,6 +4,10 @@ from arthur_client.api_bindings import Config, RuleResponseConfig
 from arthur_client.api_bindings.models import ExampleConfig as ScopeExampleConfig
 from arthur_client.api_bindings.models import ExamplesConfig as ScopeExamplesConfig
 from arthur_client.api_bindings.models import KeywordsConfig as ScopeKeywordsConfig
+from arthur_client.api_bindings.models import (
+    MetricResponse as ScopeClientMetricResponse,
+)
+from arthur_client.api_bindings.models import MetricType as ScopeMetricType
 from arthur_client.api_bindings.models import PIIConfig as ScopePIIConfig
 from arthur_client.api_bindings.models import RegexConfig as ScopeRegexConfig
 from arthur_client.api_bindings.models import RuleResponse as ScopeClientRuleResponse
@@ -13,9 +17,15 @@ from arthur_client.api_bindings.models import TaskResponse as ScopeClientTaskRes
 from arthur_client.api_bindings.models import ToxicityConfig as ScopeToxicityConfig
 from arthur_common.models.shield import ExamplesConfig as ApiExamplesConfig
 from arthur_common.models.shield import KeywordsConfig as ApiKeywordsConfig
+from arthur_common.models.shield import MetricResponse as ApiMetricResponse
+from arthur_common.models.shield import MetricType as ApiMetricType
+from arthur_common.models.shield import NewMetricRequest as ApiNewMetricRequest
 from arthur_common.models.shield import NewRuleRequest as ApiNewRuleRequest
 from arthur_common.models.shield import PIIConfig as ApiPIIConfig
 from arthur_common.models.shield import RegexConfig as ApiRegexConfig
+from arthur_common.models.shield import (
+    RelevanceMetricConfig as ApiRelevanceMetricConfig,
+)
 from arthur_common.models.shield import RuleResponse as ApiRuleResponse
 from arthur_common.models.shield import TaskResponse as ApiTaskResponse
 from arthur_common.models.shield import ToxicityConfig as ApiToxicityConfig
@@ -36,6 +46,8 @@ ApiConfigTypes = Optional[
         ApiExamplesConfig,
         ApiToxicityConfig,
         ApiPIIConfig,
+        ApiNewMetricRequest,
+        ApiMetricType,
     ]
 ]
 
@@ -100,8 +112,7 @@ class ShieldClientTypeConverter:
 
     @classmethod
     def new_rule_request_api_to_shield_client(
-        cls,
-        api: ApiNewRuleRequest,
+        cls, api: ApiNewRuleRequest
     ) -> ShieldNewRuleRequest:
         return ShieldNewRuleRequest(
             name=api.name,
@@ -116,21 +127,40 @@ class ScopeClientTypeConverter:
 
     @classmethod
     def task_response_api_to_scope_client(
-        cls,
-        api: ApiTaskResponse,
+        cls, api: ApiTaskResponse
     ) -> ScopeClientTaskResponse:
         return ScopeClientTaskResponse(
             id=api.id,
             name=api.name,
             created_at=api.created_at,
             updated_at=api.updated_at,
+            is_agentic=api.is_agentic,
             rules=[cls.rule_response_api_to_scope_client(r) for r in api.rules],
+            metrics=(
+                [cls.metric_response_api_to_scope_client(m) for m in api.metrics]
+                if api.metrics
+                else []
+            ),
+        )
+
+    @classmethod
+    def metric_response_api_to_scope_client(
+        cls, api: ApiMetricResponse
+    ) -> ScopeClientMetricResponse:
+        return ScopeClientMetricResponse(
+            id=api.id,
+            name=api.name,
+            type=ScopeMetricType(api.type),
+            metric_metadata=api.metric_metadata,
+            config=api.config,
+            created_at=api.created_at,
+            updated_at=api.updated_at,
+            enabled=api.enabled,
         )
 
     @classmethod
     def rule_response_api_to_scope_client(
-        cls,
-        api: ApiRuleResponse,
+        cls, api: ApiRuleResponse
     ) -> ScopeClientRuleResponse:
         return ScopeClientRuleResponse(
             id=api.id,
