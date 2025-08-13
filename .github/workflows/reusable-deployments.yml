@@ -19,6 +19,10 @@ jobs:
   deploy-genai-engine-cpu:
     if: inputs.selection == 'genai-engine-cpu'
     runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    permissions:
+      id-token: write
+      contents: read
     container: python:3.12.9-bullseye
     env:
       SKIP: pytest-check,changelog-check
