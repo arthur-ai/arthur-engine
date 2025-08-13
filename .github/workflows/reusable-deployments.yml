@@ -13,9 +13,7 @@ on:
         default: 'x.y.z-dev'
       selection:
         required: true
-        type: choice
-        options:
-          - genai-engine-cpu
+        type: string
 
 jobs:
   deploy-genai-engine-cpu:

@@ -19,6 +19,7 @@ on:
         type: choice
         options:
           - genai-engine-cpu
+        default: 'genai-engine-cpu'
   push:
     branches:
       - test_deployments
