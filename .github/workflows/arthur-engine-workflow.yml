@@ -333,6 +333,7 @@ jobs:
   #         helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
   deploy-minimal-genai-engine-cpu:
+    runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     permissions:
       id-token: write
