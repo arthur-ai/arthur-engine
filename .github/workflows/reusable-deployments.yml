@@ -13,12 +13,13 @@ on:
         default: 'x.y.z-dev'
       selection:
         required: true
-        type: string
-        default: 'all'
+        type: choice
+        options:
+          - genai-engine-cpu
 
 jobs:
-  deploy-genai-engine:
-    if: inputs.selection == 'all'
+  deploy-genai-engine-cpu:
+    if: inputs.selection == 'genai-engine-cpu'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -37,22 +38,22 @@ jobs:
       #   with:
       #     safe-directory: ${{ runner.workspace }}
 
-  deploy-ml-engine:
-    if: inputs.selection == 'all'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Settings
-        run: |
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Version: ${{ inputs.version }}"
-          echo "Selection: ${{ inputs.selection }}"
+  # deploy-ml-engine:
+  #   if: inputs.selection == 'all'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Settings
+  #       run: |
+  #         echo "Environment: ${{ inputs.environment }}"
+  #         echo "Version: ${{ inputs.version }}"
+  #         echo "Selection: ${{ inputs.selection }}"
 
-  deploy-arthur-engine:
-    if: inputs.selection == 'all'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Settings
-        run: |
-          echo "Environment: ${{ inputs.environment }}"
-          echo "Version: ${{ inputs.version }}"
-          echo "Selection: ${{ inputs.selection }}"
+  # deploy-arthur-engine:
+  #   if: inputs.selection == 'all'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Settings
+  #       run: |
+  #         echo "Environment: ${{ inputs.environment }}"
+  #         echo "Version: ${{ inputs.version }}"
+  #         echo "Selection: ${{ inputs.selection }}"

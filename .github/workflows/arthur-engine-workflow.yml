@@ -11,342 +11,350 @@ on:
       - dev
 
 jobs:
-  run-genai-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
-    runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
-    env:
-      SKIP: pytest-check,changelog-check
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: genai-engine
-      - name: Run pre-commit
-        run: |
-          poetry -C genai-engine run pre-commit install
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
-          echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
+  # run-genai-engine-linter:
+  #   if: |
+  #     (
+  #       github.event_name == 'pull_request' ||
+  #       (github.event_name == 'push' && github.ref_type == 'branch')
+  #     )
+  #   runs-on: ubuntu-latest
+  #   container: python:3.12.9-bullseye
+  #   env:
+  #     SKIP: pytest-check,changelog-check
+  #     GIT_DEPTH: 100
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: ${{ env.GIT_DEPTH }}
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/setup-poetry
+  #       with:
+  #         working-directory: genai-engine
+  #     - name: Run pre-commit
+  #       run: |
+  #         poetry -C genai-engine run pre-commit install
+  #         CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+  #         echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
 
 
-  run-ml-engine-linter:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
-    runs-on: ubuntu-latest
-    container: python:3.13-bullseye
-    env:
-      SKIP: pytest-check,changelog-check
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: ml-engine
-      - name: Generate GenAI Client
-        run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-      - name: Run linters
-        run: |
-          poetry -C ml-engine install --with linters
-          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
-          poetry -C ml-engine run isort src/ml_engine --profile black
-          poetry -C ml-engine run black src/ml_engine
+  # run-ml-engine-linter:
+  #   if: |
+  #     (
+  #       github.event_name == 'pull_request' ||
+  #       (github.event_name == 'push' && github.ref_type == 'branch')
+  #     )
+  #   runs-on: ubuntu-latest
+  #   container: python:3.13-bullseye
+  #   env:
+  #     SKIP: pytest-check,changelog-check
+  #     GIT_DEPTH: 100
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: ${{ env.GIT_DEPTH }}
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/setup-poetry
+  #       with:
+  #         working-directory: ml-engine
+  #     - name: Generate GenAI Client
+  #       run: |
+  #         pip install openapi-generator-cli[jdk4py]
+  #         openapi-generator-cli generate -g python \
+  #           -i ./genai-engine/staging.openapi.json \
+  #           -o ./ml-engine/src/genai_client \
+  #           --skip-validate-spec --package-name genai_client
+  #     - name: Run linters
+  #       run: |
+  #         poetry -C ml-engine install --with linters
+  #         poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
+  #         poetry -C ml-engine run isort src/ml_engine --profile black
+  #         poetry -C ml-engine run black src/ml_engine
 
 
-  run-genai-engine-changelog-cop:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
-    runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: genai-engine
-      - name: Install oasdiff
-        run: |
-          curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.10.23/oasdiff_1.10.23_linux_amd64.deb
-          dpkg -i oasdiff.deb
-      - name: Generate changelog
-        run: |
-          export PYTHONPATH=src
-          poetry -C genai-engine run generate_changelog
-      - name: Upload artifacts on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: changelog-artifacts
-          path: |
-            new.openapi.json
-            staging.openapi.json
-            src/api_changelog.md
+  # run-genai-engine-changelog-cop:
+  #   if: |
+  #     (
+  #       github.event_name == 'pull_request' ||
+  #       (github.event_name == 'push' && github.ref_type == 'branch')
+  #     )
+  #   runs-on: ubuntu-latest
+  #   container: python:3.12.9-bullseye
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: ${{ env.GIT_DEPTH }}
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/setup-poetry
+  #       with:
+  #         working-directory: genai-engine
+  #     - name: Install oasdiff
+  #       run: |
+  #         curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.10.23/oasdiff_1.10.23_linux_amd64.deb
+  #         dpkg -i oasdiff.deb
+  #     - name: Generate changelog
+  #       run: |
+  #         export PYTHONPATH=src
+  #         poetry -C genai-engine run generate_changelog
+  #     - name: Upload artifacts on failure
+  #       if: failure()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: changelog-artifacts
+  #         path: |
+  #           new.openapi.json
+  #           staging.openapi.json
+  #           src/api_changelog.md
 
-  run-genai-engine-unit-tests:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
-    runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: genai-engine
-      - name: Run unit tests
-        shell: bash
-        run: |
-          set -o pipefail
-          poetry -C genai-engine run pytest --cov --cov=genai-engine/src \
-            --cov-report term \
-            --junitxml=genai-engine/report.xml \
-            -m "unit_tests" | tee pytest-coverage.txt
-      - name: Pytest coverage comment
-        if: always()
-        uses: MishaKav/pytest-coverage-comment@main
-        with:
-          pytest-coverage-path: pytest-coverage.txt
-          junitxml-path: genai-engine/report.xml
-          title: Coverage Report
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            genai-engine/report.xml
-            pytest-coverage.txt
+  # run-genai-engine-unit-tests:
+  #   if: |
+  #     (
+  #       github.event_name == 'pull_request' ||
+  #       (github.event_name == 'push' && github.ref_type == 'branch')
+  #     )
+  #   runs-on: ubuntu-latest
+  #   container: python:3.12.9-bullseye
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/setup-poetry
+  #       with:
+  #         working-directory: genai-engine
+  #     - name: Run unit tests
+  #       shell: bash
+  #       run: |
+  #         set -o pipefail
+  #         poetry -C genai-engine run pytest --cov --cov=genai-engine/src \
+  #           --cov-report term \
+  #           --junitxml=genai-engine/report.xml \
+  #           -m "unit_tests" | tee pytest-coverage.txt
+  #     - name: Pytest coverage comment
+  #       if: always()
+  #       uses: MishaKav/pytest-coverage-comment@main
+  #       with:
+  #         pytest-coverage-path: pytest-coverage.txt
+  #         junitxml-path: genai-engine/report.xml
+  #         title: Coverage Report
+  #     - name: Upload coverage report
+  #       if: always()
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: test-results
+  #         path: |
+  #           genai-engine/report.xml
+  #           pytest-coverage.txt
 
-  run-ml-engine-unit-tests:
-    if: |
-      (
-        github.event_name == 'pull_request' ||
-        (github.event_name == 'push' && github.ref_type == 'branch')
-      )
-    runs-on: ubuntu-latest
-    container: python:3.13-bullseye
-    env:
-      SKIP: pytest-check,changelog-check
-      GIT_DEPTH: 100
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.GIT_DEPTH }}
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/setup-poetry
-        with:
-          working-directory: ml-engine
-      - name: Generate GenAI Client
-        run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-      - name: Run unit-tests
-        run: |
-          poetry -C ml-engine run pytest
-
-
-  build-genai-engine-docker-images:
-    needs: [run-genai-engine-linter, run-genai-engine-changelog-cop, run-genai-engine-unit-tests]
-    environment: shared-protected-branch-secrets
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        torch_device: [cpu, gpu]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/set-version
-        with:
-          version-prefix: "genai-engine-"
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.10.0
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build and push docker image
-        uses: docker/build-push-action@v6.15.0
-        with:
-          context: "{{defaultContext}}:genai-engine"
-          file: dockerfile
-          build-args: |
-            TORCH_DEVICE=${{ matrix.torch_device }}
-            ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
-          tags: |
-            arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
-            ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
-            ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
-          push: true
-          platforms: linux/amd64
+  # run-ml-engine-unit-tests:
+  #   if: |
+  #     (
+  #       github.event_name == 'pull_request' ||
+  #       (github.event_name == 'push' && github.ref_type == 'branch')
+  #     )
+  #   runs-on: ubuntu-latest
+  #   container: python:3.13-bullseye
+  #   env:
+  #     SKIP: pytest-check,changelog-check
+  #     GIT_DEPTH: 100
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: ${{ env.GIT_DEPTH }}
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/setup-poetry
+  #       with:
+  #         working-directory: ml-engine
+  #     - name: Generate GenAI Client
+  #       run: |
+  #         pip install openapi-generator-cli[jdk4py]
+  #         openapi-generator-cli generate -g python \
+  #           -i ./genai-engine/staging.openapi.json \
+  #           -o ./ml-engine/src/genai_client \
+  #           --skip-validate-spec --package-name genai_client
+  #     - name: Run unit-tests
+  #       run: |
+  #         poetry -C ml-engine run pytest
 
 
-  build-ml-engine-docker-images:
-    needs: [run-ml-engine-linter, run-ml-engine-unit-tests]
-    environment: shared-protected-branch-secrets
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/set-version
-      - name: Generate GenAI Client
-        run: |
-          pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
-          sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      - name: Build and push docker image (no buildx)
-        run: |
-          cd ml-engine
-          docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
-          echo "Pushing paused temporarily..."
-          exit 0
-          docker push arthurplatform/ml-engine:${{ env.VERSION }}
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
-            docker push arthurplatform/ml-engine:latest
-          fi
-          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
-            docker push arthurplatform/ml-engine:latest-dev
-          fi
+  # build-genai-engine-docker-images:
+  #   needs: [run-genai-engine-linter, run-genai-engine-changelog-cop, run-genai-engine-unit-tests]
+  #   environment: shared-protected-branch-secrets
+  #   if: |
+  #     contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+  #     (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       torch_device: [cpu, gpu]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/set-version
+  #       with:
+  #         version-prefix: "genai-engine-"
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3.10.0
+  #     - name: Log in to Docker Hub
+  #       uses: docker/login-action@v3.4.0
+  #       with:
+  #         username: ${{ secrets.DOCKER_HUB_USERNAME }}
+  #         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+  #     - name: Build and push docker image
+  #       uses: docker/build-push-action@v6.15.0
+  #       with:
+  #         context: "{{defaultContext}}:genai-engine"
+  #         file: dockerfile
+  #         build-args: |
+  #           TORCH_DEVICE=${{ matrix.torch_device }}
+  #           ENABLE_TELEMETRY=${{ github.ref == 'refs/heads/main' && 'true' || 'false' }}
+  #         tags: |
+  #           arthurplatform/genai-engine-${{ matrix.torch_device }}:${{ env.VERSION }}
+  #           ${{ github.ref == 'refs/heads/main' && format('arthurplatform/genai-engine-{0}:latest', matrix.torch_device) || '' }}
+  #           ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
+  #         push: true
+  #         platforms: linux/amd64
 
 
-  push-all-cfts:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
-    environment: shared-protected-branch-secrets
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      AWS_REGION: us-east-2
-      BUCKET_NAME: arthur-cft
-      TEMPLATES_DIRECTORY: arthur-engine
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-      - uses: ./.github/workflows/composite-actions/set-version
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
-        with:
-          role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
-          role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: push cf template
-        run: |
-          echo "Pushing Cloudformation template for ${{ env.VERSION }}"
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-cpu.yml
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-gpu.yml
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-cpu.yml
-          sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-gpu.yml
-          aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
-          aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
+  # build-ml-engine-docker-images:
+  #   needs: [run-ml-engine-linter, run-ml-engine-unit-tests]
+  #   environment: shared-protected-branch-secrets
+  #   if: |
+  #     contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+  #     (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/set-version
+  #     - name: Generate GenAI Client
+  #       run: |
+  #         pip install openapi-generator-cli[jdk4py]
+  #         openapi-generator-cli generate -g python \
+  #           -i ./genai-engine/staging.openapi.json \
+  #           -o ./ml-engine/src/genai_client \
+  #           --skip-validate-spec --package-name genai_client
+  #         sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
+  #     - name: Log in to Docker Hub
+  #       uses: docker/login-action@v3.4.0
+  #       with:
+  #         username: ${{ secrets.DOCKER_HUB_USERNAME }}
+  #         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+  #     - name: Build and push docker image (no buildx)
+  #       run: |
+  #         cd ml-engine
+  #         docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
+  #         echo "Pushing paused temporarily..."
+  #         exit 0
+  #         docker push arthurplatform/ml-engine:${{ env.VERSION }}
+  #         if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+  #           docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
+  #           docker push arthurplatform/ml-engine:latest
+  #         fi
+  #         if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+  #           docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
+  #           docker push arthurplatform/ml-engine:latest-dev
+  #         fi
 
-  push-all-helm-charts-to-github:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
-    environment: shared-protected-branch-secrets
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-helm
-      - uses: ./.github/workflows/composite-actions/set-version
-        with:
-          version-prefix: "genai-engine-"
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-      - name: Package and Push Helm chart
-        env:
-          CHART_PATH_GENAI_ENGINE: "deployment/helm/genai-engine"
-          CHART_PATH_ML_ENGINE: "deployment/helm/ml-engine"
-          CHART_NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'charts' || 'charts-dev' }}
-        run: |
-          helm package ${CHART_PATH_GENAI_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
-          helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
-          helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
-          helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
-  push-tag:
-    needs: [push-all-cfts, push-all-helm-charts-to-github]
-    if: |
-      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/workflows/composite-actions/setup-git
-        with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: ./.github/workflows/composite-actions/set-version
-      - name: Push tag
-        run: |
-          git tag -a "${{ env.VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
-          git push origin "${{ env.VERSION }}"
+  # push-all-cfts:
+  #   needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+  #   environment: shared-protected-branch-secrets
+  #   if: |
+  #     contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+  #     (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   env:
+  #     AWS_REGION: us-east-2
+  #     BUCKET_NAME: arthur-cft
+  #     TEMPLATES_DIRECTORY: arthur-engine
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #     - uses: ./.github/workflows/composite-actions/set-version
+  #     - name: configure aws credentials
+  #       uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
+  #         role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #     - name: push cf template
+  #       run: |
+  #         echo "Pushing Cloudformation template for ${{ env.VERSION }}"
+  #         sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-cpu.yml
+  #         sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-engine-gpu.yml
+  #         sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-cpu.yml
+  #         sed -i "s/REPLACE_ME_GENAI_ENGINE_VERSION/${{ env.VERSION }}/g" deployment/cloudformation/root-arthur-genai-engine-gpu.yml
+  #         aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/${{ env.VERSION }} --acl public-read
+  #         aws s3 sync ./deployment/cloudformation/ s3://${{ env.BUCKET_NAME }}/${{ env.TEMPLATES_DIRECTORY }}/templates/latest --acl public-read
+
+  # push-all-helm-charts-to-github:
+  #   needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+  #   environment: shared-protected-branch-secrets
+  #   if: |
+  #     contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+  #     (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     packages: write
+  #     contents: read
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-helm
+  #     - uses: ./.github/workflows/composite-actions/set-version
+  #       with:
+  #         version-prefix: "genai-engine-"
+  #     - name: Login to GHCR
+  #       run: |
+  #         echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+  #     - name: Package and Push Helm chart
+  #       env:
+  #         CHART_PATH_GENAI_ENGINE: "deployment/helm/genai-engine"
+  #         CHART_PATH_ML_ENGINE: "deployment/helm/ml-engine"
+  #         CHART_NAMESPACE: ${{ github.ref == 'refs/heads/main' && 'charts' || 'charts-dev' }}
+  #       run: |
+  #         helm package ${CHART_PATH_GENAI_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
+  #         helm push arthur-genai-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
+  #         helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
+  #         helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
+
+  deploy-minimal-genai-engine-cpu:
+    uses: ./.github/workflows/reusable-deployments.yml
+    with:
+      environment: sts-arthur-test
+      version: 2.1.62-dev
+      selection: 
+
+
+  # push-tag:
+  #   needs: [push-all-cfts, push-all-helm-charts-to-github]
+  #   if: |
+  #     contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+  #     (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: ./.github/workflows/composite-actions/setup-git
+  #       with:
+  #         safe-directory: ${{ runner.workspace }}
+  #     - uses: ./.github/workflows/composite-actions/set-version
+  #     - name: Push tag
+  #       run: |
+  #         git tag -a "${{ env.VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
+  #         git push origin "${{ env.VERSION }}"

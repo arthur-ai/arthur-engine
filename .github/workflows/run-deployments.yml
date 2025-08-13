@@ -16,8 +16,9 @@ on:
       selection:
         description: 'Which components to deploy'
         required: true
-        type: string
-        default: 'all'
+        type: choice
+        options:
+          - genai-engine-cpu
   push:
     branches:
       - test_deployments
