@@ -4,17 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       environment:
+        description: 'Environment to deploy to'
         required: true
         type: string
         default: 'sts-arthur-test'
       version:
+        description: 'Version to deploy'
         required: true
         type: string
         default: 'x.y.z-dev'
       selection:
+        description: 'Which components to deploy'
         required: true
         type: string
         default: 'all'
+  push:
+    branches:
+      - test_deployments
   pull_request:
     branches:
       - main
