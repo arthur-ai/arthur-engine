@@ -3,7 +3,7 @@ name: Reusable Deployments
 on:
   workflow_call:
     inputs:
-      environment:
+      aws_account:
         required: true
         type: string
         default: 'sts-arthur-test'
@@ -26,15 +26,25 @@ jobs:
     steps:
       - name: Settings
         run: |
-          echo "Environment: ${{ inputs.environment }}"
+          echo "AWS Account: ${{ inputs.aws_account }}"
           echo "Version: ${{ inputs.version }}"
           echo "Selection: ${{ inputs.selection }}"
-      # - uses: actions/checkout@v4
-      #   with:
-      #     fetch-depth: ${{ env.GIT_DEPTH }}
-      # - uses: ./.github/workflows/composite-actions/setup-git
-      #   with:
-      #     safe-directory: ${{ runner.workspace }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+        with:
+          role-to-assume: arn:aws:iam::587035402297:role/github-actions-role-1
+          role-session-name: test-s3-access-from-github
+          aws-region: us-east-2
+      - name: Test AWS Access
+        run: |
+          echo "test" > test.txt
+          aws s3 cp test.txt s3://test-bucket-2874739283/test.txt
 
   # deploy-ml-engine:
   #   if: inputs.selection == 'all'
@@ -42,7 +52,7 @@ jobs:
   #   steps:
   #     - name: Settings
   #       run: |
-  #         echo "Environment: ${{ inputs.environment }}"
+  #         echo "AWS Account: ${{ inputs.aws_account }}"
   #         echo "Version: ${{ inputs.version }}"
   #         echo "Selection: ${{ inputs.selection }}"
 
@@ -52,6 +62,6 @@ jobs:
   #   steps:
   #     - name: Settings
   #       run: |
-  #         echo "Environment: ${{ inputs.environment }}"
+  #         echo "AWS Account: ${{ inputs.aws_account }}"
   #         echo "Version: ${{ inputs.version }}"
   #         echo "Selection: ${{ inputs.selection }}"

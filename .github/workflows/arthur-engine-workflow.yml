@@ -333,9 +333,13 @@ jobs:
   #         helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
   deploy-minimal-genai-engine-cpu:
+    environment: shared-protected-branch-secrets
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/reusable-deployments.yml
     with:
-      environment: sts-arthur-test
+      aws_account: sts-arthur-test
       version: 2.1.62-dev
       selection: genai-engine-cpu
 
