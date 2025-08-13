@@ -337,7 +337,7 @@ jobs:
     with:
       environment: sts-arthur-test
       version: 2.1.62-dev
-      selection: 
+      selection: genai-engine-cpu
 
 
   # push-tag:
