@@ -45,6 +45,49 @@ jobs:
         run: |
           echo "test" > test.txt
           aws s3 cp test.txt s3://test-bucket-2874739283/test.txt
+      - name: Deploye GenAi Engine CPU
+        # genai-cpu-test
+        # vpc-0fb404e5424a5283d
+        # 10.200.0.0/20
+        # subnet-05903f0f2c4c7b845, subnet-0e06bec3fe3783f70, subnet-0e02da7979f803871
+        # subnet-06a900130fb5bc783, subnet-02c096881def6b1b7, subnet-08632de4786692010
+        # arn:aws:sns:us-east-2:587035402297:CloudWatchToSlack
+        # internet-facing
+        # https://genai.test.arthur.ai
+        # arn:aws:acm:us-east-2:587035402297:certificate/9d424ca4-b513-44ba-a001-bc717b8cf2f4
+        # Azure
+        # OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS
+        # Z00275071B6BUYG9Q1YNZ
+        # genai.test.arthur.ai
+        run: |
+          aws cloudformation deploy \
+            --template-file deployment/cloudformation/root-arthur-genai-engine-cpu.yml \
+            --stack-name genai-cpu-test \
+            --parameter-overrides \
+              ArthurResourceNamespace=arthur \
+              ExistingArthurVPCId=vpc-0fb404e5424a5283d \
+              ExistingArthurVPCCidrBlock=10.200.0.0/20 \
+              ArthurPrivateSubnets=subnet-05903f0f2c4c7b845,subnet-0e06bec3fe3783f70,subnet-0e02da7979f803871 \
+              ArthurPublicSubnets=subnet-06a900130fb5bc783,subnet-02c096881def6b1b7,subnet-08632de4786692010 \
+              AlarmSNSTopicArn=arn:aws:sns:us-east-2:587035402297:CloudWatchToSlack \
+              GenaiEngineLoadBalancerScheme=internet-facing \
+              GenaiEngineIngressURL=https://genai.test.arthur.ai \
+              GenaiEngineLoadBalancerCertificateARN=arn:aws:acm:us-east-2:587035402297:certificate/9d424ca4-b513-44ba-a001-bc717b8cf2f4 \
+              GenaiEngineOpenAIProvider=Azure \
+              OpenAIGPTModelNamesEndpointsAndKeys=${{ env.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }} \
+              GenaiEngineRoute53HostedZoneId=Z00275071B6BUYG9Q1YNZ \
+              GenaiEngineRoute53RecordName=genai.test.arthur.ai \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+            --region us-east-2
+
+
+
+
+
+
+
+
+
 
   # deploy-ml-engine:
   #   if: inputs.selection == 'all'
