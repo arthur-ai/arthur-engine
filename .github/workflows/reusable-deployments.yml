@@ -74,7 +74,7 @@ jobs:
               GenaiEngineIngressURL=https://genai.test.arthur.ai \
               GenaiEngineLoadBalancerCertificateARN=arn:aws:acm:us-east-2:587035402297:certificate/9d424ca4-b513-44ba-a001-bc717b8cf2f4 \
               GenaiEngineOpenAIProvider=Azure \
-              OpenAIGPTModelNamesEndpointsAndKeys=${{ env.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }} \
+              OpenAIGPTModelNamesEndpointsAndKeys=${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }} \
               GenaiEngineRoute53HostedZoneId=Z00275071B6BUYG9Q1YNZ \
               GenaiEngineRoute53RecordName=genai.test.arthur.ai \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
