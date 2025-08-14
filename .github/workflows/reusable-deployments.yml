@@ -60,6 +60,14 @@ jobs:
         # Z00275071B6BUYG9Q1YNZ
         # genai.test.arthur.ai
         run: |
+          echo "Checking if secret is available..."
+          if [ -n "${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }}" ]; then
+            echo "Secret is available (length: ${#OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS})"
+          else
+            echo "Secret is empty or not available"
+            exit 1
+          fi
+          
           aws cloudformation deploy \
             --template-file deployment/cloudformation/root-arthur-genai-engine-cpu.yml \
             --stack-name genai-cpu-test \
