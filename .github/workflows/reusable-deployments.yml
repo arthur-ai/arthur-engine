@@ -23,10 +23,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    container: python:3.12.9-bullseye
-    env:
-      SKIP: pytest-check,changelog-check
-      GIT_DEPTH: 100
     steps:
       - name: Settings
         run: |
