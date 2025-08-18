@@ -24,7 +24,6 @@ from schemas.response_schemas import TraceResponse
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
-    METADATA_KEY,
     SPAN_KIND_KEY,
     SPAN_KIND_LLM,
     SPAN_VERSION_KEY,
@@ -561,10 +560,21 @@ class SpanRepository:
         spans_data = []
 
         for resource_span in json_traces.get("resourceSpans", []):
+            # Extract task ID from resource attributes (new format)
+            resource_task_id = self._extract_task_id_from_resource_attributes(
+                resource_span,
+            )
+            if resource_task_id:
+                logger.debug(f"Found resource task ID: {resource_task_id}")
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
-                    processed_span = self._process_span_data(span_data)
+                    # Pass the resource task ID to the span processing
+                    processed_span = self._process_span_data(
+                        span_data,
+                        resource_task_id,
+                    )
 
                     if processed_span:
                         processed_span["id"] = str(uuid.uuid4())
@@ -584,6 +594,27 @@ class SpanRepository:
             rejected_reasons,
         )
 
+    def _extract_task_id_from_resource_attributes(
+        self,
+        resource_span: dict,
+    ) -> Optional[str]:
+        """
+        Extract task ID from resource attributes.
+
+        Args:
+            resource_span: Dictionary containing resource span data
+
+        Returns:
+            Task ID string if found, None otherwise
+        """
+        attributes = resource_span.get("resource", {}).get("attributes", [])
+
+        for attr in attributes:
+            if isinstance(attr, dict) and attr.get("key") == TASK_ID_KEY:
+                value = self._extract_value_from_otel_format(attr.get("value", {}))
+                return str(value) if value is not None else None
+        return None
+
     def _grpc_trace_to_dict(self, trace_data: bytes) -> dict:
         """Convert gRPC trace data to dictionary format."""
         try:
@@ -593,15 +624,27 @@ class SpanRepository:
         except DecodeError as e:
             raise DecodeError("Failed to decode protobuf message.") from e
 
-    def _process_span_data(self, span_data: dict) -> Optional[dict]:
+    def _process_span_data(
+        self,
+        span_data: dict,
+        resource_task_id: str = None,
+    ) -> Optional[dict]:
         """Process and clean span data, returning None if the span data is invalid."""
         normalized_span_data = self._normalize_span_attributes(span_data)
 
         # Extract basic span information
         span_dict = self._extract_basic_span_info(normalized_span_data)
 
-        # Extract and validate task_id
-        task_id = self._extract_and_validate_task_id(normalized_span_data)
+        # Validate task ID from resource attributes
+        task_id = resource_task_id if self._is_valid_task_id(resource_task_id) else None
+
+        # Reject spans without task IDs
+        if not task_id:
+            logger.warning(
+                f"Rejecting span {span_data.get('spanId', 'unknown')} - no task ID found in resource attributes",
+            )
+            return None
+
         span_dict["task_id"] = task_id
 
         # Inject version into raw data
@@ -610,7 +653,6 @@ class SpanRepository:
         # Store the normalized span data
         span_dict["raw_data"] = normalized_span_data
 
-        # Accept all spans - no discrimination on task_id or parent_id
         return span_dict
 
     def _extract_basic_span_info(self, span_data: dict) -> dict:
@@ -637,14 +679,37 @@ class SpanRepository:
 
         return span_dict
 
-    def _extract_and_validate_task_id(
+    def _extract_value_from_otel_format(
         self,
-        span_data: dict,
-    ) -> Optional[str]:
-        """Extract task_id from span data."""
-        # Extract metadata and task_id from normalized attributes
-        metadata = self._get_metadata(span_data)
-        return metadata.get(TASK_ID_KEY)
+        value_dict: dict,
+    ) -> Optional[Union[str, int, float, bool]]:
+        """
+        Extract value from OpenTelemetry value format, preserving original types.
+
+        Args:
+            value_dict: OpenTelemetry value dictionary
+
+        Returns:
+            Value in its native Python type, or None if not found
+        """
+        if not isinstance(value_dict, dict):
+            return None
+
+        # Handle different OpenTelemetry value types
+        if "stringValue" in value_dict:
+            return value_dict["stringValue"]
+        elif "intValue" in value_dict:
+            return value_dict["intValue"]
+        elif "doubleValue" in value_dict:
+            return value_dict["doubleValue"]
+        elif "boolValue" in value_dict:
+            return value_dict["boolValue"]
+
+        return None
+
+    def _is_valid_task_id(self, task_id: str) -> bool:
+        """Validate that a task ID is a non-empty string."""
+        return isinstance(task_id, str) and bool(task_id.strip())
 
     def _normalize_span_attributes(self, span_data: dict) -> dict:
         """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
@@ -703,16 +768,6 @@ class SpanRepository:
             end_time = trace_utils.timestamp_ns_to_datetime(end_time_ns)
 
         return start_time, end_time
-
-    def _get_metadata(self, span_data: dict) -> dict:
-        """Get the metadata from the span data."""
-        metadata_str = self._get_attribute_value(span_data, METADATA_KEY)
-        if metadata_str:
-            try:
-                return json.loads(metadata_str)
-            except json.JSONDecodeError:
-                return {}
-        return {}
 
     def _group_spans_into_traces(
         self,

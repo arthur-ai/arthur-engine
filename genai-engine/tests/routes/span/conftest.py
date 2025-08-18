@@ -38,13 +38,22 @@ def _delete_spans_from_db(db_session, span_ids):
     db_session.commit()
 
 
-def _create_base_trace_request():
+def _create_base_trace_request(task_id=None):
     """Create a base ExportTraceServiceRequest with resource attributes."""
     trace_request = ExportTraceServiceRequest()
     resource_span = ResourceSpans()
+
+    # Add service name attribute
     resource_span.resource.attributes.extend(
         [KeyValue(key="service.name", value=AnyValue(string_value="test_service"))],
     )
+
+    # Add task ID to resource attributes if provided
+    if task_id:
+        resource_span.resource.attributes.extend(
+            [KeyValue(key="arthur.task", value=AnyValue(string_value=task_id))],
+        )
+
     scope_span = ScopeSpans()
     scope_span.scope.name = "test_scope"
 
@@ -56,7 +65,6 @@ def _create_span(
     span_id,
     name,
     span_type="LLM",
-    include_task_id=True,
     model_name="gpt-4",
     parent_span_id=None,
 ):
@@ -86,15 +94,11 @@ def _create_span(
             KeyValue(key="llm.model_name", value=AnyValue(string_value=model_name)),
         )
 
-    # Metadata with or without task ID
     metadata = {
         "ls_provider": "openai",
         "ls_model_name": model_name,
         "ls_model_type": "chat",
     }
-
-    if include_task_id:
-        metadata["arthur.task"] = f"task_id_{span_id.hex()}"
 
     metadata_str = str(metadata).replace("'", '"')
     attributes.append(
@@ -142,7 +146,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
-                "metadata": '{"arthur.task": "test_task", "ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
+                "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
             "arthur_span_version": "arthur_span_v1",
         },
@@ -198,7 +202,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
-                "metadata": '{"arthur.task": "task1", "ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
+                "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
             "arthur_span_version": "arthur_span_v1",
         },
@@ -250,7 +254,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             "traceId": "trace2",
             "attributes": {
                 "openinference.span.kind": "AGENT",
-                "metadata": '{"arthur.task": "task2", "ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
             },
             "arthur_span_version": "arthur_span_v1",
         },
@@ -385,44 +389,36 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
 @pytest.fixture(scope="function")
 def sample_openinference_trace() -> bytes:
     """Create a sample OpenInference trace in protobuf format."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Create a parent span (AGENT)
-    parent_span = _create_span(
-        trace_id=b"test_trace_id_123",
-        span_id=b"parent_span_id_789",
-        name="parent_agent_span",
-        span_type="AGENT",
-        include_task_id=True,
-        model_name="gpt-4-turbo",
+    # Create trace with task ID in resource attributes
+    task_id = "task_id_123"
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
     )
 
-    # Create a child span (LLM) with task ID
-    child_span = _create_span(
+    # Create a simple LLM span
+    span = _create_span(
         trace_id=b"test_trace_id_123",
         span_id=b"test_span_id_456",
         name="test_llm_span",
         span_type="LLM",
-        include_task_id=False,
         model_name="gpt-4-turbo",
-        parent_span_id=b"parent_span_id_789",
     )
 
     # Add token count attributes to the LLM span
-    child_span.attributes.extend(
+    span.attributes.extend(
         [
             KeyValue(key="llm.token_count.prompt", value=AnyValue(int_value=100)),
             KeyValue(key="llm.token_count.completion", value=AnyValue(int_value=50)),
         ],
     )
 
-    scope_span.spans.extend([parent_span, child_span])
+    scope_span.spans.append(span)
     resource_span.scope_spans.append(scope_span)
     trace_request.resource_spans.append(resource_span)
     yield trace_request.SerializeToString()
 
     # Cleanup
-    span_ids = [parent_span.span_id.hex(), child_span.span_id.hex()]
+    span_ids = [span.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
 
@@ -430,7 +426,8 @@ def sample_openinference_trace() -> bytes:
 @pytest.fixture(scope="function")
 def sample_span_missing_task_id() -> bytes:
     """Create a sample trace with a span missing task ID."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
+    # Create trace without task ID in resource attributes
+    trace_request, resource_span, scope_span = _create_base_trace_request(task_id=None)
 
     # Create a span without a task ID
     span = _create_span(
@@ -438,34 +435,6 @@ def sample_span_missing_task_id() -> bytes:
         span_id=b"missing_task_id_span",
         name="missing_task_id_guardrail_span",
         span_type="GUARDRAIL",
-        include_task_id=False,
-    )
-
-    scope_span.spans.append(span)
-    resource_span.scope_spans.append(scope_span)
-    trace_request.resource_spans.append(resource_span)
-
-    yield trace_request.SerializeToString()
-
-    # Cleanup - span will be accepted since all spans are now accepted
-    span_ids = [span.span_id.hex()]
-    db_session = override_get_db_session()
-    _delete_spans_from_db(db_session, span_ids)
-
-
-@pytest.fixture(scope="function")
-def sample_span_with_parent_id() -> bytes:
-    """Create a sample trace with a span that has a parent ID but no task ID."""
-    trace_request, resource_span, scope_span = _create_base_trace_request()
-
-    # Create a span with a parent ID but no task ID
-    span = _create_span(
-        trace_id=b"parent_id_trace",
-        span_id=b"child_span_id",
-        name="child_span",
-        span_type="CHAIN",
-        include_task_id=False,
-        parent_span_id=b"parent_span_id",
     )
 
     scope_span.spans.append(span)
