@@ -395,7 +395,9 @@ class ShieldBaseConnector(Connector, ABC):
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=new_metric,
+                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
+                    new_metric
+                ),
             )
             return MetricResponse.model_validate_json(response.raw_data)
         except Exception as e:
