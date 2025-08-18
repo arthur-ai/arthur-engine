@@ -39,42 +39,61 @@ brew install \
 
 # Install Oracle Instant Client manually (Homebrew formula doesn't exist)
 echo "🐘 Installing Oracle Instant Client manually..."
-ORACLE_VERSION="21.12"
-ORACLE_DIR="$HOME/oracle"
-mkdir -p $ORACLE_DIR
+echo "   Oracle Instant Client requires manual download due to license restrictions."
+echo "   Please follow these steps:"
+echo ""
+echo "   1. Visit: https://www.oracle.com/database/technologies/instant-client/macos-intel-x86-downloads.html"
+echo "   2. Accept the license agreement"
+echo "   3. Download 'Basic Package' for macOS Intel x86-64"
+echo "   4. Extract to: $HOME/oracle/"
+echo "   5. Run this script again"
+echo ""
+echo "   Alternatively, you can skip Oracle for now and install other dependencies:"
+echo "   - PostgreSQL, MySQL, ODBC, and MSSQL drivers will still be installed"
+echo ""
 
-# Download and install Oracle Instant Client Basic
-echo "📥 Downloading Oracle Instant Client Basic..."
-curl -L -o /tmp/oracle-basic.zip "https://download.oracle.com/otn_software/mac/instantclient/2112000/instantclient-basic-macos.x64-21.12.0.0.0.zip"
-unzip -q /tmp/oracle-basic.zip -d $ORACLE_DIR
+# Check if Oracle is already installed
+if [ -d "$HOME/oracle/instantclient" ] || [ -d "$HOME/oracle/instantclient_21_12" ] || [ -d "$HOME/oracle/instantclient_19_19" ]; then
+    echo "✅ Oracle Instant Client found in $HOME/oracle/"
+    ORACLE_HOME="$HOME/oracle/instantclient"
 
-# Download and install Oracle Instant Client SDK
-echo "📥 Downloading Oracle Instant Client SDK..."
-curl -L -o /tmp/oracle-sdk.zip "https://download.oracle.com/otn_software/mac/instantclient/2112000/instantclient-sdk-macos.x64-21.12.0.0.0.zip"
-unzip -q /tmp/oracle-sdk.zip -d $ORACLE_DIR
+    # Find the actual instantclient directory
+    if [ -d "$HOME/oracle/instantclient_21_12" ]; then
+        ORACLE_HOME="$HOME/oracle/instantclient_21_12"
+    elif [ -d "$HOME/oracle/instantclient_19_19" ]; then
+        ORACLE_HOME="$HOME/oracle/instantclient_19_19"
+    fi
 
-# Create symlink for easier access
-ln -sf $ORACLE_DIR/instantclient_21_12 $ORACLE_DIR/instantclient
-
-# Set up Oracle environment
-echo "🐘 Setting up Oracle Instant Client environment..."
-ORACLE_HOME="$ORACLE_DIR/instantclient"
-echo "export ORACLE_HOME=$ORACLE_HOME" >> ~/.zshrc
-echo "export DYLD_LIBRARY_PATH=$ORACLE_HOME:\$DYLD_LIBRARY_PATH" >> ~/.zshrc
-echo "export PATH=$ORACLE_HOME:\$PATH" >> ~/.zshrc
-
-# Also add to bash profile if it exists
-if [ -f ~/.bash_profile ]; then
-    echo "export ORACLE_HOME=$ORACLE_HOME" >> ~/.bash_profile
-    echo "export DYLD_LIBRARY_PATH=$ORACLE_HOME:\$DYLD_LIBRARY_PATH" >> ~/.bash_profile
-    echo "export PATH=$ORACLE_HOME:\$PATH" >> ~/.bash_profile
+    echo "   Using Oracle home: $ORACLE_HOME"
+else
+    echo "❌ Oracle Instant Client not found."
+    echo "   Please download and install manually, then run this script again."
+    echo "   Continuing with other database drivers..."
+    ORACLE_HOME=""
 fi
 
-# Clean up
-rm -f /tmp/oracle-basic.zip /tmp/oracle-sdk.zip
 
-echo "✅ Oracle environment variables added to shell profiles."
-echo "   Please restart your terminal or run 'source ~/.zshrc' to apply changes."
+
+# Set up Oracle environment if Oracle is installed
+if [ -n "$ORACLE_HOME" ]; then
+    echo "🐘 Setting up Oracle Instant Client environment..."
+    echo "export ORACLE_HOME=$ORACLE_HOME" >> ~/.zshrc
+    echo "export DYLD_LIBRARY_PATH=$ORACLE_HOME:\$DYLD_LIBRARY_PATH" >> ~/.zshrc
+    echo "export PATH=$ORACLE_HOME:\$PATH" >> ~/.zshrc
+
+    # Also add to bash profile if it exists
+    if [ -f ~/.bash_profile ]; then
+        echo "export ORACLE_HOME=$ORACLE_HOME" >> ~/.bash_profile
+        echo "export DYLD_LIBRARY_PATH=$ORACLE_HOME:\$DYLD_LIBRARY_PATH" >> ~/.bash_profile
+        echo "export PATH=$ORACLE_HOME:\$PATH" >> ~/.bash_profile
+    fi
+
+    echo "✅ Oracle environment variables added to shell profiles."
+    echo "   Please restart your terminal or run 'source ~/.zshrc' to apply changes."
+else
+    echo "⚠️  Oracle Instant Client not installed - skipping Oracle environment setup."
+    echo "   You can install Oracle later and run this script again to set up environment variables."
+fi
 
 # Install MSSQL ODBC driver for macOS
 echo "🗄️ Installing Microsoft ODBC Driver for SQL Server..."

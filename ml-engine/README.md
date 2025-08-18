@@ -117,6 +117,73 @@ chmod +x install_db_dependencies.sh
 - `install_db_dependencies_docker.sh` - Optimized for Debian/Ubuntu containers
 - No manual intervention needed - dependencies are installed during image build
 
+### Manual Oracle Installation
+
+**Note:** Oracle Instant Client requires manual installation due to license restrictions and download limitations.
+
+#### Prerequisites
+- macOS Intel x86-64 or Apple Silicon (ARM64)
+- Oracle account (free registration required)
+
+#### Installation Steps
+
+1. **Visit Oracle Downloads**
+   - Go to: https://www.oracle.com/database/technologies/instant-client/macos-intel-x86-downloads.html
+   - Sign in with your Oracle account (or create one for free)
+
+2. **Accept License Agreement**
+   - Review and accept the Oracle Technology Network License Agreement
+
+3. **Download Oracle Instant Client**
+   - Download "Basic Package" for your macOS architecture:
+     - **Intel Macs**: `instantclient-basic-macos.x64-21.12.0.0.0.zip` (~100MB)
+     - **Apple Silicon**: `instantclient-basic-macos.arm64-21.12.0.0.0.zip` (~100MB)
+   - **Optional**: Download "SDK Package" if you need development headers
+
+4. **Install Oracle Instant Client**
+   ```bash
+   # Create Oracle directory
+   mkdir -p ~/oracle
+
+   # Extract the downloaded ZIP file
+   unzip instantclient-basic-macos.x64-21.12.0.0.0.zip -d ~/oracle/
+
+   # Verify installation
+   ls ~/oracle/
+   # Should show: instantclient_21_12/
+   ```
+
+5. **Set Environment Variables**
+   ```bash
+   # Add to your shell profile (~/.zshrc or ~/.bash_profile)
+   echo 'export ORACLE_HOME=~/oracle/instantclient_21_12' >> ~/.zshrc
+   echo 'export DYLD_LIBRARY_PATH=~/oracle/instantclient_21_12:$DYLD_LIBRARY_PATH' >> ~/.zshrc
+   echo 'export PATH=~/oracle/instantclient_21_12:$PATH' >> ~/.zshrc
+
+   # Reload your shell profile
+   source ~/.zshrc
+   ```
+
+6. **Verify Installation**
+   ```bash
+   # Check if Oracle libraries are accessible
+   ls $ORACLE_HOME
+   # Should show: libclntsh.dylib, libociei.dylib, etc.
+   ```
+
+#### Troubleshooting
+
+- **"Library not found" errors**: Ensure `DYLD_LIBRARY_PATH` is set correctly
+- **Permission denied**: Check that the Oracle directory has proper read permissions
+- **Python import errors**: Restart your Python environment after setting environment variables
+
+#### Alternative: Homebrew (Limited Support)
+Some users report success with:
+```bash
+brew install --cask oracle-instantclient
+```
+However, this method may not work consistently across all macOS versions.
+
 ## Using local Docker image
 1. Generate GenAI Client
 ```bash
