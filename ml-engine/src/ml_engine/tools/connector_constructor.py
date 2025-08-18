@@ -4,6 +4,7 @@ from arthur_client.api_bindings import ConnectorsV1Api, ConnectorType
 from connectors.big_query_connector import BigQueryConnector
 from connectors.connector import Connector
 from connectors.gcs_connector import GCSConnector
+from connectors.odbc_connector import ODBCConnector
 from connectors.s3_connector import S3Connector
 from connectors.shield_connector import EngineInternalConnector, ShieldConnector
 
@@ -26,6 +27,8 @@ class ConnectorConstructor:
                 return BigQueryConnector(connector_config, self.scope_logger)
             case ConnectorType.ENGINE_INTERNAL:
                 return EngineInternalConnector(connector_config, self.scope_logger)
+            case ConnectorType.ODBC:
+                return ODBCConnector(connector_config, self.scope_logger)
             case _:
                 raise NotImplementedError(
                     f"Connector not available for type {connector_config.connector_type}",

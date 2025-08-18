@@ -6,6 +6,35 @@ RUN pip install poetry==2.1.3 && \
     apt-get install -y wget && \
     rm -rf /var/lib/apt/lists/*
 
+# install system dependencies for database drivers
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    postgresql-client \
+    unixodbc \
+    unixodbc-dev \
+    libmariadb-dev \
+    libmariadb-dev-compat \
+    build-essential \
+    python3-dev \
+    libaio-dev \
+    wget \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# install Oracle Instant Client
+RUN mkdir -p /opt/oracle && \
+    wget -O /tmp/oracle-basic.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-basic-linux.x64-21.12.0.0.0dbru.zip && \
+    wget -O /tmp/oracle-sdk.zip https://download.oracle.com/otn_software/linux/instantclient/2112000/instantclient-sdk-linux.x64-21.12.0.0.0dbru.zip && \
+    unzip -q /tmp/oracle-basic.zip -d /opt/oracle && \
+    unzip -q /tmp/oracle-sdk.zip -d /opt/oracle && \
+    ln -sf /opt/oracle/instantclient_21_12 /opt/oracle/instantclient && \
+    rm -f /tmp/oracle-basic.zip /tmp/oracle-sdk.zip
+
+# Set Oracle environment variables
+ENV ORACLE_HOME=/opt/oracle/instantclient
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient:$LD_LIBRARY_PATH
+ENV PATH=/opt/oracle/instantclient:$PATH
+
 # install dependencies
 COPY pyproject.toml /app/
 COPY poetry.lock /app/
@@ -38,6 +67,7 @@ COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/virtualenvs/
 COPY --from=install /app/ /app/
+COPY --from=install /opt/oracle/ /opt/oracle/
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
 ENV PYTHONPATH="$PYTHONPATH:/app/src"
