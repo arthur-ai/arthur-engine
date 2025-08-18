@@ -37,9 +37,13 @@ from genai_client import (
     APIKeysRolesEnum,
     Configuration,
     InferencesApi,
+    MetricResponse,
     NewApiKeyRequest,
+    NewMetricRequest,
     NewTaskRequest,
+    QueryTracesWithMetricsResponse,
     SearchTasksRequest,
+    SpansApi,
     TasksApi,
     UpdateRuleRequest,
 )
@@ -88,6 +92,7 @@ class ShieldBaseConnector(Connector, ABC):
         self._inferences_client = InferencesApi(api_client=self._genai_client)
         self._tasks_client = TasksApi(api_client=self._genai_client)
         self._api_keys_client = APIKeysApi(api_client=self._genai_client)
+        self._spans_client = SpansApi(api_client=self._genai_client)
 
     @staticmethod
     def _strip_and_validate_endpoint(endpoint: str) -> str:
@@ -179,7 +184,9 @@ class ShieldBaseConnector(Connector, ABC):
                 f"Dataset {dataset.id} has no dataset locator, cannot read from Shield.",
             )
 
-        inferences: list[dict[str, Any]] = []
+        is_agentic = dataset.model_problem_type == ModelProblemType.AGENTIC_TRACE
+        key = "traces" if is_agentic else "inferences"
+        paginated_data: list[dict[str, Any]] = []
 
         dataset_locator_fields = {
             f.key: f.value for f in dataset.dataset_locator.fields
@@ -205,44 +212,61 @@ class ShieldBaseConnector(Connector, ABC):
 
         page_size = params["page_size"]
 
+        resp: Any = None
+
         while True:
-            # use raw http info so we can load JSON directly to avoid API types
-            self.logger.info(f"Fetching page {params["page"]} of inferences")
-            resp = self._inferences_client.query_inferences_api_v2_inferences_query_get_with_http_info(
-                # required params
-                task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
-                start_time=start_time,
-                end_time=end_time,
-                include_count=False,
-                page=params["page"],
-                page_size=params["page_size"],
-                # optional filters
-                conversation_id=params.get("conversation_id"),
-                inference_id=params.get("inference_id"),
-                user_id=params.get("user_id"),
-                rule_types=[
-                    RuleType(rule_type) for rule_type in params.get("rule_types", [])
-                ],
-                rule_statuses=params.get("rule_statuses"),
-                prompt_statuses=params.get("prompt_statuses"),
-                response_statuses=params.get("response_statuses"),
-                sort=params.get(SHIELD_SORT_FILTER),
-            )
-            self.logger.info(f"Response: {resp.status_code}")
+            if is_agentic:
+                self.logger.info(f"Fetching page {params['page']} of traces")
+                resp = (
+                    self._spans_client.query_spans_v1_traces_query_get_with_http_info(
+                        task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                        trace_ids=None,
+                        start_time=start_time,
+                        end_time=end_time,
+                        page=params["page"],
+                        page_size=params["page_size"],
+                        sort=params.get(SHIELD_SORT_FILTER),
+                    )
+                )
+
+            else:
+                # use raw http info so we can load JSON directly to avoid API types
+                self.logger.info(f"Fetching page {params['page']} of inferences")
+                resp = self._inferences_client.query_inferences_api_v2_inferences_query_get_with_http_info(
+                    # required params
+                    task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                    start_time=start_time,
+                    end_time=end_time,
+                    include_count=False,
+                    page=params["page"],
+                    page_size=params["page_size"],
+                    # optional filters
+                    conversation_id=params.get("conversation_id"),
+                    inference_id=params.get("inference_id"),
+                    user_id=params.get("user_id"),
+                    rule_types=[
+                        RuleType(rule_type) for rule_type in params.get("rule_types", [])
+                    ],
+                    rule_statuses=params.get("rule_statuses"),
+                    prompt_statuses=params.get("prompt_statuses"),
+                    response_statuses=params.get("response_statuses"),
+                    sort=params.get(SHIELD_SORT_FILTER),
+                )
+            self.logger.info(f"Read response code: {resp.status_code}")
             # load raw JSON response
-            inferences.extend(json.loads(resp.raw_data)["inferences"])
+            paginated_data.extend(json.loads(resp.raw_data)[key])
 
             if single_page_requested:
-                inferences = inferences[:page_size]
+                paginated_data = paginated_data[:page_size]
                 break
 
-            # if the request returned fewer inferences than asked for, we've reached the end
-            if len(resp.data.inferences) < page_size:
+            # if the request returned fewer items than asked for, we've reached the end
+            if len(getattr(resp.data, key)) < page_size:
                 break
 
             params["page"] += 1
 
-        return inferences
+        return paginated_data
 
     def test_connection(self) -> ConnectorCheckResult:
         try:
@@ -316,9 +340,9 @@ class ShieldBaseConnector(Connector, ABC):
             page += 1
         return datasets
 
-    def create_task(self, name: str) -> TaskResponse:
+    def create_task(self, name: str, is_agentic: bool = False) -> TaskResponse:
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
-            new_task_request=NewTaskRequest(name=name),
+            new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic)
         )
         return TaskResponse.model_validate_json(resp.raw_data)
 
@@ -365,6 +389,33 @@ class ShieldBaseConnector(Connector, ABC):
             rule_id=rule_id,
         )
 
+    def add_metric_to_task(
+        self, task_id: str, new_metric: NewMetricRequest
+    ) -> MetricResponse:
+        try:
+            response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
+                task_id=task_id,
+                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
+                    new_metric
+                ),
+            )
+            return MetricResponse.model_validate_json(response.raw_data)
+        except Exception as e:
+            self.logger.error(f"Failed to add metric to task {task_id}: {e}")
+            raise
+
+    def delete_task_metric(self, task_id: str, metric_id: str) -> None:
+        try:
+            self._tasks_client.archive_task_metric_api_v2_tasks_task_id_metrics_metric_id_delete(
+                task_id=task_id,
+                metric_id=metric_id,
+            )
+        except Exception as e:
+            self.logger.error(
+                f"Failed to delete metric {metric_id} from task {task_id}: {e}"
+            )
+            raise
+
     def create_task_validation_key(self, task_id: str) -> ApiKeyResponse:
         api_key_resp = self._api_keys_client.create_api_key_auth_api_keys_post(
             new_api_key_request=NewApiKeyRequest(
@@ -385,6 +436,13 @@ class ShieldBaseConnector(Connector, ABC):
         ):
             # delete is idempotent
             pass
+
+    def query_spans_with_metrics(
+        self, task_ids: list[str], start_time: datetime, end_time: datetime
+    ) -> QueryTracesWithMetricsResponse:
+        return self._spans_client.query_spans_with_metrics_v1_traces_metrics_get(
+            task_ids=task_ids, start_time=start_time, end_time=end_time
+        )
 
     @property
     @abstractmethod
