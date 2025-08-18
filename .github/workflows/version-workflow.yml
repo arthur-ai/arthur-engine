@@ -130,7 +130,7 @@ jobs:
           git add version genai-engine/version genai-engine/pyproject.toml ml-engine/pyproject.toml genai-engine/staging.openapi.json $GENAI_ENGINE_HELM_CHART_YAML_PATH $GENAI_ENGINE_HELM_VALUES_YAML_PATH $ARTHUR_ENGINE_HELM_CPU_START_SCRIPT_PATH $ARTHUR_ENGINE_HELM_GPU_START_SCRIPT_PATH $ARTHUR_ENGINE_CFT_GPU_HTML_PATH $ARTHUR_ENGINE_CFT_CPU_HTML_PATH $ARTHUR_ENGINE_CHART_YAML_PATH $ARTHUR_ENGINE_VALUES_YAML_PATH $ML_ENGINE_CHART_YAML_PATH $ML_ENGINE_VALUES_YAML_PATH
           git status
           git diff --cached
-          git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}\n\nskip-checks: true"
+          git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
 
           # Push the new branch with the commit
           git push -u origin "$BRANCH_NAME"
