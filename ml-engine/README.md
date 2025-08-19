@@ -198,3 +198,10 @@ docker build . -t ml-engine:local
 ```bash
 docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET=<value given when engine is registered> -e ARTHUR_CLIENT_ID=<value given when engine is registered> -it ml-engine:local
 ```
+
+## Common Issues
+1. The version of arthur-client used by the engion has not been updated yet with the version you need:
+
+New versions of arthur-client will be picked up by the ML engine via RenovateBot. You may be developing against a version
+of arthur-client that is newly released & hasn't been picked up yet. In that case, either look for a new RenovateBot PR,
+or look here to update `pyproject.toml` to the latest version: https://pypi.org/project/arthur-client/

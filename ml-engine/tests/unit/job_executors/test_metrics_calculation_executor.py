@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Type
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
@@ -19,23 +19,24 @@ from arthur_client.api_bindings import (
     PostJob,
     PostJobBatch,
 )
+from arthur_common.aggregations import AggregationFunction
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from dataset_loader import DatasetLoader
-from job_executors.metrics_calculation_executor import (
-    _create_alert_check_job,
-    process_agg_args,
-)
-from mock_data.connector_helpers import *
+from job_executors.metrics_calculation_executor import _create_alert_check_job
+from metric_calculators.default_metric_calculator import DefaultMetricCalculator
+from mock_data.connector_helpers import MOCK_BQ_DATASET
 from mock_data.mock_data_generator import random_model
 
 logger = logging.getLogger("job_logger")
 
 
-def _get_aggregation_schema_by_id(agg_id: str) -> AggregationSpecSchema:
+def _get_aggregation_schema_by_id(
+    agg_id: str,
+) -> tuple[AggregationSpecSchema, Type[AggregationFunction]]:
     functions = AggregationLoader.load_aggregations()
     for function in functions:
         if str(function[0].id) == agg_id:
-            return function[0]
+            return function[0], function[1]
     else:
         raise ValueError(f"Aggregation function with id {agg_id} not found for test.")
 
@@ -109,8 +110,6 @@ def test_process_agg_args(
     segmentation_col_names: Optional[list[str]],
     error_str: Optional[str],
 ) -> None:
-    # TODO: load data into duckdb - create a dataset and model
-    # then call process_agg_args with different test cases
     # configure data mocks
     first_timestamp = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
     first_timestamp_str = first_timestamp.isoformat()
@@ -174,13 +173,20 @@ def test_process_agg_args(
             ),
         ],
     )
-    agg_function_schema = _get_aggregation_schema_by_id(
+    agg_function_schema, agg_function_type = _get_aggregation_schema_by_id(
         "00000000-0000-0000-0000-00000000000a",
+    )
+
+    metrics_calculator = DefaultMetricCalculator(
+        conn,
+        logger,
+        agg_function_schema,
+        agg_function_type,
     )
 
     if error_str:
         with pytest.raises(ValueError) as exc:
-            process_agg_args(conn, agg_spec, agg_function_schema, [dataset])
+            metrics_calculator.process_agg_args(agg_spec, [dataset])
         assert error_str in str(exc.value)
     else:
-        process_agg_args(conn, agg_spec, agg_function_schema, [dataset])
+        metrics_calculator.process_agg_args(agg_spec, [dataset])
