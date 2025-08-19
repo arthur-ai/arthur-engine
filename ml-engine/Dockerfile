@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS install
+FROM python:3.13-bookworm AS install
 
 # install poetry and wget
 RUN pip install poetry==2.1.3 && \
@@ -51,7 +51,7 @@ COPY src/genai_client /genai_client
 RUN poetry run pip install /genai_client
 
 # Final Stage(s): Create genai-engine image
-FROM gcr.io/distroless/python3 AS ml-engine-distroless-base
+FROM gcr.io/distroless/python3-debian12 AS ml-engine-distroless-base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
