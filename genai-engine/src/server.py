@@ -291,6 +291,7 @@ def get_base_app(
     origins = [
         "http://localhost",
         "http://0.0.0.0:8000",
+        "http://0.0.0.0:3030",
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
