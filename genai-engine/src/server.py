@@ -291,6 +291,7 @@ def get_base_app(
     origins = [
         "http://localhost",
         "http://0.0.0.0:8000",
+        "http://0.0.0.0:3030",
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
@@ -408,7 +409,7 @@ def get_app() -> FastAPI:
 def start():
     send_telemetry_event(TelemetryEventTypes.SERVER_START_INITIATED)
     app = get_app()
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=3030)
 
 
 if __name__ == "__main__":
