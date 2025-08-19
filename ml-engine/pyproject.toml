@@ -35,6 +35,7 @@ arthur-client = "1.4.1267"
 arthur-common = "2.1.59"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.41"
+snowflake-connector-python = {extras = ["sqlalchemy"], version = "3.17.1"}
 
 
 [tool.poetry.group.dev.dependencies]
