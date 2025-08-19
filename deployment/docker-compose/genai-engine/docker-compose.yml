@@ -11,6 +11,8 @@ services:
       - /var/lib/postgresql/data
     env_file:
       - .env
+    ports:
+      - "5435:5432"
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
@@ -24,7 +26,7 @@ services:
       # Must match POSTGRES_PASSWORD in the db service
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_URL=db
-      - POSTGRES_PORT=5432
+      - POSTGRES_PORT=5435
       - POSTGRES_DB=arthur_genai_engine
       - POSTGRES_USE_SSL=false
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
