@@ -25,6 +25,7 @@ class PaginationParameters(BaseModel):
         return total_items_count // self.page_size + 1
 
 
+# TODO: Delete after migration (UP-2945).
 class KeywordsConfig(BaseModel):
     keywords: List[str] = Field(description="List of Keywords")
 
@@ -34,7 +35,7 @@ class KeywordsConfig(BaseModel):
         },
     )
 
-
+# TODO: Delete after migration (UP-2945).
 class RegexConfig(BaseModel):
     regex_patterns: List[str] = Field(
         description="List of Regex patterns to be used for validation. Be sure to encode requests in JSON and account for escape characters.",
@@ -49,7 +50,7 @@ class RegexConfig(BaseModel):
         extra="forbid",
     )
 
-
+# TODO: Delete after migration (UP-2945).
 class ToxicityConfig(BaseModel):
     threshold: float = Field(
         default=DEFAULT_TOXICITY_RULE_THRESHOLD,
@@ -70,7 +71,7 @@ class ToxicityConfig(BaseModel):
             raise ValueError(f'"threshold" must be between 0 and 1')
         return v
 
-
+# TODO: Delete after migration (UP-2945).
 class PIIConfig(BaseModel):
     disabled_pii_entities: Optional[list[str]] = Field(
         description=f"Optional. List of PII entities to disable. Valid values are: {PIIEntityTypes.to_string()}",
@@ -130,7 +131,7 @@ class PIIConfig(BaseModel):
         extra="forbid",
     )
 
-
+# TODO: Delete after migration (UP-2945).
 class ExampleConfig(BaseModel):
     example: str = Field(description="Custom example for the sensitive data")
     result: bool = Field(
@@ -144,7 +145,7 @@ class ExampleConfig(BaseModel):
         },
     )
 
-
+# TODO: Delete after migration (UP-2945).
 class ExamplesConfig(BaseModel):
     examples: List[ExampleConfig] = Field(
         description="List of all the examples for Sensitive Data Rule",

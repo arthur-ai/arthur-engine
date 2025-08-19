@@ -32,6 +32,7 @@ class PaginationSortMethod(str, Enum):
     DESCENDING = "desc"
 
 
+# TODO: Delete after migration (UP-2945).
 class RuleType(str, Enum):
     KEYWORD = "KeywordRule"
     MODEL_HALLUCINATION_V2 = "ModelHallucinationRuleV2"
@@ -44,7 +45,7 @@ class RuleType(str, Enum):
     def __str__(self):
         return self.value
 
-
+# TODO: Delete after migration (UP-2945).
 class RuleDataType(str, Enum):
     REGEX = "regex"
     KEYWORD = "keyword"
@@ -55,7 +56,7 @@ class RuleDataType(str, Enum):
     PII_DISABLED_PII = "disabled_pii_entities"
     HINT = "hint"
 
-
+# TODO: Delete after migration (UP-2945).
 class RuleScope(str, Enum):
     DEFAULT = "default"
     TASK = "task"
@@ -66,6 +67,7 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
+# TODO: Delete after migration (UP-2945).
 class MetricType(str, Enum):
     QUERY_RELEVANCE = "QueryRelevance"
     RESPONSE_RELEVANCE = "ResponseRelevance"
@@ -74,7 +76,7 @@ class MetricType(str, Enum):
     def __str__(self):
         return self.value
 
-
+# TODO: Move to common
 class ToolClassEnum(int, Enum):
     WRONG_TOOL_SELECTED = 0
     CORRECT_TOOL_SELECTED = 1
@@ -82,12 +84,6 @@ class ToolClassEnum(int, Enum):
 
     def __str__(self):
         return str(self.value)
-
-
-class MetricDataType(str, Enum):
-    QUERY_RELEVANCE = "query_relevance"
-    RESPONSE_RELEVANCE = "response_relevance"
-    TOOL_SELECTION = "tool_selection"
 
 
 class DocumentType(str, Enum):
@@ -141,6 +137,7 @@ class ToxicityViolationType(str, Enum):
         return self.value
 
 
+# TODO: Delete after migration (UP-2945).
 # Note: These string values are not arbitrary and map to Presidio entity types: https://microsoft.github.io/presidio/supported_entities/
 class PIIEntityTypes(BaseEnum, str, Enum):
     CREDIT_CARD = "CREDIT_CARD"
