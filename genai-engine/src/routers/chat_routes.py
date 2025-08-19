@@ -34,7 +34,7 @@ from schemas.request_schemas import (
     PromptValidationRequest,
     ResponseValidationRequest,
 )
-from schemas.response_schemas import (
+from arthur_common.models.response_schemas import (
     ChatDefaultTaskResponse,
     ChatDocumentContext,
     ChatResponse,

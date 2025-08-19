@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExamplesConfig,
     KeywordsConfig,
@@ -11,7 +11,7 @@ from schemas.common_schemas import (
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import (
+from arthur_common.models.enums import (
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,

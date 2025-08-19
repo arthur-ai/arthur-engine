@@ -11,8 +11,8 @@ from db_models.db_models import (
     DatabaseRule,
 )
 from pydantic import BaseModel
-from schemas.enums import TokenUsageScope
-from schemas.response_schemas import TokenUsageCount, TokenUsageResponse
+from arthur_common.models.enums import TokenUsageScope
+from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
 from sqlalchemy import func, select, union
 from sqlalchemy.orm import Session
 

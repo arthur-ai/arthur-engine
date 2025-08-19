@@ -4,8 +4,8 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from schemas.common_schemas import ExamplesConfig, PIIConfig, ToxicityConfig
-from schemas.enums import PIIEntityTypes, RuleResultEnum, RuleScope, RuleType
+from arthur_common.models.common_schemas import ExamplesConfig, PIIConfig, ToxicityConfig
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleScope, RuleType
 from tests.clients.base_test_client import (
     DEFAULT_KEYWORDS,
     DEFAULT_REGEX,

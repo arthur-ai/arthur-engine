@@ -4,7 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from schemas.enums import (
+from arthur_common.models.enums import (
     PaginationSortMethod,
     PIIEntityTypes,
     UserPermissionAction,

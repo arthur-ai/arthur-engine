@@ -9,8 +9,8 @@ from langchain_core.messages.ai import AIMessage
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
-from schemas.common_schemas import LLMTokenConsumption
-from schemas.enums import ClaimClassifierResultEnum, RuleResultEnum
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import ClaimClassifierResultEnum, RuleResultEnum
 from schemas.internal_schemas import OrderedClaim
 from schemas.scorer_schemas import (
     RuleScore,

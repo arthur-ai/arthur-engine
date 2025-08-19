@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from schemas.enums import ToolClassEnum
+from arthur_common.models.enums import ToolClassEnum
 
 
 class RelevanceMetricConfig(BaseModel):

@@ -9,8 +9,8 @@ from clients.auth.abc_keycloak_client import ABCAuthClient
 from dependencies import get_keycloak_client
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from routers.route_handler import GenaiEngineRoute
-from schemas.common_schemas import PaginationParameters, UserPermission
-from schemas.enums import (
+from arthur_common.models.common_schemas import PaginationParameters, UserPermission
+from arthur_common.models.enums import (
     PermissionLevelsEnum,
     UserPermissionAction,
     UserPermissionResource,

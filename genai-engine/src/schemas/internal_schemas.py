@@ -36,7 +36,7 @@ from db_models.db_models import (
     DatabaseToxicityScore,
     DatabaseUser,
 )
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
     ExamplesConfig,
@@ -45,7 +45,7 @@ from schemas.common_schemas import (
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import (
+from arthur_common.models.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
     InferenceFeedbackTarget,
@@ -58,9 +58,9 @@ from schemas.enums import (
     RuleType,
     ToxicityViolationType,
 )
-from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
-from schemas.response_schemas import (
+from arthur_common.models.metric_schemas import MetricScoreDetails
+from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
+from arthur_common.models.response_schemas import (
     ApiKeyResponse,
     ApplicationConfigurationResponse,
     BaseDetailsResponse,
