@@ -251,16 +251,16 @@ class SpanRepository:
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
         if start_time:
-            conditions.append(DatabaseSpan.created_at >= start_time)
+            conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:
-            conditions.append(DatabaseSpan.created_at <= end_time)
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
         # Use a subquery to get the earliest span time for each trace
         # This ensures we order traces by their start time (earliest span)
         earliest_span_subquery = (
             select(
                 DatabaseSpan.trace_id,
-                func.min(DatabaseSpan.created_at).label("earliest_time")
+                func.min(DatabaseSpan.start_time).label("earliest_time")
             )
             .where(and_(*conditions))
             .group_by(DatabaseSpan.trace_id)
@@ -557,9 +557,9 @@ class SpanRepository:
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
         if start_time:
-            conditions.append(DatabaseSpan.created_at >= start_time)
+            conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:
-            conditions.append(DatabaseSpan.created_at <= end_time)
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
         # Apply filters if any conditions exist
         if conditions:
@@ -567,9 +567,9 @@ class SpanRepository:
 
         # Apply sorting
         if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseSpan.created_at))
+            query = query.order_by(desc(DatabaseSpan.start_time))
         elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(DatabaseSpan.created_at))
+            query = query.order_by(asc(DatabaseSpan.start_time))
 
         return query
 
