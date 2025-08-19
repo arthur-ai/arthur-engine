@@ -16,7 +16,10 @@ from opentelemetry.sdk.trace import Tracer
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
-from arthur_common.models.common_schemas import LLMTokenConsumption, PaginationParameters
+from arthur_common.models.common_schemas import (
+    LLMTokenConsumption,
+    PaginationParameters,
+)
 from arthur_common.models.enums import PaginationSortMethod
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

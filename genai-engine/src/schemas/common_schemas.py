@@ -35,6 +35,7 @@ class KeywordsConfig(BaseModel):
         },
     )
 
+
 # TODO: Delete after migration (UP-2945).
 class RegexConfig(BaseModel):
     regex_patterns: List[str] = Field(
@@ -49,6 +50,7 @@ class RegexConfig(BaseModel):
         },
         extra="forbid",
     )
+
 
 # TODO: Delete after migration (UP-2945).
 class ToxicityConfig(BaseModel):
@@ -70,6 +72,7 @@ class ToxicityConfig(BaseModel):
         if (v < 0) | (v > 1):
             raise ValueError(f'"threshold" must be between 0 and 1')
         return v
+
 
 # TODO: Delete after migration (UP-2945).
 class PIIConfig(BaseModel):
@@ -131,6 +134,7 @@ class PIIConfig(BaseModel):
         extra="forbid",
     )
 
+
 # TODO: Delete after migration (UP-2945).
 class ExampleConfig(BaseModel):
     example: str = Field(description="Custom example for the sensitive data")
@@ -144,6 +148,7 @@ class ExampleConfig(BaseModel):
             "example": {"example": "John has O negative blood group", "result": True},
         },
     )
+
 
 # TODO: Delete after migration (UP-2945).
 class ExamplesConfig(BaseModel):

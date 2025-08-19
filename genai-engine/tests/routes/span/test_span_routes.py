@@ -238,7 +238,9 @@ def test_query_traces_sorting(
         assert response.traces[i].start_time >= response.traces[i + 1].start_time
 
     # Test explicit descending sorting
-    status_code, response = client.query_traces(task_ids=["task1", "task2"], sort="desc")
+    status_code, response = client.query_traces(
+        task_ids=["task1", "task2"], sort="desc"
+    )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
 
@@ -311,7 +313,9 @@ def test_query_traces_with_metrics_sorting(
     """Test trace sorting behavior with metrics endpoint."""
 
     # Test default sorting (descending)
-    status_code, response = client.query_traces_with_metrics(task_ids=["task1", "task2"])
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"]
+    )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
 
@@ -326,7 +330,9 @@ def test_query_traces_with_metrics_sorting(
         assert response.traces[i].start_time >= response.traces[i + 1].start_time
 
     # Test explicit descending sorting
-    status_code, response = client.query_traces_with_metrics(task_ids=["task1", "task2"], sort="desc")
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"], sort="desc"
+    )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
 
@@ -336,7 +342,9 @@ def test_query_traces_with_metrics_sorting(
     assert trace_ids[1] == "trace1"
 
     # Test ascending sorting
-    status_code, response = client.query_traces_with_metrics(task_ids=["task1", "task2"], sort="asc")
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"], sort="asc"
+    )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
 
@@ -525,16 +533,23 @@ def test_span_ordering_within_traces(
         # Verify root spans are sorted by start_time (ascending)
         if len(trace.root_spans) > 1:
             for i in range(len(trace.root_spans) - 1):
-                assert trace.root_spans[i].start_time <= trace.root_spans[i + 1].start_time
+                assert (
+                    trace.root_spans[i].start_time <= trace.root_spans[i + 1].start_time
+                )
 
         # Verify children within each span are sorted by start_time (ascending)
         for root_span in trace.root_spans:
             if len(root_span.children) > 1:
                 for i in range(len(root_span.children) - 1):
-                    assert root_span.children[i].start_time <= root_span.children[i + 1].start_time
+                    assert (
+                        root_span.children[i].start_time
+                        <= root_span.children[i + 1].start_time
+                    )
 
     # Test with metrics endpoint as well
-    status_code, response = client.query_traces_with_metrics(task_ids=["task1", "task2"])
+    status_code, response = client.query_traces_with_metrics(
+        task_ids=["task1", "task2"]
+    )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
 
@@ -542,10 +557,15 @@ def test_span_ordering_within_traces(
         # Verify root spans are sorted by start_time (ascending)
         if len(trace.root_spans) > 1:
             for i in range(len(trace.root_spans) - 1):
-                assert trace.root_spans[i].start_time <= trace.root_spans[i + 1].start_time
+                assert (
+                    trace.root_spans[i].start_time <= trace.root_spans[i + 1].start_time
+                )
 
         # Verify children within each span are sorted by start_time (ascending)
         for root_span in trace.root_spans:
             if len(root_span.children) > 1:
                 for i in range(len(root_span.children) - 1):
-                    assert root_span.children[i].start_time <= root_span.children[i + 1].start_time
+                    assert (
+                        root_span.children[i].start_time
+                        <= root_span.children[i + 1].start_time
+                    )

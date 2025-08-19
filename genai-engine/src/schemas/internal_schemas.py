@@ -59,7 +59,11 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from arthur_common.models.metric_schemas import MetricScoreDetails
-from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
+from arthur_common.models.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+)
 from arthur_common.models.response_schemas import (
     ApiKeyResponse,
     ApplicationConfigurationResponse,

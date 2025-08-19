@@ -20,7 +20,10 @@ from schemas.scorer_schemas import (
 )
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
-from scorer.checks.hallucination.v2_legacy_prompts import get_claim_flagging_prompt, get_flagged_claim_explanation_prompt
+from scorer.checks.hallucination.v2_legacy_prompts import (
+    get_claim_flagging_prompt,
+    get_flagged_claim_explanation_prompt,
+)
 from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
 from sentence_transformers import SentenceTransformer
 from utils import constants, utils
@@ -80,6 +83,7 @@ def get_claim_classifier(
         },
     )
 
+
 class LabelledClaim(BaseModel):
     claim: str
     hallucination: bool
@@ -104,9 +108,13 @@ class LLMClaimResult(BaseModel):
     is_hallucination: bool
     explanation: str
 
+
 class ReturnClaimFlags(BaseModel):
     results: List[LLMClaimResult]
+
+
 ########################################################
+
 
 class HallucinationClaimsV2(RuleScorer):
     def __init__(self, sentence_transformer: SentenceTransformer | None):
@@ -278,8 +286,11 @@ class HallucinationClaimsV2(RuleScorer):
         context: str,
         claim_batch: list[OrderedClaim],
     ) -> Tuple[ClaimBatchValidation, RuleResultEnum]:
-        flag_text_batch_chain = self.structured_output_prompt | self.model.with_structured_output(ReturnClaimFlags)
-        
+        flag_text_batch_chain = (
+            self.structured_output_prompt
+            | self.model.with_structured_output(ReturnClaimFlags)
+        )
+
         text_value = [claim.text for claim in claim_batch]
 
         claim_batch_str = "".join(["- " + x + "\n" for x in text_value])
@@ -315,7 +326,11 @@ class HallucinationClaimsV2(RuleScorer):
                 if llm_claim_result.is_hallucination:
                     rule_result = RuleResultEnum.FAIL
 
-                explanation = llm_claim_result.explanation if llm_claim_result.is_hallucination else "No hallucination detected!"
+                explanation = (
+                    llm_claim_result.explanation
+                    if llm_claim_result.is_hallucination
+                    else "No hallucination detected!"
+                )
 
                 labelled_claims.append(
                     LabelledClaim(
@@ -325,7 +340,7 @@ class HallucinationClaimsV2(RuleScorer):
                         order_number=claim_batch[i].index_number,
                     )
                 )
-            
+
             return (
                 ClaimBatchValidation(
                     labelled_claims=labelled_claims,
@@ -355,7 +370,7 @@ class HallucinationClaimsV2(RuleScorer):
                 ),
                 RuleResultEnum.PARTIALLY_UNAVAILABLE,
             )
-        
+
     def validate_claim_batch_legacy(
         self,
         context: str,

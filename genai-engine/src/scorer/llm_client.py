@@ -148,31 +148,42 @@ class LLMExecutor:
                     api_key=key,
                     temperature=chat_temperature,
                 )
-            
+
     def get_gpt_model_token_limit(self) -> int:
         model = self.get_gpt_model()
-        
+
         if model is None:
             return -1
-        
-        if self.azure_openai_enabled and model.deployment_name in constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS:
-            return constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.deployment_name]
-        elif self.openai_enabled and model.model_name in constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS:
+
+        if (
+            self.azure_openai_enabled
+            and model.deployment_name
+            in constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS
+        ):
+            return constants.AZURE_OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[
+                model.deployment_name
+            ]
+        elif (
+            self.openai_enabled
+            and model.model_name in constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS
+        ):
             return constants.OPENAI_MODEL_CONTEXT_WINDOW_LENGTHS[model.model_name]
-        
+
         return -1
-    
+
     def supports_structured_outputs(self) -> bool:
         model = self.get_gpt_model()
 
         if model is None:
             return False
-        
+
         if self.azure_openai_enabled:
-            return model.deployment_name in constants.AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS
+            return (
+                model.deployment_name in constants.AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS
+            )
         elif self.openai_enabled:
             return model.model_name in constants.OPENAI_STRUCTURED_OUTPUT_MODELS
-        
+
         return False
 
     def get_embeddings_model(self) -> AzureOpenAIEmbeddings | OpenAIEmbeddings | None:

@@ -67,17 +67,17 @@ def test_all_claims_valid_v2(
 ):
     """Case where all claims are valid."""
     mock_llm_chain().invoke.return_value = AIMessage("0")
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("0"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
-    
+
     for request in CLAIM_REQUESTS:
         score = scorer.score(request)
         assert score.result is RuleResultEnum.PASS
@@ -99,15 +99,15 @@ def test_claim_and_nonclaims_v2(
 ):
     """Case where all claims are valid."""
     mock_llm_chain().invoke.return_value = AIMessage("0")
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("0"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
-    
+
     request = ScoreRequest(
         rule_type=RuleType.MODEL_HALLUCINATION_V2,
         context="Some context",
@@ -146,13 +146,13 @@ def test_some_claims_invalid_v2(
 ):
     """Case where some claims are invalid."""
     mock_llm_chain().invoke.return_value = AIMessage("1")
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("1"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
@@ -175,13 +175,13 @@ def test_all_claims_invalid_v2(
 ):
     """Case where all claims are invalid."""
     mock_llm_chain().invoke.return_value = AIMessage("1")
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("1"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
@@ -197,15 +197,17 @@ def test_all_claims_invalid_v2(
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
-def test_all_dialog(mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model):
+def test_all_dialog(
+    mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model
+):
     """Case where an LLM is not making a claim because it is just giving dialog."""
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("0"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
@@ -221,15 +223,17 @@ def test_all_dialog(mock_llm_chain: MagicMock, mock_get_llm_executor, claim_clas
 @patch("langchain_core.runnables.base.RunnableSequence")
 @patch.object(AzureChatOpenAI, "__init__", lambda *args, **kwargs: None)
 @pytest.mark.unit_tests
-def test_all_nonclaims(mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model):
+def test_all_nonclaims(
+    mock_llm_chain: MagicMock, mock_get_llm_executor, claim_classifier_embedding_model
+):
     """Case where an LLM is not making a claim because it is saying it cannot answer"""
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("0"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)
@@ -252,13 +256,13 @@ def test_claim_batch_mismatch(
 ):
     """Case where the LLM response returns a number of labels different from the number of claims"""
     mock_llm_chain().invoke.return_value = AIMessage("0,0")
-    
+
     # Mock the LLM executor methods
     mock_get_llm_executor.return_value.get_gpt_model.return_value = MagicMock()
     mock_get_llm_executor.return_value.supports_structured_outputs.return_value = False
     mock_get_llm_executor.return_value.execute.return_value = (
         AIMessage("0,0"),
-        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5)
+        LLMTokenConsumption(prompt_tokens=10, completion_tokens=5),
     )
 
     scorer = HallucinationClaimsV2(claim_classifier_embedding_model)

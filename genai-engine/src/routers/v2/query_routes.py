@@ -10,7 +10,10 @@ from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PermissionLevelsEnum, RuleResultEnum, RuleType
 from schemas.internal_schemas import Inference, User
-from arthur_common.models.response_schemas import QueryInferencesResponse, ComputeMetricsResponse
+from arthur_common.models.response_schemas import (
+    QueryInferencesResponse,
+    ComputeMetricsResponse,
+)
 from sqlalchemy.orm import Session
 from utils import constants as constants
 from utils.users import permission_checker
@@ -124,4 +127,3 @@ def query_inferences(
         raise
     finally:
         db_session.close()
-

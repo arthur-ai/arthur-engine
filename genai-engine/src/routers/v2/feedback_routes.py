@@ -11,7 +11,10 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import InferenceFeedbackTarget, PermissionLevelsEnum
 from schemas.internal_schemas import InferenceFeedback, User
 from arthur_common.models.request_schemas import FeedbackRequest
-from arthur_common.models.response_schemas import InferenceFeedbackResponse, QueryFeedbackResponse
+from arthur_common.models.response_schemas import (
+    InferenceFeedbackResponse,
+    QueryFeedbackResponse,
+)
 from sqlalchemy.orm import Session
 from starlette import status
 from utils import constants

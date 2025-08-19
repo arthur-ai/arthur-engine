@@ -31,7 +31,11 @@ from arthur_common.models.request_schemas import (
     UpdateMetricRequest,
     UpdateRuleRequest,
 )
-from arthur_common.models.response_schemas import RuleResponse, SearchTasksResponse, TaskResponse
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    SearchTasksResponse,
+    TaskResponse,
+)
 from utils import constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint

@@ -45,6 +45,7 @@ class RuleType(str, Enum):
     def __str__(self):
         return self.value
 
+
 # TODO: Delete after migration (UP-2945).
 class RuleDataType(str, Enum):
     REGEX = "regex"
@@ -55,6 +56,7 @@ class RuleDataType(str, Enum):
     PII_ALLOW_LIST = "allow_list"
     PII_DISABLED_PII = "disabled_pii_entities"
     HINT = "hint"
+
 
 # TODO: Delete after migration (UP-2945).
 class RuleScope(str, Enum):
@@ -75,6 +77,7 @@ class MetricType(str, Enum):
 
     def __str__(self):
         return self.value
+
 
 # TODO: Move to common
 class ToolClassEnum(int, Enum):

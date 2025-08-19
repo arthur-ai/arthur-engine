@@ -9,7 +9,10 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from arthur_common.models.enums import PermissionLevelsEnum, RuleScope
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import PromptValidationRequest, ResponseValidationRequest
+from arthur_common.models.request_schemas import (
+    PromptValidationRequest,
+    ResponseValidationRequest,
+)
 from arthur_common.models.response_schemas import HTTPError, ValidationResult
 from scorer.score import ScorerClient
 from sqlalchemy.orm import Session
