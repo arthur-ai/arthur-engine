@@ -409,14 +409,6 @@ def test_query_traces_with_metrics_sorting(
         start_time=oldest_trace.end_time + timedelta(seconds=1),
         sort="desc",
     )
-    status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"],
-        start_time=oldest_trace.end_time,
-        sort="desc",
-    )
-    import pdb
-
-    pdb.set_trace()
     assert status_code == 200
     assert response.count == len(response.traces) == 1
     assert response.traces[0].trace_id == "trace2"
