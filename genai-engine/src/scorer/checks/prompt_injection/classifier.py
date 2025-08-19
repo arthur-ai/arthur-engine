@@ -2,7 +2,7 @@ import logging
 import threading
 
 import torch
-from schemas.enums import RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
 from transformers import TextClassificationPipeline

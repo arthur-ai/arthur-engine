@@ -13,10 +13,10 @@ from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.common_schemas import PaginationParameters
-from schemas.enums import PermissionLevelsEnum
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.response_schemas import (
+from arthur_common.models.response_schemas import (
     QueryTracesWithMetricsResponse,
     SpanWithMetricsResponse,
 )

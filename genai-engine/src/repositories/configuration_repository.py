@@ -1,7 +1,7 @@
 from db_models.db_models import DatabaseApplicationConfiguration
-from schemas.enums import ApplicationConfigurations
+from arthur_common.models.enums import ApplicationConfigurations
 from schemas.internal_schemas import ApplicationConfiguration
-from schemas.request_schemas import ApplicationConfigurationUpdateRequest
+from arthur_common.models.request_schemas import ApplicationConfigurationUpdateRequest
 from sqlalchemy.orm import Session
 
 

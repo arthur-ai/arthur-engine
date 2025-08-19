@@ -17,10 +17,10 @@ from db_models.db_models import DatabaseMetricResult, DatabaseSpan
 from dependencies import get_metrics_engine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod
 from schemas.internal_schemas import MetricResult, Span
-from schemas.metric_schemas import MetricRequest
-from schemas.response_schemas import TraceResponse
+from arthur_common.models.metric_schemas import MetricRequest
+from arthur_common.models.response_schemas import TraceResponse
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,

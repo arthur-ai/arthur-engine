@@ -1,7 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from schemas.enums import RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore
 from scorer.checks.prompt_injection.classifier import (
     BinaryPromptInjectionClassifier,

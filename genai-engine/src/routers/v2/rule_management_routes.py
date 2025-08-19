@@ -14,11 +14,11 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.common_schemas import PaginationParameters
-from schemas.enums import PermissionLevelsEnum, RuleScope, RuleType
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PermissionLevelsEnum, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, User
-from schemas.request_schemas import NewRuleRequest, SearchRulesRequest
-from schemas.response_schemas import RuleResponse, SearchRulesResponse
+from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
+from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response

@@ -14,9 +14,9 @@ from arthur_common.models.common_schemas import (
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import PIIEntityTypes, RuleScope
+from arthur_common.models.enums import PIIEntityTypes, RuleScope
 from schemas.internal_schemas import InferencePrompt, Rule, Task
-from schemas.request_schemas import NewRuleRequest, NewTaskRequest
+from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from scorer.llm_client import LLMExecutor
 from tests.clients.base_test_client import override_get_db_session
 

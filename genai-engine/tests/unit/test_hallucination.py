@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from langchain_core.messages.ai import AIMessage
 from langchain_openai import AzureChatOpenAI
-from schemas.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
-from schemas.enums import RuleResultEnum, RuleType
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.hallucination.v2 import (
     HallucinationClaimsV2,

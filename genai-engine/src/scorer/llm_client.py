@@ -14,14 +14,14 @@ from langchain_openai import (
     OpenAIEmbeddings,
 )
 from opentelemetry import trace
-from schemas.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import (
     LLMContentFilterException,
     LLMExecutionException,
     LLMMaxRequestTokensException,
     LLMTokensPerPeriodRateLimitException,
 )
-from schemas.enums import RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScorerRuleDetails
 
 logger = logging.getLogger()

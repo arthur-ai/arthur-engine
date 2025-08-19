@@ -24,9 +24,9 @@ from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from schemas.custom_exceptions import LLMContentFilterException
-from schemas.enums import PermissionLevelsEnum
+from arthur_common.models.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
-from schemas.request_schemas import (
+from arthur_common.models.request_schemas import (
     ApplicationConfigurationUpdateRequest,
     ChatDefaultTaskRequest,
     ChatRequest,

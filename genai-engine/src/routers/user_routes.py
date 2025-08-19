@@ -16,8 +16,8 @@ from arthur_common.models.enums import (
     UserPermissionResource,
 )
 from schemas.internal_schemas import User
-from schemas.request_schemas import CreateUserRequest, PasswordResetRequest
-from schemas.response_schemas import UserResponse
+from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
+from arthur_common.models.response_schemas import UserResponse
 from starlette import status
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, constants, public_endpoint

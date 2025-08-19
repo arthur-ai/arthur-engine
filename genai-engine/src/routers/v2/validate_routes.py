@@ -7,10 +7,10 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import PermissionLevelsEnum, RuleScope
+from arthur_common.models.enums import PermissionLevelsEnum, RuleScope
 from schemas.internal_schemas import User
-from schemas.request_schemas import PromptValidationRequest, ResponseValidationRequest
-from schemas.response_schemas import HTTPError, ValidationResult
+from arthur_common.models.request_schemas import PromptValidationRequest, ResponseValidationRequest
+from arthur_common.models.response_schemas import HTTPError, ValidationResult
 from scorer.score import ScorerClient
 from sqlalchemy.orm import Session
 from utils.users import permission_checker
