@@ -1,4 +1,4 @@
-FROM python:3.13-bookworm AS install
+FROM python:3.13-slim-bookworm AS install
 
 # install poetry and wget
 RUN pip install poetry==2.1.3 && \
