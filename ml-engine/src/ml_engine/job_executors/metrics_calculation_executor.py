@@ -1,16 +1,16 @@
 import logging
 from typing import Any, Set, Tuple
-from uuid import UUID
 
 import pandas as pd
 from arthur_client.api_bindings import (
+    AggregationKind,
     AggregationSpec,
     AlertCheckJobSpec,
+    CustomAggregationsV1Api,
     Dataset,
     DatasetsV1Api,
     Job,
     JobsV1Api,
-    MetricsArgSpec,
     MetricsCalculationJobSpec,
     MetricsUpload,
     MetricsUploadMetricsInner,
@@ -24,33 +24,25 @@ from arthur_client.api_bindings import (
     PostJobSpec,
     PostMetricsVersions,
 )
+from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
 from arthur_common.models.datasets import ModelProblemType
 from arthur_common.models.metrics import (
-    AggregationSpecSchema,
     DatasetReference,
     Dimension,
-    MetricsColumnSchemaUnion,
     NumericMetric,
     NumericTimeSeries,
     SketchMetric,
     SketchTimeSeries,
 )
-from arthur_common.models.schema_definitions import ScopeSchemaTag
 from arthur_common.tools.aggregation_loader import AggregationLoader
-from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
-from arthur_common.tools.functions import uuid_to_base26
-from config import Config
 from connectors.shield_connector import ShieldBaseConnector
 from dataset_loader import DatasetLoader
 from duckdb import DuckDBPyConnection
-from metric_calculator import MetricCalculator
+from metric_calculators.custom_metric_sql_calculator import CustomMetricSQLCalculator
+from metric_calculators.default_metric_calculator import DefaultMetricCalculator
+from metric_calculators.metric_calculator import MetricCalculator
 from tools.connector_constructor import ConnectorConstructor
-from tools.schema_interpreters import (
-    column_scalar_dtype_from_dataset_schema,
-    get_args_with_tag_hint,
-    get_keys_with_param_type,
-)
 from tools.validators import validate_schedule
 
 
@@ -61,6 +53,7 @@ class MetricsCalculationExecutor:
         datasets_client: DatasetsV1Api,
         metrics_client: MetricsV1Api,
         jobs_client: JobsV1Api,
+        custom_aggregations_client: CustomAggregationsV1Api,
         connector_constructor: ConnectorConstructor,
         logger: logging.Logger,
     ):
@@ -68,8 +61,16 @@ class MetricsCalculationExecutor:
         self.datasets_client = datasets_client
         self.metrics_client = metrics_client
         self.jobs_client = jobs_client
+        self.custom_aggregations_client = custom_aggregations_client
         self.connector_constructor = connector_constructor
         self.logger = logger
+        self.default_aggregations = {
+            str(agg_schema.id): (agg_func, agg_schema)
+            for agg_schema, agg_func in AggregationLoader.load_aggregations()
+        }  # map from schema ID to AggregationFunction and aggregation schema for default aggregations
+        self.logger.info(
+            f"Loaded {len(self.default_aggregations)} default aggregation functions",
+        )
 
     def execute(self, job: Job, job_spec: MetricsCalculationJobSpec) -> None:
         model = self.models_client.get_model(job_spec.scope_model_id)
@@ -88,7 +89,9 @@ class MetricsCalculationExecutor:
                 connector_id, task_ids = self._extract_connector_id_and_task_ids(ds)
                 if connector_id is not None and task_ids:
                     self._run_agentic_metric_computation(
-                        connector_id, job_spec, task_ids
+                        connector_id,
+                        job_spec,
+                        task_ids,
                     )
 
         duckdb_conn, failed_to_load_datasets = self._load_data(model, job_spec)
@@ -110,7 +113,8 @@ class MetricsCalculationExecutor:
 
     # Extract task IDs and connector ID from a single dataset
     def _extract_connector_id_and_task_ids(
-        self, dataset: Dataset
+        self,
+        dataset: Dataset,
     ) -> Tuple[str | None, list[str]]:
         if not dataset.connector:
             return None, []
@@ -138,7 +142,7 @@ class MetricsCalculationExecutor:
             raise ValueError(f"Expected ShieldBaseConnector, got {type(connector)}")
 
         self.logger.info(
-            f"Triggered metric computation for connector {connector_id} and agentic task: {task_ids}"
+            f"Triggered metric computation for connector {connector_id} and agentic task: {task_ids}",
         )
         # Call the metrics endpoint to trigger computation. Ignore the response.
         connector.query_spans_with_metrics(
@@ -147,7 +151,7 @@ class MetricsCalculationExecutor:
             end_time=job_spec.end_timestamp,
         )
         self.logger.info(
-            f"Finished metric computation for connector {connector_id} and agentic tasks: {task_ids}"
+            f"Finished metric computation for connector {connector_id} and agentic tasks: {task_ids}",
         )
 
     def _submit_alert_check_job(
@@ -177,6 +181,66 @@ class MetricsCalculationExecutor:
             job_spec.end_timestamp,
         )
 
+    def _pick_metric_calculator(
+        self,
+        agg_spec: AggregationSpec,
+        duckdb_conn: DuckDBPyConnection,
+    ) -> MetricCalculator:
+        """Returns the MetricCalculator needed to calculate the aggregation represented by agg_spec.
+        :param: agg_spec: AggregationSpec of the aggregation to calculate.
+        :param duckdb_conn: DuckDBConnection with loaded dataset.
+        """
+        # see if agg spec corresponds to a default aggregation function
+        match agg_spec.aggregation_kind:
+            case AggregationKind.DEFAULT:
+                _agg_function_type, agg_function_schema = self.default_aggregations.get(
+                    agg_spec.aggregation_id,
+                    (None, None),
+                )
+                if _agg_function_type is None or agg_function_schema is None:
+                    raise ValueError(
+                        f"No aggregation with id {agg_spec.aggregation_id} could be fetched for execution "
+                        f"from the set of default metrics.",
+                    )
+                return DefaultMetricCalculator(
+                    duckdb_conn,
+                    self.logger,
+                    agg_function_schema,
+                    _agg_function_type,
+                )
+            case AggregationKind.CUSTOM:
+                try:
+                    custom_aggs = (
+                        self.custom_aggregations_client.get_custom_aggregation(
+                            custom_aggregation_id=agg_spec.aggregation_id,
+                            version=agg_spec.aggregation_version,
+                            page=1,
+                            page_size=1,
+                        )
+                    )
+                except NotFoundException:
+                    raise ValueError(
+                        f"No aggregation with id {agg_spec.aggregation_id} could be fetched for execution "
+                        f"from the set of custom aggregations.",
+                    )
+
+                # expect exactly one custom aggregation with the specified ID and version. an error here means there's
+                # a control plane-side bug.
+                if len(custom_aggs.records) != 1:
+                    raise ValueError(
+                        f"A single custom aggregation with id {agg_spec.aggregation_id} and version {agg_spec.aggregation_version} could not be fetched for execution. Found {len(custom_aggs.records)} aggregations.",
+                    )
+
+                return CustomMetricSQLCalculator(
+                    duckdb_conn,
+                    self.logger,
+                    custom_aggs.records[0],
+                )
+            case _:
+                raise ValueError(
+                    f"Aggregation type {agg_spec.aggregation_kind} not supported for execution.",
+                )
+
     def _calculate_metrics(
         self,
         model: Model,
@@ -184,46 +248,39 @@ class MetricsCalculationExecutor:
         duckdb_conn: DuckDBPyConnection,
     ) -> list[NumericMetric | SketchMetric]:
         metrics: list[NumericMetric | SketchMetric] = []
-        calculator = MetricCalculator(duckdb_conn)
-        agg_functions = {
-            str(agg_schema.id): (agg_func, agg_schema)
-            for agg_schema, agg_func in AggregationLoader.load_aggregations()
-        }
-
-        self.logger.info(f"Loaded {len(agg_functions)} aggregation functions")
-
+        calculator = None
         for agg_spec in model.metric_config.aggregation_specs:
             try:
-                _agg_function_type, agg_function_schema = agg_functions[
-                    agg_spec.aggregation_id
-                ]
-            except KeyError:
-                self.logger.error(f"Unknown aggregation ID: {agg_spec.aggregation_id}")
-                continue
-
-            try:
-                init_args, aggregate_args = process_agg_args(
-                    duckdb_conn,
+                calculator = self._pick_metric_calculator(agg_spec, duckdb_conn)
+                self.logger.info(
+                    f"Calculating aggregation with name {calculator.agg_schema.name}",
+                )
+                init_args, aggregate_args = calculator.process_agg_args(
                     agg_spec,
-                    agg_function_schema,
                     datasets,
                 )
-                agg_function = _agg_function_type(**init_args)
-
-                self.logger.info(f"Calculating function {agg_function.display_name()}")
-                metrics_to_add = calculator.aggregate(agg_function, aggregate_args)
+                metrics_to_add = calculator.aggregate(
+                    agg_spec,
+                    datasets,
+                    init_args,
+                    aggregate_args,
+                )
                 self._add_dataset_dimensions_to_metrics(metrics_to_add, aggregate_args)
                 metrics.extend(metrics_to_add)
-            except Exception as e:
+            except Exception as exc:
+                # continue with future metrics calculations in case they're successful and log an error
+                error_msg = f"Failed to process aggregation {agg_spec.aggregation_id}"
+                if calculator:
+                    error_msg += f" - {calculator.agg_schema.name}"
                 self.logger.error(
-                    f"Failed to process aggregation {agg_spec.aggregation_id} - {agg_function_schema.name}",
-                    exc_info=e,
+                    error_msg,
+                    exc_info=exc,
                 )
         return metrics
 
     def _add_dataset_dimensions_to_metrics(
         self,
-        metrics_to_add: list[NumericMetric] | list[SketchMetric],
+        metrics_to_add: list[NumericMetric | SketchMetric],
         aggregate_args: dict[str, Any],
     ) -> None:
         """
@@ -308,196 +365,6 @@ def _create_alert_check_job(
             ),
         ],
     )
-
-
-def _validate_col_exists(
-    col_id: Any,
-    all_dataset_columns: dict[str, Any],
-    agg_spec: AggregationSpec,
-) -> None:
-    """raises an error if column does not exist in the dataset"""
-    if str(col_id) not in all_dataset_columns:
-        raise ValueError(
-            f"Could not calculate aggregation with id {agg_spec.aggregation_id}. "
-            f"At least one parameter ({col_id}) refers to a column in a dataset that could not be loaded."
-            f"{all_dataset_columns}",
-        )
-
-
-def _get_col_list_arg_values(
-    arg: MetricsArgSpec,
-    all_dataset_columns: dict[str, Any],
-    agg_spec: AggregationSpec,
-) -> list[Any]:
-    """Validates the argument value of a column list parameter and returns the corresponding list of column names"""
-    if not isinstance(arg.arg_value, list):
-        raise ValueError(
-            f"Column list parameter should be list type, got {type(arg.arg_value)}",
-        )
-    else:
-        # list of column names—validate each column name exists
-        for val in arg.arg_value:
-            _validate_col_exists(val, all_dataset_columns, agg_spec)
-        return [all_dataset_columns[str(value)] for value in arg.arg_value]
-
-
-def _validate_segmentation_single_column(
-    col_name: str,
-    arg_key: Any,
-    arg_schema: MetricsColumnSchemaUnion,
-    aggregate_args: dict[str, Any],
-    ds_map: dict[str, Dataset],
-    duckdb_conn: DuckDBPyConnection,
-) -> None:
-    """Validates a single column passes segmentation requirements.
-
-    col_name: name of column to validate
-    arg_key: Name of the aggregation argument
-    arg_schema: Schema of aggregation argument that includes a segmentation tag hint.
-    aggregate_args: dict from argument key to argument value
-    ds_map: Dict from dataset ID to dataset object
-    duckdb_conn: Connection to DuckDB containing the relevant data loaded in memory
-    """
-    dataset_key = arg_schema.source_dataset_parameter_key
-    dataset_ref = aggregate_args[dataset_key]
-    column_dtype = column_scalar_dtype_from_dataset_schema(
-        col_name,
-        ds_map[str(dataset_ref.dataset_id)],
-    )
-    if not column_dtype:
-        raise ValueError(
-            "Could not fetch scalar column data type for evaluation of segmentation column "
-            "requirements. Either the column does not exist or it is an object or list type "
-            "or a nested column, which are not supported for segmentation columns.",
-        )
-    column_can_be_segmented = is_column_possible_segmentation(
-        duckdb_conn,
-        dataset_ref.dataset_table_name,
-        col_name,
-        column_dtype,
-    )
-    if not column_can_be_segmented:
-        raise ValueError(
-            f"The column {col_name} cannot be applied to the aggregation argument {arg_key} that has "
-            f"a {ScopeSchemaTag.POSSIBLE_SEGMENTATION.value} tag hint configured. There is either a "
-            f"data type mismatch or the column exceeds the limit of allowed unique values.",
-        )
-
-
-def _validate_segmentation_args(
-    duckdb_conn: DuckDBPyConnection,
-    agg_function_schema: AggregationSpecSchema,
-    aggregate_args: dict[str, Any],
-    ds_map: dict[str, Dataset],
-) -> None:
-    """If argument requires possible_segmentation tag hints, validates whether the segmentation requirements are met:
-    1. If argument is a column list, no more than 3 segmentation columns are configured.
-    2. Requirements for data types and limit on unique values are met for the column.
-
-    duckdb_conn: Connection to DuckDB containing the relevant data loaded in memory
-    agg_function_schema: Schema of the aggregate function
-    aggregate_args: dict mapping argument keys to argument values
-    ds_map: Dict from dataset ID to dataset object
-    """
-    segmentation_required_arg_schemas = get_args_with_tag_hint(
-        agg_function_schema.aggregate_args,
-        ScopeSchemaTag.POSSIBLE_SEGMENTATION,
-    )
-
-    for arg_key in aggregate_args:
-        arg_schema = segmentation_required_arg_schemas.get(arg_key)
-        if not arg_schema:
-            # arg does not have possible_segmentation tag hint
-            continue
-
-        # validate segmentation requirements for multiple column list parameters or single column parameters
-        arg_val = aggregate_args[arg_key]
-        if isinstance(arg_val, list):
-            col_max_count = Config.segmentation_col_count_limit()
-            if len(arg_val) > col_max_count:
-                raise ValueError(
-                    f"Max {col_max_count} columns can be applied to the aggregation argument {arg_key} that has a "
-                    f"{ScopeSchemaTag.POSSIBLE_SEGMENTATION.value} tag hint. Found {len(arg_val)} columns.",
-                )
-            for column_name in arg_val:
-                _validate_segmentation_single_column(
-                    column_name,
-                    arg_key,
-                    arg_schema,
-                    aggregate_args,
-                    ds_map,
-                    duckdb_conn,
-                )
-        else:
-            _validate_segmentation_single_column(
-                arg_val,
-                arg_key,
-                arg_schema,
-                aggregate_args,
-                ds_map,
-                duckdb_conn,
-            )
-
-
-def process_agg_args(
-    duckdb_conn: DuckDBPyConnection,
-    agg_spec: AggregationSpec,
-    agg_function_schema: AggregationSpecSchema,
-    datasets: list[Dataset],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    init_args = {arg.arg_key: arg.arg_value for arg in agg_spec.aggregation_init_args}
-
-    column_parameter_keys = get_keys_with_param_type(
-        agg_function_schema.aggregate_args,
-        "column",
-    )
-    column_list_parameter_keys = get_keys_with_param_type(
-        agg_function_schema.aggregate_args,
-        "column_list",
-    )
-    dataset_parameter_keys = get_keys_with_param_type(
-        agg_function_schema.aggregate_args,
-        "dataset",
-    )
-
-    ds_map = {ds.id: ds for ds in datasets}
-    all_dataset_columns = {}  # column id: column name
-    for ds in datasets:
-        all_dataset_columns.update(ds.dataset_schema.column_names)
-
-    aggregate_args: dict[str, Any] = {}
-    for arg in agg_spec.aggregation_args:
-        if arg.arg_key in column_parameter_keys:
-            _validate_col_exists(arg.arg_value, all_dataset_columns, agg_spec)
-            aggregate_args[arg.arg_key] = all_dataset_columns[str(arg.arg_value)]
-        elif arg.arg_key in column_list_parameter_keys:
-            aggregate_args[arg.arg_key] = _get_col_list_arg_values(
-                arg,
-                all_dataset_columns,
-                agg_spec,
-            )
-        elif arg.arg_key in dataset_parameter_keys:
-            if arg.arg_value not in ds_map:
-                raise ValueError(
-                    f"Could not calculate aggregation with id {agg_spec.aggregation_id}. "
-                    f"At least one parameter refers to a dataset that could not be loaded.",
-                )
-            dataset = ds_map[arg.arg_value]
-            aggregate_args[arg.arg_key] = DatasetReference(
-                dataset_name=dataset.name if dataset.name else "",
-                dataset_table_name=uuid_to_base26(dataset.id),
-                dataset_id=UUID(dataset.id),
-            )
-        else:
-            aggregate_args[arg.arg_key] = arg.arg_value
-
-    _validate_segmentation_args(
-        duckdb_conn,
-        agg_function_schema,
-        aggregate_args,
-        ds_map,
-    )
-    return init_args, aggregate_args
 
 
 def _filter_numeric_series(numeric_series: NumericTimeSeries) -> NumericTimeSeries:

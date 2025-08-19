@@ -11,6 +11,7 @@ from arthur_client.api_bindings import (
     ConnectorCheckJobSpec,
     ConnectorsV1Api,
     CreateModelLinkTaskJobSpec,
+    CustomAggregationsV1Api,
     DataRetrievalV1Api,
     DatasetsV1Api,
     JobKind,
@@ -105,6 +106,7 @@ class JobExecutor:
         self.jobs_client = JobsV1Api(client)
         self.models_client = ModelsV1Api(client)
         self.connectors_client = ConnectorsV1Api(client)
+        self.custom_aggregations_client = CustomAggregationsV1Api(client)
         self.metrics_client = MetricsV1Api(client)
         self.datasets_client = DatasetsV1Api(client)
         self.tasks_client = TasksV1Api(client)
@@ -148,6 +150,7 @@ class JobExecutor:
                             self.datasets_client,
                             self.metrics_client,
                             self.jobs_client,
+                            self.custom_aggregations_client,
                             self.connector_constructor,
                             self.logger,
                         ).execute(job, job.job_spec.actual_instance)
