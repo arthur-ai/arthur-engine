@@ -206,8 +206,8 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             },
             "arthur_span_version": "arthur_span_v1",
         },
-        created_at=base_time - timedelta(days=2),
-        updated_at=base_time - timedelta(days=2),
+        created_at=base_time - timedelta(days=2) + timedelta(seconds=1),
+        updated_at=base_time - timedelta(days=2) + timedelta(seconds=1),
     )
     spans.append(span1)
 
@@ -258,8 +258,8 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             },
             "arthur_span_version": "arthur_span_v1",
         },
-        created_at=base_time,
-        updated_at=base_time,
+        created_at=base_time + timedelta(seconds=1),
+        updated_at=base_time + timedelta(seconds=1),
     )
     spans.append(span3)
 

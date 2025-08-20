@@ -104,7 +104,7 @@ Maks sure the Poetry install is complete and you have a running Postgres instanc
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=changeme_pg_password
 export POSTGRES_URL=localhost
-export POSTGRES_PORT=5432
+export POSTGRES_PORT=5435
 export POSTGRES_DB=arthur_genai_engine
 export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
@@ -146,14 +146,14 @@ poetry run alembic upgrade head
                 "POSTGRES_USER": "postgres",
                 "POSTGRES_PASSWORD": "changeme_pg_password",
                 "POSTGRES_URL": "localhost",
-                "POSTGRES_PORT": "5432",
+                "POSTGRES_PORT": "5435",
                 "POSTGRES_DB": "arthur_genai_engine",
                 "POSTGRES_USE_SSL": "false",
                 "GENAI_ENGINE_ENABLE_PERSISTENCE": "enabled",
 
                 "GENAI_ENGINE_ENVIRONMENT":"local",
                 "GENAI_ENGINE_ADMIN_KEY": "changeme123",
-                "GENAI_ENGINE_INGRESS_URI": "http://localhost:8000",
+                "GENAI_ENGINE_INGRESS_URI": "http://localhost:3030",
 
                 "GENAI_ENGINE_OPENAI_PROVIDER": "Azure",
                 "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key"
@@ -161,7 +161,7 @@ poetry run alembic upgrade head
         }
     ```
 7. `Run` -> `Run Without Debugging` / `Start Debugging`
-8. Open `http://localhost:8000/docs` in your web browser and start building!
+8. Open `http://localhost:3030/docs` in your web browser and start building!
 
 ### Run the app via the terminal
 
@@ -172,14 +172,14 @@ poetry run alembic upgrade head
     export POSTGRES_USER=postgres
     export POSTGRES_PASSWORD=changeme_pg_password
     export POSTGRES_URL=localhost
-    export POSTGRES_PORT=5432
+    export POSTGRES_PORT=5435
     export POSTGRES_DB=arthur_genai_engine
     export POSTGRES_USE_SSL=false
     export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
 
     export GENAI_ENGINE_ENVIRONMENT=local
     export GENAI_ENGINE_ADMIN_KEY=changeme123
-    export GENAI_ENGINE_INGRESS_URI=http://localhost:8000
+    export GENAI_ENGINE_INGRESS_URI=http://localhost:3030
 
     export GENAI_ENGINE_OPENAI_PROVIDER=Azure
     export OPENAI_API_VERSION=2023-07-01-preview
@@ -237,7 +237,7 @@ poetry run pytest -m "unit_tests" --cov=src --cov-fail-under=79
 1. Make sure you have a running instance of genai-engine on your local machine
 2. Set the below envars
     ```bash
-    export REMOTE_TEST_URL=http://localhost:8000
+    export REMOTE_TEST_URL=http://localhost:3030
     export REMOTE_TEST_KEY=changeme123
     ```
 3. Run the below shell script from the `genai-engine` directory

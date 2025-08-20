@@ -255,13 +255,11 @@ jobs:
         run: |
           cd ml-engine
           docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
-          echo "Pushing paused temporarily..."
-          exit 0
           docker push arthurplatform/ml-engine:${{ env.VERSION }}
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
-            docker push arthurplatform/ml-engine:latest
-          fi
+          # if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          #   docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
+          #   docker push arthurplatform/ml-engine:latest
+          # fi
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev

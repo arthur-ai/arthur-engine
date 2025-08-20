@@ -4,41 +4,34 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from arthur_client.api_bindings import (  # AlertRuleInterval,; IntervalUnit,
+from arthur_client.api_bindings import (
     Alert,
     AlertBound,
     AlertCheckJobSpec,
     AlertRule,
+    AlertRuleInterval,
     CreatedAlerts,
+    IntervalUnit,
     Job,
     JobKind,
     JobPriority,
     JobSpec,
     JobState,
     JobTrigger,
-    MetricsCalculationJobSpec,
     MetricsQueryResult,
-    MetricsVersion,
-    Model,
-    PostAlert,
-    PostAlerts,
-    PostJob,
-    PostJobBatch,
 )
 from job_executors.alert_check_executor import AlertCheckExecutor
 
 
-@pytest.mark.skip(reason="Skipping alert check executor test")
 def test_alert_check_executor_fault_tolerance():
     # the goal of this test is to make sure that when the alert check job fails for one alert rule, any other
     # alert rules on the model are still processed
 
     # Setup test data
-    # interval = AlertRuleInterval(
-    #     unit=IntervalUnit.MINUTES,
-    #     count=1,
-    # )
-    interval = None
+    interval = AlertRuleInterval(
+        unit=IntervalUnit.MINUTES,
+        count=1,
+    )
     model_id = str(uuid4())
     now = datetime.now(timezone.utc)
     alert_rule1 = AlertRule(

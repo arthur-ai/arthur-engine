@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Union
 from uuid import UUID
 
@@ -7,8 +7,10 @@ from arthur_client.api_bindings import (
     AlertBound,
     AlertCheckJobSpec,
     AlertRule,
+    AlertRuleInterval,
     AlertRulesV1Api,
     AlertsV1Api,
+    Job,
     JobsV1Api,
     MetricsQueryResult,
     MetricsResultFilterOp,
@@ -17,6 +19,8 @@ from arthur_client.api_bindings import (
     PostAlerts,
     PostMetricsQuery,
     PostMetricsQueryResultFilter,
+    PostMetricsQueryResultFilterAndGroup,
+    PostMetricsQueryResultFilterAndGroupAndInner,
     PostMetricsQueryTimeRange,
     ResultFilter,
 )
@@ -51,13 +55,13 @@ class AlertCheckExecutor:
         self.metrics_client = metrics_client
         self.logger = logger
 
-    def execute(self, job_spec: AlertCheckJobSpec) -> None:
+    def execute(self, job: Job, job_spec: AlertCheckJobSpec) -> None:
         alert_rules = self._get_all_alert_rules(job_spec.scope_model_id)
         self.logger.info(f"Checking {len(alert_rules)} alert rules")
         processing_exc = None
         for alert_rule in alert_rules:
             try:
-                self._process_alert_rule(alert_rule, job_spec)
+                self._process_alert_rule(alert_rule, job, job_spec)
             except Exception as e:
                 self.logger.error(
                     f"Error creating alerts and processing alert rule {alert_rule.id}",
@@ -88,6 +92,7 @@ class AlertCheckExecutor:
     def _process_alert_rule(
         self,
         alert_rule: AlertRule,
+        job: Job,
         job_spec: AlertCheckJobSpec,
     ) -> None:
         self.logger.info(f"Checking alert rule {alert_rule.id}")
@@ -108,7 +113,7 @@ class AlertCheckExecutor:
                 f"Query for alert rule {alert_rule.id} returned more than {ALERT_RULES_QUERY_LIMIT} results.",
             )
 
-        alerts = self._create_alerts(alert_rule, job_spec, query_response.results)
+        alerts = self._create_alerts(alert_rule, job.id, query_response.results)
 
         if not alerts:
             self.logger.info("No alerts found! Exiting.")
@@ -121,24 +126,63 @@ class AlertCheckExecutor:
         job_spec: AlertCheckJobSpec,
         alert_rule: AlertRule,
     ) -> MetricsQueryResult:
+
+        # in order to prevent alerting on partial alert buckets, this function
+        # queries the time range (start_time - interval, end_time)
+        # see more info here:
+        # https://gitlab.com/ArthurAI/arthur-scope/blob/f03cc26e11ea74f019be5b94a04f280b03d027ff/documentation/technical-documentation/implementations/Alert-Rule-Implementation.md#L291-291
+
+        td = self._alert_interval_to_timedelta(alert_rule.interval)
+        adjusted_start_time = job_spec.check_range_start_timestamp - td
+
+        # similarly, to prevent alerting on partial alert buckets,
+        # this function post-filters the results to be in the range
+        # (start_time - interval, end_time - interval) so only the
+        # buckets that had the entire interval in the query are reported.
+        # This needs to be a post-filter so that all the data for the interval is
+        # included in the original time_bucket aggregation, then we filter
+        # on the post-aggregated results
+        adjusted_end_time = job_spec.check_range_end_timestamp - td
+
         return self.metrics_client.post_model_metrics_query(
             model_id=job_spec.scope_model_id,
             post_metrics_query=PostMetricsQuery(
                 query=alert_rule.query,
                 time_range=PostMetricsQueryTimeRange(
-                    start=job_spec.check_range_start_timestamp,
+                    start=adjusted_start_time,
                     end=job_spec.check_range_end_timestamp,
                 ),
+                interval=alert_rule.interval,
                 limit=ALERT_RULES_QUERY_LIMIT + 1,
                 result_filter=ResultFilter(
-                    PostMetricsQueryResultFilter(
-                        column=METRIC_VALUE_COLUMN_NAME,
-                        op=(
-                            MetricsResultFilterOp.GREATER_THAN
-                            if alert_rule.bound == AlertBound.UPPER_BOUND
-                            else MetricsResultFilterOp.LESS_THAN
-                        ),
-                        value=alert_rule.threshold,
+                    PostMetricsQueryResultFilterAndGroup(
+                        var_and=[
+                            PostMetricsQueryResultFilterAndGroupAndInner(
+                                PostMetricsQueryResultFilter(
+                                    column=METRIC_VALUE_COLUMN_NAME,
+                                    op=(
+                                        MetricsResultFilterOp.GREATER_THAN
+                                        if alert_rule.bound == AlertBound.UPPER_BOUND
+                                        else MetricsResultFilterOp.LESS_THAN
+                                    ),
+                                    value=alert_rule.threshold,
+                                ),
+                            ),
+                            PostMetricsQueryResultFilterAndGroupAndInner(
+                                PostMetricsQueryResultFilter(
+                                    column=METRIC_TIMESTAMP_COLUMN_NAME,
+                                    op=MetricsResultFilterOp.GREATER_THAN_OR_EQUAL,
+                                    value=adjusted_start_time,
+                                ),
+                            ),
+                            PostMetricsQueryResultFilterAndGroupAndInner(
+                                PostMetricsQueryResultFilter(
+                                    column=METRIC_TIMESTAMP_COLUMN_NAME,
+                                    op=MetricsResultFilterOp.LESS_THAN_OR_EQUAL,
+                                    value=adjusted_end_time,
+                                ),
+                            ),
+                        ],
                     ),
                 ),
             ),
@@ -147,14 +191,14 @@ class AlertCheckExecutor:
     def _create_alerts(
         self,
         alert_rule: AlertRule,
-        job_spec: AlertCheckJobSpec,
+        job_id: str,
         results: List[Dict[str, Any]],
     ) -> List[PostAlert]:
         alerts: List[PostAlert] = []
         for record in results[:ALERT_RULES_QUERY_LIMIT]:
             self.logger.info(f"Checking alert rule {alert_rule.id} for record {record}")
             try:
-                alert = self._create_api_alert(alert_rule, job_spec, record)
+                alert = self._create_api_alert(alert_rule, job_id, record)
                 alerts.append(alert)
             except Exception as e:
                 self.logger.error(
@@ -166,7 +210,7 @@ class AlertCheckExecutor:
     def _create_api_alert(
         self,
         alert_rule: AlertRule,
-        job_spec: AlertCheckJobSpec,
+        job_id: str,
         record: Dict[str, Any],
     ) -> PostAlert:
         metrics_value = record[METRIC_VALUE_COLUMN_NAME]
@@ -180,9 +224,11 @@ class AlertCheckExecutor:
             description=alert_description,
             threshold=alert_rule.threshold,
             bound=alert_rule.bound,
+            interval=alert_rule.interval,
             timestamp=record[METRIC_TIMESTAMP_COLUMN_NAME],
             value=metrics_value,
             dimensions=alert_dimensions,
+            job_id=job_id,
         )
 
     def _create_alert_dimensions(self, record: Dict[str, Any]) -> Dict[str, str]:
@@ -251,3 +297,8 @@ class AlertCheckExecutor:
                     f"Webhook {webhook_called.webhook_name} ({webhook_called.webhook_id}) "
                     f"called with result {webhook_called.webhook_result}",
                 )
+
+    @staticmethod
+    def _alert_interval_to_timedelta(interval: AlertRuleInterval) -> timedelta:
+        kwargs = {interval.unit: interval.count}
+        return timedelta(**kwargs)

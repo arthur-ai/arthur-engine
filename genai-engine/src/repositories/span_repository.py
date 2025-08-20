@@ -10,7 +10,7 @@ from opentelemetry import trace
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import and_, asc, desc, insert, select
+from sqlalchemy import and_, asc, desc, func, insert, select
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseMetricResult, DatabaseSpan
@@ -89,11 +89,17 @@ class SpanRepository:
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
 
-        # Handle task ID to trace ID resolution
-        trace_ids = self._resolve_trace_ids_for_task_ids(task_ids, trace_ids)
+        # Get paginated trace IDs directly from database with proper ordering
+        trace_ids = self._get_paginated_trace_ids_for_task_ids(
+            task_ids=task_ids,
+            trace_ids=trace_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
 
-        # Apply trace-level pagination
-        trace_ids = self._apply_trace_level_pagination(trace_ids, page, page_size)
         if not trace_ids:
             return []
 
@@ -191,35 +197,85 @@ class SpanRepository:
     # Private Helper Methods - Query Logic
     # ============================================================================
 
-    def _resolve_trace_ids_for_task_ids(
+    def _get_paginated_trace_ids_for_task_ids(
         self,
-        task_ids: Optional[list[str]],
-        trace_ids: Optional[list[str]],
+        task_ids: list[str],
+        trace_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        page: int = 0,
+        page_size: int = DEFAULT_PAGE_SIZE,
     ) -> Optional[list[str]]:
-        """Resolve trace IDs for given task IDs and intersect with provided trace IDs."""
+        """Get paginated trace IDs for given task IDs with proper ordering and filtering."""
         if not task_ids:
             return trace_ids
 
-        associated_trace_ids = self._get_trace_ids_for_task_ids(task_ids)
-        if trace_ids:
-            return list(set(trace_ids) & set(associated_trace_ids))
-        return associated_trace_ids
+        # Build query to get trace IDs with proper ordering
+        query = self._build_trace_ids_query(
+            task_ids=task_ids,
+            trace_ids=trace_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+        )
 
-    def _apply_trace_level_pagination(
+        # Apply pagination
+        offset = page * page_size
+        query = query.offset(offset).limit(page_size)
+
+        # Execute query
+        results = self.db_session.execute(query).scalars().all()
+        trace_ids_result = list(results)
+
+        logger.debug(
+            f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
+            f"(page={page}, page_size={page_size}, sort={sort})"
+        )
+
+        return trace_ids_result if trace_ids_result else None
+
+    def _build_trace_ids_query(
         self,
-        trace_ids: Optional[list[str]],
-        page: int,
-        page_size: int,
-    ) -> Optional[list[str]]:
-        """Apply pagination to trace IDs."""
-        if not trace_ids or page_size is None:
-            return trace_ids
+        task_ids: list[str],
+        trace_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+    ) -> select:
+        """Build a query for trace IDs with the given filters and ordering."""
+        # Build conditions for the query
+        conditions = [DatabaseSpan.task_id.in_(task_ids)]
 
-        start_idx = page * page_size
-        end_idx = start_idx + page_size
-        paginated_trace_ids = trace_ids[start_idx:end_idx]
+        if trace_ids:
+            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if start_time:
+            conditions.append(DatabaseSpan.start_time >= start_time)
+        if end_time:
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
-        return paginated_trace_ids if paginated_trace_ids else None
+        # Use a subquery to get the earliest span time for each trace
+        # This ensures we order traces by their start time (earliest span)
+        earliest_span_subquery = (
+            select(
+                DatabaseSpan.trace_id,
+                func.min(DatabaseSpan.start_time).label("earliest_time"),
+            )
+            .where(and_(*conditions))
+            .group_by(DatabaseSpan.trace_id)
+            .subquery()
+        )
+
+        # Main query to get trace IDs ordered by the earliest span time
+        query = select(earliest_span_subquery.c.trace_id)
+
+        # Apply sorting based on the earliest span time within each trace
+        if sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(earliest_span_subquery.c.earliest_time))
+        elif sort == PaginationSortMethod.ASCENDING:
+            query = query.order_by(asc(earliest_span_subquery.c.earliest_time))
+
+        return query
 
     def _query_spans_from_db(
         self,
@@ -262,23 +318,8 @@ class SpanRepository:
             raise ValueError(f"Span {span_id} has no task_id")
 
     # ============================================================================
-    # Private Helper Methods - Task ID Resolution
+    # Private Helper Methods - Metrics Computation
     # ============================================================================
-
-    def _get_trace_ids_for_task_ids(self, task_ids: list[str]) -> list[str]:
-        """Get all trace IDs associated with the given task IDs."""
-        if not task_ids:
-            return []
-
-        trace_ids_query = (
-            self.db_session.query(DatabaseSpan.trace_id)
-            .filter(DatabaseSpan.task_id.in_(task_ids))
-            .distinct()
-        )
-
-        trace_ids = [row[0] for row in trace_ids_query.all()]
-        logger.debug(f"Found {len(trace_ids)} trace IDs for task IDs: {task_ids}")
-        return trace_ids
 
     # ============================================================================
     # Private Helper Methods - Metrics Computation
@@ -515,9 +556,9 @@ class SpanRepository:
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
         if start_time:
-            conditions.append(DatabaseSpan.created_at >= start_time)
+            conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:
-            conditions.append(DatabaseSpan.created_at <= end_time)
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
         # Apply filters if any conditions exist
         if conditions:
@@ -525,9 +566,9 @@ class SpanRepository:
 
         # Apply sorting
         if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseSpan.created_at))
+            query = query.order_by(desc(DatabaseSpan.start_time))
         elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(DatabaseSpan.created_at))
+            query = query.order_by(asc(DatabaseSpan.start_time))
 
         return query
 

@@ -197,7 +197,7 @@ class JobExecutor:
                             self.jobs_client,
                             self.metrics_client,
                             self.logger,
-                        ).execute(job.job_spec.actual_instance)
+                        ).execute(job, job.job_spec.actual_instance)
                     case JobKind.SCHEDULE_JOBS:
                         if not isinstance(
                             job.job_spec.actual_instance,
