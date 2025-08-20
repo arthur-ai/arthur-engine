@@ -230,7 +230,7 @@ class SpanRepository:
 
         logger.debug(
             f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
-            f"(page={page}, page_size={page_size}, sort={sort})"
+            f"(page={page}, page_size={page_size}, sort={sort})",
         )
 
         return trace_ids_result if trace_ids_result else None
@@ -605,8 +605,28 @@ class SpanRepository:
             resource_task_id = self._extract_task_id_from_resource_attributes(
                 resource_span,
             )
-            if resource_task_id:
-                logger.debug(f"Found resource task ID: {resource_task_id}")
+
+            # Validate task ID at resource level - reject entire resource if invalid
+            if not self._is_valid_task_id(resource_task_id):
+                # Count all spans in this resource as rejected
+                resource_span_count = sum(
+                    len(scope_span.get("spans", []))
+                    for scope_span in resource_span.get("scopeSpans", [])
+                )
+                total_spans += resource_span_count
+                rejected_spans += resource_span_count
+                rejected_reasons.extend(
+                    ["Missing or invalid task ID in resource attributes"]
+                    * resource_span_count,
+                )
+
+                logger.warning(
+                    f"Rejecting entire resource with {resource_span_count} spans - "
+                    f"no valid task ID found in resource attributes (task_id: {resource_task_id})",
+                )
+                continue  # Skip processing all spans in this resource
+
+            logger.debug(f"Found valid resource task ID: {resource_task_id}")
 
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
@@ -668,7 +688,7 @@ class SpanRepository:
     def _process_span_data(
         self,
         span_data: dict,
-        resource_task_id: str = None,
+        resource_task_id: str,
     ) -> Optional[dict]:
         """Process and clean span data, returning None if the span data is invalid."""
         normalized_span_data = self._normalize_span_attributes(span_data)
@@ -676,17 +696,8 @@ class SpanRepository:
         # Extract basic span information
         span_dict = self._extract_basic_span_info(normalized_span_data)
 
-        # Validate task ID from resource attributes
-        task_id = resource_task_id if self._is_valid_task_id(resource_task_id) else None
-
-        # Reject spans without task IDs
-        if not task_id:
-            logger.warning(
-                f"Rejecting span {span_data.get('spanId', 'unknown')} - no task ID found in resource attributes",
-            )
-            return None
-
-        span_dict["task_id"] = task_id
+        # Task ID is already validated at resource level, so we can use it directly
+        span_dict["task_id"] = resource_task_id
 
         # Inject version into raw data
         normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION

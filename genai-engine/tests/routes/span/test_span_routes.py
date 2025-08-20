@@ -69,7 +69,10 @@ def test_receive_traces_with_resource_attributes(
     response_json = json.loads(response)
     assert response_json["accepted_spans"] == 0
     assert response_json["rejected_spans"] == 1
-    assert "Invalid span data format" in response_json["rejection_reasons"][0]
+    assert (
+        "Missing or invalid task ID in resource attributes"
+        in response_json["rejection_reasons"][0]
+    )
 
 
 @pytest.mark.unit_tests
@@ -241,7 +244,8 @@ def test_query_traces_sorting(
 
     # Test explicit descending sorting
     status_code, response = client.query_traces(
-        task_ids=["task1", "task2"], sort="desc"
+        task_ids=["task1", "task2"],
+        sort="desc",
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
@@ -316,7 +320,7 @@ def test_query_traces_with_metrics_sorting(
 
     # Test default sorting (descending)
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"]
+        task_ids=["task1", "task2"],
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
@@ -333,7 +337,8 @@ def test_query_traces_with_metrics_sorting(
 
     # Test explicit descending sorting
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="desc"
+        task_ids=["task1", "task2"],
+        sort="desc",
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
@@ -345,7 +350,8 @@ def test_query_traces_with_metrics_sorting(
 
     # Test ascending sorting
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="asc"
+        task_ids=["task1", "task2"],
+        sort="asc",
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
@@ -361,7 +367,9 @@ def test_query_traces_with_metrics_sorting(
 
     # test pagination default sort page 0
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="desc", page_size=1
+        task_ids=["task1", "task2"],
+        sort="desc",
+        page_size=1,
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
@@ -370,7 +378,10 @@ def test_query_traces_with_metrics_sorting(
 
     # test pagination default sort page 1
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="desc", page_size=1, page=1
+        task_ids=["task1", "task2"],
+        sort="desc",
+        page_size=1,
+        page=1,
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
@@ -378,7 +389,9 @@ def test_query_traces_with_metrics_sorting(
 
     # test pagination reverse sort
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="asc", page_size=1
+        task_ids=["task1", "task2"],
+        sort="asc",
+        page_size=1,
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
@@ -387,7 +400,10 @@ def test_query_traces_with_metrics_sorting(
 
     # test pagination reverse sort
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"], sort="asc", page_size=1, page=1
+        task_ids=["task1", "task2"],
+        sort="asc",
+        page_size=1,
+        page=1,
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
@@ -596,7 +612,7 @@ def test_span_ordering_within_traces(
 
     # Test with metrics endpoint as well
     status_code, response = client.query_traces_with_metrics(
-        task_ids=["task1", "task2"]
+        task_ids=["task1", "task2"],
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 2
