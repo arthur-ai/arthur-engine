@@ -100,7 +100,7 @@ class SpanRepository:
             page=page,
             page_size=page_size,
         )
-        
+
         if not trace_ids:
             return []
 
@@ -233,7 +233,7 @@ class SpanRepository:
             f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
             f"(page={page}, page_size={page_size}, sort={sort})"
         )
-        
+
         return trace_ids_result if trace_ids_result else None
 
     def _build_trace_ids_query(
@@ -260,7 +260,7 @@ class SpanRepository:
         earliest_span_subquery = (
             select(
                 DatabaseSpan.trace_id,
-                func.min(DatabaseSpan.start_time).label("earliest_time")
+                func.min(DatabaseSpan.start_time).label("earliest_time"),
             )
             .where(and_(*conditions))
             .group_by(DatabaseSpan.trace_id)
