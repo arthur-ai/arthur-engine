@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+
 from schemas.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore
 from scorer.checks.prompt_injection.classifier import (
@@ -39,7 +40,7 @@ def test_score_above_threshold(mock_classifier):
     mock_request.user_prompt = "Test prompt"
 
     # Set the mock model's return value
-    mock_classifier.return_value.return_value = [{"label": "INJECTION"}]
+    mock_classifier.return_value.return_value = [{"label": "INJECTION", "score": 0.99}]
 
     # Test score method
     score = classifier.score(mock_request)
@@ -61,7 +62,7 @@ def test_score_below_threshold(mock_classifier):
     mock_request.user_prompt = "Test prompt"
 
     # Set the mock model's return value
-    mock_classifier.return_value.return_value = [{"label": "SAFE"}]
+    mock_classifier.return_value.return_value = [{"label": "SAFE", "score": 0.01}]
 
     # Test score method
     score = classifier.score(mock_request)
