@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended"
   ],
-  "schedule": ["before 5am"],
+  "schedule": ["* 0-5 * * *"],
+  "automergeSchedule": ["* 0-5 * * *"],
   "timezone": "America/New_York",
   "packageRules": [
     {
