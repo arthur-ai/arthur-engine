@@ -23,7 +23,6 @@ logger = logging.getLogger()
 
 
 load_dotenv()
-PROMPT_INJECTION_TOKEN_WARNING_LIMIT = 512
 MAX_SENSITIVE_DATA_TOKEN_LIMIT = int(
     get_env_var(constants.GENAI_ENGINE_SENSITIVE_DATA_CHECK_MAX_TOKEN_LIMIT_ENV_VAR),
 )
@@ -283,17 +282,6 @@ class RuleEngine:
         )
 
         rule_score = self.scorer.score(score_request)
-        total_tokens = self.token_counter.count(request.prompt)
-        if total_tokens > PROMPT_INJECTION_TOKEN_WARNING_LIMIT:
-            details = ScorerRuleDetails(
-                message="Prompt has more than 512 tokens. The prompt "
-                "will be truncated from the middle.",
-            )
-            rule_score.details = details
-            logger.warning(
-                "Prompt Injection check received prompt for more than 512 tokens. Prompt was truncated to 512 tokens "
-                "from the middle for Prompt Injection check..",
-            )
         return rule_score
 
     @tracer.start_as_current_span("run pii data rule")

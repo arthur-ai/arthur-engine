@@ -27,6 +27,7 @@ logger = getLogger(__name__)
 CLAIM_CLASSIFIER_EMBEDDING_MODEL = None
 PROMPT_INJECTION_MODEL = None
 PROMPT_INJECTION_TOKENIZER = None
+PROMPT_INJECTION_CLASSIFIER = None
 TOXICITY_MODEL = None
 TOXICITY_TOKENIZER = None
 RELEVANCE_MODEL = None
@@ -169,6 +170,28 @@ def get_prompt_injection_tokenizer():
             weights_only=False,
         )
     return PROMPT_INJECTION_TOKENIZER
+
+@log_model_loading("prompt injection classifier", "PROMPT_INJECTION_CLASSIFIER")
+def get_prompt_injection_classifier(
+    model: PreTrainedModel | None,
+    tokenizer: PreTrainedTokenizerBase | None,
+) -> TextClassificationPipeline | None:
+    """Loads in the prompt injection binary classifier"""
+    if model is None:
+        model = get_prompt_injection_model()
+    if tokenizer is None:
+        tokenizer = get_prompt_injection_tokenizer()
+
+    global PROMPT_INJECTION_CLASSIFIER
+    if PROMPT_INJECTION_CLASSIFIER is None:
+        PROMPT_INJECTION_CLASSIFIER = TextClassificationPipeline(
+            model=model,
+            tokenizer=tokenizer,
+            max_length=512,
+            truncation=True,
+            device=torch.device(get_device()),
+        )
+    return PROMPT_INJECTION_CLASSIFIER
 
 
 @log_model_loading("toxicity model", "TOXICITY_MODEL")
