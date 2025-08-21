@@ -3,42 +3,41 @@ import threading
 
 import torch
 from arthur_common.models.enums import RuleResultEnum
-from schemas.scorer_schemas import RuleScore, ScoreRequest
-from scorer.scorer import RuleScorer
-from transformers import TextClassificationPipeline
+import torch.nn.functional as F
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
-from utils.classifiers import get_device
-from utils.model_load import get_prompt_injection_model, get_prompt_injection_tokenizer
+
+from schemas.scorer_schemas import RuleScore, ScoreRequest
+from scorer.scorer import RuleScorer
+from utils.model_load import (
+    get_prompt_injection_classifier,
+    get_prompt_injection_model,
+    get_prompt_injection_tokenizer,
+)
+from utils.text_chunking import SlidingWindowChunkIterator
 
 logger = logging.getLogger()
 MAX_LENGTH = 512
 
 
-def get_prompt_injection_classifier(
-    model: PreTrainedModel | None,
-    tokenizer: PreTrainedTokenizerBase | None,
-) -> TextClassificationPipeline | None:
-    """Loads in the prompt injection binary classifier"""
-    if model is None:
-        model = get_prompt_injection_model()
-    if tokenizer is None:
-        tokenizer = get_prompt_injection_tokenizer()
-    return TextClassificationPipeline(
-        model=model,
-        tokenizer=tokenizer,
-        max_length=MAX_LENGTH,
-        truncation=True,
-        device=torch.device(get_device()),
-    )
-
-
 class BinaryPromptInjectionClassifier(RuleScorer):
-    LABEL = "INJECTION"
-
     def __init__(self, model: PreTrainedModel, tokenizer: PreTrainedTokenizerBase):
         """Initialized the binary classifier for prompt injection"""
         self.model = get_prompt_injection_classifier(model, tokenizer)
+        self.tokenizer = (
+            tokenizer if tokenizer is not None else get_prompt_injection_tokenizer()
+        )
+        self.injection_label = "INJECTION"
+
+    def chunk_text(self, text: str) -> list[str]:
+        chunk_iterator = SlidingWindowChunkIterator(
+            text=text,
+            tokenizer=self.tokenizer,
+            chunk_size=MAX_LENGTH,
+            stride=MAX_LENGTH // 2,
+        )
+
+        return [chunk for chunk in chunk_iterator]
 
     def _download_model_and_tokenizer(self):
         global PROMPT_INJECTION_MODEL
@@ -69,21 +68,29 @@ class BinaryPromptInjectionClassifier(RuleScorer):
                 completion_tokens=0,
             )
         request = request.user_prompt
-        if len(request) > 2000:
-            shortened = request[:1000] + request[-1000:]
-            request = shortened
+        text_chunks = self.chunk_text(request)
 
-        label = self.model(request)[0]["label"]
+        for chunk in text_chunks:
+            # Get raw scores from model
+            with torch.no_grad():
+                raw_scores = self.model(chunk)
 
-        if label != self.LABEL:
-            return RuleScore(
-                result=RuleResultEnum.PASS,
-                prompt_tokens=0,
-                completion_tokens=0,
-            )
-        else:
-            return RuleScore(
-                result=RuleResultEnum.FAIL,
-                prompt_tokens=0,
-                completion_tokens=0,
-            )
+            scores = torch.tensor([item["score"] for item in raw_scores])
+
+            probs = F.softmax(scores, dim=0)
+
+            max_prob_idx = torch.argmax(probs).item()
+            label = raw_scores[max_prob_idx]["label"]
+
+            if label == self.injection_label:
+                return RuleScore(
+                    result=RuleResultEnum.FAIL,
+                    prompt_tokens=0,
+                    completion_tokens=0,
+                )
+
+        return RuleScore(
+            result=RuleResultEnum.PASS,
+            prompt_tokens=0,
+            completion_tokens=0,
+        )

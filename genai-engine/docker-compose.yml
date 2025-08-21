@@ -3,7 +3,7 @@ services:
   db:
     image: postgres
     ports:
-      - 5432:5432
+      - 5435:5432
     shm_size: 128mb
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
@@ -12,4 +12,4 @@ services:
   adminer:
     image: adminer
     ports:
-      - 8080:8080
+      - 8081:8080
