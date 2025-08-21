@@ -14,20 +14,32 @@ from utils.token_count import TokenCounter
 TOKEN_COUNTER = TokenCounter()
 
 
+def is_punctuation_only(keyword: str) -> bool:
+    # Returns True if the keyword has no letters, digits, or underscores
+    return not re.search(r"\w", keyword)
+
+
+def get_keyword_regex_pattern(keyword: str) -> str:
+    escape_pattern = re.escape(keyword)
+
+    if not is_punctuation_only(keyword):
+        # if a keyword has word characters then use word-boundaries
+        return rf"(?<!\w){escape_pattern}(?!\w)"
+
+    return escape_pattern
+
+
 class KeywordScorer(RuleScorer):
     def score(self, request: ScoreRequest) -> RuleScore:
         """checks if request contains any bad keywords"""
         text = request.scoring_text
 
-        # split the response
-        word_tokens = re.findall(r"[\w']+|[.,!?;]", text)
-        word_tokens = [token.lower() for token in word_tokens]
-        word_tokens = set(word_tokens)
-
         failed_keywords = []
         keyword_found = False
         for keyword in request.keyword_list:
-            if keyword.lower() in word_tokens:
+            keyword_pattern = get_keyword_regex_pattern(keyword)
+
+            if re.search(keyword_pattern, text, flags=re.IGNORECASE):
                 failed_keywords.append(keyword)
                 keyword_found = True
 
