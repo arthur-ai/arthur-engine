@@ -66,6 +66,9 @@ class ValidationConfig:
     descriptive_keywords: Set[str]
     entity_keywords: Set[str]
 
+    # Optional filtering parameters
+    use_descriptive_keywords_fallback: bool = True
+
     # Format requirements
     min_length: int = 5
     required_chars: Optional[str] = None
@@ -111,7 +114,11 @@ def validate_pii_entity(text: str, config: ValidationConfig) -> bool:
         text = config.preprocessor(text)
 
     # Step 3: Descriptive keyword filtering
-    if contains_descriptive_keywords(text, config.descriptive_keywords):
+    if contains_descriptive_keywords(
+        text,
+        config.descriptive_keywords,
+        config.use_descriptive_keywords_fallback,
+    ):
         return False
 
     # Step 4: Possessive pattern detection
@@ -153,7 +160,11 @@ def validate_pii_entity(text: str, config: ValidationConfig) -> bool:
 # ========================================
 
 
-def contains_descriptive_keywords(text: str, descriptive_keywords: Set[str]) -> bool:
+def contains_descriptive_keywords(
+    text: str,
+    descriptive_keywords: Set[str],
+    use_fallback: bool = True,
+) -> bool:
     """Check if text contains descriptive keywords that indicate it's not actual PII."""
     lowered = text.lower()
 
@@ -166,7 +177,7 @@ def contains_descriptive_keywords(text: str, descriptive_keywords: Set[str]) -> 
             # Single-word keywords should match as whole words when possible
             if re.search(rf"\b{re.escape(keyword)}\b", lowered):
                 return True
-            elif keyword in lowered:
+            elif use_fallback and keyword in lowered:
                 return True
 
     return False
@@ -461,6 +472,7 @@ def get_validation_configs():
             required_chars="@",
             action_verbs={"send", "contact", "reach"},
             custom_validator=_validate_email_structure,
+            use_descriptive_keywords_fallback=False,
         ),
         "location": ValidationConfig(
             descriptive_keywords={
@@ -828,10 +840,6 @@ def is_name(text: str) -> bool:
     # Preserve unicode characters with conservative normalization
     text = unicodedata.normalize("NFC", text)
 
-    # Names shouldn't contain digits
-    if any(c.isdigit() for c in text):
-        return False
-
     lowered = text.lower()
     generic_exclusions = get_generic_name_exclusions()
 
@@ -845,7 +853,21 @@ def is_name(text: str) -> bool:
 
     # Filter out phrases where all parts are generic terms
     tokens = lowered.split()
-    if all(token in generic_exclusions for token in tokens):
+
+    all_generic = True
+    all_contain_digits = True
+
+    for token in tokens:
+        if not all_generic and not all_contain_digits:
+            break
+
+        if token not in generic_exclusions:
+            all_generic = False
+
+        if not any(c.isdigit() for c in token):
+            all_contain_digits = False
+
+    if all_generic or all_contain_digits:
         return False
 
     # Apply additional name-specific validations

@@ -822,7 +822,7 @@ def test_possessive_patterns_validation(classifier):
 def test_valid_vs_invalid_entities(classifier):
     """Test that valid entities are detected while invalid descriptive text is not."""
     # Valid entities that should be detected
-    valid_text = "Contact John Smith at john.smith@company.com or call 555-123-4567. Visit https://example.com"
+    valid_text = "Contact John Smith at john.smith@company.com or call my phone number 555-123-4567. Visit https://example.com"
 
     score_request = ScoreRequest(
         scoring_text=valid_text,
@@ -846,3 +846,65 @@ def test_valid_vs_invalid_entities(classifier):
 
     # Should pass since it's just descriptive text
     assert result.result == RuleResultEnum.PASS
+
+
+@pytest.mark.parametrize(
+    "text, expected_spans",
+    [
+        ("my email is arthur@gmail.com", ["arthur@gmail.com"]),
+        ("contact me at test@hotmail.com today", ["test@hotmail.com"]),
+        ("test.user@yahoo.com is my login", ["test.user@yahoo.com"]),
+        ("send to a@b.com and cc me at c@d.org", ["a@b.com", "c@d.org"]),
+        (
+            "try first.last@company.co.uk or alt@company.io",
+            ["first.last@company.co.uk", "alt@company.io"],
+        ),
+        ("foo.bar+spam@sub.domain.com", ["foo.bar+spam@sub.domain.com"]),
+        ("Please email ME@Example.COM for info", ["ME@Example.COM"]),
+        ("email: <foo@bar.com>;", ["foo@bar.com"]),
+        ("something@not_an_email", []),
+        ("test@@example.com", []),
+        ("@missingusername.com", []),
+        ("missingdomain@", []),
+        ("this is an email", []),
+        ("please check your inbox", []),
+        ("send me a reply", []),
+        ("gmail.com is just a domain", []),
+        ("hotmail.com is popular", []),
+        ("visit http://mail.com for info", []),
+        ("forward this message to your manager", []),
+        ("create a new account today", []),
+        ("subscribe to our newsletter", []),
+        ("your username will be saved", []),
+        ("he wrote me a long letter", []),
+        ("I will mail the package tomorrow", []),
+        ("their contact address is on file", []),
+    ],
+)
+def test_email_detection(classifier, text, expected_spans):
+    disabled_pii_entities = [
+        entity.value
+        for entity in PIIEntityTypes
+        if entity != PIIEntityTypes.EMAIL_ADDRESS
+    ]
+
+    score_request = ScoreRequest(
+        scoring_text=text,
+        rule_type=RuleType.PII_DATA,
+        disabled_pii_entities=disabled_pii_entities,
+    )
+
+    result = classifier.score(score_request)
+
+    if len(expected_spans) == 0:
+        assert result.result == RuleResultEnum.PASS
+    else:
+        assert result.result == RuleResultEnum.FAIL
+
+        entities = result.details.pii_entities
+        spans = []
+        for entity in entities:
+            assert entity.entity == PIIEntityTypes.EMAIL_ADDRESS
+            spans.append(entity.span)
+
+        assert spans == expected_spans

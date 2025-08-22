@@ -27,16 +27,21 @@ from scorer.checks.pii.validations import (
     is_ssn,
     is_url,
 )
+from utils import constants
 from utils.model_load import (
     get_gliner_model,
     get_gliner_tokenizer,
     get_presidio_analyzer,
 )
 from utils.text_chunking import ChunkIterator
+from utils.utils import get_env_var
 
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
 MAX_TOKENS_PER_CHUNK = 384
+USE_PII_MODEL_V2 = (
+    get_env_var(constants.GENAI_ENGINE_USE_PII_MODEL_V2_ENV_VAR) == "true"
+)
 
 
 class BinaryPIIDataClassifier:
@@ -78,18 +83,21 @@ class BinaryPIIDataClassifier:
         entities = PIIEntityTypes.values()
 
         # Separate entities for Presidio and GLiNER
-        self.presidio_entities = [
-            entity for entity in entities if entity in self.PRESIDIO_SUPPORTED
-        ]
-        self.gliner_entities = [
-            entity for entity in entities if entity not in self.PRESIDIO_SUPPORTED
-        ]
+        if USE_PII_MODEL_V2:
+            self.presidio_entities = [
+                entity for entity in entities if entity in self.PRESIDIO_SUPPORTED
+            ]
+            self.gliner_entities = [
+                entity for entity in entities if entity not in self.PRESIDIO_SUPPORTED
+            ]
 
-        # Convert GLiNER entities to GLiNER format
-        self.gliner_entity_types = [
-            PresidioGlinerMapper.presidio_to_gliner(entity)
-            for entity in self.gliner_entities
-        ]
+            # Convert GLiNER entities to GLiNER format
+            self.gliner_entity_types = [
+                PresidioGlinerMapper.presidio_to_gliner(entity)
+                for entity in self.gliner_entities
+            ]
+        else:
+            self.presidio_entities = entities
 
     def _remove_overlapping_spans(
         self,
@@ -205,14 +213,13 @@ class BinaryPIIDataClassifier:
             request.pii_confidence_threshold or self.DEFAULT_CONFIDENCE_THRESHOLD
         )
 
-        # Process with Presidio (only entities that are better handled by Presidio)
-        presidio_spans = self._process_presidio(text, disabled_entities, allow_list)
+        # Process with Presidio
+        # Note: if USE_PII_MODEL_V2 == True then we only process entities that are better handled by Presidio
+        all_spans = self._process_presidio(text, disabled_entities, allow_list)
 
-        # Process with GLiNER (all other entities)
-        gliner_spans = self._process_gliner(text, disabled_entities)
-
-        # Combine all spans
-        all_spans = presidio_spans + gliner_spans
+        if USE_PII_MODEL_V2:
+            # Process with GLiNER (all other entities) and combine with presidio spans
+            all_spans = all_spans + self._process_gliner(text, disabled_entities)
 
         # Apply confidence threshold
         if confidence_threshold > 0:
