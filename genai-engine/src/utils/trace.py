@@ -527,3 +527,25 @@ def json_to_dict(json_str):
         return json.loads(json_str)
     except json.JSONDecodeError:
         return json_str
+
+
+def validate_span_types(span_types: list[str]) -> None:
+    """
+    Validate that all span_types are valid OpenInference span kinds.
+
+    Args:
+        span_types: List of span type strings to validate
+
+    Raises:
+        ValueError: If any span types are invalid, with a message listing
+                   the invalid types and all valid options
+    """
+    if not span_types:
+        return
+
+    invalid_span_types = [
+        st for st in span_types if st not in OpenInferenceSpanKindValues
+    ]
+
+    if invalid_span_types:
+        raise ValueError(f"Invalid span_types received: {invalid_span_types}.")

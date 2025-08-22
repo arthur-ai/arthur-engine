@@ -74,6 +74,7 @@ class SpanRepository:
         page_size: int = DEFAULT_PAGE_SIZE,
         trace_ids: Optional[list[str]] = None,
         task_ids: Optional[list[str]] = None,
+        span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         include_metrics: bool = False,
@@ -88,6 +89,9 @@ class SpanRepository:
             raise ValueError(
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
+
+        # Validate span types
+        trace_utils.validate_span_types(span_types)
 
         # Get paginated trace IDs directly from database with proper ordering
         trace_ids = self._get_paginated_trace_ids_for_task_ids(
@@ -106,6 +110,7 @@ class SpanRepository:
         # Query spans from database
         spans = self._query_spans_from_db(
             trace_ids=trace_ids,
+            span_types=span_types,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
@@ -280,6 +285,7 @@ class SpanRepository:
     def _query_spans_from_db(
         self,
         trace_ids: Optional[list[str]] = None,
+        span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
@@ -287,6 +293,7 @@ class SpanRepository:
         """Query spans from database with given filters."""
         query = self._build_spans_query(
             trace_ids=trace_ids,
+            span_types=span_types,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
@@ -316,10 +323,6 @@ class SpanRepository:
 
         if not span.task_id:
             raise ValueError(f"Span {span_id} has no task_id")
-
-    # ============================================================================
-    # Private Helper Methods - Metrics Computation
-    # ============================================================================
 
     # ============================================================================
     # Private Helper Methods - Metrics Computation
@@ -544,6 +547,7 @@ class SpanRepository:
     def _build_spans_query(
         self,
         trace_ids: Optional[list[str]] = None,
+        span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
@@ -555,6 +559,8 @@ class SpanRepository:
         conditions = []
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if span_types:
+            conditions.append(DatabaseSpan.span_kind.in_(span_types))
         if start_time:
             conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:
