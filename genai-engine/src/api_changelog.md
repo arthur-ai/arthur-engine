@@ -1,6 +1,12 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 08/22/2025
+- **CHANGE** for **URL**: /v1/spans/query  endpoint added
+- Combined SpanResponse and SpanWithMetricsResponse.
+- Removed orphaned response classes. 
+
 # 08/09/2025
 Made `bert_f_score` and `reranker_relevance_score` optional.
 
