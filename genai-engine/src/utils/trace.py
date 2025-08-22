@@ -4,6 +4,8 @@ import logging
 import re
 from datetime import datetime
 
+from openinference.semconv.trace import OpenInferenceSpanKindValues
+
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)

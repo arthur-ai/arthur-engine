@@ -80,7 +80,7 @@ class SpanRepository:
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
     ) -> list[Span]:
-        """Query spans with optional metrics computation."""
+        """Query spans with optional metrics computation and span-level pagination."""
         # Validate parameters
         if not task_ids:
             raise ValueError("task_ids are required for span queries")
@@ -93,10 +93,11 @@ class SpanRepository:
         # Validate span types
         trace_utils.validate_span_types(span_types)
 
-        # Get paginated trace IDs directly from database with proper ordering
-        trace_ids = self._get_paginated_trace_ids_for_task_ids(
-            task_ids=task_ids,
+        # Query spans from database with pagination applied to spans directly
+        spans = self._query_spans_from_db(
             trace_ids=trace_ids,
+            task_ids=task_ids,
+            span_types=span_types,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
@@ -104,17 +105,8 @@ class SpanRepository:
             page_size=page_size,
         )
 
-        if not trace_ids:
+        if not spans:
             return []
-
-        # Query spans from database
-        spans = self._query_spans_from_db(
-            trace_ids=trace_ids,
-            span_types=span_types,
-            start_time=start_time,
-            end_time=end_time,
-            sort=sort,
-        )
 
         # Validate spans and add metrics if requested
         valid_spans = self._validate_spans(spans)
@@ -157,22 +149,45 @@ class SpanRepository:
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
     ) -> tuple[int, list]:
-        """Query spans grouped by traces with nested structure."""
-        # Get spans using existing logic
-        spans = self.query_spans(
+        """Query spans grouped by traces with nested structure and trace-level pagination."""
+        # Validate parameters
+        if not task_ids:
+            raise ValueError("task_ids are required for span queries")
+
+        if include_metrics and compute_new_metrics and not task_ids:
+            raise ValueError(
+                "task_ids are required when include_metrics=True and compute_new_metrics=True",
+            )
+
+        # Get paginated trace IDs for trace-level pagination
+        paginated_trace_ids = self._get_paginated_trace_ids_for_task_ids(
+            task_ids=task_ids,
+            trace_ids=trace_ids,
+            start_time=start_time,
+            end_time=end_time,
             sort=sort,
             page=page,
             page_size=page_size,
-            trace_ids=trace_ids,
-            task_ids=task_ids,
-            start_time=start_time,
-            end_time=end_time,
-            include_metrics=include_metrics,
-            compute_new_metrics=compute_new_metrics,
         )
 
+        if not paginated_trace_ids:
+            return 0, []
+
+        # Query all spans from the paginated traces (no span-level pagination)
+        spans = self._query_spans_from_db(
+            trace_ids=paginated_trace_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+        )
+
+        # Validate spans and add metrics if requested
+        valid_spans = self._validate_spans(spans)
+        if include_metrics and valid_spans:
+            valid_spans = self._add_metrics_to_spans(valid_spans, compute_new_metrics)
+
         # Group spans by trace and build nested structure
-        traces = self._group_spans_into_traces(spans, sort)
+        traces = self._group_spans_into_traces(valid_spans, sort)
         return len(traces), traces
 
     def query_spans_with_metrics_as_traces(
@@ -285,19 +300,28 @@ class SpanRepository:
     def _query_spans_from_db(
         self,
         trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
         span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
     ) -> list[Span]:
-        """Query spans from database with given filters."""
+        """Query spans from database with given filters and optional pagination."""
         query = self._build_spans_query(
             trace_ids=trace_ids,
+            task_ids=task_ids,
             span_types=span_types,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
         )
+
+        # Apply pagination if specified
+        if page is not None and page_size is not None:
+            offset = page * page_size
+            query = query.offset(offset).limit(page_size)
 
         results = self.db_session.execute(query).scalars().unique().all()
         return [Span._from_database_model(span) for span in results]
@@ -547,6 +571,7 @@ class SpanRepository:
     def _build_spans_query(
         self,
         trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
         span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
@@ -559,6 +584,8 @@ class SpanRepository:
         conditions = []
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if task_ids:
+            conditions.append(DatabaseSpan.task_id.in_(task_ids))
         if span_types:
             conditions.append(DatabaseSpan.span_kind.in_(span_types))
         if start_time:

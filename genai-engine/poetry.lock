@@ -4156,6 +4156,19 @@ realtime = ["websockets (>=13,<16)"]
 voice-helpers = ["numpy (>=2.0.2)", "sounddevice (>=0.5.1)"]
 
 [[package]]
+name = "openinference-semantic-conventions"
+version = "0.1.21"
+description = "OpenInference Semantic Conventions"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
+files = [
+    {file = "openinference_semantic_conventions-0.1.21-py3-none-any.whl", hash = "sha256:acde8282c20da1de900cdc0d6258a793ec3eb8031bfc496bd823dae17d32e326"},
+    {file = "openinference_semantic_conventions-0.1.21.tar.gz", hash = "sha256:328405b9f79ff72a659c7712b8429c0d7ea68c6a4a1679e3eb44372aa228119b"},
+]
+
+[[package]]
 name = "opentelemetry-api"
 version = "1.34.1"
 description = "OpenTelemetry Python API"
@@ -7865,4 +7878,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "6d0b927e8c408eda2ca62e7cd84109e2328ae94837f611d8a7c72c9b9d6ff6c5"
+content-hash = "070a277742df76f85a84beb7e3acd5c4943591d0a2025e1a5d77101d02a8a08e"
