@@ -18,7 +18,7 @@ from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.response_schemas import (
-    QuerySpansWithMetricsResponse,
+    QuerySpansResponse,
     QueryTracesWithMetricsResponse,
     SpanWithMetricsResponse,
 )
@@ -160,7 +160,7 @@ def query_spans(
 @span_routes.get(
     "/spans/query",
     description="Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
-    response_model=QuerySpansWithMetricsResponse,
+    response_model=QuerySpansResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
 )
@@ -206,9 +206,9 @@ def query_spans_by_type(
         )
 
         # Convert spans to response models
-        span_responses = [span._to_metrics_response_model() for span in spans]
+        span_responses = [span._to_response_model() for span in spans]
 
-        return QuerySpansWithMetricsResponse(count=len(spans), spans=span_responses)
+        return QuerySpansResponse(count=len(spans), spans=span_responses)
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -289,7 +289,7 @@ def compute_span_metrics(
         span = span_repo.query_span_by_span_id_with_metrics(span_id)
 
         # Return the single span with metrics
-        return span._to_metrics_response_model()
+        return span._to_response_model()
     except ValueError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
