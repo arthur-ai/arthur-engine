@@ -18,12 +18,12 @@ jobs:
         (github.event_name == 'push' && github.ref_type == 'branch')
       )
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container: python:3.13-bullseye
     env:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -51,7 +51,7 @@ jobs:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -82,9 +82,9 @@ jobs:
         (github.event_name == 'push' && github.ref_type == 'branch')
       )
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container: python:3.13-bullseye
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -118,9 +118,9 @@ jobs:
         (github.event_name == 'push' && github.ref_type == 'branch')
       )
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container: python:3.13-bullseye
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -163,7 +163,7 @@ jobs:
       SKIP: pytest-check,changelog-check
       GIT_DEPTH: 100
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
       - uses: ./.github/workflows/composite-actions/setup-git
@@ -195,7 +195,7 @@ jobs:
       matrix:
         torch_device: [cpu, gpu]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -203,14 +203,14 @@ jobs:
         with:
           version-prefix: "genai-engine-"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.10.0
+        uses: docker/setup-buildx-action@v3.11.1
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
+        uses: docker/login-action@v3.5.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
       - name: Build and push docker image
-        uses: docker/build-push-action@v6.15.0
+        uses: docker/build-push-action@v6.18.0
         with:
           context: "{{defaultContext}}:genai-engine"
           file: dockerfile
@@ -233,7 +233,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
@@ -247,7 +247,7 @@ jobs:
             --skip-validate-spec --package-name genai_client
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3.4.0
+        uses: docker/login-action@v3.5.0
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
@@ -281,7 +281,7 @@ jobs:
       BUCKET_NAME: arthur-cft
       TEMPLATES_DIRECTORY: arthur-engine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
       - uses: ./.github/workflows/composite-actions/set-version
       - name: configure aws credentials
@@ -311,7 +311,7 @@ jobs:
       packages: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-helm
       - uses: ./.github/workflows/composite-actions/set-version
         with:
@@ -339,7 +339,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
           safe-directory: ${{ runner.workspace }}
