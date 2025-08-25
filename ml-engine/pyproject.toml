@@ -45,7 +45,7 @@ pytest-asyncio = "1.1.0"
 pytest-httpx = "0.35.0"
 pre-commit = "4.3.0"
 types-pytz = "^2025.2.0.20250516"
-lazy-imports = "^0.3.0"
+lazy-imports = "1.0.1"
 
 [tool.poetry.group.linters]
 optional = true
