@@ -92,6 +92,8 @@ spec:
               value: "{{ .Values.genaiEngineHallucinationCheckMaxTokenLimit }}"
             - name: GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT
               value: "{{ .Values.genaiEngineToxicityCheckMaxTokenLimit}}"
+            - name: GENAI_ENGINE_USE_PII_MODEL_V2
+              value: "{{ .Values.genaiEngineUsePIIModelV2 }}"
             - name: GENAI_ENGINE_OPENAI_PROVIDER
               value: "{{ .Values.genaiEngineOpenAIProvider }}"
             - name: CACHE_TASK_RULES_CACHE_ENABLED
