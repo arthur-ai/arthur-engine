@@ -1,6 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 
-from arthur_client.api_bindings import AvailableDataset, Dataset
+from arthur_client.api_bindings import (
+    AvailableDataset,
+    CustomAggregationSpecSchemaAggregateArgsInner,
+    Dataset,
+)
 from arthur_common.models.metrics import (
     MetricsColumnSchemaUnion,
     MetricsParameterSchemaUnion,
@@ -30,10 +34,19 @@ def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:
 
 
 def get_keys_with_param_type(
-    args: list[MetricsParameterSchemaUnion],
+    args: (
+        list[Union[MetricsParameterSchemaUnion]]
+        | list[CustomAggregationSpecSchemaAggregateArgsInner]
+    ),
     param_type: str,
 ) -> list[str]:
     """Returns all keys in the list of arguments with the passed parameter type."""
+    # parse CustomAggregationSpecSchemaAggregateArgsInner client type objects to actual instance so their fields
+    # can be accessed
+    for i in range(len(args)):
+        arg = args[i]
+        if isinstance(arg, CustomAggregationSpecSchemaAggregateArgsInner):
+            args[i] = arg.actual_instance
     return [param.parameter_key for param in args if param.parameter_type == param_type]
 
 
