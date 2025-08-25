@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 from arthur_client.api_bindings import (
     AvailableDataset,
-    CustomAggregationSpecSchemaAggregateArgsInner,
+    CustomAggregationVersionSpecSchemaAggregateArgsInner,
     Dataset,
 )
 from arthur_common.models.metrics import (
@@ -36,7 +36,7 @@ def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:
 def get_keys_with_param_type(
     args: (
         list[Union[MetricsParameterSchemaUnion]]
-        | list[CustomAggregationSpecSchemaAggregateArgsInner]
+        | list[CustomAggregationVersionSpecSchemaAggregateArgsInner]
     ),
     param_type: str,
 ) -> list[str]:
@@ -45,7 +45,7 @@ def get_keys_with_param_type(
     # can be accessed
     for i in range(len(args)):
         arg = args[i]
-        if isinstance(arg, CustomAggregationSpecSchemaAggregateArgsInner):
+        if isinstance(arg, CustomAggregationVersionSpecSchemaAggregateArgsInner):
             args[i] = arg.actual_instance
     return [param.parameter_key for param in args if param.parameter_type == param_type]
 

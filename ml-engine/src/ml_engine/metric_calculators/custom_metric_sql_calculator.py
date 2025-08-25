@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Any
+from typing import Any, List
 
 import duckdb
 import pandas as pd
@@ -7,7 +7,8 @@ from arthur_client.api_bindings import (
     AggregationMetricType,
     AggregationSpec,
     CustomAggregationSpecSchema,
-    Dataset,
+    CustomAggregationVersionSpecSchema,
+    CustomAggregationVersionSpecSchemaAggregateArgsInner,
 )
 from arthur_common.aggregations import (
     NumericAggregationFunction,
@@ -27,6 +28,7 @@ class CustomMetricSQLCalculator(MetricCalculator):
         self,
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
+        agg_spec: AggregationSpec,
         agg_spec_schema: CustomAggregationSpecSchema,
     ) -> None:
         """
@@ -34,9 +36,22 @@ class CustomMetricSQLCalculator(MetricCalculator):
         :param agg_function_type: The AggregationFunction to execute.
         :param agg_function_schema: The schema of the aggregation function to execute.
         """
-        super().__init__(conn, logger, agg_spec_schema)
-        # enforce CustomAggregationSpecSchema type for agg_schema field
-        self.agg_schema: CustomAggregationSpecSchema = agg_spec_schema
+        super().__init__(conn, logger, agg_spec)
+        self.agg_schema = agg_spec_schema
+        if len(self.agg_schema.versions) != 1:
+            raise ValueError(
+                "Schema should include the configuration for the version of the aggregation to be executed.",
+            )
+
+        self.agg_schema_config: CustomAggregationVersionSpecSchema = (
+            agg_spec_schema.versions[0]
+        )
+
+    @property
+    def aggregate_args_schemas(
+        self,
+    ) -> List[CustomAggregationVersionSpecSchemaAggregateArgsInner]:
+        return self.agg_schema_config.aggregate_args
 
     @staticmethod
     def _calculate_time_series(
@@ -108,9 +123,9 @@ class CustomMetricSQLCalculator(MetricCalculator):
         """
         aggregate_arg_map_key_to_parameter_type = {
             arg.parameter_key: arg.parameter_type
-            for arg in self.agg_schema.aggregate_args
+            for arg in self.agg_schema_config.aggregate_args
         }
-        constructed_sql: str = self.agg_schema.sql
+        constructed_sql: str = self.agg_schema_config.sql
         for arg_key, arg_val in aggregate_args.items():
             # replace all variables with format {{}} with their values in aggregate_args
             new_val = self._evaluate_arg_value(
@@ -124,16 +139,13 @@ class CustomMetricSQLCalculator(MetricCalculator):
 
     def aggregate(
         self,
-        model_agg_spec: AggregationSpec,
-        datasets: list[Dataset],
         init_args: dict[str, Any],
         aggregate_args: dict[str, Any],
     ) -> list[SketchMetric | NumericMetric]:
         constructed_sql = self._construct_sql(aggregate_args)
-        self.logger.info(f"Executing SQL: {constructed_sql}")
         results = self.conn.sql(constructed_sql).df()
 
         time_series: list[SketchMetric | NumericMetric] = []
-        for reported_agg in self.agg_schema.reported_aggregations:
+        for reported_agg in self.agg_schema_config.reported_aggregations:
             time_series.append(self._calculate_time_series(results, reported_agg))
         return time_series

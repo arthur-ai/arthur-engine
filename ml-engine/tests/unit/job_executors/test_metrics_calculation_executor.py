@@ -180,13 +180,14 @@ def test_process_agg_args(
     metrics_calculator = DefaultMetricCalculator(
         conn,
         logger,
+        agg_spec,
         agg_function_schema,
         agg_function_type,
     )
 
     if error_str:
         with pytest.raises(ValueError) as exc:
-            metrics_calculator.process_agg_args(agg_spec, [dataset])
+            metrics_calculator.process_agg_args([dataset])
         assert error_str in str(exc.value)
     else:
-        metrics_calculator.process_agg_args(agg_spec, [dataset])
+        metrics_calculator.process_agg_args([dataset])

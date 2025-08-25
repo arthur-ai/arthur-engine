@@ -1,11 +1,12 @@
 from logging import Logger
-from typing import Any, Type
+from typing import Any, List, Type
 
 import duckdb
-from arthur_client.api_bindings import AggregationSpec, Dataset
+from arthur_client.api_bindings import AggregationSpec
 from arthur_common.aggregations import AggregationFunction
 from arthur_common.models.metrics import (
     AggregationSpecSchema,
+    MetricsParameterSchemaUnion,
     NumericMetric,
     SketchMetric,
 )
@@ -17,6 +18,7 @@ class DefaultMetricCalculator(MetricCalculator):
         self,
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
+        agg_spec: AggregationSpec,
         agg_schema: AggregationSpecSchema,
         agg_function_type: Type[AggregationFunction],
     ) -> None:
@@ -25,13 +27,16 @@ class DefaultMetricCalculator(MetricCalculator):
         :param agg_function_type: The AggregationFunction to execute.
         :param agg_schema: The schema of the aggregation function to execute.
         """
-        super().__init__(conn, logger, agg_schema)
+        super().__init__(conn, logger, agg_spec)
+        self.agg_schema = agg_schema
         self._agg_function_type = agg_function_type
+
+    @property
+    def aggregate_args_schemas(self) -> List[MetricsParameterSchemaUnion]:
+        return self.agg_schema.aggregate_args
 
     def aggregate(
         self,
-        model_agg_spec: AggregationSpec,
-        datasets: list[Dataset],
         init_args: dict[str, Any],
         aggregate_args: dict[str, Any],
     ) -> list[SketchMetric | NumericMetric]:
