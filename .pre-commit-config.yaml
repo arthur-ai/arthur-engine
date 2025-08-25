@@ -42,7 +42,7 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
-        language_version: python3.13
+        language_version: python3.12
         fail_fast: true
   - repo: https://github.com/asottile/add-trailing-comma
     rev: v3.1.0
