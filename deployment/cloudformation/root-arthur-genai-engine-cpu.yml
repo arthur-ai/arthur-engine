@@ -216,6 +216,13 @@ Parameters:
     Type: Number
     Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  GenaiEngineUsePIIModelV2:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: 'Enable PII model v2'
   GenaiEngineOpenAIProvider:
     Type: String
     AllowedValues:
@@ -311,6 +318,7 @@ Metadata:
           - GenaiEngineSensitiveDataCheckMaxTokenLimit
           - GenaiEngineHallucinationCheckMaxTokenLimit
           - GenaiEngineToxicityCheckMaxTokenLimit
+          - GenaiEngineUsePIIModelV2
     ParameterLabels:
       GenaiEngineContainerImageLocation:
         default: 'Arthur GenAI Engine Container Image Location'
@@ -406,6 +414,8 @@ Metadata:
         default: 'GenAI Engine Hallucination Check Max Token Limit'
       GenaiEngineToxicityCheckMaxTokenLimit:
         default: 'GenAI Engine Toxicity Check Max Token Limit'
+      GenaiEngineUsePIIModelV2:
+        default: 'GenAI Engine Use PII Model V2'
       GenaiEngineOpenAIProvider:
         default: 'OpenAI Service Provider'
       GenaiEngineCacheTaskRulesCacheEnabled:
@@ -531,6 +541,7 @@ Resources:
         GenaiEngineSensitiveDataCheckMaxTokenLimit: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit
         GenaiEngineHallucinationCheckMaxTokenLimit: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
         GenaiEngineToxicityCheckMaxTokenLimit: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+        GenaiEngineUsePIIModelV2: !Ref GenaiEngineUsePIIModelV2
         GenaiEngineFargateTaskCPUValue: !Ref GenaiEngineFargateTaskCPUValue
         GenaiEngineFargateTaskMemoryValue: !Ref GenaiEngineFargateTaskMemoryValue
         GenaiEngineServerWorkerCount: !Ref GenaiEngineServerWorkerCount

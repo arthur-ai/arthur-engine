@@ -98,6 +98,14 @@
             "minimum": 0,
             "description": "Max number of tokens an inference can have for the toxicity rule"
         },
+        "genaiEngineUsePIIModelV2": {
+            "type": "string",
+            "enum": [
+                "true",
+                "false"
+            ],
+            "description": "Enable PII model v2"
+        },
         "genaiEngineCacheTaskRulesCacheEnabled": {
             "type": "boolean",
             "description": "Enable task rules cache"
@@ -450,6 +458,7 @@
         "genaiEngineHallucinationCheckMaxTokenLimit",
         "genaiEngineSensitiveDataCheckMaxTokenLimit",
         "genaiEngineToxicityCheckMaxTokenLimit",
+        "genaiEngineUsePIIModelV2",
         "genaiEngineOpenAIProvider",
         "genaiEngineReplicaCount",
         "genaiEngineContainerCPURequests",
