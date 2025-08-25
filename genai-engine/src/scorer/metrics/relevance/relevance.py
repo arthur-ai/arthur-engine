@@ -1,6 +1,7 @@
 import logging
 from typing import Optional, Tuple
 
+import torch
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
