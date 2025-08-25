@@ -15,7 +15,7 @@ gcsfs = "2025.7.0"
 google-cloud-bigquery = "3.36.0"
 pandas = "2.3.2"
 psycopg = {extras = ["binary"], version = "3.2.9"}
-pymysql = "1.1.1"
+pymysql = "1.1.2"
 pyodbc = "5.2.0"
 pyyaml = "6.0.2"
 requests = "2.32.5"
