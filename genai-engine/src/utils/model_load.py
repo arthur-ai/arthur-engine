@@ -351,6 +351,12 @@ def get_relevance_reranker():
 @log_model_loading("gliner tokenizer")
 def get_gliner_tokenizer():
     global PII_GLINER_TOKENIZER
+
+    # Check if Gliner is enabled
+    if not USE_PII_MODEL_V2:
+        logger.info("Gliner disabled - GENAI_ENGINE_USE_PII_MODEL_V2 is false")
+        return None
+
     if USE_PII_MODEL_V2 and PII_GLINER_TOKENIZER is None:
         config = GLiNERConfig.from_json_file(GLINER_CONFIG_PATH)
         PII_GLINER_TOKENIZER = AutoTokenizer.from_pretrained(config.model_name)
@@ -360,7 +366,13 @@ def get_gliner_tokenizer():
 @log_model_loading("gliner model")
 def get_gliner_model():
     global PII_GLINER_MODEL
-    if USE_PII_MODEL_V2 and PII_GLINER_MODEL is None:
+
+    # Check if Gliner is enabled
+    if not USE_PII_MODEL_V2:
+        logger.info("Gliner disabled - GENAI_ENGINE_USE_PII_MODEL_V2 is false")
+        return None
+
+    if PII_GLINER_MODEL is None:
         PII_GLINER_MODEL = GLiNER.from_pretrained(
             "urchade/gliner_multi_pii-v1",
             config=GLiNERConfig.from_json_file(GLINER_CONFIG_PATH),
