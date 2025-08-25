@@ -1,4 +1,5 @@
 import pytest
+
 from schemas.enums import RuleResultEnum, RuleType
 from schemas.response_schemas import (
     ExternalRuleResult,
@@ -33,7 +34,7 @@ def test_prompt_injection_rule(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_prompt_injection_rule_limit_exceeded(client: GenaiEngineTestClientBase):
+def test_prompt_injection_long_prompt_passes(client: GenaiEngineTestClientBase):
     _, task = client.create_task(empty_rules=True)
     task_id = task.id
 
@@ -82,12 +83,7 @@ def test_prompt_injection_rule_limit_exceeded(client: GenaiEngineTestClientBase)
     )
 
     assert prompt.rule_results[0].result == RuleResultEnum.PASS
-    assert prompt.rule_results[0].details is not None
-    assert (
-        prompt.rule_results[0].details.message
-        == "Prompt has more than 512 tokens. The prompt "
-        "will be truncated from the middle."
-    )
+    assert prompt.rule_results[0].details is None
 
 
 @pytest.mark.parametrize(
