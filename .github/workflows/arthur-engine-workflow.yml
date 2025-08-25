@@ -95,7 +95,7 @@ jobs:
           working-directory: genai-engine
       - name: Install oasdiff
         run: |
-          curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.10.23/oasdiff_1.10.23_linux_amd64.deb
+          curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
           dpkg -i oasdiff.deb
       - name: Generate changelog
         run: |
