@@ -13,12 +13,14 @@ class BaseEnum(str, Enum):
         return self.value
 
 
+# TODO: Delete after migration (UP-2945).
 # If you added values here, did you update permission_mappings.py?
 class UserPermissionAction(BaseEnum, str, Enum):
     CREATE = "create"
     READ = "read"
 
 
+# TODO: Delete after migration (UP-2945).
 # If you added values here, did you update permission_mappings.py?
 class UserPermissionResource(BaseEnum, str, Enum):
     PROMPTS = "prompts"
@@ -27,6 +29,7 @@ class UserPermissionResource(BaseEnum, str, Enum):
     TASKS = "tasks"
 
 
+# TODO: Delete after migration (UP-2945).
 class PaginationSortMethod(str, Enum):
     ASCENDING = "asc"
     DESCENDING = "desc"
@@ -46,7 +49,7 @@ class RuleType(str, Enum):
         return self.value
 
 
-# TODO: Delete after migration (UP-2945).
+# Internal to genai-engine
 class RuleDataType(str, Enum):
     REGEX = "regex"
     KEYWORD = "keyword"
@@ -64,6 +67,7 @@ class RuleScope(str, Enum):
     TASK = "task"
 
 
+# Internal to genai-engine
 class RuleScoringMethod(str, Enum):
     # Better term for regex / keywords?
     BINARY = "binary"
@@ -79,7 +83,7 @@ class MetricType(str, Enum):
         return self.value
 
 
-# TODO: Move to common
+# Internal to genai-engine. Problems with generation in common client.
 class ToolClassEnum(int, Enum):
     WRONG_TOOL_SELECTED = 0
     CORRECT_TOOL_SELECTED = 1
@@ -89,17 +93,20 @@ class ToolClassEnum(int, Enum):
         return str(self.value)
 
 
+# Internal to genai-engine
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
     TXT = "txt"
 
 
+# Internal to genai-engine
 class DocumentStorageEnvironment(str, Enum):
     AWS = "aws"
     AZURE = "azure"
 
 
+# Internal to genai-engine
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
     CHAT_TASK_ID = "chat_task_id"
@@ -111,12 +118,14 @@ class ApplicationConfigurations(str, Enum):
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
 
 
+# TODO: Delete after migration (UP-2945).
 class InferenceFeedbackTarget(str, Enum):
     CONTEXT = "context"
     RESPONSE_RESULTS = "response_results"
     PROMPT_RESULTS = "prompt_results"
 
 
+# TODO: Delete after migration (UP-2945).
 class RuleResultEnum(str, Enum):
     PASS = "Pass"
     FAIL = "Fail"
@@ -129,6 +138,7 @@ class RuleResultEnum(str, Enum):
         return self.value
 
 
+# TODO: Delete after migration (UP-2945).
 class ToxicityViolationType(str, Enum):
     BENIGN = "benign"
     HARMFUL_REQUEST = "harmful_request"
@@ -166,6 +176,7 @@ class PIIEntityTypes(BaseEnum, str, Enum):
         return ",".join(member.value for member in cls)
 
 
+# TODO: Delete after migration (UP-2945).
 class TokenUsageScope(str, Enum):
     RULE_TYPE = "rule_type"
     TASK = "task"
@@ -174,12 +185,14 @@ class TokenUsageScope(str, Enum):
         return self.value
 
 
+# Internal to genai-engine
 class ClaimClassifierResultEnum(str, Enum):
     CLAIM = "claim"
     NONCLAIM = "nonclaim"
     DIALOG = "dialog"
 
 
+# Internal to genai-engine. Problems with generation in common client.
 class PermissionLevelsEnum(Enum):
     API_KEY_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.ADMIN_KEY],
@@ -266,6 +279,7 @@ class PermissionLevelsEnum(Enum):
     USER_WRITE = frozenset([constants.ORG_ADMIN])
 
 
+# TODO: Delete after migration (UP-2945).
 class APIKeysRolesEnum(Enum):
     DEFAULT_RULE_ADMIN: str = constants.DEFAULT_RULE_ADMIN
     TASK_ADMIN: str = constants.TASK_ADMIN

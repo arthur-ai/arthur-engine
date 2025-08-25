@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from arthur_common.models.enums import ToolClassEnum
 
 
+# TODO: Delete after migration (UP-2945).
 class RelevanceMetricConfig(BaseModel):
     """Configuration for relevance metrics including QueryRelevance and ResponseRelevance"""
 
@@ -18,6 +19,7 @@ class RelevanceMetricConfig(BaseModel):
     )
 
 
+# TODO: Delete after migration (UP-2945).
 class RelevanceMetric(BaseModel):
     bert_f_score: Optional[float] = None
     reranker_relevance_score: Optional[float] = None
@@ -34,6 +36,7 @@ class ResponseRelevanceMetric(RelevanceMetric):
     """Inherits from RelevanceMetric. This class is left empty so that the openapi response schema remains the same as before, but we have a single source of truth for the relevance metric details."""
 
 
+# Internal to genai-engine
 class ToolSelectionCorrectnessMetric(BaseModel):
     tool_selection: ToolClassEnum
     tool_selection_reason: str
@@ -41,6 +44,7 @@ class ToolSelectionCorrectnessMetric(BaseModel):
     tool_usage_reason: str
 
 
+# Internal to genai-engine
 class MetricScoreDetails(BaseModel):
     query_relevance: Optional[QueryRelevanceMetric] = None
     response_relevance: Optional[ResponseRelevanceMetric] = None
@@ -49,6 +53,7 @@ class MetricScoreDetails(BaseModel):
     tool_selection: Optional[ToolSelectionCorrectnessMetric] = None
 
 
+# TODO: Delete after migration (UP-2945).
 class MetricRequest(BaseModel):
     system_prompt: Optional[str] = Field(
         description="System prompt to be used by GenAI Engine for computing metrics.",

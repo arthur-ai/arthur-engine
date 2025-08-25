@@ -342,6 +342,7 @@ class ChatRequest(BaseModel):
     )
 
 
+# Internal to genai-engine
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
     environment: DocumentStorageEnvironment
     connection_string: Optional[str] = None
@@ -370,6 +371,7 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
         return values
 
 
+# Internal to genai-engine
 class ApplicationConfigurationUpdateRequest(BaseModel):
     chat_task_id: Optional[str] = None
     document_storage_configuration: Optional[
