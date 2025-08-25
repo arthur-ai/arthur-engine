@@ -64,12 +64,12 @@ For more information, refer to the [User Guide](https://shield.docs.arthur.ai).
     ```bash
     pip install poetry
     ```
-3. Set the proper Python version: Currently developed and tested with `3.13`
+3. Set the proper Python version: Currently developed and tested with `3.12.8`
     ```bash
     cd genai-engine
 
     poetry self add poetry-plugin-shell
-    poetry shell && poetry env use 3.13
+    poetry shell && poetry env use 3.12
     ```
 4. Install dependencies/packages
     ```bash
@@ -165,7 +165,7 @@ poetry run alembic upgrade head
 
 ### Run the app via the terminal
 
-1. Load a dedicated Python environment with a compatible Python version (i.e. `3.13`)
+1. Load a dedicated Python environment with a compatible Python version (i.e. `3.12`)
 2. [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
 3. Set the following environment variables:
     ```

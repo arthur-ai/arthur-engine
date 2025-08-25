@@ -16,8 +16,8 @@ brew install pyenv-virtualenv
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 
-pyenv install 3.13
-pyenv virtualenv 3.13 locust
+pyenv install 3.12.8
+pyenv virtualenv 3.12.8 locust
 pyenv activate locust
 ```
 
