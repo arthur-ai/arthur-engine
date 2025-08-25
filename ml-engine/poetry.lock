@@ -1784,6 +1784,23 @@ files = [
 ]
 
 [[package]]
+name = "lazy-imports"
+version = "0.3.1"
+description = "Tool to support lazy imports"
+optional = false
+python-versions = ">=3.6"
+groups = ["dev"]
+files = [
+    {file = "lazy_imports-0.3.1-py3-none-any.whl", hash = "sha256:149500cb1015726f5148155989386b30b425dfd7e48fd156385eb1c9e23887dd"},
+    {file = "lazy_imports-0.3.1.tar.gz", hash = "sha256:636624104bf45b09761323e06292927832aca067c3c199e5de483738789aeb21"},
+]
+
+[package.extras]
+all = ["black", "flake8", "isort", "mdformat", "mypy", "packaging", "pydocstyle", "pylint", "pylintfileheader", "pytest"]
+checking = ["black", "flake8", "isort", "mdformat", "mypy", "pydocstyle", "pylint", "pylintfileheader"]
+testing = ["packaging", "pytest"]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.2"
 description = "Safely add untrusted strings to HTML/XML markup."
@@ -3872,4 +3889,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "e78e809bdb20eb34cce9ee14f412c52cae6dadcc617d4dc7ad8d3aae65a74bdd"
+content-hash = "c62a9d5aab734afd7a8a4c5b128a9632246f82fded3b240599c5787c4a04d4d6"
