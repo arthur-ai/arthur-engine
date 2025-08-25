@@ -1,19 +1,19 @@
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Any, Union
+from typing import Any, List
 from uuid import UUID
 
 import duckdb
 from arthur_client.api_bindings import (
     AggregationSpec,
-    CustomAggregationSpecSchema,
+    CustomAggregationVersionSpecSchemaAggregateArgsInner,
     Dataset,
     MetricsArgSpec,
 )
 from arthur_common.models.metrics import (
-    AggregationSpecSchema,
     DatasetReference,
     MetricsColumnSchemaUnion,
+    MetricsParameterSchemaUnion,
     NumericMetric,
     SketchMetric,
 )
@@ -33,11 +33,11 @@ class MetricCalculator(ABC):
         self,
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
-        agg_schema: Union[CustomAggregationSpecSchema, AggregationSpecSchema],
+        agg_spec: AggregationSpec,
     ) -> None:
         # TODO: Make conn read only for aggregations? Would have to manually manage table existence across different connections (write for transform, read for aggregate)
         self.conn = conn
-        self.agg_schema = agg_schema
+        self.agg_spec = agg_spec
         self.logger = logger
 
     def transform(self) -> None:
@@ -47,31 +47,39 @@ class MetricCalculator(ABC):
     @abstractmethod
     def aggregate(
         self,
-        model_agg_spec: AggregationSpec,
-        datasets: list[Dataset],
         init_args: dict[str, Any],
         aggregate_args: dict[str, Any],
     ) -> list[SketchMetric | NumericMetric]:
         """
         Calculates aggregation.
-        :param model_agg_spec: AggregationSpec of the aggregation to calculate.
-        :param datasets: List of datasets to calculate the aggregation over.
         :param aggregate_args is a mapping from parameter key to parameter value
         :param init_args is a mapping from parameter key to parameter value
         Both of the argument parameters are from the output of process_agg_args
         """
         raise NotImplementedError
 
-    @staticmethod
+    @property
+    @abstractmethod
+    def aggregate_args_schemas(
+        self,
+    ) -> (
+        List[CustomAggregationVersionSpecSchemaAggregateArgsInner]
+        | List[MetricsParameterSchemaUnion]
+    ):
+        """Returns the schema for the arguments for the aggregation.
+        This will likely be done by accessing the agg_spec_schema field.
+        """
+        raise NotImplementedError
+
     def _validate_col_exists(
+        self,
         col_id: Any,
         all_dataset_columns: dict[str, Any],
-        agg_spec: AggregationSpec,
     ) -> None:
         """raises an error if column does not exist in the dataset"""
         if str(col_id) not in all_dataset_columns:
             raise ValueError(
-                f"Could not calculate aggregation with id {agg_spec.aggregation_id}. "
+                f"Could not calculate aggregation with id {self.agg_spec.aggregation_id}. "
                 f"At least one parameter ({col_id}) refers to a column in a dataset that could not be loaded."
                 f"{all_dataset_columns}",
             )
@@ -119,7 +127,6 @@ class MetricCalculator(ABC):
 
     def _validate_segmentation_args(
         self,
-        agg_function_schema: AggregationSpecSchema,
         aggregate_args: dict[str, Any],
         ds_map: dict[str, Dataset],
     ) -> None:
@@ -127,12 +134,11 @@ class MetricCalculator(ABC):
         1. If argument is a column list, no more than 3 segmentation columns are configured.
         2. Requirements for data types and limit on unique values are met for the column.
 
-        agg_function_schema: Schema of the aggregate function
         aggregate_args: dict mapping argument keys to argument values
         ds_map: Dict from dataset ID to dataset object
         """
         segmentation_required_arg_schemas = get_args_with_tag_hint(
-            agg_function_schema.aggregate_args,
+            self.aggregate_args_schemas,
             ScopeSchemaTag.POSSIBLE_SEGMENTATION,
         )
 
@@ -168,11 +174,10 @@ class MetricCalculator(ABC):
                     ds_map,
                 )
 
-    @staticmethod
     def _get_col_list_arg_values(
+        self,
         arg: MetricsArgSpec,
         all_dataset_columns: dict[str, Any],
-        agg_spec: AggregationSpec,
     ) -> list[Any]:
         """Validates the argument value of a column list parameter and returns the corresponding list of column names"""
         if not isinstance(arg.arg_value, list):
@@ -182,16 +187,14 @@ class MetricCalculator(ABC):
         else:
             # list of column names—validate each column name exists
             for val in arg.arg_value:
-                MetricCalculator._validate_col_exists(
+                self._validate_col_exists(
                     val,
                     all_dataset_columns,
-                    agg_spec,
                 )
             return [all_dataset_columns[str(value)] for value in arg.arg_value]
 
     def process_agg_args(
         self,
-        agg_spec: AggregationSpec,
         datasets: list[Dataset],
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
@@ -205,19 +208,19 @@ class MetricCalculator(ABC):
         In the case of dataset arguments, the value is the DatasetReference object for this dataset.
         """
         init_args = {
-            arg.arg_key: arg.arg_value for arg in agg_spec.aggregation_init_args
+            arg.arg_key: arg.arg_value for arg in self.agg_spec.aggregation_init_args
         }
 
         column_parameter_keys = get_keys_with_param_type(
-            self.agg_schema.aggregate_args,
+            self.aggregate_args_schemas,
             "column",
         )
         column_list_parameter_keys = get_keys_with_param_type(
-            self.agg_schema.aggregate_args,
+            self.aggregate_args_schemas,
             "column_list",
         )
         dataset_parameter_keys = get_keys_with_param_type(
-            self.agg_schema.aggregate_args,
+            self.aggregate_args_schemas,
             "dataset",
         )
 
@@ -227,20 +230,19 @@ class MetricCalculator(ABC):
             all_dataset_columns.update(ds.dataset_schema.column_names)
 
         aggregate_args: dict[str, Any] = {}
-        for arg in agg_spec.aggregation_args:
+        for arg in self.agg_spec.aggregation_args:
             if arg.arg_key in column_parameter_keys:
-                self._validate_col_exists(arg.arg_value, all_dataset_columns, agg_spec)
+                self._validate_col_exists(arg.arg_value, all_dataset_columns)
                 aggregate_args[arg.arg_key] = all_dataset_columns[str(arg.arg_value)]
             elif arg.arg_key in column_list_parameter_keys:
                 aggregate_args[arg.arg_key] = self._get_col_list_arg_values(
                     arg,
                     all_dataset_columns,
-                    agg_spec,
                 )
             elif arg.arg_key in dataset_parameter_keys:
                 if arg.arg_value not in ds_map:
                     raise ValueError(
-                        f"Could not calculate aggregation with id {agg_spec.aggregation_id}. "
+                        f"Could not calculate aggregation with id {self.agg_spec.aggregation_id}. "
                         f"At least one parameter refers to a dataset that could not be loaded.",
                     )
                 dataset = ds_map[arg.arg_value]
@@ -252,5 +254,5 @@ class MetricCalculator(ABC):
             else:
                 aggregate_args[arg.arg_key] = arg.arg_value
 
-        self._validate_segmentation_args(self.agg_schema, aggregate_args, ds_map)
+        self._validate_segmentation_args(aggregate_args, ds_map)
         return init_args, aggregate_args

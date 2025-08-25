@@ -205,6 +205,7 @@ class MetricsCalculationExecutor:
                 return DefaultMetricCalculator(
                     duckdb_conn,
                     self.logger,
+                    agg_spec,
                     agg_function_schema,
                     _agg_function_type,
                 )
@@ -214,8 +215,6 @@ class MetricsCalculationExecutor:
                         self.custom_aggregations_client.get_custom_aggregation(
                             custom_aggregation_id=agg_spec.aggregation_id,
                             version=agg_spec.aggregation_version,
-                            page=1,
-                            page_size=1,
                         )
                     )
                 except NotFoundException:
@@ -223,18 +222,11 @@ class MetricsCalculationExecutor:
                         f"No aggregation with id {agg_spec.aggregation_id} could be fetched for execution "
                         f"from the set of custom aggregations.",
                     )
-
-                # expect exactly one custom aggregation with the specified ID and version. an error here means there's
-                # a control plane-side bug.
-                if len(custom_aggs.records) != 1:
-                    raise ValueError(
-                        f"A single custom aggregation with id {agg_spec.aggregation_id} and version {agg_spec.aggregation_version} could not be fetched for execution. Found {len(custom_aggs.records)} aggregations.",
-                    )
-
                 return CustomMetricSQLCalculator(
                     duckdb_conn,
                     self.logger,
-                    custom_aggs.records[0],
+                    agg_spec,
+                    custom_aggs,
                 )
             case _:
                 raise ValueError(
@@ -256,12 +248,9 @@ class MetricsCalculationExecutor:
                     f"Calculating aggregation with name {calculator.agg_schema.name}",
                 )
                 init_args, aggregate_args = calculator.process_agg_args(
-                    agg_spec,
                     datasets,
                 )
                 metrics_to_add = calculator.aggregate(
-                    agg_spec,
-                    datasets,
                     init_args,
                     aggregate_args,
                 )
