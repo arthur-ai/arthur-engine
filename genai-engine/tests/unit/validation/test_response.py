@@ -1,6 +1,6 @@
 import pytest
 from schemas.internal_schemas import InferencePrompt, Rule, Task
-from schemas.request_schemas import ResponseValidationRequest
+from arthur_common.models.request_schemas import ResponseValidationRequest
 from tests.clients.base_test_client import (
     override_get_db_session,
     override_get_scorer_client,

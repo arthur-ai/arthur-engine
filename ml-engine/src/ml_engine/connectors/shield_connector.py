@@ -26,7 +26,7 @@ from arthur_common.models.connectors import (
     SHIELD_DATASET_TASK_ID_FIELD,
     ConnectorPaginationOptions,
 )
-from arthur_common.models.datasets import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.shield import NewRuleRequest, RuleResponse, TaskResponse
 from config.config import Config
 from connectors.connector import Connector

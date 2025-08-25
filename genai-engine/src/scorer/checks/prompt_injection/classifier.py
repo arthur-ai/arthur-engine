@@ -2,11 +2,11 @@ import logging
 import threading
 
 import torch
+from arthur_common.models.enums import RuleResultEnum
 import torch.nn.functional as F
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
-from schemas.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import RuleScorer
 from utils.model_load import (

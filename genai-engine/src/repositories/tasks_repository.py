@@ -11,7 +11,7 @@ from db_models.db_models import (
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from schemas.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
 

@@ -31,4 +31,5 @@ Chart.lock
 values.yaml
 
 ml-engine/src/genai_client/**
+ml-engine/src/common_client/**
 openapitools.json

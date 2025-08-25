@@ -28,7 +28,7 @@ from config.keycloak_config import KeyCloakSettings
 from db_models.db_models import Base
 from metrics_engine import MetricsEngine
 from repositories.configuration_repository import ConfigurationRepository
-from schemas.enums import DocumentStorageEnvironment, MetricType, RuleType
+from arthur_common.models.enums import DocumentStorageEnvironment, MetricType, RuleType
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,

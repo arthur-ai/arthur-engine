@@ -6,7 +6,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from opentelemetry import trace
 from repositories.embedding_repository import EmbeddingRepository
 from repositories.inference_repository import InferenceRepository
-from schemas.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod
 from schemas.internal_schemas import AugmentedRetrieval
 from scorer.llm_client import get_llm_executor
 from utils import constants

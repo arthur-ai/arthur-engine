@@ -50,6 +50,13 @@ if [[ "$purpose" == "generate" ]]; then
     openapi-generator-cli generate -i ../../genai-engine/staging.openapi.json --skip-validate-spec -g "python" -o ../src/genai_client --package-name genai_client -p packageVersion=$version
 fi
 
+if [[ "$purpose" == "generate-common" ]]; then
+    rm -rf ../src/common_client
+    echo "cleared previous generated common code"
+    version=$(jq -r '.info.version' ./staging.openapi.min.json)
+    openapi-generator-cli generate -i ./staging.openapi.min.json --skip-validate-spec -g "python" -o ../src/common_client --package-name arthur_common -p packageVersion=$version --additional-properties=legacyDiscriminatorBehavior=false
+fi
+
 if [ "$purpose" == "install" ]; then
   echo "Installing the newly generated $runtime client"
   pip3 install ../src/genai_client -vvv

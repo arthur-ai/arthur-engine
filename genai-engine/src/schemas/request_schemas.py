@@ -3,14 +3,14 @@ from typing import Dict, List, Optional, Type
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import (
+from arthur_common.models.enums import (
     APIKeysRolesEnum,
     DocumentStorageEnvironment,
     InferenceFeedbackTarget,
@@ -19,7 +19,7 @@ from schemas.enums import (
     RuleScope,
     RuleType,
 )
-from schemas.metric_schemas import RelevanceMetricConfig
+from arthur_common.models.metric_schemas import RelevanceMetricConfig
 from utils import constants
 
 
@@ -342,6 +342,7 @@ class ChatRequest(BaseModel):
     )
 
 
+# Internal to genai-engine
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
     environment: DocumentStorageEnvironment
     connection_string: Optional[str] = None
@@ -370,6 +371,7 @@ class DocumentStorageConfigurationUpdateRequest(BaseModel):
         return values
 
 
+# Internal to genai-engine
 class ApplicationConfigurationUpdateRequest(BaseModel):
     chat_task_id: Optional[str] = None
     document_storage_configuration: Optional[

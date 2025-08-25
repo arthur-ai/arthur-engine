@@ -301,7 +301,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         DatabaseTask,
         DatabaseTaskToMetrics,
     )
-    from schemas.enums import MetricType
+    from arthur_common.models.enums import MetricType
 
     # Create tasks first
     task1 = DatabaseTask(

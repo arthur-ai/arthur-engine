@@ -4,10 +4,10 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from schemas.common_schemas import LLMTokenConsumption
-from schemas.enums import MetricType, ToolClassEnum
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import MetricType, ToolClassEnum
 from schemas.internal_schemas import MetricResult
-from schemas.metric_schemas import (
+from arthur_common.models.metric_schemas import (
     MetricRequest,
     MetricScoreDetails,
     ToolSelectionCorrectnessMetric,

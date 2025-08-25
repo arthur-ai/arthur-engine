@@ -5,9 +5,9 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from schemas.enums import MetricType
+from arthur_common.models.enums import MetricType
 from schemas.internal_schemas import MetricResult
-from schemas.metric_schemas import (
+from arthur_common.models.metric_schemas import (
     MetricRequest,
     MetricScoreDetails,
     QueryRelevanceMetric,

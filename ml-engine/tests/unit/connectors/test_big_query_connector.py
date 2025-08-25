@@ -20,7 +20,7 @@ from arthur_common.models.connectors import (
     BIG_QUERY_DATASET_TABLE_NAME_FIELD,
     ConnectorPaginationOptions,
 )
-from arthur_common.models.datasets import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 from connectors.big_query_connector import BigQueryConnector
 from mock_data.connector_helpers import *
 
