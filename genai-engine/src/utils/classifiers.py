@@ -88,23 +88,24 @@ class Classifier(torch.nn.Module):
         return cls(t, classifier=classifier, label_map=label_map)
 
     def forward(self, texts):
-        embeddings: torch.Tensor = torch.tensor(
-            self.transformer.encode(
-                texts,
-                convert_to_tensor=True,
-                batch_size=len(texts),
-            ).to(get_device()),
-            dtype=torch.float64,
-        )
-        if self.classifier.num_classes == 2:
-            logit = self.classifier(embeddings).view(-1).detach().cpu().numpy()
-            label = (logit > 0.5).astype(int)
-            res = {"label": label, "logit": logit, "prob": logit}
+        with torch.no_grad():
+            embeddings: torch.Tensor = torch.tensor(
+                self.transformer.encode(
+                    texts,
+                    convert_to_tensor=True,
+                    batch_size=len(texts),
+                ).to(get_device()),
+                dtype=torch.float64,
+            )
+            if self.classifier.num_classes == 2:
+                logit = self.classifier(embeddings).view(-1).detach().cpu().numpy()
+                label = (logit > 0.5).astype(int)
+                res = {"label": label, "logit": logit, "prob": logit}
 
-        else:
-            logits = self.classifier(embeddings).detach().cpu().numpy()
-            label = np.argmax(np.log(logits), axis=1)
-            res = {"label": label, "logit": np.log(logits), "prob": logits}
-        if self.label_map is not None:
-            res["pred_label_str"] = [self.inv_label_map[x] for x in res["label"]]
-        return res
+            else:
+                logits = self.classifier(embeddings).detach().cpu().numpy()
+                label = np.argmax(np.log(logits), axis=1)
+                res = {"label": label, "logit": np.log(logits), "prob": logits}
+            if self.label_map is not None:
+                res["pred_label_str"] = [self.inv_label_map[x] for x in res["label"]]
+            return res

@@ -11,6 +11,8 @@ services:
       - /var/lib/postgresql/data
     env_file:
       - .env
+    ports:
+      - "5435:5432"
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
