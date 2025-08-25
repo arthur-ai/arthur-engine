@@ -4,8 +4,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from arthur_common.models.enums import MetricType, ToolClassEnum
+from arthur_common.models.enums import MetricType
 from schemas.internal_schemas import MetricResult
+from schemas.enums import ToolClassEnum
 from arthur_common.models.metric_schemas import MetricRequest
 from scorer.metrics.tool_selection.tool_selection import ToolSelectionCorrectnessScorer
 from utils import utils

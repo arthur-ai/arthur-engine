@@ -5,13 +5,13 @@ from langchain_core.output_parsers.json import JsonOutputParser
 from pydantic import BaseModel, Field
 
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from arthur_common.models.enums import MetricType, ToolClassEnum
+from arthur_common.models.enums import MetricType
+from schemas.enums import ToolClassEnum
 from schemas.internal_schemas import MetricResult
 from arthur_common.models.metric_schemas import (
     MetricRequest,
-    MetricScoreDetails,
-    ToolSelectionCorrectnessMetric,
 )
+from schemas.metric_schemas import ToolSelectionCorrectnessMetric, MetricScoreDetails
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.tool_selection.prompt_templates import (
     TOOL_SELECTION_NON_STRUCTURED_PROMPT_TEMPLATE,

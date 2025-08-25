@@ -10,7 +10,7 @@ from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from arthur_common.models.enums import ClaimClassifierResultEnum, RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
 from schemas.internal_schemas import OrderedClaim
 from schemas.scorer_schemas import (
     RuleScore,
@@ -18,6 +18,7 @@ from schemas.scorer_schemas import (
     ScorerHallucinationClaim,
     ScorerRuleDetails,
 )
+from schemas.enums import ClaimClassifierResultEnum
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer
 from scorer.checks.hallucination.v2_legacy_prompts import (

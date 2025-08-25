@@ -46,19 +46,16 @@ from arthur_common.models.common_schemas import (
     ToxicityConfig,
 )
 from arthur_common.models.enums import (
-    ApplicationConfigurations,
-    DocumentStorageEnvironment,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
-    RuleDataType,
     RuleResultEnum,
     RuleScope,
-    RuleScoringMethod,
     RuleType,
     ToxicityViolationType,
 )
-from arthur_common.models.metric_schemas import MetricScoreDetails
+from schemas.metric_schemas import MetricScoreDetails
+from schemas.enums import RuleDataType, RuleScoringMethod, DocumentStorageEnvironment, ApplicationConfigurations
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
@@ -66,10 +63,8 @@ from arthur_common.models.request_schemas import (
 )
 from arthur_common.models.response_schemas import (
     ApiKeyResponse,
-    ApplicationConfigurationResponse,
     BaseDetailsResponse,
     ChatDocumentContext,
-    DocumentStorageConfigurationResponse,
     ExternalDocument,
     ExternalInference,
     ExternalInferencePrompt,
@@ -94,6 +89,7 @@ from arthur_common.models.response_schemas import (
     ToxicityDetailsResponse,
     UserResponse,
 )
+from schemas.response_schemas import ApplicationConfigurationResponse, DocumentStorageConfigurationResponse
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
     RuleScore,

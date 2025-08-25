@@ -582,6 +582,7 @@ class UserResponse(BaseModel):
     roles: list[AuthUserRole]
 
 
+# Internal to genai-engine
 class ConversationBaseResponse(BaseModel):
     id: str
     updated_at: datetime

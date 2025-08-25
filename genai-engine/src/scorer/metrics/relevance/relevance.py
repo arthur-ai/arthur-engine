@@ -9,10 +9,10 @@ from arthur_common.models.enums import MetricType
 from schemas.internal_schemas import MetricResult
 from arthur_common.models.metric_schemas import (
     MetricRequest,
-    MetricScoreDetails,
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
+from schemas.metric_schemas import MetricScoreDetails
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.relevance.prompt_templates import (
     RESPONSE_RELEVANCE_NON_STRUCTURED_PROMPT_TEMPLATE,

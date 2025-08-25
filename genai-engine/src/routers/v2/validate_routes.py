@@ -7,8 +7,9 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.enums import PermissionLevelsEnum, RuleScope
+from arthur_common.models.enums import RuleScope
 from schemas.internal_schemas import User
+from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.request_schemas import (
     PromptValidationRequest,
     ResponseValidationRequest,

@@ -8,8 +8,9 @@ from repositories.feedback_repository import FeedbackRepository, save_feedback
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import InferenceFeedbackTarget, PermissionLevelsEnum
+from arthur_common.models.enums import InferenceFeedbackTarget
 from schemas.internal_schemas import InferenceFeedback, User
+from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.request_schemas import FeedbackRequest
 from arthur_common.models.response_schemas import (
     InferenceFeedbackResponse,

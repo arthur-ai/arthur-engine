@@ -15,8 +15,9 @@ from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import PermissionLevelsEnum, RuleScope, RuleType
+from arthur_common.models.enums import RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, User
+from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
 from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
 from sqlalchemy.orm import Session

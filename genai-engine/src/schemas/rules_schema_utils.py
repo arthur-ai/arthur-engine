@@ -12,7 +12,8 @@ from arthur_common.models.common_schemas import (
     RegexConfig,
     ToxicityConfig,
 )
-from arthur_common.models.enums import RuleDataType, RuleType
+from arthur_common.models.enums import RuleType
+from schemas.enums import RuleDataType
 from utils.utils import constants
 
 

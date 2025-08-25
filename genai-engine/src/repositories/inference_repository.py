@@ -1,4 +1,5 @@
 import logging
+import sched
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -28,10 +29,7 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
-from arthur_common.models.response_schemas import (
-    ConversationBaseResponse,
-    ConversationResponse,
-)
+from schemas.response_schemas import ConversationBaseResponse, ConversationResponse
 from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, selectinload

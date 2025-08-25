@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from arthur_common.models.enums import ToolClassEnum
+from schemas.enums import ToolClassEnum
 
 
 # TODO: Delete after migration (UP-2945).

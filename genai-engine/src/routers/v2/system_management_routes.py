@@ -10,9 +10,10 @@ from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.enums import PermissionLevelsEnum, TokenUsageScope
+from arthur_common.models.enums import TokenUsageScope
 from schemas.internal_schemas import ApplicationConfiguration, User
-from arthur_common.models.request_schemas import ApplicationConfigurationUpdateRequest
+from schemas.enums import PermissionLevelsEnum
+from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from arthur_common.models.response_schemas import (
     ApplicationConfigurationResponse,
     TokenUsageResponse,

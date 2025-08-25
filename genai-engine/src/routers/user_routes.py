@@ -11,11 +11,11 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from routers.route_handler import GenaiEngineRoute
 from arthur_common.models.common_schemas import PaginationParameters, UserPermission
 from arthur_common.models.enums import (
-    PermissionLevelsEnum,
     UserPermissionAction,
     UserPermissionResource,
 )
 from schemas.internal_schemas import User
+from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
 from arthur_common.models.response_schemas import UserResponse
 from starlette import status

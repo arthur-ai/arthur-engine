@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from arthur_common.models.response_schemas import HealthResponse
+from schemas.response_schemas import HealthResponse
 from utils import utils
 from utils.utils import public_endpoint
 
