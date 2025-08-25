@@ -27,21 +27,17 @@ from scorer.checks.pii.validations import (
     is_ssn,
     is_url,
 )
-from utils import constants
 from utils.model_load import (
+    USE_PII_MODEL_V2,
     get_gliner_model,
     get_gliner_tokenizer,
     get_presidio_analyzer,
 )
 from utils.text_chunking import ChunkIterator
-from utils.utils import get_env_var
 
 logging.getLogger("presidio-analyzer").setLevel(logging.ERROR)
 
 MAX_TOKENS_PER_CHUNK = 384
-USE_PII_MODEL_V2 = (
-    get_env_var(constants.GENAI_ENGINE_USE_PII_MODEL_V2_ENV_VAR) == "true"
-)
 
 
 class BinaryPIIDataClassifier:
