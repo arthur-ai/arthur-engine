@@ -4619,6 +4619,7 @@
                         "title": "Updated At"
                     },
                     "raw_data": {
+                        "additionalProperties": true,
                         "type": "object",
                         "title": "Raw Data"
                     },
@@ -4659,6 +4660,7 @@
                         "anyOf": [
                             {
                                 "items": {
+                                    "additionalProperties": true,
                                     "type": "object"
                                 },
                                 "type": "array"
@@ -5166,51 +5168,23 @@
                         "title": "Items"
                     },
                     "total": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "minimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "minimum": 0.0,
                         "title": "Total"
                     },
                     "page": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "minimum": 1.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "minimum": 1.0,
                         "title": "Page"
                     },
                     "size": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "minimum": 1.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "minimum": 1.0,
                         "title": "Size"
                     },
                     "pages": {
-                        "anyOf": [
-                            {
-                                "type": "integer",
-                                "minimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "integer",
+                        "minimum": 0.0,
                         "title": "Pages"
                     }
                 },
@@ -5219,7 +5193,8 @@
                     "items",
                     "total",
                     "page",
-                    "size"
+                    "size",
+                    "pages"
                 ],
                 "title": "Page[List[ConversationBaseResponse]]"
             },
@@ -6005,6 +5980,7 @@
                         "title": "Updated At"
                     },
                     "raw_data": {
+                        "additionalProperties": true,
                         "type": "object",
                         "title": "Raw Data"
                     },
@@ -6045,6 +6021,7 @@
                         "anyOf": [
                             {
                                 "items": {
+                                    "additionalProperties": true,
                                     "type": "object"
                                 },
                                 "type": "array"
