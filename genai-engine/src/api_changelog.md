@@ -1,6 +1,17 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 08/25/2025
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'page' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'pages' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'size' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'total' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
+- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'page' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'pages' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'size' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations  removed 'subschema #1, subschema #2' from the 'total' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/chat/conversations  the response property 'pages' became required for the status '200'
 # 08/09/2025
 Made `bert_f_score` and `reranker_relevance_score` optional.
 
