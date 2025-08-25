@@ -23,10 +23,11 @@ pip install "poetry>=2,<3"
 
 ### Set Up Python Environment
 
-1. Generate GenAI Client
+1. Generate and Install GenAI Client
 ```bash
 cd scripts
 ./openapi_client_utils.sh generate python
+./openapi_client_utils.sh install python
 ```
 
 2. Install system dependencies for database drivers (optional)
@@ -68,11 +69,17 @@ export ARTHUR_CLIENT_SECRET=<value given when engine is registered>
 export ARTHUR_CLIENT_ID=<value given when engine is registered>
 ```
 
-You should see the following output when the app is running:
+### Run the ML Engine
+
+Use this command to start the app:
 
 ```bash
 poetry run python src/ml_engine/job_agent.py
 ```
+
+If the app has started successfully, can communicate with the control plane, and is polling for jobs,
+the logs should look as follows:
+```INFO:root:Checking for jobs...```
 
 ### Running the linter
 
@@ -199,8 +206,27 @@ docker build . -t ml-engine:local
 docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET=<value given when engine is registered> -e ARTHUR_CLIENT_ID=<value given when engine is registered> -it ml-engine:local
 ```
 
+## Running the ML Engine Locally in terminal [Recommended for Dev Work Only]
+You may want to run the ML engine in your terminal instead of in a Docker container.
+
+The most likely reason you're doing this is because you are a dev who wants to install a local version of the
+arthur-client generated based on changes that haven't been released yet:
+
+1. From the ml-engine directory, [set up your Python environment](#set-up-python-environment). All Python environment set ups
+   MUST happen before step 3 (particularly `poetry install`) or the local version of the arthur-client that you install
+   will get overwritten by the project dependency installation.
+2. From the `arthur-scope` repository, run the OpenAPI Client generation & install steps in the [root README](https://gitlab.com/ArthurAI/arthur-scope#generate-client).
+3. Run `./scripts/install_local_scope_packages.sh`. If you did not clone arthur-scope into your home directory, you
+   will need to update the path referenced in the script that installs the client. Assuming you completed step 2 and
+   your paths are set as expected, this will install your local version of the arthur client.
+4. Follow the [Setup environment](#setup-environment) and [Run the ML Engine](#run-the-ml-engine) steps to finish
+   running the ML engine locally. If you're running the arthur-scope stack locally, make sure you configure the
+   environment variables to point to your local stack. This will require using `export ARTHUR_API_HOST="http://localhost:8000"`
+   as well as setting the client secret.
+
+
 ## Common Issues
-1. The version of arthur-client used by the engion has not been updated yet with the version you need:
+1. The version of arthur-client that you need has been released, but the engine dependency has not yet been bumped:
 
 New versions of arthur-client will be picked up by the ML engine via RenovateBot. You may be developing against a version
 of arthur-client that is newly released & hasn't been picked up yet. In that case, either look for a new RenovateBot PR,

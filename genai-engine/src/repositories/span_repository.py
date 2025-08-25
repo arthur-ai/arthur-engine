@@ -10,7 +10,7 @@ from opentelemetry import trace
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import and_, asc, desc, insert, select
+from sqlalchemy import and_, asc, desc, func, insert, select
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseMetricResult, DatabaseSpan
@@ -24,7 +24,6 @@ from schemas.response_schemas import TraceResponse
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
-    METADATA_KEY,
     SPAN_KIND_KEY,
     SPAN_KIND_LLM,
     SPAN_VERSION_KEY,
@@ -90,11 +89,17 @@ class SpanRepository:
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
 
-        # Handle task ID to trace ID resolution
-        trace_ids = self._resolve_trace_ids_for_task_ids(task_ids, trace_ids)
+        # Get paginated trace IDs directly from database with proper ordering
+        trace_ids = self._get_paginated_trace_ids_for_task_ids(
+            task_ids=task_ids,
+            trace_ids=trace_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
 
-        # Apply trace-level pagination
-        trace_ids = self._apply_trace_level_pagination(trace_ids, page, page_size)
         if not trace_ids:
             return []
 
@@ -192,35 +197,85 @@ class SpanRepository:
     # Private Helper Methods - Query Logic
     # ============================================================================
 
-    def _resolve_trace_ids_for_task_ids(
+    def _get_paginated_trace_ids_for_task_ids(
         self,
-        task_ids: Optional[list[str]],
-        trace_ids: Optional[list[str]],
+        task_ids: list[str],
+        trace_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        page: int = 0,
+        page_size: int = DEFAULT_PAGE_SIZE,
     ) -> Optional[list[str]]:
-        """Resolve trace IDs for given task IDs and intersect with provided trace IDs."""
+        """Get paginated trace IDs for given task IDs with proper ordering and filtering."""
         if not task_ids:
             return trace_ids
 
-        associated_trace_ids = self._get_trace_ids_for_task_ids(task_ids)
-        if trace_ids:
-            return list(set(trace_ids) & set(associated_trace_ids))
-        return associated_trace_ids
+        # Build query to get trace IDs with proper ordering
+        query = self._build_trace_ids_query(
+            task_ids=task_ids,
+            trace_ids=trace_ids,
+            start_time=start_time,
+            end_time=end_time,
+            sort=sort,
+        )
 
-    def _apply_trace_level_pagination(
+        # Apply pagination
+        offset = page * page_size
+        query = query.offset(offset).limit(page_size)
+
+        # Execute query
+        results = self.db_session.execute(query).scalars().all()
+        trace_ids_result = list(results)
+
+        logger.debug(
+            f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
+            f"(page={page}, page_size={page_size}, sort={sort})",
+        )
+
+        return trace_ids_result if trace_ids_result else None
+
+    def _build_trace_ids_query(
         self,
-        trace_ids: Optional[list[str]],
-        page: int,
-        page_size: int,
-    ) -> Optional[list[str]]:
-        """Apply pagination to trace IDs."""
-        if not trace_ids or page_size is None:
-            return trace_ids
+        task_ids: list[str],
+        trace_ids: Optional[list[str]] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+    ) -> select:
+        """Build a query for trace IDs with the given filters and ordering."""
+        # Build conditions for the query
+        conditions = [DatabaseSpan.task_id.in_(task_ids)]
 
-        start_idx = page * page_size
-        end_idx = start_idx + page_size
-        paginated_trace_ids = trace_ids[start_idx:end_idx]
+        if trace_ids:
+            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if start_time:
+            conditions.append(DatabaseSpan.start_time >= start_time)
+        if end_time:
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
-        return paginated_trace_ids if paginated_trace_ids else None
+        # Use a subquery to get the earliest span time for each trace
+        # This ensures we order traces by their start time (earliest span)
+        earliest_span_subquery = (
+            select(
+                DatabaseSpan.trace_id,
+                func.min(DatabaseSpan.start_time).label("earliest_time"),
+            )
+            .where(and_(*conditions))
+            .group_by(DatabaseSpan.trace_id)
+            .subquery()
+        )
+
+        # Main query to get trace IDs ordered by the earliest span time
+        query = select(earliest_span_subquery.c.trace_id)
+
+        # Apply sorting based on the earliest span time within each trace
+        if sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(earliest_span_subquery.c.earliest_time))
+        elif sort == PaginationSortMethod.ASCENDING:
+            query = query.order_by(asc(earliest_span_subquery.c.earliest_time))
+
+        return query
 
     def _query_spans_from_db(
         self,
@@ -263,23 +318,8 @@ class SpanRepository:
             raise ValueError(f"Span {span_id} has no task_id")
 
     # ============================================================================
-    # Private Helper Methods - Task ID Resolution
+    # Private Helper Methods - Metrics Computation
     # ============================================================================
-
-    def _get_trace_ids_for_task_ids(self, task_ids: list[str]) -> list[str]:
-        """Get all trace IDs associated with the given task IDs."""
-        if not task_ids:
-            return []
-
-        trace_ids_query = (
-            self.db_session.query(DatabaseSpan.trace_id)
-            .filter(DatabaseSpan.task_id.in_(task_ids))
-            .distinct()
-        )
-
-        trace_ids = [row[0] for row in trace_ids_query.all()]
-        logger.debug(f"Found {len(trace_ids)} trace IDs for task IDs: {task_ids}")
-        return trace_ids
 
     # ============================================================================
     # Private Helper Methods - Metrics Computation
@@ -516,9 +556,9 @@ class SpanRepository:
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
         if start_time:
-            conditions.append(DatabaseSpan.created_at >= start_time)
+            conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:
-            conditions.append(DatabaseSpan.created_at <= end_time)
+            conditions.append(DatabaseSpan.start_time <= end_time)
 
         # Apply filters if any conditions exist
         if conditions:
@@ -526,9 +566,9 @@ class SpanRepository:
 
         # Apply sorting
         if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseSpan.created_at))
+            query = query.order_by(desc(DatabaseSpan.start_time))
         elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(DatabaseSpan.created_at))
+            query = query.order_by(asc(DatabaseSpan.start_time))
 
         return query
 
@@ -561,10 +601,41 @@ class SpanRepository:
         spans_data = []
 
         for resource_span in json_traces.get("resourceSpans", []):
+            # Extract task ID from resource attributes (new format)
+            resource_task_id = self._extract_task_id_from_resource_attributes(
+                resource_span,
+            )
+
+            # Validate task ID at resource level - reject entire resource if invalid
+            if not self._is_valid_task_id(resource_task_id):
+                # Count all spans in this resource as rejected
+                resource_span_count = sum(
+                    len(scope_span.get("spans", []))
+                    for scope_span in resource_span.get("scopeSpans", [])
+                )
+                total_spans += resource_span_count
+                rejected_spans += resource_span_count
+                rejected_reasons.extend(
+                    ["Missing or invalid task ID in resource attributes"]
+                    * resource_span_count,
+                )
+
+                logger.warning(
+                    f"Rejecting entire resource with {resource_span_count} spans - "
+                    f"no valid task ID found in resource attributes (task_id: {resource_task_id})",
+                )
+                continue  # Skip processing all spans in this resource
+
+            logger.debug(f"Found valid resource task ID: {resource_task_id}")
+
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
-                    processed_span = self._process_span_data(span_data)
+                    # Pass the resource task ID to the span processing
+                    processed_span = self._process_span_data(
+                        span_data,
+                        resource_task_id,
+                    )
 
                     if processed_span:
                         processed_span["id"] = str(uuid.uuid4())
@@ -584,6 +655,27 @@ class SpanRepository:
             rejected_reasons,
         )
 
+    def _extract_task_id_from_resource_attributes(
+        self,
+        resource_span: dict,
+    ) -> Optional[str]:
+        """
+        Extract task ID from resource attributes.
+
+        Args:
+            resource_span: Dictionary containing resource span data
+
+        Returns:
+            Task ID string if found, None otherwise
+        """
+        attributes = resource_span.get("resource", {}).get("attributes", [])
+
+        for attr in attributes:
+            if isinstance(attr, dict) and attr.get("key") == TASK_ID_KEY:
+                value = self._extract_value_from_otel_format(attr.get("value", {}))
+                return str(value) if value is not None else None
+        return None
+
     def _grpc_trace_to_dict(self, trace_data: bytes) -> dict:
         """Convert gRPC trace data to dictionary format."""
         try:
@@ -593,16 +685,19 @@ class SpanRepository:
         except DecodeError as e:
             raise DecodeError("Failed to decode protobuf message.") from e
 
-    def _process_span_data(self, span_data: dict) -> Optional[dict]:
+    def _process_span_data(
+        self,
+        span_data: dict,
+        resource_task_id: str,
+    ) -> Optional[dict]:
         """Process and clean span data, returning None if the span data is invalid."""
         normalized_span_data = self._normalize_span_attributes(span_data)
 
         # Extract basic span information
         span_dict = self._extract_basic_span_info(normalized_span_data)
 
-        # Extract and validate task_id
-        task_id = self._extract_and_validate_task_id(normalized_span_data)
-        span_dict["task_id"] = task_id
+        # Task ID is already validated at resource level, so we can use it directly
+        span_dict["task_id"] = resource_task_id
 
         # Inject version into raw data
         normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
@@ -610,7 +705,6 @@ class SpanRepository:
         # Store the normalized span data
         span_dict["raw_data"] = normalized_span_data
 
-        # Accept all spans - no discrimination on task_id or parent_id
         return span_dict
 
     def _extract_basic_span_info(self, span_data: dict) -> dict:
@@ -637,14 +731,37 @@ class SpanRepository:
 
         return span_dict
 
-    def _extract_and_validate_task_id(
+    def _extract_value_from_otel_format(
         self,
-        span_data: dict,
-    ) -> Optional[str]:
-        """Extract task_id from span data."""
-        # Extract metadata and task_id from normalized attributes
-        metadata = self._get_metadata(span_data)
-        return metadata.get(TASK_ID_KEY)
+        value_dict: dict,
+    ) -> Optional[Union[str, int, float, bool]]:
+        """
+        Extract value from OpenTelemetry value format, preserving original types.
+
+        Args:
+            value_dict: OpenTelemetry value dictionary
+
+        Returns:
+            Value in its native Python type, or None if not found
+        """
+        if not isinstance(value_dict, dict):
+            return None
+
+        # Handle different OpenTelemetry value types
+        if "stringValue" in value_dict:
+            return value_dict["stringValue"]
+        elif "intValue" in value_dict:
+            return value_dict["intValue"]
+        elif "doubleValue" in value_dict:
+            return value_dict["doubleValue"]
+        elif "boolValue" in value_dict:
+            return value_dict["boolValue"]
+
+        return None
+
+    def _is_valid_task_id(self, task_id: str) -> bool:
+        """Validate that a task ID is a non-empty string."""
+        return isinstance(task_id, str) and bool(task_id.strip())
 
     def _normalize_span_attributes(self, span_data: dict) -> dict:
         """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
@@ -703,16 +820,6 @@ class SpanRepository:
             end_time = trace_utils.timestamp_ns_to_datetime(end_time_ns)
 
         return start_time, end_time
-
-    def _get_metadata(self, span_data: dict) -> dict:
-        """Get the metadata from the span data."""
-        metadata_str = self._get_attribute_value(span_data, METADATA_KEY)
-        if metadata_str:
-            try:
-                return json.loads(metadata_str)
-            except json.JSONDecodeError:
-                return {}
-        return {}
 
     def _group_spans_into_traces(
         self,

@@ -121,6 +121,13 @@ Parameters:
     Type: Number
     Default: 8000
     Description: 'Max number of tokens an inference can have for the toxicity rule to run. This is for managing validation latency.'
+  GenaiEngineUsePIIModelV2:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: 'Enable PII model v2'
   ChatEnabled:
     Type: String
     Description: 'Enable Arthur Chat'
@@ -236,6 +243,8 @@ Resources:
               Value: !Ref GenaiEngineHallucinationCheckMaxTokenLimit
             - Name: 'GENAI_ENGINE_TOXICITY_CHECK_MAX_TOKEN_LIMIT'
               Value: !Ref GenaiEngineToxicityCheckMaxTokenLimit
+            - Name: 'GENAI_ENGINE_USE_PII_MODEL_V2'
+              Value: !Ref GenaiEngineUsePIIModelV2
             - Name: 'GENAI_ENGINE_OPENAI_PROVIDER'
               Value: !Ref GenaiEngineOpenAIProvider
             - Name: 'ALLOW_ADMIN_KEY_GENERAL_ACCESS'
