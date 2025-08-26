@@ -4,12 +4,12 @@ from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
     ConnectorCheckResult,
     ConnectorSpec,
+    ConnectorSpecField,
 )
 from arthur_common.models.connectors import (
+    ODBC_CONNECTOR_HOST_FIELD,
     SNOWFLAKE_CONNECTOR_ACCOUNT_FIELD,
     SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
-    SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD,
-    SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
     SNOWFLAKE_CONNECTOR_ROLE_FIELD,
     SNOWFLAKE_CONNECTOR_SCHEMA_FIELD,
     SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
@@ -27,6 +27,7 @@ class SnowflakeConnector(ODBCConnector):
     """
 
     def __init__(self, connector_config: ConnectorSpec, logger: Logger) -> None:
+        self.logger = logger
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
         # Validate required Snowflake fields first
@@ -41,6 +42,20 @@ class SnowflakeConnector(ODBCConnector):
             "account",
         )
 
+        # Add host field to connector_config.fields for parent constructor
+        if "host" not in connector_fields:
+            connector_config.fields.append(
+                ConnectorSpecField(
+                    key=ODBC_CONNECTOR_HOST_FIELD,
+                    value=self.account,
+                    is_sensitive=False,
+                    d_type="STRING",
+                ),
+            )
+            self.logger.info(f"Added host field to connector config: {self.account}")
+        else:
+            self.logger.info(f"Host field already exists in connector config")
+
         if not self.account or self.account == "account":
             raise ValueError("Snowflake account identifier is required")
 
@@ -54,38 +69,6 @@ class SnowflakeConnector(ODBCConnector):
             SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
             "snowflake",
         )
-        self.private_key = connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD)
-        self.private_key_passphrase = connector_fields.get(
-            SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
-        )
-
-        if "host" not in connector_fields:
-            connector_config.fields.append(
-                type(
-                    "Field",
-                    (),
-                    {
-                        "key": "host",
-                        "value": self.account,
-                        "is_sensitive": False,
-                        "d_type": "STRING",
-                    },
-                )(),
-            )
-
-        if "dialect" not in connector_fields:
-            connector_config.fields.append(
-                type(
-                    "Field",
-                    (),
-                    {
-                        "key": "dialect",
-                        "value": "snowflake native (snowflake-connector-python)",
-                        "is_sensitive": False,
-                        "d_type": "STRING",
-                    },
-                )(),
-            )
 
         # Call parent constructor to set up basic ODBC connection
         super().__init__(connector_config, logger)
@@ -95,6 +78,7 @@ class SnowflakeConnector(ODBCConnector):
 
     def _create_snowflake_engine(self) -> Engine:
         """Create a Snowflake-specific SQLAlchemy engine following official documentation."""
+
         connection_params = {
             "account": self.account,
             "user": self.username,
@@ -103,18 +87,7 @@ class SnowflakeConnector(ODBCConnector):
             "warehouse": self.warehouse,
         }
 
-        if self.authenticator == "private_key":
-            if not self.private_key:
-                raise ValueError(
-                    "Private key is required when using 'private_key' authenticator",
-                )
-            connection_params["authenticator"] = "private_key"
-            connection_params["private_key"] = self.private_key
-            if self.private_key_passphrase:
-                connection_params["private_key_passphrase"] = (
-                    self.private_key_passphrase
-                )
-        elif self.authenticator == "snowflake":
+        if self.authenticator == "snowflake":
             connection_params["authenticator"] = "snowflake"
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
@@ -129,21 +102,13 @@ class SnowflakeConnector(ODBCConnector):
         if self.role:
             connection_params["role"] = self.role
 
-        # Add optional connection optimization parameters with sensible defaults
-        connection_params.update(
-            {
-                "client_session_keep_alive": True,
-                "client_session_keep_alive_heartbeat_frequency": 3600,  # 1 hour
-                "login_timeout": 60,  # 60 seconds
-                "network_timeout": 60,  # 60 seconds
-            },
-        )
-
-        if hasattr(self, "session_parameters") and self.session_parameters:
-            connection_params["session_parameters"] = self.session_parameters
-
-        snowflake_url = URL(**connection_params)
-        return create_engine(snowflake_url, echo=False)
+        try:
+            snowflake_url = URL(**connection_params)
+            engine = create_engine(snowflake_url, echo=False)
+            return engine
+        except Exception as e:
+            self.logger.error(f"Failed to create Snowflake engine: {e}")
+            raise
 
     def _get_default_schema(self) -> str:
         """Override to return Snowflake's default schema."""
@@ -208,7 +173,6 @@ class SnowflakeConnector(ODBCConnector):
             "warehouse": self.warehouse,
             "role": self.role,
             "authenticator": self.authenticator,
-            "has_private_key": bool(self.private_key),
             "has_password": bool(self.password),
         }
 
