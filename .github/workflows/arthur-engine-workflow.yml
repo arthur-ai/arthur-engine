@@ -374,7 +374,7 @@ jobs:
           fi
           
           aws cloudformation create-stack \
-            --stack-name genai-cpu-test \
+            --stack-name genai-cpu-test-2 \
             --template-url https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.64-dev/root-arthur-genai-engine-cpu.yml \
             --parameters \
               ParameterKey=ArthurResourceNamespace,ParameterValue=genai-cpu-test \
