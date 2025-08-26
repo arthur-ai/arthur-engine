@@ -2,15 +2,16 @@ import logging
 import os
 import threading
 from itertools import repeat
-from typing import Tuple, List
+from typing import List, Tuple
 
 import torch
 from langchain_core.messages.ai import AIMessage
 from more_itertools import chunked
 from opentelemetry import trace
 from pydantic import BaseModel
-from arthur_common.models.common_schemas import LLMTokenConsumption
-from arthur_common.models.enums import RuleResultEnum
+from sentence_transformers import SentenceTransformer
+
+from arthur_common.models import ClaimClassifierResultEnum, LLMTokenConsumption, RuleResultEnum
 from schemas.internal_schemas import OrderedClaim
 from schemas.scorer_schemas import (
     RuleScore,
@@ -18,19 +19,17 @@ from schemas.scorer_schemas import (
     ScorerHallucinationClaim,
     ScorerRuleDetails,
 )
-from schemas.enums import ClaimClassifierResultEnum
-from scorer.llm_client import get_llm_executor, handle_llm_exception
-from scorer.scorer import RuleScorer
 from scorer.checks.hallucination.v2_legacy_prompts import (
     get_claim_flagging_prompt,
     get_flagged_claim_explanation_prompt,
 )
 from scorer.checks.hallucination.v2_prompts import get_structured_output_prompt
-from sentence_transformers import SentenceTransformer
+from scorer.llm_client import get_llm_executor, handle_llm_exception
+from scorer.scorer import RuleScorer
 from utils import constants, utils
+from utils.claim_parser import ClaimParser
 from utils.classifiers import Classifier, LogisticRegressionModel, get_device
 from utils.model_load import get_claim_classifier_embedding_model
-from utils.claim_parser import ClaimParser
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -74,6 +73,7 @@ def get_claim_classifier(
         .to(torch.float64)
     )
     classifier.load_state_dict(state_dict)
+    classifier.eval()  # Set classifier to evaluation mode
     return Classifier(
         transformer_model=sentence_transformer,
         classifier=classifier,
@@ -339,7 +339,7 @@ class HallucinationClaimsV2(RuleScorer):
                         hallucination=llm_claim_result.is_hallucination,
                         reason=explanation,
                         order_number=claim_batch[i].index_number,
-                    )
+                    ),
                 )
 
             return (
