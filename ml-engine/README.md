@@ -223,4 +223,11 @@ arthur-client generated based on changes that haven't been released yet:
    running the ML engine locally. If you're running the arthur-scope stack locally, make sure you configure the
    environment variables to point to your local stack. This will require using `export ARTHUR_API_HOST="http://localhost:8000"`
    as well as setting the client secret.
-`
+
+
+## Common Issues
+1. The version of arthur-client that you need has been released, but the engine dependency has not yet been bumped:
+
+New versions of arthur-client will be picked up by the ML engine via RenovateBot. You may be developing against a version
+of arthur-client that is newly released & hasn't been picked up yet. In that case, either look for a new RenovateBot PR,
+or look here to update `pyproject.toml` to the latest version: https://pypi.org/project/arthur-client/
