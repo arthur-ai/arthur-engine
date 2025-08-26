@@ -332,13 +332,8 @@ jobs:
   #         helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
   #         helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
-  test-workflow:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Test workflow
-        run: echo "Workflow is running!"
-
   deploy-minimal-genai-engine-cpu:
+    environment: shared-protected-branch-secrets
     uses: ./.github/workflows/reusable-deployments.yml
     secrets: inherit
     with:
