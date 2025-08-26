@@ -23,7 +23,7 @@ MOCK_SNOWFLAKE_CONNECTOR_SPEC = {
     "temporary": False,
     "fields": [
         {
-            "key": "host",
+            "key": "account",
             "value": "test.snowflakecomputing.com",
             "is_sensitive": False,
             "d_type": ConnectorFieldDataType.STRING.value,
@@ -107,7 +107,7 @@ class TestSnowflakeConnector:
         minimal_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
         minimal_spec["fields"] = [
             {
-                "key": "host",
+                "key": "account",
                 "value": "test.snowflakecomputing.com",
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
@@ -137,10 +137,10 @@ class TestSnowflakeConnector:
 
         connector = SnowflakeConnector(spec, logger)
 
-        assert connector.schema == "PUBLIC"  # Default schema
-        assert connector.warehouse is None
+        assert connector.schema == "PUBLIC"
+        assert connector.warehouse is "COMPUTE_WH"
         assert connector.role is None
-        assert connector.authenticator == "snowflake"  # Default authenticator
+        assert connector.authenticator == "snowflake"
 
     @patch("ml_engine.connectors.snowflake_connector.create_engine")
     def test_get_default_schema(self, mock_create_engine):
@@ -152,7 +152,7 @@ class TestSnowflakeConnector:
         custom_schema_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
         custom_schema_spec["fields"] = [
             {
-                "key": "host",
+                "key": "account",
                 "value": "test.snowflakecomputing.com",
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
@@ -200,7 +200,7 @@ class TestSnowflakeConnector:
         no_schema_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
         no_schema_spec["fields"] = [
             {
-                "key": "host",
+                "key": "account",
                 "value": "test.snowflakecomputing.com",
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
