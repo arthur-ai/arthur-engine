@@ -17,7 +17,6 @@ on:
 
 jobs:
   deploy-genai-engine-cpu:
-    environment: shared-protected-branch-secrets
     if: inputs.selection == 'genai-engine-cpu'
     runs-on: ubuntu-latest
     permissions:
