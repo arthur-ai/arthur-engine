@@ -373,7 +373,7 @@ jobs:
           fi
           
           aws cloudformation deploy \
-            --template-file deployment/cloudformation/root-arthur-genai-engine-cpu.yml \
+            --template-file https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.64-dev/root-genai-engine-cpu.yml \
             --stack-name genai-cpu-test \
             --parameter-overrides \
               ArthurResourceNamespace=genai-cpu-test \
