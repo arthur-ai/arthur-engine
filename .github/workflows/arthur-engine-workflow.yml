@@ -362,18 +362,19 @@ jobs:
         run: |
           echo "test" > test.txt
           aws s3 cp test.txt s3://test-bucket-2874739283/test.txt
-      - name: Deploye GenAi Engine CPU
+      - name: Check Secret Availability
         run: |
           echo "Checking if secret is available..."
-          if [ -n "${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }}" ]; then
-            echo "Secret is available (length: ${#secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS})"
+          secret_value="${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }}"
+          if [ -n "$secret_value" ]; then
+            echo "Secret is available (length: ${#secret_value})"
           else
             echo "Secret is empty or not available"
             exit 1
           fi
           
-          aws cloudformation deploy \
-            --template-file https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.64-dev/root-arthur-genai-engine-cpu.yml \
+          aws cloudformation update-stack \
+            --template-url https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.64-dev/root-arthur-genai-engine-cpu.yml \
             --stack-name genai-cpu-test \
             --parameter-overrides \
               ArthurResourceNamespace=genai-cpu-test \
