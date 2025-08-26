@@ -346,6 +346,23 @@ jobs:
           echo "AWS Account: sts-arthur-test"
           echo "Version: 2.1.64-dev"
           echo "Selection: genai-engine-cpu"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+        with:
+          role-to-assume: arn:aws:iam::587035402297:role/github-actions-role-1
+          role-session-name: test-s3-access-from-github
+          aws-region: us-east-2
+      - name: Test AWS Access
+        run: |
+          echo "test" > test.txt
+          aws s3 cp test.txt s3://test-bucket-2874739283/test.txt
+
 
   # push-tag:
   #   needs: [push-all-cfts, push-all-helm-charts-to-github]
