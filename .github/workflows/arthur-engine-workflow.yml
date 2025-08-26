@@ -331,6 +331,22 @@ jobs:
           helm package ${CHART_PATH_ML_ENGINE} --version ${{ env.VERSION }} --app-version ${{ env.VERSION }}
           helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
+
+  deploy-minimal-genai-engine-cpu:
+    runs-on: ubuntu-latest
+    environment: shared-protected-branch-secrets
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      GIT_DEPTH: 100
+    steps:
+      - name: Settings
+        run: |
+          echo "AWS Account: sts-arthur-test"
+          echo "Version: 2.1.64-dev"
+          echo "Selection: genai-engine-cpu"
+
   push-tag:
     needs: [push-all-cfts, push-all-helm-charts-to-github]
     if: |
