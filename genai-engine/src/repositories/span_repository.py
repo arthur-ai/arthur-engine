@@ -48,7 +48,6 @@ class SpanRepository:
     # Public API Methods
     # ============================================================================
 
-    @tracer.start_as_current_span("store_traces")
     def create_traces(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and store in database."""
         try:
