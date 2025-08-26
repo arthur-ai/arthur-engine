@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -35,7 +35,7 @@ def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:
 
 def get_keys_with_param_type(
     args: (
-        list[Union[MetricsParameterSchemaUnion]]
+        list[MetricsParameterSchemaUnion]
         | list[CustomAggregationVersionSpecSchemaAggregateArgsInner]
     ),
     param_type: str,
