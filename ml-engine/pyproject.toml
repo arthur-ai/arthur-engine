@@ -36,6 +36,7 @@ arthur-common = "^2.1.60"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"
 snowflake-connector-python = {extras = ["sqlalchemy"], version = "3.17.1"}
+snowflake-sqlalchemy = "^1.7.6"
 
 
 [tool.poetry.group.dev.dependencies]
