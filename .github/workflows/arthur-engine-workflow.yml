@@ -333,22 +333,19 @@ jobs:
   #         helm push arthur-ml-engine-${{ env.VERSION }}.tgz oci://ghcr.io/${{ github.repository }}/${{ env.CHART_NAMESPACE }}
 
   deploy-minimal-genai-engine-cpu:
-    # uses: ./.github/workflows/reusable-deployments.yml
-    # with:
-    #   aws_account: sts-arthur-test
-    #   version: 2.1.64-dev
-    #   selection: genai-engine-cpu
     runs-on: ubuntu-latest
     environment: shared-protected-branch-secrets
     permissions:
       id-token: write
       contents: read
+    env:
+      GIT_DEPTH: 100
     steps:
       - name: Settings
         run: |
-          echo "AWS Account: ${{ inputs.aws_account }}"
-          echo "Version: ${{ inputs.version }}"
-          echo "Selection: ${{ inputs.selection }}"
+          echo "AWS Account: sts-arthur-test"
+          echo "Version: 2.1.64-dev"
+          echo "Selection: genai-engine-cpu"
       - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ env.GIT_DEPTH }}
