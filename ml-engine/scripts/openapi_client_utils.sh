@@ -61,3 +61,8 @@ if [ "$purpose" == "install" ]; then
   echo "Installing the newly generated $runtime client"
   pip3 install ../src/genai_client -vvv
 fi
+
+if [ "$purpose" == "install-common" ]; then
+  echo "Installing the newly generated common client"
+  pip3 install ../src/common_client -vvv
+fi

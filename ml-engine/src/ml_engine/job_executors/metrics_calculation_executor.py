@@ -25,7 +25,7 @@ from arthur_client.api_bindings import (
     PostMetricsVersions,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.enums import ModelProblemType
+from arthur_common.models import ModelProblemType
 from arthur_common.models.metrics import (
     AggregationSpecSchema,
     DatasetReference,
