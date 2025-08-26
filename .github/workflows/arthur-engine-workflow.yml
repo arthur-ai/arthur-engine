@@ -334,6 +334,7 @@ jobs:
 
   deploy-minimal-genai-engine-cpu:
     uses: ./.github/workflows/reusable-deployments.yml
+    secrets: inherit
     with:
       aws_account: sts-arthur-test
       version: 2.1.64-dev
