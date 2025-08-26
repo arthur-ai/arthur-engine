@@ -373,7 +373,7 @@ jobs:
             exit 1
           fi
           
-          aws cloudformation update-stack \
+          aws cloudformation create-stack \
             --stack-name genai-cpu-test \
             --template-url https://arthur-cft.s3.us-east-2.amazonaws.com/arthur-engine/templates/2.1.64-dev/root-arthur-genai-engine-cpu.yml \
             --parameters \
