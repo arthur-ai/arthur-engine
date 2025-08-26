@@ -390,6 +390,11 @@ jobs:
               ParameterKey=OpenAIGPTModelNamesEndpointsAndKeys,ParameterValue=${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }} \
               ParameterKey=GenaiEngineRoute53HostedZoneId,ParameterValue=Z00275071B6BUYG9Q1YNZ \
               ParameterKey=GenaiEngineRoute53RecordName,ParameterValue=genai.test.arthur.ai \
+              ParameterKey=PostgresCredentialsPassword,ParameterValue='' \
+              ParameterKey=GenaiEngineBYOTaskExecutionRoleIAMArn,ParameterValue='' \
+              ParameterKey=GenaiEngineBYOTaskRoleIAMArn,ParameterValue='' \
+              ParameterKey=ContainerRepositoryPassword,ParameterValue='' \
+              ParameterKey=PostgresBYOEndpoint,ParameterValue='' \
             --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
             --region us-east-2
 
