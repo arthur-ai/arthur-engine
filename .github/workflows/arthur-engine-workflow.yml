@@ -9,6 +9,9 @@ on:
     branches:
       - main
       - dev
+  workflow_run:
+    workflows: ["Version Management"]
+    types: [completed]
 
 jobs:
   run-genai-engine-linter:
