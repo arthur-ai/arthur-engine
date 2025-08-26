@@ -6639,14 +6639,14 @@ catalogue = ">=2.0.3,<2.1.0"
 
 [[package]]
 name = "sse-starlette"
-version = "3.0.0"
+version = "3.0.2"
 description = "SSE plugin for Starlette"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "sse_starlette-3.0.0-py3-none-any.whl", hash = "sha256:43ea0a032f936b3efff683aba55aa235e91b067ee9283beee918d2acce4fbb67"},
-    {file = "sse_starlette-3.0.0.tar.gz", hash = "sha256:5318b0bf5aaa23550c9dd88bd3b8c9c2664aa3f94232ccde5e87519244dbc6b8"},
+    {file = "sse_starlette-3.0.2-py3-none-any.whl", hash = "sha256:16b7cbfddbcd4eaca11f7b586f3b8a080f1afe952c15813455b162edea619e5a"},
+    {file = "sse_starlette-3.0.2.tar.gz", hash = "sha256:ccd60b5765ebb3584d0de2d7a6e4f745672581de4f5005ab31c3a25d10b52b3a"},
 ]
 
 [package.dependencies]
@@ -7877,4 +7877,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "99240d6b053b35089fc1d049d21e5781eaa1138244c10fc0049c9af68ca0d413"
+content-hash = "05070352f017605e06be52fe74386770d29265be37dda675d4885e8471e53573"
