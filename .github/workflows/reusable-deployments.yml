@@ -60,7 +60,7 @@ jobs:
         # Z00275071B6BUYG9Q1YNZ
         # genai.test.arthur.ai
         run: |
-          echo "Checking if secret is available..."
+          echo "Checking if secret is available...."
           if [ -n "${{ secrets.OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS }}" ]; then
             echo "Secret is available (length: ${#OPENAI_GPT_MODEL_NAMES_ENDPOINTS_AND_KEYS})"
           else
