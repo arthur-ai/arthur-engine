@@ -53,8 +53,8 @@ fi
 if [[ "$purpose" == "generate-common" ]]; then
     rm -rf ../src/common_client
     echo "cleared previous generated common code"
-    version=$(jq -r '.info.version' ./staging.openapi.min.json)
-    openapi-generator-cli generate -i ./staging.openapi.min.json --skip-validate-spec -g "python" -o ../src/common_client --package-name arthur_common -p packageVersion=$version --additional-properties=legacyDiscriminatorBehavior=false
+    version=$(jq -r '.info.version' ./staging.openapi.json)
+    openapi-generator-cli generate -i ./staging.openapi.json --skip-validate-spec -g "python" -o ../src/common_client --package-name arthur_common_generated -p packageVersion=$version
 fi
 
 if [ "$purpose" == "install" ]; then

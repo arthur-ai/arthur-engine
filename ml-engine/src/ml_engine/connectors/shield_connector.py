@@ -26,7 +26,7 @@ from arthur_common.models.connectors import (
     SHIELD_DATASET_TASK_ID_FIELD,
     ConnectorPaginationOptions,
 )
-from arthur_common.models import ModelProblemType, NewRuleRequest, RuleResponse, TaskResponse
+from common_client.arthur_common_generated.models import ModelProblemType, NewRuleRequest, RuleResponse, TaskResponse
 from config.config import Config
 from connectors.connector import Connector
 from genai_client import (

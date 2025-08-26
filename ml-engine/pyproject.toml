@@ -65,7 +65,7 @@ explicit_package_bases = false
 exclude = ["src/genai_client"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "src/genai_client"]
+pythonpath = ["src", "src/genai_client", "src/common_client"]
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]

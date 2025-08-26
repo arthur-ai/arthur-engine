@@ -25,7 +25,7 @@ from arthur_client.api_bindings import (
     PostMetricsVersions,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models import ModelProblemType
+from common_client.arthur_common_generated.models import ModelProblemType, ScopeSchemaTag
 from arthur_common.models.metrics import (
     AggregationSpecSchema,
     DatasetReference,
@@ -36,7 +36,7 @@ from arthur_common.models.metrics import (
     SketchMetric,
     SketchTimeSeries,
 )
-from arthur_common.models.schema_definitions import ScopeSchemaTag
+# from arthur_common.models.schema_definitions import ScopeSchemaTag
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
