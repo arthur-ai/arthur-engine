@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from typing import Generator
+from unittest.mock import Mock, patch
 
 import pytest
 from arthur_client.api_bindings import User
@@ -56,3 +57,12 @@ def app_plane_http_server(
     # Restore environment variables for other tests in the process
     os.environ.clear()
     os.environ.update(old_environ)
+
+
+@pytest.fixture
+def mock_bigquery_client():
+    with patch("google.cloud.bigquery.Client") as mock_client, patch(
+        "google.oauth2.service_account.Credentials.from_service_account_info",
+    ) as mock_creds:
+        mock_creds.return_value = Mock()
+        yield mock_client.return_value
