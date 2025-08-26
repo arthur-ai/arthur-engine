@@ -380,8 +380,8 @@ jobs:
               ParameterKey=ArthurResourceNamespace,ParameterValue=genai-cpu-test \
               ParameterKey=ExistingArthurVPCId,ParameterValue=vpc-0fb404e5424a5283d \
               ParameterKey=ExistingArthurVPCCidrBlock,ParameterValue=10.200.0.0/20 \
-              ParameterKey=ArthurPrivateSubnets,ParameterValue=subnet-05903f0f2c4c7b845,subnet-0e06bec3fe3783f70,subnet-0e02da7979f803871 \
-              ParameterKey=ArthurPublicSubnets,ParameterValue=subnet-06a900130fb5bc783,subnet-02c096881def6b1b7,subnet-08632de4786692010 \
+              ParameterKey=ArthurPrivateSubnets,ParameterValue='subnet-05903f0f2c4c7b845,subnet-0e06bec3fe3783f70,subnet-0e02da7979f803871' \
+              ParameterKey=ArthurPublicSubnets,ParameterValue='subnet-06a900130fb5bc783,subnet-02c096881def6b1b7,subnet-08632de4786692010' \
               ParameterKey=AlarmSNSTopicArn,ParameterValue=arn:aws:sns:us-east-2:587035402297:CloudWatchToSlack \
               ParameterKey=GenaiEngineLoadBalancerScheme,ParameterValue=internet-facing \
               ParameterKey=GenaiEngineIngressURL,ParameterValue=https://genai.test.arthur.ai \
