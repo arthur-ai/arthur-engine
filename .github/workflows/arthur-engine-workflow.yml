@@ -394,19 +394,19 @@ jobs:
             --region us-east-2
 
 
-ParameterKey=ArthurResourceNamespace,ParameterValue=genai-cpu-test \
-    ParameterKey=ExistingArthurVPCId,ParameterValue=vpc-0fb404e5424a5283d \
-    ParameterKey=ExistingArthurVPCCidrBlock,ParameterValue=10.200.0.0/20 \
-    ParameterKey=ArthurPrivateSubnets,ParameterValue='subnet-05903f0f2c4c7b845,subnet-0e06bec3fe3783f70,subnet-0e02da7979f803871' \
-    ParameterKey=ArthurPublicSubnets,ParameterValue='subnet-06a900130fb5bc783,subnet-02c096881def6b1b7,subnet-08632de4786692010' \
-    ParameterKey=AlarmSNSTopicArn,ParameterValue=arn:aws:sns:us-east-2:587035402297:CloudWatchToSlack \
-    ParameterKey=GenaiEngineLoadBalancerScheme,ParameterValue=internet-facing \
-    ParameterKey=GenaiEngineIngressURL,ParameterValue=https://genai.test.arthur.ai \
-    ParameterKey=GenaiEngineLoadBalancerCertificateARN,ParameterValue=arn:aws:acm:us-east-2:587035402297:certificate/9d424ca4-b513-44ba-a001-bc717b8cf2f4 \
-    ParameterKey=GenaiEngineOpenAIProvider,ParameterValue=Azure \
-    ParameterKey=OpenAIGPTModelNamesEndpointsAndKeys,ParameterValue=*** \
-    ParameterKey=GenaiEngineRoute53HostedZoneId,ParameterValue=Z00275071B6BUYG9Q1YNZ \
-    ParameterKey=GenaiEngineRoute53RecordName,ParameterValue=genai.test.arthur.ai \
+# ParameterKey=ArthurResourceNamespace,ParameterValue=genai-cpu-test \
+#     ParameterKey=ExistingArthurVPCId,ParameterValue=vpc-0fb404e5424a5283d \
+#     ParameterKey=ExistingArthurVPCCidrBlock,ParameterValue=10.200.0.0/20 \
+#     ParameterKey=ArthurPrivateSubnets,ParameterValue='subnet-05903f0f2c4c7b845,subnet-0e06bec3fe3783f70,subnet-0e02da7979f803871' \
+#     ParameterKey=ArthurPublicSubnets,ParameterValue='subnet-06a900130fb5bc783,subnet-02c096881def6b1b7,subnet-08632de4786692010' \
+#     ParameterKey=AlarmSNSTopicArn,ParameterValue=arn:aws:sns:us-east-2:587035402297:CloudWatchToSlack \
+#     ParameterKey=GenaiEngineLoadBalancerScheme,ParameterValue=internet-facing \
+#     ParameterKey=GenaiEngineIngressURL,ParameterValue=https://genai.test.arthur.ai \
+#     ParameterKey=GenaiEngineLoadBalancerCertificateARN,ParameterValue=arn:aws:acm:us-east-2:587035402297:certificate/9d424ca4-b513-44ba-a001-bc717b8cf2f4 \
+#     ParameterKey=GenaiEngineOpenAIProvider,ParameterValue=Azure \
+#     ParameterKey=OpenAIGPTModelNamesEndpointsAndKeys,ParameterValue=*** \
+#     ParameterKey=GenaiEngineRoute53HostedZoneId,ParameterValue=Z00275071B6BUYG9Q1YNZ \
+#     ParameterKey=GenaiEngineRoute53RecordName,ParameterValue=genai.test.arthur.ai \
   
 
 
