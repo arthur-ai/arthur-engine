@@ -1046,9 +1046,35 @@
           "page_size": {
             "default": 25,
             "maximum": 500,
-            "minimum": 0.0,
+            "minimum": 1,
             "title": "Page Size",
             "type": "integer"
+          },
+          "page_params": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": [
+              1,
+              25
+            ],
+            "description": "Computed tuple of (page, page_size)",
+            "title": "Page Params"
           }
         },
         "title": "ConnectorPaginationOptions",

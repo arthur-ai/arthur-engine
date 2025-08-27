@@ -364,7 +364,7 @@ class ShieldBaseConnector(Connector, ABC):
     def add_rule_to_task(self, task_id: str, new_rule: NewRuleRequest) -> RuleResponse:
         resp = self._tasks_client.create_task_rule_api_v2_tasks_task_id_rules_post_with_http_info(
             task_id=task_id,
-            new_rule_request=ShieldClientTypeConverter.new_rule_request_api_to_shield_client(
+            new_rule_request=ShieldClientTypeConverter.new_rule_request_generated_to_shield_client(
                 new_rule,
             ),
         )
@@ -401,7 +401,7 @@ class ShieldBaseConnector(Connector, ABC):
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
+                new_metric_request=ShieldClientTypeConverter.new_metric_request_generated_to_shield_client(
                     new_metric
                 ),
             )

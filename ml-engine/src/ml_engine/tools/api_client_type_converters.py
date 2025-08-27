@@ -43,6 +43,12 @@ from genai_client.models import RelevanceMetricConfig as ShieldRelevanceMetricCo
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
 
+from common_client.arthur_common_generated.models import (
+    NewMetricRequest as GeneratedNewMetricRequest,
+    RelevanceMetricConfig as GeneratedRelevanceMetricConfig,
+    NewRuleRequest as GeneratedNewRuleRequest,
+)
+
 ApiConfigTypes = Optional[
     Union[
         ApiKeywordsConfig,
@@ -130,6 +136,22 @@ class ShieldClientTypeConverter:
         )
 
     @classmethod
+    def new_rule_request_generated_to_shield_client(
+        cls, api: GeneratedNewRuleRequest
+    ) -> ShieldNewRuleRequest:
+        return ShieldNewRuleRequest(
+            name=api.name,
+            type=ShieldRuleType(api.type),
+            apply_to_prompt=api.apply_to_prompt,
+            apply_to_response=api.apply_to_response,
+            config=(
+                api.config.model_dump()
+                if hasattr(api.config, "model_dump")
+                else api.config
+            ),
+        )
+
+    @classmethod
     def relevance_metric_config_api_to_shield_client(
         cls, api: ApiRelevanceMetricConfig
     ) -> ShieldRelevanceMetricConfig:
@@ -145,6 +167,30 @@ class ShieldClientTypeConverter:
         config = None
         if api.config is not None:
             config = cls.relevance_metric_config_api_to_shield_client(api.config)
+
+        return ShieldNewMetricRequest(
+            name=api.name,
+            type=ShieldMetricType(api.type),
+            metric_metadata=api.metric_metadata,
+            config=config,
+        )
+
+    @classmethod
+    def relevance_metric_config_generated_to_shield_client(
+        cls, api: GeneratedRelevanceMetricConfig
+    ) -> ShieldRelevanceMetricConfig:
+        return ShieldRelevanceMetricConfig(
+            relevance_threshold=api.relevance_threshold,
+            use_llm_judge=api.use_llm_judge,
+        )
+
+    @classmethod
+    def new_metric_request_generated_to_shield_client(
+        cls, api: GeneratedNewMetricRequest
+    ) -> ShieldNewMetricRequest:
+        config = None
+        if api.config is not None:
+            config = cls.relevance_metric_config_generated_to_shield_client(api.config)
 
         return ShieldNewMetricRequest(
             name=api.name,

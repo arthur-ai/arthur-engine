@@ -25,6 +25,7 @@ from arthur_client.api_bindings import (
     PostMetricsVersions,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
+from arthur_common.models.metrics import DatasetReference, MetricsColumnSchemaUnion # TODO: replace when property method fixed in openapi
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
@@ -43,9 +44,7 @@ from tools.validators import validate_schedule
 
 from common_client.arthur_common_generated.models import (
     AggregationSpecSchema,
-    DatasetReference,
     Dimension,
-    MetricsColumnSchemaUnion,
     ModelProblemType,
     NumericMetric,
     NumericTimeSeries,
