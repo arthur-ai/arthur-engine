@@ -21,7 +21,7 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import (  # TODO
+from arthur_common.models.schema_definitions import (  # TODO:replace when property method fixed in openapi
     AGENTIC_TRACE_SCHEMA,
     SHIELD_SCHEMA,
 )

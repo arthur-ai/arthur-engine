@@ -2,7 +2,8 @@ from typing import Any, Union
 
 import duckdb
 from arthur_common.aggregations import AggregationFunction
-from arthur_common.models.metrics import NumericMetric, SketchMetric
+
+from common_client.arthur_common_generated.models import NumericMetric, SketchMetric
 
 
 class MetricCalculator:

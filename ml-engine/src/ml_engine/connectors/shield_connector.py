@@ -19,13 +19,11 @@ from arthur_client.api_bindings import (
     PutAvailableDataset,
     PutAvailableDatasets,
 )
-from arthur_common.models.connectors import (
-    ConnectorPaginationOptions,
-)  # TODO: replace when property method fixed in openapi
-from arthur_common.models.connectors import (
+from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
     SHIELD_CONNECTOR_API_KEY_FIELD,
     SHIELD_CONNECTOR_ENDPOINT_FIELD,
     SHIELD_DATASET_TASK_ID_FIELD,
+    ConnectorPaginationOptions,
 )
 from config.config import Config
 from connectors.connector import Connector

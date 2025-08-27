@@ -1,12 +1,13 @@
 from typing import Optional
 
 from arthur_client.api_bindings import AvailableDataset, Dataset
-from arthur_common.models.metrics import (
+from arthur_common.models.metrics import (  # TODO: replace when property method fixed in openapi
     MetricsColumnSchemaUnion,
     MetricsParameterSchemaUnion,
 )
-from arthur_common.models.schema_definitions import DType, ScopeSchemaTag
 from tools.converters import client_to_common_dataset_schema
+
+from common_client.arthur_common_generated.models import DType, ScopeSchemaTag
 
 
 def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:
