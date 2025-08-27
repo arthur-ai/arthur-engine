@@ -19,7 +19,7 @@ from arthur_client.api_bindings import (
     PutAvailableDataset,
     PutAvailableDatasets,
 )
-from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
     SHIELD_CONNECTOR_ENDPOINT_FIELD,
     SHIELD_DATASET_TASK_ID_FIELD,
@@ -30,12 +30,9 @@ from connectors.connector import Connector
 from tools.api_client_type_converters import ShieldClientTypeConverter
 
 import genai_client.exceptions
-from common_client.arthur_common_generated.models import (
-    ModelProblemType,
-    NewRuleRequest,
-    RuleResponse,
-    TaskResponse,
-)
+from arthur_common.models.enums import ModelProblemType
+from arthur_common.models.request_schemas import NewRuleRequest
+from arthur_common.models.response_schemas import RuleResponse, TaskResponse
 from genai_client import (
     ApiClient,
     ApiKeyResponse,

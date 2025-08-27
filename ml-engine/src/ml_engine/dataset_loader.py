@@ -12,14 +12,14 @@ from arthur_client.api_bindings import (
 from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
-)  # TODO: replace when property method fixed in openapi
+)
 from arthur_common.tools.duckdb_data_loader import DuckDBOperator
 from arthur_common.tools.functions import uuid_to_base26
 from duckdb import DuckDBPyConnection
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import client_to_common_dataset_schema
 
-from common_client.arthur_common_generated.models import DatasetJoinKind
+from arthur_common.models.datasets import DatasetJoinKind
 
 
 class DatasetLoader:

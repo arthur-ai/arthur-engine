@@ -17,7 +17,7 @@ from arthur_client.api_bindings import (
     PutAvailableDatasets,
     ScopeSchemaTag,
 )
-from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BIG_QUERY_DATASET_DATASET_ID_FIELD,
     BIG_QUERY_DATASET_TABLE_NAME_FIELD,
     GOOGLE_CONNECTOR_CREDENTIALS_FIELD,

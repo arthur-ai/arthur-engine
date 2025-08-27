@@ -14,7 +14,7 @@ from arthur_client.api_bindings import (
 )
 from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
-)  # TODO: replace when property method fixed in openapi
+)
 
 
 class Connector(ABC):

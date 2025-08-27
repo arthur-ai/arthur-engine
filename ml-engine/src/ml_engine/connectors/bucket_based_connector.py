@@ -22,7 +22,7 @@ from arthur_client.api_bindings import (
     PutAvailableDatasets,
     ScopeSchemaTag,
 )
-from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BUCKET_BASED_CONNECTOR_BUCKET_FIELD,
     BUCKET_BASED_DATASET_FILE_PREFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
@@ -40,7 +40,7 @@ from fsspec import AbstractFileSystem
 from tools.connector_read_filters import apply_filters_to_retrieved_inferences
 from tools.schema_interpreters import primary_timestamp_col_name
 
-from common_client.arthur_common_generated.models import DatasetFileType
+from arthur_common.models.datasets import DatasetFileType
 
 DEFAULT_PAGE_SIZE = 250
 DEFAULT_LIMIT = 500

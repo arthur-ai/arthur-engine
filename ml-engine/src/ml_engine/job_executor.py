@@ -51,7 +51,7 @@ from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from pydantic import StrictBytes
 from tools.connector_constructor import ConnectorConstructor
 
-from common_client.arthur_common_generated.models import (
+from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
     FetchModelTaskJobSpec,

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from common_client.arthur_common_generated.models import DatasetSchema
+from arthur_common.models.schema_definitions import DatasetSchema
 
 
 def convert_column_id_to_name(

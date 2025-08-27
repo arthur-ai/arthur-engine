@@ -26,8 +26,8 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.metrics import DatasetReference, MetricsColumnSchemaUnion # TODO: replace when property method fixed in openapi
-from arthur_common.models.datasets import ModelProblemType
+from arthur_common.models.datasets import DatasetReference
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.metrics import (
     DatasetReference,
     Dimension,
@@ -45,17 +45,6 @@ from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
 from tools.connector_constructor import ConnectorConstructor
 from tools.validators import validate_schedule
-
-from common_client.arthur_common_generated.models import (
-    AggregationSpecSchema,
-    Dimension,
-    ModelProblemType,
-    NumericMetric,
-    NumericTimeSeries,
-    ScopeSchemaTag,
-    SketchMetric,
-    SketchTimeSeries,
-)
 
 
 class MetricsCalculationExecutor:
