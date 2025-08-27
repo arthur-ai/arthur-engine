@@ -30,7 +30,7 @@ from arthur_client.auth import (
     ArthurOAuthSessionAPIConfiguration,
     ArthurOIDCMetadata,
 )
-from arthur_common.models.task_job_specs import (
+from common_client.arthur_common_generated.models import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
     FetchModelTaskJobSpec,

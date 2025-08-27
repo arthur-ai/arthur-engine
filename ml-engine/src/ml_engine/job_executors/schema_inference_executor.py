@@ -7,7 +7,7 @@ from arthur_client.api_bindings import (
     DatasetsV1Api,
     SchemaInspectionJobSpec,
 )
-from arthur_common.models.connectors import ConnectorPaginationOptions
+from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
 from arthur_common.models.schema_definitions import SHIELD_SCHEMA
 from arthur_common.models.schema_definitions import DatasetSchema as CommonDatasetSchema
 from arthur_common.tools.schema_inferer import SchemaInferer

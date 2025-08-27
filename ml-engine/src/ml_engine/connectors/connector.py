@@ -12,7 +12,7 @@ from arthur_client.api_bindings import (
     Dataset,
     PutAvailableDatasets,
 )
-from arthur_common.models.connectors import ConnectorPaginationOptions
+from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
 
 
 class Connector(ABC):

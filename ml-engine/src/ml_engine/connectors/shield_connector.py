@@ -24,7 +24,7 @@ from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
     SHIELD_CONNECTOR_ENDPOINT_FIELD,
     SHIELD_DATASET_TASK_ID_FIELD,
-    ConnectorPaginationOptions,
+    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from common_client.arthur_common_generated.models import ModelProblemType, NewRuleRequest, RuleResponse, TaskResponse
 from config.config import Config

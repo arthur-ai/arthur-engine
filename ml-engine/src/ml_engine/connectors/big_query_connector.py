@@ -23,7 +23,7 @@ from arthur_common.models.connectors import (
     GOOGLE_CONNECTOR_CREDENTIALS_FIELD,
     GOOGLE_CONNECTOR_LOCATION_FIELD,
     GOOGLE_CONNECTOR_PROJECT_ID_FIELD,
-    ConnectorPaginationOptions,
+    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from connectors.connector import Connector
 from google.auth import load_credentials_from_dict

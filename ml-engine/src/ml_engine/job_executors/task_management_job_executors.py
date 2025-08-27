@@ -22,20 +22,18 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
-from arthur_common.models import (
-    MetricResponse,
-    NewMetricRequest,
-    NewRuleRequest,
-    RuleResponse,
-    TaskResponse,
-)
-from arthur_common.models.task_job_specs import (
+from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA # TODO
+from common_client.arthur_common_generated.models import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
     FetchModelTaskJobSpec,
     TaskType,
     UpdateModelTaskRulesJobSpec,
+    MetricResponse,
+    NewMetricRequest,
+    NewRuleRequest,
+    RuleResponse,
+    TaskResponse,
 )
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector

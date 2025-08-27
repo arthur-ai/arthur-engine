@@ -19,8 +19,8 @@ from arthur_client.api_bindings import (
     DatasetLocator,
     DatasetLocatorField,
 )
-from arthur_common.models.connectors import ConnectorPaginationOptions
-from arthur_common.models import NewRuleRequest
+from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
+from common_client.arthur_common_generated.models import NewRuleRequest
 from config.config import Config
 from connectors.shield_connector import (
     SHIELD_SORT_DESC,

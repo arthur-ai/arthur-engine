@@ -24,7 +24,7 @@ from arthur_common.models.connectors import (
     ODBC_CONNECTOR_PORT_FIELD,
     ODBC_CONNECTOR_TABLE_NAME_FIELD,
     ODBC_CONNECTOR_USERNAME_FIELD,
-    ConnectorPaginationOptions,
+    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from connectors.connector import Connector
 from dateutil import parser

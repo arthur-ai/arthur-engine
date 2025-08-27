@@ -10,8 +10,8 @@ from arthur_client.api_bindings import (
     DatasetsV1Api,
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
-from arthur_common.models.connectors import ConnectorPaginationOptions
-from arthur_common.models.datasets import DatasetJoinKind
+from common_client.arthur_common_generated.models import DatasetJoinKind
+from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
 from arthur_common.tools.duckdb_data_loader import DuckDBOperator
 from arthur_common.tools.functions import uuid_to_base26
 from duckdb import DuckDBPyConnection

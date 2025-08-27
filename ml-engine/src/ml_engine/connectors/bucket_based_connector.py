@@ -28,7 +28,7 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
-    ConnectorPaginationOptions,
+    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from arthur_common.models.datasets import DatasetFileType
 from arthur_common.tools.time_utils import (

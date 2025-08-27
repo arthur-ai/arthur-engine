@@ -23,9 +23,9 @@ from arthur_client.api_bindings import (
 )
 from arthur_common.models.connectors import (
     ODBC_CONNECTOR_TABLE_NAME_FIELD,
-    ConnectorPaginationOptions,
+    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
-from arthur_common.models import ModelProblemType
+from common_client.arthur_common_generated.models import ModelProblemType
 from sqlalchemy import Column, Integer, MetaData, String
 from sqlalchemy import Table as SQLATable
 

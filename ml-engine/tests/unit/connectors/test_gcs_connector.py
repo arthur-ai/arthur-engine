@@ -3,7 +3,7 @@ import os
 
 import pytz
 from arthur_client.api_bindings import ConnectorSpec, DataResultFilter, Dataset
-from arthur_common.models.connectors import ConnectorPaginationOptions
+from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
 from connectors.gcs_connector import GCSConnector
 from mock_data.connector_helpers import *
 
