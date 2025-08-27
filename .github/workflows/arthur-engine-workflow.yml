@@ -240,12 +240,11 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -g python \
             -i ./genai-engine/staging.openapi.json \
             -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client \
-            --openapitools ./ml-engine/scripts/openapitools.json
+            --skip-validate-spec --package-name genai_client
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.5.0
