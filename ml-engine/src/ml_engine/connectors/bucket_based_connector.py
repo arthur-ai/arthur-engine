@@ -23,12 +23,14 @@ from arthur_client.api_bindings import (
     ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BUCKET_BASED_CONNECTOR_BUCKET_FIELD,
     BUCKET_BASED_DATASET_FILE_PREFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_SUFFIX_FIELD,
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from arthur_common.models.datasets import DatasetFileType
 from arthur_common.tools.time_utils import (

@@ -18,12 +18,14 @@ from arthur_client.api_bindings import (
     ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BIG_QUERY_DATASET_DATASET_ID_FIELD,
     BIG_QUERY_DATASET_TABLE_NAME_FIELD,
     GOOGLE_CONNECTOR_CREDENTIALS_FIELD,
     GOOGLE_CONNECTOR_LOCATION_FIELD,
     GOOGLE_CONNECTOR_PROJECT_ID_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from connectors.connector import Connector
 from google.auth import load_credentials_from_dict

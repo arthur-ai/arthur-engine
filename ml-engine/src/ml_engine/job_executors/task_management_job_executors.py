@@ -2,7 +2,6 @@ import logging
 from typing import Tuple
 
 import arthur_client
-import genai_client.exceptions
 from arthur_client.api_bindings import (
     ConnectorType,
     CreateModelLinkTaskJobSpec,
@@ -22,24 +21,29 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA # TODO
-from common_client.arthur_common_generated.models import (
-    CreateModelTaskJobSpec,
-    DeleteModelTaskJobSpec,
-    FetchModelTaskJobSpec,
-    TaskType,
-    UpdateModelTaskRulesJobSpec,
-    MetricResponse,
-    NewMetricRequest,
-    NewRuleRequest,
-    RuleResponse,
-    TaskResponse,
+from arthur_common.models.schema_definitions import (  # TODO
+    AGENTIC_TRACE_SCHEMA,
+    SHIELD_SCHEMA,
 )
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector
 from tools.api_client_type_converters import ScopeClientTypeConverter
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import common_to_client_put_dataset_schema
+
+import genai_client.exceptions
+from common_client.arthur_common_generated.models import (
+    CreateModelTaskJobSpec,
+    DeleteModelTaskJobSpec,
+    FetchModelTaskJobSpec,
+    MetricResponse,
+    NewMetricRequest,
+    NewRuleRequest,
+    RuleResponse,
+    TaskResponse,
+    TaskType,
+    UpdateModelTaskRulesJobSpec,
+)
 
 
 class InvalidConnectorException(Exception):
@@ -198,6 +202,7 @@ class _TaskRuleAdder:
             self.connector.delete_task_rule(task_id=task_id, rule_id=rule.id)
             self.logger.warning(f"Rule {rule.name} removed")
         self.logger.warning("Rollback complete")
+
 
 class _TaskTraceMetricAdder:
     def __init__(

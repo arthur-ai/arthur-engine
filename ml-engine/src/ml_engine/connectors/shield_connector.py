@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-import genai_client.exceptions
 import pandas as pd
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -21,14 +20,24 @@ from arthur_client.api_bindings import (
     PutAvailableDatasets,
 )
 from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     SHIELD_CONNECTOR_API_KEY_FIELD,
     SHIELD_CONNECTOR_ENDPOINT_FIELD,
     SHIELD_DATASET_TASK_ID_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
-from common_client.arthur_common_generated.models import ModelProblemType, NewRuleRequest, RuleResponse, TaskResponse
 from config.config import Config
 from connectors.connector import Connector
+from tools.api_client_type_converters import ShieldClientTypeConverter
+
+import genai_client.exceptions
+from common_client.arthur_common_generated.models import (
+    ModelProblemType,
+    NewRuleRequest,
+    RuleResponse,
+    TaskResponse,
+)
 from genai_client import (
     ApiClient,
     ApiKeyResponse,
@@ -52,7 +61,6 @@ from genai_client.exceptions import (
     UnauthorizedException,
 )
 from genai_client.models.rule_type import RuleType
-from tools.api_client_type_converters import ShieldClientTypeConverter
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
@@ -244,7 +252,8 @@ class ShieldBaseConnector(Connector, ABC):
                     inference_id=params.get("inference_id"),
                     user_id=params.get("user_id"),
                     rule_types=[
-                        RuleType(rule_type) for rule_type in params.get("rule_types", [])
+                        RuleType(rule_type)
+                        for rule_type in params.get("rule_types", [])
                     ],
                     rule_statuses=params.get("rule_statuses"),
                     prompt_statuses=params.get("prompt_statuses"),

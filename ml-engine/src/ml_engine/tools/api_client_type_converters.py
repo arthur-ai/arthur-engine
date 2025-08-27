@@ -29,6 +29,7 @@ from arthur_common.models.shield import (
 from arthur_common.models.shield import RuleResponse as ApiRuleResponse
 from arthur_common.models.shield import TaskResponse as ApiTaskResponse
 from arthur_common.models.shield import ToxicityConfig as ApiToxicityConfig
+
 from genai_client import Config
 from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig

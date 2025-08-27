@@ -15,7 +15,9 @@ from arthur_client.api_bindings import (
     ModelsV1Api,
     PutRetrievedData,
 )
-from arthur_common.models.connectors import ConnectorPaginationOptions # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
 from arthur_common.tools.functions import uuid_to_base26
 from dataset_loader import DatasetLoader
 from tools.connector_constructor import ConnectorConstructor
