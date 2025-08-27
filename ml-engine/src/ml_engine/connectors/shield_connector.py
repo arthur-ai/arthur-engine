@@ -30,32 +30,35 @@ from connectors.connector import Connector
 from tools.api_client_type_converters import ShieldClientTypeConverter
 
 import genai_client.exceptions
-from arthur_common.models.enums import ModelProblemType
-from arthur_common.models.request_schemas import NewRuleRequest
-from arthur_common.models.response_schemas import RuleResponse, TaskResponse
-from genai_client import (
-    ApiClient,
-    ApiKeyResponse,
-    APIKeysApi,
-    APIKeysRolesEnum,
-    Configuration,
-    InferencesApi,
-    MetricResponse,
+from arthur_common.models.enums import ModelProblemType, APIKeysRolesEnum, RuleType
+from arthur_common.models.request_schemas import (
+    NewRuleRequest,
     NewApiKeyRequest,
     NewMetricRequest,
     NewTaskRequest,
-    QueryTracesWithMetricsResponse,
     SearchTasksRequest,
+    UpdateRuleRequest,
+)
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    TaskResponse,
+    ApiKeyResponse,
+    MetricResponse,
+    QueryTracesWithMetricsResponse,
+)
+from genai_client import (
+    ApiClient,
+    APIKeysApi,
+    Configuration,
+    InferencesApi,
     SpansApi,
     TasksApi,
-    UpdateRuleRequest,
 )
 from genai_client.exceptions import (
     ForbiddenException,
     ServiceException,
     UnauthorizedException,
 )
-from genai_client.models.rule_type import RuleType
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
