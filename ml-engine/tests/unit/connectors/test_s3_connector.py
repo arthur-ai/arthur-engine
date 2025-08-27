@@ -10,9 +10,11 @@ from arthur_client.api_bindings import (
     Dataset,
 )
 from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BUCKET_BASED_CONNECTOR_BUCKET_FIELD,
     S3_CONNECTOR_ENDPOINT_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
 from connectors.s3_connector import S3Connector
 from mock_data.connector_helpers import *

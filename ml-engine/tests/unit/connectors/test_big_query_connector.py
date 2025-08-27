@@ -16,13 +16,16 @@ from arthur_client.api_bindings import (
     Definition,
 )
 from arthur_common.models.connectors import (
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BIG_QUERY_DATASET_DATASET_ID_FIELD,
     BIG_QUERY_DATASET_TABLE_NAME_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
 )
-from common_client.arthur_common_generated.models import ModelProblemType
 from connectors.big_query_connector import BigQueryConnector
 from mock_data.connector_helpers import *
+
+from common_client.arthur_common_generated.models import ModelProblemType
 
 logger = logging.getLogger("job_logger")
 

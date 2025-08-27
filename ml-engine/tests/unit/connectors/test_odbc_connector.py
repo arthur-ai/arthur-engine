@@ -22,12 +22,13 @@ from arthur_client.api_bindings import (
     ScopeSchemaTag,
 )
 from arthur_common.models.connectors import (
-    ODBC_CONNECTOR_TABLE_NAME_FIELD,
-    ConnectorPaginationOptions, # TODO: replace when property method fixed in openapi
-)
-from common_client.arthur_common_generated.models import ModelProblemType
+    ConnectorPaginationOptions,
+)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import ODBC_CONNECTOR_TABLE_NAME_FIELD
 from sqlalchemy import Column, Integer, MetaData, String
 from sqlalchemy import Table as SQLATable
+
+from common_client.arthur_common_generated.models import ModelProblemType
 
 logger = logging.getLogger("odbc_test_logger")
 
