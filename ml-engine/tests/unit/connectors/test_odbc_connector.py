@@ -28,7 +28,7 @@ from arthur_common.models.connectors import ODBC_CONNECTOR_TABLE_NAME_FIELD
 from sqlalchemy import Column, Integer, MetaData, String
 from sqlalchemy import Table as SQLATable
 
-from common_client.arthur_common_generated.models import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 
 logger = logging.getLogger("odbc_test_logger")
 

@@ -31,7 +31,7 @@ from connectors.shield_connector import (
     ShieldConnector,
 )
 
-from common_client.arthur_common_generated.models import NewRuleRequest
+from arthur_common.models.request_schemas import NewRuleRequest
 
 logger = logging.getLogger("job_logger")
 

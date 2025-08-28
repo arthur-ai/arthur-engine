@@ -27,7 +27,7 @@ from arthur_common.models.connectors import (
 )
 from config.config import Config
 from connectors.connector import Connector
-from tools.api_client_type_converters import ShieldClientTypeConverter
+# from tools.api_client_type_converters import ShieldClientTypeConverter
 
 import genai_client.exceptions
 from arthur_common.models.enums import ModelProblemType, APIKeysRolesEnum, RuleType
@@ -364,9 +364,7 @@ class ShieldBaseConnector(Connector, ABC):
     def add_rule_to_task(self, task_id: str, new_rule: NewRuleRequest) -> RuleResponse:
         resp = self._tasks_client.create_task_rule_api_v2_tasks_task_id_rules_post_with_http_info(
             task_id=task_id,
-            new_rule_request=ShieldClientTypeConverter.new_rule_request_generated_to_shield_client(
-                new_rule,
-            ),
+            new_rule_request=new_rule,
         )
         return RuleResponse.model_validate_json(resp.raw_data)
 
@@ -401,9 +399,7 @@ class ShieldBaseConnector(Connector, ABC):
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=ShieldClientTypeConverter.new_metric_request_generated_to_shield_client(
-                    new_metric
-                ),
+                new_metric_request=new_metric,
             )
             return MetricResponse.model_validate_json(response.raw_data)
         except Exception as e:

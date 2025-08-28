@@ -27,7 +27,7 @@ from arthur_common.models.schema_definitions import (
 )
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector
-from tools.api_client_type_converters import ScopeClientTypeConverter
+# from tools.api_client_type_converters import ScopeClientTypeConverter
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import common_to_client_put_dataset_schema
 
@@ -151,7 +151,7 @@ class _TaskManagementJobExecutor:
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
             put_task_state_cache_request=PutTaskStateCacheRequest(
-                task=ScopeClientTypeConverter.task_response_api_to_scope_client(task),
+                task=task,
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")

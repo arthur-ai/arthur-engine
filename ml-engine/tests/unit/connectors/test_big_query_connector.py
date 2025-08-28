@@ -23,7 +23,7 @@ from arthur_common.models.connectors import (
 from connectors.big_query_connector import BigQueryConnector
 from mock_data.connector_helpers import *
 
-from common_client.arthur_common_generated.models import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 
 logger = logging.getLogger("job_logger")
 
