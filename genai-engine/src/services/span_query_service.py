@@ -6,7 +6,7 @@ from sqlalchemy import and_, asc, desc, func, select
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseSpan
-from schemas.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod
 from schemas.internal_schemas import Span
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM

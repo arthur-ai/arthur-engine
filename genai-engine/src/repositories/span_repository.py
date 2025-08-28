@@ -9,10 +9,6 @@ from sqlalchemy.orm import Session
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from arthur_common.models.enums import PaginationSortMethod
-from schemas.internal_schemas import MetricResult, Span
-from arthur_common.models.metric_schemas import MetricRequest
-from arthur_common.models.response_schemas import TraceResponse
-from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import Span
 from services.metrics_integration_service import MetricsIntegrationService
 from services.span_query_service import SpanQueryService

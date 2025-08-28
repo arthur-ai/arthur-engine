@@ -10,7 +10,6 @@ from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Inference, User
-from schemas.response_schemas import ComputeMetricsResponse
 from schemas.enums import PermissionLevelsEnum
 from arthur_common.models.response_schemas import (
     QueryInferencesResponse,

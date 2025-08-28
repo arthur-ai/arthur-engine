@@ -2,6 +2,11 @@ from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
+from arthur_common.models.response_schemas import (
+    ExternalInference,
+    MetricResponse,
+    SpanResponse,
+)
 
 
 # Internal to genai-engine
