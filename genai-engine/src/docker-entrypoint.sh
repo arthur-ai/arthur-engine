@@ -33,7 +33,7 @@ fi
 
 if [[ -n "$KEYCLOAK_USE_PRIVATE_CERT" ]]; then
   echo "==> Downloading KeyCloak SSL cert from $KEYCLOAK_SSL_CERT_DOWNLOAD_URL"
-  python3 -c "import urllib.request; urllib.request.urlretrieve('"${KEYCLOAK_SSL_CERT_DOWNLOAD_URL}"', 'postgres-cert.pem')"
+  python3 -c "import urllib.request; urllib.request.urlretrieve('"${KEYCLOAK_SSL_CERT_DOWNLOAD_URL}"', 'keycloak-cert.pem')"
   if [[ $? == 0 ]]; then
     echo "KeyCloak SSL cert downloaded with success"
   else
