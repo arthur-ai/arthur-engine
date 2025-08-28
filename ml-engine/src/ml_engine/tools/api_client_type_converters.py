@@ -15,20 +15,41 @@ from arthur_client.api_bindings.models import RuleScope as ScopeRuleScope
 from arthur_client.api_bindings.models import RuleType as ScopeRuleType
 from arthur_client.api_bindings.models import TaskResponse as ScopeClientTaskResponse
 from arthur_client.api_bindings.models import ToxicityConfig as ScopeToxicityConfig
-from arthur_common.models.shield import ExamplesConfig as ApiExamplesConfig
-from arthur_common.models.shield import KeywordsConfig as ApiKeywordsConfig
-from arthur_common.models.shield import MetricResponse as ApiMetricResponse
-from arthur_common.models.shield import MetricType as ApiMetricType
-from arthur_common.models.shield import NewMetricRequest as ApiNewMetricRequest
-from arthur_common.models.shield import NewRuleRequest as ApiNewRuleRequest
-from arthur_common.models.shield import PIIConfig as ApiPIIConfig
-from arthur_common.models.shield import RegexConfig as ApiRegexConfig
-from arthur_common.models.shield import (
+
+# from arthur_common.models.shield import ExamplesConfig as ApiExamplesConfig
+# from arthur_common.models.shield import KeywordsConfig as ApiKeywordsConfig
+# from arthur_common.models.shield import MetricResponse as ApiMetricResponse
+# from arthur_common.models.shield import MetricType as ApiMetricType
+# from arthur_common.models.shield import NewMetricRequest as ApiNewMetricRequest
+# from arthur_common.models.shield import NewRuleRequest as ApiNewRuleRequest
+# from arthur_common.models.shield import PIIConfig as ApiPIIConfig
+# from arthur_common.models.shield import RegexConfig as ApiRegexConfig
+# from arthur_common.models.shield import (
+#     RelevanceMetricConfig as ApiRelevanceMetricConfig,
+# )
+# from arthur_common.models.shield import RuleResponse as ApiRuleResponse
+# from arthur_common.models.shield import TaskResponse as ApiTaskResponse
+# from arthur_common.models.shield import ToxicityConfig as ApiToxicityConfig
+from arthur_common.models.common_schemas import (
+    PIIConfig as ApiPIIConfig,
+    ExamplesConfig as ApiExamplesConfig,
+    KeywordsConfig as ApiKeywordsConfig,
+    RegexConfig as ApiRegexConfig,
+    ToxicityConfig as ApiToxicityConfig,
+)
+from arthur_common.models.response_schemas import (
+    MetricResponse as ApiMetricResponse,
+    RuleResponse as ApiRuleResponse,
+    TaskResponse as ApiTaskResponse,
+)
+from arthur_common.models.enums import MetricType as ApiMetricType
+from arthur_common.models.request_schemas import (
+    NewMetricRequest as ApiNewMetricRequest,
+    NewRuleRequest as ApiNewRuleRequest,
+)
+from arthur_common.models.metric_schemas import (
     RelevanceMetricConfig as ApiRelevanceMetricConfig,
 )
-from arthur_common.models.shield import RuleResponse as ApiRuleResponse
-from arthur_common.models.shield import TaskResponse as ApiTaskResponse
-from arthur_common.models.shield import ToxicityConfig as ApiToxicityConfig
 
 from genai_client import Config
 from genai_client.models import ExampleConfig as ShieldExampleConfig
@@ -42,12 +63,6 @@ from genai_client.models import RegexConfig as ShieldRegexConfig
 from genai_client.models import RelevanceMetricConfig as ShieldRelevanceMetricConfig
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
-
-from common_client.arthur_common_generated.models import (
-    NewMetricRequest as GeneratedNewMetricRequest,
-    RelevanceMetricConfig as GeneratedRelevanceMetricConfig,
-    NewRuleRequest as GeneratedNewRuleRequest,
-)
 
 ApiConfigTypes = Optional[
     Union[
@@ -136,22 +151,6 @@ class ShieldClientTypeConverter:
         )
 
     @classmethod
-    def new_rule_request_generated_to_shield_client(
-        cls, api: GeneratedNewRuleRequest
-    ) -> ShieldNewRuleRequest:
-        return ShieldNewRuleRequest(
-            name=api.name,
-            type=ShieldRuleType(api.type),
-            apply_to_prompt=api.apply_to_prompt,
-            apply_to_response=api.apply_to_response,
-            config=(
-                api.config.model_dump()
-                if hasattr(api.config, "model_dump")
-                else api.config
-            ),
-        )
-
-    @classmethod
     def relevance_metric_config_api_to_shield_client(
         cls, api: ApiRelevanceMetricConfig
     ) -> ShieldRelevanceMetricConfig:
@@ -167,30 +166,6 @@ class ShieldClientTypeConverter:
         config = None
         if api.config is not None:
             config = cls.relevance_metric_config_api_to_shield_client(api.config)
-
-        return ShieldNewMetricRequest(
-            name=api.name,
-            type=ShieldMetricType(api.type),
-            metric_metadata=api.metric_metadata,
-            config=config,
-        )
-
-    @classmethod
-    def relevance_metric_config_generated_to_shield_client(
-        cls, api: GeneratedRelevanceMetricConfig
-    ) -> ShieldRelevanceMetricConfig:
-        return ShieldRelevanceMetricConfig(
-            relevance_threshold=api.relevance_threshold,
-            use_llm_judge=api.use_llm_judge,
-        )
-
-    @classmethod
-    def new_metric_request_generated_to_shield_client(
-        cls, api: GeneratedNewMetricRequest
-    ) -> ShieldNewMetricRequest:
-        config = None
-        if api.config is not None:
-            config = cls.relevance_metric_config_generated_to_shield_client(api.config)
 
         return ShieldNewMetricRequest(
             name=api.name,

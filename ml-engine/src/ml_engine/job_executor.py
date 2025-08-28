@@ -31,6 +31,12 @@ from arthur_client.auth import (
     ArthurOAuthSessionAPIConfiguration,
     ArthurOIDCMetadata,
 )
+from arthur_common.models.task_job_specs import (
+    CreateModelTaskJobSpec,
+    DeleteModelTaskJobSpec,
+    FetchModelTaskJobSpec,
+    UpdateModelTaskRulesJobSpec,
+)
 from config import Config
 from job_executors.alert_check_executor import AlertCheckExecutor
 from job_executors.connector_test_executor import ConnectorTestExecutor
@@ -50,13 +56,6 @@ from job_executors.task_management_job_executors import (
 from job_log_exporter import ExportContextedLogger, ScopeJobLogExporter
 from pydantic import StrictBytes
 from tools.connector_constructor import ConnectorConstructor
-
-from arthur_common.models.task_job_specs import (
-    CreateModelTaskJobSpec,
-    DeleteModelTaskJobSpec,
-    FetchModelTaskJobSpec,
-    UpdateModelTaskRulesJobSpec,
-)
 
 logging.basicConfig()
 

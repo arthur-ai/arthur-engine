@@ -27,9 +27,8 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_FILE_TYPE_FIELD,
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
 )
-
-from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.datasets import DatasetFileType
+from arthur_common.models.enums import ModelProblemType
 
 
 def mock_bucket_based_connector_spec(

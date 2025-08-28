@@ -30,6 +30,7 @@ from arthur_common.models.connectors import (
     BUCKET_BASED_DATASET_TIMESTAMP_TIME_ZONE_FIELD,
     ConnectorPaginationOptions,
 )
+from arthur_common.models.datasets import DatasetFileType
 from arthur_common.tools.time_utils import (
     check_datetime_tz_aware,
     find_smallest_timedelta,
@@ -39,8 +40,6 @@ from dateutil import parser
 from fsspec import AbstractFileSystem
 from tools.connector_read_filters import apply_filters_to_retrieved_inferences
 from tools.schema_interpreters import primary_timestamp_col_name
-
-from arthur_common.models.datasets import DatasetFileType
 
 DEFAULT_PAGE_SIZE = 250
 DEFAULT_LIMIT = 500

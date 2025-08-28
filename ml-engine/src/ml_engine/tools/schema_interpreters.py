@@ -1,6 +1,5 @@
 from typing import Optional
 
-from arthur_client.api_bindings import AvailableDataset, Dataset
 from arthur_client.api_bindings import (
     AvailableDataset,
     CustomAggregationVersionSpecSchemaAggregateArgsInner,
@@ -10,9 +9,8 @@ from arthur_common.models.metrics import (
     MetricsColumnSchemaUnion,
     MetricsParameterSchemaUnion,
 )
-from tools.converters import client_to_common_dataset_schema
-
 from arthur_common.models.schema_definitions import DType, ScopeSchemaTag
+from tools.converters import client_to_common_dataset_schema
 
 
 def primary_timestamp_col_name(dataset: Dataset | AvailableDataset) -> str:

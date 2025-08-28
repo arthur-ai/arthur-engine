@@ -21,24 +21,29 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import (
-    AGENTIC_TRACE_SCHEMA,
-    SHIELD_SCHEMA,
-)
-from connectors.connector import Connector
-from connectors.shield_connector import ShieldBaseConnector
-# from tools.api_client_type_converters import ScopeClientTypeConverter
-from tools.connector_constructor import ConnectorConstructor
-from tools.converters import common_to_client_put_dataset_schema
-
-import genai_client.exceptions
+from arthur_common.models.enums import TaskType
 from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest
 from arthur_common.models.response_schemas import (
     MetricResponse,
     RuleResponse,
     TaskResponse,
 )
-from arthur_common.models.enums import TaskType
+from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
+from arthur_common.models.task_job_specs import (
+    CreateModelLinkTaskJobSpec,
+    CreateModelTaskJobSpec,
+    DeleteModelTaskJobSpec,
+    FetchModelTaskJobSpec,
+    UpdateModelTaskRulesJobSpec,
+)
+from connectors.connector import Connector
+from connectors.shield_connector import ShieldBaseConnector
+
+# from tools.api_client_type_converters import ScopeClientTypeConverter
+from tools.connector_constructor import ConnectorConstructor
+from tools.converters import common_to_client_put_dataset_schema
+
+import genai_client.exceptions
 
 
 class InvalidConnectorException(Exception):

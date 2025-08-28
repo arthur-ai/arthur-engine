@@ -22,6 +22,7 @@ from arthur_client.api_bindings import (
 from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )  # TODO: replace when property method fixed in openapi
+from arthur_common.models.request_schemas import NewRuleRequest
 from config.config import Config
 from connectors.shield_connector import (
     SHIELD_SORT_DESC,
@@ -30,8 +31,6 @@ from connectors.shield_connector import (
     ShieldBaseConnector,
     ShieldConnector,
 )
-
-from arthur_common.models.request_schemas import NewRuleRequest
 
 logger = logging.getLogger("job_logger")
 
