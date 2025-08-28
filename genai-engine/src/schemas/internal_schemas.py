@@ -55,7 +55,12 @@ from arthur_common.models.enums import (
     ToxicityViolationType,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.enums import RuleDataType, RuleScoringMethod, DocumentStorageEnvironment, ApplicationConfigurations
+from schemas.enums import (
+    RuleDataType,
+    RuleScoringMethod,
+    DocumentStorageEnvironment,
+    ApplicationConfigurations,
+)
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
@@ -89,7 +94,10 @@ from arthur_common.models.response_schemas import (
     ToxicityDetailsResponse,
     UserResponse,
 )
-from schemas.response_schemas import ApplicationConfigurationResponse, DocumentStorageConfigurationResponse
+from schemas.response_schemas import (
+    ApplicationConfigurationResponse,
+    DocumentStorageConfigurationResponse,
+)
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
     RuleScore,

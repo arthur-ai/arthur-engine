@@ -13,42 +13,6 @@ class BaseEnum(str, Enum):
         return self.value
 
 
-# TODO: Delete after migration (UP-2945).
-# If you added values here, did you update permission_mappings.py?
-class UserPermissionAction(BaseEnum, str, Enum):
-    CREATE = "create"
-    READ = "read"
-
-
-# TODO: Delete after migration (UP-2945).
-# If you added values here, did you update permission_mappings.py?
-class UserPermissionResource(BaseEnum, str, Enum):
-    PROMPTS = "prompts"
-    RESPONSES = "responses"
-    RULES = "rules"
-    TASKS = "tasks"
-
-
-# TODO: Delete after migration (UP-2945).
-class PaginationSortMethod(str, Enum):
-    ASCENDING = "asc"
-    DESCENDING = "desc"
-
-
-# TODO: Delete after migration (UP-2945).
-class RuleType(str, Enum):
-    KEYWORD = "KeywordRule"
-    MODEL_HALLUCINATION_V2 = "ModelHallucinationRuleV2"
-    MODEL_SENSITIVE_DATA = "ModelSensitiveDataRule"
-    PII_DATA = "PIIDataRule"
-    PROMPT_INJECTION = "PromptInjectionRule"
-    REGEX = "RegexRule"
-    TOXICITY = "ToxicityRule"
-
-    def __str__(self):
-        return self.value
-
-
 # Internal to genai-engine
 class RuleDataType(str, Enum):
     REGEX = "regex"
@@ -61,29 +25,13 @@ class RuleDataType(str, Enum):
     HINT = "hint"
 
 
-# TODO: Delete after migration (UP-2945).
-class RuleScope(str, Enum):
-    DEFAULT = "default"
-    TASK = "task"
-
-
 # Internal to genai-engine
 class RuleScoringMethod(str, Enum):
     # Better term for regex / keywords?
     BINARY = "binary"
 
 
-# TODO: Delete after migration (UP-2945).
-class MetricType(str, Enum):
-    QUERY_RELEVANCE = "QueryRelevance"
-    RESPONSE_RELEVANCE = "ResponseRelevance"
-    TOOL_SELECTION = "ToolSelection"
-
-    def __str__(self):
-        return self.value
-
-
-# Internal to genai-engine. Problems with generation in common client.
+# Internal to genai-engine. Problems with generation in common client. Copied over for now.
 class ToolClassEnum(int, Enum):
     WRONG_TOOL_SELECTED = 0
     CORRECT_TOOL_SELECTED = 1
@@ -116,73 +64,6 @@ class ApplicationConfigurations(str, Enum):
     DOCUMENT_STORAGE_CONTAINER_NAME = "document_storage_container_name"
     DOCUMENT_STORAGE_CONNECTION_STRING = "document_storage_connection_string"
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
-
-
-# TODO: Delete after migration (UP-2945).
-class InferenceFeedbackTarget(str, Enum):
-    CONTEXT = "context"
-    RESPONSE_RESULTS = "response_results"
-    PROMPT_RESULTS = "prompt_results"
-
-
-# TODO: Delete after migration (UP-2945).
-class RuleResultEnum(str, Enum):
-    PASS = "Pass"
-    FAIL = "Fail"
-    SKIPPED = "Skipped"
-    UNAVAILABLE = "Unavailable"
-    PARTIALLY_UNAVAILABLE = "Partially Unavailable"
-    MODEL_NOT_AVAILABLE = "Model Not Available"
-
-    def __str__(self):
-        return self.value
-
-
-# TODO: Delete after migration (UP-2945).
-class ToxicityViolationType(str, Enum):
-    BENIGN = "benign"
-    HARMFUL_REQUEST = "harmful_request"
-    TOXIC_CONTENT = "toxic_content"
-    PROFANITY = "profanity"
-    UNKNOWN = "unknown"
-
-    def __str__(self):
-        return self.value
-
-
-# TODO: Delete after migration (UP-2945).
-# Note: These string values are not arbitrary and map to Presidio entity types: https://microsoft.github.io/presidio/supported_entities/
-class PIIEntityTypes(BaseEnum, str, Enum):
-    CREDIT_CARD = "CREDIT_CARD"
-    CRYPTO = "CRYPTO"
-    DATE_TIME = "DATE_TIME"
-    EMAIL_ADDRESS = "EMAIL_ADDRESS"
-    IBAN_CODE = "IBAN_CODE"
-    IP_ADDRESS = "IP_ADDRESS"
-    NRP = "NRP"
-    LOCATION = "LOCATION"
-    PERSON = "PERSON"
-    PHONE_NUMBER = "PHONE_NUMBER"
-    MEDICAL_LICENSE = "MEDICAL_LICENSE"
-    URL = "URL"
-    US_BANK_NUMBER = "US_BANK_NUMBER"
-    US_DRIVER_LICENSE = "US_DRIVER_LICENSE"
-    US_ITIN = "US_ITIN"
-    US_PASSPORT = "US_PASSPORT"
-    US_SSN = "US_SSN"
-
-    @classmethod
-    def to_string(cls):
-        return ",".join(member.value for member in cls)
-
-
-# TODO: Delete after migration (UP-2945).
-class TokenUsageScope(str, Enum):
-    RULE_TYPE = "rule_type"
-    TASK = "task"
-
-    def __str__(self):
-        return self.value
 
 
 # Internal to genai-engine
@@ -277,12 +158,3 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
-
-
-# TODO: Delete after migration (UP-2945).
-class APIKeysRolesEnum(Enum):
-    DEFAULT_RULE_ADMIN: str = constants.DEFAULT_RULE_ADMIN
-    TASK_ADMIN: str = constants.TASK_ADMIN
-    VALIDATION_USER: str = constants.VALIDATION_USER
-    ORG_AUDITOR: str = constants.ORG_AUDITOR
-    ORG_ADMIN: str = constants.ORG_ADMIN
