@@ -227,4 +227,4 @@ the integration tests locally.
    assuming you're running the arthur-scope stack as in step 4, you'll need to use `export ARTHUR_API_HOST="http://localhost:8000"`
    instead because you aren't running the ML-engine in the same Docker network as the control plane.
 6. Once the ML engine is running locally, you can follow directions [here](https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads#option-2-run-integration-tests-locally) to run the integration tests.
-`
+
