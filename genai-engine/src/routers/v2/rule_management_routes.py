@@ -14,11 +14,12 @@ from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.common_schemas import PaginationParameters
-from schemas.enums import PermissionLevelsEnum, RuleScope, RuleType
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, User
-from schemas.request_schemas import NewRuleRequest, SearchRulesRequest
-from schemas.response_schemas import RuleResponse, SearchRulesResponse
+from schemas.enums import PermissionLevelsEnum
+from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
+from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
@@ -60,7 +61,9 @@ def create_default_rule(
     try:
         send_telemetry_event(TelemetryEventTypes.DEFAULT_RULE_CREATE_INITIATED)
         rules_repo = RuleRepository(db_session)
-        tasks_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        tasks_repo = TaskRepository(
+            db_session, rules_repo, MetricRepository(db_session), application_config
+        )
         rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
         rule = rules_repo.create_rule(rule)
         tasks_repo.update_all_tasks_add_default_rule(rule)
@@ -109,7 +112,9 @@ def archive_default_rule(
 ):
     try:
         rules_repo = RuleRepository(db_session)
-        task_repo = TaskRepository(db_session, rules_repo, MetricRepository(db_session), application_config)
+        task_repo = TaskRepository(
+            db_session, rules_repo, MetricRepository(db_session), application_config
+        )
         rules_repo.archive_rule(rule_id=str(rule_id))
         task_repo.update_all_tasks_remove_default_rule(str(rule_id))
 

@@ -20,7 +20,6 @@ from arthur_client.api_bindings import (
     DatasetLocatorField,
 )
 from arthur_common.models.connectors import ConnectorPaginationOptions
-from arthur_common.models.shield import NewRuleRequest
 from config.config import Config
 from connectors.shield_connector import (
     SHIELD_SORT_DESC,
@@ -29,6 +28,8 @@ from connectors.shield_connector import (
     ShieldBaseConnector,
     ShieldConnector,
 )
+
+from genai_client.models import NewRuleRequest
 
 logger = logging.getLogger("job_logger")
 

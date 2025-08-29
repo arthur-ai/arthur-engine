@@ -2,7 +2,6 @@ import logging
 from typing import Tuple
 
 import arthur_client
-import genai_client.exceptions
 from arthur_client.api_bindings import (
     ConnectorType,
     CreateModelLinkTaskJobSpec,
@@ -22,26 +21,29 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
+from arthur_common.models.enums import TaskType
 from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
-from arthur_common.models.shield import (
+from arthur_common.models.task_job_specs import (
+    CreateModelLinkTaskJobSpec,
+    CreateModelTaskJobSpec,
+    DeleteModelTaskJobSpec,
+    FetchModelTaskJobSpec,
+    UpdateModelTaskRulesJobSpec,
+)
+from connectors.connector import Connector
+from connectors.shield_connector import ShieldBaseConnector
+
+from tools.connector_constructor import ConnectorConstructor
+from tools.converters import common_to_client_put_dataset_schema
+
+import genai_client.exceptions
+from genai_client.models import (
     MetricResponse,
     NewMetricRequest,
     NewRuleRequest,
     RuleResponse,
     TaskResponse,
 )
-from arthur_common.models.task_job_specs import (
-    CreateModelTaskJobSpec,
-    DeleteModelTaskJobSpec,
-    FetchModelTaskJobSpec,
-    TaskType,
-    UpdateModelTaskRulesJobSpec,
-)
-from connectors.connector import Connector
-from connectors.shield_connector import ShieldBaseConnector
-from tools.api_client_type_converters import ScopeClientTypeConverter
-from tools.connector_constructor import ConnectorConstructor
-from tools.converters import common_to_client_put_dataset_schema
 
 
 class InvalidConnectorException(Exception):
@@ -154,7 +156,7 @@ class _TaskManagementJobExecutor:
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
             put_task_state_cache_request=PutTaskStateCacheRequest(
-                task=ScopeClientTypeConverter.task_response_api_to_scope_client(task),
+                task=task,
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")
@@ -200,6 +202,7 @@ class _TaskRuleAdder:
             self.connector.delete_task_rule(task_id=task_id, rule_id=rule.id)
             self.logger.warning(f"Rule {rule.name} removed")
         self.logger.warning("Rollback complete")
+
 
 class _TaskTraceMetricAdder:
     def __init__(

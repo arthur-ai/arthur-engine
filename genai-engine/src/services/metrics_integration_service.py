@@ -9,8 +9,9 @@ from db_models.db_models import DatabaseMetricResult
 from dependencies import get_metrics_engine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.internal_schemas import MetricResult, Span
-from schemas.metric_schemas import MetricRequest
+from schemas.internal_schemas import Span
+from arthur_common.models.metric_schemas import MetricRequest
+from schemas.internal_schemas import MetricResult
 from utils.constants import SPAN_KIND_LLM
 
 logger = logging.getLogger(__name__)

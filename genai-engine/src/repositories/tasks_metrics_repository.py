@@ -31,7 +31,9 @@ class TasksMetricsRepository:
         CACHED_TASK_METRICS[task_id] = metrics
         return metrics
 
-    def _get_task_metrics_ids(self, task_id: str, only_enabled: bool = True) -> list[str]:
+    def _get_task_metrics_ids(
+        self, task_id: str, only_enabled: bool = True
+    ) -> list[str]:
         statement = select(DatabaseTaskToMetrics).where(
             DatabaseTaskToMetrics.task_id == task_id,
         )

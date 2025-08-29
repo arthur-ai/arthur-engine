@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Any, Optional
 from urllib.parse import urlparse
 
-import genai_client.exceptions
 import pandas as pd
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -26,34 +25,40 @@ from arthur_common.models.connectors import (
     SHIELD_DATASET_TASK_ID_FIELD,
     ConnectorPaginationOptions,
 )
-from arthur_common.models.datasets import ModelProblemType
-from arthur_common.models.shield import NewRuleRequest, RuleResponse, TaskResponse
+from arthur_common.models.enums import ModelProblemType
 from config.config import Config
 from connectors.connector import Connector
+
+import genai_client.exceptions
 from genai_client import (
     ApiClient,
-    ApiKeyResponse,
     APIKeysApi,
-    APIKeysRolesEnum,
     Configuration,
     InferencesApi,
-    MetricResponse,
-    NewApiKeyRequest,
-    NewMetricRequest,
-    NewTaskRequest,
-    QueryTracesWithMetricsResponse,
-    SearchTasksRequest,
     SpansApi,
     TasksApi,
-    UpdateRuleRequest,
 )
 from genai_client.exceptions import (
     ForbiddenException,
     ServiceException,
     UnauthorizedException,
 )
-from genai_client.models.rule_type import RuleType
-from tools.api_client_type_converters import ShieldClientTypeConverter
+from genai_client.models import (
+    ApiKeyResponse,
+    APIKeysRolesEnum,
+    MetricResponse,
+    NewApiKeyRequest,
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+    QueryTracesWithMetricsResponse,
+    RuleResponse,
+    RuleType,
+    SearchTasksRequest,
+    TaskResponse,
+    UpdateRuleRequest,
+)
+
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
@@ -245,7 +250,8 @@ class ShieldBaseConnector(Connector, ABC):
                     inference_id=params.get("inference_id"),
                     user_id=params.get("user_id"),
                     rule_types=[
-                        RuleType(rule_type) for rule_type in params.get("rule_types", [])
+                        RuleType(rule_type)
+                        for rule_type in params.get("rule_types", [])
                     ],
                     rule_statuses=params.get("rule_statuses"),
                     prompt_statuses=params.get("prompt_statuses"),
@@ -358,9 +364,7 @@ class ShieldBaseConnector(Connector, ABC):
     def add_rule_to_task(self, task_id: str, new_rule: NewRuleRequest) -> RuleResponse:
         resp = self._tasks_client.create_task_rule_api_v2_tasks_task_id_rules_post_with_http_info(
             task_id=task_id,
-            new_rule_request=ShieldClientTypeConverter.new_rule_request_api_to_shield_client(
-                new_rule,
-            ),
+            new_rule_request=new_rule,
         )
         return RuleResponse.model_validate_json(resp.raw_data)
 
@@ -395,9 +399,7 @@ class ShieldBaseConnector(Connector, ABC):
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
-                    new_metric
-                ),
+                new_metric_request=new_metric,
             )
             return MetricResponse.model_validate_json(response.raw_data)
         except Exception as e:

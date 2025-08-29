@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 import pytest
-from schemas.enums import RuleResultEnum, RuleType, TokenUsageScope
+from arthur_common.models.enums import RuleResultEnum, RuleType, TokenUsageScope
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_scorer_client import (
     MOCK_KEYWORD_PASSING_TEXT,
