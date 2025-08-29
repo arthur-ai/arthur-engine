@@ -96,10 +96,6 @@ jobs:
           fi
           echo "New Version: ${NEW_ARTHUR_ENGINE_VERSION}"
 
-          # Create and checkout a new branch
-          # echo "New Branch Name: ${BRANCH_NAME}"
-          # git checkout -b "$BRANCH_NAME"
-
           # Update the top-level version file
           echo $NEW_ARTHUR_ENGINE_VERSION > version
 
@@ -140,13 +136,3 @@ jobs:
 
           # Push the new branch with the commit
           git push origin
-
-      # - name: Create Arthur Engine Pull Request
-      #   env:
-      #     GH_TOKEN: ${{ github.token }}
-      #   run: |
-      #     gh pr create \
-      #       --title "Increment arthur-engine version to $(cat version)" \
-      #       --body "Increment arthur-engine version to $(cat version)" \
-      #       --base ${GITHUB_REF#refs/heads/} \
-      #       --head "$BRANCH_NAME"
