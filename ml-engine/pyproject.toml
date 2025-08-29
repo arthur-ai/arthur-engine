@@ -32,7 +32,7 @@ types-requests = "2.32.4.20250809"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
 arthur-client = "1.4.1291"
-arthur-common = {path = "../../arthur-common", develop = true}
+arthur-common = "^2.1.60"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"
 
@@ -65,7 +65,7 @@ explicit_package_bases = false
 exclude = ["src/genai_client"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "src/genai_client", "src/common_client"]
+pythonpath = ["src", "src/genai_client"]
 testpaths = ["tests"]
 
 [tool.setuptools.packages.find]

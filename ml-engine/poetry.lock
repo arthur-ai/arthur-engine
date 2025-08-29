@@ -263,10 +263,12 @@ name = "arthur-common"
 version = "2.1.60"
 description = "Utility code common to Arthur platform components."
 optional = false
-python-versions = "^3.12"
+python-versions = "<4.0,>=3.12"
 groups = ["main"]
-files = []
-develop = true
+files = [
+    {file = "arthur_common-2.1.60-py3-none-any.whl", hash = "sha256:1e56bedaf87d9614c69160696c5312ee11cba03597d024d25dea83c40988368c"},
+    {file = "arthur_common-2.1.60.tar.gz", hash = "sha256:957e7bdfcdfca91f70136660180baea03943b04733419c45e398a29af5bb9ecf"},
+]
 
 [package.dependencies]
 datasketches = ">=5.1.0"
@@ -280,10 +282,6 @@ tokencost = "0.1.24"
 types-python-dateutil = ">=2.9.0"
 types-requests = ">=2.32.0.20241016"
 typing-extensions = ">=4.7.1"
-
-[package.source]
-type = "directory"
-url = "../../arthur-common"
 
 [[package]]
 name = "attrs"
@@ -3891,4 +3889,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "a6b003d59497098953477b30f2a3bd61c9089153d68efdf9b1f89cbdb65b1d04"
+content-hash = "408e0b1f44ae164418c1d3a55d8e04d17dc0aadc38a62b19d13797d3f4653fbe"
