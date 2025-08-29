@@ -12,9 +12,7 @@ from arthur_client.api_bindings import (
     DatasetSchema,
     SchemaInspectionJobSpec,
 )
-from arthur_common.models.connectors import (
-    ConnectorPaginationOptions,
-)  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import ConnectorPaginationOptions
 from job_executors.schema_inference_executor import (
     INFER_SCHEMA_DATA_LIMIT,
     INFER_SCHEMA_DATE_RANGE_DAYS,

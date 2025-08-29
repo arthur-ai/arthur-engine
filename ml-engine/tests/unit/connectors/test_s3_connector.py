@@ -9,7 +9,7 @@ from arthur_client.api_bindings import (
     DataResultFilterOp,
     Dataset,
 )
-from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     BUCKET_BASED_CONNECTOR_BUCKET_FIELD,
     S3_CONNECTOR_ENDPOINT_FIELD,
     ConnectorPaginationOptions,

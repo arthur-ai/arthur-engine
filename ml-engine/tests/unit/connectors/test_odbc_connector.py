@@ -21,7 +21,7 @@ from arthur_client.api_bindings import (
     Definition,
     ScopeSchemaTag,
 )
-from arthur_common.models.connectors import (  # TODO: replace when property method fixed in openapi
+from arthur_common.models.connectors import (
     ODBC_CONNECTOR_TABLE_NAME_FIELD,
     ConnectorPaginationOptions,
 )
