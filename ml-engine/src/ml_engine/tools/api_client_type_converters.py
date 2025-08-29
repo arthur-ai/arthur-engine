@@ -16,20 +16,6 @@ from arthur_client.api_bindings.models import RuleType as ScopeRuleType
 from arthur_client.api_bindings.models import TaskResponse as ScopeClientTaskResponse
 from arthur_client.api_bindings.models import ToxicityConfig as ScopeToxicityConfig
 
-# from arthur_common.models.shield import ExamplesConfig as ApiExamplesConfig
-# from arthur_common.models.shield import KeywordsConfig as ApiKeywordsConfig
-# from arthur_common.models.shield import MetricResponse as ApiMetricResponse
-# from arthur_common.models.shield import MetricType as ApiMetricType
-# from arthur_common.models.shield import NewMetricRequest as ApiNewMetricRequest
-# from arthur_common.models.shield import NewRuleRequest as ApiNewRuleRequest
-# from arthur_common.models.shield import PIIConfig as ApiPIIConfig
-# from arthur_common.models.shield import RegexConfig as ApiRegexConfig
-# from arthur_common.models.shield import (
-#     RelevanceMetricConfig as ApiRelevanceMetricConfig,
-# )
-# from arthur_common.models.shield import RuleResponse as ApiRuleResponse
-# from arthur_common.models.shield import TaskResponse as ApiTaskResponse
-# from arthur_common.models.shield import ToxicityConfig as ApiToxicityConfig
 from arthur_common.models.common_schemas import ExamplesConfig as ApiExamplesConfig
 from arthur_common.models.common_schemas import KeywordsConfig as ApiKeywordsConfig
 from arthur_common.models.common_schemas import PIIConfig as ApiPIIConfig

@@ -59,8 +59,6 @@ from genai_client.models import (
     UpdateRuleRequest,
 )
 
-# from tools.api_client_type_converters import ShieldClientTypeConverter
-
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"

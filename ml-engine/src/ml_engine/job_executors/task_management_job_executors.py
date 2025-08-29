@@ -33,7 +33,6 @@ from arthur_common.models.task_job_specs import (
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector
 
-# from tools.api_client_type_converters import ScopeClientTypeConverter
 from tools.connector_constructor import ConnectorConstructor
 from tools.converters import common_to_client_put_dataset_schema
 
