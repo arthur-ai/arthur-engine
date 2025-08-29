@@ -3,39 +3,6 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import HTTPException
-from opentelemetry import trace
-from pydantic import BaseModel, Field
-
-from db_models.db_models import (
-    DatabaseApiKey,
-    DatabaseApplicationConfiguration,
-    DatabaseDocument,
-    DatabaseEmbedding,
-    DatabaseEmbeddingReference,
-    DatabaseHallucinationClaim,
-    DatabaseInference,
-    DatabaseInferenceFeedback,
-    DatabaseInferencePrompt,
-    DatabaseInferencePromptContent,
-    DatabaseInferenceResponse,
-    DatabaseInferenceResponseContent,
-    DatabaseKeywordEntity,
-    DatabaseMetric,
-    DatabaseMetricResult,
-    DatabasePIIEntity,
-    DatabasePromptRuleResult,
-    DatabaseRegexEntity,
-    DatabaseResponseRuleResult,
-    DatabaseRule,
-    DatabaseRuleResultDetail,
-    DatabaseSpan,
-    DatabaseTask,
-    DatabaseTaskToMetrics,
-    DatabaseTaskToRules,
-    DatabaseToxicityScore,
-    DatabaseUser,
-)
 from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
@@ -53,13 +20,6 @@ from arthur_common.models.enums import (
     RuleScope,
     RuleType,
     ToxicityViolationType,
-)
-from schemas.metric_schemas import MetricScoreDetails
-from schemas.enums import (
-    RuleDataType,
-    RuleScoringMethod,
-    DocumentStorageEnvironment,
-    ApplicationConfigurations,
 )
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
@@ -94,6 +54,46 @@ from arthur_common.models.response_schemas import (
     ToxicityDetailsResponse,
     UserResponse,
 )
+from fastapi import HTTPException
+from opentelemetry import trace
+from pydantic import BaseModel, Field
+
+from db_models.db_models import (
+    DatabaseApiKey,
+    DatabaseApplicationConfiguration,
+    DatabaseDocument,
+    DatabaseEmbedding,
+    DatabaseEmbeddingReference,
+    DatabaseHallucinationClaim,
+    DatabaseInference,
+    DatabaseInferenceFeedback,
+    DatabaseInferencePrompt,
+    DatabaseInferencePromptContent,
+    DatabaseInferenceResponse,
+    DatabaseInferenceResponseContent,
+    DatabaseKeywordEntity,
+    DatabaseMetric,
+    DatabaseMetricResult,
+    DatabasePIIEntity,
+    DatabasePromptRuleResult,
+    DatabaseRegexEntity,
+    DatabaseResponseRuleResult,
+    DatabaseRule,
+    DatabaseRuleResultDetail,
+    DatabaseSpan,
+    DatabaseTask,
+    DatabaseTaskToMetrics,
+    DatabaseTaskToRules,
+    DatabaseToxicityScore,
+    DatabaseUser,
+)
+from schemas.enums import (
+    ApplicationConfigurations,
+    DocumentStorageEnvironment,
+    RuleDataType,
+    RuleScoringMethod,
+)
+from schemas.metric_schemas import MetricScoreDetails
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DocumentStorageConfigurationResponse,

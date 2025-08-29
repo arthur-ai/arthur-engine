@@ -1,12 +1,12 @@
-from typing import List, Optional
+from typing import Optional
 
-from pydantic import BaseModel, Field
-
-from schemas.enums import ToolClassEnum
 from arthur_common.models.metric_schemas import (
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
+from pydantic import BaseModel
+
+from schemas.enums import ToolClassEnum
 
 
 # Internal to genai-engine

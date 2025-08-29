@@ -1,12 +1,12 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
 from arthur_common.models.response_schemas import (
     ExternalInference,
     MetricResponse,
     SpanResponse,
 )
+from pydantic import BaseModel, Field
 
 
 # Internal to genai-engine
