@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from schemas.enums import ToolClassEnum
 
 
-# Internal to genai-engine
 class ToolSelectionCorrectnessMetric(BaseModel):
     tool_selection: ToolClassEnum
     tool_selection_reason: str
@@ -17,7 +16,6 @@ class ToolSelectionCorrectnessMetric(BaseModel):
     tool_usage_reason: str
 
 
-# Internal to genai-engine
 class MetricScoreDetails(BaseModel):
     query_relevance: Optional[QueryRelevanceMetric] = None
     response_relevance: Optional[ResponseRelevanceMetric] = None

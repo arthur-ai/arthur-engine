@@ -13,7 +13,6 @@ class BaseEnum(str, Enum):
         return self.value
 
 
-# Internal to genai-engine
 class RuleDataType(str, Enum):
     REGEX = "regex"
     KEYWORD = "keyword"
@@ -25,13 +24,11 @@ class RuleDataType(str, Enum):
     HINT = "hint"
 
 
-# Internal to genai-engine
 class RuleScoringMethod(str, Enum):
     # Better term for regex / keywords?
     BINARY = "binary"
 
 
-# Internal to genai-engine. Problems with generation in common client. Copied over for now.
 class ToolClassEnum(int, Enum):
     WRONG_TOOL_SELECTED = 0
     CORRECT_TOOL_SELECTED = 1
@@ -41,20 +38,17 @@ class ToolClassEnum(int, Enum):
         return str(self.value)
 
 
-# Internal to genai-engine
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
     TXT = "txt"
 
 
-# Internal to genai-engine
 class DocumentStorageEnvironment(str, Enum):
     AWS = "aws"
     AZURE = "azure"
 
 
-# Internal to genai-engine
 # These are keys in config key : value pairs
 class ApplicationConfigurations(str, Enum):
     CHAT_TASK_ID = "chat_task_id"
@@ -66,14 +60,12 @@ class ApplicationConfigurations(str, Enum):
     MAX_LLM_RULES_PER_TASK_COUNT = "max_llm_rules_per_task_count"
 
 
-# Internal to genai-engine
 class ClaimClassifierResultEnum(str, Enum):
     CLAIM = "claim"
     NONCLAIM = "nonclaim"
     DIALOG = "dialog"
 
 
-# Internal to genai-engine. Problems with generation in common client.
 class PermissionLevelsEnum(Enum):
     API_KEY_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.ADMIN_KEY],
