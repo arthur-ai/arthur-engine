@@ -1,9 +1,8 @@
 ################################################################################
 #                                                                              #
-#             Build GenAI Engine on slim-bookworm images for cpu and gpu             #
+#       Build GenAI Engine on slim-bookworm images for cpu and gpu             #
 #                                                                              #
 ################################################################################
-
 
 # TORCH_DEVICE must be either "cpu" or "gpu"
 ARG TORCH_DEVICE=cpu
@@ -36,7 +35,6 @@ RUN poetry run pip install --no-cache-dir --upgrade --force-reinstall -r /tmp/re
 # CPU Install: no-op for now
 FROM preinstall AS cpu-install
 
-
 # Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
 FROM ${TORCH_DEVICE}-install AS install
 # Copy backend files
@@ -52,18 +50,20 @@ COPY .env /app/
 ARG ENABLE_TELEMETRY=false
 RUN echo "TELEMETRY_ENABLED=${ENABLE_TELEMETRY}" >> /app/.env
 
+# Download AWS RDS global certificate bundle
+RUN apt-get update && apt-get install -y curl && \
+    curl -o /app/postgres-cert.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
 
 # Copy alembic files to run directory
 COPY alembic /app/alembic
 COPY alembic.ini /app/
 
 
-################################################################################
-#                                                                              #
-#    Copy GenAI Engine from install to distroless image to eliminate image bloat     #
-#                                                                              #
-################################################################################
-
+#####################################################################################
+#                                                                                   #
+#    Copy GenAI Engine from install to distroless image to eliminate image bloat    #
+#                                                                                   #
+#####################################################################################
 
 # Final Stage(s): Create genai-engine image
 FROM gcr.io/distroless/python3-debian12:latest AS genai_engine_distroless_base

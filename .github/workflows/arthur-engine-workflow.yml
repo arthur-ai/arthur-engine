@@ -240,12 +240,11 @@ jobs:
       - uses: ./.github/workflows/composite-actions/set-version
       - name: Generate GenAI Client
         run: |
-          pip install openapi-generator-cli[jdk4py]
+          pip install 'openapi-generator-cli[jdk4py]==7.12'
           openapi-generator-cli generate -g python \
             -i ./genai-engine/staging.openapi.json \
             -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client \
-            --openapitools ./ml-engine/scripts/openapitools.json
+            --skip-validate-spec --package-name genai_client
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
       - name: Log in to Docker Hub
         uses: docker/login-action@v3.5.0
@@ -286,7 +285,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
       - uses: ./.github/workflows/composite-actions/set-version
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+        uses: aws-actions/configure-aws-credentials@1b2b73eb6a459c3a91fde76ba4c255e5b4b8e94e
         with:
           role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
           role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
