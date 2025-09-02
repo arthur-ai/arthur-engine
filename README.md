@@ -4,7 +4,7 @@
 
 <i>Make AI work for Everyone.</i>
 
-[![GenAI Engine CI](https://github.com/arthur-ai/arthur-engine/actions/workflows/genai-engine-workflow.yml/badge.svg)](actions?query=workflow%3A%22%22GenAI+Engine+Workflow%22%22++)
+[![GenAI Engine CI](https://github.com/arthur-ai/arthur-engine/actions/workflows/arthur-engine-workflow.yml/badge.svg)](actions?query=workflow%3A%22%22GenAI+Engine+Workflow%22%22++)
 [![Discord](https://img.shields.io/badge/Discord-Arthur-blue?logo=discord&logoColor=white)](https://discord.gg/tdfUAtaVHz)
 
 [Website](https://arthur.ai) - [Documentation](https://shield.docs.arthur.ai/docs) - [Talk to someone at Arthur](https://www.arthur.ai/arthur-book-a-demo)
