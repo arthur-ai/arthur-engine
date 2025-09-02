@@ -43,6 +43,7 @@ from arthur_common.models.response_schemas import (
     FileUploadResult,
     QueryFeedbackResponse,
     QueryInferencesResponse,
+    QuerySpansResponse,
     QueryTracesWithMetricsResponse,
     RuleResponse,
     SearchRulesResponse,

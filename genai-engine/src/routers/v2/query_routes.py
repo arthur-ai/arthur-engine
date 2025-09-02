@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import Annotated
 
-from dependencies import get_db_session
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from dependencies import get_db_session
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
@@ -11,10 +13,8 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Inference, User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.response_schemas import (
-    QueryInferencesResponse,
-)
-from sqlalchemy.orm import Session
+from arthur_common.models.response_schemas import QueryInferencesResponse
+
 from utils import constants as constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters

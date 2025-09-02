@@ -16,7 +16,9 @@ from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from arthur_common.models.request_schemas import SpanQueryRequest
 from arthur_common.models.response_schemas import (
+    QuerySpansResponse,
     QueryTracesWithMetricsResponse,
     SpanWithMetricsResponse,
 )
