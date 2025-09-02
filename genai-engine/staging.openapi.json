@@ -2585,13 +2585,20 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid span types or parameters"
+                        "description": "Invalid span types, parameters, or validation error"
                     },
                     "404": {
                         "description": "No spans found"
                     },
                     "422": {
-                        "description": "Validation error"
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
                     }
                 }
             }
