@@ -1614,6 +1614,7 @@ class Span(BaseModel):
             span_id=self.span_id,
             parent_span_id=self.parent_span_id,
             span_kind=self.span_kind,
+            span_name=self.span_name,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
