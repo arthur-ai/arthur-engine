@@ -442,6 +442,29 @@ class DatabaseApiKey(Base):
         self.deactivated_at = datetime.now()
 
 
+class DatabaseTraceMetadata(Base):
+    __tablename__ = "trace_metadata"
+
+    trace_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        nullable=False,
+        index=True,
+    )
+    start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
+    end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
+    span_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[TIMESTAMP] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[TIMESTAMP] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+
 class DatabaseSpan(Base):
     __tablename__ = "spans"
 
@@ -450,6 +473,7 @@ class DatabaseSpan(Base):
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     parent_span_id: Mapped[str] = mapped_column(String, nullable=True, index=True)
     span_kind: Mapped[str] = mapped_column(String, nullable=True)
+    span_name: Mapped[str] = mapped_column(String(255), nullable=True)
     start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
     task_id: Mapped[str] = mapped_column(

@@ -8,10 +8,10 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import insert
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -165,6 +165,11 @@ class TraceIngestionService:
             "span_id": trace_utils.convert_id_to_hex(span_data.get("spanId")),
         }
 
+        # Extract span name from OpenTelemetry 'name' field
+        span_name = span_data.get("name")
+        if span_name:
+            span_dict["span_name"] = span_name[:255]  # Truncate to column limit
+
         # Extract parent span ID
         parent_span_id = self._get_parent_span_id(span_data)
         if parent_span_id:
@@ -273,14 +278,117 @@ class TraceIngestionService:
         return start_time, end_time
 
     def _store_spans(self, spans: list[dict], commit: bool = True):
-        """Store spans in the database with optional commit control."""
+        """Enhanced to maintain trace metadata with efficient batching.
+
+        This method stores spans and efficiently batches trace metadata updates
+        within the same transaction, preventing N upserts for N spans in the same trace.
+        """
         if not spans:
             return
 
+        # Store spans immediately
         stmt = insert(DatabaseSpan).values(spans)
         self.db_session.execute(stmt)
+
+        # Batch trace metadata updates within this transaction
+        # This avoids N separate upserts for N spans in the same trace
+        self._batch_upsert_trace_metadata(spans)
 
         if commit:
             self.db_session.commit()
 
-        logger.debug(f"Stored {len(spans)} spans (commit={commit})")
+        logger.debug(f"Stored {len(spans)} spans with trace metadata (commit={commit})")
+
+    def _batch_upsert_trace_metadata(self, spans: list[dict]):
+        """Efficiently batch trace metadata updates - prevents N upserts for N spans.
+
+        Groups spans by trace_id to batch updates. For example:
+        - 50 spans from same trace = 1 upsert (not 50!)
+        - Handles out-of-order span arrival with MIN/MAX aggregations
+        - Maintains data consistency within single transaction
+        - Database-agnostic implementation using insert-or-update pattern
+        """
+        if not spans:
+            return
+
+        # Group spans by trace_id to batch updates
+        trace_updates = {}
+        current_time = datetime.now()
+
+        for span in spans:
+            trace_id = span["trace_id"]
+            if trace_id not in trace_updates:
+                trace_updates[trace_id] = {
+                    "trace_id": trace_id,
+                    "task_id": span["task_id"],
+                    "start_time": span["start_time"],
+                    "end_time": span["end_time"],
+                    "span_count": 0,
+                }
+
+            # Aggregate within this batch (handles multiple spans per trace in one ingestion)
+            trace_updates[trace_id]["start_time"] = min(
+                trace_updates[trace_id]["start_time"],
+                span["start_time"],
+            )
+            trace_updates[trace_id]["end_time"] = max(
+                trace_updates[trace_id]["end_time"],
+                span["end_time"],
+            )
+            trace_updates[trace_id]["span_count"] += 1
+
+        if not trace_updates:
+            return
+
+        # Database-agnostic upsert: check existing records and separate inserts from updates
+        trace_ids = list(trace_updates.keys())
+        existing_traces = (
+            self.db_session.execute(
+                select(DatabaseTraceMetadata).where(
+                    DatabaseTraceMetadata.trace_id.in_(trace_ids),
+                ),
+            )
+            .scalars()
+            .all()
+        )
+
+        existing_trace_ids = {trace.trace_id for trace in existing_traces}
+
+        # Prepare records for insertion (new traces)
+        new_traces = []
+        for trace_id, trace_data in trace_updates.items():
+            if trace_id not in existing_trace_ids:
+                trace_data["updated_at"] = current_time
+                new_traces.append(trace_data)
+
+        # Batch insert new traces
+        if new_traces:
+            self.db_session.execute(insert(DatabaseTraceMetadata).values(new_traces))
+
+        # Update existing traces with proper aggregation
+        for existing_trace in existing_traces:
+            trace_id = existing_trace.trace_id
+            new_data = trace_updates[trace_id]
+
+            update_stmt = (
+                update(DatabaseTraceMetadata)
+                .where(DatabaseTraceMetadata.trace_id == trace_id)
+                .values(
+                    start_time=func.least(
+                        existing_trace.start_time,
+                        new_data["start_time"],
+                    ),
+                    end_time=func.greatest(
+                        existing_trace.end_time,
+                        new_data["end_time"],
+                    ),
+                    span_count=existing_trace.span_count + new_data["span_count"],
+                    updated_at=current_time,
+                )
+            )
+            self.db_session.execute(update_stmt)
+
+        logger.debug(
+            f"Updated metadata for {len(trace_updates)} traces from {len(spans)} spans "
+            f"({len(new_traces)} new, {len(existing_traces)} updated)",
+        )
