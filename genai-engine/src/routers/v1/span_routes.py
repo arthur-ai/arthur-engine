@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
 from openinference.semconv.trace import OpenInferenceSpanKindValues
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
@@ -17,6 +18,7 @@ from routers.v2 import multi_validator
 from schemas.common_schemas import PaginationParameters
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
+from schemas.request_schemas import SpanQueryRequest
 from schemas.response_schemas import (
     QuerySpansResponse,
     QueryTracesWithMetricsResponse,
@@ -215,9 +217,8 @@ def query_spans_with_metrics(
     response_model_exclude_none=True,
     tags=["Spans"],
     responses={
-        400: {"description": "Invalid span types or parameters"},
+        400: {"description": "Invalid span types, parameters, or validation error"},
         404: {"description": "No spans found"},
-        422: {"description": "Validation error"},
     },
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
@@ -248,12 +249,20 @@ def query_spans_by_type(
 ):
     """Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
     try:
-        span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        # Validate span_types using our Pydantic model
+        query_request = SpanQueryRequest(
             task_ids=task_ids,
             span_types=span_types,
             start_time=start_time,
             end_time=end_time,
+        )
+
+        span_repo = _get_span_repository(db_session)
+        spans = span_repo.query_spans(
+            task_ids=query_request.task_ids,
+            span_types=query_request.span_types,
+            start_time=query_request.start_time,
+            end_time=query_request.end_time,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
@@ -264,8 +273,13 @@ def query_spans_by_type(
             count=len(spans),
             spans=[span._to_response_model() for span in spans],
         )
-    except ValueError as e:
+    except ValidationError as e:
+        # Pydantic validation errors (including our field validators)
         logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError as e:
+
+        logger.error(f"Value Error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error querying spans: {e}")

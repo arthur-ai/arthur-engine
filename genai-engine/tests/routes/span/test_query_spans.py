@@ -140,6 +140,7 @@ def test_query_spans_span_type_validation(
     assert status_code == expected_status
 
     if expected_status == 400:
+        # Handle validation error format
         response_text = response if isinstance(response, str) else str(response)
         for text in should_contain:
             assert text in response_text
@@ -281,7 +282,7 @@ def test_query_spans_combined_filters(
 @pytest.mark.parametrize(
     "task_ids,expected_status,expected_count",
     [
-        ([], 400, None),  # Missing task_ids
+        ([], 400, None),  # Missing task_ids - now returns 400 with validation
         (["invalid_task_id"], 200, 0),  # Invalid task_ids
         (
             ["task1"],
@@ -308,6 +309,9 @@ def test_query_spans_edge_cases(
         assert_valid_span_response(response)
         if expected_count is not None:
             assert response.count == expected_count
+    elif expected_status == 400:
+        # Handle validation error for missing required fields
+        assert response is not None  # Should have error response
 
 
 @pytest.mark.unit_tests

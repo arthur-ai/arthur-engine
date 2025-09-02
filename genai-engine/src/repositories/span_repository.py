@@ -78,9 +78,6 @@ class SpanRepository:
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
 
-        # Add span type validation
-        trace_utils.validate_span_types(span_types)
-
         # Query spans directly with span-level pagination
         spans = self.span_query_service.query_spans_from_db(
             trace_ids=trace_ids,
