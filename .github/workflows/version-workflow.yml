@@ -138,3 +138,14 @@ jobs:
 
           # Push the new branch with the commit
           git push -u origin $BRANCH_NAME
+
+          # Create PR and enable auto-merge
+          gh pr create \
+            --title "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}" \
+            --body "Automated version bump to ${NEW_ARTHUR_ENGINE_VERSION}" \
+            --base dev \
+            --head $BRANCH_NAME
+          gh pr merge $BRANCH_NAME --auto --merge
+
+          # Self-approve (Ruleset bypass for automator app)
+          gh pr review $BRANCH_NAME --approve
