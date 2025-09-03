@@ -58,6 +58,8 @@ jobs:
 
           export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
           export BRANCH_NAME="arthur-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
+          # git checkout -b $BRANCH_NAME
+
 
           # Read current version and bump it
           CURRENT_VERSION=$(cat version)
@@ -134,5 +136,17 @@ jobs:
           git diff --cached
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
 
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+
           # Push the new branch with the commit
           git push origin
+          # git push -u origin $BRANCH_NAME
+
+          # # Create PR and enable auto-merge
+          # gh pr create \
+          #   --title "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}" \
+          #   --body "Automated version bump to ${NEW_ARTHUR_ENGINE_VERSION}" \
+          #   --base dev \
+          #   --head $BRANCH_NAME
+          # gh pr merge $BRANCH_NAME --auto --merge
