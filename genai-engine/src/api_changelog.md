@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/03/2025
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'span_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/span_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/span_name' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/span_name' to the response with the '200' status
+
 # 08/27/2025
 - **CHANGE** for **URL**: /v1/spans/query  endpoint added
 

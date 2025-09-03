@@ -83,7 +83,7 @@ def generate_new_openapi(path: str) -> None:
 
 
 def main():
-    path_directory = os.path.dirname(os.path.abspath(__name__))
+    path_directory = os.path.dirname(os.path.abspath(__file__))
     if path_directory.endswith("genai-engine"):
         path_directory = os.path.dirname(path_directory)
     old_openapi_path = os.path.join(path_directory, "genai-engine/staging.openapi.json")

@@ -255,3 +255,6 @@ Follow the steps below to run performance tests:
     poetry install --only performance
     ```
 2. Run performance tests by referring to the [Locust README](locust/README.md)
+
+## Generate Changelog
+`poetry run generate_changelog` from the genai-engine directory
