@@ -58,6 +58,8 @@ jobs:
 
           export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
           export BRANCH_NAME="arthur-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $BRANCH_NAME
+
 
           # Read current version and bump it
           CURRENT_VERSION=$(cat version)
@@ -135,4 +137,4 @@ jobs:
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
 
           # Push the new branch with the commit
-          git push origin
+          git push -u origin $BRANCH_NAME
