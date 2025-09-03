@@ -1,44 +1,95 @@
 # ML Engine
+This is the repository for the Arthur ML Engine, which computes evals over user-configured datasets in the Arthur Platform.
 
-- [ML Engine](#ml-engine)
-  - [Developer Setup (for Mac)](#developer-setup-for-mac)
-    - [Install prerequisite](#install-prerequisite)
+# Table of Contents
+- [Developer Setup (for Mac)](#developer-setup-for-mac)
+  - [Running ML Engine in Docker](#running-ml-engine-in-docker)
+    - [Prerequisites](#prerequisites)
+    - [Running Local ML Engine Build in Docker](#running-local-ml-engine-build-in-docker)
+  - [Running ML Engine in Terminal](#running-ml-engine-in-terminal-window)
+    - [Install Prerequisites](#install-prerequisite)
     - [Set Up Python Environment](#set-up-python-environment)
-  - [Running the ML Engine](#running-the-ml-engine)
-    - [Setup environment](#setup-environment)
-    - [Running the linter](#running-the-linter)
-    - [Run Tests](#run-tests)
-  - [Database Dependencies](#database-dependencies)
-    - [Automatic Installation](#automatic-installation)
-  - [Using local Docker image](#using-local-docker-image)
+    - [Configure Environment](#setup-environment-configuration)
+    - [Run ML Engine](#run-the-ml-engine)
+  - [Running the Linter](#running-the-linter)
+  - [Running the Unit tests](#run-unit-tests)
+  - [Running the Integration tests](#run-integration-tests)
+  - [Running the ML Engine with Local Arthur-Client](#running-the-ml-engine-with-a-local-version-of-the-arthur-client-optional-dev-only)
+  - [Running the ML Engine with Local Arthur-Common](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only)
 
 
 ## Developer Setup (for Mac)
 
-### Install prerequisite
+### Running ML Engine in Docker
+This guide assumes you are running the ML engine against a hosted Arthur Platform (likely dev or prod).
+If you are trying to run the ML engine against a local Arthur stack, you should follow the [arthur-scope README](https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads)
+to do so. As part of standing up the full Arthur stack, you will stand up an ML engine in Docker via the arthur-scope guide.
+
+#### Prerequisites
+1. Install docker via [Docker for Mac](https://docs.docker.com/desktop/setup/install/mac-install/)
+2. Acquire Credentials for the ML Engine to authenticate with a hosted Arthur Platform (dev or prod):
+   1. Credentials for Prod: Go to the Engines Management screen in your workspace (or you can follow the engine onboarding
+      workflow at https://platform.arthur.ai/onboarding if you're a new tenant) and add a new engine.
+   2. Credentials for Dev: The same as above, but go to https://scope-v4.dev.arthur.ai/onboarding.
+      You must be behind Arthur VPN for this.
+   3. You have two options to run the ML Engine:
+      1. If you're testing or running an already-released, hosted ML engine images, then follow the directions in the
+         UI to run the ML engine and pull the hosted image. This will also run a GenAI Engine locally.
+      2. If you're trying to run a local build of the ML engine, follow the [steps below](#running-local-ml-engine-build-in-docker).
+         Pull the `--arthur-client-id`, `--arthur-client-secret`, and `--arthur-api-host` secrets from the UI.
+
+#### Running Local ML Engine Build in Docker
+1. Generate fresh GenAI Client to be used in the Docker build.
+
+From `/arthur-engine/ml-engine`:
+```bash
+cd scripts
+./openapi_client_utils.sh generate python
+```
+2. Build image based on local code
+```bash
+cd ..
+docker build . -t ml-engine:local
+```
+3. Run docker image
+```bash
+docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET=<value given when engine is registered> -e ARTHUR_CLIENT_ID=<value given when engine is registered> -it ml-engine:local
+```
+
+### Running ML Engine in Terminal Window
+
+#### Install prerequisite
 1. Install Poetry
 ```bash
 pip install "poetry>=2,<3"
 ```
 
-### Set Up Python Environment
+#### Set Up Python Environment
+Assume all commands are run from `arthur-engine/ml-engine`path:
 
-1. Generate and Install GenAI Client
+1. Use poetry environment with Python 3.13
+```bash
+poetry env use 3.13
+```
+
+2. Generate and Install GenAI Client
 ```bash
 cd scripts
 ./openapi_client_utils.sh generate python
 ./openapi_client_utils.sh install python
 ```
 
-2. Install system dependencies for database drivers (optional, for devs running the engine locally/outside of Docker only)
+3. Install system dependencies for database drivers
+This must happen before Step 4 (install the Python dependencies) because some of the Python packages depend on these
+system libraries.
+
 ```bash
-# Run the installation script
+# Run the installation script (still in the scripts directory)
 ./install_db_dependencies.sh
 ```
 
 This script installs system dependencies for:
 - **psycopg** (PostgreSQL) - PostgreSQL client libraries
-- **cx-oracle** (Oracle) - Oracle Instant Client
 - **pymysql** (MySQL) - MySQL client libraries
 - **pyodbc** (ODBC) - ODBC driver manager
 
@@ -46,24 +97,40 @@ The script supports Mac systems only.
 
 **Note:** This script is designed for local development installations. For Docker deployments, the database dependencies are automatically installed during the Docker build process.
 
-3. Install Python dependencies
+4. Install Oracle Manually for database drivers (optional, for running the engine locally only—not currently needed for unit tests)
+
+**NOTE**: This is only required if you are doing work with an ODBC Connector that is connecting to an Oracle database.
+If that doesn't apply to you you can skip this step and come back to it when it's needed. Oracle is still built into
+the ML engine, so if it does apply to you but you don't want to have to do this, just run the ML engine you're using
+in Docker instead of in your Python environment.
+
+For Intel Macs, follow the instructions here: https://www.oracle.com/database/technologies/instant-client/macos-intel-x86-downloads.html.
+You need to install both the Basic and the ODBC package linked on that page.
+
+For ARM Macs, follow the installation instructions here: https://www.oracle.com/database/technologies/instant-client/macos-arm64-downloads.html
+You need to install both the Basic and the ODBC package linked on that page.
+
+5. Install Python dependencies
 ```bash
 poetry install
 ```
 
-## Running the ML Engine
+#### Setup environment Configuration
 
-These steps assume that you already logged in and added Engine on [Arthur Platform](https://platform.arthur.ai/)
-
-### Setup environment
+If you're trying to run the arthur-scope integration tests, use the admin key in the "Engine Development" item in 1pass
+as your `GENAI_ENGINE_INTERNAL_API_KEY` so the ML engine can authenticate with the GenAI Dev Engine. If you want the
+ML engine to be communicating with a different GenAI engine, set the `GENAI_ENGINE_INTERNAL_*` secrets accordingly.
 
 ```bash
 export ARTHUR_API_HOST=https://platform.arthur.ai
 export ARTHUR_CLIENT_SECRET=<value given when engine is registered>
 export ARTHUR_CLIENT_ID=<value given when engine is registered>
+export GENAI_ENGINE_INTERNAL_API_KEY=<fill-in-here>
+export GENAI_ENGINE_INTERNAL_HOST=https://engine.development.arthur.ai
+export GENAI_ENGINE_INTERNAL_INGRESS_HOST=https://engine.development.arthur.ai
 ```
 
-### Run the ML Engine
+#### Run the ML Engine
 
 Use this command to start the app:
 
@@ -75,151 +142,73 @@ If the app has started successfully, can communicate with the control plane, and
 the logs should look as follows:
 ```INFO:root:Checking for jobs...```
 
+**NOTE**: The ML engine only picks up jobs when it's running in an environment with enough available memory that it
+thinks it will be able to complete the jobs. If your computer is low on memory, your ML engine might not dequeue
+all job kinds (some require less memory availability than others). If you run into this issue, either free up some memory
+or alter this function in the ML engine code: https://github.com/arthur-ai/arthur-engine/blob/dev/ml-engine/src/ml_engine/job_agent.py#L73
+to always return `4000`. This will trick your ML engine into thinking it has enough memory to dequeue every currently
+existing job kind.
+
 ### Running the linter
 
-1. Install pre-commits, it will automatically run linters for you before you commit
-2. [Optional] You can manually trigger the linters
+Prerequisite: [Set up your Python environment](#set-up-python-environment).
+
+You have two options to run the linter:
+
+1. Install pre-commits, it will automatically run linters for you before you commit.
+   See [CONTRIBUTING.MD](../CONTRIBUTING.md#install-the-pre-commit-hooks-before-making-your-first-commit) for how.
+2. You can manually trigger the linters
 ```bash
-poetry install --with linters
-poetry run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
-poetry run isort src/ml_engine --profile black
-poetry run black src/ml_engine
-poetry run mypy src
+cd scripts
+./lint.sh
 ```
 
-Fix any mypy errors that come up to get your MR pipeline to pass and commit any linter changes.
+Commit any linter changes.
 
-### Run Tests
+### Run Unit Tests
+
+Prerequisite: [Set up your Python environment](#set-up-python-environment).
 
 ```bash
 poetry install --with dev
 poetry run pytest tests/
 ```
 
-## Database Dependencies
+**NOTE**: If your computer is low on resources (specifically available memory), you may see failures in the
+test_job_agent_parallellism.py test that don't have to do with your changes. If you see unexpected failures to do with
+a lower available memory than expected, try freeing up some memory to get the tests to pass.
 
-The ML Engine supports multiple database connectors through the following Python packages:
-- **psycopg** (PostgreSQL)
-- **cx-oracle** (Oracle)
-- **pymysql** (MySQL)
-- **pyodbc** (ODBC)
+### Run Integration Tests
+Integration tests are run from arthur-scope: https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads#run-integration-tests
 
-### Automatic Installation
+Just make sure you've checked out the branch in this repo with the code changes you want to test.
 
-Use the provided script to install all required system dependencies:
+**NOTE**: If you've made changes to the ML engine image requirements, you'll need to delete any existing `ml-engine` image
+tagged as `latest` in your local Docker image repository. If you've only made code changes, this isn't necessary;
+the docker-compose in arthur-scope mounts your local ML engine source code as a volume in the data-plane service so that it picks up
+any of your local code changes without requiring a rebuild.
 
-```bash
-# Make executable and run
-chmod +x install_db_dependencies.sh
-./install_db_dependencies.sh
-```
-
-**For Docker builds**, a simplified version is used automatically in the Dockerfile:
-- `install_db_dependencies_docker.sh` - Optimized for Debian/Ubuntu containers
-- No manual intervention needed - dependencies are installed during image build
-
-### Manual Oracle Installation
-
-**Note:** Oracle Instant Client requires manual installation due to license restrictions and download limitations.
-
-#### Prerequisites
-- macOS Intel x86-64 or Apple Silicon (ARM64)
-- Oracle account (free registration required)
-
-#### Installation Steps
-
-1. **Visit Oracle Downloads**
-   - Go to: https://www.oracle.com/database/technologies/instant-client/macos-intel-x86-downloads.html
-   - Sign in with your Oracle account (or create one for free)
-
-2. **Accept License Agreement**
-   - Review and accept the Oracle Technology Network License Agreement
-
-3. **Download Oracle Instant Client**
-   - Download "Basic Package" for your macOS architecture:
-     - **Intel Macs**: `instantclient-basic-macos.x64-21.12.0.0.0.zip` (~100MB)
-     - **Apple Silicon**: `instantclient-basic-macos.arm64-21.12.0.0.0.zip` (~100MB)
-   - **Optional**: Download "SDK Package" if you need development headers
-
-4. **Install Oracle Instant Client**
-   ```bash
-   # Create Oracle directory
-   mkdir -p ~/oracle
-
-   # Extract the downloaded ZIP file
-   unzip instantclient-basic-macos.x64-21.12.0.0.0.zip -d ~/oracle/
-
-   # Verify installation
-   ls ~/oracle/
-   # Should show: instantclient_21_12/
-   ```
-
-5. **Set Environment Variables**
-   ```bash
-   # Add to your shell profile (~/.zshrc or ~/.bash_profile)
-   echo 'export ORACLE_HOME=~/oracle/instantclient_21_12' >> ~/.zshrc
-   echo 'export DYLD_LIBRARY_PATH=~/oracle/instantclient_21_12:$DYLD_LIBRARY_PATH' >> ~/.zshrc
-   echo 'export PATH=~/oracle/instantclient_21_12:$PATH' >> ~/.zshrc
-
-   # Reload your shell profile
-   source ~/.zshrc
-   ```
-
-6. **Verify Installation**
-   ```bash
-   # Check if Oracle libraries are accessible
-   ls $ORACLE_HOME
-   # Should show: libclntsh.dylib, libociei.dylib, etc.
-   ```
-
-#### Troubleshooting
-
-- **"Library not found" errors**: Ensure `DYLD_LIBRARY_PATH` is set correctly
-- **Permission denied**: Check that the Oracle directory has proper read permissions
-- **Python import errors**: Restart your Python environment after setting environment variables
-
-#### Alternative: Homebrew (Limited Support)
-Some users report success with:
-```bash
-brew install --cask oracle-instantclient
-```
-However, this method may not work consistently across all macOS versions.
-
-## Using local Docker image
-1. Generate fresh GenAI Client to be used in the Docker build.
-```bash
-cd scripts
-./openapi_client_utils.sh generate python
-```
-2. Build image
-```bash
-docker build . -t ml-engine:local
-```
-3. Run docker image
-```bash
-docker run -e ARTHUR_API_HOST=https://platform.arthur.ai -e ARTHUR_CLIENT_SECRET=<value given when engine is registered> -e ARTHUR_CLIENT_ID=<value given when engine is registered> -it ml-engine:local
-```
-
-## Running the ML Engine Locally in terminal [Recommended for Dev Work Only]
-You may want to run the ML engine in your terminal instead of in a Docker container.
-
+### Running the ML Engine with a Local Version of the Arthur-Client (Optional, Dev only)
 The most likely reason you're doing this is because you are a dev doing testing who wants to install a local version of
 the arthur-client generated based on changes that haven't been released yet. These instructions will include how to run
-the integration tests locally.
+the integration tests locally. The easiest way to do this is outside of Docker so you don't have to build the local
+version of the arthur-client into the Docker image.
 
-1. From the ml-engine directory, [set up your Python environment](#set-up-python-environment). All Python environment set ups
-   MUST happen before step 3 (particularly `poetry install`) or the local version of the arthur-client that you install
+1. From the ml-engine directory, [set up your Python environment](#set-up-python-environment). All Python environment set up steps
+   MUST happen before step 3 in this guide (particularly `poetry install`) or the local version of the arthur-client that you install
    will get overwritten by the project dependency installation.
 2. From the `arthur-scope` repository, run the OpenAPI Client generation & install steps in the [root README](https://gitlab.com/ArthurAI/arthur-scope#generate-client).
-3. Run `./scripts/install_local_scope_packages.sh`. If you did not clone arthur-scope into your home directory, you
+3. From this repository, run `./scripts/install_local_scope_packages.sh`. If you did not clone arthur-scope into your home directory, you
    will need to update the path referenced in the script that installs the client. Assuming you completed step 2 and
-   your paths are set as expected, this will install your local version of the arthur client.
-4. Run the full stack in arthur-scope. For now, you will not want to run the control plane or integration tests in Docker,
+   your paths are set as expected (ie arthur-scope is cloned into your root directory), this will install your local
+   version of the arthur client. Make sure you run this in the same environment you are going to run the ML engine in
+   and just set up in step 1.
+4. Run the full stack in the arthur-scope repository. For now, you will not want to run the control plane or integration tests in Docker,
    because it will complicate the current docker-compose set up by also standing up a new ml-engine service without your
    local arthur-client install. Follow the following steps instead:
    1. Follow directions [here](https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads#set-up-python-environment) to set up an environment to run the control plane in.
    2. Follow directions [here](https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads#running-the-app) to run the control plane.
-5. Follow the [Setup environment](#setup-environment) and [Run the ML Engine](#run-the-ml-engine) steps to finish
+5. Follow the [Setup environment](#setup-environment-configuration) and [Run the ML Engine](#run-the-ml-engine) steps to finish
    running the ML engine locally. Make sure you configure the environment variables to point to your local stack.
    Do this by copying the [environment setup](https://gitlab.com/ArthurAI/arthur-scope/-/blob/main/docker-compose.yaml#L372)
    that would be used if you were running the ML engine in docker. These environment variables should all be exported
@@ -228,3 +217,15 @@ the integration tests locally.
    instead because you aren't running the ML-engine in the same Docker network as the control plane.
 6. Once the ML engine is running locally, you can follow directions [here](https://gitlab.com/ArthurAI/arthur-scope/-/tree/main/scope/app_plane?ref_type=heads#option-2-run-integration-tests-locally) to run the integration tests.
 
+### Running the ML Engine with a Local Version of Arthur-Common (Optional, Dev only)
+The arthur-common package is hosted in [Github](https://github.com/arthur-ai/arthur-common).
+
+The most likely reason you're doing this is because you are a dev doing testing who wants to install a local version of
+the arthur-common package with changes that haven't been released yet. These instructions will include how to run
+the integration tests locally. The easiest way to do this is outside of Docker so you don't have to build the local
+version of the arthur-client into the Docker image.
+
+1. From the ml-engine directory, [set up your Python environment](#set-up-python-environment). This MUST happen before
+   step 2 or the local arthur-common package you install will get overwritten by the one in the ml-engine pyproject.toml.
+2. In the same environment you just configured, go to arthur-common and run `pip install .`
+3. Complete steps 4-6 [above](#running-the-ml-engine-with-a-local-version-of-arthur-common-optional-dev-only).
