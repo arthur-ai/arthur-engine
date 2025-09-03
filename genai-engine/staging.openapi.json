@@ -2470,6 +2470,139 @@
                 }
             }
         },
+        "/v1/spans/query": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Query Spans By Type",
+                "description": "Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
+                "operationId": "query_spans_by_type_v1_spans_query_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format.",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format.",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid span types, parameters, or validation error"
+                    },
+                    "404": {
+                        "description": "No spans found"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/v1/span/{span_id}/metrics": {
             "get": {
                 "tags": [
@@ -5309,6 +5442,29 @@
                         }
                     ]
                 }
+            },
+            "QuerySpansResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of spans matching the query parameters"
+                    },
+                    "spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                        },
+                        "type": "array",
+                        "title": "Spans",
+                        "description": "List of spans with metrics matching the search filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "spans"
+                ],
+                "title": "QuerySpansResponse"
             },
             "QueryTracesWithMetricsResponse": {
                 "properties": {
