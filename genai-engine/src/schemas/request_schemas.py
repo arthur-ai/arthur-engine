@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Dict, List, Optional, Type
 
 from fastapi import HTTPException
+from openinference.semconv.trace import OpenInferenceSpanKindValues
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from schemas.enums import (

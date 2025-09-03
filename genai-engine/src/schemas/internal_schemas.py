@@ -48,7 +48,6 @@ from arthur_common.models.response_schemas import (
     RegexDetailsResponse,
     RegexSpanResponse,
     RuleResponse,
-    SpanResponse,
     SpanWithMetricsResponse,
     TaskResponse,
     ToxicityDetailsResponse,
@@ -1578,26 +1577,7 @@ class Span(BaseModel):
             updated_at=self.updated_at,
         )
 
-    def _to_response_model(self) -> SpanResponse:
-        return SpanResponse(
-            id=self.id,
-            trace_id=self.trace_id,
-            span_id=self.span_id,
-            parent_span_id=self.parent_span_id,
-            span_kind=self.span_kind,
-            start_time=self.start_time,
-            end_time=self.end_time,
-            task_id=self.task_id,
-            raw_data=self.raw_data,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
-        )
-
-    def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
+    def _to_response_model(self) -> "SpanWithMetricsResponse":
         return SpanWithMetricsResponse(
             id=self.id,
             trace_id=self.trace_id,

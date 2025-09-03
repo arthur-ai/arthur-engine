@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from dependencies import get_db_session
 from repositories.inference_repository import InferenceRepository
-from repositories.metrics_repository import MetricRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from arthur_common.models.common_schemas import PaginationParameters
