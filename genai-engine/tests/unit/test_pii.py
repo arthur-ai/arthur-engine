@@ -1,5 +1,5 @@
 import pytest
-from arthur_common.models import PIIEntityTypes, RuleResultEnum, RuleType
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier import BinaryPIIDataClassifier
 
