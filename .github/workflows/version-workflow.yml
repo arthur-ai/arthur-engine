@@ -136,6 +136,9 @@ jobs:
           git diff --cached
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
 
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
+
           # Push the new branch with the commit
           git push -u origin $BRANCH_NAME
 
