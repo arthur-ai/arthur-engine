@@ -103,7 +103,7 @@ mypy = "^1.13.0"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.39.0"
+locust = "2.39.1"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
