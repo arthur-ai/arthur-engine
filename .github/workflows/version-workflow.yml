@@ -120,7 +120,7 @@ jobs:
           # Include the ml-engine Chart.yaml and values.yaml
           sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
-          sed -i "s|containerImageVersion:.*|containerImageVersion: \"latest\"|" "$ML_ENGINE_VALUES_YAML_PATH"
+          sed -i "s|containerImageVersion:.*|containerImageVersion: \"$NEW_ARTHUR_ENGINE_VERSION\"|" "$ML_ENGINE_VALUES_YAML_PATH"
     
           # Update the genai and ml engine pyproject.toml files and the openapi json
           sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/pyproject.toml
