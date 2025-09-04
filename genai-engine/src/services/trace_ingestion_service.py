@@ -8,7 +8,6 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseSpan
@@ -52,7 +51,7 @@ class TraceIngestionService:
     def _extract_and_process_spans(
         self,
         json_traces: dict,
-    ) -> Tuple[list[dict], Tuple[int, int, int, list[str]]]:
+    ) -> Tuple[list[DatabaseSpan], Tuple[int, int, int, list[str]]]:
         """Extract and process spans from JSON trace data."""
         total_spans = 0
         accepted_spans = 0
@@ -91,21 +90,20 @@ class TraceIngestionService:
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
-                    # Pass the resource task ID to the span processing
-                    processed_span = self._process_span_data(
-                        span_data,
-                        resource_task_id,
-                    )
 
-                    if processed_span:
-                        processed_span["id"] = str(uuid.uuid4())
+                    try:
+                        # Pass the resource task ID to the span processing
+                        processed_span = self._process_span_data(
+                            span_data,
+                            resource_task_id,
+                        )
                         spans_data.append(processed_span)
                         accepted_spans += 1
-                    else:
+                    except Exception as e:
                         rejected_spans += 1
                         rejected_reasons.append("Invalid span data format.")
                         logger.debug(
-                            f"Rejected span due to invalid format: \n{span_data}",
+                            f"Rejected span due to invalid format: \n{str(e)}",
                         )
 
         return spans_data, (
@@ -140,47 +138,24 @@ class TraceIngestionService:
         self,
         span_data: dict,
         resource_task_id: str,
-    ) -> Optional[dict]:
+    ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
-        normalized_span_data = self._normalize_span_attributes(span_data)
-
-        # Extract basic span information
-        span_dict = self._extract_basic_span_info(normalized_span_data)
-
-        # Task ID is already validated at resource level, so we can use it directly
-        span_dict["task_id"] = resource_task_id
-
+        span_data = self._normalize_span_attributes(span_data)
         # Inject version into raw data
-        normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
-
-        # Store the normalized span data
-        span_dict["raw_data"] = normalized_span_data
-
-        return span_dict
-
-    def _extract_basic_span_info(self, span_data: dict) -> dict:
-        """Extract basic span information from normalized span data."""
-        span_dict = {
-            "trace_id": trace_utils.convert_id_to_hex(span_data.get("traceId")),
-            "span_id": trace_utils.convert_id_to_hex(span_data.get("spanId")),
-        }
-
-        # Extract parent span ID
-        parent_span_id = self._get_parent_span_id(span_data)
-        if parent_span_id:
-            span_dict["parent_span_id"] = parent_span_id
-
-        # Extract span kind
-        span_kind = self._get_attribute_value(span_data, SPAN_KIND_KEY)
-        if span_kind:
-            span_dict["span_kind"] = span_kind
-
-        # Extract timestamps
+        span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
         start_time, end_time = self._extract_timestamps(span_data)
-        span_dict["start_time"] = start_time
-        span_dict["end_time"] = end_time
 
-        return span_dict
+        return DatabaseSpan(
+            id=str(uuid.uuid4()),
+            trace_id=trace_utils.convert_id_to_hex(span_data.get("traceId")),
+            span_id=trace_utils.convert_id_to_hex(span_data.get("spanId")),
+            parent_span_id=self._get_parent_span_id(span_data),
+            span_kind=self._get_attribute_value(span_data, SPAN_KIND_KEY),
+            start_time=start_time,
+            end_time=end_time,
+            task_id=resource_task_id,
+            raw_data=span_data,
+        )
 
     def _extract_value_from_otel_format(
         self,
@@ -272,13 +247,12 @@ class TraceIngestionService:
 
         return start_time, end_time
 
-    def _store_spans(self, spans: list[dict], commit: bool = True):
+    def _store_spans(self, spans: list[DatabaseSpan], commit: bool = True):
         """Store spans in the database with optional commit control."""
         if not spans:
             return
 
-        stmt = insert(DatabaseSpan).values(spans)
-        self.db_session.execute(stmt)
+        self.db_session.add_all(spans)
 
         if commit:
             self.db_session.commit()
