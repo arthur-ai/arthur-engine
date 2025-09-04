@@ -8,7 +8,12 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
-from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span
+from opentelemetry.proto.trace.v1.trace_pb2 import (
+    ResourceSpans,
+    ScopeSpans,
+    Span,
+    Status,
+)
 
 from db_models.db_models import DatabaseSpan
 from dependencies import get_application_config
@@ -67,9 +72,10 @@ def _create_span(
     span_type="LLM",
     model_name="gpt-4",
     parent_span_id=None,
+    status=None,
 ):
     """Helper function to create a span with specified type and optional parent ID."""
-    span = Span()
+    span = Span(status=status)
     span.trace_id = trace_id
     span.span_id = span_id
     span.name = name
@@ -419,6 +425,71 @@ def sample_openinference_trace() -> bytes:
 
     # Cleanup
     span_ids = [span.span_id.hex()]
+    db_session = override_get_db_session()
+    _delete_spans_from_db(db_session, span_ids)
+
+
+@pytest.fixture(scope="function")
+def sample_openinference_trace_multiple_spans() -> bytes:
+    """Create a sample OpenInference trace in protobuf format."""
+    # Create trace with task ID in resource attributes
+    task_id = "task_id_123"
+    trace_id = b"test_trace_id_777"
+    parent_span_id = b"test_span_id_parent_777"
+    child_span_id = b"test_span_id_child_777"
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    # Create a simple LLM span
+    parent_span = _create_span(
+        trace_id=trace_id,
+        span_id=parent_span_id,
+        name="test_llm_span",
+        span_type="LLM",
+        model_name="gpt-4-turbo",
+    )
+
+    # Add token count attributes to the LLM span
+    parent_span.attributes.extend(
+        [
+            KeyValue(key="llm.token_count.prompt", value=AnyValue(int_value=100)),
+            KeyValue(key="llm.token_count.completion", value=AnyValue(int_value=50)),
+        ],
+    )
+
+    # create a child span from the parent
+    child_span = _create_span(
+        trace_id=trace_id,
+        parent_span_id=parent_span_id,
+        span_id=child_span_id,
+        name="test_llm_span",
+        span_type="LLM",
+        model_name="gpt-4-turbo",
+        status=Status(message="ok", code=Status.STATUS_CODE_OK),
+    )
+
+    # Add token count attributes to the LLM span
+    child_span.attributes.extend(
+        [
+            KeyValue(key="llm.token_count.prompt", value=AnyValue(int_value=100)),
+            KeyValue(key="llm.token_count.completion", value=AnyValue(int_value=50)),
+        ],
+    )
+
+    # IMPORTANT, for this test to properly test the insert functionality,
+    # child span needs to come first in the list before parent.
+    # This tests for an issue where SQLAlchemy only looks at the first record for values to insert
+    # Since the parent span does not have a parent_span_id set, SQLAlchemy fails to insert that row
+    # because it expects each object to have a parent_span_id after inspecting the child span's values
+    scope_span.spans.append(child_span)
+    scope_span.spans.append(parent_span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+    yield trace_request.SerializeToString()
+
+    # Cleanup
+    span_ids = [parent_span.span_id.hex(), child_span.span_id.hex()]
     db_session = override_get_db_session()
     _delete_spans_from_db(db_session, span_ids)
 

@@ -448,11 +448,13 @@ class DatabaseSpan(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    parent_span_id: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    span_kind: Mapped[str] = mapped_column(String, nullable=True)
-    start_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
-    end_time: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=False)
-    task_id: Mapped[str] = mapped_column(
+    parent_span_id: Mapped[str | None] = mapped_column(
+        String, nullable=True, index=True
+    )
+    span_kind: Mapped[str | None] = mapped_column(String, nullable=True)
+    start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+    end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+    task_id: Mapped[str | None] = mapped_column(
         String,
         ForeignKey("tasks.id"),
         nullable=True,
