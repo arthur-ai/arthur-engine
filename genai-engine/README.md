@@ -257,4 +257,4 @@ Follow the steps below to run performance tests:
 2. Run performance tests by referring to the [Locust README](locust/README.md)
 
 ## Generate Changelog
-`poetry run generate_changelog` from the genai-engine directory
+`poetry run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.
