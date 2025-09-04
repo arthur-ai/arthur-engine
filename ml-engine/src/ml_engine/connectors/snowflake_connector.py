@@ -10,11 +10,15 @@ from arthur_common.models.connectors import (
     ODBC_CONNECTOR_HOST_FIELD,
     SNOWFLAKE_CONNECTOR_ACCOUNT_FIELD,
     SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
+    SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD,
+    SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
     SNOWFLAKE_CONNECTOR_ROLE_FIELD,
     SNOWFLAKE_CONNECTOR_SCHEMA_FIELD,
     SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
 )
 from connectors.odbc_connector import ODBCConnector
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
 from snowflake.sqlalchemy import URL
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -69,6 +73,13 @@ class SnowflakeConnector(ODBCConnector):
             SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
             "snowflake",
         )
+        if self.authenticator == "key_pair":
+            self.private_key_passphrase = SecretStr = SecretStr(
+                connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD),
+            )
+            self.private_key = SecretStr(
+                connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD),
+            )
 
         # Call parent constructor to set up basic ODBC connection
         super().__init__(connector_config, logger)
@@ -87,10 +98,39 @@ class SnowflakeConnector(ODBCConnector):
             "warehouse": self.warehouse,
         }
 
+        if self.role:
+            connection_params["role"] = self.role
+
         if self.authenticator == "snowflake":
             connection_params["authenticator"] = "snowflake"
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
+
+        elif self.authenticator == "key_pair":
+
+            p_key = serialization.load_pem_private_key(
+                self.private_key.get_secret_value().encode(),
+                password=self.private_key_passphrase.get_secret_value().encode(),
+                backend=default_backend(),
+            )
+
+            pkb = p_key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+
+            connection_params["authenticator"] = "key_pair"
+            connection_params["private_key"] = pkb
+            try:
+                private_key_URL = URL(**connection_params)
+                engine = create_engine(
+                    private_key_URL,
+                    connect_args={"private_key": pkb},
+                )
+            except Exception as e:
+                self.logger.error(f"Failed to create Snowflake engine: {e}")
+                raise
         else:
             self.logger.warning(
                 f"Unsupported authenticator '{self.authenticator}', defaulting to 'snowflake'",
@@ -99,16 +139,15 @@ class SnowflakeConnector(ODBCConnector):
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
 
-        if self.role:
-            connection_params["role"] = self.role
+        if self.authenticator != "key_pair":
+            try:
+                snowflake_url = URL(**connection_params)
+                engine = create_engine(snowflake_url, echo=False)
+            except Exception as e:
+                self.logger.error(f"Failed to create Snowflake engine: {e}")
+                raise
 
-        try:
-            snowflake_url = URL(**connection_params)
-            engine = create_engine(snowflake_url, echo=False)
-            return engine
-        except Exception as e:
-            self.logger.error(f"Failed to create Snowflake engine: {e}")
-            raise
+        return engine
 
     def _get_default_schema(self) -> str:
         """Override to return Snowflake's default schema."""
