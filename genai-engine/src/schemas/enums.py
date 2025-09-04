@@ -76,9 +76,9 @@ class MetricType(str, Enum):
 
 
 class ToolClassEnum(int, Enum):
-    WRONG_TOOL_SELECTED = 0
-    CORRECT_TOOL_SELECTED = 1
-    NO_TOOL_SELECTED = 2
+    INCORRECT = 0
+    CORRECT = 1
+    NA = 2
 
     def __str__(self):
         return str(self.value)
