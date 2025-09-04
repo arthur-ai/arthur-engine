@@ -51,6 +51,7 @@ def test_receive_traces_with_resource_attributes(
     client: GenaiEngineTestClientBase,
     sample_openinference_trace,
     sample_span_missing_task_id,
+    sample_openinference_trace_multiple_spans,
 ):
     """Test receive_traces with resource attributes for task ID extraction."""
 
@@ -73,6 +74,17 @@ def test_receive_traces_with_resource_attributes(
         "Missing or invalid task ID in resource attributes"
         in response_json["rejection_reasons"][0]
     )
+
+    # test inserting trace with spans with and without parent_span_id
+    status_code, response = client.receive_traces(
+        sample_openinference_trace_multiple_spans
+    )
+    assert status_code == 200
+    response_json = json.loads(response)
+    assert response_json["total_spans"] == 2
+    assert response_json["accepted_spans"] == 2
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests
