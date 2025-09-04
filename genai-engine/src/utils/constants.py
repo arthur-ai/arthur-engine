@@ -146,7 +146,6 @@ KEYWORD_MATCHES_MESSAGE = "Keywords found in text."
 REGEX_NO_MATCHES_MESSAGE = "No regex match in text."
 REGEX_MATCHES_MESSAGE = "Regex match in text."
 
-# TODO: Delete after migration (UP-2945).
 # Make sure the policy and description match
 GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH = 12
 GENAI_ENGINE_KEYCLOAK_PASSWORD_POLICY = f"length({GENAI_ENGINE_KEYCLOAK_PASSWORD_LENGTH}) and specialChars(1) and upperCase(1) and lowerCase(1)"
@@ -173,7 +172,6 @@ NEWRELIC_CUSTOM_METRIC_RULE_FAILURES = "custom.rule_failures"
 
 ##################################################################
 # RBAC
-# TODO: Delete after migration (UP-2945).
 CHAT_USER: str = "CHAT-USER"
 ORG_ADMIN: str = "ORG-ADMIN"
 TASK_ADMIN: str = "TASK-ADMIN"
