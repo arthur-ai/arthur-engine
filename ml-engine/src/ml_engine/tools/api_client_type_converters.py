@@ -25,10 +25,8 @@ from arthur_common.models.enums import MetricType as ApiMetricType
 from arthur_common.models.metric_schemas import (
     RelevanceMetricConfig as ApiRelevanceMetricConfig,
 )
-from arthur_common.models.request_schemas import NewApiKeyRequest as ApiNewApiKeyRequest
 from arthur_common.models.request_schemas import NewMetricRequest as ApiNewMetricRequest
 from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleRequest
-from arthur_common.models.request_schemas import NewTaskRequest as ApiNewTaskRequest
 from arthur_common.models.response_schemas import MetricResponse as ApiMetricResponse
 from arthur_common.models.response_schemas import RuleResponse as ApiRuleResponse
 from arthur_common.models.response_schemas import TaskResponse as ApiTaskResponse
@@ -41,7 +39,6 @@ from genai_client.models import MetricType as ShieldMetricType
 from genai_client.models import NewApiKeyRequest as ShieldNewApiKeyRequest
 from genai_client.models import NewMetricRequest as ShieldNewMetricRequest
 from genai_client.models import NewRuleRequest as ShieldNewRuleRequest
-from genai_client.models import NewTaskRequest as ShieldNewTaskRequest
 from genai_client.models import PIIConfig as ShieldPIIConfig
 from genai_client.models import RegexConfig as ShieldRegexConfig
 from genai_client.models import RelevanceMetricConfig as ShieldRelevanceMetricConfig
@@ -136,15 +133,6 @@ class ShieldClientTypeConverter:
         )
 
     @classmethod
-    def new_task_request_api_to_shield_client(
-        cls, api: ApiNewTaskRequest
-    ) -> ShieldNewTaskRequest:
-        return ShieldNewTaskRequest(
-            name=api.name,
-            is_agentic=api.is_agentic,
-        )
-
-    @classmethod
     def relevance_metric_config_api_to_shield_client(
         cls, api: ApiRelevanceMetricConfig
     ) -> ShieldRelevanceMetricConfig:
@@ -166,15 +154,6 @@ class ShieldClientTypeConverter:
             type=ShieldMetricType(api.type),
             metric_metadata=api.metric_metadata,
             config=config,
-        )
-
-    @classmethod
-    def new_api_key_request_api_to_shield_client(
-        cls, api: ApiNewApiKeyRequest
-    ) -> ShieldNewApiKeyRequest:
-        return ShieldNewApiKeyRequest(
-            description=api.description,
-            roles=api.roles,
         )
 
 
