@@ -8,7 +8,7 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
@@ -339,11 +339,11 @@ class TraceIngestionService:
                 update(DatabaseTraceMetadata)
                 .where(DatabaseTraceMetadata.trace_id == trace_id)
                 .values(
-                    start_time=func.least(
+                    start_time=min(
                         existing_trace.start_time,
                         new_data["start_time"],
                     ),
-                    end_time=func.greatest(
+                    end_time=max(
                         existing_trace.end_time,
                         new_data["end_time"],
                     ),

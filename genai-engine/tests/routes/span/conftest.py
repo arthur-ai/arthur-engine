@@ -15,12 +15,21 @@ from opentelemetry.proto.trace.v1.trace_pb2 import (
     Status,
 )
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import (
+    DatabaseMetric,
+    DatabaseMetricResult,
+    DatabaseSpan,
+    DatabaseTask,
+    DatabaseTaskToMetrics,
+    DatabaseTraceMetadata,
+)
 from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from schemas.enums import MetricType
 from schemas.internal_schemas import Span as InternalSpan
+from services.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -295,19 +304,33 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     )
     spans.append(span4)
 
-    # Store spans in database
-    spans_to_store = [span.model_dump() for span in spans]
-    [span.pop("metric_results") for span in spans_to_store]
-    span_repo._store_spans(spans_to_store)
+    # Store spans in database using trace ingestion service (handles both spans and trace metadata)
+
+    trace_ingestion_service = TraceIngestionService(db_session)
+
+    # Convert to DatabaseSpan objects
+    database_spans = []
+    for span in spans:
+        database_span = DatabaseSpan(
+            id=span.id,
+            trace_id=span.trace_id,
+            span_id=span.span_id,
+            parent_span_id=span.parent_span_id,
+            span_name=span.raw_data.get("name"),
+            span_kind=span.span_kind,
+            start_time=span.start_time,
+            end_time=span.end_time,
+            task_id=span.task_id,
+            raw_data=span.raw_data,
+            created_at=span.created_at,
+            updated_at=span.updated_at,
+        )
+        database_spans.append(database_span)
+
+    # Store spans and create trace metadata automatically
+    trace_ingestion_service._store_spans(database_spans, commit=True)
 
     # Create metrics and metric results for LLM spans
-    from db_models.db_models import (
-        DatabaseMetric,
-        DatabaseMetricResult,
-        DatabaseTask,
-        DatabaseTaskToMetrics,
-    )
-    from schemas.enums import MetricType
 
     # Create tasks first
     task1 = DatabaseTask(
@@ -375,6 +398,12 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     # Cleanup: Delete all created spans from the database after the test
     span_ids = [span.span_id for span in spans]
     _delete_spans_from_db(db_session, span_ids)
+
+    # Cleanup: Delete trace metadata created by trace ingestion service
+    trace_ids = list(set(span.trace_id for span in spans))  # Remove duplicates
+    db_session.query(DatabaseTraceMetadata).filter(
+        DatabaseTraceMetadata.trace_id.in_(trace_ids),
+    ).delete(synchronize_session=False)
 
     # Cleanup: Delete metric results, task-to-metric links, metrics, and tasks
     db_session.query(DatabaseMetricResult).filter(

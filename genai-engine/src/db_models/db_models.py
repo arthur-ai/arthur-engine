@@ -472,8 +472,11 @@ class DatabaseSpan(Base):
     trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     parent_span_id: Mapped[str | None] = mapped_column(
-        String, nullable=True, index=True
+        String,
+        nullable=True,
+        index=True,
     )
+    span_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     span_kind: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
