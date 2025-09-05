@@ -95,7 +95,7 @@ url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
 priority = "explicit"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
+pytest = "8.4.2"
 pytest-asyncio = "1.1.0"
 pytest-cov = "^6.0.0"
 pre-commit = "4.3.0"
