@@ -23,7 +23,7 @@ class SpanQueryService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_paginated_trace_ids_for_task_ids(
+    def get_paginated_trace_metadata_for_task_ids(
         self,
         task_ids: list[str],
         trace_ids: Optional[list[str]] = None,
@@ -32,13 +32,13 @@ class SpanQueryService:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page: int = 0,
         page_size: int = DEFAULT_PAGE_SIZE,
-    ) -> Optional[list[str]]:
-        """Get paginated trace IDs for given task IDs with proper ordering and filtering."""
+    ) -> Optional[list[DatabaseTraceMetadata]]:
+        """Get paginated trace metadata for given task IDs with proper ordering and filtering."""
         if not task_ids:
-            return trace_ids
+            return None
 
-        # Simple query on trace_metadata table - NO MORE GROUP BY!
-        query = select(DatabaseTraceMetadata.trace_id).where(
+        # Query trace metadata table to get start/end times efficiently
+        query = select(DatabaseTraceMetadata).where(
             DatabaseTraceMetadata.task_id.in_(task_ids),
         )
 
@@ -62,14 +62,14 @@ class SpanQueryService:
 
         # Execute query
         results = self.db_session.execute(query).scalars().all()
-        trace_ids_result = list(results)
+        trace_metadata_result = list(results)
 
         logger.debug(
-            f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
+            f"Found {len(trace_metadata_result)} trace metadata records for task IDs: {task_ids} "
             f"(page={page}, page_size={page_size}, sort={sort})",
         )
 
-        return trace_ids_result if trace_ids_result else None
+        return trace_metadata_result if trace_metadata_result else None
 
     def query_spans_from_db(
         self,
