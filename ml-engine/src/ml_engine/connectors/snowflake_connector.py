@@ -19,6 +19,7 @@ from arthur_common.models.connectors import (
 from connectors.odbc_connector import ODBCConnector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
+from pydantic import SecretStr
 from snowflake.sqlalchemy import URL
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -33,12 +34,6 @@ class SnowflakeConnector(ODBCConnector):
     def __init__(self, connector_config: ConnectorSpec, logger: Logger) -> None:
         self.logger = logger
         connector_fields = {f.key: f.value for f in connector_config.fields}
-
-        # Validate required Snowflake fields first
-        if not connector_fields.get("username"):
-            raise ValueError("Username is required for Snowflake connection")
-        if not connector_fields.get("database"):
-            raise ValueError("Database is required for Snowflake connection")
 
         # Store Snowflake-specific configuration
         self.account = connector_fields.get(
@@ -73,8 +68,8 @@ class SnowflakeConnector(ODBCConnector):
             SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
             "snowflake",
         )
-        if self.authenticator == "key_pair":
-            self.private_key_passphrase = SecretStr = SecretStr(
+        if self.authenticator == "snowflake_jwt":
+            self.private_key_passphrase = SecretStr(
                 connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD),
             )
             self.private_key = SecretStr(
@@ -106,12 +101,16 @@ class SnowflakeConnector(ODBCConnector):
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
 
-        elif self.authenticator == "key_pair":
+        elif self.authenticator == "snowflake_jwt":
+
+            connection_params["authenticator"] = "snowflake_jwt"
+
+            pem_text = self.private_key.get_secret_value()
 
             p_key = serialization.load_pem_private_key(
-                self.private_key.get_secret_value().encode(),
+                pem_text.encode(),
                 password=self.private_key_passphrase.get_secret_value().encode(),
-                backend=default_backend(),
+                backend=default_backend(),  # optional in modern cryptography
             )
 
             pkb = p_key.private_bytes(
@@ -120,8 +119,6 @@ class SnowflakeConnector(ODBCConnector):
                 encryption_algorithm=serialization.NoEncryption(),
             )
 
-            connection_params["authenticator"] = "key_pair"
-            connection_params["private_key"] = pkb
             try:
                 private_key_URL = URL(**connection_params)
                 engine = create_engine(
