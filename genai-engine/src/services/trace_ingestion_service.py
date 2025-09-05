@@ -8,7 +8,7 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
@@ -330,28 +330,29 @@ class TraceIngestionService:
         if new_traces:
             self.db_session.execute(insert(DatabaseTraceMetadata).values(new_traces))
 
-        # Update existing traces with proper aggregation
-        for existing_trace in existing_traces:
-            trace_id = existing_trace.trace_id
-            new_data = trace_updates[trace_id]
+        # Update existing traces with proper aggregation - collect all updates
+        if existing_traces:
+            bulk_updates = []
+            for existing_trace in existing_traces:
+                trace_id = existing_trace.trace_id
+                new_data = trace_updates[trace_id]
 
-            update_stmt = (
-                update(DatabaseTraceMetadata)
-                .where(DatabaseTraceMetadata.trace_id == trace_id)
-                .values(
-                    start_time=min(
-                        existing_trace.start_time,
-                        new_data["start_time"],
-                    ),
-                    end_time=max(
-                        existing_trace.end_time,
-                        new_data["end_time"],
-                    ),
-                    span_count=existing_trace.span_count + new_data["span_count"],
-                    updated_at=current_time,
+                bulk_updates.append(
+                    {
+                        "trace_id": trace_id,
+                        "start_time": min(
+                            existing_trace.start_time,
+                            new_data["start_time"],
+                        ),
+                        "end_time": max(existing_trace.end_time, new_data["end_time"]),
+                        "span_count": existing_trace.span_count
+                        + new_data["span_count"],
+                        "updated_at": current_time,
+                    },
                 )
-            )
-            self.db_session.execute(update_stmt)
+
+            # Execute all updates in a single bulk operation
+            self.db_session.bulk_update_mappings(DatabaseTraceMetadata, bulk_updates)
 
         logger.debug(
             f"Updated metadata for {len(trace_updates)} traces from {len(spans)} spans "
