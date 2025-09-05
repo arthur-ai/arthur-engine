@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import Dict, List, Optional, Type
 
 from fastapi import HTTPException
+from openinference.semconv.trace import OpenInferenceSpanKindValues
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from schemas.common_schemas import (
@@ -523,3 +525,43 @@ class NewMetricRequest(BaseModel):
 
 class UpdateMetricRequest(BaseModel):
     enabled: bool = Field(description="Boolean value to enable or disable the metric. ")
+
+
+class SpanQueryRequest(BaseModel):
+    """Request schema for querying spans with validation."""
+
+    task_ids: list[str] = Field(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    )
+    span_types: Optional[list[str]] = Field(
+        None,
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([kind.value for kind in OpenInferenceSpanKindValues]))}",
+    )
+    start_time: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    )
+    end_time: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    )
+
+    @field_validator("span_types")
+    @classmethod
+    def validate_span_types(cls, value):
+        """Validate that all span_types are valid OpenInference span kinds."""
+        if not value:
+            return value
+
+        # Get all valid span kind values
+        valid_span_kinds = [kind.value for kind in OpenInferenceSpanKindValues]
+        invalid_types = [st for st in value if st not in valid_span_kinds]
+
+        if invalid_types:
+            raise ValueError(
+                f"Invalid span_types received: {invalid_types}. "
+                f"Valid values: {', '.join(sorted(valid_span_kinds))}",
+            )
+        return value

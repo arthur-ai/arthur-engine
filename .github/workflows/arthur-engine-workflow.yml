@@ -256,10 +256,10 @@ jobs:
           cd ml-engine
           docker build -t arthurplatform/ml-engine:${{ env.VERSION }} .
           docker push arthurplatform/ml-engine:${{ env.VERSION }}
-          # if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-          #   docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
-          #   docker push arthurplatform/ml-engine:latest
-          # fi
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest
+            docker push arthurplatform/ml-engine:latest
+          fi
           if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev
@@ -285,7 +285,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
       - uses: ./.github/workflows/composite-actions/set-version
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@f503a1870408dcf2c35d5c2b8a68e69211042c7d
+        uses: aws-actions/configure-aws-credentials@1b2b73eb6a459c3a91fde76ba4c255e5b4b8e94e
         with:
           role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
           role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}

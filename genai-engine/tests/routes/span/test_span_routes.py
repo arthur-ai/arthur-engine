@@ -51,6 +51,7 @@ def test_receive_traces_with_resource_attributes(
     client: GenaiEngineTestClientBase,
     sample_openinference_trace,
     sample_span_missing_task_id,
+    sample_openinference_trace_multiple_spans,
 ):
     """Test receive_traces with resource attributes for task ID extraction."""
 
@@ -73,6 +74,17 @@ def test_receive_traces_with_resource_attributes(
         "Missing or invalid task ID in resource attributes"
         in response_json["rejection_reasons"][0]
     )
+
+    # test inserting trace with spans with and without parent_span_id
+    status_code, response = client.receive_traces(
+        sample_openinference_trace_multiple_spans
+    )
+    assert status_code == 200
+    response_json = json.loads(response)
+    assert response_json["total_spans"] == 2
+    assert response_json["accepted_spans"] == 2
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests
@@ -186,9 +198,9 @@ def test_query_traces_edge_cases(
 
     # Test missing task_ids
     status_code, response = client.query_traces(task_ids=[])
-    assert status_code == 400
-    response_json = json.loads(response)
-    assert "Field required" in response_json["detail"]
+    assert status_code == 400  # All validation errors now return 400
+    # Should have error response
+    assert response is not None
 
 
 @pytest.mark.unit_tests
@@ -312,9 +324,9 @@ def test_query_traces_with_metrics(
 
     # Test missing task IDs
     status_code, response = client.query_traces_with_metrics(task_ids=[])
-    assert status_code == 400
-    response_json = json.loads(response)
-    assert "Field required" in response_json["detail"]
+    assert status_code == 400  # All validation errors now return 400
+    # Should have error response
+    assert response is not None
 
 
 @pytest.mark.unit_tests

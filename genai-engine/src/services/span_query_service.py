@@ -74,17 +74,28 @@ class SpanQueryService:
     def query_spans_from_db(
         self,
         trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
+        span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        page: Optional[int] = None,
+        page_size: Optional[int] = None,
     ) -> list[Span]:
         """Query spans from database with given filters."""
         query = self._build_spans_query(
             trace_ids=trace_ids,
+            task_ids=task_ids,
+            span_types=span_types,
             start_time=start_time,
             end_time=end_time,
             sort=sort,
         )
+
+        # Apply pagination if provided
+        if page is not None and page_size is not None:
+            offset = page * page_size
+            query = query.offset(offset).limit(page_size)
 
         results = self.db_session.execute(query).scalars().unique().all()
         return [Span._from_database_model(span) for span in results]
@@ -124,6 +135,8 @@ class SpanQueryService:
     def _build_spans_query(
         self,
         trace_ids: Optional[list[str]] = None,
+        task_ids: Optional[list[str]] = None,
+        span_types: Optional[list[str]] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
@@ -135,6 +148,10 @@ class SpanQueryService:
         conditions = []
         if trace_ids:
             conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
+        if task_ids:
+            conditions.append(DatabaseSpan.task_id.in_(task_ids))
+        if span_types:
+            conditions.append(DatabaseSpan.span_kind.in_(span_types))
         if start_time:
             conditions.append(DatabaseSpan.start_time >= start_time)
         if end_time:

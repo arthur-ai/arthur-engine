@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.68"
+version = "2.1.77"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -31,14 +31,14 @@ types-psutil = "7.0.0.20250822"
 types-requests = "2.32.4.20250809"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = "1.4.1289"
+arthur-client = "1.4.1319"
 arthur-common = "^2.1.60"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"
 
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
+pytest = "8.4.2"
 responses = "0.25.8"
 pytest-httpserver = "1.1.3"
 pytest-asyncio = "1.1.0"

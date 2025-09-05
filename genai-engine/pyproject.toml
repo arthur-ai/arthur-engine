@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.68"
+version = "2.1.77"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -23,7 +23,7 @@ uvicorn = "0.35.0"
 pydantic = "2.11.7"
 sse-starlette = "3.0.2"
 fastapi-sqlalchemy = "0.2.1"
-alembic = "1.16.4"
+alembic = "1.16.5"
 boto3 = "1.40.17"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.10"
@@ -74,6 +74,7 @@ cloudpickle = "3.1.1"
 amplitude-analytics = "^1.1.5"
 sentencepiece = "0.2.1"
 gliner = "0.2.21"
+openinference-semantic-conventions = "^0.1.12"
 
 
 [[tool.poetry.source]]
@@ -93,7 +94,7 @@ url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
 priority = "explicit"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
+pytest = "8.4.2"
 pytest-asyncio = "1.1.0"
 pytest-cov = "^6.0.0"
 pre-commit = "4.3.0"
@@ -102,7 +103,7 @@ mypy = "^1.13.0"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.39.0"
+locust = "2.39.1"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
