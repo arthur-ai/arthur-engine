@@ -63,7 +63,7 @@ torch = [
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
-fastapi-pagination = "0.14.0"
+fastapi-pagination = "0.14.1"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
 bert-score = "0.3.13"
