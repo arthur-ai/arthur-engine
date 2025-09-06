@@ -544,19 +544,19 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.17"
+version = "1.40.25"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "boto3-1.40.17-py3-none-any.whl", hash = "sha256:2cacecd689cb51d81fbf54f84b64d0e6e922fbc18ee513c568b9f61caf4221e0"},
-    {file = "boto3-1.40.17.tar.gz", hash = "sha256:e115dc87d5975d32dfa0ebaf19c39e360665317a350004fa94b03200fe853f2e"},
+    {file = "boto3-1.40.25-py3-none-any.whl", hash = "sha256:d39bc3deb6780d910f00580837b720132055b0604769fd978780865ed3c019ea"},
+    {file = "boto3-1.40.25.tar.gz", hash = "sha256:debfa4b2c67492d53629a52c999d71cddc31041a8b62ca1a8b1fb60fb0712ee1"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.17,<1.41.0"
+botocore = ">=1.40.25,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.13.0,<0.14.0"
 
@@ -565,15 +565,15 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.22"
+version = "1.40.25"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "sys_platform != \"linux\" and sys_platform != \"win32\" or sys_platform == \"linux\" or sys_platform == \"win32\""
 files = [
-    {file = "botocore-1.40.22-py3-none-any.whl", hash = "sha256:df50788fc71250dd884a4e2b60931103416bfba5baa85d2e150b8434ded7e61e"},
-    {file = "botocore-1.40.22.tar.gz", hash = "sha256:eb800ece2cd67777ebb09a67a0d1628db3aea4f2ccbf1d8bf7dbf8504d1f3b71"},
+    {file = "botocore-1.40.25-py3-none-any.whl", hash = "sha256:5603ea9955cd31974446f0b5688911a5dad71fbdfbf7457944cda8a83fcf2a9e"},
+    {file = "botocore-1.40.25.tar.gz", hash = "sha256:41fd186018a48dc517a4312a8d3085d548cb3fb1f463972134140bf7ee55a397"},
 ]
 
 [package.dependencies]
@@ -8154,4 +8154,4 @@ cffi = ["cffi (>=1.17)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "1258ce9ef650aa012db3976945114435a5590896ff9f2256bf670f0b4259c47a"
+content-hash = "bdab9e826f279c3be03b43159b6b15799e0f8785e75d049bf878e6561746c496"
