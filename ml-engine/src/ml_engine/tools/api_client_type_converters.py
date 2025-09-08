@@ -15,17 +15,17 @@ from arthur_client.api_bindings.models import RuleScope as ScopeRuleScope
 from arthur_client.api_bindings.models import RuleType as ScopeRuleType
 from arthur_client.api_bindings.models import TaskResponse as ScopeClientTaskResponse
 from arthur_client.api_bindings.models import ToxicityConfig as ScopeToxicityConfig
-from arthur_common.models.request_schemas import ExamplesConfig as ApiExamplesConfig
-from arthur_common.models.request_schemas import KeywordsConfig as ApiKeywordsConfig
-from arthur_common.models.request_schemas import MetricType as ApiMetricType
-from arthur_common.models.request_schemas import NewMetricRequest as ApiNewMetricRequest
-from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleRequest
-from arthur_common.models.request_schemas import PIIConfig as ApiPIIConfig
-from arthur_common.models.request_schemas import RegexConfig as ApiRegexConfig
-from arthur_common.models.request_schemas import (
+from arthur_common.models.common_schemas import ExamplesConfig as ApiExamplesConfig
+from arthur_common.models.common_schemas import KeywordsConfig as ApiKeywordsConfig
+from arthur_common.models.common_schemas import PIIConfig as ApiPIIConfig
+from arthur_common.models.common_schemas import RegexConfig as ApiRegexConfig
+from arthur_common.models.common_schemas import ToxicityConfig as ApiToxicityConfig
+from arthur_common.models.enums import MetricType as ApiMetricType
+from arthur_common.models.metric_schemas import (
     RelevanceMetricConfig as ApiRelevanceMetricConfig,
 )
-from arthur_common.models.request_schemas import ToxicityConfig as ApiToxicityConfig
+from arthur_common.models.request_schemas import NewMetricRequest as ApiNewMetricRequest
+from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleRequest
 from arthur_common.models.response_schemas import MetricResponse as ApiMetricResponse
 from arthur_common.models.response_schemas import RuleResponse as ApiRuleResponse
 from arthur_common.models.response_schemas import TaskResponse as ApiTaskResponse
@@ -34,6 +34,7 @@ from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig
 from genai_client.models import KeywordsConfig as ShieldKeywordsConfig
 from genai_client.models import MetricType as ShieldMetricType
+from genai_client.models import NewApiKeyRequest as ShieldNewApiKeyRequest
 from genai_client.models import NewMetricRequest as ShieldNewMetricRequest
 from genai_client.models import NewRuleRequest as ShieldNewRuleRequest
 from genai_client.models import PIIConfig as ShieldPIIConfig
@@ -64,6 +65,7 @@ ShieldConfigTypes = Optional[
         ShieldRelevanceMetricConfig,
         ShieldNewMetricRequest,
         ShieldMetricType,
+        ShieldNewApiKeyRequest,
     ]
 ]
 ScopeConfigTypes = Optional[
