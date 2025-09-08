@@ -171,9 +171,7 @@ class ScopeClientTypeConverter:
             created_at=api.created_at,
             updated_at=api.updated_at,
             is_agentic=api.is_agentic,
-            rules=[
-                cls.rule_response_api_to_scope_client(r) for r in api.rules
-            ],  # TODO: coming in as genai client, not arthur-common
+            rules=[cls.rule_response_api_to_scope_client(r) for r in api.rules],
             metrics=(
                 [cls.metric_response_api_to_scope_client(m) for m in api.metrics]
                 if api.metrics

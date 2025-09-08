@@ -155,7 +155,7 @@ class _TaskManagementJobExecutor:
             put_task_state_cache_request=PutTaskStateCacheRequest(
                 task=ScopeClientTypeConverter.task_response_api_to_scope_client(
                     task,
-                ),  # TODO: task is gen ai client, not arthur-common
+                ),
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")
