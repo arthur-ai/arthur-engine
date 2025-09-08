@@ -52,7 +52,6 @@ from genai_client.models import (
     NewMetricRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
-    RuleResponse,
     RuleType,
     SearchTasksRequest,
     UpdateRuleRequest,
