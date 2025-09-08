@@ -15,17 +15,17 @@ from arthur_client.api_bindings.models import RuleScope as ScopeRuleScope
 from arthur_client.api_bindings.models import RuleType as ScopeRuleType
 from arthur_client.api_bindings.models import TaskResponse as ScopeClientTaskResponse
 from arthur_client.api_bindings.models import ToxicityConfig as ScopeToxicityConfig
-from arthur_common.models.request_schemas import ExamplesConfig as ApiExamplesConfig
-from arthur_common.models.request_schemas import KeywordsConfig as ApiKeywordsConfig
-from arthur_common.models.request_schemas import MetricType as ApiMetricType
-from arthur_common.models.request_schemas import NewMetricRequest as ApiNewMetricRequest
-from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleRequest
-from arthur_common.models.request_schemas import PIIConfig as ApiPIIConfig
-from arthur_common.models.request_schemas import RegexConfig as ApiRegexConfig
-from arthur_common.models.request_schemas import (
+from arthur_common.models.common_schemas import ExamplesConfig as ApiExamplesConfig
+from arthur_common.models.common_schemas import KeywordsConfig as ApiKeywordsConfig
+from arthur_common.models.common_schemas import PIIConfig as ApiPIIConfig
+from arthur_common.models.common_schemas import RegexConfig as ApiRegexConfig
+from arthur_common.models.common_schemas import ToxicityConfig as ApiToxicityConfig
+from arthur_common.models.enums import MetricType as ApiMetricType
+from arthur_common.models.metric_schemas import (
     RelevanceMetricConfig as ApiRelevanceMetricConfig,
 )
-from arthur_common.models.request_schemas import ToxicityConfig as ApiToxicityConfig
+from arthur_common.models.request_schemas import NewMetricRequest as ApiNewMetricRequest
+from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleRequest
 from arthur_common.models.response_schemas import MetricResponse as ApiMetricResponse
 from arthur_common.models.response_schemas import RuleResponse as ApiRuleResponse
 from arthur_common.models.response_schemas import TaskResponse as ApiTaskResponse
@@ -78,7 +78,6 @@ ScopeConfigTypes = Optional[
 
 
 class ShieldClientTypeConverter:
-
     @classmethod
     def rule_config_api_to_shield_client(cls, api: ApiConfigTypes) -> ShieldConfigTypes:
         if api is None:
@@ -157,7 +156,6 @@ class ShieldClientTypeConverter:
 
 
 class ScopeClientTypeConverter:
-
     @classmethod
     def task_response_api_to_scope_client(
         cls,

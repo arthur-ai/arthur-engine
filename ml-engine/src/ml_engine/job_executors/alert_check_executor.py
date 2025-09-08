@@ -126,7 +126,6 @@ class AlertCheckExecutor:
         job_spec: AlertCheckJobSpec,
         alert_rule: AlertRule,
     ) -> MetricsQueryResult:
-
         # in order to prevent alerting on partial alert buckets, this function
         # queries the time range (start_time - interval, end_time)
         # see more info here:
