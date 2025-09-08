@@ -20,7 +20,7 @@ from arthur_client.api_bindings import (
     DatasetLocatorField,
 )
 from arthur_common.models.connectors import ConnectorPaginationOptions
-from arthur_common.models.shield import NewRuleRequest
+from arthur_common.models.request_schemas import NewRuleRequest
 from config.config import Config
 from connectors.shield_connector import (
     SHIELD_SORT_DESC,

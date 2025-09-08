@@ -22,14 +22,13 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
-from arthur_common.models.shield import (
+from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest
+from arthur_common.models.response_schemas import (
     MetricResponse,
-    NewMetricRequest,
-    NewRuleRequest,
     RuleResponse,
     TaskResponse,
 )
+from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
 from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
@@ -201,6 +200,7 @@ class _TaskRuleAdder:
             self.logger.warning(f"Rule {rule.name} removed")
         self.logger.warning("Rollback complete")
 
+
 class _TaskTraceMetricAdder:
     def __init__(
         self,
@@ -237,7 +237,7 @@ class _TaskTraceMetricAdder:
         created_metrics: list[MetricResponse],
     ) -> None:
         self.logger.warning(
-            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics"
+            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics",
         )
         for metric in created_metrics:
             self.logger.warning(f"Removing metric: {metric.name}")
@@ -434,7 +434,8 @@ class TaskCreator:
         # create the task in shield
         is_agentic = self.job_spec.task_type == TaskType.AGENTIC
         task_resp = self.conn.create_task(
-            name=self.job_spec.task_name, is_agentic=is_agentic
+            name=self.job_spec.task_name,
+            is_agentic=is_agentic,
         )
         self.logger.info(
             f"Created task: {self.job_spec.task_name} with id {task_resp.id}",
@@ -460,7 +461,8 @@ class TaskCreator:
         # Add tracing metrics to an agentic task
         if self.job_spec.task_type == TaskType.AGENTIC:
             trace_metric_adder = _TaskTraceMetricAdder(
-                connector=self.conn, logger=self.logger
+                connector=self.conn,
+                logger=self.logger,
             )
             trace_metric_adder.add_tracing_metrics_to_task(
                 task_id=task_id,
