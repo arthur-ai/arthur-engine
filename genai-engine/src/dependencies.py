@@ -36,6 +36,7 @@ from schemas.internal_schemas import (
 )
 from scorer import (
     BinaryPIIDataClassifier,
+    BinaryPIIDataClassifierV1,
     BinaryPromptInjectionClassifier,
     HallucinationClaimsV2,
     KeywordScorer,
@@ -54,6 +55,7 @@ from utils.model_load import (
     PROMPT_INJECTION_TOKENIZER,
     TOXICITY_MODEL,
     TOXICITY_TOKENIZER,
+    USE_PII_MODEL_V2,
 )
 from utils.utils import (
     get_auth_metadata_uri,
@@ -141,6 +143,11 @@ def get_application_config(session=Depends(get_db_session)) -> ApplicationConfig
 def get_scorer_client():
     global SINGLETON_SCORER_CLIENT
     if not SINGLETON_SCORER_CLIENT:
+        if USE_PII_MODEL_V2:
+            pii_data_classifier = BinaryPIIDataClassifier()
+        else:
+            pii_data_classifier = BinaryPIIDataClassifierV1()
+
         SINGLETON_SCORER_CLIENT = ScorerClient(
             {
                 RuleType.MODEL_HALLUCINATION_V2: HallucinationClaimsV2(
@@ -151,7 +158,7 @@ def get_scorer_client():
                     model=PROMPT_INJECTION_MODEL,
                     tokenizer=PROMPT_INJECTION_TOKENIZER,
                 ),
-                RuleType.PII_DATA: BinaryPIIDataClassifier(),
+                RuleType.PII_DATA: pii_data_classifier,
                 RuleType.KEYWORD: KeywordScorer(),
                 RuleType.REGEX: RegexScorer(),
                 RuleType.TOXICITY: ToxicityScorer(
