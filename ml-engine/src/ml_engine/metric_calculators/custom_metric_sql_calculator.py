@@ -19,7 +19,6 @@ from arthur_common.models.metrics import (
     ReportedCustomAggregation,
     SketchMetric,
 )
-from arthur_common.tools.duckdb_data_loader import escape_identifier
 from metric_calculators.metric_calculator import MetricCalculator
 
 
@@ -104,12 +103,10 @@ class CustomMetricSQLCalculator(MetricCalculator):
         """
         parameter_type = key_to_parameter_type[arg_key]
         match parameter_type:
-            case "literal":
+            case "literal" | "column":
                 return arg_val
             case "dataset":
                 return arg_val.dataset_table_name
-            case "column":
-                return escape_identifier(arg_val)
             case _:
                 raise ValueError(
                     f"Parameter type {parameter_type} not supported for custom metrics SQL calculator.",
