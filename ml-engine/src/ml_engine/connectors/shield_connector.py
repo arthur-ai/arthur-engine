@@ -5,6 +5,7 @@ from logging import Logger
 from typing import Any, Optional
 from urllib.parse import urlparse
 
+import genai_client.exceptions
 import pandas as pd
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -28,8 +29,6 @@ from arthur_common.models.connectors import (
 from arthur_common.models.enums import ModelProblemType
 from config.config import Config
 from connectors.connector import Connector
-
-import genai_client.exceptions
 from genai_client import (
     ApiClient,
     APIKeysApi,
@@ -58,7 +57,7 @@ from genai_client.models import (
     TaskResponse,
     UpdateRuleRequest,
 )
-
+from ml_engine.tools.api_client_type_converters import ShieldClientTypeConverter
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
@@ -348,7 +347,7 @@ class ShieldBaseConnector(Connector, ABC):
 
     def create_task(self, name: str, is_agentic: bool = False) -> TaskResponse:
         resp = self._tasks_client.create_task_api_v2_tasks_post_with_http_info(
-            new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic)
+            new_task_request=NewTaskRequest(name=name, is_agentic=is_agentic),
         )
         return TaskResponse.model_validate_json(resp.raw_data)
 
@@ -364,7 +363,9 @@ class ShieldBaseConnector(Connector, ABC):
     def add_rule_to_task(self, task_id: str, new_rule: NewRuleRequest) -> RuleResponse:
         resp = self._tasks_client.create_task_rule_api_v2_tasks_task_id_rules_post_with_http_info(
             task_id=task_id,
-            new_rule_request=new_rule,
+            new_rule_request=ShieldClientTypeConverter.new_rule_request_api_to_shield_client(
+                new_rule,
+            ),
         )
         return RuleResponse.model_validate_json(resp.raw_data)
 
@@ -394,12 +395,16 @@ class ShieldBaseConnector(Connector, ABC):
         )
 
     def add_metric_to_task(
-        self, task_id: str, new_metric: NewMetricRequest
+        self,
+        task_id: str,
+        new_metric: NewMetricRequest,
     ) -> MetricResponse:
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
-                new_metric_request=new_metric,
+                new_metric_request=ShieldClientTypeConverter.new_metric_request_api_to_shield_client(
+                    new_metric,
+                ),
             )
             return MetricResponse.model_validate_json(response.raw_data)
         except Exception as e:
@@ -414,7 +419,7 @@ class ShieldBaseConnector(Connector, ABC):
             )
         except Exception as e:
             self.logger.error(
-                f"Failed to delete metric {metric_id} from task {task_id}: {e}"
+                f"Failed to delete metric {metric_id} from task {task_id}: {e}",
             )
             raise
 
@@ -440,10 +445,15 @@ class ShieldBaseConnector(Connector, ABC):
             pass
 
     def query_spans_with_metrics(
-        self, task_ids: list[str], start_time: datetime, end_time: datetime
+        self,
+        task_ids: list[str],
+        start_time: datetime,
+        end_time: datetime,
     ) -> QueryTracesWithMetricsResponse:
         return self._spans_client.query_spans_with_metrics_v1_traces_metrics_get(
-            task_ids=task_ids, start_time=start_time, end_time=end_time
+            task_ids=task_ids,
+            start_time=start_time,
+            end_time=end_time,
         )
 
     @property

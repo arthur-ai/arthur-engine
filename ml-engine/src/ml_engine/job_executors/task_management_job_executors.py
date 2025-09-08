@@ -2,6 +2,7 @@ import logging
 from typing import Tuple
 
 import arthur_client
+import genai_client.exceptions
 from arthur_client.api_bindings import (
     ConnectorType,
     CreateModelLinkTaskJobSpec,
@@ -32,11 +33,6 @@ from arthur_common.models.task_job_specs import (
 )
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector
-
-from tools.connector_constructor import ConnectorConstructor
-from tools.converters import common_to_client_put_dataset_schema
-
-import genai_client.exceptions
 from genai_client.models import (
     MetricResponse,
     NewMetricRequest,
@@ -44,6 +40,8 @@ from genai_client.models import (
     RuleResponse,
     TaskResponse,
 )
+from tools.connector_constructor import ConnectorConstructor
+from tools.converters import common_to_client_put_dataset_schema
 
 
 class InvalidConnectorException(Exception):
@@ -156,7 +154,7 @@ class _TaskManagementJobExecutor:
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
             put_task_state_cache_request=PutTaskStateCacheRequest(
-                task=task,
+                task=task.model_dump(),
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")
@@ -240,7 +238,7 @@ class _TaskTraceMetricAdder:
         created_metrics: list[MetricResponse],
     ) -> None:
         self.logger.warning(
-            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics"
+            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics",
         )
         for metric in created_metrics:
             self.logger.warning(f"Removing metric: {metric.name}")
@@ -437,7 +435,8 @@ class TaskCreator:
         # create the task in shield
         is_agentic = self.job_spec.task_type == TaskType.AGENTIC
         task_resp = self.conn.create_task(
-            name=self.job_spec.task_name, is_agentic=is_agentic
+            name=self.job_spec.task_name,
+            is_agentic=is_agentic,
         )
         self.logger.info(
             f"Created task: {self.job_spec.task_name} with id {task_resp.id}",
@@ -463,7 +462,8 @@ class TaskCreator:
         # Add tracing metrics to an agentic task
         if self.job_spec.task_type == TaskType.AGENTIC:
             trace_metric_adder = _TaskTraceMetricAdder(
-                connector=self.conn, logger=self.logger
+                connector=self.conn,
+                logger=self.logger,
             )
             trace_metric_adder.add_tracing_metrics_to_task(
                 task_id=task_id,
