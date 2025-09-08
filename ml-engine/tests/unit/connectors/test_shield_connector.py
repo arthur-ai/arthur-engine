@@ -28,7 +28,6 @@ from connectors.shield_connector import (
     ShieldBaseConnector,
     ShieldConnector,
 )
-
 from genai_client.models import NewRuleRequest
 
 logger = logging.getLogger("job_logger")

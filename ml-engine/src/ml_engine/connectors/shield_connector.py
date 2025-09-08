@@ -27,6 +27,8 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from arthur_common.models.enums import ModelProblemType
+from arthur_common.models.request_schemas import NewRuleRequest
+from arthur_common.models.response_schemas import RuleResponse, TaskResponse
 from config.config import Config
 from connectors.connector import Connector
 from genai_client import (
@@ -48,7 +50,6 @@ from genai_client.models import (
     MetricResponse,
     NewApiKeyRequest,
     NewMetricRequest,
-    NewRuleRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
     RuleResponse,
