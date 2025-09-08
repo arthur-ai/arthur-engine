@@ -22,9 +22,10 @@ class BinaryPIIDataClassifierV1(RuleScorer):
 
     def score(self, request: ScoreRequest) -> RuleScore:
         """Scores request for PII"""
-        confidence_threshold = (
-            request.pii_confidence_threshold or self.default_confidence_threshold
-        )
+        if request.pii_confidence_threshold is not None:
+            confidence_threshold = request.pii_confidence_threshold
+        else:
+            confidence_threshold = self.default_confidence_threshold
 
         # Pre PII analyzer - resolve the PII entities to check for using disabled_pii_entities if present
         entities_to_check = PIIEntityTypes.values()
