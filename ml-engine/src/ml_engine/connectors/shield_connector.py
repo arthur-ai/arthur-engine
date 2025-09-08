@@ -33,27 +33,29 @@ from config.config import Config
 from connectors.connector import Connector
 from genai_client import (
     ApiClient,
-    ApiKeyResponse,
     APIKeysApi,
-    APIKeysRolesEnum,
     Configuration,
     InferencesApi,
-    MetricResponse,
-    NewApiKeyRequest,
-    NewMetricRequest,
-    NewTaskRequest,
-    QueryTracesWithMetricsResponse,
-    SearchTasksRequest,
     SpansApi,
     TasksApi,
-    UpdateRuleRequest,
 )
 from genai_client.exceptions import (
     ForbiddenException,
     ServiceException,
     UnauthorizedException,
 )
-from genai_client.models.rule_type import RuleType
+from genai_client.models import (
+    ApiKeyResponse,
+    APIKeysRolesEnum,
+    MetricResponse,
+    NewApiKeyRequest,
+    NewMetricRequest,
+    NewTaskRequest,
+    QueryTracesWithMetricsResponse,
+    RuleType,
+    SearchTasksRequest,
+    UpdateRuleRequest,
+)
 from tools.api_client_type_converters import ShieldClientTypeConverter
 
 SHIELD_SORT_FILTER = "sort"
