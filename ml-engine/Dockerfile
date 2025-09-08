@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y \
     libaio-dev \
     wget \
     unzip \
-    git \
     && rm -rf /var/lib/apt/lists/*
 
 # install Oracle Instant Client
