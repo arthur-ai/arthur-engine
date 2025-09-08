@@ -42,7 +42,6 @@ from genai_client.models import RegexConfig as ShieldRegexConfig
 from genai_client.models import RelevanceMetricConfig as ShieldRelevanceMetricConfig
 from genai_client.models import RuleType as ShieldRuleType
 from genai_client.models import ToxicityConfig as ShieldToxicityConfig
-from genai_client.models.threshold import Threshold
 
 ApiConfigTypes = Optional[
     Union[
@@ -108,7 +107,7 @@ class ShieldClientTypeConverter:
             )
         elif isinstance(api, ApiToxicityConfig):
             return ShieldToxicityConfig(
-                threshold=Threshold(api.threshold),
+                threshold=api.threshold,
             )
         elif isinstance(api, ApiPIIConfig):
             return ShieldPIIConfig(
@@ -172,7 +171,9 @@ class ScopeClientTypeConverter:
             created_at=api.created_at,
             updated_at=api.updated_at,
             is_agentic=api.is_agentic,
-            rules=[cls.rule_response_api_to_scope_client(r) for r in api.rules],
+            rules=[
+                cls.rule_response_api_to_scope_client(r) for r in api.rules
+            ],  # TODO: coming in as genai client, not arthur-common
             metrics=(
                 [cls.metric_response_api_to_scope_client(m) for m in api.metrics]
                 if api.metrics
