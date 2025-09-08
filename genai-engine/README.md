@@ -194,7 +194,7 @@ poetry run alembic upgrade head
 ## Making your first commit
 
 ### The git pre-commit hooks
-Review the [../CONTRIBUTE.MD](CONTRIBUTE.MD) document carefully.
+Review the [CONTRIBUTE.MD](../CONTRIBUTING.md) document carefully.
 Make sure the git pre-commit hooks are installed properly.
 
 ### Pytest
