@@ -264,6 +264,22 @@ jobs:
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev
           fi
+      - name: Login to Artifactory
+        run: |
+          docker logout
+          echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
+      - name: Retag and push image to Artifactory
+        run: |
+          docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          docker push docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest
+            docker push docker.arthur.ai/arthur/scope/ml-engine:latest
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+            docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+          fi
 
 
   push-all-cfts:
