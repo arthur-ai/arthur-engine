@@ -73,6 +73,155 @@ def _create_response(
     )
 
 
+def trace_query_parameters(
+    # Required parameters
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
+    # Optional parameters
+    trace_ids: list[str] = Query(
+        None,
+        description="Trace IDs to filter on. Optional.",
+    ),
+    start_time: datetime = Query(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    ),
+    end_time: datetime = Query(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    ),
+    tool_name: str = Query(
+        None,
+        description="Return only results with this tool name.",
+    ),
+    # Query relevance filters
+    query_relevance_eq: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Equal to this value.",
+    ),
+    query_relevance_gt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than this value.",
+    ),
+    query_relevance_gte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than or equal to this value.",
+    ),
+    query_relevance_lt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than this value.",
+    ),
+    query_relevance_lte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than or equal to this value.",
+    ),
+    # Response relevance filters
+    response_relevance_eq: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Equal to this value.",
+    ),
+    response_relevance_gt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than this value.",
+    ),
+    response_relevance_gte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Greater than or equal to this value.",
+    ),
+    response_relevance_lt: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than this value.",
+    ),
+    response_relevance_lte: float = Query(
+        None,
+        ge=0,
+        le=1,
+        description="Less than or equal to this value.",
+    ),
+    # Tool classification filters
+    tool_selection: ToolClassEnum = Query(
+        None,
+        description="Tool selection evaluation result.",
+    ),
+    tool_usage: ToolClassEnum = Query(
+        None,
+        description="Tool usage evaluation result.",
+    ),
+    # Trace duration filters
+    trace_duration_eq: float = Query(
+        None,
+        gt=0,
+        description="Duration exactly equal to this value (seconds).",
+    ),
+    trace_duration_gt: float = Query(
+        None,
+        gt=0,
+        description="Duration greater than this value (seconds).",
+    ),
+    trace_duration_gte: float = Query(
+        None,
+        gt=0,
+        description="Duration greater than or equal to this value (seconds).",
+    ),
+    trace_duration_lt: float = Query(
+        None,
+        gt=0,
+        description="Duration less than this value (seconds).",
+    ),
+    trace_duration_lte: float = Query(
+        None,
+        gt=0,
+        description="Duration less than or equal to this value (seconds).",
+    ),
+) -> TraceQueryRequest:
+    """Create a TraceQueryRequest from query parameters."""
+    return TraceQueryRequest(
+        task_ids=task_ids,
+        trace_ids=trace_ids,
+        start_time=start_time,
+        end_time=end_time,
+        tool_name=tool_name,
+        query_relevance_eq=query_relevance_eq,
+        query_relevance_gt=query_relevance_gt,
+        query_relevance_gte=query_relevance_gte,
+        query_relevance_lt=query_relevance_lt,
+        query_relevance_lte=query_relevance_lte,
+        response_relevance_eq=response_relevance_eq,
+        response_relevance_gt=response_relevance_gt,
+        response_relevance_gte=response_relevance_gte,
+        response_relevance_lt=response_relevance_lt,
+        response_relevance_lte=response_relevance_lte,
+        tool_selection=tool_selection,
+        tool_usage=tool_usage,
+        trace_duration_eq=trace_duration_eq,
+        trace_duration_gt=trace_duration_gt,
+        trace_duration_gte=trace_duration_gte,
+        trace_duration_lt=trace_duration_lt,
+        trace_duration_lte=trace_duration_lte,
+    )
+
+
 @span_routes.post(
     "/traces",
     description="Receiver for OpenInference trace standard.",
@@ -114,153 +263,15 @@ def query_spans(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    # Required parameters
-    task_ids: list[str] = Query(
-        ...,
-        description="Task IDs to filter on. At least one is required.",
-        min_length=1,
-    ),
-    # Optional parameters
-    trace_ids: list[str] = Query(
-        None,
-        description="Trace IDs to filter on. Optional.",
-    ),
-    start_time: datetime = Query(
-        None,
-        description="Inclusive start date in ISO8601 string format.",
-    ),
-    end_time: datetime = Query(
-        None,
-        description="Exclusive end date in ISO8601 string format.",
-    ),
-    tool_name: str = Query(
-        None,
-        description="Return only results with this tool name.",
-    ),
-    query_relevance_eq: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Equal to this value.",
-    ),
-    query_relevance_gt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than this value.",
-    ),
-    query_relevance_gte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than or equal to this value.",
-    ),
-    query_relevance_lt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than this value.",
-    ),
-    query_relevance_lte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than or equal to this value.",
-    ),
-    response_relevance_eq: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Equal to this value.",
-    ),
-    response_relevance_gt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than this value.",
-    ),
-    response_relevance_gte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than or equal to this value.",
-    ),
-    response_relevance_lt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than this value.",
-    ),
-    response_relevance_lte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than or equal to this value.",
-    ),
-    tool_selection: ToolClassEnum = Query(
-        None,
-        description="Tool selection evaluation result.",
-    ),
-    tool_usage: ToolClassEnum = Query(
-        None,
-        description="Tool usage evaluation result.",
-    ),
-    trace_duration_eq: float = Query(
-        None,
-        gt=0,
-        description="Duration exactly equal to this value (seconds).",
-    ),
-    trace_duration_gt: float = Query(
-        None,
-        gt=0,
-        description="Duration greater than this value (seconds).",
-    ),
-    trace_duration_gte: float = Query(
-        None,
-        gt=0,
-        description="Duration greater than or equal to this value (seconds).",
-    ),
-    trace_duration_lt: float = Query(
-        None,
-        gt=0,
-        description="Duration less than this value (seconds).",
-    ),
-    trace_duration_lte: float = Query(
-        None,
-        gt=0,
-        description="Duration less than or equal to this value (seconds).",
-    ),
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves."""
     try:
-        # Create and validate the TraceQueryRequest
-        trace_query = TraceQueryRequest(
-            task_ids=task_ids,
-            trace_ids=trace_ids,
-            start_time=start_time,
-            end_time=end_time,
-            tool_name=tool_name,
-            query_relevance_eq=query_relevance_eq,
-            query_relevance_gt=query_relevance_gt,
-            query_relevance_gte=query_relevance_gte,
-            query_relevance_lt=query_relevance_lt,
-            query_relevance_lte=query_relevance_lte,
-            response_relevance_eq=response_relevance_eq,
-            response_relevance_gt=response_relevance_gt,
-            response_relevance_gte=response_relevance_gte,
-            response_relevance_lt=response_relevance_lt,
-            response_relevance_lte=response_relevance_lte,
-            tool_selection=tool_selection,
-            tool_usage=tool_usage,
-            trace_duration_eq=trace_duration_eq,
-            trace_duration_gt=trace_duration_gt,
-            trace_duration_gte=trace_duration_gte,
-            trace_duration_lt=trace_duration_lt,
-            trace_duration_lte=trace_duration_lte,
-        )
-        
         span_repo = _get_span_repository(db_session)
         span_count, traces = span_repo.query_traces_with_filters(
             filters=trace_query,
@@ -295,154 +306,15 @@ def query_spans_with_metrics(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    # Required parameters
-    task_ids: list[str] = Query(
-        ...,
-        description="Task IDs to filter on. At least one is required.",
-        min_length=1,
-    ),
-    # Optional parameters
-    trace_ids: list[str] = Query(
-        None,
-        description="Trace IDs to filter on. Optional.",
-    ),
-    start_time: datetime = Query(
-        None,
-        description="Inclusive start date in ISO8601 string format.",
-    ),
-    end_time: datetime = Query(
-        None,
-        description="Exclusive end date in ISO8601 string format.",
-    ),
-    tool_name: str = Query(
-        None,
-        description="Return only results with this tool name.",
-    ),
-    query_relevance_eq: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Equal to this value.",
-    ),
-    query_relevance_gt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than this value.",
-    ),
-    query_relevance_gte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than or equal to this value.",
-    ),
-    query_relevance_lt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than this value.",
-    ),
-    query_relevance_lte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than or equal to this value.",
-    ),
-    response_relevance_eq: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Equal to this value.",
-    ),
-    response_relevance_gt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than this value.",
-    ),
-    response_relevance_gte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Greater than or equal to this value.",
-    ),
-    response_relevance_lt: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than this value.",
-    ),
-    response_relevance_lte: float = Query(
-        None,
-        ge=0,
-        le=1,
-        description="Less than or equal to this value.",
-    ),
-    # NEW: Tool classification filters
-    tool_selection: ToolClassEnum = Query(
-        None,
-        description="Tool selection evaluation result.",
-    ),
-    tool_usage: ToolClassEnum = Query(
-        None,
-        description="Tool usage evaluation result.",
-    ),
-    trace_duration_eq: float = Query(
-        None,
-        gt=0,
-        description="Duration exactly equal to this value (seconds).",
-    ),
-    trace_duration_gt: float = Query(
-        None,
-        gt=0,
-        description="Duration greater than this value (seconds).",
-    ),
-    trace_duration_gte: float = Query(
-        None,
-        gt=0,
-        description="Duration greater than or equal to this value (seconds).",
-    ),
-    trace_duration_lt: float = Query(
-        None,
-        gt=0,
-        description="Duration less than this value (seconds).",
-    ),
-    trace_duration_lte: float = Query(
-        None,
-        gt=0,
-        description="Duration less than or equal to this value (seconds).",
-    ),
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics."""
     try:
-        # Create and validate the TraceQueryRequest
-        trace_query = TraceQueryRequest(
-            task_ids=task_ids,
-            trace_ids=trace_ids,
-            start_time=start_time,
-            end_time=end_time,
-            tool_name=tool_name,
-            query_relevance_eq=query_relevance_eq,
-            query_relevance_gt=query_relevance_gt,
-            query_relevance_gte=query_relevance_gte,
-            query_relevance_lt=query_relevance_lt,
-            query_relevance_lte=query_relevance_lte,
-            response_relevance_eq=response_relevance_eq,
-            response_relevance_gt=response_relevance_gt,
-            response_relevance_gte=response_relevance_gte,
-            response_relevance_lt=response_relevance_lt,
-            response_relevance_lte=response_relevance_lte,
-            tool_selection=tool_selection,
-            tool_usage=tool_usage,
-            trace_duration_eq=trace_duration_eq,
-            trace_duration_gt=trace_duration_gt,
-            trace_duration_gte=trace_duration_gte,
-            trace_duration_lt=trace_duration_lt,
-            trace_duration_lte=trace_duration_lte,
-        )
-        
         span_repo = _get_span_repository(db_session)
         span_count, traces = span_repo.query_traces_with_filters(
             filters=trace_query,

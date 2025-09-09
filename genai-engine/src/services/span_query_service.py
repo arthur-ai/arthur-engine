@@ -2,12 +2,18 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import and_, asc, desc, func, select
+from sqlalchemy import and_, asc, desc, exists, func, select
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan
-from schemas.enums import PaginationSortMethod
-from schemas.internal_schemas import Span
+from db_models.db_models import DatabaseMetricResult, DatabaseSpan
+from schemas.common_schemas import PaginationParameters
+from schemas.enums import MetricType, PaginationSortMethod, ToolClassEnum
+from schemas.internal_schemas import (
+    ComparisonOperators,
+    FloatRangeFilter,
+    Span,
+    TraceQuerySchema,
+)
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
@@ -23,40 +29,35 @@ class SpanQueryService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_paginated_trace_ids_for_task_ids(
+    def get_paginated_trace_ids_with_filters(
         self,
-        task_ids: list[str],
-        trace_ids: Optional[list[str]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page: int = 0,
-        page_size: int = DEFAULT_PAGE_SIZE,
+        filters: TraceQuerySchema,
+        pagination_parameters: PaginationParameters,
     ) -> Optional[list[str]]:
-        """Get paginated trace IDs for given task IDs with proper ordering and filtering."""
-        if not task_ids:
-            return trace_ids
+        """
+        Main entry point for trace filtering with comprehensive filter support.
 
-        # Build query to get trace IDs with proper ordering
-        query = self._build_trace_ids_query(
-            task_ids=task_ids,
-            trace_ids=trace_ids,
-            start_time=start_time,
-            end_time=end_time,
-            sort=sort,
-        )
+        Uses two-phase strategy: fast trace-level filters first, then expensive
+        span-level filters only if needed. Results are paginated and sorted.
+        """
+
+        if not filters.task_ids:
+            return None
+
+        # Build unified query with modular filtering
+        query = self._build_trace_ids_query(filters, pagination_parameters.sort)
 
         # Apply pagination
-        offset = page * page_size
-        query = query.offset(offset).limit(page_size)
+        offset = pagination_parameters.page * pagination_parameters.page_size
+        query = query.offset(offset).limit(pagination_parameters.page_size)
 
         # Execute query
         results = self.db_session.execute(query).scalars().all()
         trace_ids_result = list(results)
 
         logger.debug(
-            f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
-            f"(page={page}, page_size={page_size}, sort={sort})",
+            f"Found {len(trace_ids_result)} trace IDs for task IDs: {filters.task_ids} "
+            f"(page={pagination_parameters.page}, page_size={pagination_parameters.page_size}, sort={pagination_parameters.sort})",
         )
 
         return trace_ids_result if trace_ids_result else None
@@ -72,7 +73,12 @@ class SpanQueryService:
         page: Optional[int] = None,
         page_size: Optional[int] = None,
     ) -> list[Span]:
-        """Query spans from database with given filters."""
+        """
+        Query individual spans (not traces) with basic filtering and pagination.
+
+        Unlike trace filtering, this applies filters directly to spans and returns
+        span objects, not trace IDs. Used for span-level queries and metrics.
+        """
         query = self._build_spans_query(
             trace_ids=trace_ids,
             task_ids=task_ids,
@@ -124,45 +130,337 @@ class SpanQueryService:
 
     def _build_trace_ids_query(
         self,
-        task_ids: list[str],
-        trace_ids: Optional[list[str]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
+        filters: TraceQuerySchema,
+        sort: PaginationSortMethod,
     ) -> select:
-        """Build a query for trace IDs with the given filters and ordering."""
-        # Build conditions for the query
-        conditions = [DatabaseSpan.task_id.in_(task_ids)]
+        """
+        Orchestrates two-phase filtering: fast trace-level filters, then expensive span-level filters.
 
-        if trace_ids:
-            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
-        if start_time:
-            conditions.append(DatabaseSpan.start_time >= start_time)
-        if end_time:
-            conditions.append(DatabaseSpan.start_time <= end_time)
+        Phase 1: Apply trace filters (task_ids, time, duration) - fast indexed operations
+        Phase 2: Apply span filters (tool_name, metrics) - expensive, only if needed
+        Then intersect results while preserving trace query structure and ordering.
+        """
 
-        # Use a subquery to get the earliest span time for each trace
-        # This ensures we order traces by their start time (earliest span)
-        earliest_span_subquery = (
+        # Phase 1: Apply trace-level filters to get candidate traces (fast)
+        candidate_traces_query = self._build_trace_level_filters(filters, sort)
+
+        # Phase 2: If span-level filters exist, intersect with spans matching criteria (slower)
+        if self._has_span_level_filters(filters):
+            qualifying_traces_query = self._build_span_level_filters(filters)
+            return self._intersect_trace_queries(
+                candidate_traces_query,
+                qualifying_traces_query,
+                sort,
+            )
+
+        return candidate_traces_query
+
+    def _build_trace_level_filters(
+        self,
+        filters: TraceQuerySchema,
+        sort: PaginationSortMethod,
+    ) -> select:
+        """
+        Apply trace-level filters: task_ids, trace_ids, time range, duration.
+
+        These operate on trace boundaries (not individual spans) using indexed
+        columns for fast filtering. Always calculates timing info for sorting.
+        """
+
+        # Basic trace filters (very fast)
+        conditions = [DatabaseSpan.task_id.in_(filters.task_ids)]
+        if filters.trace_ids:
+            conditions.append(DatabaseSpan.trace_id.in_(filters.trace_ids))
+        if filters.start_time:
+            conditions.append(DatabaseSpan.start_time >= filters.start_time)
+        if filters.end_time:
+            conditions.append(DatabaseSpan.start_time <= filters.end_time)
+
+        # Use unified trace timing subquery (always calculate timing info, apply duration filters if needed)
+        return self._build_unified_trace_query(
+            conditions,
+            filters.trace_duration_filters,
+            sort,
+        )
+
+    def _build_unified_trace_query(
+        self,
+        base_conditions: list,
+        duration_filters: Optional[list[FloatRangeFilter]],
+        sort: PaginationSortMethod,
+    ) -> select:
+        """
+        Groups spans by trace_id to calculate trace timing (start, end, duration).
+
+        Aggregates span timestamps to compute trace boundaries, applies optional
+        duration filters, and maintains sort order for pagination.
+        """
+
+        # Create subquery that always calculates trace timing information
+        trace_timing_subquery = (
             select(
                 DatabaseSpan.trace_id,
-                func.min(DatabaseSpan.start_time).label("earliest_time"),
+                func.min(DatabaseSpan.start_time).label("trace_start"),
+                func.max(DatabaseSpan.end_time).label("trace_end"),
+                (
+                    func.max(DatabaseSpan.end_time) - func.min(DatabaseSpan.start_time)
+                ).label("trace_duration"),
             )
-            .where(and_(*conditions))
+            .where(and_(*base_conditions))
             .group_by(DatabaseSpan.trace_id)
             .subquery()
         )
 
-        # Main query to get trace IDs ordered by the earliest span time
-        query = select(earliest_span_subquery.c.trace_id)
+        # Start with base query
+        query = select(trace_timing_subquery.c.trace_id)
 
-        # Apply sorting based on the earliest span time within each trace
+        # Apply duration filters if they exist
+        if duration_filters:
+            duration_conditions = []
+            for filter_item in duration_filters:
+                duration_conditions.append(
+                    self._build_comparison_condition(
+                        trace_timing_subquery.c.trace_duration,
+                        filter_item,
+                    ),
+                )
+            query = query.where(and_(*duration_conditions))
+
+        # Apply ordering based on trace start time
         if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(earliest_span_subquery.c.earliest_time))
+            query = query.order_by(desc(trace_timing_subquery.c.trace_start))
         elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(earliest_span_subquery.c.earliest_time))
+            query = query.order_by(asc(trace_timing_subquery.c.trace_start))
 
         return query
+
+    def _build_comparison_condition(self, column, filter_item: FloatRangeFilter):
+        """Build comparison condition (column OP value) from FloatRangeFilter."""
+        if filter_item.operator == ComparisonOperators.EQUALS:
+            return column == filter_item.value
+        elif filter_item.operator == ComparisonOperators.GREATER_THAN:
+            return column > filter_item.value
+        elif filter_item.operator == ComparisonOperators.GREATER_THAN_OR_EQUAL:
+            return column >= filter_item.value
+        elif filter_item.operator == ComparisonOperators.LESS_THAN:
+            return column < filter_item.value
+        elif filter_item.operator == ComparisonOperators.LESS_THAN_OR_EQUAL:
+            return column <= filter_item.value
+        else:
+            raise ValueError(f"Unsupported operator: {filter_item.operator}")
+
+    # ============================================================================
+    # Span-Level Filtering
+    # ============================================================================
+
+    def _build_span_level_filters(self, filters: TraceQuerySchema) -> select:
+        """
+        Find traces containing spans matching ALL span-level criteria using EXISTS clauses.
+
+        Handles two span types separately:
+        - tool_name: Finds TOOL spans with specific names (JSON queries)
+        - metrics: Finds LLM spans with metric scores (table joins)
+        Uses EXISTS for each filter, then ANDs them together.
+        """
+
+        # Start with base query for traces with the required task_ids
+        base_query = select(DatabaseSpan.trace_id.distinct()).where(
+            DatabaseSpan.task_id.in_(filters.task_ids),
+        )
+
+        exists_conditions = []
+
+        # Add EXISTS condition for tool name filtering
+        if filters.tool_name:
+            # Alias for inner query to avoid conflicts
+            inner_span = DatabaseSpan.__table__.alias("inner_span")
+            exists_conditions.append(
+                exists(
+                    select(1)
+                    .select_from(inner_span)
+                    .where(
+                        and_(
+                            inner_span.c.trace_id
+                            == DatabaseSpan.trace_id,  # Proper correlation
+                            inner_span.c.task_id.in_(filters.task_ids),
+                            inner_span.c.span_kind == "TOOL",
+                            inner_span.c.raw_data["name"].astext == filters.tool_name,
+                        ),
+                    ),
+                ),
+            )
+
+        # Add EXISTS conditions for metric-based filtering
+        exists_conditions.extend(self._build_metric_exists_conditions(filters))
+
+        # Apply all EXISTS conditions to the base query
+        if exists_conditions:
+            base_query = base_query.where(and_(*exists_conditions))
+
+        return base_query
+
+    def _build_metric_exists_conditions(self, filters: TraceQuerySchema) -> list:
+        exists_conditions = []
+
+        # Query relevance filtering
+        if filters.query_relevance_filters:
+            exists_conditions.append(
+                self._build_relevance_exists(
+                    MetricType.QUERY_RELEVANCE,
+                    filters.query_relevance_filters,
+                    filters.task_ids,
+                ),
+            )
+
+        # Response relevance filtering
+        if filters.response_relevance_filters:
+            exists_conditions.append(
+                self._build_relevance_exists(
+                    MetricType.RESPONSE_RELEVANCE,
+                    filters.response_relevance_filters,
+                    filters.task_ids,
+                ),
+            )
+
+        # Tool selection filtering
+        if filters.tool_selection:
+            exists_conditions.append(
+                self._build_tool_classification_exists(
+                    MetricType.TOOL_SELECTION,
+                    filters.tool_selection,
+                    filters.task_ids,
+                    "tool_selection",
+                ),
+            )
+
+        # Tool usage filtering
+        if filters.tool_usage:
+            exists_conditions.append(
+                self._build_tool_classification_exists(
+                    MetricType.TOOL_SELECTION,
+                    filters.tool_usage,
+                    filters.task_ids,
+                    "tool_usage",
+                ),
+            )
+
+        return exists_conditions
+
+    def _build_relevance_exists(
+        self,
+        metric_type: MetricType,
+        relevance_filters: list[FloatRangeFilter],
+        task_ids: list[str],
+    ):
+
+        # Create aliases to avoid conflicts
+        inner_span = DatabaseSpan.__table__.alias("inner_span")
+        inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
+
+        # Build relevance conditions
+        relevance_conditions = []
+        for filter_item in relevance_filters:
+            if metric_type == MetricType.QUERY_RELEVANCE:
+                score_path = inner_metric.c.details["query_relevance"][
+                    "llm_relevance_score"
+                ].astext
+            elif metric_type == MetricType.RESPONSE_RELEVANCE:
+                score_path = inner_metric.c.details["response_relevance"][
+                    "llm_relevance_score"
+                ].astext
+            else:
+                raise ValueError(f"Unsupported relevance metric type: {metric_type}")
+
+            score_condition = self._build_comparison_condition(
+                func.cast(score_path, func.Float()),
+                filter_item,
+            )
+            relevance_conditions.append(score_condition)
+
+        return exists(
+            select(1)
+            .select_from(
+                inner_span.join(
+                    inner_metric,
+                    inner_span.c.id == inner_metric.c.span_id,
+                ),
+            )
+            .where(
+                and_(
+                    inner_span.c.trace_id == DatabaseSpan.trace_id,  # Correlation
+                    inner_span.c.task_id.in_(task_ids),
+                    inner_span.c.span_kind == SPAN_KIND_LLM,
+                    inner_metric.c.metric_type == metric_type.value,
+                    *relevance_conditions,
+                ),
+            ),
+        )
+
+    def _build_tool_classification_exists(
+        self,
+        metric_type: MetricType,
+        tool_class: ToolClassEnum,
+        task_ids: list[str],
+        field_name: str,
+    ):
+
+        # Create aliases to avoid conflicts
+        inner_span = DatabaseSpan.__table__.alias("inner_span")
+        inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
+
+        # Tool classification path
+        classification_condition = (
+            func.cast(
+                inner_metric.c.details["tool_selection"][field_name].astext,
+                func.Integer(),
+            )
+            == tool_class.value
+        )
+
+        return exists(
+            select(1)
+            .select_from(
+                inner_span.join(
+                    inner_metric,
+                    inner_span.c.id == inner_metric.c.span_id,
+                ),
+            )
+            .where(
+                and_(
+                    inner_span.c.trace_id == DatabaseSpan.trace_id,  # Correlation
+                    inner_span.c.task_id.in_(task_ids),
+                    inner_span.c.span_kind == SPAN_KIND_LLM,
+                    inner_metric.c.metric_type == metric_type.value,
+                    classification_condition,
+                ),
+            ),
+        )
+
+    def _intersect_trace_queries(
+        self,
+        trace_query: select,
+        span_query: select,
+        sort: PaginationSortMethod,
+    ) -> select:
+        """
+        Combine trace-level and span-level results using IN clause.
+
+        Finds traces that appear in BOTH result sets while preserving
+        trace_query structure (timing calculations and ordering).
+        """
+
+        # Extract the trace_id column from the trace_query (first selected column)
+        trace_id_column = trace_query.selected_columns[0]
+
+        # Find intersection: traces that appear in BOTH query results
+        # Keep the trace_query structure (timing calculations, ordering) but restrict to overlapping IDs
+        intersected_query = trace_query.where(trace_id_column.in_(span_query))
+
+        logger.debug(
+            f"Intersecting trace-level and span-level query results to find overlapping trace IDs",
+        )
+
+        return intersected_query
 
     def _build_spans_query(
         self,
@@ -200,3 +498,12 @@ class SpanQueryService:
             query = query.order_by(asc(DatabaseSpan.start_time))
 
         return query
+
+    def _has_span_level_filters(self, filters: TraceQuerySchema) -> bool:
+        return bool(
+            filters.tool_name
+            or filters.query_relevance_filters
+            or filters.response_relevance_filters
+            or filters.tool_selection
+            or filters.tool_usage,
+        )

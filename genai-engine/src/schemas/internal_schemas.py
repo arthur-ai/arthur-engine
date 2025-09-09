@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -56,10 +57,16 @@ from schemas.enums import (
     RuleScope,
     RuleScoringMethod,
     RuleType,
+    ToolClassEnum,
     ToxicityViolationType,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
+from schemas.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+    TraceQueryRequest,
+)
 from schemas.response_schemas import (
     ApiKeyResponse,
     ApplicationConfigurationResponse,
@@ -1650,3 +1657,72 @@ def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
         return configs[key]
     else:
         return None
+
+
+class ComparisonOperators(str, Enum):
+    EQUALS = "eq"
+    GREATER_THAN = "gt"
+    GREATER_THAN_OR_EQUAL = "gte"
+    LESS_THAN = "lt"
+    LESS_THAN_OR_EQUAL = "lte"
+
+
+class FloatRangeFilter(BaseModel):
+    value: float
+    operator: ComparisonOperators
+
+
+class TraceQuerySchema(BaseModel):
+    task_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Task IDs to filter on. At least one is required.",
+    )
+    trace_ids: Optional[list[str]] = Field(
+        None,
+        description="Trace IDs to filter on. Optional.",
+    )
+    start_time: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    )
+    end_time: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    )
+    tool_name: Optional[str] = Field(
+        None,
+        description="Return only results with this tool name.",
+    )
+    tool_selection: Optional[ToolClassEnum] = None
+    tool_usage: Optional[ToolClassEnum] = None
+    query_relevance_filters: Optional[list[FloatRangeFilter]] = None
+    response_relevance_filters: Optional[list[FloatRangeFilter]] = None
+    trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+
+    @staticmethod
+    def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
+        def resolve_filters(prefix: str) -> Optional[list[FloatRangeFilter]]:
+            filters = []
+            for op in ComparisonOperators:
+                value = getattr(request, f"{prefix}_{op.value}", None)
+                if value is not None:
+                    filters.append(FloatRangeFilter(value=value, operator=op))
+            return filters if filters else None
+
+        query_relevance = resolve_filters("query_relevance")
+        response_relevance = resolve_filters("response_relevance")
+        trace_duration = resolve_filters("trace_duration")
+
+        return TraceQuerySchema(
+            task_ids=request.task_ids,
+            trace_ids=request.trace_ids,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            tool_name=request.tool_name,
+            tool_selection=request.tool_selection,
+            tool_usage=request.tool_usage,
+            query_relevance_filters=query_relevance,
+            response_relevance_filters=response_relevance,
+            trace_duration_filters=trace_duration,
+        )
