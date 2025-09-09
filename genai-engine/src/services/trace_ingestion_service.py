@@ -8,7 +8,11 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import insert, select
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert,  # Unit tests are still using sqlite
+)
 from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
@@ -265,14 +269,13 @@ class TraceIngestionService:
 
         logger.debug(f"Stored {len(spans)} spans with trace metadata (commit={commit})")
 
-    def _batch_upsert_trace_metadata(self, spans: list[dict]):
-        """Efficiently batch trace metadata updates - prevents N upserts for N spans.
+    def _batch_upsert_trace_metadata(self, spans: list[DatabaseSpan]):
+        """Efficiently batch trace metadata updates using native database upsert.
 
         Groups spans by trace_id to batch updates. For example:
         - 50 spans from same trace = 1 upsert (not 50!)
         - Handles out-of-order span arrival with MIN/MAX aggregations
-        - Maintains data consistency within single transaction
-        - Database-agnostic implementation using insert-or-update pattern
+        - Uses native PostgreSQL/SQLite upsert for optimal performance
         """
         if not spans:
             return
@@ -290,6 +293,7 @@ class TraceIngestionService:
                     "start_time": span.start_time,
                     "end_time": span.end_time,
                     "span_count": 0,
+                    "updated_at": current_time,
                 }
 
             # Aggregate within this batch (handles multiple spans per trace in one ingestion)
@@ -306,56 +310,52 @@ class TraceIngestionService:
         if not trace_updates:
             return
 
-        # Database-agnostic upsert: check existing records and separate inserts from updates
-        trace_ids = list(trace_updates.keys())
-        existing_traces = (
-            self.db_session.execute(
-                select(DatabaseTraceMetadata).where(
-                    DatabaseTraceMetadata.trace_id.in_(trace_ids),
+        # Single native upsert operation - replaces complex manual logic
+        values_list = list(trace_updates.values())
+
+        # PostgreSQL upsert with proper aggregation functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            stmt = pg_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.least(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.greatest(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
                 ),
             )
-            .scalars()
-            .all()
-        )
 
-        existing_trace_ids = {trace.trace_id for trace in existing_traces}
+        # SQLite upsert with min/max functions
+        # Needed for unit tests
+        else:  # sqlite
+            stmt = sqlite_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.min(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.max(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
+                ),
+            )
 
-        # Prepare records for insertion (new traces)
-        new_traces = []
-        for trace_id, trace_data in trace_updates.items():
-            if trace_id not in existing_trace_ids:
-                trace_data["updated_at"] = current_time
-                new_traces.append(trace_data)
-
-        # Batch insert new traces
-        if new_traces:
-            self.db_session.execute(insert(DatabaseTraceMetadata).values(new_traces))
-
-        # Update existing traces with proper aggregation - collect all updates
-        if existing_traces:
-            bulk_updates = []
-            for existing_trace in existing_traces:
-                trace_id = existing_trace.trace_id
-                new_data = trace_updates[trace_id]
-
-                bulk_updates.append(
-                    {
-                        "trace_id": trace_id,
-                        "start_time": min(
-                            existing_trace.start_time,
-                            new_data["start_time"],
-                        ),
-                        "end_time": max(existing_trace.end_time, new_data["end_time"]),
-                        "span_count": existing_trace.span_count
-                        + new_data["span_count"],
-                        "updated_at": current_time,
-                    },
-                )
-
-            # Execute all updates in a single bulk operation
-            self.db_session.bulk_update_mappings(DatabaseTraceMetadata, bulk_updates)
+        self.db_session.execute(stmt)
 
         logger.debug(
-            f"Updated metadata for {len(trace_updates)} traces from {len(spans)} spans "
-            f"({len(new_traces)} new, {len(existing_traces)} updated)",
+            f"Upserted metadata for {len(trace_updates)} traces from {len(spans)} spans",
         )
