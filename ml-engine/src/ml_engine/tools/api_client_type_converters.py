@@ -34,7 +34,6 @@ from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig
 from genai_client.models import KeywordsConfig as ShieldKeywordsConfig
 from genai_client.models import MetricType as ShieldMetricType
-from genai_client.models import NewApiKeyRequest as ShieldNewApiKeyRequest
 from genai_client.models import NewMetricRequest as ShieldNewMetricRequest
 from genai_client.models import NewRuleRequest as ShieldNewRuleRequest
 from genai_client.models import PIIConfig as ShieldPIIConfig
@@ -65,7 +64,6 @@ ShieldConfigTypes = Optional[
         ShieldRelevanceMetricConfig,
         ShieldNewMetricRequest,
         ShieldMetricType,
-        ShieldNewApiKeyRequest,
     ]
 ]
 ScopeConfigTypes = Optional[
@@ -80,7 +78,6 @@ ScopeConfigTypes = Optional[
 
 
 class ShieldClientTypeConverter:
-
     @classmethod
     def rule_config_api_to_shield_client(cls, api: ApiConfigTypes) -> ShieldConfigTypes:
         if api is None:
@@ -159,7 +156,6 @@ class ShieldClientTypeConverter:
 
 
 class ScopeClientTypeConverter:
-
     @classmethod
     def task_response_api_to_scope_client(
         cls,
