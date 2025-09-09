@@ -152,6 +152,7 @@ class TraceIngestionService:
             span_id=trace_utils.convert_id_to_hex(span_data.get("spanId")),
             parent_span_id=self._get_parent_span_id(span_data),
             span_kind=self._get_attribute_value(span_data, SPAN_KIND_KEY),
+            span_name=span_data.get("name"),
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,

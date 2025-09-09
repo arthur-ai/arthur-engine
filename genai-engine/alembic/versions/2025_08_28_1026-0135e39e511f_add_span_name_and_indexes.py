@@ -19,13 +19,13 @@ depends_on = None
 
 def upgrade() -> None:
     # Add span_name column to existing spans table
-    op.add_column("spans", sa.Column("span_name", sa.String(255), nullable=True))
+    op.add_column("spans", sa.Column("span_name", sa.String(), nullable=True))
 
     # Backfill span_name from existing raw_data JSON
     op.execute(
         """
         UPDATE spans
-        SET span_name = SUBSTRING((raw_data->>'name')::text, 1, 255)
+        SET span_name = (raw_data->>'name')::text
         WHERE raw_data->>'name' IS NOT NULL
         AND raw_data->>'name' != ''
     """,
@@ -35,19 +35,14 @@ def upgrade() -> None:
     op.create_index(
         "idx_spans_task_time_kind",
         "spans",
-        ["task_id", sa.text("start_time DESC"), "span_kind"],
-    )
-    op.create_index(
-        "idx_spans_task_time_kind_asc",
-        "spans",
-        ["task_id", sa.text("start_time ASC"), "span_kind"],
+        ["task_id", "start_time", "span_kind"],
     )
 
     # Create conditional index for span name filtering
     op.create_index(
         "idx_spans_task_span_name",
         "spans",
-        ["task_id", "span_name", sa.text("start_time DESC")],
+        ["task_id", "span_name", "start_time"],
         postgresql_where=sa.text("span_name IS NOT NULL"),
     )
 
@@ -55,14 +50,14 @@ def upgrade() -> None:
     op.create_index(
         "idx_spans_trace_task_time",
         "spans",
-        ["trace_id", "task_id", sa.text("start_time DESC")],
+        ["trace_id", "task_id", "start_time"],
     )
 
     # Create LLM spans optimization index
     op.create_index(
         "idx_spans_llm_task_time",
         "spans",
-        ["task_id", sa.text("start_time DESC")],
+        ["task_id", "start_time"],
         postgresql_where=sa.text("span_kind = 'LLM'"),
     )
 
@@ -72,7 +67,6 @@ def downgrade() -> None:
     op.drop_index("idx_spans_llm_task_time", "spans")
     op.drop_index("idx_spans_trace_task_time", "spans")
     op.drop_index("idx_spans_task_span_name", "spans")
-    op.drop_index("idx_spans_task_time_kind_asc", "spans")
     op.drop_index("idx_spans_task_time_kind", "spans")
 
     # Remove span_name column from spans table

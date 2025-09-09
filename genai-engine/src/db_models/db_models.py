@@ -445,7 +445,7 @@ class DatabaseApiKey(Base):
 class DatabaseTraceMetadata(Base):
     __tablename__ = "trace_metadata"
 
-    trace_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String, primary_key=True)
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id"),
@@ -476,7 +476,7 @@ class DatabaseSpan(Base):
         nullable=True,
         index=True,
     )
-    span_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    span_name: Mapped[str | None] = mapped_column(String, nullable=True)
     span_kind: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)

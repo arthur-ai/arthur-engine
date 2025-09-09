@@ -21,7 +21,7 @@ def upgrade() -> None:
     # Create traces metadata table
     op.create_table(
         "trace_metadata",
-        sa.Column("trace_id", sa.String(255), primary_key=True),
+        sa.Column("trace_id", sa.String(), primary_key=True),
         sa.Column("task_id", sa.String(), nullable=False, index=True),
         sa.Column("start_time", sa.TIMESTAMP(), nullable=False),
         sa.Column("end_time", sa.TIMESTAMP(), nullable=False),
@@ -57,14 +57,9 @@ def upgrade() -> None:
 
     # Create essential indexes for traces table
     op.create_index(
-        "idx_traces_task_start_desc",
+        "idx_traces_task_start",
         "trace_metadata",
-        ["task_id", sa.text("start_time DESC")],
-    )
-    op.create_index(
-        "idx_traces_task_start_asc",
-        "trace_metadata",
-        ["task_id", sa.text("start_time ASC")],
+        ["task_id", "start_time"],
     )
 
     # Complex time range queries
@@ -77,7 +72,7 @@ def upgrade() -> None:
     # Covering index for pagination (avoids table lookups) - PostgreSQL specific
     op.execute(
         """
-        CREATE INDEX idx_traces_covering ON trace_metadata (task_id, start_time DESC)
+        CREATE INDEX idx_traces_covering ON trace_metadata (task_id, start_time)
         INCLUDE (trace_id, end_time, span_count)
     """,
     )
@@ -87,8 +82,7 @@ def downgrade() -> None:
     # Drop the trace indexes in reverse order
     op.drop_index("idx_traces_covering", "trace_metadata")
     op.drop_index("idx_traces_task_time_range", "trace_metadata")
-    op.drop_index("idx_traces_task_start_asc", "trace_metadata")
-    op.drop_index("idx_traces_task_start_desc", "trace_metadata")
+    op.drop_index("idx_traces_task_start", "trace_metadata")
 
     # Drop the traces table
     op.drop_table("trace_metadata")
