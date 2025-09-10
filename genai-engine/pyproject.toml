@@ -16,7 +16,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "3.12.*"
+python = ">=3.12,<3.13.dev0"
 openai = "1.106.1"
 fastapi = "0.116.1"
 uvicorn = "0.35.0"
@@ -74,6 +74,7 @@ cloudpickle = "3.1.1"
 amplitude-analytics = "^1.1.5"
 sentencepiece = "0.2.1"
 gliner = "0.2.21"
+arthur-common = "2.1.61"
 openinference-semantic-conventions = "^0.1.12"
 
 

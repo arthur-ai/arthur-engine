@@ -4,7 +4,7 @@ import nltk
 import pytest
 from nltk.corpus import words
 
-from schemas.enums import RuleResultEnum, RuleType, ToxicityViolationType
+from arthur_common.models.enums import RuleResultEnum, RuleType, ToxicityViolationType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.toxicity.toxicity import (
     ToxicityScorer,

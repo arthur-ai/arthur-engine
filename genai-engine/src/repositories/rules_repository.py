@@ -1,6 +1,6 @@
 from db_models.db_models import DatabaseRule
 from fastapi import HTTPException
-from schemas.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import Rule
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session

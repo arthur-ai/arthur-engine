@@ -1,8 +1,8 @@
 from repositories.inference_repository import InferenceRepository
 from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
-from schemas.request_schemas import ResponseValidationRequest
-from schemas.response_schemas import ValidationResult
+from arthur_common.models.request_schemas import ResponseValidationRequest
+from arthur_common.models.response_schemas import ValidationResult
 from scorer.score import ScorerClient
 from sqlalchemy.orm import Session
 

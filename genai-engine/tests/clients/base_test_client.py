@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
@@ -17,7 +17,7 @@ from schemas.common_schemas import (
     ToxicityConfig,
     UserPermission,
 )
-from schemas.enums import (
+from arthur_common.models.enums import (
     InferenceFeedbackTarget,
     PaginationSortMethod,
     RuleResultEnum,
@@ -25,7 +25,7 @@ from schemas.enums import (
     RuleType,
     TokenUsageScope,
 )
-from schemas.request_schemas import (
+from arthur_common.models.request_schemas import (
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -34,7 +34,7 @@ from schemas.request_schemas import (
     SearchRulesRequest,
     SearchTasksRequest,
 )
-from schemas.response_schemas import (
+from arthur_common.models.response_schemas import (
     ApiKeyResponse,
     ChatDefaultTaskResponse,
     ChatDocumentContext,

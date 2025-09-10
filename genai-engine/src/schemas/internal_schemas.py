@@ -3,6 +3,56 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
+from arthur_common.models.common_schemas import (
+    AuthUserRole,
+    ExampleConfig,
+    ExamplesConfig,
+    KeywordsConfig,
+    PIIConfig,
+    RegexConfig,
+    ToxicityConfig,
+)
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    MetricType,
+    PIIEntityTypes,
+    RuleResultEnum,
+    RuleScope,
+    RuleType,
+    ToxicityViolationType,
+)
+from arthur_common.models.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+)
+from arthur_common.models.response_schemas import (
+    ApiKeyResponse,
+    BaseDetailsResponse,
+    ChatDocumentContext,
+    ExternalDocument,
+    ExternalInference,
+    ExternalInferencePrompt,
+    ExternalInferenceResponse,
+    ExternalRuleResult,
+    HallucinationClaimResponse,
+    HallucinationDetailsResponse,
+    InferenceFeedbackResponse,
+    KeywordDetailsResponse,
+    KeywordSpanResponse,
+    MetricResponse,
+    MetricResultResponse,
+    NestedSpanWithMetricsResponse,
+    PIIDetailsResponse,
+    PIIEntitySpanResponse,
+    RegexDetailsResponse,
+    RegexSpanResponse,
+    RuleResponse,
+    SpanWithMetricsResponse,
+    TaskResponse,
+    ToxicityDetailsResponse,
+    UserResponse,
+)
 from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
@@ -37,58 +87,16 @@ from db_models.db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
-from schemas.common_schemas import (
-    AuthUserRole,
-    ExampleConfig,
-    ExamplesConfig,
-    KeywordsConfig,
-    PIIConfig,
-    RegexConfig,
-    ToxicityConfig,
-)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
-    InferenceFeedbackTarget,
-    MetricType,
-    PIIEntityTypes,
     RuleDataType,
-    RuleResultEnum,
-    RuleScope,
     RuleScoringMethod,
-    RuleType,
-    ToxicityViolationType,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
 from schemas.response_schemas import (
-    ApiKeyResponse,
     ApplicationConfigurationResponse,
-    BaseDetailsResponse,
-    ChatDocumentContext,
     DocumentStorageConfigurationResponse,
-    ExternalDocument,
-    ExternalInference,
-    ExternalInferencePrompt,
-    ExternalInferenceResponse,
-    ExternalRuleResult,
-    HallucinationClaimResponse,
-    HallucinationDetailsResponse,
-    InferenceFeedbackResponse,
-    KeywordDetailsResponse,
-    KeywordSpanResponse,
-    MetricResponse,
-    MetricResultResponse,
-    NestedSpanWithMetricsResponse,
-    PIIDetailsResponse,
-    PIIEntitySpanResponse,
-    RegexDetailsResponse,
-    RegexSpanResponse,
-    RuleResponse,
-    SpanWithMetricsResponse,
-    TaskResponse,
-    ToxicityDetailsResponse,
-    UserResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (

@@ -2,17 +2,19 @@ import re
 import uuid
 from typing import Callable
 
-from db_models.db_models import DatabaseRuleData
-from fastapi import HTTPException
-from pydantic import BaseModel
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import RuleDataType, RuleType
+from arthur_common.models.enums import RuleType
+from fastapi import HTTPException
+from pydantic import BaseModel
+
+from db_models.db_models import DatabaseRuleData
+from schemas.enums import RuleDataType
 from utils.utils import constants
 
 

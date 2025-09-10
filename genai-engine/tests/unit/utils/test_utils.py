@@ -4,7 +4,7 @@ from enum import Enum
 from unittest.mock import patch
 
 import pytest
-from schemas.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import LLMTokensPerPeriodRateLimitException
 from scorer import llm_client
 from utils.utils import (
@@ -14,6 +14,7 @@ from utils.utils import (
     get_postgres_connection_string,
     is_api_only_mode_enabled,
 )
+
 
 @pytest.mark.parametrize(
     "exceeds",

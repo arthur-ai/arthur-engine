@@ -1,8 +1,8 @@
 import logging
 
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from presidio_analyzer import AnalyzerEngine
 
-from schemas.enums import PIIEntityTypes, RuleResultEnum
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,

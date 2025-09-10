@@ -728,7 +728,7 @@
                                                     "result": true
                                                 },
                                                 {
-                                                    "example": "Most og the people have A positive blood group",
+                                                    "example": "Most of the people have A positive blood group",
                                                     "result": false
                                                 }
                                             ],
@@ -779,6 +779,16 @@
                                     }
                                 },
                                 "example5": {
+                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRule",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example6": {
                                     "summary": "Hallucination Rule V2 Example",
                                     "description": "Hallucination Rule Example, no configuration required",
                                     "value": {
@@ -788,7 +798,17 @@
                                         "apply_to_response": true
                                     }
                                 },
-                                "example6": {
+                                "example7": {
+                                    "summary": "Hallucination Rule V3 Example (Beta)",
+                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRuleV3",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example8": {
                                     "summary": "PII Rule Example",
                                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                                     "value": {
@@ -809,7 +829,7 @@
                                         }
                                     }
                                 },
-                                "example7": {
+                                "example9": {
                                     "summary": "Toxicity Rule Example",
                                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                                     "value": {
@@ -1308,7 +1328,7 @@
                                                     "result": true
                                                 },
                                                 {
-                                                    "example": "Most og the people have A positive blood group",
+                                                    "example": "Most of the people have A positive blood group",
                                                     "result": false
                                                 }
                                             ],
@@ -1359,6 +1379,16 @@
                                     }
                                 },
                                 "example5": {
+                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRule",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example6": {
                                     "summary": "Hallucination Rule V2 Example",
                                     "description": "Hallucination Rule Example, no configuration required",
                                     "value": {
@@ -1368,7 +1398,17 @@
                                         "apply_to_response": true
                                     }
                                 },
-                                "example6": {
+                                "example7": {
+                                    "summary": "Hallucination Rule V3 Example (Beta)",
+                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRuleV3",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example8": {
                                     "summary": "PII Rule Example",
                                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                                     "value": {
@@ -1389,7 +1429,7 @@
                                         }
                                     }
                                 },
-                                "example7": {
+                                "example9": {
                                     "summary": "Toxicity Rule Example",
                                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                                     "value": {
@@ -3744,7 +3784,7 @@
                             }
                         ],
                         "title": "Hint",
-                        "description": "Optional. hint added to describe what Sensitive Data Rule should be checking for"
+                        "description": "Optional. Hint added to describe what Sensitive Data Rule should be checking for"
                     }
                 },
                 "type": "object",
@@ -3759,7 +3799,7 @@
                             "result": true
                         },
                         {
-                            "example": "Most og the people have A positive blood group",
+                            "example": "Most of the people have A positive blood group",
                             "result": false
                         }
                     ],
@@ -4858,13 +4898,10 @@
                     "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/KeywordsConfig"
-                            },
-                            {
                                 "$ref": "#/components/schemas/RegexConfig"
                             },
                             {
-                                "$ref": "#/components/schemas/ExamplesConfig"
+                                "$ref": "#/components/schemas/KeywordsConfig"
                             },
                             {
                                 "$ref": "#/components/schemas/ToxicityConfig"
@@ -4873,11 +4910,14 @@
                                 "$ref": "#/components/schemas/PIIConfig"
                             },
                             {
+                                "$ref": "#/components/schemas/ExamplesConfig"
+                            },
+                            {
                                 "type": "null"
                             }
                         ],
                         "title": "Config",
-                        "description": "Config of the rule"
+                        "description": "Config for the rule"
                     }
                 },
                 "type": "object",
@@ -4901,7 +4941,7 @@
                                     "result": true
                                 },
                                 {
-                                    "example": "Most og the people have A positive blood group",
+                                    "example": "Most of the people have A positive blood group",
                                     "result": false
                                 }
                             ],
@@ -4954,6 +4994,16 @@
                     }
                 },
                 "example5": {
+                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                    "value": {
+                        "apply_to_prompt": false,
+                        "apply_to_response": true,
+                        "name": "Hallucination Rule",
+                        "type": "ModelHallucinationRule"
+                    }
+                },
+                "example6": {
                     "description": "Hallucination Rule Example, no configuration required",
                     "summary": "Hallucination Rule V2 Example",
                     "value": {
@@ -4963,7 +5013,17 @@
                         "type": "ModelHallucinationRuleV2"
                     }
                 },
-                "example6": {
+                "example7": {
+                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                    "summary": "Hallucination Rule V3 Example (Beta)",
+                    "value": {
+                        "apply_to_prompt": false,
+                        "apply_to_response": true,
+                        "name": "Hallucination Rule",
+                        "type": "ModelHallucinationRuleV3"
+                    }
+                },
+                "example8": {
                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                     "summary": "PII Rule Example",
                     "value": {
@@ -4984,7 +5044,7 @@
                         "type": "PIIDataRule"
                     }
                 },
-                "example7": {
+                "example9": {
                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                     "summary": "Toxicity Rule Example",
                     "value": {
@@ -6517,7 +6577,7 @@
                             }
                         ],
                         "title": "User Id",
-                        "description": "The unique user ID this prompt belongs to"
+                        "description": "The user ID this prompt belongs to"
                     }
                 },
                 "type": "object",

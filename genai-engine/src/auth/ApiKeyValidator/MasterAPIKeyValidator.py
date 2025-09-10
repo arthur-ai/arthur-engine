@@ -2,7 +2,7 @@ import logging
 
 from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from config import config
-from schemas.common_schemas import AuthUserRole
+from arthur_common.models.common_schemas import AuthUserRole
 from schemas.internal_schemas import User
 from utils import constants
 

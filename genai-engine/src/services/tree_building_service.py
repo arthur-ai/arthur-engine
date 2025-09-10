@@ -1,10 +1,11 @@
 import logging
 from typing import Optional
 
+from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.response_schemas import TraceResponse
+
 from db_models.db_models import DatabaseTraceMetadata
-from schemas.enums import PaginationSortMethod
 from schemas.internal_schemas import Span
-from schemas.response_schemas import TraceResponse
 
 logger = logging.getLogger(__name__)
 
