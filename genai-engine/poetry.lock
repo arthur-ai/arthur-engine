@@ -4975,23 +4975,24 @@ murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
 name = "presidio-analyzer"
-version = "2.2.359"
+version = "2.2.360"
 description = "Presidio Analyzer package"
 optional = false
-python-versions = "<4.0,>=3.9"
+python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "presidio_analyzer-2.2.359-py3-none-any.whl", hash = "sha256:5f9a71ce5e484b1d9fd10a3f40ba37cb311deeb7cc25c3a87c0ba36b468ee26d"},
+    {file = "presidio_analyzer-2.2.360-py3-none-any.whl", hash = "sha256:aa6e83779b8f23587000ccfa3ef47aa34356a60b51284742e0d2a96b33205c4e"},
 ]
 
 [package.dependencies]
 phonenumbers = ">=8.12,<10.0.0"
 pyyaml = "*"
 regex = "*"
-spacy = ">=3.4.4,<3.7.0 || >3.7.0,<4.0.0"
+spacy = ">=3.4.4,<3.7.0 || >3.7.0"
 tldextract = "*"
 
 [package.extras]
+ahds = ["azure-health-deidentification (>=1.1.0b1,<2.0.0)", "azure-identity (>=1.23.0,<2.0.0)"]
 azure-ai-language = ["azure-ai-textanalytics", "azure-core"]
 gliner = ["gliner (>=0.2.13,<1.0.0) ; python_version >= \"3.10\"", "huggingface_hub", "onnxruntime (>=1.19) ; python_version >= \"3.10\"", "transformers"]
 server = ["flask (>=1.1)", "gunicorn"]
@@ -7943,4 +7944,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.*"
-content-hash = "b033ed095c8e53010b2fde7b6471282061985a1700822f619330f1c48bc7d9ef"
+content-hash = "5026263a33546718922ee1c466060c6303218b52708e77de6486b67f18998db7"
