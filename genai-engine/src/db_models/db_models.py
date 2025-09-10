@@ -52,8 +52,8 @@ class DatabaseTask(Base, IsArchivable):
     __tablename__ = "tasks"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     rule_links: Mapped[List["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
@@ -89,8 +89,8 @@ class DatabaseRule(Base, IsArchivable):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String)
     type: Mapped[str] = mapped_column(String)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     prompt_enabled: Mapped[bool] = mapped_column(Boolean)
     response_enabled: Mapped[bool] = mapped_column(Boolean)
     scoring_method: Mapped[str] = mapped_column(String)
@@ -110,8 +110,8 @@ class DatabaseInference(Base):
     __tablename__ = "inferences"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     result: Mapped[str] = mapped_column(String)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id"),
@@ -164,8 +164,8 @@ class DatabaseInferencePrompt(Base):
         unique=True,
     )
     result: Mapped[str] = mapped_column(String)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     prompt_rule_results: Mapped[List["DatabasePromptRuleResult"]] = relationship(
         lazy="subquery",
     )
@@ -183,8 +183,8 @@ class DatabaseInferenceResponse(Base):
         unique=True,
     )
     result: Mapped[str] = mapped_column(String)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     response_rule_results: Mapped[List["DatabaseResponseRuleResult"]] = relationship(
         lazy="subquery",
     )
@@ -207,8 +207,8 @@ class DatabasePromptRuleResult(Base):
     prompt_tokens: Mapped[int] = mapped_column(Integer)
     completion_tokens: Mapped[int] = mapped_column(Integer)
     latency_ms: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     rule: Mapped["DatabaseRule"] = relationship(lazy="joined")
     UniqueConstraint("inference_prompt_id", "rule_id")
 
@@ -228,8 +228,8 @@ class DatabaseResponseRuleResult(Base):
     prompt_tokens: Mapped[int] = mapped_column(Integer)
     completion_tokens: Mapped[int] = mapped_column(Integer)
     latency_ms: Mapped[int] = mapped_column(Integer)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     rule: Mapped["DatabaseRule"] = relationship(lazy="joined")
     UniqueConstraint("inference_response_id", "rule_id")
 
@@ -418,8 +418,8 @@ class DatabaseInferenceFeedback(Base):
     score: Mapped[int] = mapped_column(Integer)
     reason: Mapped[str] = mapped_column(String, nullable=True)
     user_id: Mapped[str] = mapped_column(String, nullable=True)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
 
 
 class DatabaseApiKey(Base):
@@ -429,8 +429,8 @@ class DatabaseApiKey(Base):
     key_hash: Mapped[str] = mapped_column(String, unique=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
-    deactivated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    deactivated_at: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=True)
     roles: Mapped[list[str]] = mapped_column(
         RoleType,
         server_default=text(f"'[\"{constants.DEFAULT_RULE_ADMIN}\"]'"),
@@ -442,6 +442,29 @@ class DatabaseApiKey(Base):
         self.deactivated_at = datetime.now()
 
 
+class DatabaseTraceMetadata(Base):
+    __tablename__ = "trace_metadata"
+
+    trace_id: Mapped[str] = mapped_column(String, primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("tasks.id"),
+        nullable=False,
+        index=True,
+    )
+    start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+    end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
+    span_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+
 class DatabaseSpan(Base):
     __tablename__ = "spans"
 
@@ -449,8 +472,11 @@ class DatabaseSpan(Base):
     trace_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     span_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
     parent_span_id: Mapped[str | None] = mapped_column(
-        String, nullable=True, index=True
+        String,
+        nullable=True,
+        index=True,
     )
+    span_name: Mapped[str | None] = mapped_column(String, nullable=True)
     span_kind: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
@@ -461,12 +487,12 @@ class DatabaseSpan(Base):
         index=True,
     )
     raw_data: Mapped[dict] = mapped_column(postgresql.JSON, nullable=False)
-    created_at: Mapped[TIMESTAMP] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
         index=True,
     )
-    updated_at: Mapped[TIMESTAMP] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
     )
@@ -480,8 +506,8 @@ class DatabaseSpan(Base):
 class DatabaseMetric(Base, IsArchivable):
     __tablename__ = "metrics"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     type: Mapped[str] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     metric_metadata: Mapped[str] = mapped_column(String)
@@ -510,8 +536,8 @@ class DatabaseTaskToMetrics(Base):
 class DatabaseMetricResult(Base):
     __tablename__ = "metric_results"
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
-    created_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
-    updated_at: Mapped[TIMESTAMP] = mapped_column(TIMESTAMP, default=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     metric_type: Mapped[str] = mapped_column(String, nullable=False)
     details: Mapped[Optional[str]] = mapped_column(
         String,
