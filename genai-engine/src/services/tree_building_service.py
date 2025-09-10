@@ -1,8 +1,11 @@
 import logging
+from typing import Optional
 
 from arthur_common.models.enums import PaginationSortMethod
-from schemas.internal_schemas import Span
 from arthur_common.models.response_schemas import TraceResponse
+
+from db_models.db_models import DatabaseTraceMetadata
+from schemas.internal_schemas import Span
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +17,18 @@ class TreeBuildingService:
         self,
         spans: list[Span],
         sort: PaginationSortMethod,
+        trace_metadata: Optional[list[DatabaseTraceMetadata]] = None,
     ) -> list:
         """Group spans into a nested trace structure."""
         if not spans:
             return []
+
+        # Create a mapping of trace metadata if provided
+        metadata_by_trace_id = {}
+        if trace_metadata:
+            metadata_by_trace_id = {
+                metadata.trace_id: metadata for metadata in trace_metadata
+            }
 
         # Group spans by trace_id
         traces_dict = {}
@@ -30,9 +41,15 @@ class TreeBuildingService:
         # Build trace responses
         traces = []
         for trace_id, trace_spans in traces_dict.items():
-            # Calculate trace start and end times
-            start_time = min(span.start_time for span in trace_spans)
-            end_time = max(span.end_time for span in trace_spans)
+            # Use trace metadata start/end times if available, otherwise calculate from spans
+            if trace_id in metadata_by_trace_id:
+                metadata = metadata_by_trace_id[trace_id]
+                start_time = metadata.start_time
+                end_time = metadata.end_time
+            else:
+                # Fallback to calculating from spans (backward compatibility)
+                start_time = min(span.start_time for span in trace_spans)
+                end_time = max(span.end_time for span in trace_spans)
 
             # Build nested spans for this trace
             root_spans = self._build_span_tree(trace_spans)

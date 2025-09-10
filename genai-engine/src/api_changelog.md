@@ -2,8 +2,8 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 09/03/2025
-- **CHANGE** Expanded SpanResponse Schema
+# 09/05/2025
+- Added span_name to spans response
 
 # 08/27/2025
 - **CHANGE** for **URL**: /v1/spans/query  endpoint added

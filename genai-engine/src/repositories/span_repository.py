@@ -2,13 +2,13 @@ import logging
 from datetime import datetime
 from typing import Optional, Tuple
 
+from arthur_common.models.enums import PaginationSortMethod
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from sqlalchemy.orm import Session
 
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from arthur_common.models.enums import PaginationSortMethod
 from schemas.internal_schemas import Span
 from services.metrics_integration_service import MetricsIntegrationService
 from services.span_query_service import SpanQueryService
@@ -143,9 +143,9 @@ class SpanRepository:
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
 
-        # Trace-level pagination: get paginated trace IDs first, then get all spans in those traces
-        paginated_trace_ids = (
-            self.span_query_service.get_paginated_trace_ids_for_task_ids(
+        # Trace-level pagination: get paginated trace metadata first, then get all spans in those traces
+        paginated_trace_metadata = (
+            self.span_query_service.get_paginated_trace_metadata_for_task_ids(
                 task_ids=task_ids,
                 trace_ids=trace_ids,
                 start_time=start_time,
@@ -156,8 +156,13 @@ class SpanRepository:
             )
         )
 
-        if not paginated_trace_ids:
+        if not paginated_trace_metadata:
             return 0, []
+
+        # Extract trace IDs for span querying
+        paginated_trace_ids = [
+            metadata.trace_id for metadata in paginated_trace_metadata
+        ]
 
         # Query all spans in the paginated traces
         spans = self.span_query_service.query_spans_from_db(
@@ -175,8 +180,12 @@ class SpanRepository:
                 compute_new_metrics,
             )
 
-        # Group spans by trace and build nested structure
-        traces = self.tree_building_service.group_spans_into_traces(valid_spans, sort)
+        # Group spans by trace and build nested structure with optimized trace metadata
+        traces = self.tree_building_service.group_spans_into_traces(
+            valid_spans,
+            sort,
+            trace_metadata=paginated_trace_metadata,
+        )
         return len(traces), traces
 
     def query_spans_with_metrics_as_traces(
