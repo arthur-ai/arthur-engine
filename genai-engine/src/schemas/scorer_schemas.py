@@ -1,13 +1,13 @@
 from re import Pattern
 from typing import List, Optional, Union
 
-from pydantic import BaseModel
-from schemas.enums import (
+from arthur_common.models.enums import (
     PIIEntityTypes,
     RuleResultEnum,
     RuleType,
     ToxicityViolationType,
 )
+from pydantic import BaseModel
 
 
 class ScorerHallucinationClaim(BaseModel):

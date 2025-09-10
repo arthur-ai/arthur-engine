@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from config.config import Config
 from db_models.db_models import DatabaseApiKey
-from schemas.enums import APIKeysRolesEnum
+from arthur_common.models.enums import APIKeysRolesEnum
 from schemas.internal_schemas import ApiKey
 
 logger = logging.getLogger(__name__)

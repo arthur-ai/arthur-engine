@@ -1,6 +1,6 @@
 import pytest
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
 
-from schemas.enums import PIIEntityTypes, RuleResultEnum, RuleType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier_v1 import BinaryPIIDataClassifierV1
 

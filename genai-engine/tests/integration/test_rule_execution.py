@@ -1,6 +1,6 @@
 import pytest
-from schemas.enums import PIIEntityTypes, RuleResultEnum, RuleType
-from schemas.response_schemas import (
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
+from arthur_common.models.response_schemas import (
     ExternalRuleResult,
     KeywordDetailsResponse,
     RegexDetailsResponse,

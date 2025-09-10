@@ -7,7 +7,7 @@ from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.enums import RuleResultEnum, RuleScope
+from arthur_common.models.enums import RuleResultEnum, RuleScope
 from schemas.internal_schemas import (
     InferencePrompt,
     InferenceResponse,
@@ -15,7 +15,7 @@ from schemas.internal_schemas import (
     RuleEngineResult,
     Task,
 )
-from schemas.request_schemas import NewRuleRequest, NewTaskRequest
+from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from schemas.scorer_schemas import (
     RuleScore,
     ScorerHallucinationClaim,

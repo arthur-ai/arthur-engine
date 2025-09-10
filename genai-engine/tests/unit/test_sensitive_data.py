@@ -6,9 +6,9 @@ import pytest
 import utils.constants
 from langchain.schema import AIMessage
 from langchain_openai import AzureChatOpenAI
-from schemas.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import LLMContentFilterException, LLMExecutionException
-from schemas.enums import RuleResultEnum, RuleType
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest
 from scorer.checks.sensitive_data.custom_examples import SensitiveDataCustomExamples
 

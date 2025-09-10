@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Generator, List
 
 import pytest
+from arthur_common.models.enums import MetricType
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
@@ -29,7 +30,6 @@ from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.enums import MetricType
 from schemas.internal_schemas import Span as InternalSpan
 from services.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session

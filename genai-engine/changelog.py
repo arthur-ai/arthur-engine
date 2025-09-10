@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Generator
 
 from fastapi.openapi.utils import get_openapi
+
 from server import get_app_with_routes
 
 logger = logging.getLogger()

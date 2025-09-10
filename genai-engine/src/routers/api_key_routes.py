@@ -9,10 +9,11 @@ from dependencies import get_db_session
 from fastapi import APIRouter, Depends
 from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
-from schemas.enums import APIKeysRolesEnum, PermissionLevelsEnum
+from arthur_common.models.enums import APIKeysRolesEnum
+from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from schemas.request_schemas import NewApiKeyRequest
-from schemas.response_schemas import ApiKeyResponse
+from arthur_common.models.request_schemas import NewApiKeyRequest
+from arthur_common.models.response_schemas import ApiKeyResponse
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response

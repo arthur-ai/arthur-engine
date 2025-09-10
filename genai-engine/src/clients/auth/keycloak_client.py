@@ -10,9 +10,9 @@ from fastapi import HTTPException
 from keycloak import KeycloakAdmin
 from keycloak.exceptions import KeycloakGetError, KeycloakPostError
 from pydantic import BaseModel, TypeAdapter
-from schemas.common_schemas import AuthUserRole, UserPermission
+from arthur_common.models.common_schemas import AuthUserRole, UserPermission
 from schemas.internal_schemas import User
-from schemas.request_schemas import CreateUserRequest
+from arthur_common.models.request_schemas import CreateUserRequest
 from utils import constants
 from utils.utils import get_env_var, is_api_only_mode_enabled
 

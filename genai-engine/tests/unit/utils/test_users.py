@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from schemas.common_schemas import AuthUserRole
+from arthur_common.models.common_schemas import AuthUserRole
 from schemas.internal_schemas import User
 from utils.users import get_user_info_from_payload, permission_checker
 
