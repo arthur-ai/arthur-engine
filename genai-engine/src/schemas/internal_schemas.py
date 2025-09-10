@@ -1,7 +1,7 @@
+import json
 import logging
 import uuid
 from datetime import datetime
-from enum import Enum
 from typing import List, Optional
 
 from arthur_common.models.common_schemas import (
@@ -90,13 +90,14 @@ from db_models.db_models import (
 )
 from schemas.enums import (
     ApplicationConfigurations,
+    ComparisonOperatorEnum,
     DocumentStorageEnvironment,
     RuleDataType,
     RuleScoringMethod,
-    ComparisonOperatorEnum,
     ToolClassEnum,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import TraceQueryRequest
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DocumentStorageConfigurationResponse,
@@ -111,7 +112,6 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
-from schemas.request_schemas import TraceQueryRequest
 from utils import constants
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
@@ -365,7 +365,11 @@ class MetricResult(BaseModel):
             updated_at=x.updated_at,
             metric_type=x.metric_type,
             details=(
-                MetricScoreDetails.model_validate_json(x.details) if x.details else None
+                MetricScoreDetails.model_validate(
+                    json.loads(x.details) if isinstance(x.details, str) else x.details,
+                )
+                if x.details
+                else None
             ),
             prompt_tokens=x.prompt_tokens,
             completion_tokens=x.completion_tokens,
@@ -380,15 +384,15 @@ class MetricResult(BaseModel):
                 "span_id and metric_id must be set before converting to database model",
             )
 
-        details_json = None
+        details_dict = None
         if self.details:
-            details_json = self.details.model_dump_json()
+            details_dict = self.details.model_dump()
         return DatabaseMetricResult(
             id=self.id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             metric_type=self.metric_type,
-            details=details_json,
+            details=details_dict,
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
             latency_ms=self.latency_ms,
@@ -1702,6 +1706,7 @@ def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
         return configs[key]
     else:
         return None
+
 
 class FloatRangeFilter(BaseModel):
     value: float

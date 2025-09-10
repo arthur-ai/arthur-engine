@@ -713,7 +713,7 @@ def test_trace_query_with_tool_classification_filters(
     # Test tool selection filter
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
-        tool_selection="CORRECT",  # ToolClassEnum.CORRECT
+        tool_selection=1,  # ToolClassEnum.CORRECT
     )
     assert status_code == 200
     # Should return empty results since test data doesn't have tool classification metrics
@@ -722,7 +722,7 @@ def test_trace_query_with_tool_classification_filters(
     # Test tool usage filter
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
-        tool_usage="INCORRECT",  # ToolClassEnum.INCORRECT
+        tool_usage=0,  # ToolClassEnum.INCORRECT
     )
     assert status_code == 200
     # Should return empty results since test data doesn't have tool classification metrics
@@ -1104,7 +1104,7 @@ def test_trace_query_with_tool_classification_filters(
     # Test tool selection filter
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
-        tool_selection="CORRECT",  # ToolClassEnum.CORRECT
+        tool_selection=1,  # ToolClassEnum.CORRECT
     )
     assert status_code == 200
     # Should return empty results since test data doesn't have tool classification metrics
@@ -1113,7 +1113,7 @@ def test_trace_query_with_tool_classification_filters(
     # Test tool usage filter
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
-        tool_usage="INCORRECT",  # ToolClassEnum.INCORRECT
+        tool_usage=0,  # ToolClassEnum.INCORRECT
     )
     assert status_code == 200
     # Should return empty results since test data doesn't have tool classification metrics

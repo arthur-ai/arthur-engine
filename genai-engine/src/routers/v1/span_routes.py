@@ -3,6 +3,13 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.request_schemas import SpanQueryRequest
+from arthur_common.models.response_schemas import (
+    QuerySpansResponse,
+    QueryTracesWithMetricsResponse,
+    SpanWithMetricsResponse,
+)
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from google.protobuf.message import DecodeError
 from openinference.semconv.trace import OpenInferenceSpanKindValues
@@ -15,15 +22,9 @@ from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.common_schemas import PaginationParameters, ToolClassEnum
-from schemas.enums import PermissionLevelsEnum
+from schemas.enums import PermissionLevelsEnum, ToolClassEnum
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import SpanQueryRequest, TraceQueryRequest
-from arthur_common.models.response_schemas import (
-    QuerySpansResponse,
-    QueryTracesWithMetricsResponse,
-    SpanWithMetricsResponse,
-)
+from schemas.request_schemas import TraceQueryRequest
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 

@@ -2,24 +2,23 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import MetricType, PaginationSortMethod
 from sqlalchemy import and_, asc, desc, exists, func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.types import Float, Integer
 
 from db_models.db_models import (
     DatabaseMetricResult,
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
+from schemas.enums import ComparisonOperatorEnum, ToolClassEnum
 from schemas.internal_schemas import (
-    ComparisonOperators,
     FloatRangeFilter,
     Span,
     TraceQuerySchema,
 )
-from arthur_common.models.enums import PaginationSortMethod, MetricType 
-from schemas.enums import ToolClassEnum
-from sqlalchemy import and_, asc, desc, select
-from sqlalchemy.orm import Session
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM, SPAN_KIND_TOOL
 
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 # Constants
 DEFAULT_PAGE_SIZE = 5
+
 
 class SpanQueryService:
     """Service responsible for querying spans from the database."""
@@ -197,21 +197,21 @@ class SpanQueryService:
         """Find traces containing spans matching span-level criteria."""
         qualifying_traces = set(candidate_trace_ids)
         if filters.tool_name:
-            tool_name_traces = self._get_traces_with_tool_name_optimized(
+            tool_name_traces = self._get_traces_with_tool_name(
                 filters.tool_name,
                 candidate_trace_ids,
             )
             qualifying_traces.intersection_update(tool_name_traces)
 
         if self._has_metric_filters(filters):
-            metric_traces = self._get_traces_with_metrics_optimized(
+            metric_traces = self._get_traces_with_metrics(
                 filters,
                 candidate_trace_ids,
             )
             qualifying_traces.intersection_update(metric_traces)
         return qualifying_traces
 
-    def _get_traces_with_tool_name_optimized(
+    def _get_traces_with_tool_name(
         self,
         tool_name: str,
         candidate_trace_ids: list[str],
@@ -220,7 +220,7 @@ class SpanQueryService:
         query = select(DatabaseSpan.trace_id.distinct()).where(
             and_(
                 DatabaseSpan.trace_id.in_(candidate_trace_ids),
-                DatabaseSpan.span_kind == "TOOL",
+                DatabaseSpan.span_kind == SPAN_KIND_TOOL,
                 DatabaseSpan.span_name == tool_name,
             ),
         )
@@ -228,7 +228,7 @@ class SpanQueryService:
         results = self.db_session.execute(query).scalars().all()
         return set(results)
 
-    def _get_traces_with_metrics_optimized(
+    def _get_traces_with_metrics(
         self,
         filters: TraceQuerySchema,
         candidate_trace_ids: list[str],
@@ -237,7 +237,7 @@ class SpanQueryService:
         base_query = select(DatabaseSpan.trace_id.distinct()).where(
             DatabaseSpan.trace_id.in_(candidate_trace_ids),
         )
-        exists_conditions = self._build_metric_exists_conditions_optimized(
+        exists_conditions = self._build_metric_exists_conditions(
             filters,
             candidate_trace_ids,
         )
@@ -254,7 +254,7 @@ class SpanQueryService:
             or filters.tool_usage,
         )
 
-    def _build_metric_exists_conditions_optimized(
+    def _build_metric_exists_conditions(
         self,
         filters: TraceQuerySchema,
         candidate_trace_ids: list[str],
@@ -269,7 +269,7 @@ class SpanQueryService:
         ]:
             if relevance_filters:
                 exists_conditions.append(
-                    self._build_relevance_exists_optimized(
+                    self._build_relevance_exists(
                         metric_type,
                         relevance_filters,
                         filters.task_ids,
@@ -284,7 +284,7 @@ class SpanQueryService:
         ]:
             if tool_class:
                 exists_conditions.append(
-                    self._build_tool_classification_exists_optimized(
+                    self._build_tool_classification_exists(
                         MetricType.TOOL_SELECTION,
                         tool_class,
                         filters.task_ids,
@@ -297,20 +297,20 @@ class SpanQueryService:
 
     def _build_comparison_condition(self, column, filter_item: FloatRangeFilter):
         """Build comparison condition (column OP value) from FloatRangeFilter."""
-        if filter_item.operator == ComparisonOperators.EQUALS:
+        if filter_item.operator == ComparisonOperatorEnum.EQUAL:
             return column == filter_item.value
-        elif filter_item.operator == ComparisonOperators.GREATER_THAN:
+        elif filter_item.operator == ComparisonOperatorEnum.GREATER_THAN:
             return column > filter_item.value
-        elif filter_item.operator == ComparisonOperators.GREATER_THAN_OR_EQUAL:
+        elif filter_item.operator == ComparisonOperatorEnum.GREATER_THAN_OR_EQUAL:
             return column >= filter_item.value
-        elif filter_item.operator == ComparisonOperators.LESS_THAN:
+        elif filter_item.operator == ComparisonOperatorEnum.LESS_THAN:
             return column < filter_item.value
-        elif filter_item.operator == ComparisonOperators.LESS_THAN_OR_EQUAL:
+        elif filter_item.operator == ComparisonOperatorEnum.LESS_THAN_OR_EQUAL:
             return column <= filter_item.value
         else:
             raise ValueError(f"Unsupported operator: {filter_item.operator}")
 
-    def _build_relevance_exists_optimized(
+    def _build_relevance_exists(
         self,
         metric_type: MetricType,
         relevance_filters: list[FloatRangeFilter],
@@ -329,11 +329,20 @@ class SpanQueryService:
         }
         if metric_type not in paths:
             raise ValueError(f"Unsupported relevance metric type: {metric_type}")
-        score_path = inner_metric.c.details[paths[metric_type]][
-            "llm_relevance_score"
-        ].astext
+        # Use database-specific JSON extraction functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            # PostgreSQL: json_extract_path_text(column, 'path1', 'path2')
+            score_path = func.json_extract_path_text(
+                inner_metric.c.details,
+                paths[metric_type],
+                "llm_relevance_score",
+            )
+        else:  # SQLite
+            # SQLite: json_extract(column, '$.path1.path2')
+            json_path = f"$.{paths[metric_type]}.llm_relevance_score"
+            score_path = func.json_extract(inner_metric.c.details, json_path)
         relevance_conditions = [
-            self._build_comparison_condition(func.cast(score_path, func.Float()), f)
+            self._build_comparison_condition(func.cast(score_path, Float), f)
             for f in relevance_filters
         ]
 
@@ -359,7 +368,7 @@ class SpanQueryService:
             ),
         )
 
-    def _build_tool_classification_exists_optimized(
+    def _build_tool_classification_exists(
         self,
         metric_type: MetricType,
         tool_class: ToolClassEnum,
@@ -373,12 +382,21 @@ class SpanQueryService:
         inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
 
         # Tool classification path
-        classification_condition = (
-            func.cast(
-                inner_metric.c.details["tool_selection"][field_name].astext,
-                func.Integer(),
+        # Use database-specific JSON extraction for tool classification
+        if self.db_session.bind.dialect.name == "postgresql":
+            # PostgreSQL: json_extract_path_text(column, 'path1', 'path2')
+            classification_path = func.json_extract_path_text(
+                inner_metric.c.details,
+                "tool_selection",
+                field_name,
             )
-            == tool_class.value
+        else:  # SQLite
+            # SQLite: json_extract(column, '$.path1.path2')
+            json_path = f"$.tool_selection.{field_name}"
+            classification_path = func.json_extract(inner_metric.c.details, json_path)
+
+        classification_condition = (
+            func.cast(classification_path, Integer) == tool_class.value
         )
 
         return exists(
