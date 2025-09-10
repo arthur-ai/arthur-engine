@@ -40,7 +40,7 @@ COPY pyproject.toml /app/
 COPY poetry.lock /app/
 COPY README.md /app/
 WORKDIR /app
-RUN poetry install --no-root
+RUN poetry config virtualenvs.create false && poetry install --no-root
 
 # copy ml-engine code
 COPY src/ml_engine /app/src/ml_engine
@@ -50,8 +50,8 @@ RUN mkdir -p /genai_client
 COPY src/genai_client /genai_client
 RUN poetry run pip install /genai_client
 
-# Final Stage(s): Create genai-engine image
-FROM gcr.io/distroless/python3-debian12 AS ml-engine-distroless-base
+# Final Stage(s): Create ml-engine image
+FROM gcr.io/distroless/python3-debian12:nonroot AS ml-engine-distroless-base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
@@ -65,15 +65,18 @@ COPY --from=install /usr/lib /usr/lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
-COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/virtualenvs/
-COPY --from=install /app/ /app/
 COPY --from=install /opt/oracle/ /opt/oracle/
+COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
+COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
+COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
+ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
+ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
 
 # Set working directory (this is where the entrypoint will be run)
-WORKDIR /app
+WORKDIR /home/nonroot/app
 
 # start the ml-engine
 # TODO: start using WSGI server instead of direct python run
