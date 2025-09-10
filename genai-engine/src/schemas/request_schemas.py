@@ -82,11 +82,11 @@ class TraceQueryRequest(BaseModel):
     tool_usage: Optional[ToolClassEnum] = Field(None, description="Tool usage evaluation result.")
     
     # Trace duration filters
-    trace_duration_eq: Optional[float] = Field(None, gt=0, description="Duration exactly equal to this value (seconds).")
-    trace_duration_gt: Optional[float] = Field(None, gt=0, description="Duration greater than this value (seconds).")
-    trace_duration_gte: Optional[float] = Field(None, gt=0, description="Duration greater than or equal to this value (seconds).")
-    trace_duration_lt: Optional[float] = Field(None, gt=0, description="Duration less than this value (seconds).")
-    trace_duration_lte: Optional[float] = Field(None, gt=0, description="Duration less than or equal to this value (seconds).")
+    trace_duration_eq: Optional[float] = Field(None, ge=0, description="Duration exactly equal to this value (seconds).")
+    trace_duration_gt: Optional[float] = Field(None, ge=0, description="Duration greater than this value (seconds).")
+    trace_duration_gte: Optional[float] = Field(None, ge=0, description="Duration greater than or equal to this value (seconds).")
+    trace_duration_lt: Optional[float] = Field(None, ge=0, description="Duration less than this value (seconds).")
+    trace_duration_lte: Optional[float] = Field(None, ge=0, description="Duration less than or equal to this value (seconds).")
 
     @field_validator(
         "query_relevance_eq", "query_relevance_gt", "query_relevance_gte", 

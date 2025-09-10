@@ -172,27 +172,27 @@ def trace_query_parameters(
     # Trace duration filters
     trace_duration_eq: float = Query(
         None,
-        gt=0,
+        ge=0,
         description="Duration exactly equal to this value (seconds).",
     ),
     trace_duration_gt: float = Query(
         None,
-        gt=0,
+        ge=0,
         description="Duration greater than this value (seconds).",
     ),
     trace_duration_gte: float = Query(
         None,
-        gt=0,
+        ge=0,
         description="Duration greater than or equal to this value (seconds).",
     ),
     trace_duration_lt: float = Query(
         None,
-        gt=0,
+        ge=0,
         description="Duration less than this value (seconds).",
     ),
     trace_duration_lte: float = Query(
         None,
-        gt=0,
+        ge=0,
         description="Duration less than or equal to this value (seconds).",
     ),
 ) -> TraceQueryRequest:

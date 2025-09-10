@@ -2,6 +2,45 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/10/2025
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'query_relevance_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'query_relevance_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'query_relevance_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'query_relevance_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'query_relevance_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'response_relevance_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'response_relevance_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'response_relevance_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'response_relevance_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'response_relevance_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'tool_name'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'tool_selection'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'tool_usage'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_duration_eq'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_duration_gt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_duration_gte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_duration_lt'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_duration_lte'
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the new optional 'query' request parameter 'trace_ids'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'query_relevance_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'query_relevance_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'query_relevance_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'query_relevance_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'query_relevance_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'response_relevance_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'response_relevance_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'response_relevance_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'response_relevance_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'response_relevance_lte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'tool_name'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'tool_selection'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'tool_usage'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'trace_duration_eq'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'trace_duration_gt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'trace_duration_gte'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'trace_duration_lt'
+- **CHANGE** for **URL**: /v1/traces/query  added the new optional 'query' request parameter 'trace_duration_lte'
+
 # 09/05/2025
 - Added span_name to spans response
 

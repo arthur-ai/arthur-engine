@@ -48,7 +48,7 @@ def get_output_of_openapi_diff(
     )
     logger.info(f"Return code of the command: {output.returncode}")
     if output.returncode != 0:
-        raise ValueError("Something wrong happened during diff generation.")
+        raise ValueError("Something wrong happened during diff generation. Output: " + output.stdout.decode("utf-8"))
 
     raw_changelog = [
         line
