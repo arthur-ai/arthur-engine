@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.77"
+        "version": "2.1.78"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -4593,6 +4593,17 @@
                         ],
                         "title": "Span Kind"
                     },
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name"
+                    },
                     "start_time": {
                         "type": "string",
                         "format": "date-time",
@@ -5953,6 +5964,17 @@
                             }
                         ],
                         "title": "Span Kind"
+                    },
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name"
                     },
                     "start_time": {
                         "type": "string",

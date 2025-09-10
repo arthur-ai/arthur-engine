@@ -8,9 +8,14 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert,  # Unit tests are still using sqlite
+)
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -151,6 +156,7 @@ class TraceIngestionService:
             span_id=trace_utils.convert_id_to_hex(span_data.get("spanId")),
             parent_span_id=self._get_parent_span_id(span_data),
             span_kind=self._get_attribute_value(span_data, SPAN_KIND_KEY),
+            span_name=span_data.get("name"),
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
@@ -254,7 +260,102 @@ class TraceIngestionService:
 
         self.db_session.add_all(spans)
 
+        # Batch trace metadata updates within this transaction
+        # This avoids N separate upserts for N spans in the same trace
+        self._batch_upsert_trace_metadata(spans)
+
         if commit:
             self.db_session.commit()
 
-        logger.debug(f"Stored {len(spans)} spans (commit={commit})")
+        logger.debug(f"Stored {len(spans)} spans with trace metadata (commit={commit})")
+
+    def _batch_upsert_trace_metadata(self, spans: list[DatabaseSpan]):
+        """Efficiently batch trace metadata updates using native database upsert.
+
+        Groups spans by trace_id to batch updates. For example:
+        - 50 spans from same trace = 1 upsert (not 50!)
+        - Handles out-of-order span arrival with MIN/MAX aggregations
+        - Uses native PostgreSQL/SQLite upsert for optimal performance
+        """
+        if not spans:
+            return
+
+        # Group spans by trace_id to batch updates
+        trace_updates = {}
+        current_time = datetime.now()
+
+        for span in spans:
+            trace_id = span.trace_id
+            if trace_id not in trace_updates:
+                trace_updates[trace_id] = {
+                    "trace_id": trace_id,
+                    "task_id": span.task_id,
+                    "start_time": span.start_time,
+                    "end_time": span.end_time,
+                    "span_count": 0,
+                    "updated_at": current_time,
+                }
+
+            # Aggregate within this batch (handles multiple spans per trace in one ingestion)
+            trace_updates[trace_id]["start_time"] = min(
+                trace_updates[trace_id]["start_time"],
+                span.start_time,
+            )
+            trace_updates[trace_id]["end_time"] = max(
+                trace_updates[trace_id]["end_time"],
+                span.end_time,
+            )
+            trace_updates[trace_id]["span_count"] += 1
+
+        if not trace_updates:
+            return
+
+        # Single native upsert operation - replaces complex manual logic
+        values_list = list(trace_updates.values())
+
+        # PostgreSQL upsert with proper aggregation functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            stmt = pg_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.least(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.greatest(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
+                ),
+            )
+
+        # SQLite upsert with min/max functions
+        # Needed for unit tests
+        else:  # sqlite
+            stmt = sqlite_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.min(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.max(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
+                ),
+            )
+
+        self.db_session.execute(stmt)
+
+        logger.debug(
+            f"Upserted metadata for {len(trace_updates)} traces from {len(spans)} spans",
+        )

@@ -264,6 +264,22 @@ jobs:
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} arthurplatform/ml-engine:latest-dev
             docker push arthurplatform/ml-engine:latest-dev
           fi
+      - name: Login to Artifactory
+        run: |
+          docker logout
+          echo "${{ secrets.NEXUS_REPOSITORY_PASSWORD }}" | docker login docker.arthur.ai -u "${{ secrets.NEXUS_REPOSITORY_USERNAME }}" --password-stdin
+      - name: Retag and push image to Artifactory
+        run: |
+          docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          docker push docker.arthur.ai/arthur/scope/ml-engine:${{ env.VERSION }}
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest
+            docker push docker.arthur.ai/arthur/scope/ml-engine:latest
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+            docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
+          fi
 
 
   push-all-cfts:
@@ -285,7 +301,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-git
       - uses: ./.github/workflows/composite-actions/set-version
       - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@1b2b73eb6a459c3a91fde76ba4c255e5b4b8e94e
+        uses: aws-actions/configure-aws-credentials@5ebd15afc69e5abcd499614d3ced5d65dc34087f
         with:
           role-to-assume: ${{ secrets.AWS_S3_ROLE_ARN }}
           role-session-name: ${{ secrets.AWS_S3_ROLE_SESSION_NAME }}
