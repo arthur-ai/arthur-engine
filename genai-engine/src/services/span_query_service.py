@@ -10,23 +10,23 @@ from db_models.db_models import (
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
-from schemas.common_schemas import PaginationParameters
-from schemas.enums import MetricType, PaginationSortMethod, ToolClassEnum
 from schemas.internal_schemas import (
     ComparisonOperators,
     FloatRangeFilter,
     Span,
     TraceQuerySchema,
 )
+from arthur_common.models.enums import PaginationSortMethod, MetricType 
+from schemas.enums import ToolClassEnum
+from sqlalchemy import and_, asc, desc, select
+from sqlalchemy.orm import Session
 from utils import trace as trace_utils
-from utils.constants import SPAN_KIND_LLM
+from utils.constants import SPAN_KIND_LLM, SPAN_KIND_TOOL
 
 logger = logging.getLogger(__name__)
 
 # Constants
 DEFAULT_PAGE_SIZE = 5
-TOOL_SPAN_KIND = "TOOL"
-
 
 class SpanQueryService:
     """Service responsible for querying spans from the database."""

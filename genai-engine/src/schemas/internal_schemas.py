@@ -4,6 +4,56 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+from arthur_common.models.common_schemas import (
+    AuthUserRole,
+    ExampleConfig,
+    ExamplesConfig,
+    KeywordsConfig,
+    PIIConfig,
+    RegexConfig,
+    ToxicityConfig,
+)
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    MetricType,
+    PIIEntityTypes,
+    RuleResultEnum,
+    RuleScope,
+    RuleType,
+    ToxicityViolationType,
+)
+from arthur_common.models.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+)
+from arthur_common.models.response_schemas import (
+    ApiKeyResponse,
+    BaseDetailsResponse,
+    ChatDocumentContext,
+    ExternalDocument,
+    ExternalInference,
+    ExternalInferencePrompt,
+    ExternalInferenceResponse,
+    ExternalRuleResult,
+    HallucinationClaimResponse,
+    HallucinationDetailsResponse,
+    InferenceFeedbackResponse,
+    KeywordDetailsResponse,
+    KeywordSpanResponse,
+    MetricResponse,
+    MetricResultResponse,
+    NestedSpanWithMetricsResponse,
+    PIIDetailsResponse,
+    PIIEntitySpanResponse,
+    RegexDetailsResponse,
+    RegexSpanResponse,
+    RuleResponse,
+    SpanWithMetricsResponse,
+    TaskResponse,
+    ToxicityDetailsResponse,
+    UserResponse,
+)
 from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
@@ -38,64 +88,18 @@ from db_models.db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
-from schemas.common_schemas import (
-    AuthUserRole,
-    ExampleConfig,
-    ExamplesConfig,
-    KeywordsConfig,
-    PIIConfig,
-    RegexConfig,
-    ToxicityConfig,
-)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
-    InferenceFeedbackTarget,
-    MetricType,
-    PIIEntityTypes,
     RuleDataType,
-    RuleResultEnum,
-    RuleScope,
     RuleScoringMethod,
-    RuleType,
+    ComparisonOperatorEnum,
     ToolClassEnum,
-    ToxicityViolationType,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import (
-    NewMetricRequest,
-    NewRuleRequest,
-    NewTaskRequest,
-    TraceQueryRequest,
-)
 from schemas.response_schemas import (
-    ApiKeyResponse,
     ApplicationConfigurationResponse,
-    BaseDetailsResponse,
-    ChatDocumentContext,
     DocumentStorageConfigurationResponse,
-    ExternalDocument,
-    ExternalInference,
-    ExternalInferencePrompt,
-    ExternalInferenceResponse,
-    ExternalRuleResult,
-    HallucinationClaimResponse,
-    HallucinationDetailsResponse,
-    InferenceFeedbackResponse,
-    KeywordDetailsResponse,
-    KeywordSpanResponse,
-    MetricResponse,
-    MetricResultResponse,
-    NestedSpanWithMetricsResponse,
-    PIIDetailsResponse,
-    PIIEntitySpanResponse,
-    RegexDetailsResponse,
-    RegexSpanResponse,
-    RuleResponse,
-    SpanWithMetricsResponse,
-    TaskResponse,
-    ToxicityDetailsResponse,
-    UserResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -107,6 +111,7 @@ from schemas.scorer_schemas import (
     ScorerRuleDetails,
     ScorerToxicityScore,
 )
+from schemas.request_schemas import TraceQueryRequest
 from utils import constants
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
@@ -1698,18 +1703,9 @@ def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
     else:
         return None
 
-
-class ComparisonOperators(str, Enum):
-    EQUALS = "eq"
-    GREATER_THAN = "gt"
-    GREATER_THAN_OR_EQUAL = "gte"
-    LESS_THAN = "lt"
-    LESS_THAN_OR_EQUAL = "lte"
-
-
 class FloatRangeFilter(BaseModel):
     value: float
-    operator: ComparisonOperators
+    operator: ComparisonOperatorEnum
 
 
 class TraceQuerySchema(BaseModel):
@@ -1744,7 +1740,7 @@ class TraceQuerySchema(BaseModel):
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
         def resolve_filters(prefix: str) -> Optional[list[FloatRangeFilter]]:
             filters = []
-            for op in ComparisonOperators:
+            for op in ComparisonOperatorEnum:
                 value = getattr(request, f"{prefix}_{op.value}", None)
                 if value is not None:
                     filters.append(FloatRangeFilter(value=value, operator=op))

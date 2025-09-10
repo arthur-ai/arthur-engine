@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class CacheConfig(BaseSettings):
     TASK_RULES_CACHE_ENABLED: bool = "PYTEST_CURRENT_TEST" not in os.environ
     TASK_RULES_CACHE_TTL: int = 60 * 1
-    
+
     TASK_METRICS_CACHE_ENABLED: bool = "PYTEST_CURRENT_TEST" not in os.environ
     TASK_METRICS_CACHE_TTL: int = 60 * 1
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from db_models.db_models import DatabaseMetric
 from schemas.internal_schemas import Metric
-from schemas.request_schemas import UpdateMetricRequest
+from arthur_common.models.request_schemas import UpdateMetricRequest
 
 logger = logging.getLogger(__name__)
 

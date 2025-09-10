@@ -1,5 +1,5 @@
 import pytest
-from schemas.enums import PaginationSortMethod, RuleScope, RuleType
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 

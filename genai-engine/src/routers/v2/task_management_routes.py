@@ -20,10 +20,11 @@ from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.common_schemas import PaginationParameters
-from schemas.enums import PermissionLevelsEnum, RuleScope, RuleType
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Metric, Rule, Task, User
-from schemas.request_schemas import (
+from schemas.enums import PermissionLevelsEnum
+from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
@@ -31,7 +32,11 @@ from schemas.request_schemas import (
     UpdateMetricRequest,
     UpdateRuleRequest,
 )
-from schemas.response_schemas import RuleResponse, SearchTasksResponse, TaskResponse
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    SearchTasksResponse,
+    TaskResponse,
+)
 from utils import constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint

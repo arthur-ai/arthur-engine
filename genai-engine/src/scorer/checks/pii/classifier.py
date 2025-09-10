@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Set
 
 import torch
 
-from schemas.enums import PIIEntityTypes, RuleResultEnum
+from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScorerPIIEntitySpan, ScorerRuleDetails
 from scorer.checks.pii.presidio_gliner_map import PresidioGlinerMapper
 from scorer.checks.pii.validations import (

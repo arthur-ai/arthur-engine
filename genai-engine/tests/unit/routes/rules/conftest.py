@@ -5,9 +5,9 @@ from dependencies import get_application_config
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.enums import RuleScope
+from arthur_common.models.enums import RuleScope
 from schemas.internal_schemas import Rule
-from schemas.request_schemas import NewRuleRequest
+from arthur_common.models.request_schemas import NewRuleRequest
 from tests.clients.base_test_client import override_get_db_session
 
 
