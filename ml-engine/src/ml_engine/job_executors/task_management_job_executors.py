@@ -22,14 +22,13 @@ from arthur_client.api_bindings import (
     TasksV1Api,
 )
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
-from arthur_common.models.shield import (
+from arthur_common.models.request_schemas import NewMetricRequest, NewRuleRequest
+from arthur_common.models.response_schemas import (
     MetricResponse,
-    NewMetricRequest,
-    NewRuleRequest,
     RuleResponse,
     TaskResponse,
 )
+from arthur_common.models.schema_definitions import AGENTIC_TRACE_SCHEMA, SHIELD_SCHEMA
 from arthur_common.models.task_job_specs import (
     CreateModelTaskJobSpec,
     DeleteModelTaskJobSpec,
@@ -49,7 +48,6 @@ class InvalidConnectorException(Exception):
 
 
 class _TaskManagementJobExecutor:
-
     def __init__(
         self,
         models_client: ModelsV1Api,
@@ -154,14 +152,15 @@ class _TaskManagementJobExecutor:
         self.tasks_client.put_task_state_cache(
             model_id=model_id,
             put_task_state_cache_request=PutTaskStateCacheRequest(
-                task=ScopeClientTypeConverter.task_response_api_to_scope_client(task),
+                task=ScopeClientTypeConverter.task_response_api_to_scope_client(
+                    task,
+                ),
             ),
         )
         self.logger.info(f"Uploaded final task state to the platform API")
 
 
 class _TaskRuleAdder:
-
     def __init__(self, connector: ShieldBaseConnector, logger: logging.Logger) -> None:
         self.connector = connector
         self.logger = logger
@@ -201,6 +200,7 @@ class _TaskRuleAdder:
             self.logger.warning(f"Rule {rule.name} removed")
         self.logger.warning("Rollback complete")
 
+
 class _TaskTraceMetricAdder:
     def __init__(
         self,
@@ -237,7 +237,7 @@ class _TaskTraceMetricAdder:
         created_metrics: list[MetricResponse],
     ) -> None:
         self.logger.warning(
-            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics"
+            f"Error adding metrics to task, rolling back {len(created_metrics)} metrics",
         )
         for metric in created_metrics:
             self.logger.warning(f"Removing metric: {metric.name}")
@@ -321,7 +321,6 @@ class _ValidationKeyManager:
 
 
 class _TaskDatasetAndModelCreator(_ValidationKeyManager):
-
     def __init__(
         self,
         task: TaskResponse,
@@ -413,7 +412,6 @@ class _TaskDatasetAndModelCreator(_ValidationKeyManager):
 
 
 class TaskCreator:
-
     def __init__(
         self,
         conn: ShieldBaseConnector,
@@ -434,7 +432,8 @@ class TaskCreator:
         # create the task in shield
         is_agentic = self.job_spec.task_type == TaskType.AGENTIC
         task_resp = self.conn.create_task(
-            name=self.job_spec.task_name, is_agentic=is_agentic
+            name=self.job_spec.task_name,
+            is_agentic=is_agentic,
         )
         self.logger.info(
             f"Created task: {self.job_spec.task_name} with id {task_resp.id}",
@@ -460,7 +459,8 @@ class TaskCreator:
         # Add tracing metrics to an agentic task
         if self.job_spec.task_type == TaskType.AGENTIC:
             trace_metric_adder = _TaskTraceMetricAdder(
-                connector=self.conn, logger=self.logger
+                connector=self.conn,
+                logger=self.logger,
             )
             trace_metric_adder.add_tracing_metrics_to_task(
                 task_id=task_id,
@@ -497,7 +497,6 @@ class TaskCreator:
 
 
 class ExistingTaskCreator(_ValidationKeyManager):
-
     def __init__(
         self,
         conn: ShieldBaseConnector,
@@ -536,7 +535,6 @@ class ExistingTaskCreator(_ValidationKeyManager):
 
 
 class _TaskAndModelDeleter(_ValidationKeyManager):
-
     def __init__(
         self,
         conn: ShieldBaseConnector,
@@ -597,7 +595,6 @@ class _TaskAndModelDeleter(_ValidationKeyManager):
 
 
 class CreateTaskJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: CreateModelTaskJobSpec) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
@@ -618,7 +615,6 @@ class CreateTaskJobExecutor(_TaskManagementJobExecutor):
 
 
 class LinkTaskJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: CreateModelLinkTaskJobSpec) -> None:
         conn: ShieldBaseConnector = self.get_shield_connector_from_connector_id(
             str(job_spec.connector_id),
@@ -639,12 +635,14 @@ class LinkTaskJobExecutor(_TaskManagementJobExecutor):
 
 
 class UpdateTaskJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: UpdateModelTaskRulesJobSpec) -> None:
-        model, dataset, connector, task_id = (
-            self.retrieve_task_management_resources_from_model_id(
-                model_id=str(job_spec.scope_model_id),
-            )
+        (
+            model,
+            dataset,
+            connector,
+            task_id,
+        ) = self.retrieve_task_management_resources_from_model_id(
+            model_id=str(job_spec.scope_model_id),
         )
 
         # add rules - if any fail to add, rollback ones that were already created
@@ -706,12 +704,14 @@ class UpdateTaskJobExecutor(_TaskManagementJobExecutor):
 
 
 class DeleteTaskJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: DeleteModelTaskJobSpec) -> None:
-        model, dataset, connector, task_id = (
-            self.retrieve_task_management_resources_from_model_id(
-                model_id=str(job_spec.scope_model_id),
-            )
+        (
+            model,
+            dataset,
+            connector,
+            task_id,
+        ) = self.retrieve_task_management_resources_from_model_id(
+            model_id=str(job_spec.scope_model_id),
         )
 
         deleter = _TaskAndModelDeleter(
@@ -725,12 +725,14 @@ class DeleteTaskJobExecutor(_TaskManagementJobExecutor):
 
 
 class FetchTaskJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: FetchModelTaskJobSpec) -> None:
-        model, _, connector, task_id = (
-            self.retrieve_task_management_resources_from_model_id(
-                model_id=str(job_spec.scope_model_id),
-            )
+        (
+            model,
+            _,
+            connector,
+            task_id,
+        ) = self.retrieve_task_management_resources_from_model_id(
+            model_id=str(job_spec.scope_model_id),
         )
         self.logger.info(f"Fetching task: {task_id}")
         shield_task_state = connector.read_task(task_id=task_id)
@@ -738,12 +740,14 @@ class FetchTaskJobExecutor(_TaskManagementJobExecutor):
 
 
 class RegenerateTaskValidationKeyJobExecutor(_TaskManagementJobExecutor):
-
     def execute(self, job_spec: RegenerateTaskValidationKeyJobSpec) -> None:
-        model, _, connector, task_id = (
-            self.retrieve_task_management_resources_from_model_id(
-                model_id=str(job_spec.scope_model_id),
-            )
+        (
+            model,
+            _,
+            connector,
+            task_id,
+        ) = self.retrieve_task_management_resources_from_model_id(
+            model_id=str(job_spec.scope_model_id),
         )
         manager = _ValidationKeyManager(
             conn=connector,

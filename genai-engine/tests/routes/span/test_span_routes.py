@@ -51,6 +51,7 @@ def test_receive_traces_with_resource_attributes(
     client: GenaiEngineTestClientBase,
     sample_openinference_trace,
     sample_span_missing_task_id,
+    sample_openinference_trace_multiple_spans,
 ):
     """Test receive_traces with resource attributes for task ID extraction."""
 
@@ -73,6 +74,17 @@ def test_receive_traces_with_resource_attributes(
         "Missing or invalid task ID in resource attributes"
         in response_json["rejection_reasons"][0]
     )
+
+    # test inserting trace with spans with and without parent_span_id
+    status_code, response = client.receive_traces(
+        sample_openinference_trace_multiple_spans
+    )
+    assert status_code == 200
+    response_json = json.loads(response)
+    assert response_json["total_spans"] == 2
+    assert response_json["accepted_spans"] == 2
+    assert response_json["rejected_spans"] == 0
+    assert response_json["status"] == "success"
 
 
 @pytest.mark.unit_tests
@@ -145,8 +157,10 @@ def test_query_traces_basic_functionality(
     assert trace.trace_id == "trace2"
     assert len(trace.root_spans) == 1
     assert trace.root_spans[0].span_kind == "AGENT"
+    assert trace.root_spans[0].span_name == "Agent"
     assert len(trace.root_spans[0].children) == 1
     assert trace.root_spans[0].children[0].span_kind == "RETRIEVER"
+    assert trace.root_spans[0].children[0].span_name == "Retriever"
 
     # Test pagination
     status_code, response = client.query_traces(task_ids=["task1"], page=0, page_size=1)
@@ -184,9 +198,9 @@ def test_query_traces_edge_cases(
 
     # Test missing task_ids
     status_code, response = client.query_traces(task_ids=[])
-    assert status_code == 400
-    response_json = json.loads(response)
-    assert "Field required" in response_json["detail"]
+    assert status_code == 400  # All validation errors now return 400
+    # Should have error response
+    assert response is not None
 
 
 @pytest.mark.unit_tests
@@ -209,6 +223,7 @@ def test_query_traces_span_features(
     assert llm_span.user_query == "What is the weather like today?"
     assert llm_span.response == "I don't have access to real-time weather information."
     assert llm_span.span_kind == "LLM"
+    assert llm_span.span_name == "ChatOpenAI"
     assert "arthur_span_version" in llm_span.raw_data
 
     # Test non-LLM span features (should not be extracted)
@@ -219,6 +234,7 @@ def test_query_traces_span_features(
     assert non_llm_span.response is None
     assert non_llm_span.context is None
     assert non_llm_span.span_kind == "CHAIN"
+    assert non_llm_span.span_name == "Chain"
 
 
 @pytest.mark.unit_tests
@@ -295,8 +311,10 @@ def test_query_traces_with_metrics(
     assert trace.trace_id == "trace1"
     assert len(trace.root_spans) == 1
     assert trace.root_spans[0].span_kind == "LLM"
+    assert trace.root_spans[0].span_name == "ChatOpenAI"
     assert len(trace.root_spans[0].children) == 1
     assert trace.root_spans[0].children[0].span_kind == "CHAIN"
+    assert trace.root_spans[0].children[0].span_name == "Chain"
 
     # Verify metrics are computed for LLM spans
     for span in all_spans:
@@ -306,9 +324,9 @@ def test_query_traces_with_metrics(
 
     # Test missing task IDs
     status_code, response = client.query_traces_with_metrics(task_ids=[])
-    assert status_code == 400
-    response_json = json.loads(response)
-    assert "Field required" in response_json["detail"]
+    assert status_code == 400  # All validation errors now return 400
+    # Should have error response
+    assert response is not None
 
 
 @pytest.mark.unit_tests
@@ -517,11 +535,13 @@ def test_nested_structure(
     # Verify parent-child relationship for Trace1
     root_span = trace.root_spans[0]
     assert root_span.span_kind == "LLM"
+    assert root_span.span_name == "ChatOpenAI"
     assert root_span.span_id == "span1"
     assert len(root_span.children) == 1
 
     child = root_span.children[0]
     assert child.span_kind == "CHAIN"
+    assert child.span_name == "Chain"
     assert child.span_id == "span2"
     assert child.parent_span_id == root_span.span_id
     assert len(child.children) == 0

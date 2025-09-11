@@ -1,8 +1,8 @@
 import time
 
-from schemas.common_schemas import LLMTokenConsumption
+from arthur_common.models.common_schemas import LLMTokenConsumption
 from schemas.custom_exceptions import LLMTokensPerPeriodRateLimitException
-from schemas.enums import (
+from arthur_common.models.enums import (
     PIIEntityTypes,
     RuleResultEnum,
     RuleType,

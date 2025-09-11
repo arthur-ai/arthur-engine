@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Set, Tuple
+from typing import Any, List, Set, Tuple
 
 import pandas as pd
 from arthur_client.api_bindings import (
@@ -26,7 +26,7 @@ from arthur_client.api_bindings import (
 )
 from arthur_client.api_bindings.exceptions import NotFoundException
 from arthur_common.models.connectors import SHIELD_DATASET_TASK_ID_FIELD
-from arthur_common.models.datasets import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.metrics import (
     DatasetReference,
     Dimension,
@@ -99,7 +99,11 @@ class MetricsCalculationExecutor:
         loaded_datasets = [
             dataset for dataset in datasets if dataset.id not in failed_to_load_datasets
         ]
-        metrics = self._calculate_metrics(model, loaded_datasets, duckdb_conn)
+        metrics, failed_agg_ids = self._calculate_metrics(
+            model,
+            loaded_datasets,
+            duckdb_conn,
+        )
         mv = self._upload_metrics(model, job_spec, metrics)
         alert_check_batch = _create_alert_check_job(model, job_spec, mv)
         self._submit_alert_check_job(model.project_id, alert_check_batch)
@@ -109,6 +113,12 @@ class MetricsCalculationExecutor:
             raise ValueError(
                 f"Error loading dataset(s) with id(s) {', '.join(failed_to_load_datasets)}. Metrics were "
                 f"still calculated for any other datasets associated with the model.",
+            )
+        if failed_agg_ids:
+            # raise exception so job is marked as failed
+            raise ValueError(
+                f"Error calculating aggregation(s) with id(s) {', '.join(failed_agg_ids)}. Metrics were still "
+                f"calculated for any other aggregations configured for the model.",
             )
 
     # Extract task IDs and connector ID from a single dataset
@@ -211,22 +221,40 @@ class MetricsCalculationExecutor:
                 )
             case AggregationKind.CUSTOM:
                 try:
-                    custom_aggs = (
-                        self.custom_aggregations_client.get_custom_aggregation(
-                            custom_aggregation_id=agg_spec.aggregation_id,
-                            version=agg_spec.aggregation_version,
-                        )
+                    custom_agg = self.custom_aggregations_client.get_custom_aggregation(
+                        custom_aggregation_id=agg_spec.aggregation_id,
+                        version=agg_spec.aggregation_version,
                     )
                 except NotFoundException:
                     raise ValueError(
                         f"No aggregation with id {agg_spec.aggregation_id} could be fetched for execution "
                         f"from the set of custom aggregations.",
                     )
+
+                # do not calculate metrics for soft-deleted aggregations. Fail loudly to tell the user the aggregation
+                # configured for their model has been deleted.
+                if custom_agg.is_deleted:
+                    raise ValueError(
+                        f"The custom aggregation with id {custom_agg.id} was deleted at "
+                        f"{custom_agg.deleted_at.strftime('%Y-%m-%d %H:%M:%S %Z')}. If you still need this aggregation "
+                        f"for your model, please recreate it and add the new aggregation to your metric config. "
+                        f"Otherwise, please remove the deleted aggregation from your metric config.",
+                    )
+
+                # warn user if they're not using the latest version of an aggregation
+                if custom_agg.latest_version != agg_spec.aggregation_version:
+                    self.logger.warning(
+                        f"The aggregation with ID {custom_agg.id} is configured to use version "
+                        f"{agg_spec.aggregation_version}. However, the latest version of the aggregation is "
+                        f"{custom_agg.latest_version}. Please consider updating your model's metric configuration "
+                        f"to pick up the latest version of this custom aggregation.",
+                    )
+
                 return CustomMetricSQLCalculator(
                     duckdb_conn,
                     self.logger,
                     agg_spec,
-                    custom_aggs,
+                    custom_agg,
                 )
             case _:
                 raise ValueError(
@@ -238,9 +266,11 @@ class MetricsCalculationExecutor:
         model: Model,
         datasets: list[Dataset],
         duckdb_conn: DuckDBPyConnection,
-    ) -> list[NumericMetric | SketchMetric]:
+    ) -> Tuple[list[NumericMetric | SketchMetric], List[str]]:
+        """Returns list of metrics and list of IDs of any aggregations that failed to be calculated."""
         metrics: list[NumericMetric | SketchMetric] = []
         calculator = None
+        failed_aggregation_ids = []
         for agg_spec in model.metric_config.aggregation_specs:
             try:
                 calculator = self._pick_metric_calculator(agg_spec, duckdb_conn)
@@ -265,7 +295,8 @@ class MetricsCalculationExecutor:
                     error_msg,
                     exc_info=exc,
                 )
-        return metrics
+                failed_aggregation_ids.append(agg_spec.aggregation_id)
+        return metrics, failed_aggregation_ids
 
     def _add_dataset_dimensions_to_metrics(
         self,

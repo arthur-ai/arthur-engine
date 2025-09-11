@@ -25,7 +25,7 @@ from arthur_common.models.connectors import (
     ODBC_CONNECTOR_TABLE_NAME_FIELD,
     ConnectorPaginationOptions,
 )
-from arthur_common.models.datasets import ModelProblemType
+from arthur_common.models.enums import ModelProblemType
 from sqlalchemy import Column, Integer, MetaData, String
 from sqlalchemy import Table as SQLATable
 

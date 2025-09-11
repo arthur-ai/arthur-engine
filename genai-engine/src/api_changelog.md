@@ -2,6 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/05/2025
+- Added span_name to spans response
+
+# 08/27/2025
+- **CHANGE** for **URL**: /v1/spans/query  endpoint added
+
 # 08/25/2025
 - **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'page' response's property type/format changed from ''/'' to 'integer'/'' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'pages' response's property type/format changed from ''/'' to 'integer'/'' for status '200'

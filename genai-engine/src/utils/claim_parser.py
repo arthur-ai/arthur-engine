@@ -10,6 +10,7 @@ from utils.utils import list_indicator_regex
 SENTENCE_TOKENIZER = PunktSentenceTokenizer()
 LOGGER = logging.getLogger()
 
+
 class ClaimParser:
     def __init__(self):
         self.parser = commonmark.Parser()
@@ -26,6 +27,7 @@ class ClaimParser:
         """
         Strip Markdown from a LLM Response
         """
+
         def ast2text(astNode):
             """
             Returns the text from markdown, stripped of the markdown syntax itself
@@ -41,7 +43,10 @@ class ClaimParser:
                     and current.parent.destination == current.literal
                 ):
                     # workaround for list items that are not formatted as proper markdown
-                    if list_indicator_regex.match(current.literal.strip()) and list_level <= 1:
+                    if (
+                        list_indicator_regex.match(current.literal.strip())
+                        and list_level <= 1
+                    ):
                         acc += "\n"
                     acc += current.literal
                 if current.t == "linebreak":
@@ -90,7 +95,7 @@ class ClaimParser:
         """
         # check for the edge case where the text is just a singular digit or letter and skip strip_markdown
         # if it is to avoid the function from mistaking it for a list item
-        if not re.match(r'^(?:\d+|[A-Za-z])\.?\s*$', text.strip()):
+        if not re.match(r"^(?:\d+|[A-Za-z])\.?\s*$", text.strip()):
             text = self._strip_markdown(text)
 
         abbreviation_pattern = r"([A-Za-z]\.)([A-Za-z]\.)+"

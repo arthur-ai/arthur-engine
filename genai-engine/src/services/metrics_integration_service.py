@@ -2,6 +2,7 @@ import json
 import logging
 from typing import Union
 
+from arthur_common.models.metric_schemas import MetricRequest
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,6 @@ from dependencies import get_metrics_engine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import MetricResult, Span
-from schemas.metric_schemas import MetricRequest
 from utils.constants import SPAN_KIND_LLM
 
 logger = logging.getLogger(__name__)

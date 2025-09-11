@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from opentelemetry import trace
 
 from schemas.internal_schemas import Metric, MetricResult
-from schemas.metric_schemas import MetricRequest
+from arthur_common.models.metric_schemas import MetricRequest
 from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import METRIC_FAILURE_COUNTER

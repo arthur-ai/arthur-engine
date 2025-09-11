@@ -2,7 +2,7 @@ from typing import Generator
 
 import pytest
 from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
-from schemas.response_schemas import ApiKeyResponse
+from arthur_common.models.response_schemas import ApiKeyResponse
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.integration_test_client import get_genai_engine_test_client
 

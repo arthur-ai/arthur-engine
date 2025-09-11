@@ -2,7 +2,7 @@ import random
 
 import pytest
 
-from schemas.enums import PaginationSortMethod
+from arthur_common.models.enums import PaginationSortMethod
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 

@@ -7,7 +7,7 @@ import sys
 import pandas as pd
 from dotenv import load_dotenv
 from locust import HttpUser, between, task
-from schemas.response_schemas import ValidationResult
+from arthur_common.models.response_schemas import ValidationResult
 
 logging.basicConfig(
     level=logging.INFO,

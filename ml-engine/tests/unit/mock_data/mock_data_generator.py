@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 from arthur_client.api_bindings import *
+from arthur_common.models.enums import ModelProblemType
 
 
 def get_data_file(filename: str):

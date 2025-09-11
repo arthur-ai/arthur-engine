@@ -25,11 +25,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     steps:
+      - name: Generate Arthur GitHub Automator App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_ID }}
+          private-key: ${{ secrets.ARTHUR_GH_AUTOMATOR_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          token: ${{ steps.generate-token.outputs.token }}
       - uses: ./.github/workflows/composite-actions/setup-git
       - name: Bump Arthur Engine Version
         env:
@@ -52,6 +58,8 @@ jobs:
 
           export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
           export BRANCH_NAME="arthur-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
+          # git checkout -b $BRANCH_NAME
+
 
           # Read current version and bump it
           CURRENT_VERSION=$(cat version)
@@ -90,10 +98,6 @@ jobs:
           fi
           echo "New Version: ${NEW_ARTHUR_ENGINE_VERSION}"
 
-          # Create and checkout a new branch
-          echo "New Branch Name: ${BRANCH_NAME}"
-          git checkout -b "$BRANCH_NAME"
-
           # Update the top-level version file
           echo $NEW_ARTHUR_ENGINE_VERSION > version
 
@@ -118,7 +122,7 @@ jobs:
           # Include the ml-engine Chart.yaml and values.yaml
           sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
-          sed -i "s|containerImageVersion:.*|containerImageVersion: \"latest\"|" "$ML_ENGINE_VALUES_YAML_PATH"
+          sed -i "s|containerImageVersion:.*|containerImageVersion: \"$NEW_ARTHUR_ENGINE_VERSION\"|" "$ML_ENGINE_VALUES_YAML_PATH"
     
           # Update the genai and ml engine pyproject.toml files and the openapi json
           sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/pyproject.toml
@@ -132,15 +136,17 @@ jobs:
           git diff --cached
           git commit --no-verify -m "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}"
 
-          # Push the new branch with the commit
-          git push -u origin "$BRANCH_NAME"
+          # Set GH_TOKEN to use the automator app token
+          export GH_TOKEN=${{ steps.generate-token.outputs.token }}
 
-      - name: Create Arthur Engine Pull Request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh pr create \
-            --title "Increment arthur-engine version to $(cat version)" \
-            --body "Increment arthur-engine version to $(cat version)" \
-            --base ${GITHUB_REF#refs/heads/} \
-            --head "$BRANCH_NAME"
+          # Push the new branch with the commit
+          git push origin
+          # git push -u origin $BRANCH_NAME
+
+          # # Create PR and enable auto-merge
+          # gh pr create \
+          #   --title "Increment arthur-engine version to ${NEW_ARTHUR_ENGINE_VERSION}" \
+          #   --body "Automated version bump to ${NEW_ARTHUR_ENGINE_VERSION}" \
+          #   --base dev \
+          #   --head $BRANCH_NAME
+          # gh pr merge $BRANCH_NAME --auto --merge

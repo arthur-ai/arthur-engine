@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.71"
+        "version": "2.1.78"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -728,7 +728,7 @@
                                                     "result": true
                                                 },
                                                 {
-                                                    "example": "Most og the people have A positive blood group",
+                                                    "example": "Most of the people have A positive blood group",
                                                     "result": false
                                                 }
                                             ],
@@ -779,6 +779,16 @@
                                     }
                                 },
                                 "example5": {
+                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRule",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example6": {
                                     "summary": "Hallucination Rule V2 Example",
                                     "description": "Hallucination Rule Example, no configuration required",
                                     "value": {
@@ -788,7 +798,17 @@
                                         "apply_to_response": true
                                     }
                                 },
-                                "example6": {
+                                "example7": {
+                                    "summary": "Hallucination Rule V3 Example (Beta)",
+                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRuleV3",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example8": {
                                     "summary": "PII Rule Example",
                                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                                     "value": {
@@ -809,7 +829,7 @@
                                         }
                                     }
                                 },
-                                "example7": {
+                                "example9": {
                                     "summary": "Toxicity Rule Example",
                                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                                     "value": {
@@ -1308,7 +1328,7 @@
                                                     "result": true
                                                 },
                                                 {
-                                                    "example": "Most og the people have A positive blood group",
+                                                    "example": "Most of the people have A positive blood group",
                                                     "result": false
                                                 }
                                             ],
@@ -1359,6 +1379,16 @@
                                     }
                                 },
                                 "example5": {
+                                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRule",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example6": {
                                     "summary": "Hallucination Rule V2 Example",
                                     "description": "Hallucination Rule Example, no configuration required",
                                     "value": {
@@ -1368,7 +1398,17 @@
                                         "apply_to_response": true
                                     }
                                 },
-                                "example6": {
+                                "example7": {
+                                    "summary": "Hallucination Rule V3 Example (Beta)",
+                                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                                    "value": {
+                                        "name": "Hallucination Rule",
+                                        "type": "ModelHallucinationRuleV3",
+                                        "apply_to_prompt": false,
+                                        "apply_to_response": true
+                                    }
+                                },
+                                "example8": {
                                     "summary": "PII Rule Example",
                                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                                     "value": {
@@ -1389,7 +1429,7 @@
                                         }
                                     }
                                 },
-                                "example7": {
+                                "example9": {
                                     "summary": "Toxicity Rule Example",
                                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                                     "value": {
@@ -2456,6 +2496,139 @@
                                 }
                             }
                         }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/spans/query": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Query Spans By Type",
+                "description": "Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
+                "operationId": "query_spans_by_type_v1_spans_query_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format.",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format.",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/QuerySpansResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid span types, parameters, or validation error"
+                    },
+                    "404": {
+                        "description": "No spans found"
                     },
                     "422": {
                         "description": "Validation Error",
@@ -3611,7 +3784,7 @@
                             }
                         ],
                         "title": "Hint",
-                        "description": "Optional. hint added to describe what Sensitive Data Rule should be checking for"
+                        "description": "Optional. Hint added to describe what Sensitive Data Rule should be checking for"
                     }
                 },
                 "type": "object",
@@ -3626,7 +3799,7 @@
                             "result": true
                         },
                         {
-                            "example": "Most og the people have A positive blood group",
+                            "example": "Most of the people have A positive blood group",
                             "result": false
                         }
                     ],
@@ -4460,6 +4633,17 @@
                         ],
                         "title": "Span Kind"
                     },
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name"
+                    },
                     "start_time": {
                         "type": "string",
                         "format": "date-time",
@@ -4714,13 +4898,10 @@
                     "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/KeywordsConfig"
-                            },
-                            {
                                 "$ref": "#/components/schemas/RegexConfig"
                             },
                             {
-                                "$ref": "#/components/schemas/ExamplesConfig"
+                                "$ref": "#/components/schemas/KeywordsConfig"
                             },
                             {
                                 "$ref": "#/components/schemas/ToxicityConfig"
@@ -4729,11 +4910,14 @@
                                 "$ref": "#/components/schemas/PIIConfig"
                             },
                             {
+                                "$ref": "#/components/schemas/ExamplesConfig"
+                            },
+                            {
                                 "type": "null"
                             }
                         ],
                         "title": "Config",
-                        "description": "Config of the rule"
+                        "description": "Config for the rule"
                     }
                 },
                 "type": "object",
@@ -4757,7 +4941,7 @@
                                     "result": true
                                 },
                                 {
-                                    "example": "Most og the people have A positive blood group",
+                                    "example": "Most of the people have A positive blood group",
                                     "result": false
                                 }
                             ],
@@ -4810,6 +4994,16 @@
                     }
                 },
                 "example5": {
+                    "description": "Hallucination Rule Example, no configuration required (This rule is deprecated. Use ModelHallucinationRuleV2 instead.)",
+                    "summary": "Hallucination Rule V1 Example (Deprecated)",
+                    "value": {
+                        "apply_to_prompt": false,
+                        "apply_to_response": true,
+                        "name": "Hallucination Rule",
+                        "type": "ModelHallucinationRule"
+                    }
+                },
+                "example6": {
                     "description": "Hallucination Rule Example, no configuration required",
                     "summary": "Hallucination Rule V2 Example",
                     "value": {
@@ -4819,7 +5013,17 @@
                         "type": "ModelHallucinationRuleV2"
                     }
                 },
-                "example6": {
+                "example7": {
+                    "description": "Hallucination Rule Example, no configuration required. This rule is in beta and must be enabled by the system administrator.",
+                    "summary": "Hallucination Rule V3 Example (Beta)",
+                    "value": {
+                        "apply_to_prompt": false,
+                        "apply_to_response": true,
+                        "name": "Hallucination Rule",
+                        "type": "ModelHallucinationRuleV3"
+                    }
+                },
+                "example8": {
                     "description": "PII Rule Example, no configuration required. \"disabled_pii_entities\", \"confidence_threshold\", and \"allow_list\" accepted. Valid value for \"confidence_threshold\" is 0.0-1.0. Valid values for \"disabled_pii_entities\" are CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN",
                     "summary": "PII Rule Example",
                     "value": {
@@ -4840,7 +5044,7 @@
                         "type": "PIIDataRule"
                     }
                 },
-                "example7": {
+                "example9": {
                     "description": "Toxicity Rule Example, no configuration required. Threshold accepted",
                     "summary": "Toxicity Rule Example",
                     "value": {
@@ -5309,6 +5513,29 @@
                         }
                     ]
                 }
+            },
+            "QuerySpansResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of spans matching the query parameters"
+                    },
+                    "spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                        },
+                        "type": "array",
+                        "title": "Spans",
+                        "description": "List of spans with metrics matching the search filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "spans"
+                ],
+                "title": "QuerySpansResponse"
             },
             "QueryTracesWithMetricsResponse": {
                 "properties": {
@@ -5797,6 +6024,17 @@
                             }
                         ],
                         "title": "Span Kind"
+                    },
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name"
                     },
                     "start_time": {
                         "type": "string",
@@ -6339,7 +6577,7 @@
                             }
                         ],
                         "title": "User Id",
-                        "description": "The unique user ID this prompt belongs to"
+                        "description": "The user ID this prompt belongs to"
                     }
                 },
                 "type": "object",

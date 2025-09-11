@@ -7,8 +7,8 @@ from typing import List, Optional
 from dotenv import load_dotenv
 from opentelemetry import trace
 
-from schemas.common_schemas import ExamplesConfig, LLMTokenConsumption
-from schemas.enums import RuleResultEnum, RuleType
+from arthur_common.models.common_schemas import ExamplesConfig, LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
 from scorer.llm_client import get_llm_executor

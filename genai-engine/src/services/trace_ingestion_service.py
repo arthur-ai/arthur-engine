@@ -8,10 +8,14 @@ from google.protobuf.message import DecodeError
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
-from sqlalchemy import insert
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import (
+    insert as sqlite_insert,  # Unit tests are still using sqlite
+)
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan
+from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -52,7 +56,7 @@ class TraceIngestionService:
     def _extract_and_process_spans(
         self,
         json_traces: dict,
-    ) -> Tuple[list[dict], Tuple[int, int, int, list[str]]]:
+    ) -> Tuple[list[DatabaseSpan], Tuple[int, int, int, list[str]]]:
         """Extract and process spans from JSON trace data."""
         total_spans = 0
         accepted_spans = 0
@@ -91,21 +95,20 @@ class TraceIngestionService:
             for scope_span in resource_span.get("scopeSpans", []):
                 for span_data in scope_span.get("spans", []):
                     total_spans += 1
-                    # Pass the resource task ID to the span processing
-                    processed_span = self._process_span_data(
-                        span_data,
-                        resource_task_id,
-                    )
 
-                    if processed_span:
-                        processed_span["id"] = str(uuid.uuid4())
+                    try:
+                        # Pass the resource task ID to the span processing
+                        processed_span = self._process_span_data(
+                            span_data,
+                            resource_task_id,
+                        )
                         spans_data.append(processed_span)
                         accepted_spans += 1
-                    else:
+                    except Exception as e:
                         rejected_spans += 1
                         rejected_reasons.append("Invalid span data format.")
                         logger.debug(
-                            f"Rejected span due to invalid format: \n{span_data}",
+                            f"Rejected span due to invalid format: \n{str(e)}",
                         )
 
         return spans_data, (
@@ -140,47 +143,25 @@ class TraceIngestionService:
         self,
         span_data: dict,
         resource_task_id: str,
-    ) -> Optional[dict]:
+    ) -> DatabaseSpan:
         """Process and clean span data, returning None if the span data is invalid."""
-        normalized_span_data = self._normalize_span_attributes(span_data)
-
-        # Extract basic span information
-        span_dict = self._extract_basic_span_info(normalized_span_data)
-
-        # Task ID is already validated at resource level, so we can use it directly
-        span_dict["task_id"] = resource_task_id
-
+        span_data = self._normalize_span_attributes(span_data)
         # Inject version into raw data
-        normalized_span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
-
-        # Store the normalized span data
-        span_dict["raw_data"] = normalized_span_data
-
-        return span_dict
-
-    def _extract_basic_span_info(self, span_data: dict) -> dict:
-        """Extract basic span information from normalized span data."""
-        span_dict = {
-            "trace_id": trace_utils.convert_id_to_hex(span_data.get("traceId")),
-            "span_id": trace_utils.convert_id_to_hex(span_data.get("spanId")),
-        }
-
-        # Extract parent span ID
-        parent_span_id = self._get_parent_span_id(span_data)
-        if parent_span_id:
-            span_dict["parent_span_id"] = parent_span_id
-
-        # Extract span kind
-        span_kind = self._get_attribute_value(span_data, SPAN_KIND_KEY)
-        if span_kind:
-            span_dict["span_kind"] = span_kind
-
-        # Extract timestamps
+        span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
         start_time, end_time = self._extract_timestamps(span_data)
-        span_dict["start_time"] = start_time
-        span_dict["end_time"] = end_time
 
-        return span_dict
+        return DatabaseSpan(
+            id=str(uuid.uuid4()),
+            trace_id=trace_utils.convert_id_to_hex(span_data.get("traceId")),
+            span_id=trace_utils.convert_id_to_hex(span_data.get("spanId")),
+            parent_span_id=self._get_parent_span_id(span_data),
+            span_kind=self._get_attribute_value(span_data, SPAN_KIND_KEY),
+            span_name=span_data.get("name"),
+            start_time=start_time,
+            end_time=end_time,
+            task_id=resource_task_id,
+            raw_data=span_data,
+        )
 
     def _extract_value_from_otel_format(
         self,
@@ -272,15 +253,109 @@ class TraceIngestionService:
 
         return start_time, end_time
 
-    def _store_spans(self, spans: list[dict], commit: bool = True):
+    def _store_spans(self, spans: list[DatabaseSpan], commit: bool = True):
         """Store spans in the database with optional commit control."""
         if not spans:
             return
 
-        stmt = insert(DatabaseSpan).values(spans)
-        self.db_session.execute(stmt)
+        self.db_session.add_all(spans)
+
+        # Batch trace metadata updates within this transaction
+        # This avoids N separate upserts for N spans in the same trace
+        self._batch_upsert_trace_metadata(spans)
 
         if commit:
             self.db_session.commit()
 
-        logger.debug(f"Stored {len(spans)} spans (commit={commit})")
+        logger.debug(f"Stored {len(spans)} spans with trace metadata (commit={commit})")
+
+    def _batch_upsert_trace_metadata(self, spans: list[DatabaseSpan]):
+        """Efficiently batch trace metadata updates using native database upsert.
+
+        Groups spans by trace_id to batch updates. For example:
+        - 50 spans from same trace = 1 upsert (not 50!)
+        - Handles out-of-order span arrival with MIN/MAX aggregations
+        - Uses native PostgreSQL/SQLite upsert for optimal performance
+        """
+        if not spans:
+            return
+
+        # Group spans by trace_id to batch updates
+        trace_updates = {}
+        current_time = datetime.now()
+
+        for span in spans:
+            trace_id = span.trace_id
+            if trace_id not in trace_updates:
+                trace_updates[trace_id] = {
+                    "trace_id": trace_id,
+                    "task_id": span.task_id,
+                    "start_time": span.start_time,
+                    "end_time": span.end_time,
+                    "span_count": 0,
+                    "updated_at": current_time,
+                }
+
+            # Aggregate within this batch (handles multiple spans per trace in one ingestion)
+            trace_updates[trace_id]["start_time"] = min(
+                trace_updates[trace_id]["start_time"],
+                span.start_time,
+            )
+            trace_updates[trace_id]["end_time"] = max(
+                trace_updates[trace_id]["end_time"],
+                span.end_time,
+            )
+            trace_updates[trace_id]["span_count"] += 1
+
+        if not trace_updates:
+            return
+
+        # Single native upsert operation - replaces complex manual logic
+        values_list = list(trace_updates.values())
+
+        # PostgreSQL upsert with proper aggregation functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            stmt = pg_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.least(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.greatest(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
+                ),
+            )
+
+        # SQLite upsert with min/max functions
+        # Needed for unit tests
+        else:  # sqlite
+            stmt = sqlite_insert(DatabaseTraceMetadata).values(values_list)
+            stmt = stmt.on_conflict_do_update(
+                index_elements=["trace_id"],
+                set_=dict(
+                    start_time=func.min(
+                        stmt.excluded.start_time,
+                        DatabaseTraceMetadata.start_time,
+                    ),
+                    end_time=func.max(
+                        stmt.excluded.end_time,
+                        DatabaseTraceMetadata.end_time,
+                    ),
+                    span_count=DatabaseTraceMetadata.span_count
+                    + stmt.excluded.span_count,
+                    updated_at=stmt.excluded.updated_at,
+                ),
+            )
+
+        self.db_session.execute(stmt)
+
+        logger.debug(
+            f"Upserted metadata for {len(trace_updates)} traces from {len(spans)} spans",
+        )

@@ -3,6 +3,56 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
+from arthur_common.models.common_schemas import (
+    AuthUserRole,
+    ExampleConfig,
+    ExamplesConfig,
+    KeywordsConfig,
+    PIIConfig,
+    RegexConfig,
+    ToxicityConfig,
+)
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    MetricType,
+    PIIEntityTypes,
+    RuleResultEnum,
+    RuleScope,
+    RuleType,
+    ToxicityViolationType,
+)
+from arthur_common.models.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+)
+from arthur_common.models.response_schemas import (
+    ApiKeyResponse,
+    BaseDetailsResponse,
+    ChatDocumentContext,
+    ExternalDocument,
+    ExternalInference,
+    ExternalInferencePrompt,
+    ExternalInferenceResponse,
+    ExternalRuleResult,
+    HallucinationClaimResponse,
+    HallucinationDetailsResponse,
+    InferenceFeedbackResponse,
+    KeywordDetailsResponse,
+    KeywordSpanResponse,
+    MetricResponse,
+    MetricResultResponse,
+    NestedSpanWithMetricsResponse,
+    PIIDetailsResponse,
+    PIIEntitySpanResponse,
+    RegexDetailsResponse,
+    RegexSpanResponse,
+    RuleResponse,
+    SpanWithMetricsResponse,
+    TaskResponse,
+    ToxicityDetailsResponse,
+    UserResponse,
+)
 from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
@@ -34,61 +84,19 @@ from db_models.db_models import (
     DatabaseTaskToMetrics,
     DatabaseTaskToRules,
     DatabaseToxicityScore,
+    DatabaseTraceMetadata,
     DatabaseUser,
-)
-from schemas.common_schemas import (
-    AuthUserRole,
-    ExampleConfig,
-    ExamplesConfig,
-    KeywordsConfig,
-    PIIConfig,
-    RegexConfig,
-    ToxicityConfig,
 )
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
-    InferenceFeedbackTarget,
-    MetricType,
-    PIIEntityTypes,
     RuleDataType,
-    RuleResultEnum,
-    RuleScope,
     RuleScoringMethod,
-    RuleType,
-    ToxicityViolationType,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import NewMetricRequest, NewRuleRequest, NewTaskRequest
 from schemas.response_schemas import (
-    ApiKeyResponse,
     ApplicationConfigurationResponse,
-    BaseDetailsResponse,
-    ChatDocumentContext,
     DocumentStorageConfigurationResponse,
-    ExternalDocument,
-    ExternalInference,
-    ExternalInferencePrompt,
-    ExternalInferenceResponse,
-    ExternalRuleResult,
-    HallucinationClaimResponse,
-    HallucinationDetailsResponse,
-    InferenceFeedbackResponse,
-    KeywordDetailsResponse,
-    KeywordSpanResponse,
-    MetricResponse,
-    MetricResultResponse,
-    NestedSpanWithMetricsResponse,
-    PIIDetailsResponse,
-    PIIEntitySpanResponse,
-    RegexDetailsResponse,
-    RegexSpanResponse,
-    RuleResponse,
-    SpanResponse,
-    SpanWithMetricsResponse,
-    TaskResponse,
-    ToxicityDetailsResponse,
-    UserResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -497,6 +505,39 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
             rules=response_rules,
             metrics=response_metrics,
+        )
+
+
+class TraceMetadata(BaseModel):
+    trace_id: str
+    task_id: str
+    start_time: datetime
+    end_time: datetime
+    span_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _from_database_model(x: DatabaseTraceMetadata):
+        return TraceMetadata(
+            trace_id=x.trace_id,
+            task_id=x.task_id,
+            start_time=x.start_time,
+            end_time=x.end_time,
+            span_count=x.span_count,
+            created_at=x.created_at,
+            updated_at=x.updated_at,
+        )
+
+    def _to_database_model(self):
+        return DatabaseTraceMetadata(
+            trace_id=self.trace_id,
+            task_id=self.task_id,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            span_count=self.span_count,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
         )
 
 
@@ -1470,6 +1511,7 @@ class Span(BaseModel):
     span_id: str
     parent_span_id: Optional[str] = None
     span_kind: Optional[str] = None
+    span_name: Optional[str] = None
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
@@ -1543,6 +1585,7 @@ class Span(BaseModel):
             span_id=db_span.span_id,
             parent_span_id=db_span.parent_span_id,
             span_kind=db_span.span_kind,
+            span_name=db_span.span_name,
             start_time=db_span.start_time,
             end_time=db_span.end_time,
             task_id=db_span.task_id,
@@ -1562,6 +1605,7 @@ class Span(BaseModel):
             span_id=self.span_id,
             parent_span_id=self.parent_span_id,
             span_kind=self.span_kind,
+            span_name=self.span_name,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
@@ -1570,32 +1614,14 @@ class Span(BaseModel):
             updated_at=self.updated_at,
         )
 
-    def _to_response_model(self) -> SpanResponse:
-        return SpanResponse(
-            id=self.id,
-            trace_id=self.trace_id,
-            span_id=self.span_id,
-            parent_span_id=self.parent_span_id,
-            span_kind=self.span_kind,
-            start_time=self.start_time,
-            end_time=self.end_time,
-            task_id=self.task_id,
-            raw_data=self.raw_data,
-            created_at=self.created_at,
-            updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
-        )
-
-    def _to_metrics_response_model(self) -> "SpanWithMetricsResponse":
+    def _to_response_model(self) -> "SpanWithMetricsResponse":
         return SpanWithMetricsResponse(
             id=self.id,
             trace_id=self.trace_id,
             span_id=self.span_id,
             parent_span_id=self.parent_span_id,
             span_kind=self.span_kind,
+            span_name=self.span_name,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
@@ -1621,6 +1647,7 @@ class Span(BaseModel):
             span_id=self.span_id,
             parent_span_id=self.parent_span_id,
             span_kind=self.span_kind,
+            span_name=self.span_name,
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
@@ -1646,6 +1673,7 @@ class Span(BaseModel):
             span_id=span_data["span_id"],
             parent_span_id=span_data.get("parent_span_id"),
             span_kind=span_data.get("span_kind"),
+            span_name=span_data.get("span_name"),
             start_time=span_data["start_time"],
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],

@@ -9,7 +9,7 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
@@ -17,7 +17,7 @@ from schemas.common_schemas import (
     ToxicityConfig,
     UserPermission,
 )
-from schemas.enums import (
+from arthur_common.models.enums import (
     InferenceFeedbackTarget,
     PaginationSortMethod,
     RuleResultEnum,
@@ -25,7 +25,7 @@ from schemas.enums import (
     RuleType,
     TokenUsageScope,
 )
-from schemas.request_schemas import (
+from arthur_common.models.request_schemas import (
     ChatDefaultTaskRequest,
     CreateUserRequest,
     FeedbackRequest,
@@ -34,7 +34,7 @@ from schemas.request_schemas import (
     SearchRulesRequest,
     SearchTasksRequest,
 )
-from schemas.response_schemas import (
+from arthur_common.models.response_schemas import (
     ApiKeyResponse,
     ChatDefaultTaskResponse,
     ChatDocumentContext,
@@ -43,6 +43,7 @@ from schemas.response_schemas import (
     FileUploadResult,
     QueryFeedbackResponse,
     QueryInferencesResponse,
+    QuerySpansResponse,
     QueryTracesWithMetricsResponse,
     RuleResponse,
     SearchRulesResponse,
@@ -1321,6 +1322,59 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SpanWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def query_spans(
+        self,
+        task_ids: list[str],
+        span_types: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, QuerySpansResponse | str]:
+        """Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            span_types: Span types to filter on (optional)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, QuerySpansResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if span_types is not None:
+            params["span_types"] = span_types
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            f"/v1/spans/query?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                QuerySpansResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

@@ -1,7 +1,7 @@
 import random
 
 import pytest
-from schemas.enums import RuleType
+from arthur_common.models.enums import RuleType
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 

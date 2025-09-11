@@ -11,7 +11,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizerBase
 
-from schemas.enums import RuleResultEnum, ToxicityViolationType
+from arthur_common.models.enums import RuleResultEnum, ToxicityViolationType
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,

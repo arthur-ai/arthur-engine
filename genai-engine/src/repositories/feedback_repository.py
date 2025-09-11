@@ -5,8 +5,8 @@ from datetime import datetime
 from dependencies import get_db_session
 from fastapi import Depends
 from opentelemetry import trace
-from schemas.enums import InferenceFeedbackTarget, PaginationSortMethod
-from schemas.response_schemas import InferenceFeedbackResponse
+from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
+from arthur_common.models.response_schemas import InferenceFeedbackResponse
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
