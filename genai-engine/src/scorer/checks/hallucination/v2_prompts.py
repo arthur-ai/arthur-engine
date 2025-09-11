@@ -1,6 +1,7 @@
 from scorer.checks.hallucination.v2_legacy_prompts import get_flagging_prompt
 
-def get_structured_output_prompt(): 
+
+def get_structured_output_prompt():
     flagging_examples = [
         {
             "context": "There are two dogs eating my shoes and it hurts",
@@ -70,7 +71,7 @@ def get_structured_output_prompt():
                     is_hallucination=True,
                     explanation="The claim is unsupported because this text does not contain any line breaks"
                 )
-            ]"""
+            ]""",
         },
         {
             "context": "Generate a sentence with line breaks.",
@@ -82,7 +83,7 @@ def get_structured_output_prompt():
                     is_hallucination=False,
                     explanation="The claim is supported because the text contains a line break"
                 )
-            ]"""
+            ]""",
         },
     ]
 

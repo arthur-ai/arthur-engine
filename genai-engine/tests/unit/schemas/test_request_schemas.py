@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from schemas.enums import RuleType
-from schemas.request_schemas import NewRuleRequest, PasswordResetRequest
+from arthur_common.models.enums import RuleType
+from arthur_common.models.request_schemas import NewRuleRequest, PasswordResetRequest
 
 
 @pytest.mark.parametrize(

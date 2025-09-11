@@ -1,5 +1,5 @@
 import pytest
-from schemas.enums import RuleScope
+from arthur_common.models.enums import RuleScope
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.integration_test_client import get_genai_engine_test_client
 

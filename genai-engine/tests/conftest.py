@@ -7,16 +7,16 @@ from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from schemas.common_schemas import (
+from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
 )
-from schemas.enums import PIIEntityTypes, RuleScope
+from arthur_common.models.enums import PIIEntityTypes, RuleScope
 from schemas.internal_schemas import InferencePrompt, Rule, Task
-from schemas.request_schemas import NewRuleRequest, NewTaskRequest
+from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from scorer.llm_client import LLMExecutor
 from tests.clients.base_test_client import override_get_db_session
 

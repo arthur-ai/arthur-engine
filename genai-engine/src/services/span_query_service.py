@@ -2,11 +2,11 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import and_, asc, desc, func, select
+from arthur_common.models.enums import PaginationSortMethod
+from sqlalchemy import and_, asc, desc, select
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan
-from schemas.enums import PaginationSortMethod
+from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
 from schemas.internal_schemas import Span
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
@@ -23,7 +23,7 @@ class SpanQueryService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def get_paginated_trace_ids_for_task_ids(
+    def get_paginated_trace_metadata_for_task_ids(
         self,
         task_ids: list[str],
         trace_ids: Optional[list[str]] = None,
@@ -32,34 +32,44 @@ class SpanQueryService:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page: int = 0,
         page_size: int = DEFAULT_PAGE_SIZE,
-    ) -> Optional[list[str]]:
-        """Get paginated trace IDs for given task IDs with proper ordering and filtering."""
+    ) -> Optional[list[DatabaseTraceMetadata]]:
+        """Get paginated trace metadata for given task IDs with proper ordering and filtering."""
         if not task_ids:
-            return trace_ids
+            return None
 
-        # Build query to get trace IDs with proper ordering
-        query = self._build_trace_ids_query(
-            task_ids=task_ids,
-            trace_ids=trace_ids,
-            start_time=start_time,
-            end_time=end_time,
-            sort=sort,
+        # Query trace metadata table to get start/end times efficiently
+        query = select(DatabaseTraceMetadata).where(
+            DatabaseTraceMetadata.task_id.in_(task_ids),
         )
 
-        # Apply pagination
+        # Optional filters
+        if trace_ids:
+            query = query.where(DatabaseTraceMetadata.trace_id.in_(trace_ids))
+        if start_time:
+            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
+        if end_time:
+            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+
+        # Efficient sorting with proper indexes
+        if sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(DatabaseTraceMetadata.start_time))
+        else:
+            query = query.order_by(asc(DatabaseTraceMetadata.start_time))
+
+        # Pagination
         offset = page * page_size
         query = query.offset(offset).limit(page_size)
 
         # Execute query
         results = self.db_session.execute(query).scalars().all()
-        trace_ids_result = list(results)
+        trace_metadata_result = list(results)
 
         logger.debug(
-            f"Found {len(trace_ids_result)} trace IDs for task IDs: {task_ids} "
+            f"Found {len(trace_metadata_result)} trace metadata records for task IDs: {task_ids} "
             f"(page={page}, page_size={page_size}, sort={sort})",
         )
 
-        return trace_ids_result if trace_ids_result else None
+        return trace_metadata_result if trace_metadata_result else None
 
     def query_spans_from_db(
         self,
@@ -121,48 +131,6 @@ class SpanQueryService:
 
         if not span.task_id:
             raise ValueError(f"Span {span_id} has no task_id")
-
-    def _build_trace_ids_query(
-        self,
-        task_ids: list[str],
-        trace_ids: Optional[list[str]] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-    ) -> select:
-        """Build a query for trace IDs with the given filters and ordering."""
-        # Build conditions for the query
-        conditions = [DatabaseSpan.task_id.in_(task_ids)]
-
-        if trace_ids:
-            conditions.append(DatabaseSpan.trace_id.in_(trace_ids))
-        if start_time:
-            conditions.append(DatabaseSpan.start_time >= start_time)
-        if end_time:
-            conditions.append(DatabaseSpan.start_time <= end_time)
-
-        # Use a subquery to get the earliest span time for each trace
-        # This ensures we order traces by their start time (earliest span)
-        earliest_span_subquery = (
-            select(
-                DatabaseSpan.trace_id,
-                func.min(DatabaseSpan.start_time).label("earliest_time"),
-            )
-            .where(and_(*conditions))
-            .group_by(DatabaseSpan.trace_id)
-            .subquery()
-        )
-
-        # Main query to get trace IDs ordered by the earliest span time
-        query = select(earliest_span_subquery.c.trace_id)
-
-        # Apply sorting based on the earliest span time within each trace
-        if sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(earliest_span_subquery.c.earliest_time))
-        elif sort == PaginationSortMethod.ASCENDING:
-            query = query.order_by(asc(earliest_span_subquery.c.earliest_time))
-
-        return query
 
     def _build_spans_query(
         self,

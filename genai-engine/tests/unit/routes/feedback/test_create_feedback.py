@@ -11,7 +11,7 @@ from db_models.db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from schemas.enums import InferenceFeedbackTarget, RuleResultEnum
+from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
 from sqlalchemy.orm import Session
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,

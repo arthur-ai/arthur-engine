@@ -1,4 +1,4 @@
-from schemas.enums import RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
 from schemas.scorer_schemas import (
     RuleScore,
     ScoreRequest,

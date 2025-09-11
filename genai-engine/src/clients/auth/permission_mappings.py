@@ -1,5 +1,5 @@
-from schemas.common_schemas import UserPermission
-from schemas.enums import UserPermissionAction, UserPermissionResource
+from arthur_common.models.common_schemas import UserPermission
+from arthur_common.models.enums import UserPermissionAction, UserPermissionResource
 from utils.utils import constants
 
 ROLE_NAMES_TO_PERMISSIONS: dict[str, set[UserPermission]] = {

@@ -4,10 +4,10 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from schemas.common_schemas import LLMTokenConsumption
-from schemas.enums import MetricType
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import MetricType
 from schemas.internal_schemas import MetricResult
-from schemas.metric_schemas import MetricRequest
+from arthur_common.models.metric_schemas import MetricRequest
 from scorer.metrics.relevance.relevance import (
     ResponseRelevanceScorer,
     UserQueryRelevanceScorer,
