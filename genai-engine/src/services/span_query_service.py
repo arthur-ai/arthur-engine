@@ -161,12 +161,14 @@ class SpanQueryService:
         if filters.trace_duration_filters:
             duration_conditions = []
             for filter_item in filters.trace_duration_filters:
-                # Calculate duration from pre-computed start/end times
-                duration_expr = (
-                    DatabaseTraceMetadata.end_time - DatabaseTraceMetadata.start_time
-                )
+                # Database-agnostic duration calculation using UNIX epoch timestamps
+                # Convert timestamps to epoch seconds and subtract (works on all databases)
+                start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
+                end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
+                duration_seconds = end_epoch - start_epoch
+
                 duration_conditions.append(
-                    self._build_comparison_condition(duration_expr, filter_item),
+                    self._build_comparison_condition(duration_seconds, filter_item),
                 )
             query = query.where(and_(*duration_conditions))
 
@@ -331,8 +333,8 @@ class SpanQueryService:
             raise ValueError(f"Unsupported relevance metric type: {metric_type}")
         # Use database-specific JSON extraction functions
         if self.db_session.bind.dialect.name == "postgresql":
-            # PostgreSQL: json_extract_path_text(column, 'path1', 'path2')
-            score_path = func.json_extract_path_text(
+            # PostgreSQL: jsonb_extract_path_text(column, 'path1', 'path2')
+            score_path = func.jsonb_extract_path_text(
                 inner_metric.c.details,
                 paths[metric_type],
                 "llm_relevance_score",
@@ -384,8 +386,8 @@ class SpanQueryService:
         # Tool classification path
         # Use database-specific JSON extraction for tool classification
         if self.db_session.bind.dialect.name == "postgresql":
-            # PostgreSQL: json_extract_path_text(column, 'path1', 'path2')
-            classification_path = func.json_extract_path_text(
+            # PostgreSQL: jsonb_extract_path_text(column, 'path1', 'path2')
+            classification_path = func.jsonb_extract_path_text(
                 inner_metric.c.details,
                 "tool_selection",
                 field_name,
