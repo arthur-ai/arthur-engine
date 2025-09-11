@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.71"
+version = "2.1.78"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -16,15 +16,15 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "3.12.*"
-openai = "1.101.0"
+python = ">=3.12,<3.13.dev0"
+openai = "1.106.1"
 fastapi = "0.116.1"
 uvicorn = "0.35.0"
 pydantic = "2.11.7"
 sse-starlette = "3.0.2"
 fastapi-sqlalchemy = "0.2.1"
 alembic = "1.16.5"
-boto3 = "1.40.17"
+boto3 = "1.40.28"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.10"
 sqlalchemy = "2.0.43"
@@ -32,14 +32,14 @@ pgvector = "0.4.1"
 python-multipart = "0.0.20"
 pypdf = "6.0.0"
 httpx = "0.28.1"
-transformers = "4.53.0"
+transformers = "4.56.1"
 authlib = "1.6.3"
 requests = "2.32.5"
-starlette = "0.47.2"
+starlette = "0.47.3"
 pyjwt = "2.10.1"
 azure-storage-blob = "12.26.0"
 itsdangerous = "2.2.0"
-newrelic = "10.16.0"
+newrelic = "10.17.0"
 importlib-metadata = "8.7.0"
 opentelemetry-instrumentation-logging = "0.57b0"
 opentelemetry-instrumentation = "0.57b0"
@@ -48,13 +48,13 @@ opentelemetry-exporter-otlp = "1.36.0"
 opentelemetry-instrumentation-sqlalchemy = "0.57b0"
 tiktoken = "0.11.0"
 nltk = "3.9.1"
-more-itertools = "10.7.0"
-presidio-analyzer = "2.2.359"
+more-itertools = "10.8.0"
+presidio-analyzer = "2.2.360"
 presidio-anonymizer = "2.2.359"
 python-keycloak = "5.8.1"
 bcrypt = "4.3.0"
-cachetools = "6.0.0"
-sentence-transformers = "5.0.0"
+cachetools = "6.2.0"
+sentence-transformers = "5.1.0"
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
 torch = [
     { version = "=2.6.0", source = "PyPI", platform = "darwin" },
@@ -63,17 +63,19 @@ torch = [
 ]
 commonmark = "0.9.1"
 gunicorn = "^23.0.0"
-fastapi-pagination = "0.14.0"
+fastapi-pagination = "0.14.1"
 pydantic-settings = "^2.3.4"
 spacy = ">=3.8.3"
 bert-score = "0.3.13"
 langchain = "0.3.27"
-langchain-community = "0.3.27"
-langchain-openai = "0.3.31"
+langchain-community = "0.3.29"
+langchain-openai = "0.3.32"
 cloudpickle = "3.1.1"
 amplitude-analytics = "^1.1.5"
 sentencepiece = "0.2.1"
 gliner = "0.2.21"
+arthur-common = "2.1.61"
+openinference-semantic-conventions = "^0.1.12"
 
 
 [[tool.poetry.source]]
@@ -93,16 +95,16 @@ url = "https://gitlab.com/api/v4/projects/45576036/packages/pypi"
 priority = "explicit"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "8.4.1"
+pytest = "8.4.2"
 pytest-asyncio = "1.1.0"
-pytest-cov = "^6.0.0"
+pytest-cov = "6.3.0"
 pre-commit = "4.3.0"
 black = "25.1.0"
 mypy = "^1.13.0"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.39.0"
+locust = "2.40.2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

@@ -1,9 +1,9 @@
 import json
 from typing import Dict, Union
 
-from schemas.enums import MetricType, RuleType
+from arthur_common.models.enums import MetricType, RuleType
 from schemas.internal_schemas import Metric, MetricResult
-from schemas.metric_schemas import MetricRequest
+from arthur_common.models.metric_schemas import MetricRequest
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.scorer import MetricScorer, RuleScorer
 

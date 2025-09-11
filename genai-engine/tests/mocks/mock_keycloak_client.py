@@ -1,6 +1,6 @@
 from clients.auth.abc_keycloak_client import ABCAuthClient
-from schemas.common_schemas import UserPermission
-from schemas.request_schemas import CreateUserRequest
+from arthur_common.models.common_schemas import UserPermission
+from arthur_common.models.request_schemas import CreateUserRequest
 
 
 class MockAuthClient(ABCAuthClient):

@@ -12,7 +12,7 @@ from clients.telemetry.telemetry_client import (
     send_telemetry_event_for_default_rule_create_completed,
     send_telemetry_event_for_task_rule_create_completed,
 )
-from schemas.enums import RuleType
+from arthur_common.models.enums import RuleType
 
 
 @pytest.fixture

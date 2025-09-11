@@ -26,15 +26,15 @@ from routers.route_handler import GenaiEngineRoute
 from schemas.custom_exceptions import LLMContentFilterException
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
-from schemas.request_schemas import (
-    ApplicationConfigurationUpdateRequest,
+from schemas.request_schemas import ApplicationConfigurationUpdateRequest
+from arthur_common.models.request_schemas import (
     ChatDefaultTaskRequest,
     ChatRequest,
     FeedbackRequest,
     PromptValidationRequest,
     ResponseValidationRequest,
 )
-from schemas.response_schemas import (
+from arthur_common.models.response_schemas import (
     ChatDefaultTaskResponse,
     ChatDocumentContext,
     ChatResponse,

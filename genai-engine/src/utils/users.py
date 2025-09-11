@@ -1,7 +1,7 @@
 from functools import wraps
 
 from fastapi import HTTPException
-from schemas.common_schemas import AuthUserRole
+from arthur_common.models.common_schemas import AuthUserRole
 from schemas.internal_schemas import User
 
 

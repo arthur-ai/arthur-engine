@@ -1,7 +1,7 @@
 import re
 
 import pytest
-from schemas.enums import RuleResultEnum, RuleType
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.regex.regex import RegexScorer
 

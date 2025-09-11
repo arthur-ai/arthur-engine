@@ -11,8 +11,9 @@ from opentelemetry import trace
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
-from schemas.common_schemas import LLMTokenConsumption
-from schemas.enums import ClaimClassifierResultEnum, RuleResultEnum
+from arthur_common.models.enums import RuleResultEnum
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from schemas.enums import ClaimClassifierResultEnum
 from schemas.internal_schemas import OrderedClaim
 from schemas.scorer_schemas import (
     RuleScore,

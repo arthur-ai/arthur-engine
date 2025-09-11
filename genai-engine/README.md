@@ -194,7 +194,7 @@ poetry run alembic upgrade head
 ## Making your first commit
 
 ### The git pre-commit hooks
-Review the [../CONTRIBUTE.MD](CONTRIBUTE.MD) document carefully.
+Review the [CONTRIBUTE.MD](../CONTRIBUTING.md) document carefully.
 Make sure the git pre-commit hooks are installed properly.
 
 ### Pytest
@@ -255,3 +255,6 @@ Follow the steps below to run performance tests:
     poetry install --only performance
     ```
 2. Run performance tests by referring to the [Locust README](locust/README.md)
+
+## Generate Changelog
+`poetry run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.

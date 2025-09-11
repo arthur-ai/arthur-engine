@@ -1,6 +1,6 @@
 import pytest
-from schemas.enums import RuleType
-from schemas.response_schemas import TokenUsageCount, TokenUsageResponse
+from arthur_common.models.enums import RuleType
+from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 

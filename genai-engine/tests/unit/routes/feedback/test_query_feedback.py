@@ -10,7 +10,11 @@ from db_models.db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from schemas.enums import InferenceFeedbackTarget, PaginationSortMethod, RuleResultEnum
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    PaginationSortMethod,
+    RuleResultEnum,
+)
 from sqlalchemy.orm import Session
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.feedback import FEEDBACK_DB_SESSION

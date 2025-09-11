@@ -8,7 +8,7 @@ from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from config.config import Config
 from schemas.custom_exceptions import UnableCredentialsException
-from schemas.response_schemas import ApiKeyResponse
+from arthur_common.models.response_schemas import ApiKeyResponse
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
