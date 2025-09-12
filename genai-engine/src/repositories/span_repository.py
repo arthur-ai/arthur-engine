@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Tuple
 
+from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
@@ -9,13 +10,10 @@ from sqlalchemy.orm import Session
 
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
+from schemas.internal_schemas import Span, TraceQuerySchema
 
 # TODO: Migrate to arthur_common.models
-from schemas.internal_schemas import Span, TraceQuerySchema
 from schemas.request_schemas import TraceQueryRequest
-
-from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import PaginationSortMethod
 from services.metrics_integration_service import MetricsIntegrationService
 from services.span_query_service import SpanQueryService
 from services.trace_ingestion_service import TraceIngestionService
@@ -156,8 +154,6 @@ class SpanRepository:
         # Query all spans in the paginated traces
         spans = self.span_query_service.query_spans_from_db(
             trace_ids=paginated_trace_ids,
-            start_time=filters.start_time,
-            end_time=filters.end_time,
             sort=pagination_parameters.sort,
         )
 

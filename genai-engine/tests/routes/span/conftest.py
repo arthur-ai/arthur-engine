@@ -505,8 +505,18 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         metric_metadata="Test metric for LLM spans",
         config=None,
     )
+    tool_selection_metric = DatabaseMetric(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        type=MetricType.TOOL_SELECTION.value,
+        name="Test Tool Selection",
+        metric_metadata="Test metric for tool selection and usage",
+        config=None,
+    )
     db_session.add(query_relevance_metric)
     db_session.add(response_relevance_metric)
+    db_session.add(tool_selection_metric)
     db_session.commit()
 
     # Create task-to-metric links for task1 and task2
@@ -520,6 +530,11 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         metric_id=response_relevance_metric.id,
         enabled=True,
     )
+    task1_tool_selection_metric_link = DatabaseTaskToMetrics(
+        task_id="task1",
+        metric_id=tool_selection_metric.id,
+        enabled=True,
+    )
     task2_query_metric_link = DatabaseTaskToMetrics(
         task_id="task2",
         metric_id=query_relevance_metric.id,
@@ -530,10 +545,17 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         metric_id=response_relevance_metric.id,
         enabled=True,
     )
+    task2_tool_selection_metric_link = DatabaseTaskToMetrics(
+        task_id="task2",
+        metric_id=tool_selection_metric.id,
+        enabled=True,
+    )
     db_session.add(task1_query_metric_link)
     db_session.add(task1_response_metric_link)
+    db_session.add(task1_tool_selection_metric_link)
     db_session.add(task2_query_metric_link)
     db_session.add(task2_response_metric_link)
+    db_session.add(task2_tool_selection_metric_link)
     db_session.commit()
 
     # Create metric results for span1 (LLM span in trace1) with high relevance scores
@@ -600,10 +622,54 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         metric_id=response_relevance_metric.id,
     )
 
+    # Create tool selection metric results for span1 (LLM span in trace1) with CORRECT tool selection and usage
+    span1_tool_selection_metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.TOOL_SELECTION.value,
+        details={
+            "tool_selection": {
+                "tool_selection": 1,  # CORRECT
+                "tool_usage": 1,  # CORRECT
+                "tool_selection_reason": "Correct tool was selected for the task",
+                "tool_usage_reason": "Tool was used correctly",
+            },
+        },
+        prompt_tokens=120,
+        completion_tokens=60,
+        latency_ms=1800,
+        span_id=span1.id,
+        metric_id=tool_selection_metric.id,
+    )
+
+    # Create tool selection metric results for span6 (LLM span in trace3) with INCORRECT tool selection and usage
+    span6_tool_selection_metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.TOOL_SELECTION.value,
+        details={
+            "tool_selection": {
+                "tool_selection": 0,  # INCORRECT
+                "tool_usage": 0,  # INCORRECT
+                "tool_selection_reason": "Wrong tool was selected for the task",
+                "tool_usage_reason": "Tool was used incorrectly",
+            },
+        },
+        prompt_tokens=90,
+        completion_tokens=40,
+        latency_ms=1400,
+        span_id=span6.id,
+        metric_id=tool_selection_metric.id,
+    )
+
     db_session.add(span1_query_metric_result)
     db_session.add(span1_response_metric_result)
+    db_session.add(span1_tool_selection_metric_result)
     db_session.add(span6_query_metric_result)
     db_session.add(span6_response_metric_result)
+    db_session.add(span6_tool_selection_metric_result)
     db_session.commit()
 
     yield spans
@@ -627,7 +693,11 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     ).delete(synchronize_session=False)
     db_session.query(DatabaseMetric).filter(
         DatabaseMetric.id.in_(
-            [query_relevance_metric.id, response_relevance_metric.id],
+            [
+                query_relevance_metric.id,
+                response_relevance_metric.id,
+                tool_selection_metric.id,
+            ],
         ),
     ).delete(synchronize_session=False)
     db_session.query(DatabaseTask).filter(

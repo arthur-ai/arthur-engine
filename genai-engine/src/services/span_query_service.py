@@ -275,8 +275,8 @@ class SpanQueryService:
         return bool(
             filters.query_relevance_filters
             or filters.response_relevance_filters
-            or filters.tool_selection
-            or filters.tool_usage,
+            or filters.tool_selection is not None
+            or filters.tool_usage is not None,
         )
 
     def _build_metric_exists_conditions(
@@ -307,7 +307,7 @@ class SpanQueryService:
             (filters.tool_selection, "tool_selection"),
             (filters.tool_usage, "tool_usage"),
         ]:
-            if tool_class:
+            if tool_class is not None:
                 exists_conditions.append(
                     self._build_tool_classification_exists(
                         MetricType.TOOL_SELECTION,
@@ -490,6 +490,6 @@ class SpanQueryService:
             or filters.span_types
             or filters.query_relevance_filters
             or filters.response_relevance_filters
-            or filters.tool_selection
-            or filters.tool_usage,
+            or filters.tool_selection is not None
+            or filters.tool_usage is not None,
         )
