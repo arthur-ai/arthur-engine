@@ -98,6 +98,10 @@ def trace_query_parameters(
         None,
         description="Return only results with this tool name.",
     ),
+    span_types: list[str] = Query(
+        None,
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([kind.value for kind in OpenInferenceSpanKindValues]))}",
+    ),
     # Query relevance filters
     query_relevance_eq: float = Query(
         None,
@@ -203,6 +207,7 @@ def trace_query_parameters(
         start_time=start_time,
         end_time=end_time,
         tool_name=tool_name,
+        span_types=span_types,
         query_relevance_eq=query_relevance_eq,
         query_relevance_gt=query_relevance_gt,
         query_relevance_gte=query_relevance_gte,

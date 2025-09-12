@@ -1735,6 +1735,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Return only results with this tool name.",
     )
+    span_types: Optional[list[str]] = Field(
+        None,
+        description="Span types to filter on. Optional.",
+    )
     tool_selection: Optional[ToolClassEnum] = None
     tool_usage: Optional[ToolClassEnum] = None
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
@@ -1746,7 +1750,8 @@ class TraceQuerySchema(BaseModel):
         def resolve_filters(prefix: str) -> Optional[list[FloatRangeFilter]]:
             filters = []
             for op in ComparisonOperatorEnum:
-                value = getattr(request, f"{prefix}_{op.value}", None)
+                attr_name = f"{prefix}_{op.value}"
+                value = getattr(request, attr_name, None)
                 if value is not None:
                     filters.append(FloatRangeFilter(value=value, operator=op))
             return filters if filters else None
@@ -1761,6 +1766,7 @@ class TraceQuerySchema(BaseModel):
             start_time=request.start_time,
             end_time=request.end_time,
             tool_name=request.tool_name,
+            span_types=request.span_types,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,

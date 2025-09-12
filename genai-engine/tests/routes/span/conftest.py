@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import datetime, timedelta
 from typing import Generator, List
@@ -293,7 +292,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         id=str(uuid.uuid4()),
         trace_id="trace1",
         span_id="span2",
-        task_id=None,  # No task_id - spans without task_id are not processed for metrics
+        task_id="task1",
         parent_span_id="span1",
         span_kind="CHAIN",
         start_time=base_time - timedelta(days=1),
@@ -345,11 +344,11 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         id=str(uuid.uuid4()),
         trace_id="trace2",
         span_id="span4",
-        task_id=None,  # No task_id - spans without task_id are not processed for metrics
+        task_id="task2",
         parent_span_id="span3",
         span_kind="RETRIEVER",
-        start_time=base_time + timedelta(days=1),
-        end_time=base_time + timedelta(days=1) - timedelta(seconds=1),
+        start_time=base_time + timedelta(seconds=30),
+        end_time=base_time + timedelta(seconds=31),
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Retriever",
@@ -361,14 +360,68 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             },
             "arthur_span_version": "arthur_span_v1",
         },
-        created_at=base_time + timedelta(days=1) - timedelta(seconds=1),
-        updated_at=base_time + timedelta(days=1) - timedelta(seconds=1),
+        created_at=base_time + timedelta(seconds=31),
+        updated_at=base_time + timedelta(seconds=31),
     )
     spans.append(span4)
 
-    # Store spans in database using trace ingestion service (handles both spans and trace metadata)
+    # Span 5: Task1, Trace3 - TOOL span for tool filtering tests
+    span5 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="trace3",
+        span_id="span5",
+        task_id="task1",
+        parent_span_id=None,
+        span_kind="TOOL",
+        start_time=base_time + timedelta(hours=1),
+        end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "test_tool",  # This will be used for tool_name filtering
+            "spanId": "span5",
+            "traceId": "trace3",
+            "attributes": {
+                "openinference.span.kind": "TOOL",
+                "tool.name": "test_tool",
+                "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
+        created_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
+        updated_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
+    )
+    spans.append(span5)
 
-    trace_ingestion_service = TraceIngestionService(db_session)
+    # Span 6: Task1, Trace3 - Another LLM span for more metric testing
+    span6 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="trace3",
+        span_id="span6",
+        task_id="task1",
+        parent_span_id="span5",
+        span_kind="LLM",
+        start_time=base_time + timedelta(hours=1) + timedelta(seconds=2),
+        end_time=base_time + timedelta(hours=1) + timedelta(seconds=4),
+        raw_data={
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "ChatOpenAI",
+            "spanId": "span6",
+            "traceId": "trace3",
+            "attributes": {
+                "openinference.span.kind": "LLM",
+                "llm.model_name": "gpt-3.5-turbo",
+                "llm.input_messages.0.message.role": "user",
+                "llm.input_messages.0.message.content": "Test query with different metrics",
+                "llm.output_messages.0.message.role": "assistant",
+                "llm.output_messages.0.message.content": "Test response with different metrics",
+                "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
+            },
+            "arthur_span_version": "arthur_span_v1",
+        },
+        created_at=base_time + timedelta(hours=1) + timedelta(seconds=4),
+        updated_at=base_time + timedelta(hours=1) + timedelta(seconds=4),
+    )
+    spans.append(span6)
 
     # Convert to DatabaseSpan objects
     database_spans = []
@@ -389,8 +442,30 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         )
         database_spans.append(database_span)
 
-    # Store spans and create trace metadata automatically
-    trace_ingestion_service._store_spans(database_spans, commit=True)
+    # Store spans directly to preserve IDs for metric linking
+    db_session.add_all(database_spans)
+    db_session.commit()
+
+    # Create trace metadata manually since we bypassed trace ingestion service
+    trace_metadatas = []
+    for trace_id in set(span.trace_id for span in spans):
+        trace_spans = [span for span in spans if span.trace_id == trace_id]
+        trace_start_time = min(span.start_time for span in trace_spans)
+        trace_end_time = max(span.end_time for span in trace_spans)
+
+        trace_metadata = DatabaseTraceMetadata(
+            task_id=trace_spans[0].task_id,
+            trace_id=trace_id,
+            span_count=len(trace_spans),
+            start_time=trace_start_time,
+            end_time=trace_end_time,
+            created_at=trace_start_time,
+            updated_at=trace_end_time,
+        )
+        trace_metadatas.append(trace_metadata)
+
+    db_session.add_all(trace_metadatas)
+    db_session.commit()
 
     # Create metrics and metric results for LLM spans
 
@@ -411,8 +486,8 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     db_session.add(task2)
     db_session.commit()
 
-    # Create a test metric
-    test_metric = DatabaseMetric(
+    # Create test metrics for different types
+    query_relevance_metric = DatabaseMetric(
         id=str(uuid.uuid4()),
         created_at=base_time,
         updated_at=base_time,
@@ -421,38 +496,114 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         metric_metadata="Test metric for LLM spans",
         config=None,
     )
-    db_session.add(test_metric)
+    response_relevance_metric = DatabaseMetric(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        type=MetricType.RESPONSE_RELEVANCE.value,
+        name="Test Response Relevance",
+        metric_metadata="Test metric for LLM spans",
+        config=None,
+    )
+    db_session.add(query_relevance_metric)
+    db_session.add(response_relevance_metric)
     db_session.commit()
 
     # Create task-to-metric links for task1 and task2
-    task1_metric_link = DatabaseTaskToMetrics(
+    task1_query_metric_link = DatabaseTaskToMetrics(
         task_id="task1",
-        metric_id=test_metric.id,
+        metric_id=query_relevance_metric.id,
         enabled=True,
     )
-    task2_metric_link = DatabaseTaskToMetrics(
+    task1_response_metric_link = DatabaseTaskToMetrics(
+        task_id="task1",
+        metric_id=response_relevance_metric.id,
+        enabled=True,
+    )
+    task2_query_metric_link = DatabaseTaskToMetrics(
         task_id="task2",
-        metric_id=test_metric.id,
+        metric_id=query_relevance_metric.id,
         enabled=True,
     )
-    db_session.add(task1_metric_link)
-    db_session.add(task2_metric_link)
+    task2_response_metric_link = DatabaseTaskToMetrics(
+        task_id="task2",
+        metric_id=response_relevance_metric.id,
+        enabled=True,
+    )
+    db_session.add(task1_query_metric_link)
+    db_session.add(task1_response_metric_link)
+    db_session.add(task2_query_metric_link)
+    db_session.add(task2_response_metric_link)
     db_session.commit()
 
-    # Create metric results for the LLM span (span1)
-    metric_result = DatabaseMetricResult(
+    # Create metric results for span1 (LLM span in trace1) with high relevance scores
+    span1_query_metric_result = DatabaseMetricResult(
         id=str(uuid.uuid4()),
         created_at=base_time,
         updated_at=base_time,
         metric_type=MetricType.QUERY_RELEVANCE.value,
-        details=json.dumps({"score": 0.85, "reason": "Query is relevant to the task"}),
+        details={
+            "query_relevance": {"llm_relevance_score": 0.85},
+            "reason": "Query is highly relevant to the task",
+        },
         prompt_tokens=100,
         completion_tokens=50,
         latency_ms=1500,
         span_id=span1.id,
-        metric_id=test_metric.id,
+        metric_id=query_relevance_metric.id,
     )
-    db_session.add(metric_result)
+    span1_response_metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.RESPONSE_RELEVANCE.value,
+        details={
+            "response_relevance": {"llm_relevance_score": 0.92},
+            "reason": "Response is highly relevant",
+        },
+        prompt_tokens=100,
+        completion_tokens=50,
+        latency_ms=1500,
+        span_id=span1.id,
+        metric_id=response_relevance_metric.id,
+    )
+
+    # Create metric results for span6 (LLM span in trace3) with lower relevance scores
+    span6_query_metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.QUERY_RELEVANCE.value,
+        details={
+            "query_relevance": {"llm_relevance_score": 0.45},
+            "reason": "Query is moderately relevant",
+        },
+        prompt_tokens=80,
+        completion_tokens=30,
+        latency_ms=1200,
+        span_id=span6.id,
+        metric_id=query_relevance_metric.id,
+    )
+    span6_response_metric_result = DatabaseMetricResult(
+        id=str(uuid.uuid4()),
+        created_at=base_time,
+        updated_at=base_time,
+        metric_type=MetricType.RESPONSE_RELEVANCE.value,
+        details={
+            "response_relevance": {"llm_relevance_score": 0.38},
+            "reason": "Response is moderately relevant",
+        },
+        prompt_tokens=80,
+        completion_tokens=30,
+        latency_ms=1200,
+        span_id=span6.id,
+        metric_id=response_relevance_metric.id,
+    )
+
+    db_session.add(span1_query_metric_result)
+    db_session.add(span1_response_metric_result)
+    db_session.add(span6_query_metric_result)
+    db_session.add(span6_response_metric_result)
     db_session.commit()
 
     yield spans
@@ -474,9 +625,11 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     db_session.query(DatabaseTaskToMetrics).filter(
         DatabaseTaskToMetrics.task_id.in_(["task1", "task2"]),
     ).delete(synchronize_session=False)
-    db_session.query(DatabaseMetric).filter(DatabaseMetric.id == test_metric.id).delete(
-        synchronize_session=False,
-    )
+    db_session.query(DatabaseMetric).filter(
+        DatabaseMetric.id.in_(
+            [query_relevance_metric.id, response_relevance_metric.id],
+        ),
+    ).delete(synchronize_session=False)
     db_session.query(DatabaseTask).filter(
         DatabaseTask.id.in_(["task1", "task2"]),
     ).delete(synchronize_session=False)

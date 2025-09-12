@@ -4,7 +4,7 @@ from typing import Optional
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import MetricType, PaginationSortMethod
-from sqlalchemy import and_, asc, desc, exists, func, select
+from sqlalchemy import and_, asc, cast, desc, exists, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.types import Float, Integer
 
@@ -157,15 +157,15 @@ class SpanQueryService:
         if filters.end_time:
             query = query.where(DatabaseTraceMetadata.end_time <= filters.end_time)
 
-        # Duration filters using pre-computed values
+        # Duration filters using dialect-agnostic calculation
         if filters.trace_duration_filters:
             duration_conditions = []
             for filter_item in filters.trace_duration_filters:
-                # Database-agnostic duration calculation using UNIX epoch timestamps
-                # Convert timestamps to epoch seconds and subtract (works on all databases)
+                # Dialect-agnostic duration calculation with sub-second precision
+                # Cast to Float ensures proper fractional seconds support across databases
                 start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
                 end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
-                duration_seconds = end_epoch - start_epoch
+                duration_seconds = func.round(cast(end_epoch - start_epoch, Float), 3)
 
                 duration_conditions.append(
                     self._build_comparison_condition(duration_seconds, filter_item),
@@ -205,6 +205,13 @@ class SpanQueryService:
             )
             qualifying_traces.intersection_update(tool_name_traces)
 
+        if filters.span_types:
+            span_type_traces = self._get_traces_with_span_types(
+                filters.span_types,
+                candidate_trace_ids,
+            )
+            qualifying_traces.intersection_update(span_type_traces)
+
         if self._has_metric_filters(filters):
             metric_traces = self._get_traces_with_metrics(
                 filters,
@@ -224,6 +231,22 @@ class SpanQueryService:
                 DatabaseSpan.trace_id.in_(candidate_trace_ids),
                 DatabaseSpan.span_kind == SPAN_KIND_TOOL,
                 DatabaseSpan.span_name == tool_name,
+            ),
+        )
+
+        results = self.db_session.execute(query).scalars().all()
+        return set(results)
+
+    def _get_traces_with_span_types(
+        self,
+        span_types: list[str],
+        candidate_trace_ids: list[str],
+    ) -> set[str]:
+        """Find traces containing spans of the specified types."""
+        query = select(DatabaseSpan.trace_id.distinct()).where(
+            and_(
+                DatabaseSpan.trace_id.in_(candidate_trace_ids),
+                DatabaseSpan.span_kind.in_(span_types),
             ),
         )
 
@@ -464,6 +487,7 @@ class SpanQueryService:
         """Check if we need expensive span-level filtering."""
         return bool(
             filters.tool_name
+            or filters.span_types
             or filters.query_relevance_filters
             or filters.response_relevance_filters
             or filters.tool_selection

@@ -1208,6 +1208,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int | None = None,
         sort: str | None = None,
         tool_name: str | None = None,
+        span_types: list | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1241,6 +1242,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
             tool_name: Return only results with this tool name
+            span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
             query_relevance_gt: Query relevance greater than this value
             query_relevance_gte: Query relevance greater than or equal to this value
@@ -1277,6 +1279,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
         if tool_name is not None:
             params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq
@@ -1341,6 +1345,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int | None = None,
         sort: str | None = None,
         tool_name: str | None = None,
+        span_types: list | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1374,6 +1379,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
             tool_name: Return only results with this tool name
+            span_types: Span types to filter on (optional)
             query_relevance_eq: Query relevance equal to this value
             query_relevance_gt: Query relevance greater than this value
             query_relevance_gte: Query relevance greater than or equal to this value
@@ -1410,6 +1416,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
         if tool_name is not None:
             params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq
