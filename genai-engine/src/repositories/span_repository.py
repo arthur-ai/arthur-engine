@@ -141,15 +141,15 @@ class SpanRepository:
             raise ValueError("task_ids are required for trace queries")
 
         # Trace-level pagination: get paginated trace IDs using optimized two-phase filtering
-        paginated_trace_ids = (
-            self.span_query_service.get_paginated_trace_ids_with_filters(
-                filters=filters,
-                pagination_parameters=pagination_parameters,
-            )
+        result = self.span_query_service.get_paginated_trace_ids_with_filters(
+            filters=filters,
+            pagination_parameters=pagination_parameters,
         )
 
-        if not paginated_trace_ids:
+        if not result:
             return 0, []
+
+        paginated_trace_ids, total_count = result
 
         # Query all spans in the paginated traces
         spans = self.span_query_service.query_spans_from_db(
@@ -170,7 +170,7 @@ class SpanRepository:
             valid_spans,
             pagination_parameters.sort,
         )
-        return len(traces), traces
+        return total_count, traces
 
     # ============================================================================
     # Testing/Utility Methods
