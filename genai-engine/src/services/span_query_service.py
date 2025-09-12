@@ -312,7 +312,7 @@ class SpanQueryService:
         ]
 
         return exists(
-            select(1)
+            select(inner_span.c.trace_id)
             .select_from(
                 inner_span.join(
                     inner_metric,
@@ -361,7 +361,7 @@ class SpanQueryService:
         )
 
         return exists(
-            select(1)
+            select(inner_span.c.trace_id)
             .select_from(
                 inner_span.join(
                     inner_metric,
