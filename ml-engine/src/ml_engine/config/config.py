@@ -33,3 +33,17 @@ class Config:
             settings.SEGMENTATION_COL_COUNT_LIMIT,
             "SEGMENTATION_COL_COUNT_LIMIT",
         )
+
+    @staticmethod
+    def aggregation_timeout() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.ML_ENGINE_AGGREGATION_TIMEOUT,
+            "ML_ENGINE_AGGREGATION_TIMEOUT",
+        )
+
+    @staticmethod
+    def default_thread_pool_max_workers() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.ML_ENGINE_DEFAULT_THREAD_POOL_MAX_WORKERS,
+            "ML_ENGINE_DEFAULT_THREAD_POOL_MAX_WORKERS",
+        )
