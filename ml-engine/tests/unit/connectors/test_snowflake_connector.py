@@ -23,7 +23,7 @@ MOCK_SNOWFLAKE_CONNECTOR_SPEC = {
     "temporary": False,
     "fields": [
         {
-            "key": "account",
+            "key": "host",
             "value": "test.snowflakecomputing.com",
             "is_sensitive": False,
             "d_type": ConnectorFieldDataType.STRING.value,
@@ -82,22 +82,6 @@ class TestSnowflakeConnector:
     """Test cases for SnowflakeConnector."""
 
     @patch("ml_engine.connectors.snowflake_connector.create_engine")
-    def test_snowflake_connector_creation(self, mock_create_engine):
-        """Test that Snowflake connector is created with correct configuration."""
-        mock_engine = Mock()
-        mock_create_engine.return_value = mock_engine
-
-        spec = ConnectorSpec.model_validate(MOCK_SNOWFLAKE_CONNECTOR_SPEC)
-        logger = Mock()
-
-        connector = SnowflakeConnector(spec, logger)
-
-        assert connector.schema == "PUBLIC"
-        assert connector.warehouse == "TEST_WH"
-        assert connector.role == "TEST_ROLE"
-        assert connector.authenticator == "snowflake"
-
-    @patch("ml_engine.connectors.snowflake_connector.create_engine")
     def test_snowflake_connector_defaults(self, mock_create_engine):
         """Test that Snowflake connector uses correct default values."""
         mock_engine = Mock()
@@ -107,7 +91,7 @@ class TestSnowflakeConnector:
         minimal_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
         minimal_spec["fields"] = [
             {
-                "key": "account",
+                "key": "host",
                 "value": "test.snowflakecomputing.com",
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
@@ -144,7 +128,7 @@ class TestSnowflakeConnector:
 
     @patch("ml_engine.connectors.snowflake_connector.create_engine")
     def test_get_default_schema(self, mock_create_engine):
-        """Test that Snowflake connector returns correct default schema."""
+        """Test that Snowflake connector returns correct custom schema."""
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
 
@@ -152,7 +136,7 @@ class TestSnowflakeConnector:
         custom_schema_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
         custom_schema_spec["fields"] = [
             {
-                "key": "account",
+                "key": "host",
                 "value": "test.snowflakecomputing.com",
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
@@ -189,51 +173,3 @@ class TestSnowflakeConnector:
         connector = SnowflakeConnector(spec, logger)
 
         assert connector._get_default_schema() == "CUSTOM_SCHEMA"
-
-    @patch("ml_engine.connectors.snowflake_connector.create_engine")
-    def test_get_default_schema_fallback(self, mock_create_engine):
-        """Test that Snowflake connector falls back to PUBLIC when no schema specified."""
-        mock_engine = Mock()
-        mock_create_engine.return_value = mock_engine
-
-        # Create spec without schema field
-        no_schema_spec = MOCK_SNOWFLAKE_CONNECTOR_SPEC.copy()
-        no_schema_spec["fields"] = [
-            {
-                "key": "account",
-                "value": "test.snowflakecomputing.com",
-                "is_sensitive": False,
-                "d_type": ConnectorFieldDataType.STRING.value,
-            },
-            {
-                "key": "database",
-                "value": "TEST_DB",
-                "is_sensitive": False,
-                "d_type": ConnectorFieldDataType.STRING.value,
-            },
-            {
-                "key": "username",
-                "value": "test_user",
-                "is_sensitive": False,
-                "d_type": ConnectorFieldDataType.STRING.value,
-            },
-            {
-                "key": "password",
-                "value": "test_pass",
-                "is_sensitive": True,
-                "d_type": ConnectorFieldDataType.STRING.value,
-            },
-            {
-                "key": "dialect",
-                "value": "snowflake native (snowflake-connector-python)",
-                "is_sensitive": False,
-                "d_type": ConnectorFieldDataType.STRING.value,
-            },
-        ]
-
-        spec = ConnectorSpec.model_validate(no_schema_spec)
-        logger = Mock()
-
-        connector = SnowflakeConnector(spec, logger)
-
-        assert connector._get_default_schema() == "PUBLIC"

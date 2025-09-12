@@ -55,7 +55,7 @@ class ODBCConnector(Connector):
     def __init__(self, connector_config: ConnectorSpec, logger: Logger) -> None:
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
-        self.host: str = connector_fields.get(ODBC_CONNECTOR_HOST_FIELD, "")
+        self.host: str = connector_fields[ODBC_CONNECTOR_HOST_FIELD]
         self.port: str = connector_fields.get(ODBC_CONNECTOR_PORT_FIELD, "")
         self.database: str = connector_fields.get(ODBC_CONNECTOR_DATABASE_FIELD, "")
         self.username: str = connector_fields.get(ODBC_CONNECTOR_USERNAME_FIELD, "")

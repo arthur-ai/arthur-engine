@@ -4,11 +4,8 @@ from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
     ConnectorCheckResult,
     ConnectorSpec,
-    ConnectorSpecField,
 )
 from arthur_common.models.connectors import (
-    ODBC_CONNECTOR_HOST_FIELD,
-    SNOWFLAKE_CONNECTOR_ACCOUNT_FIELD,
     SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
     SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD,
     SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
@@ -35,58 +32,59 @@ class SnowflakeConnector(ODBCConnector):
         self.logger = logger
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
-        # Store Snowflake-specific configuration
-        self.account = connector_fields.get(
-            SNOWFLAKE_CONNECTOR_ACCOUNT_FIELD,
-            "account",
-        )
-
-        # Add host field to connector_config.fields for parent constructor
-        if "host" not in connector_fields:
-            connector_config.fields.append(
-                ConnectorSpecField(
-                    key=ODBC_CONNECTOR_HOST_FIELD,
-                    value=self.account,
-                    is_sensitive=False,
-                    d_type="STRING",
-                ),
-            )
-            self.logger.info(f"Added host field to connector config: {self.account}")
-        else:
-            self.logger.info(f"Host field already exists in connector config")
-
-        if not self.account or self.account == "account":
-            raise ValueError("Snowflake account identifier is required")
-
         self.schema = connector_fields.get(SNOWFLAKE_CONNECTOR_SCHEMA_FIELD, "PUBLIC")
         self.warehouse = connector_fields.get(
             SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
             "COMPUTE_WH",
         )
         self.role = connector_fields.get(SNOWFLAKE_CONNECTOR_ROLE_FIELD)
-        self.authenticator = connector_fields.get(
-            SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
-            "snowflake",
+        self.authenticator = connector_fields[SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD]
+
+        private_key_passphrase = connector_fields.get(
+            SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
         )
-        if self.authenticator == "snowflake_jwt":
-            self.private_key_passphrase = SecretStr(
-                connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD),
-            )
-            self.private_key = SecretStr(
-                connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD),
-            )
+        self.private_key_passphrase = (
+            SecretStr(private_key_passphrase) if private_key_passphrase else None
+        )
+
+        private_key = connector_fields.get(SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD)
+        self.private_key = SecretStr(private_key) if private_key else None
 
         # Call parent constructor to set up basic ODBC connection
         super().__init__(connector_config, logger)
 
+        # validate snowflake config
+        self._validate_snowflake_auth_config()
+
         # Override the engine with Snowflake-specific configuration
         self.engine = self._create_snowflake_engine()
 
+    def _validate_snowflake_auth_config(self) -> None:
+        """Validates the expected fields are set for the authenticator methods"""
+        match self.authenticator:
+            case "snowflake_jwt":
+                if not self.private_key or not self.username:
+                    raise ValueError(
+                        f"Private key and username must be specified when the authentication method is snowflake_jwt.",
+                    )
+            case "snowflake":
+                if not self.username or not self.password:
+                    raise ValueError(
+                        f"Username and password must be specified when the authentication method is snowflake.",
+                    )
+            case _:
+                raise ValueError(
+                    f"Authenticator method {self.authenticator} is not recognized.",
+                )
+
     def _create_snowflake_engine(self) -> Engine:
-        """Create a Snowflake-specific SQLAlchemy engine following official documentation."""
+        """Create a Snowflake-specific SQLAlchemy engine following official documentation.
+
+        https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#:~:text=role%3Dmyrole%27%0A)-,For,-convenience%2C%20you%20can
+        """
 
         connection_params = {
-            "account": self.account,
+            "account": self.host,
             "user": self.username,
             "database": self.database,
             "schema": self.schema,
@@ -96,20 +94,24 @@ class SnowflakeConnector(ODBCConnector):
         if self.role:
             connection_params["role"] = self.role
 
+        connect_args = {}
+
         if self.authenticator == "snowflake":
-            connection_params["authenticator"] = "snowflake"
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
 
         elif self.authenticator == "snowflake_jwt":
-
-            connection_params["authenticator"] = "snowflake_jwt"
+            # https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#key-pair-authentication-support
 
             pem_text = self.private_key.get_secret_value()
 
             p_key = serialization.load_pem_private_key(
                 pem_text.encode(),
-                password=self.private_key_passphrase.get_secret_value().encode(),
+                password=(
+                    self.private_key_passphrase.get_secret_value().encode()
+                    if self.private_key_passphrase
+                    else None
+                ),
                 backend=default_backend(),  # optional in modern cryptography
             )
 
@@ -118,37 +120,19 @@ class SnowflakeConnector(ODBCConnector):
                 format=serialization.PrivateFormat.PKCS8,
                 encryption_algorithm=serialization.NoEncryption(),
             )
-
-            try:
-                private_key_URL = URL(**connection_params)
-                engine = create_engine(
-                    private_key_URL,
-                    connect_args={"private_key": pkb},
-                )
-            except Exception as e:
-                self.logger.error(f"Failed to create Snowflake engine: {e}")
-                raise
+            connect_args["private_key"] = pkb
         else:
-            self.logger.warning(
-                f"Unsupported authenticator '{self.authenticator}', defaulting to 'snowflake'",
+            raise ValueError(
+                f"Unsupported authenticator '{self.authenticator}'.",
             )
-            connection_params["authenticator"] = "snowflake"
-            if self.password:
-                connection_params["password"] = self.password.get_secret_value()
 
-        if self.authenticator != "key_pair":
-            try:
-                snowflake_url = URL(**connection_params)
-                engine = create_engine(snowflake_url, echo=False)
-            except Exception as e:
-                self.logger.error(f"Failed to create Snowflake engine: {e}")
-                raise
-
+        snowflake_url = URL(**connection_params)
+        engine = create_engine(snowflake_url, echo=False, connect_args=connect_args)
         return engine
 
     def _get_default_schema(self) -> str:
-        """Override to return Snowflake's default schema."""
-        return self.schema or "PUBLIC"
+        """Override ODBC connector method to return Snowflake's schema."""
+        return self.schema
 
     def test_connection(self) -> ConnectorCheckResult:
         """Test Snowflake connection using list_datasets for comprehensive validation."""
@@ -179,7 +163,7 @@ class SnowflakeConnector(ODBCConnector):
 
             datasets = self.list_datasets()
             self.logger.info(
-                f"Successfully listed {len(datasets.available_datasets)} datasets",
+                f"Successfully discovered {len(datasets.available_datasets)} datasets",
             )
 
         except Exception as e:
@@ -194,23 +178,12 @@ class SnowflakeConnector(ODBCConnector):
         )
 
     def dispose(self) -> None:
-        """Dispose of the Snowflake engine following official documentation."""
+        """Dispose of the Snowflake engine following official documentation.
+        https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#opening-and-closing-a-connection
+        """
         if hasattr(self, "engine") and self.engine:
             self.engine.dispose()
             self.logger.info("Snowflake engine disposed successfully")
-
-    def get_connection_info(self) -> dict:
-        """Get connection information for debugging purposes."""
-        return {
-            "account": self.account,
-            "user": self.username,
-            "database": self.database,
-            "schema": self.schema,
-            "warehouse": self.warehouse,
-            "role": self.role,
-            "authenticator": self.authenticator,
-            "has_password": bool(self.password),
-        }
 
     def __del__(self) -> None:
         """Cleanup method to ensure proper engine disposal."""
