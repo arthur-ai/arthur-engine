@@ -1,4 +1,5 @@
 from logging import Logger
+from typing import Any, Dict, Tuple, Union
 
 from arthur_client.api_bindings import (
     ConnectorCheckOutcome,
@@ -18,8 +19,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import SecretStr
 from snowflake.sqlalchemy import URL
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
+from sqlalchemy import text
 
 
 class SnowflakeConnector(ODBCConnector):
@@ -56,9 +56,6 @@ class SnowflakeConnector(ODBCConnector):
         # validate snowflake config
         self._validate_snowflake_auth_config()
 
-        # Override the engine with Snowflake-specific configuration
-        self.engine = self._create_snowflake_engine()
-
     def _validate_snowflake_auth_config(self) -> None:
         """Validates the expected fields are set for the authenticator methods"""
         match self.authenticator:
@@ -77,8 +74,11 @@ class SnowflakeConnector(ODBCConnector):
                     f"Authenticator method {self.authenticator} is not recognized.",
                 )
 
-    def _create_snowflake_engine(self) -> Engine:
-        """Create a Snowflake-specific SQLAlchemy engine following official documentation.
+    def _build_engine_url(
+        self,
+        conn_str: str = "",
+    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
+        """Overrides _build_engine_url to create a Snowflake-specific SQLAlchemy engine URL following official documentation.
 
         https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#:~:text=role%3Dmyrole%27%0A)-,For,-convenience%2C%20you%20can
         """
@@ -127,8 +127,7 @@ class SnowflakeConnector(ODBCConnector):
             )
 
         snowflake_url = URL(**connection_params)
-        engine = create_engine(snowflake_url, echo=False, connect_args=connect_args)
-        return engine
+        return snowflake_url, connect_args
 
     def _get_default_schema(self) -> str:
         """Override ODBC connector method to return Snowflake's schema."""
