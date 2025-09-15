@@ -3062,14 +3062,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "locust"
-version = "2.40.2"
+version = "2.40.4"
 description = "Developer-friendly load testing framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 files = [
-    {file = "locust-2.40.2-py3-none-any.whl", hash = "sha256:c8f0060d2bd8479034e9e61e6473669c4c8216930d99ee61ec0e627340b89d3e"},
-    {file = "locust-2.40.2.tar.gz", hash = "sha256:9ffdf900d1ad949d4c5809e2a4e526bba582175f025f24da2755f43f4b5cb23e"},
+    {file = "locust-2.40.4-py3-none-any.whl", hash = "sha256:50e647a73c5a4e7a775c6e4311979472fce8b00ed783837a2ce9bb36786f7d1a"},
+    {file = "locust-2.40.4.tar.gz", hash = "sha256:3a3a470459edc4ba1349229bf1aca4c0cb651c4e2e3f85d3bc28fe8118f5a18f"},
 ]
 
 [package.dependencies]
@@ -3087,7 +3087,7 @@ python-engineio = ">=4.12.2"
 python-socketio = {version = ">=5.13.0", extras = ["client"]}
 pywin32 = {version = "*", markers = "sys_platform == \"win32\""}
 pyzmq = ">=25.0.0"
-requests = {version = ">=2.32.2", markers = "python_version > \"3.11\""}
+requests = ">=2.32.2"
 setuptools = ">=70.0.0"
 werkzeug = ">=2.0.0"
 
@@ -8160,4 +8160,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "a68ebc9dd663ac3f2ba2fdc32cb8ecf97a0140621a7c71d57724770474242af0"
+content-hash = "80e80957676cfd9deb7e63f2fe3cea328366870eaa5791dc0dbd5ccc029dbe4c"
