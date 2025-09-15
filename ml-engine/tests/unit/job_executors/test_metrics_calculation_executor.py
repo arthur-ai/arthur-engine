@@ -1,6 +1,5 @@
 import logging
 import time
-from concurrent.futures import TimeoutError
 from datetime import datetime, timedelta
 from typing import Optional, Type
 from unittest.mock import Mock, patch
@@ -200,7 +199,7 @@ def test_process_agg_args(
 
 
 @patch("job_executors.metrics_calculation_executor.ML_ENGINE_AGGREGATION_TIMEOUT", 1)
-def test_metrics_calculation_timeout(mock_bigquery_client):
+def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
     """Test metrics calculation timeout works properly."""
     first_timestamp = datetime(2024, 1, 1).astimezone(pytz.timezone("UTC"))
     first_timestamp_str = first_timestamp.isoformat()
@@ -323,12 +322,19 @@ def test_metrics_calculation_timeout(mock_bigquery_client):
             mock_job = Mock()
             mock_job.schedule_id = None
 
-            # test there is a TimeoutError
-            with pytest.raises(TimeoutError) as exc_info:
+            # test there is a ValueError
+            with pytest.raises(ValueError) as exc_info:
                 executor.execute(mock_job, job_spec)
 
             # verify that the error message indicates a timeout or processing failure
             error_message = str(exc_info.value)
-            expected_err_message = f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_schema.name}"
+            expected_err_message = f"Error calculating aggregation(s) with id(s) {agg_spec.aggregation_id}. Metrics were still calculated for any other aggregations configured for the model."
 
             assert error_message == expected_err_message
+
+            # test the timeout error message is logged
+            assert any(
+                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_schema.name}"
+                in rec.message
+                for rec in caplog.records
+            )
