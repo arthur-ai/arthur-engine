@@ -8,6 +8,8 @@ from arthur_client.api_bindings import (
 )
 from arthur_common.models.connectors import (
     SNOWFLAKE_CONNECTOR_AUTHENTICATOR_FIELD,
+    SNOWFLAKE_CONNECTOR_AUTHENTICATOR_KEY_PAIR,
+    SNOWFLAKE_CONNECTOR_AUTHENTICATOR_PASSWORD,
     SNOWFLAKE_CONNECTOR_PRIVATE_KEY_FIELD,
     SNOWFLAKE_CONNECTOR_PRIVATE_KEY_PASSPHRASE_FIELD,
     SNOWFLAKE_CONNECTOR_ROLE_FIELD,
@@ -59,15 +61,15 @@ class SnowflakeConnector(ODBCConnector):
     def _validate_snowflake_auth_config(self) -> None:
         """Validates the expected fields are set for the authenticator methods"""
         match self.authenticator:
-            case "snowflake_key_pair":
+            case SNOWFLAKE_CONNECTOR_AUTHENTICATOR_KEY_PAIR:
                 if not self.private_key or not self.username:
                     raise ValueError(
-                        f"Private key and username must be specified when the authentication method is snowflake_jwt.",
+                        f"Private key and username must be specified when the authentication method is {SNOWFLAKE_CONNECTOR_AUTHENTICATOR_KEY_PAIR}.",
                     )
-            case "snowflake_password":
+            case SNOWFLAKE_CONNECTOR_AUTHENTICATOR_PASSWORD:
                 if not self.username or not self.password:
                     raise ValueError(
-                        f"Username and password must be specified when the authentication method is snowflake.",
+                        f"Username and password must be specified when the authentication method is {SNOWFLAKE_CONNECTOR_AUTHENTICATOR_PASSWORD}.",
                     )
             case _:
                 raise ValueError(
@@ -96,11 +98,11 @@ class SnowflakeConnector(ODBCConnector):
 
         connect_args = {}
 
-        if self.authenticator == "snowflake_password":
+        if self.authenticator == SNOWFLAKE_CONNECTOR_AUTHENTICATOR_PASSWORD:
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
 
-        elif self.authenticator == "snowflake_key_pair":
+        elif self.authenticator == SNOWFLAKE_CONNECTOR_AUTHENTICATOR_KEY_PAIR:
             # https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#key-pair-authentication-support
 
             pem_text = self.private_key.get_secret_value()
