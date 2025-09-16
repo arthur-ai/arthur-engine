@@ -57,22 +57,12 @@ from genai_client.models import (
     UpdateRuleRequest,
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
-
-SHIELD_SORT_FILTER = "sort"
-SHIELD_SORT_DESC = "desc"
-SHIELD_ALLOWED_FILTERS = {
-    "conversation_id": str,
-    "inference_id": str,
-    "user_id": str,
-    "rule_types": list,
-    "rule_statuses": list,
-    "prompt_statuses": list,
-    "response_statuses": list,
-    SHIELD_SORT_FILTER: str,
-    "page": int,
-    "page_size": int,
-}
-
+from tools.agentic_filters import (
+    add_default_sort_filter,
+    build_agentic_filter_parameters,
+    validate_filters,
+    SHIELD_SORT_FILTER,
+)
 
 SHIELD_MAX_PAGE_SIZE = 1500
 
@@ -113,60 +103,6 @@ class ShieldBaseConnector(Connector, ABC):
             return f"{endpoint_components.scheme}://{endpoint_components.hostname}:{endpoint_components.port}"
         return f"{endpoint_components.scheme}://{endpoint_components.hostname}"
 
-    def _validate_filters(
-        self,
-        filters: list[DataResultFilter],
-    ) -> list[DataResultFilter]:
-        allowed_filters = []
-        for filter in filters:
-            if filter.field_name not in SHIELD_ALLOWED_FILTERS.keys():
-                self.logger.warning(
-                    f"Filter field {filter.field_name} is not supported.",
-                )
-
-            elif not isinstance(
-                filter.value,
-                SHIELD_ALLOWED_FILTERS[filter.field_name],
-            ):
-                self.logger.warning(
-                    f"Filter value for {filter.field_name} is of type {type(filter.value)}, but should be of type {SHIELD_ALLOWED_FILTERS[filter.field_name]}.",
-                )
-
-            elif filter.op != DataResultFilterOp.EQUALS:
-                self.logger.warning(
-                    f"Filter operation {filter.op} is not suppoerted. Ony {DataResultFilterOp.EQUALS} is supported for Shield Connector.",
-                )
-            else:
-                allowed_filters.append(filter)
-        return allowed_filters
-
-    @staticmethod
-    def _add_default_sort_filter(
-        filters: Optional[list[DataResultFilter]],
-    ) -> list[DataResultFilter]:
-        # adds default sort descending filter if not overridden in user-defined list of filters
-        if not filters:
-            filters = [
-                DataResultFilter(
-                    field_name=SHIELD_SORT_FILTER,
-                    op=DataResultFilterOp.EQUALS,
-                    value=SHIELD_SORT_DESC,
-                ),
-            ]
-        else:
-            for data_filter in filters:
-                if data_filter.field_name == SHIELD_SORT_FILTER:
-                    break
-            else:
-                filters.append(
-                    DataResultFilter(
-                        field_name=SHIELD_SORT_FILTER,
-                        op=DataResultFilterOp.EQUALS,
-                        value=SHIELD_SORT_DESC,
-                    ),
-                )
-
-        return filters
 
     def read(
         self,
@@ -199,8 +135,8 @@ class ShieldBaseConnector(Connector, ABC):
             "page_size": SHIELD_MAX_PAGE_SIZE,
         }
 
-        filters = self._add_default_sort_filter(filters)
-        filters = self._validate_filters(filters)
+        filters = add_default_sort_filter(filters)
+        filters = validate_filters(filters, is_agentic=is_agentic)
         params.update(**{f.field_name: f.value for f in filters})
 
         single_page_requested = pagination_options is not None
@@ -217,18 +153,27 @@ class ShieldBaseConnector(Connector, ABC):
 
         resp: Any = None
 
+        # Build filter parameters for agentic datasets
+        filter_params = {}
+        if is_agentic and filters:
+            # Map to GenAI Engine parameters
+            filter_params = build_agentic_filter_parameters(filters)
+            self.logger.info(f"Applying {len(filter_params)} filter parameters to GenAI Engine")
+
         while True:
             if is_agentic:
                 self.logger.info(f"Fetching page {params['page']} of traces")
                 resp = (
                     self._spans_client.query_spans_v1_traces_query_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
-                        trace_ids=None,
                         start_time=start_time,
                         end_time=end_time,
                         page=params["page"],
                         page_size=params["page_size"],
                         sort=params.get(SHIELD_SORT_FILTER),
+                        
+                        # Add all mapped filter parameters
+                        **filter_params
                     )
                 )
 
