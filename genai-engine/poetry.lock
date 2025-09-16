@@ -576,18 +576,18 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.28"
+version = "1.40.31"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.40.28-py3-none-any.whl", hash = "sha256:fd5cb71b6390e870974e56969e10868f1cf391babeef0b18f91cf8d4f00557cd"},
-    {file = "boto3-1.40.28.tar.gz", hash = "sha256:dd44710ab908b0b38cf127053cac83608a15358c85fa267a498e3dbac6fd5789"},
+    {file = "boto3-1.40.31-py3-none-any.whl", hash = "sha256:61d5f9975c54ff919a24ff9d472c6c09c8a443a083fe56d30c04fc22d22ac42b"},
+    {file = "boto3-1.40.31.tar.gz", hash = "sha256:8c5f1270f09431694412f326cfb5ac9786d41ea3bc6ac54cbb7161d40afc660d"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.28,<1.41.0"
+botocore = ">=1.40.31,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -596,14 +596,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.28"
+version = "1.40.31"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.28-py3-none-any.whl", hash = "sha256:fcd393da6cb4d97cff3823d4085cd034d1c80f1cc22a57b1f84d3f863b337a03"},
-    {file = "botocore-1.40.28.tar.gz", hash = "sha256:4a26c662dcce2e675209c23cd3a569e137a59fdc9692b8bb9dabed522cbe2d8c"},
+    {file = "botocore-1.40.31-py3-none-any.whl", hash = "sha256:4033a00f8c6a4b5c3acb30af9283963123917227a437e5fc165189d07bd3cf8a"},
+    {file = "botocore-1.40.31.tar.gz", hash = "sha256:9496b91bbe40ed01d341dc8f6ff0492d7f546e80f1a862b00ec5bc9045fa3324"},
 ]
 
 [package.dependencies]
@@ -8160,4 +8160,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "0ae4a6c0253df13ee8362d6002be47276b8e333ded2951e153c613b26f920532"
+content-hash = "a89226592dfba232bf39fb42a0985f00208d3aa8e0d6c3fd83d3089d61fd5d65"
