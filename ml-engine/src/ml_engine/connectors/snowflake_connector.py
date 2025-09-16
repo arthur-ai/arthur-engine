@@ -59,12 +59,12 @@ class SnowflakeConnector(ODBCConnector):
     def _validate_snowflake_auth_config(self) -> None:
         """Validates the expected fields are set for the authenticator methods"""
         match self.authenticator:
-            case "snowflake_jwt":
+            case "snowflake_key_pair":
                 if not self.private_key or not self.username:
                     raise ValueError(
                         f"Private key and username must be specified when the authentication method is snowflake_jwt.",
                     )
-            case "snowflake":
+            case "snowflake_password":
                 if not self.username or not self.password:
                     raise ValueError(
                         f"Username and password must be specified when the authentication method is snowflake.",
@@ -96,11 +96,11 @@ class SnowflakeConnector(ODBCConnector):
 
         connect_args = {}
 
-        if self.authenticator == "snowflake":
+        if self.authenticator == "snowflake_password":
             if self.password:
                 connection_params["password"] = self.password.get_secret_value()
 
-        elif self.authenticator == "snowflake_jwt":
+        elif self.authenticator == "snowflake_key_pair":
             # https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#key-pair-authentication-support
 
             pem_text = self.private_key.get_secret_value()
