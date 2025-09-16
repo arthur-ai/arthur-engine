@@ -184,16 +184,11 @@ class SpanQueryService:
         """
         Apply span-level filters using JOINs for simple filters and EXISTS for metric filters.
         """
-        # Use JOINs for simple span-level filters
-        joins_needed = set()
+        
         span_conditions = []
 
-        # Simple span filters that benefit from JOINs
-        if filters.tool_name or filters.span_types:
-            joins_needed.add("spans")
-
         # Build JOINs for simple span filters
-        if "spans" in joins_needed:
+        if filters.tool_name or filters.span_types:
             query = query.join(
                 DatabaseSpan,
                 DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
@@ -312,7 +307,7 @@ class SpanQueryService:
         ]
 
         return exists(
-            select(inner_span.c.trace_id)
+            select(1)
             .select_from(
                 inner_span.join(
                     inner_metric,
@@ -361,7 +356,7 @@ class SpanQueryService:
         )
 
         return exists(
-            select(inner_span.c.trace_id)
+            select(1)
             .select_from(
                 inner_span.join(
                     inner_metric,
