@@ -2355,10 +2355,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
                             "title": "Start Time"
                         },
-                        "description": "Inclusive start date in ISO8601 string format."
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "end_time",
@@ -2367,10 +2367,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
                             "title": "End Time"
                         },
-                        "description": "Exclusive end date in ISO8601 string format."
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "tool_name",
@@ -2717,10 +2717,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
                             "title": "Start Time"
                         },
-                        "description": "Inclusive start date in ISO8601 string format."
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "end_time",
@@ -2729,10 +2729,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
                             "title": "End Time"
                         },
-                        "description": "Exclusive end date in ISO8601 string format."
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "tool_name",
@@ -3044,10 +3044,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
                             "title": "Start Time"
                         },
-                        "description": "Inclusive start date in ISO8601 string format."
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "end_time",
@@ -3056,10 +3056,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
                             "title": "End Time"
                         },
-                        "description": "Exclusive end date in ISO8601 string format."
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "sort",

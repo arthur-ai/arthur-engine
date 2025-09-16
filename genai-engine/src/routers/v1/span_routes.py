@@ -88,11 +88,11 @@ def trace_query_parameters(
     ),
     start_time: datetime = Query(
         None,
-        description="Inclusive start date in ISO8601 string format.",
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
     ),
     end_time: datetime = Query(
         None,
-        description="Exclusive end date in ISO8601 string format.",
+        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
     ),
     tool_name: str = Query(
         None,
@@ -374,11 +374,11 @@ def query_spans_by_type(
     ),
     start_time: datetime = Query(
         None,
-        description="Inclusive start date in ISO8601 string format.",
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
     ),
     end_time: datetime = Query(
         None,
-        description="Exclusive end date in ISO8601 string format.",
+        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),

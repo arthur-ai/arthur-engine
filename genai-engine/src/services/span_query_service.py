@@ -10,7 +10,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import MetricType, PaginationSortMethod
 from sqlalchemy import and_, asc, cast, desc, exists, func, select
 from sqlalchemy.orm import Session
-from sqlalchemy.types import Float, Integer
+from sqlalchemy.types import Float, Integer, Numeric
 
 from db_models.db_models import (
     DatabaseMetricResult,
@@ -164,7 +164,7 @@ class SpanQueryService:
                 #  duration calculation
                 start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
                 end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
-                duration_seconds = func.round(cast(end_epoch - start_epoch, Float), 3)
+                duration_seconds = func.round(cast(end_epoch - start_epoch, Numeric), 3)
 
                 duration_conditions.append(
                     self._build_comparison_condition(duration_seconds, filter_item),
@@ -184,7 +184,7 @@ class SpanQueryService:
         """
         Apply span-level filters using JOINs for simple filters and EXISTS for metric filters.
         """
-        
+
         span_conditions = []
 
         # Build JOINs for simple span filters

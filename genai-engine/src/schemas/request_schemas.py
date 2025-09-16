@@ -63,11 +63,11 @@ class TraceQueryRequest(BaseModel):
     )
     start_time: Optional[datetime] = Field(
         None,
-        description="Inclusive start date in ISO8601 string format.",
+        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
     )
     end_time: Optional[datetime] = Field(
         None,
-        description="Exclusive end date in ISO8601 string format.",
+        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
     )
 
     # New trace-level filters
