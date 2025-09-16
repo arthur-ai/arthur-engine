@@ -22,8 +22,18 @@ def upgrade() -> None:
         "ALTER TABLE metric_results ALTER COLUMN details TYPE jsonb USING details::jsonb",
     )
 
+    # Add composite index for efficient metric filtering in EXISTS queries
+    op.create_index(
+        "idx_metric_results_span_id_metric_type",
+        "metric_results",
+        ["span_id", "metric_type"],
+    )
+
 
 def downgrade() -> None:
+    # Drop the composite index first
+    op.drop_index("idx_metric_results_span_id_metric_type", "metric_results")
+
     # Convert JSONB column back to String/Text
     op.execute(
         "ALTER TABLE metric_results ALTER COLUMN details TYPE text USING details::text",
