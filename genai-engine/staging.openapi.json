@@ -2275,7 +2275,7 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Query Spans",
+                "summary": "Query Traces",
                 "description": "Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
                 "operationId": "query_spans_v1_traces_query_get",
                 "security": [
@@ -2637,7 +2637,7 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Query Spans With Metrics",
+                "summary": "Compute Missing Metrics and Query Traces",
                 "description": "Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
                 "operationId": "query_spans_with_metrics_v1_traces_metrics__get",
                 "security": [
@@ -3132,7 +3132,7 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Compute Span Metrics",
+                "summary": "Compute Metrics for Span",
                 "description": "Compute metrics for a single span. Validates that the span is an LLM span.",
                 "operationId": "compute_span_metrics_v1_span__span_id__metrics_get",
                 "security": [

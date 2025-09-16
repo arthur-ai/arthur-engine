@@ -230,6 +230,7 @@ def trace_query_parameters(
 
 @span_routes.post(
     "/traces",
+    summary="Receive Traces",
     description="Receiver for OpenInference trace standard.",
     response_model=None,
     response_model_exclude_none=True,
@@ -258,6 +259,7 @@ def receive_traces(
 
 @span_routes.get(
     "/traces/query",
+    summary="Query Traces",
     description="Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
@@ -301,6 +303,7 @@ def query_spans(
 
 @span_routes.get(
     "/traces/metrics/",
+    summary="Compute Missing Metrics and Query Traces",
     description="Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
@@ -344,6 +347,7 @@ def query_spans_with_metrics(
 
 @span_routes.get(
     "/spans/query",
+    summary="Query Spans By Type",
     description="Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
     response_model=QuerySpansResponse,
     response_model_exclude_none=True,
@@ -422,6 +426,7 @@ def query_spans_by_type(
 
 @span_routes.get(
     "/span/{span_id}/metrics",
+    summary="Compute Metrics for Span",
     description="Compute metrics for a single span. Validates that the span is an LLM span.",
     response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
