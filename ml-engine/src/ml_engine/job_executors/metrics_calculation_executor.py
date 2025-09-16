@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, List, Set, Tuple
 
 import pandas as pd
@@ -36,6 +37,7 @@ from arthur_common.models.metrics import (
     SketchTimeSeries,
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
+from config import Config
 from connectors.shield_connector import ShieldBaseConnector
 from dataset_loader import DatasetLoader
 from duckdb import DuckDBPyConnection
@@ -44,6 +46,8 @@ from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
 from tools.connector_constructor import ConnectorConstructor
 from tools.validators import validate_schedule
+
+ML_ENGINE_AGGREGATION_TIMEOUT = Config.aggregation_timeout()
 
 
 class MetricsCalculationExecutor:
@@ -280,15 +284,28 @@ class MetricsCalculationExecutor:
                 init_args, aggregate_args = calculator.process_agg_args(
                     datasets,
                 )
-                metrics_to_add = calculator.aggregate(
-                    init_args,
-                    aggregate_args,
-                )
+
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        calculator.aggregate,
+                        init_args,
+                        aggregate_args,
+                    )
+                    metrics_to_add = future.result(
+                        timeout=ML_ENGINE_AGGREGATION_TIMEOUT,
+                    )
+
                 self._add_dataset_dimensions_to_metrics(metrics_to_add, aggregate_args)
                 metrics.extend(metrics_to_add)
             except Exception as exc:
                 # continue with future metrics calculations in case they're successful and log an error
-                error_msg = f"Failed to process aggregation {agg_spec.aggregation_id}"
+                if isinstance(exc, TimeoutError):
+                    error_msg = f"Aggregation calculation timed out for {agg_spec.aggregation_id}"
+                else:
+                    error_msg = (
+                        f"Failed to process aggregation {agg_spec.aggregation_id}"
+                    )
+
                 if calculator:
                     error_msg += f" - {calculator.agg_schema.name}"
                 self.logger.error(
