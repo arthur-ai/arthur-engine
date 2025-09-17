@@ -215,9 +215,7 @@ class MetricsIntegrationService:
                 "created_at": result.created_at,
                 "updated_at": result.updated_at,
                 "metric_type": result.metric_type.value,
-                "details": (
-                    result.details.model_dump_json() if result.details else None
-                ),
+                "details": (result.details.model_dump() if result.details else None),
                 "prompt_tokens": result.prompt_tokens,
                 "completion_tokens": result.completion_tokens,
                 "latency_ms": result.latency_ms,

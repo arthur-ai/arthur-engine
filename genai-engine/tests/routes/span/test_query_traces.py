@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
@@ -10,7 +9,7 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 # HELPER FUNCTIONS
 # ============================================================================
 
-"""Helper functions for span route tests."""
+"""Helper functions for trace query tests."""
 
 
 def get_all_spans_from_traces(traces):
@@ -39,100 +38,6 @@ def find_span_by_kind(spans, span_kind):
     """Helper function to find the first span matching the given kind."""
     matching_spans = find_spans_by_kind(spans, span_kind)
     return matching_spans[0] if matching_spans else None
-
-
-# ============================================================================
-# RECEIVE TRACES TESTS
-# ============================================================================
-
-
-@pytest.mark.unit_tests
-def test_receive_traces_with_resource_attributes(
-    client: GenaiEngineTestClientBase,
-    sample_openinference_trace,
-    sample_span_missing_task_id,
-    sample_openinference_trace_multiple_spans,
-):
-    """Test receive_traces with resource attributes for task ID extraction."""
-
-    # Test spans with task IDs in resource attributes (should be accepted)
-    status_code, response = client.receive_traces(sample_openinference_trace)
-    assert status_code == 200
-    response_json = json.loads(response)
-    assert response_json["total_spans"] == 1
-    assert response_json["accepted_spans"] == 1
-    assert response_json["rejected_spans"] == 0
-    assert response_json["status"] == "success"
-
-    # Test spans without task IDs in resource attributes (should be rejected)
-    status_code, response = client.receive_traces(sample_span_missing_task_id)
-    assert status_code == 422
-    response_json = json.loads(response)
-    assert response_json["accepted_spans"] == 0
-    assert response_json["rejected_spans"] == 1
-    assert (
-        "Missing or invalid task ID in resource attributes"
-        in response_json["rejection_reasons"][0]
-    )
-
-    # test inserting trace with spans with and without parent_span_id
-    status_code, response = client.receive_traces(
-        sample_openinference_trace_multiple_spans
-    )
-    assert status_code == 200
-    response_json = json.loads(response)
-    assert response_json["total_spans"] == 2
-    assert response_json["accepted_spans"] == 2
-    assert response_json["rejected_spans"] == 0
-    assert response_json["status"] == "success"
-
-
-@pytest.mark.unit_tests
-def test_receive_traces_error_handling(
-    client: GenaiEngineTestClientBase,
-    sample_openinference_trace,
-):
-    """Test error handling in receive_traces endpoint."""
-
-    # Test invalid protobuf
-    invalid_trace = b"invalid_protobuf_data"
-    status_code, response = client.receive_traces(invalid_trace)
-    assert status_code == 400
-    assert "Invalid protobuf message format" in response
-
-    # Test server error
-    with patch(
-        "repositories.span_repository.SpanRepository.create_traces",
-        side_effect=Exception("Test error"),
-    ):
-        status_code, response = client.receive_traces(sample_openinference_trace)
-        assert status_code == 500
-        assert "Test error" in response
-
-
-@pytest.mark.unit_tests
-def test_resource_attributes_processing(
-    client: GenaiEngineTestClientBase,
-    sample_openinference_trace,
-):
-    """Test resource attributes processing including task ID extraction and version injection."""
-    status_code, response = client.receive_traces(sample_openinference_trace)
-    assert status_code == 200
-
-    # Query the spans to verify processing
-    status_code, response = client.query_traces(
-        task_ids=["task_id_123"],
-    )
-    assert status_code == 200
-
-    # Check that all spans have the correct task ID and version
-    all_spans = get_all_spans_from_traces(response.traces)
-    for span in all_spans:
-        # Verify task ID extraction
-        assert span.task_id == "task_id_123"
-        # Verify version injection
-        assert "arthur_span_version" in span.raw_data
-        assert span.raw_data["arthur_span_version"] == "arthur_span_v1"
 
 
 # ============================================================================
@@ -175,7 +80,9 @@ def test_query_traces_basic_functionality(
         end_time=now + timedelta(days=1),
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert (
+        response.count == len(response.traces) == 2
+    )  # trace1 and trace3 both have task1 spans
 
 
 @pytest.mark.unit_tests
@@ -212,19 +119,30 @@ def test_query_traces_span_features(
 
     status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert (
+        response.count == len(response.traces) == 2
+    )  # trace1 and trace3 both have task1 spans
 
     all_spans = get_all_spans_from_traces(response.traces)
-    llm_span = find_span_by_kind(all_spans, "LLM")
-    assert llm_span is not None
+    llm_spans = find_spans_by_kind(all_spans, "LLM")
+    assert len(llm_spans) >= 1
 
-    # Verify LLM span features
-    assert llm_span.system_prompt == "You are a helpful assistant."
-    assert llm_span.user_query == "What is the weather like today?"
-    assert llm_span.response == "I don't have access to real-time weather information."
-    assert llm_span.span_kind == "LLM"
-    assert llm_span.span_name == "ChatOpenAI"
-    assert "arthur_span_version" in llm_span.raw_data
+    # Find span1 specifically (from trace1, which has the system prompt)
+    span1 = None
+    for span in llm_spans:
+        if span.span_id == "span1":
+            span1 = span
+            break
+
+    assert span1 is not None, "Could not find span1 in the response"
+
+    # Verify LLM span features (should be from span1 in trace1)
+    assert span1.system_prompt == "You are a helpful assistant."
+    assert span1.user_query == "What is the weather like today?"
+    assert span1.response == "I don't have access to real-time weather information."
+    assert span1.span_kind == "LLM"
+    assert span1.span_name == "ChatOpenAI"
+    assert "arthur_span_version" in span1.raw_data
 
     # Test non-LLM span features (should not be extracted)
     non_llm_span = find_span_by_kind(all_spans, "CHAIN")
@@ -247,12 +165,13 @@ def test_query_traces_sorting(
     # Test default sorting (descending)
     status_code, response = client.query_traces(task_ids=["task1", "task2"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time DESCENDING (most recent first)
     trace_ids = [trace.trace_id for trace in response.traces]
-    assert trace_ids[0] == "trace2"  # task2 spans are newer
-    assert trace_ids[1] == "trace1"
+    assert trace_ids[0] == "trace3"  # trace3 is newest (base_time + 1 hour)
+    assert trace_ids[1] == "trace2"  # trace2 is middle (base_time)
+    assert trace_ids[2] == "trace1"  # trace1 is oldest (base_time - 2 days)
 
     # Verify start_times are in descending order
     for i in range(len(response.traces) - 1):
@@ -264,22 +183,24 @@ def test_query_traces_sorting(
         sort="desc",
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time DESCENDING
     trace_ids = [trace.trace_id for trace in response.traces]
-    assert trace_ids[0] == "trace2"
-    assert trace_ids[1] == "trace1"
+    assert trace_ids[0] == "trace3"  # newest
+    assert trace_ids[1] == "trace2"  # middle
+    assert trace_ids[2] == "trace1"  # oldest
 
     # Test ascending sorting
     status_code, response = client.query_traces(task_ids=["task1", "task2"], sort="asc")
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time ASCENDING (oldest first)
     trace_ids = [trace.trace_id for trace in response.traces]
-    assert trace_ids[0] == "trace1"
-    assert trace_ids[1] == "trace2"
+    assert trace_ids[0] == "trace1"  # oldest
+    assert trace_ids[1] == "trace2"  # middle
+    assert trace_ids[2] == "trace3"  # newest
 
     # Verify start_times are in ascending order
     for i in range(len(response.traces) - 1):
@@ -301,20 +222,16 @@ def test_query_traces_with_metrics(
     # Test basic query with metrics computation
     status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert (
+        response.count == len(response.traces) == 2
+    )  # trace1 and trace3 both have task1 spans
 
     all_spans = get_all_spans_from_traces(response.traces)
-    assert len(all_spans) == 2
+    assert len(all_spans) == 4  # span1+span2 from trace1, span5+span6 from trace3
 
-    # Verify trace structure
-    trace = response.traces[0]
-    assert trace.trace_id == "trace1"
-    assert len(trace.root_spans) == 1
-    assert trace.root_spans[0].span_kind == "LLM"
-    assert trace.root_spans[0].span_name == "ChatOpenAI"
-    assert len(trace.root_spans[0].children) == 1
-    assert trace.root_spans[0].children[0].span_kind == "CHAIN"
-    assert trace.root_spans[0].children[0].span_name == "Chain"
+    # Verify we have both traces
+    trace_ids = {trace.trace_id for trace in response.traces}
+    assert trace_ids == {"trace1", "trace3"}
 
     # Verify metrics are computed for LLM spans
     for span in all_spans:
@@ -341,13 +258,13 @@ def test_query_traces_with_metrics_sorting(
         task_ids=["task1", "task2"],
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time DESCENDING (most recent first)
     trace_ids = [trace.trace_id for trace in response.traces]
-    # task2 spans are newer, so trace2 should be first
-    assert trace_ids[0] == "trace2"
-    assert trace_ids[1] == "trace1"
+    assert trace_ids[0] == "trace3"  # newest (base_time + 1 hour)
+    assert trace_ids[1] == "trace2"  # middle (base_time)
+    assert trace_ids[2] == "trace1"  # oldest (base_time - 2 days)
 
     # Verify start_times are in descending order
     for i in range(len(response.traces) - 1):
@@ -359,12 +276,13 @@ def test_query_traces_with_metrics_sorting(
         sort="desc",
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time DESCENDING
     trace_ids = [trace.trace_id for trace in response.traces]
-    assert trace_ids[0] == "trace2"
-    assert trace_ids[1] == "trace1"
+    assert trace_ids[0] == "trace3"  # newest
+    assert trace_ids[1] == "trace2"  # middle
+    assert trace_ids[2] == "trace1"  # oldest
 
     # Test ascending sorting
     status_code, response = client.query_traces_with_metrics(
@@ -372,12 +290,13 @@ def test_query_traces_with_metrics_sorting(
         sort="asc",
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify traces are sorted by start_time ASCENDING (oldest first)
     trace_ids = [trace.trace_id for trace in response.traces]
-    assert trace_ids[0] == "trace1"
-    assert trace_ids[1] == "trace2"
+    assert trace_ids[0] == "trace1"  # oldest
+    assert trace_ids[1] == "trace2"  # middle
+    assert trace_ids[2] == "trace3"  # newest
 
     # Verify start_times are in ascending order
     for i in range(len(response.traces) - 1):
@@ -391,7 +310,7 @@ def test_query_traces_with_metrics_sorting(
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
-    assert response.traces[0].trace_id == "trace2"
+    assert response.traces[0].trace_id == "trace3"  # trace3 is now the newest
     most_recent_trace = response.traces[0]
 
     # test pagination default sort page 1
@@ -403,7 +322,7 @@ def test_query_traces_with_metrics_sorting(
     )
     assert status_code == 200
     assert response.count == len(response.traces) == 1
-    assert response.traces[0].trace_id == "trace1"
+    assert response.traces[0].trace_id == "trace2"  # trace2 is second newest
 
     # test pagination reverse sort
     status_code, response = client.query_traces_with_metrics(
@@ -427,27 +346,29 @@ def test_query_traces_with_metrics_sorting(
     assert response.count == len(response.traces) == 1
     assert response.traces[0].trace_id == "trace2"
 
-    # test pagination with time filters, filtering out the most recent trace
-    # so only trace 1 should be returned
+    # test pagination with time filters, filtering out the most recent trace (trace3)
+    # so trace1 and trace2 should be returned, with trace2 first in desc order
     status_code, response = client.query_traces_with_metrics(
         task_ids=["task1", "task2"],
         end_time=most_recent_trace.start_time - timedelta(seconds=1),
         sort="desc",
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
-    assert response.traces[0].trace_id == "trace1"
+    assert response.count == len(response.traces) == 2
+    assert response.traces[0].trace_id == "trace2"  # most recent of remaining
+    assert response.traces[1].trace_id == "trace1"  # oldest
 
-    # test pagination with time filters, filtering out the oldest trace
-    # so only trace 2 should be returned
+    # test pagination with time filters, filtering out the oldest trace (trace1)
+    # so trace2 and trace3 should be returned, with trace3 first in desc order
     status_code, response = client.query_traces_with_metrics(
         task_ids=["task1", "task2"],
         start_time=oldest_trace.end_time + timedelta(seconds=1),
         sort="desc",
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
-    assert response.traces[0].trace_id == "trace2"
+    assert response.count == len(response.traces) == 2
+    assert response.traces[0].trace_id == "trace3"  # most recent of remaining
+    assert response.traces[1].trace_id == "trace2"  # middle
 
 
 @pytest.mark.unit_tests
@@ -527,13 +448,16 @@ def test_nested_structure(
     # Test basic nested structure
     status_code, response = client.query_traces(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert (
+        response.count == len(response.traces) == 2
+    )  # trace1 and trace3 both have task1 spans
 
-    trace = response.traces[0]
-    assert len(trace.root_spans) == 1
+    # Find trace1 specifically which has the nested structure we want to test
+    trace1 = next(trace for trace in response.traces if trace.trace_id == "trace1")
+    assert len(trace1.root_spans) == 1
 
     # Verify parent-child relationship for Trace1
-    root_span = trace.root_spans[0]
+    root_span = trace1.root_spans[0]
     assert root_span.span_kind == "LLM"
     assert root_span.span_name == "ChatOpenAI"
     assert root_span.span_id == "span1"
@@ -549,10 +473,13 @@ def test_nested_structure(
     # Test nested structure with metrics
     status_code, response = client.query_traces_with_metrics(task_ids=["task1"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert (
+        response.count == len(response.traces) == 2
+    )  # trace1 and trace3 both have task1 spans
 
-    trace = response.traces[0]
-    root_span = trace.root_spans[0]
+    # Find trace1 specifically which has the nested structure we want to test
+    trace1 = next(trace for trace in response.traces if trace.trace_id == "trace1")
+    root_span = trace1.root_spans[0]
     child_span = root_span.children[0]
 
     # Verify that the LLM span has metrics
@@ -574,11 +501,11 @@ def test_nested_structure(
         task_ids=["task1", "task2"],
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3
 
     # Verify trace IDs
     trace_ids = {trace.trace_id for trace in response.traces}
-    assert trace_ids == {"trace1", "trace2"}
+    assert trace_ids == {"trace1", "trace2", "trace3"}
 
 
 @pytest.mark.unit_tests
@@ -610,7 +537,7 @@ def test_span_ordering_within_traces(
     # Test with regular endpoint
     status_code, response = client.query_traces(task_ids=["task1", "task2"])
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3  # Now includes trace3
     verify_span_ordering(response.traces)
 
     for trace in response.traces:
@@ -629,13 +556,12 @@ def test_span_ordering_within_traces(
                         root_span.children[i].start_time
                         <= root_span.children[i + 1].start_time
                     )
-
-    # Test with metrics endpoint as well
+        # Test with metrics endpoint as well
     status_code, response = client.query_traces_with_metrics(
         task_ids=["task1", "task2"],
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 2
+    assert response.count == len(response.traces) == 3  # Now includes trace3
 
     for trace in response.traces:
         # Verify root spans are sorted by start_time (ascending)
@@ -653,3 +579,43 @@ def test_span_ordering_within_traces(
                         root_span.children[i].start_time
                         <= root_span.children[i + 1].start_time
                     )
+
+
+# ============================================================================
+# TRACE ID FILTERING TESTS (Basic functionality)
+# ============================================================================
+
+
+@pytest.mark.unit_tests
+def test_trace_query_with_trace_ids_filter(
+    client: GenaiEngineTestClientBase,
+    create_test_spans,
+):
+    """Test trace filtering by trace IDs (basic functionality)."""
+
+    # Test single trace ID filter
+    status_code, response = client.query_traces(
+        task_ids=["task1", "task2"],
+        trace_ids=["trace1"],
+    )
+    assert status_code == 200
+    assert response.count == len(response.traces) == 1
+    assert response.traces[0].trace_id == "trace1"
+
+    # Test multiple trace IDs filter
+    status_code, response = client.query_traces(
+        task_ids=["task1", "task2"],
+        trace_ids=["trace1", "trace2"],
+    )
+    assert status_code == 200
+    assert response.count == len(response.traces) == 2
+    trace_ids = {trace.trace_id for trace in response.traces}
+    assert trace_ids == {"trace1", "trace2"}
+
+    # Test non-existent trace ID filter
+    status_code, response = client.query_traces(
+        task_ids=["task1", "task2"],
+        trace_ids=["non_existent_trace"],
+    )
+    assert status_code == 200
+    assert response.count == len(response.traces) == 0

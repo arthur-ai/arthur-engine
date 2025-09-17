@@ -30,9 +30,9 @@ class RuleScoringMethod(str, Enum):
 
 
 class ToolClassEnum(int, Enum):
-    WRONG_TOOL_SELECTED = 0
-    CORRECT_TOOL_SELECTED = 1
-    NO_TOOL_SELECTED = 2
+    INCORRECT = 0
+    CORRECT = 1
+    NA = 2
 
     def __str__(self):
         return str(self.value)
@@ -150,3 +150,10 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
+
+class ComparisonOperatorEnum(str, Enum):
+    EQUAL = "eq"
+    GREATER_THAN = "gt"
+    GREATER_THAN_OR_EQUAL = "gte"
+    LESS_THAN = "lt"
+    LESS_THAN_OR_EQUAL = "lte"

@@ -3,9 +3,13 @@ from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExp
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 from opentelemetry.sdk.resources import Resource
+
 from utils.utils import get_env_var, new_relic_enabled
 
 from . import constants
+
+RULE_FAILURE_COUNTER = None
+METRIC_FAILURE_COUNTER = None
 
 if new_relic_enabled():
     OTEL_RESOURCE_ATTRIBUTES = {
@@ -23,18 +27,18 @@ if new_relic_enabled():
         ),
     )
 
-RULE_FAILURE_COUNTER = metrics.get_meter(
-    "opentelemetry.instrumentation.custom",
-).create_counter(
-    constants.NEWRELIC_CUSTOM_METRIC_RULE_FAILURES,
-    unit="failures",
-    description="Number of rule evaluation failures.",
-)
+    RULE_FAILURE_COUNTER = metrics.get_meter(
+        "opentelemetry.instrumentation.custom",
+    ).create_counter(
+        constants.NEWRELIC_CUSTOM_METRIC_RULE_FAILURES,
+        unit="failures",
+        description="Number of rule evaluation failures.",
+    )
 
-METRIC_FAILURE_COUNTER = metrics.get_meter(
-    "opentelemetry.instrumentation.custom",
-).create_counter(
-    constants.NEWRELIC_CUSTOM_METRIC_RULE_FAILURES,
-    unit="failures",
-    description="Number of metric evaluation failures.",
-)
+    METRIC_FAILURE_COUNTER = metrics.get_meter(
+        "opentelemetry.instrumentation.custom",
+    ).create_counter(
+        constants.NEWRELIC_CUSTOM_METRIC_RULE_FAILURES,
+        unit="failures",
+        description="Number of metric evaluation failures.",
+    )
