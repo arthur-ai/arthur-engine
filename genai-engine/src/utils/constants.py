@@ -370,6 +370,7 @@ AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS = set(
 
 # Span-related constants
 SPAN_KIND_LLM = "LLM"
+SPAN_KIND_TOOL = "TOOL"
 SPAN_VERSION_KEY = "arthur_span_version"
 EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"

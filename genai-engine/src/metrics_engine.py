@@ -4,11 +4,11 @@ import time
 import uuid
 from typing import List
 
+from arthur_common.models.metric_schemas import MetricRequest
 from dotenv import load_dotenv
 from opentelemetry import trace
 
 from schemas.internal_schemas import Metric, MetricResult
-from arthur_common.models.metric_schemas import MetricRequest
 from scorer.score import ScorerClient
 from utils import constants
 from utils.metric_counters import METRIC_FAILURE_COUNTER
@@ -61,8 +61,8 @@ class MetricsEngine:
                     "Metric evaluation failed. Metric: %s" % (metric.type),
                 )
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
-
-                METRIC_FAILURE_COUNTER.add(1)
+                if METRIC_FAILURE_COUNTER is not None:
+                    METRIC_FAILURE_COUNTER.add(1)
                 metric_results.append(
                     MetricResult(
                         id=str(uuid.uuid4()),
