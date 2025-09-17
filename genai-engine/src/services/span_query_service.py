@@ -191,7 +191,10 @@ class SpanQueryService:
         if filters.tool_name or filters.span_types:
             query = query.join(
                 DatabaseSpan,
-                DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
+                and_(
+                    DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
+                    DatabaseSpan.task_id.in_(filters.task_ids),
+                ),
             )
 
             # Tool name filter
