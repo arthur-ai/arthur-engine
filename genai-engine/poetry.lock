@@ -240,14 +240,14 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.1.61"
+version = "2.1.67"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.1.61-py3-none-any.whl", hash = "sha256:ce732aa16d8756861c1e5fdbafdd7d232b8483413e415949cff40fbbab069e66"},
-    {file = "arthur_common-2.1.61.tar.gz", hash = "sha256:d679eef3cfebbd8c26a921c5c98450f4c5370d8822b12c595afe4b944daa0a96"},
+    {file = "arthur_common-2.1.67-py3-none-any.whl", hash = "sha256:0ec3612f1bc959700bac7518caeae5ae96e01f5bcd064d6770664c70d5b2e863"},
+    {file = "arthur_common-2.1.67.tar.gz", hash = "sha256:34284a69b90ba36f91df34ea660f329242c9bf6f680ea68ba45519cd9c5507c7"},
 ]
 
 [package.dependencies]
@@ -576,18 +576,18 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.28"
+version = "1.40.31"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.40.28-py3-none-any.whl", hash = "sha256:fd5cb71b6390e870974e56969e10868f1cf391babeef0b18f91cf8d4f00557cd"},
-    {file = "boto3-1.40.28.tar.gz", hash = "sha256:dd44710ab908b0b38cf127053cac83608a15358c85fa267a498e3dbac6fd5789"},
+    {file = "boto3-1.40.31-py3-none-any.whl", hash = "sha256:61d5f9975c54ff919a24ff9d472c6c09c8a443a083fe56d30c04fc22d22ac42b"},
+    {file = "boto3-1.40.31.tar.gz", hash = "sha256:8c5f1270f09431694412f326cfb5ac9786d41ea3bc6ac54cbb7161d40afc660d"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.28,<1.41.0"
+botocore = ">=1.40.31,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -596,14 +596,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.28"
+version = "1.40.31"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.28-py3-none-any.whl", hash = "sha256:fcd393da6cb4d97cff3823d4085cd034d1c80f1cc22a57b1f84d3f863b337a03"},
-    {file = "botocore-1.40.28.tar.gz", hash = "sha256:4a26c662dcce2e675209c23cd3a569e137a59fdc9692b8bb9dabed522cbe2d8c"},
+    {file = "botocore-1.40.31-py3-none-any.whl", hash = "sha256:4033a00f8c6a4b5c3acb30af9283963123917227a437e5fc165189d07bd3cf8a"},
+    {file = "botocore-1.40.31.tar.gz", hash = "sha256:9496b91bbe40ed01d341dc8f6ff0492d7f546e80f1a862b00ec5bc9045fa3324"},
 ]
 
 [package.dependencies]
@@ -5148,19 +5148,20 @@ transformers = ["accelerate", "huggingface_hub", "spacy_huggingface_pipelines", 
 
 [[package]]
 name = "presidio-anonymizer"
-version = "2.2.359"
+version = "2.2.360"
 description = "Presidio Anonymizer package - replaces analyzed text with desired values."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "presidio_anonymizer-2.2.359-py3-none-any.whl", hash = "sha256:bc15a8fa4b6aa8ed1e01a1e3d05afd0bea2ab57f4c2e446c680e2662416b7ada"},
+    {file = "presidio_anonymizer-2.2.360-py3-none-any.whl", hash = "sha256:5f46f36bf3a0b8817b91f09ed3e51093cc331192e148311f1cd69ae0bf3f4a6c"},
 ]
 
 [package.dependencies]
 cryptography = "<44.1"
 
 [package.extras]
+ahds = ["azure-health-deidentification (>=1.1.0b1,<2.0.0)", "azure-identity (>=1.23.0,<2.0.0)"]
 server = ["flask (>=1.1)", "gunicorn"]
 
 [[package]]
@@ -8160,4 +8161,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "0ae4a6c0253df13ee8362d6002be47276b8e333ded2951e153c613b26f920532"
+content-hash = "b2dc334b9a03f2c4ff269d4629a1422079fbf2a558f855e1dce781fb1be507e1"
