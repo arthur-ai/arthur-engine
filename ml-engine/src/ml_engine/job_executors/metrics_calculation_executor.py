@@ -296,6 +296,9 @@ class MetricsCalculationExecutor:
                     )
 
                 self._add_dataset_dimensions_to_metrics(metrics_to_add, aggregate_args)
+                self._add_dimensions_to_metrics(
+                    metrics_to_add, aggregate_args, agg_spec
+                )
                 metrics.extend(metrics_to_add)
             except Exception as exc:
                 # continue with future metrics calculations in case they're successful and log an error
@@ -315,10 +318,11 @@ class MetricsCalculationExecutor:
                 failed_aggregation_ids.append(agg_spec.aggregation_id)
         return metrics, failed_aggregation_ids
 
-    def _add_dataset_dimensions_to_metrics(
+    def _add_dimensions_to_metrics(
         self,
         metrics_to_add: list[NumericMetric | SketchMetric],
         aggregate_args: dict[str, Any],
+        agg_spec: AggregationSpec,
     ) -> None:
         """
         If the aggregate args contain a dataset reference, this function adds dataset_name and dataset_id
@@ -334,11 +338,19 @@ class MetricsCalculationExecutor:
             # no dataset arg found, metric isn't tied to a dataset
             return
 
-        # add the dataset dimensions to the metrics
+        # add dimensions to the metrics
         dimensions_to_add = [
             Dimension(name="dataset_name", value=dataset_ref.dataset_name),
             Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
+            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id)),
         ]
+
+        if agg_spec.aggregation_version is not None:
+            dimensions_to_add.append(
+                Dimension(
+                    name="aggregation_version", value=str(agg_spec.aggregation_version)
+                )
+            )
 
         for metric in metrics_to_add:
             series_list: list[NumericTimeSeries] | list[SketchTimeSeries] = []
