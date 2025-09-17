@@ -258,14 +258,14 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.1.67"
+version = "2.1.68"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.1.67-py3-none-any.whl", hash = "sha256:0ec3612f1bc959700bac7518caeae5ae96e01f5bcd064d6770664c70d5b2e863"},
-    {file = "arthur_common-2.1.67.tar.gz", hash = "sha256:34284a69b90ba36f91df34ea660f329242c9bf6f680ea68ba45519cd9c5507c7"},
+    {file = "arthur_common-2.1.68-py3-none-any.whl", hash = "sha256:de7f8a5d79edc195b73c2681fac02faafca5df43467416b93d74b72750a65338"},
+    {file = "arthur_common-2.1.68.tar.gz", hash = "sha256:5ac9437fd8bb308e06b64fb23e5ca0845db9d11c14f44b3a6f4bbc6a1dc16121"},
 ]
 
 [package.dependencies]
@@ -4064,4 +4064,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "890693b0a20ee9bfd150bb30e5698a3e55c627eced8766886773dabfb48eb351"
+content-hash = "fc1fd806b768d7caf6eff1f2226346cd690e95a7ca2a7142c0973835dfbf9680"
