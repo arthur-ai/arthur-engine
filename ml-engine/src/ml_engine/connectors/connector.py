@@ -17,7 +17,7 @@ from arthur_common.models.connectors import ConnectorPaginationOptions
 
 class Connector(ABC):
     @abstractmethod
-    def __init__(self, logger: Logger, connector_config: ConnectorSpec):
+    def __init__(self, connector_config: ConnectorSpec, logger: Logger):
         raise NotImplementedError
 
     @abstractmethod

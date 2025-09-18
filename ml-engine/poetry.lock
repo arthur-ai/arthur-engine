@@ -236,14 +236,14 @@ trio = ["trio (>=0.26.1)"]
 
 [[package]]
 name = "arthur-client"
-version = "1.4.1480"
+version = "1.4.1484"
 description = "Arthur Python API Client Library"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_client-1.4.1480-py3-none-any.whl", hash = "sha256:7791cd069b93786ae4094fee0e00d69c5dacb016a2511ffff34647010798e31a"},
-    {file = "arthur_client-1.4.1480.tar.gz", hash = "sha256:f4c1959c1f6ae835595b90c20f601660bc15b7adafe0d8e7e363727fd4bc5a73"},
+    {file = "arthur_client-1.4.1484-py3-none-any.whl", hash = "sha256:6831d442e7dd76647766f2c289de8d3a261535352233fba5e50e326bf977a31b"},
+    {file = "arthur_client-1.4.1484.tar.gz", hash = "sha256:6cf0c7e426171b3b7ca8a95092f78100350422257043f01de78a1f2c4d92993f"},
 ]
 
 [package.dependencies]
@@ -258,14 +258,14 @@ urllib3 = ">=2.5.0,<3.0.0"
 
 [[package]]
 name = "arthur-common"
-version = "2.1.67"
+version = "2.1.68"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.1.67-py3-none-any.whl", hash = "sha256:0ec3612f1bc959700bac7518caeae5ae96e01f5bcd064d6770664c70d5b2e863"},
-    {file = "arthur_common-2.1.67.tar.gz", hash = "sha256:34284a69b90ba36f91df34ea660f329242c9bf6f680ea68ba45519cd9c5507c7"},
+    {file = "arthur_common-2.1.68-py3-none-any.whl", hash = "sha256:de7f8a5d79edc195b73c2681fac02faafca5df43467416b93d74b72750a65338"},
+    {file = "arthur_common-2.1.68.tar.gz", hash = "sha256:5ac9437fd8bb308e06b64fb23e5ca0845db9d11c14f44b3a6f4bbc6a1dc16121"},
 ]
 
 [package.dependencies]
@@ -281,6 +281,18 @@ tokencost = "0.1.24"
 types-python-dateutil = ">=2.9.0"
 types-requests = ">=2.32.0.20241016"
 typing-extensions = ">=4.7.1"
+
+[[package]]
+name = "asn1crypto"
+version = "1.5.1"
+description = "Fast ASN.1 parser and serializer with definitions for private keys, public keys, certificates, CRL, OCSP, CMS, PKCS#3, PKCS#7, PKCS#8, PKCS#12, PKCS#5, X.509 and TSP"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "asn1crypto-1.5.1-py2.py3-none-any.whl", hash = "sha256:db4e40728b728508912cbb3d44f19ce188f218e9eba635821bb4b68564f8fd67"},
+    {file = "asn1crypto-1.5.1.tar.gz", hash = "sha256:13ae38502be632115abf8a24cbe5f4da52e3b5231990aff31123c805306ccb9c"},
+]
 
 [[package]]
 name = "attrs"
@@ -390,6 +402,26 @@ files = [
 ]
 
 [[package]]
+name = "boto3"
+version = "1.40.18"
+description = "The AWS SDK for Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "boto3-1.40.18-py3-none-any.whl", hash = "sha256:daa776ba1251a7458c9d6c7627873d0c2460c8e8272d35759065580e9193700a"},
+    {file = "boto3-1.40.18.tar.gz", hash = "sha256:64301d39adecc154e3e595eaf0d4f28998ef0a5551f1d033aeac51a9e1a688e5"},
+]
+
+[package.dependencies]
+botocore = ">=1.40.18,<1.41.0"
+jmespath = ">=0.7.1,<2.0.0"
+s3transfer = ">=0.13.0,<0.14.0"
+
+[package.extras]
+crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
+
+[[package]]
 name = "botocore"
 version = "1.40.18"
 description = "Low-level, data-driven core of boto 3."
@@ -440,7 +472,6 @@ description = "Foreign Function Interface for Python calling C code."
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\""
 files = [
     {file = "cffi-1.17.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:df8b1c11f177bc2313ec4b2d46baec87a5f3e71fc8b45dab2ee7cae86d9aba14"},
     {file = "cffi-1.17.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:8f2cdc858323644ab277e9bb925ad72ae0e67f69e804f4898c070998d50b1a67"},
@@ -904,7 +935,7 @@ version = "3.19.1"
 description = "A platform independent file lock."
 optional = false
 python-versions = ">=3.9"
-groups = ["dev"]
+groups = ["main", "dev"]
 files = [
     {file = "filelock-3.19.1-py3-none-any.whl", hash = "sha256:d38e30481def20772f5baf097c122c3babc4fcdb7e14e57049eb9d88c6dc017d"},
     {file = "filelock-3.19.1.tar.gz", hash = "sha256:66eda1888b0171c998b35be2bcc0f6d75c388a7ce20c3f3f37aa8e96c2dddf58"},
@@ -2282,7 +2313,7 @@ version = "4.4.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.9"
-groups = ["dev", "linters"]
+groups = ["main", "dev", "linters"]
 files = [
     {file = "platformdirs-4.4.0-py3-none-any.whl", hash = "sha256:abd01743f24e5287cd7a5db3752faf1a2d65353f38ec26d98e25a6db65958c85"},
     {file = "platformdirs-4.4.0.tar.gz", hash = "sha256:ca753cf4d81dc309bc67b0ea38fd15dc97bc30ce419a7f58d13eb3bf14c4febf"},
@@ -2685,7 +2716,6 @@ description = "C parser in Python"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
-markers = "platform_python_implementation != \"PyPy\""
 files = [
     {file = "pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc"},
     {file = "pycparser-2.22.tar.gz", hash = "sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6"},
@@ -2853,6 +2883,24 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pyjwt"
+version = "2.10.1"
+description = "JSON Web Token implementation in Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb"},
+    {file = "pyjwt-2.10.1.tar.gz", hash = "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953"},
+]
+
+[package.extras]
+crypto = ["cryptography (>=3.4.0)"]
+dev = ["coverage[toml] (==5.0.4)", "cryptography (>=3.4.0)", "pre-commit", "pytest (>=6.0.0,<7.0.0)", "sphinx", "sphinx-rtd-theme", "zope.interface"]
+docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
+
+[[package]]
 name = "pymysql"
 version = "1.1.2"
 description = "Pure Python MySQL Driver"
@@ -2914,6 +2962,25 @@ files = [
     {file = "pyodbc-5.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:b77556349746fb90416a48bd114cd7323f7e2559a4b263dada935f9b406ba59b"},
     {file = "pyodbc-5.2.0.tar.gz", hash = "sha256:de8be39809c8ddeeee26a4b876a6463529cd487a60d1393eb2a93e9bcd44a8f5"},
 ]
+
+[[package]]
+name = "pyopenssl"
+version = "25.1.0"
+description = "Python wrapper module around the OpenSSL library"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "pyopenssl-25.1.0-py3-none-any.whl", hash = "sha256:2b11f239acc47ac2e5aca04fd7fa829800aeee22a2eb30d744572a157bd8a1ab"},
+    {file = "pyopenssl-25.1.0.tar.gz", hash = "sha256:8d031884482e0c67ee92bf9a4d8cceb08d92aba7136432ffb0703c5280fc205b"},
+]
+
+[package.dependencies]
+cryptography = ">=41.0.5,<46"
+
+[package.extras]
+docs = ["sphinx (!=5.2.0,!=5.2.0.post0,!=7.2.5)", "sphinx_rtd_theme"]
+test = ["pretend", "pytest (>=3.0.1)", "pytest-rerunfailures"]
 
 [[package]]
 name = "pytest"
@@ -3275,6 +3342,24 @@ awscli = ["aiobotocore[awscli] (>=2.5.4,<3.0.0)"]
 boto3 = ["aiobotocore[boto3] (>=2.5.4,<3.0.0)"]
 
 [[package]]
+name = "s3transfer"
+version = "0.13.1"
+description = "An Amazon S3 Transfer Manager"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "s3transfer-0.13.1-py3-none-any.whl", hash = "sha256:a981aa7429be23fe6dfc13e80e4020057cbab622b08c0315288758d67cabc724"},
+    {file = "s3transfer-0.13.1.tar.gz", hash = "sha256:c3fdba22ba1bd367922f27ec8032d6a1cf5f10c934fb5d68cf60fd5a23d936cf"},
+]
+
+[package.dependencies]
+botocore = ">=1.37.4,<2.0a.0"
+
+[package.extras]
+crt = ["botocore[crt] (>=1.37.4,<2.0a.0)"]
+
+[[package]]
 name = "simple-settings"
 version = "1.2.0"
 description = "A simple way to manage your project settings."
@@ -3318,6 +3403,99 @@ groups = ["main", "dev"]
 files = [
     {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
     {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
+]
+
+[[package]]
+name = "snowflake-connector-python"
+version = "3.17.1"
+description = "Snowflake Connector for Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "snowflake_connector_python-3.17.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:2bf8a5f9884dc5e0d1722d485e638186010bc5393e627c592f472d9b4126e18e"},
+    {file = "snowflake_connector_python-3.17.1-cp310-cp310-macosx_11_0_x86_64.whl", hash = "sha256:781996e233b4b7d0183cd9bf6660aca5ed8ed828c36592de67fcbefd24fed3c1"},
+    {file = "snowflake_connector_python-3.17.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:96d3db5db2ee6ff5a4800b98d8ea430f0d5602114ef6e3c573c7185a8f117995"},
+    {file = "snowflake_connector_python-3.17.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:38a3e3a6bd744cd9948a3aad3f8444d354433377fff052be259df489681cb714"},
+    {file = "snowflake_connector_python-3.17.1-cp310-cp310-win_amd64.whl", hash = "sha256:52faf845643daa34dc82a6666a9bee09780474296118ffe68307ff7d8e082ee0"},
+    {file = "snowflake_connector_python-3.17.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:43c011e5166ba6e926b0337eb272c103f1c09372ba14ce996ebfe0af3f05d614"},
+    {file = "snowflake_connector_python-3.17.1-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:769ed390c2bf37748f3b0b701e2c3b4e0d07df04a9637065dda2146662dedcb0"},
+    {file = "snowflake_connector_python-3.17.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ff76aee784b6567cb3eec7bd1285e91a2fffe0961f4650dfe78341af92368574"},
+    {file = "snowflake_connector_python-3.17.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:500283544c6a7816ef72ddddac40613829d1fdf5eb94b41794faa4ba067c38b2"},
+    {file = "snowflake_connector_python-3.17.1-cp311-cp311-win_amd64.whl", hash = "sha256:c90a8eb8f89e2de2e499cc69caa1ff997a45304617b20ee11e4ba2ec5a3a3869"},
+    {file = "snowflake_connector_python-3.17.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b04b887d17ea5d165ac73ae6eb2e509a68e1ebe4a7b0147843f939b06eb42118"},
+    {file = "snowflake_connector_python-3.17.1-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:ca6707cb4defc7951d805ca761648661f27831063457e3f679a6bfff00ca8248"},
+    {file = "snowflake_connector_python-3.17.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:23152cfd59ab7d24e1c13f7fa4be850991357e158f3f05fdcb2b7e1c2b5c79e0"},
+    {file = "snowflake_connector_python-3.17.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f3e1d62ec883c07e85a039d9e0407f29ab66bd35fb88cce78701ac1754a130ed"},
+    {file = "snowflake_connector_python-3.17.1-cp312-cp312-win_amd64.whl", hash = "sha256:b89aefe195b333ce18cf09e690550aaf398bae68a9ee6ebf8d265f4af25c3188"},
+    {file = "snowflake_connector_python-3.17.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:7d314d57efc3777f295b06c95599b551424eb15af4fc1444ba2da1a3c4ea740a"},
+    {file = "snowflake_connector_python-3.17.1-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:4a3dfe18d780328601a474b5506fc31a3c02b4ecc7659d2d0b4fe4c7e07ad446"},
+    {file = "snowflake_connector_python-3.17.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:55047fe9b92d7608fa06a0fc08b6275a259b2ee28b7510b71a01de15fce28bb5"},
+    {file = "snowflake_connector_python-3.17.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:397e35f8b397a28e781dfebe6894bb9086208b970f9de443ceef755184bc8199"},
+    {file = "snowflake_connector_python-3.17.1-cp313-cp313-win_amd64.whl", hash = "sha256:49ced0eb72c34e5ff00ed394d62bdc038315b928539d60169612c6b80bbd7c8d"},
+    {file = "snowflake_connector_python-3.17.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:c30782bcec6c8708cd7e891342552dc887d6d96bde8f09fd04585e9380c5d993"},
+    {file = "snowflake_connector_python-3.17.1-cp39-cp39-macosx_11_0_x86_64.whl", hash = "sha256:d701b9f6d8557f58881f4c87dc1b362a0acb0d04562278fd7cb4703eb9aa783f"},
+    {file = "snowflake_connector_python-3.17.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4c499073e5af6cef8cddbf6a76e0b7486cc5341061c42d69b8136355eeb9b1ff"},
+    {file = "snowflake_connector_python-3.17.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:756595252759c8539ebfee025dde348da5faebb2f1ef79cb571a5e945388fa7d"},
+    {file = "snowflake_connector_python-3.17.1-cp39-cp39-win_amd64.whl", hash = "sha256:324013afe67acfd5b65736fe798ce3d5a83d44d5e0fe3ac115a832ce9256cb29"},
+    {file = "snowflake_connector_python-3.17.1.tar.gz", hash = "sha256:1881025adea6dd732fe02065df8693a45b446a8db8e0e0ed7d728a7f09734076"},
+]
+
+[package.dependencies]
+asn1crypto = ">0.24.0,<2.0.0"
+boto3 = ">=1.24"
+botocore = ">=1.24"
+certifi = ">=2017.4.17"
+cffi = ">=1.9,<2.0.0"
+charset_normalizer = ">=2,<4"
+cryptography = ">=3.1.0"
+filelock = ">=3.5,<4"
+idna = ">=2.5,<4"
+packaging = "*"
+platformdirs = ">=2.6.0,<5.0.0"
+pyjwt = "<3.0.0"
+pyOpenSSL = ">=22.0.0,<26.0.0"
+pytz = "*"
+requests = "<3.0.0"
+sortedcontainers = ">=2.4.0"
+tomlkit = "*"
+typing_extensions = ">=4.3,<5"
+
+[package.extras]
+development = ["Cython", "coverage", "more-itertools", "numpy (<=2.2.4)", "pendulum (!=2.1.1)", "pexpect", "pytest (<7.5.0)", "pytest-cov", "pytest-rerunfailures", "pytest-timeout", "pytest-xdist", "pytzdata"]
+pandas = ["pandas (>=2.1.2,<3.0.0)", "pyarrow"]
+secure-local-storage = ["keyring (>=23.1.0,<26.0.0)"]
+
+[[package]]
+name = "snowflake-sqlalchemy"
+version = "1.7.6"
+description = "Snowflake SQLAlchemy Dialect"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "snowflake_sqlalchemy-1.7.6-py3-none-any.whl", hash = "sha256:ce472b90755e9f7cc1ff4943e27ff4732bcf860e812249bea7491090b85d2b91"},
+    {file = "snowflake_sqlalchemy-1.7.6.tar.gz", hash = "sha256:afb0d058da752342e08d747fb8384207a34e1a402130f7febdc454c50e1ddb7c"},
+]
+
+[package.dependencies]
+snowflake-connector-python = "<4.0.0"
+sqlalchemy = ">=1.4.19"
+
+[package.extras]
+development = ["mock", "numpy", "pre-commit", "pytest", "pytest-cov", "pytest-rerunfailures", "pytest-timeout", "pytz", "setuptools", "syrupy (==4.6.1)"]
+pandas = ["snowflake-connector-python[pandas]"]
+
+[[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+description = "Sorted Containers -- Sorted List, Sorted Dict, Sorted Set"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0"},
+    {file = "sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88"},
 ]
 
 [[package]]
@@ -3501,6 +3679,18 @@ tiktoken = ">=0.9.0"
 
 [package.extras]
 dev = ["coverage[toml] (>=7.4.0)", "flake8 (>=3.1.0)", "pandas (>=2.1.0)", "pytest (>=7.4.4)", "python-dotenv (>=1.0.0)", "tabulate (>=0.9.0)", "tach (>=0.6.9)"]
+
+[[package]]
+name = "tomlkit"
+version = "0.13.3"
+description = "Style preserving TOML library"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "tomlkit-0.13.3-py3-none-any.whl", hash = "sha256:c89c649d79ee40629a9fda55f8ace8c6a1b42deb912b2a8fd8d942ddadb606b0"},
+    {file = "tomlkit-0.13.3.tar.gz", hash = "sha256:430cf247ee57df2b94ee3fbe588e71d362a941ebb545dec29b53961d61add2a1"},
+]
 
 [[package]]
 name = "types-croniter"
@@ -3874,4 +4064,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "0bb7f7b0872c82c14bb2d470d6d25c14222682293eb5003af2652f348b24d09d"
+content-hash = "93287fc29395750fec53b6b8925e4334b3d8bc0436631044b06c23c95f7a1edd"
