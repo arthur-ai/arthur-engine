@@ -1,6 +1,6 @@
 from datetime import datetime
 from logging import Logger
-from typing import Any, Callable, List
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import pandas as pd
 from arthur_client.api_bindings import (
@@ -30,6 +30,7 @@ from connectors.connector import Connector
 from dateutil import parser
 from pydantic import SecretStr
 from sqlalchemy import (
+    URL,
     Column,
     MetaData,
     Table,
@@ -67,14 +68,22 @@ class ODBCConnector(Connector):
 
         # Build connection string based on available fields
         conn_str = self._build_connection_string()
-        engine_url = self._build_engine_url(conn_str)
-        self.engine: Engine = create_engine(engine_url)
+        engine_url, connect_args = self._build_engine_url(conn_str)
+        self.engine: Engine = create_engine(
+            engine_url,
+            echo=False,
+            connect_args=connect_args,
+        )
         self.metadata = MetaData()
         self.logger = logger
 
-    def _build_engine_url(self, conn_str: str) -> str:
+    def _build_engine_url(
+        self,
+        conn_str: str,
+    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """
         Build the SQLAlchemy engine URL based on dialect and driver configuration.
+        Returns the engine URL and any connect args that need to be passed to the engine.
         """
         dialect_lower = self.dialect.lower()
 
@@ -96,9 +105,12 @@ class ODBCConnector(Connector):
 
         # Default to generic ODBC (pyodbc) - fallback or explicitly chosen
         # This handles cases where no dialect is specified or an invalid dialect is provided
-        return self._build_odbc_url(conn_str)
+        return self._build_odbc_url(conn_str), {}
 
-    def _build_odbc_url(self, conn_str: str | None = None) -> str:
+    def _build_odbc_url(
+        self,
+        conn_str: str | None = None,
+    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """Build ODBC URL using pyodbc."""
         # Build connection string if not provided
         if conn_str is None:
@@ -106,7 +118,7 @@ class ODBCConnector(Connector):
 
         if not self.driver:
             # Default to SQL Server if no driver specified
-            return f"mssql+pyodbc:///?odbc_connect={conn_str}"
+            return f"mssql+pyodbc:///?odbc_connect={conn_str}", {}
 
         driver_lower = self.driver.lower()
 
@@ -124,24 +136,28 @@ class ODBCConnector(Connector):
         # Find matching dialect based on driver
         for driver_key, dialect in driver_mapping.items():
             if driver_key in driver_lower:
-                return f"{dialect}+pyodbc:///?odbc_connect={conn_str}"
+                return f"{dialect}+pyodbc:///?odbc_connect={conn_str}", {}
 
         # Default to generic ODBC
-        return f"mssql+pyodbc:///?odbc_connect={conn_str}"
+        return f"mssql+pyodbc:///?odbc_connect={conn_str}", {}
 
-    def _build_postgresql_native_url(self) -> str:
+    def _build_postgresql_native_url(self) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """Build PostgreSQL native URL using psycopg."""
         return self._build_native_url("postgresql+psycopg", "5432")
 
-    def _build_mysql_native_url(self) -> str:
+    def _build_mysql_native_url(self) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """Build MySQL native URL using pymysql."""
         return self._build_native_url("mysql+pymysql", "3306")
 
-    def _build_oracle_native_url(self) -> str:
+    def _build_oracle_native_url(self) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """Build Oracle native URL using cx_oracle."""
         return self._build_native_url("oracle+cx_oracle", "1521")
 
-    def _build_native_url(self, dialect: str, default_port: str) -> str:
+    def _build_native_url(
+        self,
+        dialect: str,
+        default_port: str,
+    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
         """Build native database URL with common logic."""
         if not self.host:
             raise ValueError(f"Host is required for {dialect} native connection")
@@ -152,11 +168,14 @@ class ODBCConnector(Connector):
         database = self.database if self.database else ""
 
         if username and password:
-            return f"{dialect}://{username}:{password}@{self.host}:{port}/{database}"
+            return (
+                f"{dialect}://{username}:{password}@{self.host}:{port}/{database}",
+                {},
+            )
         elif username:
-            return f"{dialect}://{username}@{self.host}:{port}/{database}"
+            return f"{dialect}://{username}@{self.host}:{port}/{database}", {}
         else:
-            return f"{dialect}://{self.host}:{port}/{database}"
+            return f"{dialect}://{self.host}:{port}/{database}", {}
 
     def _build_connection_string(self) -> str:
         """
