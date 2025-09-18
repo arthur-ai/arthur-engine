@@ -11,6 +11,7 @@ from arthur_client.api_bindings import (
     ConnectorSpec,
     ConnectorType,
 )
+from arthur_common.models.enums import SnowflakeConnectorAuthenticatorMethods
 from ml_engine.connectors.snowflake_connector import SnowflakeConnector
 
 # Mock ConnectorSpec for Snowflake testing
@@ -66,7 +67,7 @@ MOCK_SNOWFLAKE_CONNECTOR_SPEC = {
         },
         {
             "key": "authenticator",
-            "value": "snowflake",
+            "value": SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_PASSWORD,
             "is_sensitive": False,
             "d_type": ConnectorFieldDataType.STRING.value,
         },
@@ -81,7 +82,7 @@ MOCK_SNOWFLAKE_CONNECTOR_SPEC = {
 class TestSnowflakeConnector:
     """Test cases for SnowflakeConnector."""
 
-    @patch("ml_engine.connectors.snowflake_connector.create_engine")
+    @patch("ml_engine.connectors.odbc_connector.create_engine")
     def test_snowflake_connector_defaults(self, mock_create_engine):
         """Test that Snowflake connector uses correct default values."""
         mock_engine = Mock()
@@ -114,6 +115,12 @@ class TestSnowflakeConnector:
                 "is_sensitive": True,
                 "d_type": ConnectorFieldDataType.STRING.value,
             },
+            {
+                "key": "authenticator",
+                "value": SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_PASSWORD,
+                "is_sensitive": False,
+                "d_type": ConnectorFieldDataType.STRING.value,
+            },
         ]
 
         spec = ConnectorSpec.model_validate(minimal_spec)
@@ -124,9 +131,12 @@ class TestSnowflakeConnector:
         assert connector.schema == "PUBLIC"
         assert connector.warehouse is "COMPUTE_WH"
         assert connector.role is None
-        assert connector.authenticator == "snowflake"
+        assert (
+            connector.authenticator
+            == SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_PASSWORD
+        )
 
-    @patch("ml_engine.connectors.snowflake_connector.create_engine")
+    @patch("ml_engine.connectors.odbc_connector.create_engine")
     def test_get_default_schema(self, mock_create_engine):
         """Test that Snowflake connector returns correct custom schema."""
         mock_engine = Mock()
@@ -162,6 +172,12 @@ class TestSnowflakeConnector:
             {
                 "key": "schema",
                 "value": "CUSTOM_SCHEMA",
+                "is_sensitive": False,
+                "d_type": ConnectorFieldDataType.STRING.value,
+            },
+            {
+                "key": "authenticator",
+                "value": SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_PASSWORD,
                 "is_sensitive": False,
                 "d_type": ConnectorFieldDataType.STRING.value,
             },
