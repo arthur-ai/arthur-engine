@@ -295,7 +295,6 @@ class MetricsCalculationExecutor:
                         timeout=ML_ENGINE_AGGREGATION_TIMEOUT,
                     )
 
-                self._add_dataset_dimensions_to_metrics(metrics_to_add, aggregate_args)
                 self._add_dimensions_to_metrics(
                     metrics_to_add, aggregate_args, agg_spec
                 )
@@ -329,21 +328,27 @@ class MetricsCalculationExecutor:
         dimensions to the metrics in the list of metrics_to_add.
         It updates the metrics in the list in-place.
         """
+        dimensions_to_add = []
+
         # find the dataset reference in the aggregate_args
+        dataset_ref = None
         for arg_name, arg_value in aggregate_args.items():
             if isinstance(arg_value, DatasetReference):
                 dataset_ref = arg_value
                 break
-        else:
-            # no dataset arg found, metric isn't tied to a dataset
-            return
+
+        if dataset_ref is not None:
+            dimensions_to_add.extend(
+                [
+                    Dimension(name="dataset_name", value=dataset_ref.dataset_name),
+                    Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
+                ]
+            )
 
         # add dimensions to the metrics
-        dimensions_to_add = [
-            Dimension(name="dataset_name", value=dataset_ref.dataset_name),
-            Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
-            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id)),
-        ]
+        dimensions_to_add.append(
+            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id))
+        )
 
         if agg_spec.aggregation_version is not None:
             dimensions_to_add.append(
