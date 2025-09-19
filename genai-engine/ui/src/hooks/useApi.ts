@@ -6,7 +6,7 @@ import { createAuthenticatedApiClient, Api } from "@/lib/api";
  * Hook that provides an authenticated API client
  * @returns Configured API client with the current user's token
  */
-export function useApi(): Api<any> | null {
+export function useApi(): Api<unknown> | null {
   const { token, isAuthenticated } = useAuth();
 
   return useMemo(() => {
@@ -22,7 +22,7 @@ export function useApi(): Api<any> | null {
  * @param token The authentication token to use
  * @returns Configured API client with the provided token
  */
-export function useApiWithToken(token: string): Api<any> {
+export function useApiWithToken(token: string): Api<unknown> {
   return useMemo(() => {
     return createAuthenticatedApiClient(token);
   }, [token]);

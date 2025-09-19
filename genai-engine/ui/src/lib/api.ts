@@ -16,7 +16,7 @@ export interface ApiClientConfig {
  * @param config Configuration options for the API client
  * @returns Configured Api instance
  */
-export function createApiClient(config: ApiClientConfig = {}): Api<any> {
+export function createApiClient(config: ApiClientConfig = {}): Api<unknown> {
   const { baseURL = API_BASE_URL, token } = config;
 
   return new Api({
@@ -39,7 +39,7 @@ export function createApiClient(config: ApiClientConfig = {}): Api<any> {
 export function createAuthenticatedApiClient(
   token: string,
   baseURL?: string
-): Api<any> {
+): Api<unknown> {
   return createApiClient({ baseURL, token });
 }
 
