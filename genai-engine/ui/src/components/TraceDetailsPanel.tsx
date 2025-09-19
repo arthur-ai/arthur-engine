@@ -293,6 +293,23 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
   onClose
 }) => {
   const [selectedSpan, setSelectedSpan] = useState<NestedSpanWithMetricsResponse | null>(null);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Handle mounting/unmounting with animation timing
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      // Small delay to ensure the component is mounted before starting animation
+      const timer = setTimeout(() => setIsAnimating(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimating(false);
+      // Delay unmounting to allow close animation to complete
+      const timer = setTimeout(() => setShouldRender(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // Auto-select the first span when the panel opens
   useEffect(() => {
@@ -301,7 +318,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
     }
   }, [isOpen, trace, selectedSpan]);
 
-  if (!trace) return null;
+  if (!trace || !shouldRender) return null;
 
   const formatDuration = (startTime: string, endTime: string) => {
     const start = new Date(startTime);
@@ -341,16 +358,16 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
   };
 
   return (
-    <div className={`fixed inset-0 z-50 ${isOpen ? 'block' : 'hidden'}`}>
+    <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0"
+        className={`absolute inset-0 transition-opacity duration-300 ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
         style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}
         onClick={onClose}
       />
       
       {/* Panel */}
-      <div className={`absolute right-0 top-0 h-full w-4/5 bg-white text-gray-900 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`absolute right-0 top-0 h-full w-4/5 bg-white text-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out ${isAnimating ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
