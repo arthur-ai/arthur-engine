@@ -48,7 +48,7 @@ export const AllTasks: React.FC = () => {
   };
 
   const handleTaskClick = (taskId: string) => {
-    router.push(`/tasks/${taskId}/task-details`);
+    router.push(`/tasks/${taskId}/traces`);
   };
 
   return (
