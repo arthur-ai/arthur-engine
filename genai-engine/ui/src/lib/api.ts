@@ -1,10 +1,28 @@
 import { Api } from "./api-client/api-client";
+import axios from "axios";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   (typeof window !== "undefined"
     ? window.location.origin
     : "http://localhost:8000");
+
+// Configure axios to serialize array parameters without brackets
+axios.defaults.paramsSerializer = {
+  serialize: (params: Record<string, unknown>) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach((key) => {
+      const value = params[key];
+      if (Array.isArray(value)) {
+        // Serialize arrays as repeated parameters instead of brackets
+        value.forEach((item) => searchParams.append(key, String(item)));
+      } else if (value !== undefined && value !== null) {
+        searchParams.append(key, String(value));
+      }
+    });
+    return searchParams.toString();
+  },
+};
 
 export interface ApiClientConfig {
   baseURL?: string;
