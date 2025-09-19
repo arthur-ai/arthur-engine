@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AuthService } from '@/lib/auth';
-import { TaskResponse } from '@/lib/api-client/api-client';
+import { useApi } from '@/hooks/useApi';
+import { TaskResponse } from '@/lib/api';
 
 export const Dashboard: React.FC = () => {
   const { logout } = useAuth();
+  const api = useApi();
   const [tasks, setTasks] = useState<TaskResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,17 +18,14 @@ export const Dashboard: React.FC = () => {
         setIsLoading(true);
         setError(null);
         
-        const authService = AuthService.getInstance();
-        const apiClient = authService.getApiClient();
-        
-        if (!apiClient) {
+        if (!api) {
           throw new Error('API client not available');
         }
 
         // Search for all tasks
-        const response = await apiClient.api.searchTasksApiV2TasksSearchPost({}, {
+        const response = await api.api.searchTasksApiV2TasksSearchPost({}, {
           page_size: 50,
-          page: 1,
+          page: 0,
         });
 
         setTasks(response.data.tasks || []);
@@ -39,8 +37,10 @@ export const Dashboard: React.FC = () => {
       }
     };
 
-    fetchTasks();
-  }, []);
+    if (api) {
+      fetchTasks();
+    }
+  }, [api]);
 
   const handleLogout = () => {
     logout();

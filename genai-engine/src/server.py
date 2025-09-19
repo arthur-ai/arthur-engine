@@ -295,6 +295,7 @@ def get_base_app(
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
+        "http://localhost:3000",
     ]
     if ingress_url := get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,

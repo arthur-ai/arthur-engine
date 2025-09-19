@@ -1,8 +1,6 @@
-import { Api, SearchTasksRequest } from "./api-client/api-client";
+import { createAuthenticatedApiClient, Api, SearchTasksRequest } from "./api";
 
 const TOKEN_STORAGE_KEY = "arthur_auth_token";
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 export interface AuthState {
   isAuthenticated: boolean;
@@ -35,28 +33,20 @@ export class AuthService {
 
   private initializeApiClient(): void {
     if (this.token) {
-      this.apiClient = new Api({
-        baseURL: API_BASE_URL,
-        securityWorker: (token) =>
-          token ? { headers: { Authorization: `Bearer ${token}` } } : {},
-      });
+      this.apiClient = createAuthenticatedApiClient(this.token);
     }
   }
 
   public async login(token: string): Promise<boolean> {
     try {
       // Test the token by making a simple API call
-      const testClient = new Api({
-        baseURL: API_BASE_URL,
-        securityWorker: (token) =>
-          token ? { headers: { Authorization: `Bearer ${token}` } } : {},
-      });
+      const testClient = createAuthenticatedApiClient(token);
 
       // Try to search for tasks with an empty request to test authentication
       const searchRequest: SearchTasksRequest = {};
       await testClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
         page_size: 1,
-        page: 1,
+        page: 0,
       });
 
       // If successful, save the token and initialize the client
@@ -102,7 +92,7 @@ export class AuthService {
       const searchRequest: SearchTasksRequest = {};
       await this.apiClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
         page_size: 1,
-        page: 1,
+        page: 0,
       });
       return true;
     } catch (error) {
