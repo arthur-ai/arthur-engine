@@ -12,7 +12,7 @@ export const ComingSoon: React.FC<ComingSoonProps> = ({
   description
 }) => {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="h-full bg-gray-50 flex items-center justify-center p-6">
       <div className="max-w-md mx-auto text-center">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="mb-6">
