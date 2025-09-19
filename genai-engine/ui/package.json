@@ -1,0 +1,31 @@
+{
+  "name": "genai-engine-ui",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint",
+    "generate-api": "openapi-generator-cli generate -i ../staging.openapi.json -g typescript-axios -o src/lib/api-client --additional-properties=typescriptThreePlus=true,supportsES6=true,withInterfaces=true,modelPropertyNaming=original,enumPropertyNaming=UPPERCASE,stringEnums=true,sortParamsByRequiredFlag=true,sortModelPropertiesByRequiredFlag=true,ensureUniqueParams=true,allowUnicodeIdentifiers=true,prependFormOrBodyParameters=true,useSingleRequestParameter=true,withNodeImports=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models --skip-validate-spec",
+    "generate-api:clean": "rm -rf src/api && yarn generate-api"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "next": "15.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.3",
+    "@eslint/eslintrc": "^3",
+    "@openapitools/openapi-generator-cli": "^2.7.0"
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+}
