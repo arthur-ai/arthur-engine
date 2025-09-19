@@ -114,37 +114,30 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
 
   return (
     <TaskProvider task={task}>
-      <div className="min-h-screen bg-gray-50">
+      <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
         <header className="bg-white shadow-sm border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
-                  {getPageTitle(activeSection)}
-                </h1>
-                <p className="text-gray-600">{task.name}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                Logout
-              </button>
+            <div className="py-4">
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {getPageTitle(activeSection)}
+              </h1>
+              <p className="text-gray-600">{task.name}</p>
             </div>
           </div>
         </header>
 
-        <div className="flex">
+        <div className="flex flex-1">
           <SidebarNavigation 
             onBackToDashboard={handleBack}
             onNavigate={(sectionId) => {
               // Navigate to the appropriate route
               router.push(`/tasks/${taskId}/${sectionId}`);
             }}
+            onLogout={handleLogout}
             activeSection={activeSection}
           />
 
-          <main className="flex-1">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>

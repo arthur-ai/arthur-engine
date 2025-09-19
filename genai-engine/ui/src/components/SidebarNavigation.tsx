@@ -5,6 +5,7 @@ import React from 'react';
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
   onNavigate: (sectionId: string) => void;
+  onLogout?: () => void;
   activeSection?: string;
 }
 
@@ -23,6 +24,7 @@ interface NavigationItem {
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   onBackToDashboard,
   onNavigate,
+  onLogout,
   activeSection = 'task-details'
 }) => {
   const navigationSections: NavigationSection[] = [
@@ -61,8 +63,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   ];
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen">
-      <div className="p-4">
+    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 h-full flex flex-col overflow-hidden">
+      <div className="p-4 flex-1 overflow-y-auto">
         <div className="mb-4">
           <button
             onClick={onBackToDashboard}
@@ -71,18 +73,18 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
             ← All Tasks
           </button>
         </div>
-        
+
         <div className="space-y-1">
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-4">
               <div className="px-3 py-2 text-sm font-semibold text-gray-900">
                 {section.label}
               </div>
-              
+
               <ul className="ml-4 mt-1 space-y-1">
                 {section.items.map((item) => {
                   const isActive = item.id === activeSection;
-                  
+
                   return (
                     <li key={item.id}>
                       <button
@@ -103,6 +105,18 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Logout button at the bottom */}
+      {onLogout && (
+        <div className="p-4 border-t border-gray-200">
+          <button
+            onClick={onLogout}
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+          >
+            Logout
+          </button>
+        </div>
+      )}
     </nav>
   );
 };
