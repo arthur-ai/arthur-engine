@@ -1,10 +1,5 @@
-import { ComingSoon } from '@/components/ComingSoon';
+import { TracesView } from '@/components/TracesView';
 
 export default function TracesPage() {
-  return (
-    <ComingSoon 
-      featureName="Traces"
-      description="View and analyze execution traces for your tasks and inferences."
-    />
-  );
+  return <TracesView />;
 }

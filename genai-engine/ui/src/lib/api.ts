@@ -54,4 +54,7 @@ export type {
   NewTaskRequest,
   RuleResponse,
   MetricResponse,
+  QueryTracesWithMetricsResponse,
+  TraceResponse,
+  NestedSpanWithMetricsResponse,
 } from "./api-client/api-client";

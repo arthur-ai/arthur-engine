@@ -10,36 +10,10 @@
  */
 
 /** APIKeysRolesEnum */
-export enum APIKeysRolesEnum {
-  DEFAULTRULEADMIN = "DEFAULT-RULE-ADMIN",
-  TASKADMIN = "TASK-ADMIN",
-  VALIDATIONUSER = "VALIDATION-USER",
-  ORGAUDITOR = "ORG-AUDITOR",
-  ORGADMIN = "ORG-ADMIN",
-}
+export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
 
 /** ApiKeyResponse */
 export interface ApiKeyResponse {
-  /**
-   * Id
-   * ID of the key
-   */
-  id: string;
-  /**
-   * Key
-   * The generated GenAI Engine API key. The key is displayed on key creation request only.
-   */
-  key?: string | null;
-  /**
-   * Description
-   * Description of the API key
-   */
-  description?: string | null;
-  /**
-   * Is Active
-   * Status of the key.
-   */
-  is_active: boolean;
   /**
    * Created At
    * Creation time of the key
@@ -51,6 +25,26 @@ export interface ApiKeyResponse {
    * Deactivation time of the key
    */
   deactivated_at?: string | null;
+  /**
+   * Description
+   * Description of the API key
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the key
+   */
+  id: string;
+  /**
+   * Is Active
+   * Status of the key.
+   */
+  is_active: boolean;
+  /**
+   * Key
+   * The generated GenAI Engine API key. The key is displayed on key creation request only.
+   */
+  key?: string | null;
   /**
    * Message
    * Optional Message
@@ -64,24 +58,40 @@ export interface ApiKeyResponse {
   roles?: string[];
 }
 
+export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData = any;
+
+export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError = HTTPValidationError;
+
+export type ArchiveTaskApiV2TasksTaskIdDeleteData = any;
+
+export type ArchiveTaskApiV2TasksTaskIdDeleteError = HTTPValidationError;
+
+export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData = any;
+
+export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError = HTTPValidationError;
+
+export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData = any;
+
+export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError = HTTPValidationError;
+
 /** AuthUserRole */
 export interface AuthUserRole {
+  /** Composite */
+  composite: boolean;
+  /** Description */
+  description: string;
   /** Id */
   id?: string | null;
   /** Name */
   name: string;
-  /** Description */
-  description: string;
-  /** Composite */
-  composite: boolean;
 }
 
 /** BaseDetailsResponse */
 export interface BaseDetailsResponse {
-  /** Score */
-  score?: boolean | null;
   /** Message */
   message?: string | null;
+  /** Score */
+  score?: boolean | null;
 }
 
 /** Body_upload_embeddings_file_api_chat_files_post */
@@ -107,21 +117,16 @@ export interface ChatDefaultTaskResponse {
 
 /** ChatDocumentContext */
 export interface ChatDocumentContext {
+  /** Context */
+  context: string;
   /** Id */
   id: string;
   /** Seq Num */
   seq_num: number;
-  /** Context */
-  context: string;
 }
 
 /** ChatRequest */
 export interface ChatRequest {
-  /**
-   * User Prompt
-   * Prompt user wants to send to chat.
-   */
-  user_prompt: string;
   /**
    * Conversation Id
    * Conversation ID
@@ -132,30 +137,29 @@ export interface ChatRequest {
    * list of file IDs to retrieve from during chat.
    */
   file_ids: string[];
+  /**
+   * User Prompt
+   * Prompt user wants to send to chat.
+   */
+  user_prompt: string;
 }
+
+export type ChatRequestData = ChatResponse;
+
+export type ChatRequestError = HTTPValidationError;
 
 /** ChatResponse */
 export interface ChatResponse {
-  /**
-   * Inference Id
-   * ID of the inference sent to the chat
-   */
-  inference_id: string;
   /**
    * Conversation Id
    * ID of the conversation session
    */
   conversation_id: string;
   /**
-   * Timestamp
-   * Time the inference was made in unix milliseconds
+   * Inference Id
+   * ID of the inference sent to the chat
    */
-  timestamp: number;
-  /**
-   * Retrieved Context
-   * related sections of documents that were most relevant to the inference prompt. Formatted as a list of retrieved context chunks which include document name, seq num, and context.
-   */
-  retrieved_context: ChatDocumentContext[];
+  inference_id: string;
   /**
    * Llm Response
    * response from the LLM for the original user prompt
@@ -171,7 +175,32 @@ export interface ChatResponse {
    * list of rule results for the llm response
    */
   response_results: ExternalRuleResult[];
+  /**
+   * Retrieved Context
+   * related sections of documents that were most relevant to the inference prompt. Formatted as a list of retrieved context chunks which include document name, seq num, and context.
+   */
+  retrieved_context: ChatDocumentContext[];
+  /**
+   * Timestamp
+   * Time the inference was made in unix milliseconds
+   */
+  timestamp: number;
 }
+
+export type CheckUserPermissionUsersPermissionsCheckGetData = any;
+
+export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
+
+export interface CheckUserPermissionUsersPermissionsCheckGetParams {
+  /** Action to check permissions of. */
+  action?: UserPermissionAction;
+  /** Resource to check permissions of. */
+  resource?: UserPermissionResource;
+}
+
+export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
+
+export type ComputeSpanMetricsV1SpanSpanIdMetricsGetError = HTTPValidationError;
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -184,24 +213,68 @@ export interface ConversationBaseResponse {
   updated_at: string;
 }
 
+export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
+
+export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
+
+export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
+
+export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
+
+export type CreateTaskApiV2TasksPostData = TaskResponse;
+
+export type CreateTaskApiV2TasksPostError = HTTPValidationError;
+
+export type CreateTaskMetricApiV2TasksTaskIdMetricsPostData = any;
+
+export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationError;
+
+export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
+
+export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
+
 /** CreateUserRequest */
 export interface CreateUserRequest {
   /** Email */
   email: string;
+  /** Firstname */
+  firstName: string;
+  /** Lastname */
+  lastName: string;
   /** Password */
   password: string;
+  /** Roles */
+  roles: string[];
   /**
    * Temporary
    * @default true
    */
   temporary?: boolean;
-  /** Roles */
-  roles: string[];
-  /** Firstname */
-  firstName: string;
-  /** Lastname */
-  lastName: string;
 }
+
+export type CreateUserUsersPostData = any;
+
+export type CreateUserUsersPostError = HTTPValidationError;
+
+export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
+
+export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError = HTTPValidationError;
+
+export type DefaultValidatePromptApiV2ValidatePromptPostData = ValidationResult;
+
+export type DefaultValidatePromptApiV2ValidatePromptPostError = HTTPValidationError;
+
+export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = ValidationResult;
+
+export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
+
+export type DeleteFileApiChatFilesFileIdDeleteData = any;
+
+export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
+
+export type DeleteUserUsersUserIdDeleteData = any;
+
+export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
 
 /**
  * ExampleConfig
@@ -243,73 +316,73 @@ export interface ExternalDocument {
   id: string;
   /** Name */
   name: string;
-  /** Type */
-  type: string;
   /** Owner Id */
   owner_id: string;
+  /** Type */
+  type: string;
 }
 
 /** ExternalInference */
 export interface ExternalInference {
-  /** Id */
-  id: string;
-  result: RuleResultEnum;
+  /** Conversation Id */
+  conversation_id?: string | null;
   /** Created At */
   created_at: number;
-  /** Updated At */
-  updated_at: number;
+  /** Id */
+  id: string;
+  /** Inference Feedback */
+  inference_feedback: InferenceFeedbackResponse[];
+  inference_prompt: ExternalInferencePrompt;
+  inference_response?: ExternalInferenceResponse | null;
+  result: RuleResultEnum;
   /** Task Id */
   task_id?: string | null;
   /** Task Name */
   task_name?: string | null;
-  /** Conversation Id */
-  conversation_id?: string | null;
-  inference_prompt: ExternalInferencePrompt;
-  inference_response?: ExternalInferenceResponse | null;
-  /** Inference Feedback */
-  inference_feedback: InferenceFeedbackResponse[];
+  /** Updated At */
+  updated_at: number;
   /** User Id */
   user_id?: string | null;
 }
 
 /** ExternalInferencePrompt */
 export interface ExternalInferencePrompt {
+  /** Created At */
+  created_at: number;
   /** Id */
   id: string;
   /** Inference Id */
   inference_id: string;
-  result: RuleResultEnum;
-  /** Created At */
-  created_at: number;
-  /** Updated At */
-  updated_at: number;
   /** Message */
   message: string;
   /** Prompt Rule Results */
   prompt_rule_results: ExternalRuleResult[];
+  result: RuleResultEnum;
   /** Tokens */
   tokens?: number | null;
+  /** Updated At */
+  updated_at: number;
 }
 
 /** ExternalInferenceResponse */
 export interface ExternalInferenceResponse {
+  /** Context */
+  context?: string | null;
+  /** Created At */
+  created_at: number;
   /** Id */
   id: string;
   /** Inference Id */
   inference_id: string;
-  result: RuleResultEnum;
-  /** Created At */
-  created_at: number;
-  /** Updated At */
-  updated_at: number;
   /** Message */
   message: string;
-  /** Context */
-  context?: string | null;
   /** Response Rule Results */
   response_rule_results: ExternalRuleResult[];
+  result: RuleResultEnum;
   /** Tokens */
   tokens?: number | null;
+  /** Updated At */
+  updated_at: number;
 }
 
 /**
@@ -317,27 +390,6 @@ export interface ExternalInferenceResponse {
  * @example {"id":"90f18c69-d793-4913-9bde-a0c7f3643de0","name":"PII Rule","result":"Pass"}
  */
 export interface ExternalRuleResult {
-  /**
-   * Id
-   *  ID of the rule
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the rule
-   */
-  name: string;
-  /** Type of the rule */
-  rule_type: RuleType;
-  /** Scope of the rule. The rule can be set at default level or task level. */
-  scope: RuleScope;
-  /** Result if the rule */
-  result: RuleResultEnum;
-  /**
-   * Latency Ms
-   * Duration in millisesconds of rule execution
-   */
-  latency_ms: number;
   /**
    * Details
    * Details of the rule output
@@ -350,15 +402,36 @@ export interface ExternalRuleResult {
     | ToxicityDetailsResponse
     | BaseDetailsResponse
     | null;
+  /**
+   * Id
+   *  ID of the rule
+   */
+  id: string;
+  /**
+   * Latency Ms
+   * Duration in millisesconds of rule execution
+   */
+  latency_ms: number;
+  /**
+   * Name
+   * Name of the rule
+   */
+  name: string;
+  /** Result if the rule */
+  result: RuleResultEnum;
+  /** Type of the rule */
+  rule_type: RuleType;
+  /** Scope of the rule. The rule can be set at default level or task level. */
+  scope: RuleScope;
 }
 
 /** FeedbackRequest */
 export interface FeedbackRequest {
-  target: InferenceFeedbackTarget;
-  /** Score */
-  score: number;
   /** Reason */
   reason: string | null;
+  /** Score */
+  score: number;
+  target: InferenceFeedbackTarget;
   /** User Id */
   user_id?: string | null;
 }
@@ -369,12 +442,85 @@ export interface FileUploadResult {
   id: string;
   /** Name */
   name: string;
+  /** Success */
+  success: boolean;
   /** Type */
   type: string;
   /** Word Count */
   word_count: number;
-  /** Success */
-  success: boolean;
+}
+
+/** Response Get All Active Api Keys Auth Api Keys  Get */
+export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
+
+/** Response Get All Tasks Api V2 Tasks Get */
+export type GetAllTasksApiV2TasksGetData = TaskResponse[];
+
+export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
+
+export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
+
+export type GetConversationsApiChatConversationsGetData = PageListConversationBaseResponse;
+
+export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
+
+export interface GetConversationsApiChatConversationsGetParams {
+  /**
+   * Page
+   * @min 1
+   * @default 1
+   */
+  page?: number;
+  /**
+   * Size
+   * @min 1
+   * @max 100
+   * @default 50
+   */
+  size?: number;
+}
+
+/** Response Get Default Rules Api V2 Default Rules Get */
+export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
+
+export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
+
+/** Response Get Files Api Chat Files Get */
+export type GetFilesApiChatFilesGetData = ExternalDocument[];
+
+/** Response Get Inference Document Context Api Chat Context  Inference Id  Get */
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
+
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
+
+export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
+
+export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
+
+/** Response Get Token Usage Api V2 Usage Tokens Get */
+export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
+
+export type GetTokenUsageApiV2UsageTokensGetError = HTTPValidationError;
+
+export interface GetTokenUsageApiV2UsageTokensGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Defaults to the end of the current day if not provided.
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Group By
+   * Entities to group token counts on.
+   * @default ["rule_type"]
+   */
+  group_by?: TokenUsageScope[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Defaults to the beginning of the current day if not provided.
+   * @format date-time
+   */
+  start_time?: string;
 }
 
 /**
@@ -396,72 +542,68 @@ export interface HTTPValidationError {
 export interface HallucinationClaimResponse {
   /** Claim */
   claim: string;
-  /** Valid */
-  valid: boolean;
-  /** Reason */
-  reason: string;
   /**
    * Order Number
    * This field is a helper for ordering the claims
    * @default -1
    */
   order_number?: number | null;
+  /** Reason */
+  reason: string;
+  /** Valid */
+  valid: boolean;
 }
 
 /** HallucinationDetailsResponse */
 export interface HallucinationDetailsResponse {
-  /** Score */
-  score?: boolean | null;
-  /** Message */
-  message?: string | null;
   /** Claims */
   claims: HallucinationClaimResponse[];
+  /** Message */
+  message?: string | null;
+  /** Score */
+  score?: boolean | null;
 }
 
 /** InferenceFeedbackResponse */
 export interface InferenceFeedbackResponse {
-  /** Id */
-  id: string;
-  /** Inference Id */
-  inference_id: string;
-  target: InferenceFeedbackTarget;
-  /** Score */
-  score: number;
-  /** Reason */
-  reason?: string | null;
-  /** User Id */
-  user_id?: string | null;
   /**
    * Created At
    * @format date-time
    */
   created_at: string;
+  /** Id */
+  id: string;
+  /** Inference Id */
+  inference_id: string;
+  /** Reason */
+  reason?: string | null;
+  /** Score */
+  score: number;
+  target: InferenceFeedbackTarget;
   /**
    * Updated At
    * @format date-time
    */
   updated_at: string;
+  /** User Id */
+  user_id?: string | null;
 }
 
 /** InferenceFeedbackTarget */
-export enum InferenceFeedbackTarget {
-  Context = "context",
-  ResponseResults = "response_results",
-  PromptResults = "prompt_results",
-}
+export type InferenceFeedbackTarget = "context" | "response_results" | "prompt_results";
 
 /** KeywordDetailsResponse */
 export interface KeywordDetailsResponse {
-  /** Score */
-  score?: boolean | null;
-  /** Message */
-  message?: string | null;
   /**
    * Keyword Matches
    * Each keyword in this list corresponds to a keyword that was both configured in the rule that was run and found in the input text.
    * @default []
    */
   keyword_matches?: KeywordSpanResponse[];
+  /** Message */
+  message?: string | null;
+  /** Score */
+  score?: boolean | null;
 }
 
 /** KeywordSpanResponse */
@@ -488,23 +630,6 @@ export interface KeywordsConfig {
 /** MetricResponse */
 export interface MetricResponse {
   /**
-   * Id
-   * ID of the Metric
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the Metric
-   */
-  name: string;
-  /** Type of the Metric */
-  type: MetricType;
-  /**
-   * Metric Metadata
-   * Metadata of the Metric
-   */
-  metric_metadata: string;
-  /**
    * Config
    * JSON-serialized configuration for the Metric
    */
@@ -516,63 +641,80 @@ export interface MetricResponse {
    */
   created_at: string;
   /**
+   * Enabled
+   * Whether the Metric is enabled
+   */
+  enabled?: boolean | null;
+  /**
+   * Id
+   * ID of the Metric
+   */
+  id: string;
+  /**
+   * Metric Metadata
+   * Metadata of the Metric
+   */
+  metric_metadata: string;
+  /**
+   * Name
+   * Name of the Metric
+   */
+  name: string;
+  /** Type of the Metric */
+  type: MetricType;
+  /**
    * Updated At
    * Time the Metric was updated in unix milliseconds
    * @format date-time
    */
   updated_at: string;
-  /**
-   * Enabled
-   * Whether the Metric is enabled
-   */
-  enabled?: boolean | null;
 }
 
 /** MetricResultResponse */
 export interface MetricResultResponse {
-  /**
-   * Id
-   * ID of the metric result
-   */
-  id: string;
-  /** Type of the metric */
-  metric_type: MetricType;
-  /**
-   * Details
-   * JSON-serialized metric details
-   */
-  details?: string | null;
-  /**
-   * Prompt Tokens
-   * Number of prompt tokens used
-   */
-  prompt_tokens: number;
   /**
    * Completion Tokens
    * Number of completion tokens used
    */
   completion_tokens: number;
   /**
-   * Latency Ms
-   * Latency in milliseconds
-   */
-  latency_ms: number;
-  /**
-   * Span Id
-   * ID of the span this result belongs to
-   */
-  span_id: string;
-  /**
-   * Metric Id
-   * ID of the metric that generated this result
-   */
-  metric_id: string;
-  /**
    * Created At
    * Time the result was created
    * @format date-time
    */
   created_at: string;
+  /**
+   * Details
+   * JSON-serialized metric details
+   */
+  details?: string | null;
+  /**
+   * Id
+   * ID of the metric result
+   */
+  id: string;
+  /**
+   * Latency Ms
+   * Latency in milliseconds
+   */
+  latency_ms: number;
+  /**
+   * Metric Id
+   * ID of the metric that generated this result
+   */
+  metric_id: string;
+  /** Type of the metric */
+  metric_type: MetricType;
+  /**
+   * Prompt Tokens
+   * Number of prompt tokens used
+   */
+  prompt_tokens: number;
+  /**
+   * Span Id
+   * ID of the span this result belongs to
+   */
+  span_id: string;
   /**
    * Updated At
    * Time the result was last updated
@@ -582,25 +724,47 @@ export interface MetricResultResponse {
 }
 
 /** MetricType */
-export enum MetricType {
-  QueryRelevance = "QueryRelevance",
-  ResponseRelevance = "ResponseRelevance",
-  ToolSelection = "ToolSelection",
-}
+export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
 /**
  * NestedSpanWithMetricsResponse
  * Nested span response with children for building span trees
  */
 export interface NestedSpanWithMetricsResponse {
+  /**
+   * Children
+   * Child spans nested under this span
+   * @default []
+   */
+  children?: NestedSpanWithMetricsResponse[];
+  /** Context */
+  context?: Record<string, any>[] | null;
+  /**
+   * Created At
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * End Time
+   * @format date-time
+   */
+  end_time: string;
   /** Id */
   id: string;
-  /** Trace Id */
-  trace_id: string;
-  /** Span Id */
-  span_id: string;
+  /**
+   * Metric Results
+   * List of metric results for this span
+   * @default []
+   */
+  metric_results?: MetricResultResponse[];
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /** Raw Data */
+  raw_data: Record<string, any>;
+  /** Response */
+  response?: string | null;
+  /** Span Id */
+  span_id: string;
   /** Span Kind */
   span_kind?: string | null;
   /** Span Name */
@@ -610,45 +774,19 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
-  /**
-   * End Time
-   * @format date-time
-   */
-  end_time: string;
+  /** System Prompt */
+  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
-  /**
-   * Created At
-   * @format date-time
-   */
-  created_at: string;
+  /** Trace Id */
+  trace_id: string;
   /**
    * Updated At
    * @format date-time
    */
   updated_at: string;
-  /** Raw Data */
-  raw_data: Record<string, any>;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** User Query */
   user_query?: string | null;
-  /** Response */
-  response?: string | null;
-  /** Context */
-  context?: Record<string, any>[] | null;
-  /**
-   * Metric Results
-   * List of metric results for this span
-   * @default []
-   */
-  metric_results?: MetricResultResponse[];
-  /**
-   * Children
-   * Child spans nested under this span
-   * @default []
-   */
-  children?: NestedSpanWithMetricsResponse[];
 }
 
 /** NewApiKeyRequest */
@@ -668,34 +806,24 @@ export interface NewApiKeyRequest {
 
 /** NewMetricRequest */
 export interface NewMetricRequest {
-  /** Type of the metric. It can only be one of QueryRelevance, ResponseRelevance, ToolSelection */
-  type: MetricType;
-  /**
-   * Name
-   * Name of metric
-   */
-  name: string;
+  /** Configuration for the metric. Currently only applies to UserQueryRelevance and ResponseRelevance metric types. */
+  config?: RelevanceMetricConfig | null;
   /**
    * Metric Metadata
    * Additional metadata for the metric
    */
   metric_metadata: string;
-  /** Configuration for the metric. Currently only applies to UserQueryRelevance and ResponseRelevance metric types. */
-  config?: RelevanceMetricConfig | null;
+  /**
+   * Name
+   * Name of metric
+   */
+  name: string;
+  /** Type of the metric. It can only be one of QueryRelevance, ResponseRelevance, ToolSelection */
+  type: MetricType;
 }
 
 /** NewRuleRequest */
 export interface NewRuleRequest {
-  /**
-   * Name
-   * Name of the rule
-   */
-  name: string;
-  /**
-   * Type
-   * Type of the rule. It can only be one of KeywordRule, RegexRule, ModelSensitiveDataRule, ModelHallucinationRule, ModelHallucinationRuleV2, PromptInjectionRule, PIIDataRule
-   */
-  type: string;
   /**
    * Apply To Prompt
    * Boolean value to enable or disable the rule for llm prompt
@@ -711,22 +839,32 @@ export interface NewRuleRequest {
    * Config for the rule
    */
   config?: RegexConfig | KeywordsConfig | ToxicityConfig | PIIConfig | ExamplesConfig | null;
+  /**
+   * Name
+   * Name of the rule
+   */
+  name: string;
+  /**
+   * Type
+   * Type of the rule. It can only be one of KeywordRule, RegexRule, ModelSensitiveDataRule, ModelHallucinationRule, ModelHallucinationRuleV2, PromptInjectionRule, PIIDataRule
+   */
+  type: string;
 }
 
 /** NewTaskRequest */
 export interface NewTaskRequest {
-  /**
-   * Name
-   * Name of the task.
-   * @minLength 1
-   */
-  name: string;
   /**
    * Is Agentic
    * Whether the task is agentic or not.
    * @default false
    */
   is_agentic?: boolean;
+  /**
+   * Name
+   * Name of the task.
+   * @minLength 1
+   */
+  name: string;
 }
 
 /**
@@ -735,10 +873,10 @@ export interface NewTaskRequest {
  */
 export interface PIIConfig {
   /**
-   * Disabled Pii Entities
-   * Optional. List of PII entities to disable. Valid values are: CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN
+   * Allow List
+   * Optional. List of strings to pass PII validation.
    */
-  disabled_pii_entities?: string[] | null;
+  allow_list?: string[] | null;
   /**
    * Confidence Threshold
    * Optional. Float (0, 1) indicating the level of tolerable PII to consider the rule passed or failed. Min: 0 (less confident) Max: 1 (very confident). Default: 0
@@ -747,89 +885,85 @@ export interface PIIConfig {
    */
   confidence_threshold?: number | null;
   /**
-   * Allow List
-   * Optional. List of strings to pass PII validation.
+   * Disabled Pii Entities
+   * Optional. List of PII entities to disable. Valid values are: CREDIT_CARD,CRYPTO,DATE_TIME,EMAIL_ADDRESS,IBAN_CODE,IP_ADDRESS,NRP,LOCATION,PERSON,PHONE_NUMBER,MEDICAL_LICENSE,URL,US_BANK_NUMBER,US_DRIVER_LICENSE,US_ITIN,US_PASSPORT,US_SSN
    */
-  allow_list?: string[] | null;
+  disabled_pii_entities?: string[] | null;
 }
 
 /** PIIDetailsResponse */
 export interface PIIDetailsResponse {
-  /** Score */
-  score?: boolean | null;
   /** Message */
   message?: string | null;
   /** Pii Entities */
   pii_entities: PIIEntitySpanResponse[];
+  /** Score */
+  score?: boolean | null;
 }
 
 /** PIIEntitySpanResponse */
 export interface PIIEntitySpanResponse {
+  /**
+   * Confidence
+   * Float value representing the confidence score of a given PII identification.
+   */
+  confidence?: number | null;
   entity: PIIEntityTypes;
   /**
    * Span
    * The subtext within the input string that was identified as PII.
    */
   span: string;
-  /**
-   * Confidence
-   * Float value representing the confidence score of a given PII identification.
-   */
-  confidence?: number | null;
 }
 
 /** PIIEntityTypes */
-export enum PIIEntityTypes {
-  CREDIT_CARD = "CREDIT_CARD",
-  CRYPTO = "CRYPTO",
-  DATE_TIME = "DATE_TIME",
-  EMAIL_ADDRESS = "EMAIL_ADDRESS",
-  IBAN_CODE = "IBAN_CODE",
-  IP_ADDRESS = "IP_ADDRESS",
-  NRP = "NRP",
-  LOCATION = "LOCATION",
-  PERSON = "PERSON",
-  PHONE_NUMBER = "PHONE_NUMBER",
-  MEDICAL_LICENSE = "MEDICAL_LICENSE",
-  URL = "URL",
-  US_BANK_NUMBER = "US_BANK_NUMBER",
-  US_DRIVER_LICENSE = "US_DRIVER_LICENSE",
-  US_ITIN = "US_ITIN",
-  US_PASSPORT = "US_PASSPORT",
-  US_SSN = "US_SSN",
-}
+export type PIIEntityTypes =
+  | "CREDIT_CARD"
+  | "CRYPTO"
+  | "DATE_TIME"
+  | "EMAIL_ADDRESS"
+  | "IBAN_CODE"
+  | "IP_ADDRESS"
+  | "NRP"
+  | "LOCATION"
+  | "PERSON"
+  | "PHONE_NUMBER"
+  | "MEDICAL_LICENSE"
+  | "URL"
+  | "US_BANK_NUMBER"
+  | "US_DRIVER_LICENSE"
+  | "US_ITIN"
+  | "US_PASSPORT"
+  | "US_SSN";
 
 /** Page[List[ConversationBaseResponse]] */
 export interface PageListConversationBaseResponse {
   /** Items */
   items: ConversationBaseResponse[][];
   /**
-   * Total
-   * @min 0
-   */
-  total: number;
-  /**
    * Page
    * @min 1
    */
   page: number;
+  /**
+   * Pages
+   * @min 0
+   */
+  pages: number;
   /**
    * Size
    * @min 1
    */
   size: number;
   /**
-   * Pages
+   * Total
    * @min 0
    */
-  pages: number;
+  total: number;
 }
 
 /** PaginationSortMethod */
-export enum PaginationSortMethod {
-  Asc = "asc",
-  Desc = "desc",
-}
+export type PaginationSortMethod = "asc" | "desc";
 
 /** PasswordResetRequest */
 export interface PasswordResetRequest {
@@ -837,23 +971,105 @@ export interface PasswordResetRequest {
   password: string;
 }
 
+export type PostChatFeedbackApiChatFeedbackInferenceIdPostData = any;
+
+export type PostChatFeedbackApiChatFeedbackInferenceIdPostError = HTTPValidationError;
+
+export type PostFeedbackApiV2FeedbackInferenceIdPostData = InferenceFeedbackResponse;
+
+export type PostFeedbackApiV2FeedbackInferenceIdPostError = HTTPValidationError;
+
 /** PromptValidationRequest */
 export interface PromptValidationRequest {
-  /**
-   * Prompt
-   * Prompt to be validated by GenAI Engine
-   */
-  prompt: string;
   /**
    * Conversation Id
    * The unique conversation ID this prompt belongs to. All prompts and responses from this         conversation can later be reconstructed with this ID.
    */
   conversation_id?: string | null;
   /**
+   * Prompt
+   * Prompt to be validated by GenAI Engine
+   */
+  prompt: string;
+  /**
    * User Id
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
+
+export type QueryFeedbackApiV2FeedbackQueryGetError = HTTPValidationError;
+
+export interface QueryFeedbackApiV2FeedbackQueryGetParams {
+  /**
+   * Conversation Id
+   * Conversation ID to filter on
+   */
+  conversation_id?: string | string[] | null;
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format
+   */
+  end_time?: string | null;
+  /**
+   * Feedback Id
+   * Feedback ID to filter on
+   */
+  feedback_id?: string | string[] | null;
+  /**
+   * Feedback User Id
+   * User ID of the user giving feedback to filter on (query will perform fuzzy search)
+   */
+  feedback_user_id?: string | null;
+  /**
+   * Inference Id
+   * Inference ID to filter on
+   */
+  inference_id?: string | string[] | null;
+  /**
+   * Inference User Id
+   * User ID of the user who created the inferences to filter on (query will perform fuzzy search)
+   */
+  inference_user_id?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Score
+   * Score of the feedback. Must be an integer.
+   */
+  score?: number | number[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format
+   */
+  start_time?: string | null;
+  /**
+   * Target
+   * Target of the feedback. Must be one of ['context', 'response_results', 'prompt_results']
+   */
+  target?: string | string[] | null;
+  /**
+   * Task Id
+   * Task ID to filter on
+   */
+  task_id?: string | string[] | null;
 }
 
 /**
@@ -877,15 +1093,107 @@ export interface QueryFeedbackResponse {
    */
   page_size: number;
   /**
-   * Total Pages
-   * The total number of pages
-   */
-  total_pages: number;
-  /**
    * Total Count
    * The total number of feedback items matching the query parameters
    */
   total_count: number;
+  /**
+   * Total Pages
+   * The total number of pages
+   */
+  total_pages: number;
+}
+
+export type QueryInferencesApiV2InferencesQueryGetData = QueryInferencesResponse;
+
+export type QueryInferencesApiV2InferencesQueryGetError = HTTPValidationError;
+
+export interface QueryInferencesApiV2InferencesQueryGetParams {
+  /**
+   * Conversation Id
+   * Conversation ID to filter on.
+   */
+  conversation_id?: string;
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format.
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Include Count
+   * Whether to include the total count of matching inferences. Set to False to improve query performance for large datasets. Count will be returned as -1 if set to False.
+   * @default true
+   */
+  include_count?: boolean;
+  /**
+   * Inference Id
+   * Inference ID to filter on.
+   */
+  inference_id?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Statuses
+   * List of RuleResultEnum to query for at inference prompt stage level. Must be 'Pass' / 'Fail'. Defaults to both.
+   * @default []
+   */
+  prompt_statuses?: RuleResultEnum[];
+  /**
+   * Response Statuses
+   * List of RuleResultEnum to query for at inference response stage level. Must be 'Pass' / 'Fail'. Defaults to both. Inferences missing responses will not be affected by this filter.
+   * @default []
+   */
+  response_statuses?: RuleResultEnum[];
+  /**
+   * Rule Statuses
+   * List of RuleResultEnum to query for. Any inference with any rule status in the list will be returned. Defaults to all statuses. If used in conjunction with with rule_types, will return inferences with rules in the intersection of rule_statuses and rule_types.
+   * @default []
+   */
+  rule_statuses?: RuleResultEnum[];
+  /**
+   * Rule Types
+   * List of RuleType to query for. Any inference that ran any rule in the list will be returned. Defaults to all statuses. If used in conjunction with with rule_statuses, will return inferences with rules in the intersection of rule_types and rule_statuses.
+   * @default []
+   */
+  rule_types?: RuleType[];
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format.
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task ID to filter on.
+   * @default []
+   */
+  task_ids?: string[];
+  /**
+   * Task Name
+   * Task name to filter on.
+   */
+  task_name?: string;
+  /**
+   * User Id
+   * User ID to filter on.
+   */
+  user_id?: string;
 }
 
 /**
@@ -905,6 +1213,53 @@ export interface QueryInferencesResponse {
   inferences: ExternalInference[];
 }
 
+export type QuerySpansByTypeV1SpansQueryGetData = QuerySpansResponse;
+
+export type QuerySpansByTypeV1SpansQueryGetError = HTTPValidationError;
+
+export interface QuerySpansByTypeV1SpansQueryGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+}
+
 /** QuerySpansResponse */
 export interface QuerySpansResponse {
   /**
@@ -917,6 +1272,328 @@ export interface QuerySpansResponse {
    * List of spans with metrics matching the search filters
    */
   spans: SpanWithMetricsResponse[];
+}
+
+export type QuerySpansV1TracesQueryGetData = QueryTracesWithMetricsResponse;
+
+export type QuerySpansV1TracesQueryGetError = HTTPValidationError;
+
+export interface QuerySpansV1TracesQueryGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+}
+
+export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetricsResponse;
+
+export type QuerySpansWithMetricsV1TracesMetricsGetError = HTTPValidationError;
+
+export interface QuerySpansWithMetricsV1TracesMetricsGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
 }
 
 /**
@@ -936,6 +1613,18 @@ export interface QueryTracesWithMetricsResponse {
   traces: TraceResponse[];
 }
 
+export type ReceiveTracesV1TracesPostData = any;
+
+export type ReceiveTracesV1TracesPostError = HTTPValidationError;
+
+/**
+ * Body
+ * @format binary
+ */
+export type ReceiveTracesV1TracesPostPayload = File;
+
+export type RedirectToTasksApiV2TaskPostData = any;
+
 /**
  * RegexConfig
  * @example {"regex_patterns":["\\d{3}-\\d{2}-\\d{4}","\\d{5}-\\d{6}-\\d{7}"]}
@@ -950,8 +1639,6 @@ export interface RegexConfig {
 
 /** RegexDetailsResponse */
 export interface RegexDetailsResponse {
-  /** Score */
-  score?: boolean | null;
   /** Message */
   message?: string | null;
   /**
@@ -960,6 +1647,8 @@ export interface RegexDetailsResponse {
    * @default []
    */
   regex_matches?: RegexSpanResponse[];
+  /** Score */
+  score?: boolean | null;
 }
 
 /** RegexSpanResponse */
@@ -994,34 +1683,26 @@ export interface RelevanceMetricConfig {
   use_llm_judge?: boolean;
 }
 
+export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
+
+export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
+
 /** ResponseValidationRequest */
 export interface ResponseValidationRequest {
-  /**
-   * Response
-   * LLM Response to be validated by GenAI Engine
-   */
-  response: string;
   /**
    * Context
    * Optional data provided as context for the validation.
    */
   context?: string | null;
+  /**
+   * Response
+   * LLM Response to be validated by GenAI Engine
+   */
+  response: string;
 }
 
 /** RuleResponse */
 export interface RuleResponse {
-  /**
-   * Id
-   * ID of the Rule
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the Rule
-   */
-  name: string;
-  /** Type of Rule */
-  type: RuleType;
   /**
    * Apply To Prompt
    * Rule applies to prompt
@@ -1033,68 +1714,89 @@ export interface RuleResponse {
    */
   apply_to_response: boolean;
   /**
-   * Enabled
-   * Rule is enabled for the task
+   * Config
+   * Config of the rule
    */
-  enabled?: boolean | null;
-  /** Scope of the rule. The rule can be set at default level or task level. */
-  scope: RuleScope;
+  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
   /**
    * Created At
    * Time the rule was created in unix milliseconds
    */
   created_at: number;
   /**
+   * Enabled
+   * Rule is enabled for the task
+   */
+  enabled?: boolean | null;
+  /**
+   * Id
+   * ID of the Rule
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the Rule
+   */
+  name: string;
+  /** Scope of the rule. The rule can be set at default level or task level. */
+  scope: RuleScope;
+  /** Type of Rule */
+  type: RuleType;
+  /**
    * Updated At
    * Time the rule was updated in unix milliseconds
    */
   updated_at: number;
-  /**
-   * Config
-   * Config of the rule
-   */
-  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
 }
 
 /** RuleResultEnum */
-export enum RuleResultEnum {
-  Pass = "Pass",
-  Fail = "Fail",
-  Skipped = "Skipped",
-  Unavailable = "Unavailable",
-  PartiallyUnavailable = "Partially Unavailable",
-  ModelNotAvailable = "Model Not Available",
-}
+export type RuleResultEnum =
+  | "Pass"
+  | "Fail"
+  | "Skipped"
+  | "Unavailable"
+  | "Partially Unavailable"
+  | "Model Not Available";
 
 /** RuleScope */
-export enum RuleScope {
-  Default = "default",
-  Task = "task",
-}
+export type RuleScope = "default" | "task";
 
 /** RuleType */
-export enum RuleType {
-  KeywordRule = "KeywordRule",
-  ModelHallucinationRuleV2 = "ModelHallucinationRuleV2",
-  ModelSensitiveDataRule = "ModelSensitiveDataRule",
-  PIIDataRule = "PIIDataRule",
-  PromptInjectionRule = "PromptInjectionRule",
-  RegexRule = "RegexRule",
-  ToxicityRule = "ToxicityRule",
+export type RuleType =
+  | "KeywordRule"
+  | "ModelHallucinationRuleV2"
+  | "ModelSensitiveDataRule"
+  | "PIIDataRule"
+  | "PromptInjectionRule"
+  | "RegexRule"
+  | "ToxicityRule";
+
+export type SearchRulesApiV2RulesSearchPostData = SearchRulesResponse;
+
+export type SearchRulesApiV2RulesSearchPostError = HTTPValidationError;
+
+export interface SearchRulesApiV2RulesSearchPostParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
 }
 
 /** SearchRulesRequest */
 export interface SearchRulesRequest {
-  /**
-   * Rule Ids
-   * List of rule IDs to search for.
-   */
-  rule_ids?: string[] | null;
-  /**
-   * Rule Scopes
-   * List of rule scopes to search for.
-   */
-  rule_scopes?: RuleScope[] | null;
   /**
    * Prompt Enabled
    * Include or exclude prompt-enabled rules.
@@ -1105,6 +1807,16 @@ export interface SearchRulesRequest {
    * Include or exclude response-enabled rules.
    */
   response_enabled?: boolean | null;
+  /**
+   * Rule Ids
+   * List of rule IDs to search for.
+   */
+  rule_ids?: string[] | null;
+  /**
+   * Rule Scopes
+   * List of rule scopes to search for.
+   */
+  rule_scopes?: RuleScope[] | null;
   /**
    * Rule Types
    * List of rule types to search for.
@@ -1126,8 +1838,37 @@ export interface SearchRulesResponse {
   rules: RuleResponse[];
 }
 
+export type SearchTasksApiV2TasksSearchPostData = SearchTasksResponse;
+
+export type SearchTasksApiV2TasksSearchPostError = HTTPValidationError;
+
+export interface SearchTasksApiV2TasksSearchPostParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** SearchTasksRequest */
 export interface SearchTasksRequest {
+  /**
+   * Is Agentic
+   * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
+   */
+  is_agentic?: boolean | null;
   /**
    * Task Ids
    * List of tasks to query for.
@@ -1138,11 +1879,6 @@ export interface SearchTasksRequest {
    * Task name substring search string.
    */
   task_name?: string | null;
-  /**
-   * Is Agentic
-   * Filter tasks by agentic status. If not provided, returns both agentic and non-agentic tasks.
-   */
-  is_agentic?: boolean | null;
 }
 
 /** SearchTasksResponse */
@@ -1159,16 +1895,66 @@ export interface SearchTasksResponse {
   tasks: TaskResponse[];
 }
 
+/** Response Search Users Users Get */
+export type SearchUsersUsersGetData = UserResponse[];
+
+export type SearchUsersUsersGetError = HTTPValidationError;
+
+export interface SearchUsersUsersGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Search String
+   * Substring to match on. Will search first name, last name, email.
+   */
+  search_string?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** SpanWithMetricsResponse */
 export interface SpanWithMetricsResponse {
+  /** Context */
+  context?: Record<string, any>[] | null;
+  /**
+   * Created At
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * End Time
+   * @format date-time
+   */
+  end_time: string;
   /** Id */
   id: string;
-  /** Trace Id */
-  trace_id: string;
-  /** Span Id */
-  span_id: string;
+  /**
+   * Metric Results
+   * List of metric results for this span
+   * @default []
+   */
+  metric_results?: MetricResultResponse[];
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /** Raw Data */
+  raw_data: Record<string, any>;
+  /** Response */
+  response?: string | null;
+  /** Span Id */
+  span_id: string;
   /** Span Kind */
   span_kind?: string | null;
   /** Span Name */
@@ -1178,103 +1964,83 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
-  /**
-   * End Time
-   * @format date-time
-   */
-  end_time: string;
+  /** System Prompt */
+  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
-  /**
-   * Created At
-   * @format date-time
-   */
-  created_at: string;
+  /** Trace Id */
+  trace_id: string;
   /**
    * Updated At
    * @format date-time
    */
   updated_at: string;
-  /** Raw Data */
-  raw_data: Record<string, any>;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** User Query */
   user_query?: string | null;
-  /** Response */
-  response?: string | null;
-  /** Context */
-  context?: Record<string, any>[] | null;
-  /**
-   * Metric Results
-   * List of metric results for this span
-   * @default []
-   */
-  metric_results?: MetricResultResponse[];
 }
 
 /** TaskResponse */
 export interface TaskResponse {
-  /**
-   * Id
-   *  ID of the task
-   */
-  id: string;
-  /**
-   * Name
-   * Name of the task
-   */
-  name: string;
   /**
    * Created At
    * Time the task was created in unix milliseconds
    */
   created_at: number;
   /**
-   * Updated At
-   * Time the task was created in unix milliseconds
+   * Id
+   *  ID of the task
    */
-  updated_at: number;
+  id: string;
   /**
    * Is Agentic
    * Whether the task is agentic or not
    */
   is_agentic?: boolean | null;
   /**
+   * Metrics
+   * List of all the metrics for the task.
+   */
+  metrics?: MetricResponse[] | null;
+  /**
+   * Name
+   * Name of the task
+   */
+  name: string;
+  /**
    * Rules
    * List of all the rules for the task.
    */
   rules: RuleResponse[];
   /**
-   * Metrics
-   * List of all the metrics for the task.
+   * Updated At
+   * Time the task was created in unix milliseconds
    */
-  metrics?: MetricResponse[] | null;
+  updated_at: number;
 }
 
 /** TokenUsageCount */
 export interface TokenUsageCount {
   /**
-   * Inference
-   * Number of inference tokens sent to Arthur.
+   * Completion
+   * Number of Completion tokens incurred by Arthur rules. This field is deprecated and will be removed in the future. Use eval_completion instead.
+   * @deprecated
    */
-  inference: number;
-  /**
-   * Eval Prompt
-   * Number of Prompt tokens incurred by Arthur rules.
-   */
-  eval_prompt: number;
+  completion: number;
   /**
    * Eval Completion
    * Number of Completion tokens incurred by Arthur rules.
    */
   eval_completion: number;
   /**
-   * User Input
-   * Number of user input tokens sent to Arthur. This field is deprecated and will be removed in the future. Use inference instead.
-   * @deprecated
+   * Eval Prompt
+   * Number of Prompt tokens incurred by Arthur rules.
    */
-  user_input: number;
+  eval_prompt: number;
+  /**
+   * Inference
+   * Number of inference tokens sent to Arthur.
+   */
+  inference: number;
   /**
    * Prompt
    * Number of Prompt tokens incurred by Arthur rules. This field is deprecated and will be removed in the future. Use eval_prompt instead.
@@ -1282,34 +2048,27 @@ export interface TokenUsageCount {
    */
   prompt: number;
   /**
-   * Completion
-   * Number of Completion tokens incurred by Arthur rules. This field is deprecated and will be removed in the future. Use eval_completion instead.
+   * User Input
+   * Number of user input tokens sent to Arthur. This field is deprecated and will be removed in the future. Use inference instead.
    * @deprecated
    */
-  completion: number;
+  user_input: number;
 }
 
 /** TokenUsageResponse */
 export interface TokenUsageResponse {
+  count: TokenUsageCount;
   /** Rule Type */
   rule_type?: string | null;
   /** Task Id */
   task_id?: string | null;
-  count: TokenUsageCount;
 }
 
 /** TokenUsageScope */
-export enum TokenUsageScope {
-  RuleType = "rule_type",
-  Task = "task",
-}
+export type TokenUsageScope = "rule_type" | "task";
 
 /** ToolClassEnum */
-export enum ToolClassEnum {
-  Value0 = 0,
-  Value1 = 1,
-  Value2 = 2,
-}
+export type ToolClassEnum = 0 | 1 | 2;
 
 /**
  * ToxicityConfig
@@ -1326,40 +2085,23 @@ export interface ToxicityConfig {
 
 /** ToxicityDetailsResponse */
 export interface ToxicityDetailsResponse {
-  /** Score */
-  score?: boolean | null;
   /** Message */
   message?: string | null;
+  /** Score */
+  score?: boolean | null;
   /** Toxicity Score */
   toxicity_score?: number | null;
   toxicity_violation_type: ToxicityViolationType;
 }
 
 /** ToxicityViolationType */
-export enum ToxicityViolationType {
-  Benign = "benign",
-  HarmfulRequest = "harmful_request",
-  ToxicContent = "toxic_content",
-  Profanity = "profanity",
-  Unknown = "unknown",
-}
+export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
 
 /**
  * TraceResponse
  * Response model for a single trace containing nested spans
  */
 export interface TraceResponse {
-  /**
-   * Trace Id
-   * ID of the trace
-   */
-  trace_id: string;
-  /**
-   * Start Time
-   * Start time of the earliest span in this trace
-   * @format date-time
-   */
-  start_time: string;
   /**
    * End Time
    * End time of the latest span in this trace
@@ -1372,7 +2114,22 @@ export interface TraceResponse {
    * @default []
    */
   root_spans?: NestedSpanWithMetricsResponse[];
+  /**
+   * Start Time
+   * Start time of the earliest span in this trace
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Trace Id
+   * ID of the trace
+   */
+  trace_id: string;
 }
+
+export type UpdateDefaultTaskApiChatDefaultTaskPutData = ChatDefaultTaskResponse;
+
+export type UpdateDefaultTaskApiChatDefaultTaskPutError = HTTPValidationError;
 
 /** UpdateMetricRequest */
 export interface UpdateMetricRequest {
@@ -1392,33 +2149,55 @@ export interface UpdateRuleRequest {
   enabled: boolean;
 }
 
-/** UserPermissionAction */
-export enum UserPermissionAction {
-  Create = "create",
-  Read = "read",
+export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData = any;
+
+export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError = HTTPValidationError;
+
+export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
+
+export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
+
+export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
+
+export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
+
+export interface UploadEmbeddingsFileApiChatFilesPostParams {
+  /**
+   * Is Global
+   * @default false
+   */
+  is_global?: boolean;
 }
 
+/** UserPermissionAction */
+export type UserPermissionAction = "create" | "read";
+
 /** UserPermissionResource */
-export enum UserPermissionResource {
-  Prompts = "prompts",
-  Responses = "responses",
-  Rules = "rules",
-  Tasks = "tasks",
-}
+export type UserPermissionResource = "prompts" | "responses" | "rules" | "tasks";
 
 /** UserResponse */
 export interface UserResponse {
-  /** Id */
-  id: string;
   /** Email */
   email: string;
   /** First Name */
   first_name?: string | null;
+  /** Id */
+  id: string;
   /** Last Name */
   last_name?: string | null;
   /** Roles */
   roles: AuthUserRole[];
 }
+
+export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData = ValidationResult;
+
+export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError = HTTPError | HTTPValidationError;
+
+export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData = ValidationResult;
+
+export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError =
+  | HTTPError
+  | HTTPValidationError;
 
 /** ValidationError */
 export interface ValidationError {
@@ -1593,6 +2372,382 @@ export class HttpClient<SecurityDataType = unknown> {
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
     /**
+     * @description Archive existing default rule.
+     *
+     * @tags Rules
+     * @name ArchiveDefaultRuleApiV2DefaultRulesRuleIdDelete
+     * @summary Archive Default Rule
+     * @request DELETE:/api/v2/default_rules/{rule_id}
+     * @secure
+     */
+    archiveDefaultRuleApiV2DefaultRulesRuleIdDelete: (ruleId: string, params: RequestParams = {}) =>
+      this.request<
+        ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData,
+        ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError
+      >({
+        path: `/api/v2/default_rules/${ruleId}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.
+     *
+     * @tags Tasks
+     * @name ArchiveTaskApiV2TasksTaskIdDelete
+     * @summary Archive Task
+     * @request DELETE:/api/v2/tasks/{task_id}
+     * @secure
+     */
+    archiveTaskApiV2TasksTaskIdDelete: (taskId: string, params: RequestParams = {}) =>
+      this.request<ArchiveTaskApiV2TasksTaskIdDeleteData, ArchiveTaskApiV2TasksTaskIdDeleteError>({
+        path: `/api/v2/tasks/${taskId}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Archive a task metric.
+     *
+     * @tags Tasks
+     * @name ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete
+     * @summary Archive Task Metric
+     * @request DELETE:/api/v2/tasks/{task_id}/metrics/{metric_id}
+     * @secure
+     */
+    archiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete: (
+      taskId: string,
+      metricId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData,
+        ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError
+      >({
+        path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Archive an existing rule for this task.
+     *
+     * @tags Tasks
+     * @name ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete
+     * @summary Archive Task Rule
+     * @request DELETE:/api/v2/tasks/{task_id}/rules/{rule_id}
+     * @secure
+     */
+    archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete: (taskId: string, ruleId: string, params: RequestParams = {}) =>
+      this.request<
+        ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData,
+        ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError
+      >({
+        path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Chat request for Arthur Chat
+     *
+     * @tags Chat
+     * @name ChatRequest
+     * @summary Chat
+     * @request POST:/api/chat/
+     */
+    chatRequest: (data: ChatRequest, params: RequestParams = {}) =>
+      this.request<ChatRequestData, ChatRequestError>({
+        path: `/api/chat/`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.
+     *
+     * @tags Rules
+     * @name CreateDefaultRuleApiV2DefaultRulesPost
+     * @summary Create Default Rule
+     * @request POST:/api/v2/default_rules
+     * @secure
+     */
+    createDefaultRuleApiV2DefaultRulesPost: (data: NewRuleRequest, params: RequestParams = {}) =>
+      this.request<CreateDefaultRuleApiV2DefaultRulesPostData, CreateDefaultRuleApiV2DefaultRulesPostError>({
+        path: `/api/v2/default_rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.
+     *
+     * @tags Tasks
+     * @name CreateTaskApiV2TasksPost
+     * @summary Create Task
+     * @request POST:/api/v2/tasks
+     * @secure
+     */
+    createTaskApiV2TasksPost: (data: NewTaskRequest, params: RequestParams = {}) =>
+      this.request<CreateTaskApiV2TasksPostData, CreateTaskApiV2TasksPostError>({
+        path: `/api/v2/tasks`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create metrics for a task. Only agentic tasks can have metrics.
+     *
+     * @tags Tasks
+     * @name CreateTaskMetricApiV2TasksTaskIdMetricsPost
+     * @summary Create Task Metric
+     * @request POST:/api/v2/tasks/{task_id}/metrics
+     * @secure
+     */
+    createTaskMetricApiV2TasksTaskIdMetricsPost: (taskId: string, data: NewMetricRequest, params: RequestParams = {}) =>
+      this.request<CreateTaskMetricApiV2TasksTaskIdMetricsPostData, CreateTaskMetricApiV2TasksTaskIdMetricsPostError>({
+        path: `/api/v2/tasks/${taskId}/metrics`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a rule to be applied only to this task. Available rule types are KeywordRule, ModelHallucinationRuleV2, ModelSensitiveDataRule, PIIDataRule, PromptInjectionRule, RegexRule, ToxicityRule.Note: The rules are cached by the validation endpoints for 60 seconds.
+     *
+     * @tags Tasks
+     * @name CreateTaskRuleApiV2TasksTaskIdRulesPost
+     * @summary Create Task Rule
+     * @request POST:/api/v2/tasks/{task_id}/rules
+     * @secure
+     */
+    createTaskRuleApiV2TasksTaskIdRulesPost: (taskId: string, data: NewRuleRequest, params: RequestParams = {}) =>
+      this.request<CreateTaskRuleApiV2TasksTaskIdRulesPostData, CreateTaskRuleApiV2TasksTaskIdRulesPostError>({
+        path: `/api/v2/tasks/${taskId}/rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description [Deprecated] Validate a non-task related prompt based on the configured default rules.
+     *
+     * @tags Default Validation
+     * @name DefaultValidatePromptApiV2ValidatePromptPost
+     * @summary Default Validate Prompt
+     * @request POST:/api/v2/validate_prompt
+     * @deprecated
+     * @secure
+     */
+    defaultValidatePromptApiV2ValidatePromptPost: (data: PromptValidationRequest, params: RequestParams = {}) =>
+      this.request<DefaultValidatePromptApiV2ValidatePromptPostData, DefaultValidatePromptApiV2ValidatePromptPostError>(
+        {
+          path: `/api/v2/validate_prompt`,
+          method: "POST",
+          body: data,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        },
+      ),
+
+    /**
+     * @description [Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.
+     *
+     * @tags Default Validation
+     * @name DefaultValidateResponseApiV2ValidateResponseInferenceIdPost
+     * @summary Default Validate Response
+     * @request POST:/api/v2/validate_response/{inference_id}
+     * @deprecated
+     * @secure
+     */
+    defaultValidateResponseApiV2ValidateResponseInferenceIdPost: (
+      inferenceId: string,
+      data: ResponseValidationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData,
+        DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError
+      >({
+        path: `/api/v2/validate_response/${inferenceId}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Remove a file by ID. This action cannot be undone.
+     *
+     * @tags Chat
+     * @name DeleteFileApiChatFilesFileIdDelete
+     * @summary Delete File
+     * @request DELETE:/api/chat/files/{file_id}
+     */
+    deleteFileApiChatFilesFileIdDelete: (fileId: string, params: RequestParams = {}) =>
+      this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
+        path: `/api/chat/files/${fileId}`,
+        method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description [Deprecated] Use /tasks/search endpoint. This endpoint will be removed in a future release.
+     *
+     * @tags Tasks
+     * @name GetAllTasksApiV2TasksGet
+     * @summary Get All Tasks
+     * @request GET:/api/v2/tasks
+     * @deprecated
+     * @secure
+     */
+    getAllTasksApiV2TasksGet: (params: RequestParams = {}) =>
+      this.request<GetAllTasksApiV2TasksGetData, any>({
+        path: `/api/v2/tasks`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get list of conversation IDs.
+     *
+     * @tags Chat
+     * @name GetConversationsApiChatConversationsGet
+     * @summary Get Conversations
+     * @request GET:/api/chat/conversations
+     */
+    getConversationsApiChatConversationsGet: (
+      query: GetConversationsApiChatConversationsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<GetConversationsApiChatConversationsGetData, GetConversationsApiChatConversationsGetError>({
+        path: `/api/chat/conversations`,
+        method: "GET",
+        query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get default rules.
+     *
+     * @tags Rules
+     * @name GetDefaultRulesApiV2DefaultRulesGet
+     * @summary Get Default Rules
+     * @request GET:/api/v2/default_rules
+     * @secure
+     */
+    getDefaultRulesApiV2DefaultRulesGet: (params: RequestParams = {}) =>
+      this.request<GetDefaultRulesApiV2DefaultRulesGetData, any>({
+        path: `/api/v2/default_rules`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get the default task for Arthur Chat.
+     *
+     * @tags Chat
+     * @name GetDefaultTaskApiChatDefaultTaskGet
+     * @summary Get Default Task
+     * @request GET:/api/chat/default_task
+     */
+    getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
+      this.request<GetDefaultTaskApiChatDefaultTaskGetData, any>({
+        path: `/api/chat/default_task`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List uploaded files. Only files that are global or owned by the caller are returned.
+     *
+     * @tags Chat
+     * @name GetFilesApiChatFilesGet
+     * @summary Get Files
+     * @request GET:/api/chat/files
+     */
+    getFilesApiChatFilesGet: (params: RequestParams = {}) =>
+      this.request<GetFilesApiChatFilesGetData, any>({
+        path: `/api/chat/files`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get document context used for a past inference ID.
+     *
+     * @tags Chat
+     * @name GetInferenceDocumentContextApiChatContextInferenceIdGet
+     * @summary Get Inference Document Context
+     * @request GET:/api/chat/context/{inference_id}
+     */
+    getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
+      this.request<
+        GetInferenceDocumentContextApiChatContextInferenceIdGetData,
+        GetInferenceDocumentContextApiChatContextInferenceIdGetError
+      >({
+        path: `/api/chat/context/${inferenceId}`,
+        method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get tasks.
+     *
+     * @tags Tasks
+     * @name GetTaskApiV2TasksTaskIdGet
+     * @summary Get Task
+     * @request GET:/api/v2/tasks/{task_id}
+     * @secure
+     */
+    getTaskApiV2TasksTaskIdGet: (taskId: string, params: RequestParams = {}) =>
+      this.request<GetTaskApiV2TasksTaskIdGetData, GetTaskApiV2TasksTaskIdGetError>({
+        path: `/api/v2/tasks/${taskId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get token usage.
      *
      * @tags Usage
@@ -1601,34 +2756,37 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/usage/tokens
      * @secure
      */
-    getTokenUsageApiV2UsageTokensGet: (
-      query?: {
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format. Defaults to the beginning of the current day if not provided.
-         * @format date-time
-         */
-        start_time?: string;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format. Defaults to the end of the current day if not provided.
-         * @format date-time
-         */
-        end_time?: string;
-        /**
-         * Group By
-         * Entities to group token counts on.
-         * @default ["rule_type"]
-         */
-        group_by?: TokenUsageScope[];
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<TokenUsageResponse[], HTTPValidationError>({
+    getTokenUsageApiV2UsageTokensGet: (query: GetTokenUsageApiV2UsageTokensGetParams, params: RequestParams = {}) =>
+      this.request<GetTokenUsageApiV2UsageTokensGetData, GetTokenUsageApiV2UsageTokensGetError>({
         path: `/api/v2/usage/tokens`,
         method: "GET",
         query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Post feedback for Arthur Chat.
+     *
+     * @tags Chat, Chat
+     * @name PostChatFeedbackApiChatFeedbackInferenceIdPost
+     * @summary Post Chat Feedback
+     * @request POST:/api/chat/feedback/{inference_id}
+     */
+    postChatFeedbackApiChatFeedbackInferenceIdPost: (
+      inferenceId: string,
+      data: FeedbackRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        PostChatFeedbackApiChatFeedbackInferenceIdPostData,
+        PostChatFeedbackApiChatFeedbackInferenceIdPostError
+      >({
+        path: `/api/chat/feedback/${inferenceId}`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -1647,7 +2805,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       data: FeedbackRequest,
       params: RequestParams = {},
     ) =>
-      this.request<InferenceFeedbackResponse, HTTPValidationError>({
+      this.request<PostFeedbackApiV2FeedbackInferenceIdPostData, PostFeedbackApiV2FeedbackInferenceIdPostError>({
         path: `/api/v2/feedback/${inferenceId}`,
         method: "POST",
         body: data,
@@ -1666,79 +2824,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/feedback/query
      * @secure
      */
-    queryFeedbackApiV2FeedbackQueryGet: (
-      query?: {
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format
-         */
-        start_time?: string | null;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format
-         */
-        end_time?: string | null;
-        /**
-         * Feedback Id
-         * Feedback ID to filter on
-         */
-        feedback_id?: string | string[] | null;
-        /**
-         * Inference Id
-         * Inference ID to filter on
-         */
-        inference_id?: string | string[] | null;
-        /**
-         * Target
-         * Target of the feedback. Must be one of ['context', 'response_results', 'prompt_results']
-         */
-        target?: string | string[] | null;
-        /**
-         * Score
-         * Score of the feedback. Must be an integer.
-         */
-        score?: number | number[] | null;
-        /**
-         * Feedback User Id
-         * User ID of the user giving feedback to filter on (query will perform fuzzy search)
-         */
-        feedback_user_id?: string | null;
-        /**
-         * Conversation Id
-         * Conversation ID to filter on
-         */
-        conversation_id?: string | string[] | null;
-        /**
-         * Task Id
-         * Task ID to filter on
-         */
-        task_id?: string | string[] | null;
-        /**
-         * Inference User Id
-         * User ID of the user who created the inferences to filter on (query will perform fuzzy search)
-         */
-        inference_user_id?: string | null;
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<QueryFeedbackResponse, HTTPValidationError>({
+    queryFeedbackApiV2FeedbackQueryGet: (query: QueryFeedbackApiV2FeedbackQueryGetParams, params: RequestParams = {}) =>
+      this.request<QueryFeedbackApiV2FeedbackQueryGetData, QueryFeedbackApiV2FeedbackQueryGetError>({
         path: `/api/v2/feedback/query`,
         method: "GET",
         query: query,
@@ -1757,273 +2844,13 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     queryInferencesApiV2InferencesQueryGet: (
-      query?: {
-        /**
-         * Task Ids
-         * Task ID to filter on.
-         * @default []
-         */
-        task_ids?: string[];
-        /**
-         * Task Name
-         * Task name to filter on.
-         */
-        task_name?: string;
-        /**
-         * Conversation Id
-         * Conversation ID to filter on.
-         */
-        conversation_id?: string;
-        /**
-         * Inference Id
-         * Inference ID to filter on.
-         */
-        inference_id?: string;
-        /**
-         * User Id
-         * User ID to filter on.
-         */
-        user_id?: string;
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format.
-         * @format date-time
-         */
-        start_time?: string;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format.
-         * @format date-time
-         */
-        end_time?: string;
-        /**
-         * Rule Types
-         * List of RuleType to query for. Any inference that ran any rule in the list will be returned. Defaults to all statuses. If used in conjunction with with rule_statuses, will return inferences with rules in the intersection of rule_types and rule_statuses.
-         * @default []
-         */
-        rule_types?: RuleType[];
-        /**
-         * Rule Statuses
-         * List of RuleResultEnum to query for. Any inference with any rule status in the list will be returned. Defaults to all statuses. If used in conjunction with with rule_types, will return inferences with rules in the intersection of rule_statuses and rule_types.
-         * @default []
-         */
-        rule_statuses?: RuleResultEnum[];
-        /**
-         * Prompt Statuses
-         * List of RuleResultEnum to query for at inference prompt stage level. Must be 'Pass' / 'Fail'. Defaults to both.
-         * @default []
-         */
-        prompt_statuses?: RuleResultEnum[];
-        /**
-         * Response Statuses
-         * List of RuleResultEnum to query for at inference response stage level. Must be 'Pass' / 'Fail'. Defaults to both. Inferences missing responses will not be affected by this filter.
-         * @default []
-         */
-        response_statuses?: RuleResultEnum[];
-        /**
-         * Include Count
-         * Whether to include the total count of matching inferences. Set to False to improve query performance for large datasets. Count will be returned as -1 if set to False.
-         * @default true
-         */
-        include_count?: boolean;
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
+      query: QueryInferencesApiV2InferencesQueryGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<QueryInferencesResponse, HTTPValidationError>({
+      this.request<QueryInferencesApiV2InferencesQueryGetData, QueryInferencesApiV2InferencesQueryGetError>({
         path: `/api/v2/inferences/query`,
         method: "GET",
         query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get default rules.
-     *
-     * @tags Rules
-     * @name GetDefaultRulesApiV2DefaultRulesGet
-     * @summary Get Default Rules
-     * @request GET:/api/v2/default_rules
-     * @secure
-     */
-    getDefaultRulesApiV2DefaultRulesGet: (params: RequestParams = {}) =>
-      this.request<RuleResponse[], any>({
-        path: `/api/v2/default_rules`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.
-     *
-     * @tags Rules
-     * @name CreateDefaultRuleApiV2DefaultRulesPost
-     * @summary Create Default Rule
-     * @request POST:/api/v2/default_rules
-     * @secure
-     */
-    createDefaultRuleApiV2DefaultRulesPost: (data: NewRuleRequest, params: RequestParams = {}) =>
-      this.request<RuleResponse, HTTPValidationError>({
-        path: `/api/v2/default_rules`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Archive existing default rule.
-     *
-     * @tags Rules
-     * @name ArchiveDefaultRuleApiV2DefaultRulesRuleIdDelete
-     * @summary Archive Default Rule
-     * @request DELETE:/api/v2/default_rules/{rule_id}
-     * @secure
-     */
-    archiveDefaultRuleApiV2DefaultRulesRuleIdDelete: (ruleId: string, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/default_rules/${ruleId}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Search default and/or task rules.
-     *
-     * @tags Rules
-     * @name SearchRulesApiV2RulesSearchPost
-     * @summary Search Rules
-     * @request POST:/api/v2/rules/search
-     * @secure
-     */
-    searchRulesApiV2RulesSearchPost: (
-      data: SearchRulesRequest,
-      query?: {
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<SearchRulesResponse, HTTPValidationError>({
-        path: `/api/v2/rules/search`,
-        method: "POST",
-        query: query,
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description [Deprecated] Use /tasks/search endpoint. This endpoint will be removed in a future release.
-     *
-     * @tags Tasks
-     * @name GetAllTasksApiV2TasksGet
-     * @summary Get All Tasks
-     * @request GET:/api/v2/tasks
-     * @deprecated
-     * @secure
-     */
-    getAllTasksApiV2TasksGet: (params: RequestParams = {}) =>
-      this.request<TaskResponse[], any>({
-        path: `/api/v2/tasks`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.
-     *
-     * @tags Tasks
-     * @name CreateTaskApiV2TasksPost
-     * @summary Create Task
-     * @request POST:/api/v2/tasks
-     * @secure
-     */
-    createTaskApiV2TasksPost: (data: NewTaskRequest, params: RequestParams = {}) =>
-      this.request<TaskResponse, HTTPValidationError>({
-        path: `/api/v2/tasks`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Archive task. Also archives all task-scoped rules. Associated default rules are unaffected.
-     *
-     * @tags Tasks
-     * @name ArchiveTaskApiV2TasksTaskIdDelete
-     * @summary Archive Task
-     * @request DELETE:/api/v2/tasks/{task_id}
-     * @secure
-     */
-    archiveTaskApiV2TasksTaskIdDelete: (taskId: string, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get tasks.
-     *
-     * @tags Tasks
-     * @name GetTaskApiV2TasksTaskIdGet
-     * @summary Get Task
-     * @request GET:/api/v2/tasks/{task_id}
-     * @secure
-     */
-    getTaskApiV2TasksTaskIdGet: (taskId: string, params: RequestParams = {}) =>
-      this.request<TaskResponse, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}`,
-        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -2038,9 +2865,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/task
      */
     redirectToTasksApiV2TaskPost: (params: RequestParams = {}) =>
-      this.request<any, any>({
+      this.request<RedirectToTasksApiV2TaskPostData, any>({
         path: `/api/v2/task`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Search default and/or task rules.
+     *
+     * @tags Rules
+     * @name SearchRulesApiV2RulesSearchPost
+     * @summary Search Rules
+     * @request POST:/api/v2/rules/search
+     * @secure
+     */
+    searchRulesApiV2RulesSearchPost: (
+      query: SearchRulesApiV2RulesSearchPostParams,
+      data: SearchRulesRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<SearchRulesApiV2RulesSearchPostData, SearchRulesApiV2RulesSearchPostError>({
+        path: `/api/v2/rules/search`,
+        method: "POST",
+        query: query,
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -2055,29 +2907,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     searchTasksApiV2TasksSearchPost: (
+      query: SearchTasksApiV2TasksSearchPostParams,
       data: SearchTasksRequest,
-      query?: {
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
       params: RequestParams = {},
     ) =>
-      this.request<SearchTasksResponse, HTTPValidationError>({
+      this.request<SearchTasksApiV2TasksSearchPostData, SearchTasksApiV2TasksSearchPostError>({
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
@@ -2089,18 +2923,44 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Create a rule to be applied only to this task. Available rule types are KeywordRule, ModelHallucinationRuleV2, ModelSensitiveDataRule, PIIDataRule, PromptInjectionRule, RegexRule, ToxicityRule.Note: The rules are cached by the validation endpoints for 60 seconds.
+     * @description Update the default task for Arthur Chat.
+     *
+     * @tags Chat
+     * @name UpdateDefaultTaskApiChatDefaultTaskPut
+     * @summary Update Default Task
+     * @request PUT:/api/chat/default_task
+     */
+    updateDefaultTaskApiChatDefaultTaskPut: (data: ChatDefaultTaskRequest, params: RequestParams = {}) =>
+      this.request<UpdateDefaultTaskApiChatDefaultTaskPutData, UpdateDefaultTaskApiChatDefaultTaskPutError>({
+        path: `/api/chat/default_task`,
+        method: "PUT",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a task metric.
      *
      * @tags Tasks
-     * @name CreateTaskRuleApiV2TasksTaskIdRulesPost
-     * @summary Create Task Rule
-     * @request POST:/api/v2/tasks/{task_id}/rules
+     * @name UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch
+     * @summary Update Task Metric
+     * @request PATCH:/api/v2/tasks/{task_id}/metrics/{metric_id}
      * @secure
      */
-    createTaskRuleApiV2TasksTaskIdRulesPost: (taskId: string, data: NewRuleRequest, params: RequestParams = {}) =>
-      this.request<RuleResponse, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}/rules`,
-        method: "POST",
+    updateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch: (
+      taskId: string,
+      metricId: string,
+      data: UpdateMetricRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData,
+        UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError
+      >({
+        path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
+        method: "PATCH",
         body: data,
         secure: true,
         type: ContentType.Json,
@@ -2123,7 +2983,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       data: UpdateRuleRequest,
       params: RequestParams = {},
     ) =>
-      this.request<TaskResponse, HTTPValidationError>({
+      this.request<
+        UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData,
+        UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError
+      >({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "PATCH",
         body: data,
@@ -2134,132 +2997,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Archive an existing rule for this task.
+     * @description Upload files via form-data. Only PDF, CSV, TXT types accepted.
      *
-     * @tags Tasks
-     * @name ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete
-     * @summary Archive Task Rule
-     * @request DELETE:/api/v2/tasks/{task_id}/rules/{rule_id}
-     * @secure
+     * @tags Chat
+     * @name UploadEmbeddingsFileApiChatFilesPost
+     * @summary Upload Embeddings File
+     * @request POST:/api/chat/files
      */
-    archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete: (taskId: string, ruleId: string, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Create metrics for a task. Only agentic tasks can have metrics.
-     *
-     * @tags Tasks
-     * @name CreateTaskMetricApiV2TasksTaskIdMetricsPost
-     * @summary Create Task Metric
-     * @request POST:/api/v2/tasks/{task_id}/metrics
-     * @secure
-     */
-    createTaskMetricApiV2TasksTaskIdMetricsPost: (taskId: string, data: NewMetricRequest, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}/metrics`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Update a task metric.
-     *
-     * @tags Tasks
-     * @name UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch
-     * @summary Update Task Metric
-     * @request PATCH:/api/v2/tasks/{task_id}/metrics/{metric_id}
-     * @secure
-     */
-    updateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch: (
-      taskId: string,
-      metricId: string,
-      data: UpdateMetricRequest,
+    uploadEmbeddingsFileApiChatFilesPost: (
+      query: UploadEmbeddingsFileApiChatFilesPostParams,
+      data: BodyUploadEmbeddingsFileApiChatFilesPost,
       params: RequestParams = {},
     ) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
-        method: "PATCH",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Archive a task metric.
-     *
-     * @tags Tasks
-     * @name ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete
-     * @summary Archive Task Metric
-     * @request DELETE:/api/v2/tasks/{task_id}/metrics/{metric_id}
-     * @secure
-     */
-    archiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete: (
-      taskId: string,
-      metricId: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
-        method: "DELETE",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description [Deprecated] Validate a non-task related prompt based on the configured default rules.
-     *
-     * @tags Default Validation
-     * @name DefaultValidatePromptApiV2ValidatePromptPost
-     * @summary Default Validate Prompt
-     * @request POST:/api/v2/validate_prompt
-     * @deprecated
-     * @secure
-     */
-    defaultValidatePromptApiV2ValidatePromptPost: (data: PromptValidationRequest, params: RequestParams = {}) =>
-      this.request<ValidationResult, HTTPValidationError>({
-        path: `/api/v2/validate_prompt`,
+      this.request<UploadEmbeddingsFileApiChatFilesPostData, UploadEmbeddingsFileApiChatFilesPostError>({
+        path: `/api/chat/files`,
         method: "POST",
+        query: query,
         body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description [Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.
-     *
-     * @tags Default Validation
-     * @name DefaultValidateResponseApiV2ValidateResponseInferenceIdPost
-     * @summary Default Validate Response
-     * @request POST:/api/v2/validate_response/{inference_id}
-     * @deprecated
-     * @secure
-     */
-    defaultValidateResponseApiV2ValidateResponseInferenceIdPost: (
-      inferenceId: string,
-      data: ResponseValidationRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<ValidationResult, HTTPValidationError>({
-        path: `/api/v2/validate_response/${inferenceId}`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
+        type: ContentType.FormData,
         format: "json",
         ...params,
       }),
@@ -2278,7 +3033,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       data: PromptValidationRequest,
       params: RequestParams = {},
     ) =>
-      this.request<ValidationResult, HTTPError | HTTPValidationError>({
+      this.request<
+        ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData,
+        ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError
+      >({
         path: `/api/v2/tasks/${taskId}/validate_prompt`,
         method: "POST",
         body: data,
@@ -2303,7 +3061,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       data: ResponseValidationRequest,
       params: RequestParams = {},
     ) =>
-      this.request<ValidationResult, HTTPError | HTTPValidationError>({
+      this.request<
+        ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData,
+        ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError
+      >({
         path: `/api/v2/tasks/${taskId}/validate_response/${inferenceId}`,
         method: "POST",
         body: data,
@@ -2312,211 +3073,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         format: "json",
         ...params,
       }),
-
-    /**
-     * @description Upload files via form-data. Only PDF, CSV, TXT types accepted.
-     *
-     * @tags Chat
-     * @name UploadEmbeddingsFileApiChatFilesPost
-     * @summary Upload Embeddings File
-     * @request POST:/api/chat/files
-     */
-    uploadEmbeddingsFileApiChatFilesPost: (
-      data: BodyUploadEmbeddingsFileApiChatFilesPost,
-      query?: {
-        /**
-         * Is Global
-         * @default false
-         */
-        is_global?: boolean;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<FileUploadResult, HTTPValidationError>({
-        path: `/api/chat/files`,
-        method: "POST",
-        query: query,
-        body: data,
-        type: ContentType.FormData,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description List uploaded files. Only files that are global or owned by the caller are returned.
-     *
-     * @tags Chat
-     * @name GetFilesApiChatFilesGet
-     * @summary Get Files
-     * @request GET:/api/chat/files
-     */
-    getFilesApiChatFilesGet: (params: RequestParams = {}) =>
-      this.request<ExternalDocument[], any>({
-        path: `/api/chat/files`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Remove a file by ID. This action cannot be undone.
-     *
-     * @tags Chat
-     * @name DeleteFileApiChatFilesFileIdDelete
-     * @summary Delete File
-     * @request DELETE:/api/chat/files/{file_id}
-     */
-    deleteFileApiChatFilesFileIdDelete: (fileId: string, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/chat/files/${fileId}`,
-        method: "DELETE",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Chat request for Arthur Chat
-     *
-     * @tags Chat
-     * @name ChatRequest
-     * @summary Chat
-     * @request POST:/api/chat/
-     */
-    chatRequest: (data: ChatRequest, params: RequestParams = {}) =>
-      this.request<ChatResponse, HTTPValidationError>({
-        path: `/api/chat/`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get document context used for a past inference ID.
-     *
-     * @tags Chat
-     * @name GetInferenceDocumentContextApiChatContextInferenceIdGet
-     * @summary Get Inference Document Context
-     * @request GET:/api/chat/context/{inference_id}
-     */
-    getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
-      this.request<ChatDocumentContext[], HTTPValidationError>({
-        path: `/api/chat/context/${inferenceId}`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Post feedback for Arthur Chat.
-     *
-     * @tags Chat, Chat
-     * @name PostChatFeedbackApiChatFeedbackInferenceIdPost
-     * @summary Post Chat Feedback
-     * @request POST:/api/chat/feedback/{inference_id}
-     */
-    postChatFeedbackApiChatFeedbackInferenceIdPost: (
-      inferenceId: string,
-      data: FeedbackRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<any, HTTPValidationError>({
-        path: `/api/chat/feedback/${inferenceId}`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get list of conversation IDs.
-     *
-     * @tags Chat
-     * @name GetConversationsApiChatConversationsGet
-     * @summary Get Conversations
-     * @request GET:/api/chat/conversations
-     */
-    getConversationsApiChatConversationsGet: (
-      query?: {
-        /**
-         * Page
-         * @min 1
-         * @default 1
-         */
-        page?: number;
-        /**
-         * Size
-         * @min 1
-         * @max 100
-         * @default 50
-         */
-        size?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<PageListConversationBaseResponse, HTTPValidationError>({
-        path: `/api/chat/conversations`,
-        method: "GET",
-        query: query,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Get the default task for Arthur Chat.
-     *
-     * @tags Chat
-     * @name GetDefaultTaskApiChatDefaultTaskGet
-     * @summary Get Default Task
-     * @request GET:/api/chat/default_task
-     */
-    getDefaultTaskApiChatDefaultTaskGet: (params: RequestParams = {}) =>
-      this.request<ChatDefaultTaskResponse, any>({
-        path: `/api/chat/default_task`,
-        method: "GET",
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Update the default task for Arthur Chat.
-     *
-     * @tags Chat
-     * @name UpdateDefaultTaskApiChatDefaultTaskPut
-     * @summary Update Default Task
-     * @request PUT:/api/chat/default_task
-     */
-    updateDefaultTaskApiChatDefaultTaskPut: (data: ChatDefaultTaskRequest, params: RequestParams = {}) =>
-      this.request<ChatDefaultTaskResponse, HTTPValidationError>({
-        path: `/api/chat/default_task`,
-        method: "PUT",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
   };
   auth = {
-    /**
-     * No description
-     *
-     * @tags API Keys
-     * @name GetAllActiveApiKeysAuthApiKeysGet
-     * @summary Get All Active Api Keys
-     * @request GET:/auth/api_keys/
-     * @secure
-     */
-    getAllActiveApiKeysAuthApiKeysGet: (params: RequestParams = {}) =>
-      this.request<ApiKeyResponse[], any>({
-        path: `/auth/api_keys/`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
     /**
      * @description Generates a new API key. Up to 1000 active keys can exist at the same time by default. Contact your system administrator if you need more. Allowed roles are: DEFAULT-RULE-ADMIN, TASK-ADMIN, VALIDATION-USER, ORG-AUDITOR, ORG-ADMIN.
      *
@@ -2527,30 +3085,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     createApiKeyAuthApiKeysPost: (data: NewApiKeyRequest, params: RequestParams = {}) =>
-      this.request<ApiKeyResponse, HTTPValidationError>({
+      this.request<CreateApiKeyAuthApiKeysPostData, CreateApiKeyAuthApiKeysPostError>({
         path: `/auth/api_keys/`,
         method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * No description
-     *
-     * @tags API Keys
-     * @name GetApiKeyAuthApiKeysApiKeyIdGet
-     * @summary Get Api Key
-     * @request GET:/auth/api_keys/{api_key_id}
-     * @secure
-     */
-    getApiKeyAuthApiKeysApiKeyIdGet: (apiKeyId: string, params: RequestParams = {}) =>
-      this.request<ApiKeyResponse, HTTPValidationError>({
-        path: `/auth/api_keys/${apiKeyId}`,
-        method: "GET",
-        secure: true,
         format: "json",
         ...params,
       }),
@@ -2565,9 +3105,48 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete: (apiKeyId: string, params: RequestParams = {}) =>
-      this.request<ApiKeyResponse, HTTPValidationError>({
+      this.request<
+        DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData,
+        DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError
+      >({
         path: `/auth/api_keys/deactivate/${apiKeyId}`,
         method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags API Keys
+     * @name GetAllActiveApiKeysAuthApiKeysGet
+     * @summary Get All Active Api Keys
+     * @request GET:/auth/api_keys/
+     * @secure
+     */
+    getAllActiveApiKeysAuthApiKeysGet: (params: RequestParams = {}) =>
+      this.request<GetAllActiveApiKeysAuthApiKeysGetData, any>({
+        path: `/auth/api_keys/`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * No description
+     *
+     * @tags API Keys
+     * @name GetApiKeyAuthApiKeysApiKeyIdGet
+     * @summary Get Api Key
+     * @request GET:/auth/api_keys/{api_key_id}
+     * @secure
+     */
+    getApiKeyAuthApiKeysApiKeyIdGet: (apiKeyId: string, params: RequestParams = {}) =>
+      this.request<GetApiKeyAuthApiKeysApiKeyIdGetData, GetApiKeyAuthApiKeysApiKeyIdGetError>({
+        path: `/auth/api_keys/${apiKeyId}`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -2575,21 +3154,38 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
   };
   v1 = {
     /**
-     * @description Receiver for OpenInference trace standard.
+     * @description Compute metrics for a single span. Validates that the span is an LLM span.
      *
-     * @tags Traces
-     * @name ReceiveTracesV1TracesPost
-     * @summary Receive Traces
-     * @request POST:/v1/traces
+     * @tags Spans
+     * @name ComputeSpanMetricsV1SpanSpanIdMetricsGet
+     * @summary Compute Metrics for Span
+     * @request GET:/v1/span/{span_id}/metrics
      * @secure
      */
-    receiveTracesV1TracesPost: (data: File, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/v1/traces`,
-        method: "POST",
-        body: data,
+    computeSpanMetricsV1SpanSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<ComputeSpanMetricsV1SpanSpanIdMetricsGetData, ComputeSpanMetricsV1SpanSpanIdMetricsGetError>({
+        path: `/v1/span/${spanId}/metrics`,
+        method: "GET",
         secure: true,
-        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
+     *
+     * @tags Spans
+     * @name QuerySpansByTypeV1SpansQueryGet
+     * @summary Query Spans By Type
+     * @request GET:/v1/spans/query
+     * @secure
+     */
+    querySpansByTypeV1SpansQueryGet: (query: QuerySpansByTypeV1SpansQueryGetParams, params: RequestParams = {}) =>
+      this.request<QuerySpansByTypeV1SpansQueryGetData, QuerySpansByTypeV1SpansQueryGetError>({
+        path: `/v1/spans/query`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -2603,166 +3199,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/v1/traces/query
      * @secure
      */
-    querySpansV1TracesQueryGet: (
-      query: {
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-        /**
-         * Task Ids
-         * Task IDs to filter on. At least one is required.
-         * @minItems 1
-         */
-        task_ids: string[];
-        /**
-         * Trace Ids
-         * Trace IDs to filter on. Optional.
-         */
-        trace_ids?: string[];
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        start_time?: string;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        end_time?: string;
-        /**
-         * Tool Name
-         * Return only results with this tool name.
-         */
-        tool_name?: string;
-        /**
-         * Span Types
-         * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
-         */
-        span_types?: string[];
-        /**
-         * Query Relevance Eq
-         * Equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_eq?: number;
-        /**
-         * Query Relevance Gt
-         * Greater than this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_gt?: number;
-        /**
-         * Query Relevance Gte
-         * Greater than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_gte?: number;
-        /**
-         * Query Relevance Lt
-         * Less than this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_lt?: number;
-        /**
-         * Query Relevance Lte
-         * Less than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_lte?: number;
-        /**
-         * Response Relevance Eq
-         * Equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_eq?: number;
-        /**
-         * Response Relevance Gt
-         * Greater than this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_gt?: number;
-        /**
-         * Response Relevance Gte
-         * Greater than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_gte?: number;
-        /**
-         * Response Relevance Lt
-         * Less than this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_lt?: number;
-        /**
-         * Response Relevance Lte
-         * Less than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_lte?: number;
-        /** Tool selection evaluation result. */
-        tool_selection?: ToolClassEnum;
-        /** Tool usage evaluation result. */
-        tool_usage?: ToolClassEnum;
-        /**
-         * Trace Duration Eq
-         * Duration exactly equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_eq?: number;
-        /**
-         * Trace Duration Gt
-         * Duration greater than this value (seconds).
-         * @min 0
-         */
-        trace_duration_gt?: number;
-        /**
-         * Trace Duration Gte
-         * Duration greater than or equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_gte?: number;
-        /**
-         * Trace Duration Lt
-         * Duration less than this value (seconds).
-         * @min 0
-         */
-        trace_duration_lt?: number;
-        /**
-         * Trace Duration Lte
-         * Duration less than or equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_lte?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<QueryTracesWithMetricsResponse, HTTPValidationError>({
+    querySpansV1TracesQueryGet: (query: QuerySpansV1TracesQueryGetParams, params: RequestParams = {}) =>
+      this.request<QuerySpansV1TracesQueryGetData, QuerySpansV1TracesQueryGetError>({
         path: `/v1/traces/query`,
         method: "GET",
         query: query,
@@ -2781,165 +3219,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     querySpansWithMetricsV1TracesMetricsGet: (
-      query: {
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-        /**
-         * Task Ids
-         * Task IDs to filter on. At least one is required.
-         * @minItems 1
-         */
-        task_ids: string[];
-        /**
-         * Trace Ids
-         * Trace IDs to filter on. Optional.
-         */
-        trace_ids?: string[];
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        start_time?: string;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        end_time?: string;
-        /**
-         * Tool Name
-         * Return only results with this tool name.
-         */
-        tool_name?: string;
-        /**
-         * Span Types
-         * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
-         */
-        span_types?: string[];
-        /**
-         * Query Relevance Eq
-         * Equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_eq?: number;
-        /**
-         * Query Relevance Gt
-         * Greater than this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_gt?: number;
-        /**
-         * Query Relevance Gte
-         * Greater than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_gte?: number;
-        /**
-         * Query Relevance Lt
-         * Less than this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_lt?: number;
-        /**
-         * Query Relevance Lte
-         * Less than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        query_relevance_lte?: number;
-        /**
-         * Response Relevance Eq
-         * Equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_eq?: number;
-        /**
-         * Response Relevance Gt
-         * Greater than this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_gt?: number;
-        /**
-         * Response Relevance Gte
-         * Greater than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_gte?: number;
-        /**
-         * Response Relevance Lt
-         * Less than this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_lt?: number;
-        /**
-         * Response Relevance Lte
-         * Less than or equal to this value.
-         * @min 0
-         * @max 1
-         */
-        response_relevance_lte?: number;
-        /** Tool selection evaluation result. */
-        tool_selection?: ToolClassEnum;
-        /** Tool usage evaluation result. */
-        tool_usage?: ToolClassEnum;
-        /**
-         * Trace Duration Eq
-         * Duration exactly equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_eq?: number;
-        /**
-         * Trace Duration Gt
-         * Duration greater than this value (seconds).
-         * @min 0
-         */
-        trace_duration_gt?: number;
-        /**
-         * Trace Duration Gte
-         * Duration greater than or equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_gte?: number;
-        /**
-         * Trace Duration Lt
-         * Duration less than this value (seconds).
-         * @min 0
-         */
-        trace_duration_lt?: number;
-        /**
-         * Trace Duration Lte
-         * Duration less than or equal to this value (seconds).
-         * @min 0
-         */
-        trace_duration_lte?: number;
-      },
+      query: QuerySpansWithMetricsV1TracesMetricsGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<QueryTracesWithMetricsResponse, HTTPValidationError>({
+      this.request<QuerySpansWithMetricsV1TracesMetricsGetData, QuerySpansWithMetricsV1TracesMetricsGetError>({
         path: `/v1/traces/metrics/`,
         method: "GET",
         query: query,
@@ -2949,99 +3232,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.
+     * @description Receiver for OpenInference trace standard.
      *
-     * @tags Spans
-     * @name QuerySpansByTypeV1SpansQueryGet
-     * @summary Query Spans By Type
-     * @request GET:/v1/spans/query
+     * @tags Traces
+     * @name ReceiveTracesV1TracesPost
+     * @summary Receive Traces
+     * @request POST:/v1/traces
      * @secure
      */
-    querySpansByTypeV1SpansQueryGet: (
-      query: {
-        /**
-         * Task Ids
-         * Task IDs to filter on. At least one is required.
-         * @minItems 1
-         */
-        task_ids: string[];
-        /**
-         * Span Types
-         * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
-         */
-        span_types?: string[];
-        /**
-         * Start Time
-         * Inclusive start date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        start_time?: string;
-        /**
-         * End Time
-         * Exclusive end date in ISO8601 string format. Use local time (not UTC).
-         * @format date-time
-         */
-        end_time?: string;
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<QuerySpansResponse, void | HTTPValidationError>({
-        path: `/v1/spans/query`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Compute metrics for a single span. Validates that the span is an LLM span.
-     *
-     * @tags Spans
-     * @name ComputeSpanMetricsV1SpanSpanIdMetricsGet
-     * @summary Compute Metrics for Span
-     * @request GET:/v1/span/{span_id}/metrics
-     * @secure
-     */
-    computeSpanMetricsV1SpanSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<SpanWithMetricsResponse, HTTPValidationError>({
-        path: `/v1/span/${spanId}/metrics`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-  };
-  users = {
-    /**
-     * @description Creates a new user with specific roles. The available roles are TASK-ADMIN and CHAT-USER. The 'temporary' field is for indicating if the user password needs to be reset at the first login.
-     *
-     * @tags User Management
-     * @name CreateUserUsersPost
-     * @summary Create User
-     * @request POST:/users
-     * @secure
-     */
-    createUserUsersPost: (data: CreateUserRequest, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
-        path: `/users`,
+    receiveTracesV1TracesPost: (data: ReceiveTracesV1TracesPostPayload, params: RequestParams = {}) =>
+      this.request<ReceiveTracesV1TracesPostData, ReceiveTracesV1TracesPostError>({
+        path: `/v1/traces`,
         method: "POST",
         body: data,
         secure: true,
@@ -3049,52 +3250,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         format: "json",
         ...params,
       }),
-
-    /**
-     * @description Fetch users.
-     *
-     * @tags User Management
-     * @name SearchUsersUsersGet
-     * @summary Search Users
-     * @request GET:/users
-     * @secure
-     */
-    searchUsersUsersGet: (
-      query?: {
-        /**
-         * Search String
-         * Substring to match on. Will search first name, last name, email.
-         */
-        search_string?: string | null;
-        /**
-         * Sort the results (asc/desc)
-         * @default "desc"
-         */
-        sort?: PaginationSortMethod;
-        /**
-         * Page Size
-         * Page size. Default is 10. Must be greater than 0 and less than 5000.
-         * @default 10
-         */
-        page_size?: number;
-        /**
-         * Page
-         * Page number
-         * @default 0
-         */
-        page?: number;
-      },
-      params: RequestParams = {},
-    ) =>
-      this.request<UserResponse[], HTTPValidationError>({
-        path: `/users`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
+  };
+  users = {
     /**
      * @description Checks if the current user has the requested permission. Returns 200 status code for authorized or 403 if not.
      *
@@ -3105,19 +3262,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     checkUserPermissionUsersPermissionsCheckGet: (
-      query?: {
-        /** Action to check permissions of. */
-        action?: UserPermissionAction;
-        /** Resource to check permissions of. */
-        resource?: UserPermissionResource;
-      },
+      query: CheckUserPermissionUsersPermissionsCheckGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<any, HTTPValidationError>({
+      this.request<CheckUserPermissionUsersPermissionsCheckGetData, CheckUserPermissionUsersPermissionsCheckGetError>({
         path: `/users/permissions/check`,
         method: "GET",
         query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Creates a new user with specific roles. The available roles are TASK-ADMIN and CHAT-USER. The 'temporary' field is for indicating if the user password needs to be reset at the first login.
+     *
+     * @tags User Management
+     * @name CreateUserUsersPost
+     * @summary Create User
+     * @request POST:/users
+     * @secure
+     */
+    createUserUsersPost: (data: CreateUserRequest, params: RequestParams = {}) =>
+      this.request<CreateUserUsersPostData, CreateUserUsersPostError>({
+        path: `/users`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -3132,7 +3304,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteUserUsersUserIdDelete: (userId: string, params: RequestParams = {}) =>
-      this.request<any, HTTPValidationError>({
+      this.request<DeleteUserUsersUserIdDeleteData, DeleteUserUsersUserIdDeleteError>({
         path: `/users/${userId}`,
         method: "DELETE",
         secure: true,
@@ -3153,11 +3325,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       data: PasswordResetRequest,
       params: RequestParams = {},
     ) =>
-      this.request<any, HTTPValidationError>({
+      this.request<
+        ResetUserPasswordUsersUserIdResetPasswordPostData,
+        ResetUserPasswordUsersUserIdResetPasswordPostError
+      >({
         path: `/users/${userId}/reset_password`,
         method: "POST",
         body: data,
         type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fetch users.
+     *
+     * @tags User Management
+     * @name SearchUsersUsersGet
+     * @summary Search Users
+     * @request GET:/users
+     * @secure
+     */
+    searchUsersUsersGet: (query: SearchUsersUsersGetParams, params: RequestParams = {}) =>
+      this.request<SearchUsersUsersGetData, SearchUsersUsersGetError>({
+        path: `/users`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
