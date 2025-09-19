@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "generate-api": "openapi-generator-cli generate -i ../staging.openapi.json -g typescript-axios -o src/lib/api-client --additional-properties=typescriptThreePlus=true,supportsES6=true,withInterfaces=true,modelPropertyNaming=original,enumPropertyNaming=UPPERCASE,stringEnums=true,sortParamsByRequiredFlag=true,sortModelPropertiesByRequiredFlag=true,ensureUniqueParams=true,allowUnicodeIdentifiers=true,prependFormOrBodyParameters=true,useSingleRequestParameter=true,withNodeImports=true,withSeparateModelsAndApi=true,apiPackage=api,modelPackage=models --skip-validate-spec",
-    "generate-api:clean": "rm -rf src/api && yarn generate-api"
+    "generate-api:clean": "rm -rf src/lib/api-client && yarn generate-api"
   },
   "dependencies": {
     "react": "19.1.0",
