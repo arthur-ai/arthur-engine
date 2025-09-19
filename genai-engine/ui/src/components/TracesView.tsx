@@ -128,11 +128,8 @@ export const TracesView: React.FC = () => {
   const getInputContent = (trace: TraceResponse) => {
     if (trace.root_spans && trace.root_spans.length > 0) {
       const span = trace.root_spans[0];
-      if (span.user_query) {
-        return span.user_query;
-      }
-      if (span.raw_data && span.raw_data.input) {
-        return JSON.stringify(span.raw_data.input);
+      if (span.raw_data && span.raw_data.attributes && span.raw_data.attributes["input.value"]) {
+        return span.raw_data.attributes["input.value"];
       }
     }
     return 'No input data';
@@ -141,11 +138,8 @@ export const TracesView: React.FC = () => {
   const getOutputContent = (trace: TraceResponse) => {
     if (trace.root_spans && trace.root_spans.length > 0) {
       const span = trace.root_spans[0];
-      if (span.response) {
-        return span.response;
-      }
-      if (span.raw_data && span.raw_data.output) {
-        return JSON.stringify(span.raw_data.output);
+      if (span.raw_data && span.raw_data.attributes && span.raw_data.attributes["output.value"]) {
+        return span.raw_data.attributes["output.value"];
       }
     }
     return 'No output data';
@@ -229,7 +223,7 @@ export const TracesView: React.FC = () => {
                   Output
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Latency
+                  Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tokens
