@@ -22,7 +22,15 @@ from arthur_client.api_bindings import (
     PostJobBatch,
 )
 from arthur_common.aggregations import AggregationFunction
+from arthur_common.models.metrics import (
+    Dimension,
+    DatasetReference,
+    NumericMetric,
+    NumericTimeSeries,
+    NumericPoint,
+)
 from arthur_common.tools.aggregation_loader import AggregationLoader
+from arthur_common.tools.functions import uuid_to_base26
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
     MetricsCalculationExecutor,
@@ -338,3 +346,71 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
                 in rec.message
                 for rec in caplog.records
             )
+
+
+def test_add_dimensions_to_metrics():
+    """Test that dimensions are correctly added to metrics."""    
+    # create an executor with mocked dependencies
+    executor = MetricsCalculationExecutor(
+        models_client=Mock(),
+        datasets_client=Mock(), 
+        metrics_client=Mock(),
+        jobs_client=Mock(),
+        connector_constructor=Mock(),
+        custom_aggregations_client=Mock(),
+        logger=Mock(),
+    )
+    
+    # test the data
+    dataset_ref = DatasetReference(dataset_id=uuid4(), dataset_name="test_dataset", dataset_table_name=uuid_to_base26(uuid4()))
+    aggregate_args = {"dataset": dataset_ref}
+    agg_spec = AggregationSpec(
+        aggregation_id="00000000-0000-0000-0000-00000000000a",
+        aggregation_version=1,
+        aggregation_init_args=[],
+        aggregation_args=[]
+    )
+    
+    # create a metric
+    metric = NumericMetric(
+        name="test_metric",
+        numeric_series=[NumericTimeSeries(
+            dimensions=[],
+            values=[NumericPoint(timestamp=datetime.now(), value=10.0)]
+        )]
+    )
+    
+    # test the method
+    executor._add_dimensions_to_metrics([metric], aggregate_args, agg_spec)
+    
+    # check the dimensions were added including the version
+    dimensions = {d.name: d.value for d in metric.numeric_series[0].dimensions}
+    assert dimensions["dataset_name"] == dataset_ref.dataset_name
+    assert dimensions["dataset_id"] == str(dataset_ref.dataset_id)
+    assert dimensions["aggregation_id"] == agg_spec.aggregation_id
+    assert dimensions["aggregation_version"] == str(agg_spec.aggregation_version)
+
+    agg_spec = AggregationSpec(
+        aggregation_id="00000000-0000-0000-0000-00000000000a",
+        aggregation_init_args=[],
+        aggregation_args=[]
+    )
+
+    # reset the metric
+    metric = NumericMetric(
+        name="test_metric",
+        numeric_series=[NumericTimeSeries(
+            dimensions=[],
+            values=[NumericPoint(timestamp=datetime.now(), value=10.0)]
+        )]
+    )
+    
+    # test the method
+    executor._add_dimensions_to_metrics([metric], aggregate_args, agg_spec)
+    
+    # check the dimensions were added apart from the version
+    dimensions = {d.name: d.value for d in metric.numeric_series[0].dimensions}
+    assert dimensions["dataset_name"] == dataset_ref.dataset_name
+    assert dimensions["dataset_id"] == str(dataset_ref.dataset_id)
+    assert dimensions["aggregation_id"] == agg_spec.aggregation_id
+    assert "aggregation_version" not in dimensions
