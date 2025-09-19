@@ -29,6 +29,21 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
   // Map the current route to the active section
   const activeSection = selectedLayoutSegment || 'task-details';
 
+  // Map section IDs to display titles
+  const getPageTitle = (section: string): string => {
+    const titleMap: Record<string, string> = {
+      'task-details': 'Task Details',
+      'traces': 'Traces',
+      'retrievals': 'Retrievals',
+      'evaluators': 'Evaluators',
+      'datasets': 'Datasets',
+      'prompt-experiments': 'Prompt Experiments',
+      'rag-experiments': 'RAG Experiments',
+      'agent-experiments': 'Agent Experiments',
+    };
+    return titleMap[section] || 'Task Details';
+  };
+
   useEffect(() => {
     const fetchTask = async () => {
       if (!api || !taskId) {
@@ -105,7 +120,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">
-                  Task Details
+                  {getPageTitle(activeSection)}
                 </h1>
                 <p className="text-gray-600">{task.name}</p>
               </div>
