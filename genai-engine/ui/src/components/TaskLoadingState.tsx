@@ -6,11 +6,15 @@ import { SidebarNavigation } from './SidebarNavigation';
 interface TaskLoadingStateProps {
   onBackToDashboard: () => void;
   onLogout: () => void;
+  onNavigate?: (sectionId: string) => void;
+  activeSection?: string;
 }
 
 export const TaskLoadingState: React.FC<TaskLoadingStateProps> = ({
   onBackToDashboard,
-  onLogout
+  onLogout,
+  onNavigate = () => {},
+  activeSection = 'task-details'
 }) => {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -35,7 +39,8 @@ export const TaskLoadingState: React.FC<TaskLoadingStateProps> = ({
       <div className="flex">
         <SidebarNavigation 
           onBackToDashboard={onBackToDashboard}
-          activeSection="task-details"
+          onNavigate={onNavigate}
+          activeSection={activeSection}
         />
 
         <main className="flex-1 py-6 px-6">

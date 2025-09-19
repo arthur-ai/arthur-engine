@@ -7,12 +7,16 @@ interface TaskErrorStateProps {
   error: string;
   onBackToDashboard: () => void;
   onLogout: () => void;
+  onNavigate?: (sectionId: string) => void;
+  activeSection?: string;
 }
 
 export const TaskErrorState: React.FC<TaskErrorStateProps> = ({
   error,
   onBackToDashboard,
-  onLogout
+  onLogout,
+  onNavigate = () => {},
+  activeSection = 'task-details'
 }) => {
   return (
     <div className="min-h-screen bg-gray-50">
@@ -37,7 +41,8 @@ export const TaskErrorState: React.FC<TaskErrorStateProps> = ({
       <div className="flex">
         <SidebarNavigation 
           onBackToDashboard={onBackToDashboard}
-          activeSection="task-details"
+          onNavigate={onNavigate}
+          activeSection={activeSection}
         />
 
         <main className="flex-1 py-6 px-6">

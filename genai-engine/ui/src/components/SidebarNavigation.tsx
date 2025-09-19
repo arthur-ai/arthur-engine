@@ -4,49 +4,104 @@ import React from 'react';
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
+  onNavigate: (sectionId: string) => void;
   activeSection?: string;
+}
+
+interface NavigationSection {
+  id: string;
+  label: string;
+  items: NavigationItem[];
+}
+
+interface NavigationItem {
+  id: string;
+  label: string;
+  onClick?: () => void;
 }
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   onBackToDashboard,
+  onNavigate,
   activeSection = 'task-details'
 }) => {
-  const navigationItems = [
-    { id: 'all-tasks', label: '← All Tasks', onClick: onBackToDashboard },
-    { id: 'task-details', label: 'Task Details' },
-    { id: 'inferences', label: 'Inferences' },
-    { id: 'metrics', label: 'Metrics' },
-    { id: 'rules', label: 'Rules' },
-    { id: 'settings', label: 'Settings' },
+  const navigationSections: NavigationSection[] = [
+    {
+      id: 'observability',
+      label: 'Observability',
+      items: [
+        { id: 'traces', label: 'Traces' },
+        { id: 'retrievals', label: 'Retrievals' },
+      ]
+    },
+    {
+      id: 'evaluations',
+      label: 'Evaluations',
+      items: [
+        { id: 'evaluators', label: 'Evaluators' },
+        { id: 'datasets', label: 'Datasets' },
+      ]
+    },
+    {
+      id: 'experiments',
+      label: 'Experiments',
+      items: [
+        { id: 'prompt-experiments', label: 'Prompt Experiments' },
+        { id: 'rag-experiments', label: 'RAG Experiments' },
+        { id: 'agent-experiments', label: 'Agent Experiments' },
+      ]
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      items: [
+        { id: 'task-details', label: 'Task Details' },
+      ]
+    }
   ];
 
   return (
     <nav className="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen">
       <div className="p-4">
-        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
-          Navigation
-        </h3>
-        <ul className="space-y-2">
-          {navigationItems.map((item) => {
-            const isActive = item.id === activeSection;
-            const isAllTasks = item.id === 'all-tasks';
-            
-            return (
-              <li key={item.id}>
-                <button
-                  onClick={item.onClick}
-                  className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
-                    isActive
-                      ? 'text-blue-700 bg-blue-50'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="mb-4">
+          <button
+            onClick={onBackToDashboard}
+            className="w-full text-left px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200"
+          >
+            ← All Tasks
+          </button>
+        </div>
+        
+        <div className="space-y-1">
+          {navigationSections.map((section) => (
+            <div key={section.id} className="mb-4">
+              <div className="px-3 py-2 text-sm font-semibold text-gray-900">
+                {section.label}
+              </div>
+              
+              <ul className="ml-4 mt-1 space-y-1">
+                {section.items.map((item) => {
+                  const isActive = item.id === activeSection;
+                  
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => onNavigate(item.id)}
+                        className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+                          isActive
+                            ? 'text-blue-700 bg-blue-50'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       </div>
     </nav>
   );
