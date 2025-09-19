@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useApi } from '@/hooks/useApi';
-import { useTask } from '@/contexts/TaskContext';
-import { TraceResponse } from '@/lib/api';
-import { TraceDetailsPanel } from './TraceDetailsPanel';
+import React, { useState, useEffect } from "react";
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/contexts/TaskContext";
+import { TraceResponse } from "@/lib/api";
+import { TraceDetailsPanel } from "./TraceDetailsPanel";
 
 export const TracesView: React.FC = () => {
   const api = useApi();
@@ -12,17 +12,19 @@ export const TracesView: React.FC = () => {
   const [traces, setTraces] = useState<TraceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState('Past 24 hours');
+  const [timeFilter, setTimeFilter] = useState("Past 24 hours");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
-  const [selectedTrace, setSelectedTrace] = useState<TraceResponse | null>(null);
+  const [selectedTrace, setSelectedTrace] = useState<TraceResponse | null>(
+    null
+  );
   const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
 
   useEffect(() => {
     const fetchTraces = async () => {
       if (!api || !task) {
-        setError('API client or task not available');
+        setError("API client or task not available");
         setLoading(false);
         return;
       }
@@ -34,22 +36,22 @@ export const TracesView: React.FC = () => {
         // Calculate time range based on filter
         const startTime = new Date();
         switch (timeFilter) {
-          case 'Past 5 minutes':
+          case "Past 5 minutes":
             startTime.setMinutes(startTime.getMinutes() - 5);
             break;
-          case 'Past 30 minutes':
+          case "Past 30 minutes":
             startTime.setMinutes(startTime.getMinutes() - 30);
             break;
-          case 'Past 1 hour':
+          case "Past 1 hour":
             startTime.setHours(startTime.getHours() - 1);
             break;
-          case 'Past 24 hours':
+          case "Past 24 hours":
             startTime.setDate(startTime.getDate() - 1);
             break;
-          case 'Past 7 days':
+          case "Past 7 days":
             startTime.setDate(startTime.getDate() - 7);
             break;
-          case 'Past 30 days':
+          case "Past 30 days":
             startTime.setDate(startTime.getDate() - 30);
             break;
         }
@@ -58,20 +60,20 @@ export const TracesView: React.FC = () => {
           task_ids: [task.id],
           page: currentPage,
           page_size: pageSize,
-          sort: 'desc',
+          sort: "desc",
           start_time: startTime.toISOString(),
         });
 
         const tracesData = response.data.traces || [];
-        console.log('Raw traces data:', tracesData);
+        console.log("Raw traces data:", tracesData);
         if (tracesData.length > 0) {
-          console.log('First trace start_time:', tracesData[0].start_time);
+          console.log("First trace start_time:", tracesData[0].start_time);
         }
         setTraces(tracesData);
         setTotalCount(response.data.count || 0);
       } catch (err) {
-        console.error('Failed to fetch traces:', err);
-        setError('Failed to load traces');
+        console.error("Failed to fetch traces:", err);
+        setError("Failed to load traces");
       } finally {
         setLoading(false);
       }
@@ -83,25 +85,27 @@ export const TracesView: React.FC = () => {
   const formatTimestamp = (timestamp: string) => {
     try {
       // Ensure the timestamp is treated as UTC by adding 'Z' if not present
-      const utcTimestamp = timestamp.endsWith('Z') ? timestamp : timestamp + 'Z';
+      const utcTimestamp = timestamp.endsWith("Z")
+        ? timestamp
+        : timestamp + "Z";
       const date = new Date(utcTimestamp);
       if (isNaN(date.getTime())) {
-        console.warn('Invalid timestamp:', timestamp);
-        return 'Invalid Date';
+        console.warn("Invalid timestamp:", timestamp);
+        return "Invalid Date";
       }
-      return date.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
+      return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
         hour12: false, // Use 24-hour format
-        timeZoneName: 'short', // Show timezone abbreviation
+        timeZoneName: "short", // Show timezone abbreviation
       });
     } catch (error) {
-      console.error('Error formatting timestamp:', timestamp, error);
-      return 'Invalid Date';
+      console.error("Error formatting timestamp:", timestamp, error);
+      return "Invalid Date";
     }
   };
 
@@ -109,7 +113,7 @@ export const TracesView: React.FC = () => {
     const start = new Date(startTime);
     const end = new Date(endTime);
     const durationMs = end.getTime() - start.getTime();
-    
+
     if (durationMs < 1000) {
       return `${durationMs}ms`;
     } else if (durationMs < 60000) {
@@ -123,29 +127,37 @@ export const TracesView: React.FC = () => {
 
   const getSpanName = (trace: TraceResponse) => {
     if (trace.root_spans && trace.root_spans.length > 0) {
-      return trace.root_spans[0].span_name || 'Unknown';
+      return trace.root_spans[0].span_name || "Unknown";
     }
-    return 'Unknown';
+    return "Unknown";
   };
 
   const getInputContent = (trace: TraceResponse) => {
     if (trace.root_spans && trace.root_spans.length > 0) {
       const span = trace.root_spans[0];
-      if (span.raw_data && span.raw_data.attributes && span.raw_data.attributes["input.value"]) {
+      if (
+        span.raw_data &&
+        span.raw_data.attributes &&
+        span.raw_data.attributes["input.value"]
+      ) {
         return span.raw_data.attributes["input.value"];
       }
     }
-    return 'No input data';
+    return "No input data";
   };
 
   const getOutputContent = (trace: TraceResponse) => {
     if (trace.root_spans && trace.root_spans.length > 0) {
       const span = trace.root_spans[0];
-      if (span.raw_data && span.raw_data.attributes && span.raw_data.attributes["output.value"]) {
+      if (
+        span.raw_data &&
+        span.raw_data.attributes &&
+        span.raw_data.attributes["output.value"]
+      ) {
         return span.raw_data.attributes["output.value"];
       }
     }
-    return 'No output data';
+    return "No output data";
   };
 
   const getTokenCount = (trace: TraceResponse) => {
@@ -160,7 +172,7 @@ export const TracesView: React.FC = () => {
 
   const truncateText = (text: string, maxLength: number = 100) => {
     if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+    return text.substring(0, maxLength) + "...";
   };
 
   const handleTraceClick = (trace: TraceResponse) => {
@@ -245,8 +257,8 @@ export const TracesView: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {traces.map((trace) => (
-                <tr 
-                  key={trace.trace_id} 
+                <tr
+                  key={trace.trace_id}
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => handleTraceClick(trace)}
                 >
@@ -272,8 +284,18 @@ export const TracesView: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center">
                       {getTokenCount(trace).toLocaleString()}
-                      <svg className="h-4 w-4 text-gray-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="h-4 w-4 text-gray-400 ml-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
                   </td>
@@ -310,8 +332,18 @@ export const TracesView: React.FC = () => {
                 disabled={currentPage === 0}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                  />
                 </svg>
               </button>
               <button
@@ -319,26 +351,65 @@ export const TracesView: React.FC = () => {
                 disabled={currentPage === 0}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </button>
               <button
-                onClick={() => setCurrentPage(Math.min(Math.ceil(totalCount / pageSize) - 1, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(
+                    Math.min(
+                      Math.ceil(totalCount / pageSize) - 1,
+                      currentPage + 1
+                    )
+                  )
+                }
                 disabled={currentPage >= Math.ceil(totalCount / pageSize) - 1}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
                 </svg>
               </button>
               <button
-                onClick={() => setCurrentPage(Math.ceil(totalCount / pageSize) - 1)}
+                onClick={() =>
+                  setCurrentPage(Math.ceil(totalCount / pageSize) - 1)
+                }
                 disabled={currentPage >= Math.ceil(totalCount / pageSize) - 1}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                  />
                 </svg>
               </button>
             </div>
