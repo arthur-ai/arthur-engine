@@ -1,4 +1,4 @@
-import { Configuration, TasksApi, SearchTasksRequest } from "./api-client";
+import { Api, SearchTasksRequest } from "./api-client/api-client";
 
 const TOKEN_STORAGE_KEY = "arthur_auth_token";
 const API_BASE_URL =
@@ -14,7 +14,7 @@ export interface AuthState {
 export class AuthService {
   private static instance: AuthService;
   private token: string | null = null;
-  private apiClient: TasksApi | null = null;
+  private apiClient: Api<any> | null = null;
 
   private constructor() {
     // Initialize token from localStorage if available
@@ -35,28 +35,27 @@ export class AuthService {
 
   private initializeApiClient(): void {
     if (this.token) {
-      const configuration = new Configuration({
-        basePath: API_BASE_URL,
-        accessToken: this.token,
+      this.apiClient = new Api({
+        baseURL: API_BASE_URL,
+        securityWorker: (token) =>
+          token ? { headers: { Authorization: `Bearer ${token}` } } : {},
       });
-      this.apiClient = new TasksApi(configuration);
     }
   }
 
   public async login(token: string): Promise<boolean> {
     try {
       // Test the token by making a simple API call
-      const configuration = new Configuration({
-        basePath: API_BASE_URL,
-        accessToken: token,
+      const testClient = new Api({
+        baseURL: API_BASE_URL,
+        securityWorker: (token) =>
+          token ? { headers: { Authorization: `Bearer ${token}` } } : {},
       });
-      const testClient = new TasksApi(configuration);
 
       // Try to search for tasks with an empty request to test authentication
       const searchRequest: SearchTasksRequest = {};
-      await testClient.searchTasksApiV2TasksSearchPost({
-        searchTasksRequest: searchRequest,
-        pageSize: 1,
+      await testClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
+        page_size: 1,
         page: 1,
       });
 
@@ -89,7 +88,7 @@ export class AuthService {
     return this.token !== null;
   }
 
-  public getApiClient(): TasksApi | null {
+  public getApiClient(): Api<any> | null {
     return this.apiClient;
   }
 
@@ -101,9 +100,8 @@ export class AuthService {
     try {
       // Test the token by making a simple API call
       const searchRequest: SearchTasksRequest = {};
-      await this.apiClient.searchTasksApiV2TasksSearchPost({
-        searchTasksRequest: searchRequest,
-        pageSize: 1,
+      await this.apiClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
+        page_size: 1,
         page: 1,
       });
       return true;

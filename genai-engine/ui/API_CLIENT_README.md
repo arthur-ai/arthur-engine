@@ -4,7 +4,7 @@ This document explains how to generate and use the TypeScript API client for the
 
 ## Overview
 
-The API client is automatically generated from the OpenAPI specification located at `../staging.openapi.json` using the `@openapitools/openapi-generator-cli` tool.
+The API client is automatically generated from the OpenAPI specification located at `../staging.openapi.json` using the `swagger-typescript-api@13.0.16` tool.
 
 ## Setup
 
@@ -14,7 +14,7 @@ The API client is automatically generated from the OpenAPI specification located
 yarn install
 ```
 
-This will install the `@openapitools/openapi-generator-cli` package needed for generation.
+This will install the dependencies needed for generation. The `swagger-typescript-api` tool is used via npx, so no additional installation is required.
 
 ### 2. Generate the API Client
 
@@ -28,16 +28,12 @@ yarn generate-api:clean
 
 ## Generated Files
 
-After generation, you'll find the following structure in `src/api/`:
+After generation, you'll find the following structure in `src/lib/api-client/`:
 
 ```
-src/api/
-├── api/                 # API endpoint classes
-├── models/              # TypeScript interfaces for request/response models
-├── base.ts             # Base API client class
-├── configuration.ts    # Configuration management
-├── common.ts           # Common utilities and types
-├── index.ts            # Barrel exports for easy importing
+src/lib/api-client/
+├── api-client.ts       # Main API client with all endpoints
+├── types/              # TypeScript interfaces for request/response models
 └── README.md           # Generated documentation
 ```
 
@@ -46,25 +42,28 @@ src/api/
 ### Basic Setup
 
 ```typescript
-import { getApiClient } from '@/lib/api-client';
+import { Api } from '@/lib/api-client/api-client';
 
-// Get the configured API client
-const api = getApiClient();
+// Create API client instance
+const api = new Api({
+  baseURL: 'https://your-api-endpoint.com',
+  securityWorker: (token) => token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+});
 
 // Make API calls
-const usage = await api.getTokenUsageApiV2UsageTokensGet();
+const usage = await api.usage.getTokenUsage();
 ```
 
 ### Custom Configuration
 
 ```typescript
-import { createApiClient } from '@/lib/api-client';
+import { Api } from '@/lib/api-client/api-client';
 
 // Create a custom API client
-const api = createApiClient(
-  'https://your-api-endpoint.com',
-  'your-api-key'
-);
+const api = new Api({
+  baseURL: 'https://your-api-endpoint.com',
+  securityWorker: (token) => token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+});
 ```
 
 ### Environment Variables
@@ -79,12 +78,15 @@ NEXT_PUBLIC_API_KEY=your-api-key
 ### Example API Calls
 
 ```typescript
-import { getApiClient } from '@/lib/api-client';
+import { Api } from '@/lib/api-client/api-client';
 
-const api = getApiClient();
+const api = new Api({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  securityWorker: (token) => token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+});
 
 // Get token usage
-const usage = await api.getTokenUsageApiV2UsageTokensGet({
+const usage = await api.usage.getTokenUsage({
   startTime: '2024-01-01T00:00:00Z',
   endTime: '2024-01-31T23:59:59Z',
   groupBy: 'day'
@@ -140,11 +142,19 @@ The generation command includes several TypeScript optimizations:
 If the yarn script fails, you can run the generator manually:
 
 ```bash
-npx @openapitools/openapi-generator-cli generate \
-  -i ../staging.openapi.json \
-  -g typescript-axios \
-  -o src/api \
-  --additional-properties=typescriptThreePlus=true,supportsES6=true,withInterfaces=true,modelPropertyNaming=original,enumPropertyNaming=UPPERCASE,stringEnums=true
+npx swagger-typescript-api@13.0.16 \
+  -p ../staging.openapi.json \
+  -o src/lib/api-client \
+  --name api-client.ts \
+  --modular \
+  --axios \
+  --extract-request-params \
+  --extract-request-body \
+  --extract-response-body \
+  --extract-response-error \
+  --extract-enums \
+  --extract-types \
+  --clean-output
 ```
 
 ## Integration with Next.js
@@ -159,7 +169,8 @@ The generated client is designed to work seamlessly with Next.js:
 ## Best Practices
 
 1. **Don't edit generated files**: Always regenerate instead of manually editing
-2. **Use the wrapper**: Use `@/lib/api-client` instead of importing directly from `src/api`
+2. **Use the generated client**: Import from `@/lib/api-client/api-client` for the main API class
 3. **Handle errors**: Always wrap API calls in try-catch blocks
 4. **Type safety**: Use the generated types for request/response objects
 5. **Environment config**: Use environment variables for API endpoints and keys
+6. **Security**: Use the securityWorker for token-based authentication

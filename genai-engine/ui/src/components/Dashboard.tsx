@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthService } from '@/lib/auth';
-import { TaskResponse } from '@/lib/api-client';
+import { TaskResponse } from '@/lib/api-client/api-client';
 
 export const Dashboard: React.FC = () => {
   const { logout } = useAuth();
@@ -25,9 +25,8 @@ export const Dashboard: React.FC = () => {
         }
 
         // Search for all tasks
-        const response = await apiClient.searchTasksApiV2TasksSearchPost({
-          searchTasksRequest: {},
-          pageSize: 50,
+        const response = await apiClient.api.searchTasksApiV2TasksSearchPost({}, {
+          page_size: 50,
           page: 1,
         });
 
