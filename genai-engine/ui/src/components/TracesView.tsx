@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { useTask } from '@/contexts/TaskContext';
 import { TraceResponse } from '@/lib/api';
+import { TraceDetailsPanel } from './TraceDetailsPanel';
 
 export const TracesView: React.FC = () => {
   const api = useApi();
@@ -15,6 +16,8 @@ export const TracesView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedTrace, setSelectedTrace] = useState<TraceResponse | null>(null);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
 
   useEffect(() => {
     const fetchTraces = async () => {
@@ -160,6 +163,16 @@ export const TracesView: React.FC = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  const handleTraceClick = (trace: TraceResponse) => {
+    setSelectedTrace(trace);
+    setIsDetailsPanelOpen(true);
+  };
+
+  const handleCloseDetailsPanel = () => {
+    setIsDetailsPanelOpen(false);
+    setSelectedTrace(null);
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -232,7 +245,11 @@ export const TracesView: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {traces.map((trace) => (
-                <tr key={trace.trace_id} className="hover:bg-gray-50">
+                <tr 
+                  key={trace.trace_id} 
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleTraceClick(trace)}
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatTimestamp(trace.start_time)}
                   </td>
@@ -328,6 +345,13 @@ export const TracesView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Trace Details Panel */}
+      <TraceDetailsPanel
+        trace={selectedTrace}
+        isOpen={isDetailsPanelOpen}
+        onClose={handleCloseDetailsPanel}
+      />
     </div>
   );
 };
