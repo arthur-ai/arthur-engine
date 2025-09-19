@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSelectedLayoutSegment } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,8 +23,11 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
   const [task, setTask] = useState<TaskResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const selectedLayoutSegment = useSelectedLayoutSegment();
 
   const taskId = params.id as string;
+  // Map the current route to the active section
+  const activeSection = selectedLayoutSegment || 'task-details';
 
   useEffect(() => {
     const fetchTask = async () => {
@@ -65,6 +68,8 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
       <TaskLoadingState 
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
+        onNavigate={(sectionId) => router.push(`/tasks/${taskId}/${sectionId}`)}
+        activeSection={activeSection}
       />
     );
   }
@@ -75,6 +80,8 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
         error={error}
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
+        onNavigate={(sectionId) => router.push(`/tasks/${taskId}/${sectionId}`)}
+        activeSection={activeSection}
       />
     );
   }
@@ -84,6 +91,8 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
       <TaskNotFoundState 
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
+        onNavigate={(sectionId) => router.push(`/tasks/${taskId}/${sectionId}`)}
+        activeSection={activeSection}
       />
     );
   }
@@ -117,7 +126,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
               // Navigate to the appropriate route
               router.push(`/tasks/${taskId}/${sectionId}`);
             }}
-            activeSection={params.section as string || 'task-details'}
+            activeSection={activeSection}
           />
 
           <main className="flex-1">

@@ -48,7 +48,7 @@ export const AllTasks: React.FC = () => {
   };
 
   const handleTaskClick = (taskId: string) => {
-    router.push(`/tasks/${taskId}`);
+    router.push(`/tasks/${taskId}/task-details`);
   };
 
   return (
