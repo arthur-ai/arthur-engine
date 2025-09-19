@@ -90,6 +90,9 @@ src/
 - Use React hooks for state management
 - Keep components focused and single-purpose
 - Extract complex logic into custom hooks
+- Follow the best practice of Do Not Repeat yourself
+- make components small and manageable
+- break large components in to small, reusable sub components
 
 ### Naming Conventions
 - **Components**: PascalCase (e.g., `UserDashboard`)
@@ -125,6 +128,7 @@ src/
 - Use React Query or SWR for data fetching (if needed)
 - Minimize API calls with proper state management
 - Handle loading and error states consistently
+- the API pages start at 0, be sure to use 0 as the first page instead of 1
 
 ## Error Handling
 
