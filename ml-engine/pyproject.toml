@@ -35,7 +35,7 @@ arthur-client = "1.4.1485"
 arthur-common = "2.1.68"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"
-snowflake-sqlalchemy = "1.7.6"
+snowflake-sqlalchemy = "1.7.7"
 
 
 [tool.poetry.group.dev.dependencies]
