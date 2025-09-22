@@ -7,7 +7,12 @@ from datetime import datetime
 from typing import List, Optional, Tuple
 
 from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import MetricType, PaginationSortMethod
+from arthur_common.models.enums import (
+    ComparisonOperatorEnum,
+    MetricType,
+    PaginationSortMethod,
+    ToolClassEnum,
+)
 from sqlalchemy import and_, asc, cast, desc, exists, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.types import Float, Integer, Numeric
@@ -17,7 +22,6 @@ from db_models.db_models import (
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
-from schemas.enums import ComparisonOperatorEnum, ToolClassEnum
 from schemas.internal_schemas import FloatRangeFilter, Span, TraceQuerySchema
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM, SPAN_KIND_TOOL

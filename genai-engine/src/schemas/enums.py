@@ -29,15 +29,6 @@ class RuleScoringMethod(str, Enum):
     BINARY = "binary"
 
 
-class ToolClassEnum(int, Enum):
-    INCORRECT = 0
-    CORRECT = 1
-    NA = 2
-
-    def __str__(self):
-        return str(self.value)
-
-
 class DocumentType(str, Enum):
     PDF = "pdf"
     CSV = "csv"
@@ -150,10 +141,3 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
-
-class ComparisonOperatorEnum(str, Enum):
-    EQUAL = "eq"
-    GREATER_THAN = "gt"
-    GREATER_THAN_OR_EQUAL = "gte"
-    LESS_THAN = "lt"
-    LESS_THAN_OR_EQUAL = "lte"
