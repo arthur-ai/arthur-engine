@@ -1,7 +1,11 @@
-from typing import Any, Optional
-from arthur_client.api_bindings import DataResultFilter, DataResultFilterOp
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-# Constants moved from shield_connector.py
+from arthur_client.api_bindings import DataResultFilter, DataResultFilterOp
+from arthur_common.models.enums import ToolClassEnum
+from arthur_common.models.request_schemas import TraceQueryRequest
+
+# Constants for backward compatibility
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
 SHIELD_ALLOWED_FILTERS = {
@@ -17,30 +21,88 @@ SHIELD_ALLOWED_FILTERS = {
     "page_size": int,
 }
 
-# OpenInference span kinds (from openinference.semconv.trace import OpenInferenceSpanKindValues)
-VALID_SPAN_KINDS = [
-    "TOOL", "CHAIN", "LLM", "RETRIEVER", "EMBEDDING", 
-    "AGENT", "RERANKER", "UNKNOWN", "GUARDRAIL", "EVALUATOR"
-]
 
-COMPARISON_OPS = [DataResultFilterOp.EQUALS, DataResultFilterOp.GREATER_THAN,
-                       DataResultFilterOp.GREATER_THAN_OR_EQUAL, DataResultFilterOp.LESS_THAN,
-                       DataResultFilterOp.LESS_THAN_OR_EQUAL]
+def _map_comparison_operator_to_suffix(op: DataResultFilterOp) -> Optional[str]:
+    """Map DataResultFilterOp to TraceQueryRequest field suffix.
 
-AGENTIC_COMPARISON_FILTER_FIELDS = ["query_relevance", "response_relevance", "trace_duration"]
+    Args:
+        op: The comparison operator from DataResultFilter
 
-# Supported agentic filters
-AGENTIC_FILTER_SUPPORT = {
-    "trace_ids": [DataResultFilterOp.EQUALS, DataResultFilterOp.IN],
-    "tool_name": [DataResultFilterOp.EQUALS],
-    "span_types": [DataResultFilterOp.IN, DataResultFilterOp.EQUALS],
-    "query_relevance": COMPARISON_OPS,
-    "response_relevance": COMPARISON_OPS,
-    "trace_duration": COMPARISON_OPS,
-    "tool_selection": [DataResultFilterOp.EQUALS],
-    "tool_usage": [DataResultFilterOp.EQUALS],
-    **{field: COMPARISON_OPS for field in AGENTIC_COMPARISON_FILTER_FIELDS},
-}
+    Returns:
+        The corresponding suffix for TraceQueryRequest fields, or None if not supported
+
+    Examples:
+        _map_comparison_operator_to_suffix(DataResultFilterOp.GREATER_THAN) -> "_gt"
+        _map_comparison_operator_to_suffix(DataResultFilterOp.LESS_THAN_OR_EQUAL) -> "_lte"
+    """
+    suffix_map = {
+        DataResultFilterOp.EQUALS: "_eq",
+        DataResultFilterOp.GREATER_THAN: "_gt",
+        DataResultFilterOp.GREATER_THAN_OR_EQUAL: "_gte",
+        DataResultFilterOp.LESS_THAN: "_lt",
+        DataResultFilterOp.LESS_THAN_OR_EQUAL: "_lte",
+    }
+    return suffix_map.get(op)
+
+
+def build_validated_filter_params(
+    task_ids: list[str],
+    filters: list[DataResultFilter],
+    start_time: datetime,
+    end_time: datetime,
+) -> Dict[str, Any]:
+    """Build and validate filter parameters, returning only the filter fields.
+
+    Uses TraceQueryRequest for validation but returns only the filter parameters
+    that should be passed to the API (excludes task_ids, start_time, end_time).
+    """
+
+    # Build filter parameters
+    filter_params = {}
+
+    # Map DataResultFilter to TraceQueryRequest fields
+    for filter_item in filters:
+        field_name = filter_item.field_name
+        op = filter_item.op
+        value = filter_item.value
+
+        # Handle comparison operators for relevance and duration fields
+        if field_name in ["query_relevance", "response_relevance", "trace_duration"]:
+            suffix = _map_comparison_operator_to_suffix(op)
+            if suffix:
+                filter_params[f"{field_name}{suffix}"] = value
+
+        # Handle direct mapping fields
+        elif field_name in ["tool_name", "span_types", "trace_ids"]:
+            if op == DataResultFilterOp.EQUALS:
+                if field_name == "trace_ids":
+                    filter_params[field_name] = (
+                        [value] if isinstance(value, str) else value
+                    )
+                else:
+                    filter_params[field_name] = value
+            elif op == DataResultFilterOp.IN:
+                filter_params[field_name] = value
+
+        # Handle tool classification enums
+        elif field_name in ["tool_selection", "tool_usage"]:
+            if op == DataResultFilterOp.EQUALS:
+                # Convert to ToolClassEnum if needed
+                if isinstance(value, int):
+                    filter_params[field_name] = ToolClassEnum(value)
+                else:
+                    filter_params[field_name] = value
+
+    # Validate all parameters by creating TraceQueryRequest (this will raise ValidationError if invalid)
+    TraceQueryRequest(
+        task_ids=task_ids,
+        start_time=start_time,
+        end_time=end_time,
+        **filter_params,
+    )
+
+    # Return only the filter parameters
+    return filter_params
 
 
 def validate_filters(
@@ -48,42 +110,35 @@ def validate_filters(
     is_agentic: bool = False,
 ) -> list[DataResultFilter]:
     """Validate filters for agentic or non-agentic datasets."""
-    allowed_filters = []
-    for filter in filters:
-        if is_agentic:
-            # For agentic datasets, validate against agentic filter support
-            if filter.field_name in AGENTIC_FILTER_SUPPORT:
-                _validate_agentic_filter(filter)
-                allowed_filters.append(filter)
-            elif filter.field_name in SHIELD_ALLOWED_FILTERS.keys():
-                # Fall back to basic Shield validation for non-agentic filters
-                if _validate_basic_shield_filter(filter):
-                    allowed_filters.append(filter)
-            # Skip unsupported filters silently - let caller handle logging
-        else:
-            # For non-agentic datasets, use existing validation
-            if _validate_basic_shield_filter(filter):
-                allowed_filters.append(filter)
-    
-    return allowed_filters
+    if not is_agentic:
+        # Keep existing non-agentic validation
+        return [f for f in filters if _validate_basic_shield_filter(f)]
 
-def _validate_basic_shield_filter(filter: DataResultFilter) -> bool:
-    """Existing basic Shield filter validation."""
-    if filter.field_name not in SHIELD_ALLOWED_FILTERS.keys():
+    # For agentic filters, validation happens through TraceQueryRequest
+    return filters
+
+
+def _validate_basic_shield_filter(filter_item: DataResultFilter) -> bool:
+    """Basic Shield filter validation for non-agentic datasets."""
+    if filter_item.field_name not in SHIELD_ALLOWED_FILTERS.keys():
         return False
-    
-    if not isinstance(filter.value, SHIELD_ALLOWED_FILTERS[filter.field_name]):
+
+    if not isinstance(
+        filter_item.value,
+        SHIELD_ALLOWED_FILTERS[filter_item.field_name],
+    ):
         return False
-    
-    if filter.op != DataResultFilterOp.EQUALS:
+
+    if filter_item.op != DataResultFilterOp.EQUALS:
         return False
-    
+
     return True
+
 
 def add_default_sort_filter(
     filters: Optional[list[DataResultFilter]],
 ) -> list[DataResultFilter]:
-    """Add default sort descending filter if not overridden in user-defined list of filters."""
+    """Add default sort descending filter if not overridden."""
     if not filters:
         filters = [
             DataResultFilter(
@@ -104,116 +159,4 @@ def add_default_sort_filter(
                     value=SHIELD_SORT_DESC,
                 ),
             )
-
     return filters
-
-def _is_agentic_filter_supported(filter: DataResultFilter) -> bool:
-    """Check if filter is supported for agentic datasets."""
-    field_name = filter.field_name
-    op = filter.op
-    
-    # Check if field is supported
-    if field_name not in AGENTIC_FILTER_SUPPORT:
-        return False
-    
-    # Check if operator is supported for this field
-    return op in AGENTIC_FILTER_SUPPORT[field_name]
-
-def _validate_agentic_filter(filter: DataResultFilter) -> None:
-    """Validate agentic filter - raise errors for invalid filters."""
-    field_name = filter.field_name
-    op = filter.op
-    value = filter.value
-    
-    # Check field/operator support
-    if not _is_agentic_filter_supported(filter):
-        supported_ops = AGENTIC_FILTER_SUPPORT.get(field_name, [])
-        if supported_ops:
-            # Case where the field is supported, but the operator is not
-            raise ValueError(
-                f"Filter '{field_name}' with operator '{op}' is not supported. "
-                f"Supported operators for {field_name}: {supported_ops}"
-            )
-        else:
-            # Case where the field is not supported at all
-            raise ValueError(f"Filter field '{field_name}' is not supported for agentic datasets.")
-    
-    # Validate values
-    _validate_agentic_filter_value(field_name, value)
-
-def _validate_list_of_strings(field_name: str, value: any, allow_single_string: bool = False) -> None:
-    """Validate that a value is a list of strings, optionally allowing a single string."""
-    if allow_single_string and isinstance(value, str):
-        if not value.strip():
-            raise ValueError(f"{field_name} cannot be empty string")
-        return
-    
-    if not isinstance(value, list):
-        if allow_single_string:
-            raise ValueError(f"{field_name} must be a string or list of strings, got {type(value)}")
-        else:
-            raise ValueError(f"{field_name} must be a list of strings, got {type(value)}")
-    
-    if not all(isinstance(item, str) for item in value):
-        raise ValueError(f"{field_name} must be a list of strings, got {value}")
-    
-    if not value:  # Empty list
-        raise ValueError(f"{field_name} cannot be empty")
-
-def _validate_agentic_filter_value(field_name: str, value: any) -> None:
-    """Validate filter values with specific error messages."""
-    if field_name in ["query_relevance", "response_relevance"]:
-        if not isinstance(value, (int, float)) or not (0.0 <= value <= 1.0):
-            raise ValueError(f"{field_name} must be a number between 0.0 and 1.0, got {value}")
-    
-    elif field_name == "trace_duration":
-        if not isinstance(value, (int, float)) or value <= 0:
-            raise ValueError(f"trace_duration must be a positive number, got {value}")
-    
-    elif field_name == "span_types":
-        _validate_list_of_strings(field_name, value, allow_single_string=False)
-        
-        invalid_types = [t for t in value if t not in VALID_SPAN_KINDS]
-        if invalid_types:
-            raise ValueError(f"Invalid span_types: {invalid_types}. Valid values: {VALID_SPAN_KINDS}")
-    
-    elif field_name in ["tool_selection", "tool_usage"]:
-        if value not in [0, 1, 2]:
-            raise ValueError(f"{field_name} must be 0, 1, or 2, got {value}")
-    
-    elif field_name == "trace_ids":
-        _validate_list_of_strings(field_name, value, allow_single_string=True)
-
-def map_agentic_filter_to_parameter(filter: DataResultFilter) -> tuple[str, any]:
-    """Map DataResultFilter to GenAI Engine API parameter."""
-    field_name = filter.field_name
-    op = filter.op
-    value = filter.value
-    
-    # Comparison field mapping (add operator suffix)
-    if field_name in ["query_relevance", "response_relevance", "trace_duration"]:
-        suffix_map = {
-            DataResultFilterOp.EQUALS: "_eq",
-            DataResultFilterOp.GREATER_THAN: "_gt", 
-            DataResultFilterOp.GREATER_THAN_OR_EQUAL: "_gte",
-            DataResultFilterOp.LESS_THAN: "_lt",
-            DataResultFilterOp.LESS_THAN_OR_EQUAL: "_lte"
-        }
-        return f"{field_name}{suffix_map[op]}", value
-    
-    # Direct mapping fields
-    elif field_name in ["span_types", "tool_name", "tool_selection", "tool_usage", "trace_ids"]:
-        return field_name, value
-    
-    return None, None
-
-def build_agentic_filter_parameters(filters: list[DataResultFilter]) -> dict[str, any]:
-    """Build GenAI Engine parameters from validated filters."""
-    params = {}
-    
-    for filter in filters:
-        param_name, param_value = map_agentic_filter_to_parameter(filter)
-        if param_name and param_value is not None:
-            params[param_name] = param_value
-    
-    return params

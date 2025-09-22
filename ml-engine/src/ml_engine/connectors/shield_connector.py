@@ -2,7 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from logging import Logger
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import genai_client.exceptions
@@ -13,7 +13,6 @@ from arthur_client.api_bindings import (
     ConnectorCheckResult,
     ConnectorSpec,
     DataResultFilter,
-    DataResultFilterOp,
     Dataset,
     DatasetLocator,
     DatasetLocatorField,
@@ -56,13 +55,14 @@ from genai_client.models import (
     SearchTasksRequest,
     UpdateRuleRequest,
 )
-from tools.api_client_type_converters import ShieldClientTypeConverter
+from pydantic import ValidationError
 from tools.agentic_filters import (
-    add_default_sort_filter,
-    build_agentic_filter_parameters,
-    validate_filters,
     SHIELD_SORT_FILTER,
+    add_default_sort_filter,
+    build_validated_filter_params,
+    validate_filters,
 )
+from tools.api_client_type_converters import ShieldClientTypeConverter
 
 SHIELD_MAX_PAGE_SIZE = 1500
 
@@ -102,7 +102,6 @@ class ShieldBaseConnector(Connector, ABC):
         if endpoint_components.port:
             return f"{endpoint_components.scheme}://{endpoint_components.hostname}:{endpoint_components.port}"
         return f"{endpoint_components.scheme}://{endpoint_components.hostname}"
-
 
     def read(
         self,
@@ -153,29 +152,42 @@ class ShieldBaseConnector(Connector, ABC):
 
         resp: Any = None
 
-        # Build filter parameters for agentic datasets
-        filter_params = {}
-        if is_agentic and filters:
-            # Map to GenAI Engine parameters
-            filter_params = build_agentic_filter_parameters(filters)
-            self.logger.info(f"Applying {len(filter_params)} filter parameters to GenAI Engine")
-
         while True:
             if is_agentic:
-                self.logger.info(f"Fetching page {params['page']} of traces")
-                resp = (
-                    self._spans_client.query_spans_v1_traces_query_get_with_http_info(
+                try:
+                    # Build and validate filter parameters directly
+                    filter_params = build_validated_filter_params(
+                        task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
+                        filters=filters or [],
+                        start_time=start_time,
+                        end_time=end_time,
+                    )
+
+                    self.logger.info(
+                        f"Fetching page {params['page']} of traces with {len(filter_params)} filters",
+                    )
+                    resp = self._spans_client.query_spans_v1_traces_query_get_with_http_info(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
                         start_time=start_time,
                         end_time=end_time,
                         page=params["page"],
                         page_size=params["page_size"],
                         sort=params.get(SHIELD_SORT_FILTER),
-                        
-                        # Add all mapped filter parameters
-                        **filter_params
+                        **filter_params,  # Only the validated filter parameters
                     )
-                )
+
+                except ValidationError as e:
+                    # Rich validation errors from TraceQueryRequest
+                    error_details = []
+                    for error in e.errors():
+                        field = error["loc"][0] if error["loc"] else "unknown"
+                        msg = error["msg"]
+                        error_details.append(f"Field '{field}': {msg}")
+
+                    self.logger.error(f"Trace query validation failed: {error_details}")
+                    raise ValueError(
+                        f"Invalid trace query filters: {'; '.join(error_details)}",
+                    )
 
             else:
                 # use raw http info so we can load JSON directly to avoid API types
