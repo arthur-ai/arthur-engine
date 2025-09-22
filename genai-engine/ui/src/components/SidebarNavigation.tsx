@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
 interface SidebarNavigationProps {
   onBackToDashboard: () => void;
@@ -25,41 +25,47 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   onBackToDashboard,
   onNavigate,
   onLogout,
-  activeSection = 'task-details'
+  activeSection = "task-details",
 }) => {
   const navigationSections: NavigationSection[] = [
     {
-      id: 'observability',
-      label: 'Observability',
+      id: "observability",
+      label: "Observability",
       items: [
-        { id: 'traces', label: 'Traces' },
-        { id: 'retrievals', label: 'Retrievals' },
-      ]
+        { id: "traces", label: "Traces" },
+        { id: "retrievals", label: "Retrievals" },
+      ],
     },
     {
-      id: 'evaluations',
-      label: 'Evaluations',
+      id: "evaluations",
+      label: "Evaluations",
       items: [
-        { id: 'evaluators', label: 'Evaluators' },
-        { id: 'datasets', label: 'Datasets' },
-      ]
+        { id: "evaluators", label: "Evaluators" },
+        { id: "datasets", label: "Datasets" },
+      ],
     },
     {
-      id: 'experiments',
-      label: 'Experiments',
+      id: "experiments",
+      label: "Experiments",
       items: [
-        { id: 'prompt-experiments', label: 'Prompt Experiments' },
-        { id: 'rag-experiments', label: 'RAG Experiments' },
-        { id: 'agent-experiments', label: 'Agent Experiments' },
-      ]
+        { id: "prompt-experiments", label: "Prompt Experiments" },
+        { id: "rag-experiments", label: "RAG Experiments" },
+        { id: "agent-experiments", label: "Agent Experiments" },
+      ],
     },
+      {
+        id: "playgrounds",
+        label: "Playgrounds",
+        items: [
+          { id: "playgrounds/prompts", label: "Prompts" },
+          { id: "playgrounds/retrievals", label: "Retrievals" },
+        ],
+      },
     {
-      id: 'settings',
-      label: 'Settings',
-      items: [
-        { id: 'task-details', label: 'Task Details' },
-      ]
-    }
+      id: "settings",
+      label: "Settings",
+      items: [{ id: "task-details", label: "Task Details" }],
+    },
   ];
 
   return (
@@ -91,8 +97,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
                         onClick={() => onNavigate(item.id)}
                         className={`w-full text-left px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
                           isActive
-                            ? 'text-blue-700 bg-blue-50'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            ? "text-blue-700 bg-blue-50"
+                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                       >
                         {item.label}

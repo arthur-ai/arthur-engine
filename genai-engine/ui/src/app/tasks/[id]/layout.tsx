@@ -1,15 +1,19 @@
-'use client';
+"use client";
 
-import { useParams, useRouter, useSelectedLayoutSegment } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { useApi } from '@/hooks/useApi';
-import { useAuth } from '@/contexts/AuthContext';
-import { TaskResponse } from '@/lib/api';
-import { SidebarNavigation } from '@/components/SidebarNavigation';
-import { TaskLoadingState } from '@/components/TaskLoadingState';
-import { TaskErrorState } from '@/components/TaskErrorState';
-import { TaskNotFoundState } from '@/components/TaskNotFoundState';
-import { TaskProvider } from '@/contexts/TaskContext';
+import {
+  useParams,
+  useRouter,
+  useSelectedLayoutSegment,
+} from "next/navigation";
+import { useState, useEffect } from "react";
+import { useApi } from "@/hooks/useApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { TaskResponse } from "@/lib/api";
+import { SidebarNavigation } from "@/components/SidebarNavigation";
+import { TaskLoadingState } from "@/components/TaskLoadingState";
+import { TaskErrorState } from "@/components/TaskErrorState";
+import { TaskNotFoundState } from "@/components/TaskNotFoundState";
+import { TaskProvider } from "@/contexts/TaskContext";
 
 interface TaskLayoutProps {
   children: React.ReactNode;
@@ -27,27 +31,29 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
 
   const taskId = params.id as string;
   // Map the current route to the active section
-  const activeSection = selectedLayoutSegment || 'task-details';
+  const activeSection = selectedLayoutSegment || "task-details";
 
   // Map section IDs to display titles
   const getPageTitle = (section: string): string => {
     const titleMap: Record<string, string> = {
-      'task-details': 'Task Details',
-      'traces': 'Traces',
-      'retrievals': 'Retrievals',
-      'evaluators': 'Evaluators',
-      'datasets': 'Datasets',
-      'prompt-experiments': 'Prompt Experiments',
-      'rag-experiments': 'RAG Experiments',
-      'agent-experiments': 'Agent Experiments',
+      "task-details": "Task Details",
+      traces: "Traces",
+      retrievals: "Retrievals",
+      evaluators: "Evaluators",
+      datasets: "Datasets",
+      "prompt-experiments": "Prompt Experiments",
+      "rag-experiments": "RAG Experiments",
+      "agent-experiments": "Agent Experiments",
+      "playgrounds/prompts": "Prompts Playground",
+      "playgrounds/retrievals": "Retrievals Playground",
     };
-    return titleMap[section] || 'Task Details';
+    return titleMap[section] || "Task Details";
   };
 
   useEffect(() => {
     const fetchTask = async () => {
       if (!api || !taskId) {
-        setError('API client not available or task ID missing');
+        setError("API client not available or task ID missing");
         setLoading(false);
         return;
       }
@@ -55,13 +61,13 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
       try {
         setLoading(true);
         setError(null);
-        
+
         // Use the direct get task by ID API endpoint
         const response = await api.api.getTaskApiV2TasksTaskIdGet(taskId);
         setTask(response.data);
       } catch (err) {
-        console.error('Failed to fetch task:', err);
-        setError('Failed to load task details');
+        console.error("Failed to fetch task:", err);
+        setError("Failed to load task details");
       } finally {
         setLoading(false);
       }
@@ -75,12 +81,12 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
   };
 
   const handleBack = () => {
-    router.push('/');
+    router.push("/");
   };
 
   if (loading) {
     return (
-      <TaskLoadingState 
+      <TaskLoadingState
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
         onNavigate={(sectionId) => router.push(`/tasks/${taskId}/${sectionId}`)}
@@ -91,7 +97,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
 
   if (error) {
     return (
-      <TaskErrorState 
+      <TaskErrorState
         error={error}
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
@@ -103,7 +109,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
 
   if (!task) {
     return (
-      <TaskNotFoundState 
+      <TaskNotFoundState
         onBackToDashboard={handleBack}
         onLogout={handleLogout}
         onNavigate={(sectionId) => router.push(`/tasks/${taskId}/${sectionId}`)}
@@ -127,7 +133,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
         </header>
 
         <div className="flex flex-1">
-          <SidebarNavigation 
+          <SidebarNavigation
             onBackToDashboard={handleBack}
             onNavigate={(sectionId) => {
               // Navigate to the appropriate route
@@ -137,9 +143,7 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
             activeSection={activeSection}
           />
 
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+          <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
     </TaskProvider>
