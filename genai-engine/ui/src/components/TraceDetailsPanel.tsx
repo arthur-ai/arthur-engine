@@ -25,6 +25,33 @@ interface SpanNodeProps {
   selectedSpanId: string | undefined;
 }
 
+// Shared utility functions
+const getInputTokens = (span: NestedSpanWithMetricsResponse) => {
+  if (span.raw_data && span.raw_data.attributes) {
+    const inputTokens =
+      span.raw_data.attributes[SemanticConventions.LLM_TOKEN_COUNT_PROMPT];
+    return inputTokens ? parseInt(inputTokens) : 0;
+  }
+  return 0;
+};
+
+const getOutputTokens = (span: NestedSpanWithMetricsResponse) => {
+  if (span.raw_data && span.raw_data.attributes) {
+    const outputTokens =
+      span.raw_data.attributes[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION];
+    return outputTokens ? parseInt(outputTokens) : 0;
+  }
+  return 0;
+};
+
+const getSpanTotalCost = (span: NestedSpanWithMetricsResponse) => {
+  if (span.raw_data && span.raw_data.attributes) {
+    const cost = span.raw_data.attributes[SemanticConventions.LLM_COST_TOTAL];
+    return cost ? parseFloat(cost) : 0;
+  }
+  return 0;
+};
+
 const SpanNode: React.FC<SpanNodeProps> = ({
   span,
   level,
@@ -55,8 +82,7 @@ const SpanNode: React.FC<SpanNodeProps> = ({
     // Try to get input tokens from various possible locations
     if (span.raw_data && span.raw_data.attributes) {
       const inputTokens =
-        span.raw_data.attributes["input.tokens"] ||
-        span.raw_data.attributes["llm.usage.prompt_tokens"];
+        span.raw_data.attributes[SemanticConventions.LLM_TOKEN_COUNT_PROMPT];
       return inputTokens ? parseInt(inputTokens) : 0;
     }
     return 0;
@@ -66,8 +92,9 @@ const SpanNode: React.FC<SpanNodeProps> = ({
     // Try to get output tokens from various possible locations
     if (span.raw_data && span.raw_data.attributes) {
       const outputTokens =
-        span.raw_data.attributes["output.tokens"] ||
-        span.raw_data.attributes["llm.usage.completion_tokens"];
+        span.raw_data.attributes[
+          SemanticConventions.LLM_TOKEN_COUNT_COMPLETION
+        ];
       return outputTokens ? parseInt(outputTokens) : 0;
     }
     return 0;
@@ -222,9 +249,9 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     if (
       span.raw_data &&
       span.raw_data.attributes &&
-      span.raw_data.attributes["input.value"]
+      span.raw_data.attributes[SemanticConventions.INPUT_VALUE]
     ) {
-      return span.raw_data.attributes["input.value"];
+      return span.raw_data.attributes[SemanticConventions.INPUT_VALUE];
     }
     return "No input data";
   };
@@ -233,9 +260,9 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     if (
       span.raw_data &&
       span.raw_data.attributes &&
-      span.raw_data.attributes["output.value"]
+      span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE]
     ) {
-      return span.raw_data.attributes["output.value"];
+      return span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE];
     }
     return "No output data";
   };
@@ -244,9 +271,9 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     if (
       span.raw_data &&
       span.raw_data.attributes &&
-      span.raw_data.attributes["input.mime_type"]
+      span.raw_data.attributes[SemanticConventions.INPUT_MIME_TYPE]
     ) {
-      return span.raw_data.attributes["input.mime_type"];
+      return span.raw_data.attributes[SemanticConventions.INPUT_MIME_TYPE];
     }
     return null;
   };
@@ -255,9 +282,9 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     if (
       span.raw_data &&
       span.raw_data.attributes &&
-      span.raw_data.attributes["output.mime_type"]
+      span.raw_data.attributes[SemanticConventions.OUTPUT_MIME_TYPE]
     ) {
-      return span.raw_data.attributes["output.mime_type"];
+      return span.raw_data.attributes[SemanticConventions.OUTPUT_MIME_TYPE];
     }
     return null;
   };
@@ -269,26 +296,6 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     } catch {
       return content;
     }
-  };
-
-  const getInputTokens = (span: NestedSpanWithMetricsResponse) => {
-    if (span.raw_data && span.raw_data.attributes) {
-      const inputTokens =
-        span.raw_data.attributes["input.tokens"] ||
-        span.raw_data.attributes["llm.usage.prompt_tokens"];
-      return inputTokens ? parseInt(inputTokens) : 0;
-    }
-    return 0;
-  };
-
-  const getOutputTokens = (span: NestedSpanWithMetricsResponse) => {
-    if (span.raw_data && span.raw_data.attributes) {
-      const outputTokens =
-        span.raw_data.attributes["output.tokens"] ||
-        span.raw_data.attributes["llm.usage.completion_tokens"];
-      return outputTokens ? parseInt(outputTokens) : 0;
-    }
-    return 0;
   };
 
   const inputTokens = getInputTokens(span);
@@ -480,6 +487,14 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
     return 0;
   };
 
+  const getTotalCost = (trace: TraceResponse) => {
+    if (trace.root_spans && trace.root_spans.length > 0) {
+      const span = trace.root_spans[0];
+      return getSpanTotalCost(span);
+    }
+    return 0;
+  };
+
   const handleSpanClick = (span: NestedSpanWithMetricsResponse) => {
     setSelectedSpan(span);
   };
@@ -556,7 +571,9 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
                 </div>
                 <div>
                   <span className="text-gray-600">Total Cost:</span>
-                  <span className="ml-1 text-gray-900">$0.00000</span>
+                  <span className="ml-1 text-gray-900">
+                    ${getTotalCost(trace).toFixed(5)}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-600">Token Counts:</span>
