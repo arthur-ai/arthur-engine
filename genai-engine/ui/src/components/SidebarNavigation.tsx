@@ -49,7 +49,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
       label: "Experiments",
       items: [
         { id: "prompt-experiments", label: "Prompt Experiments" },
-        { id: "rag-experiments", label: "RAG Experiments" },
+        { id: "rag-experiments", label: "Retrieval Experiments" },
         { id: "agent-experiments", label: "Agent Experiments" },
       ],
     },
