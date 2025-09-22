@@ -217,101 +217,98 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
   const totalTokens = inputTokens + outputTokens;
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold mb-2 text-gray-900">
-          {span.span_name}
-        </h2>
-        <p className="text-gray-600 text-sm mb-4">{span.span_id}</p>
+    <div className="h-full overflow-y-auto">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div>
+          <h2 className="text-xl font-semibold mb-2 text-gray-900">
+            {span.span_name}
+          </h2>
+          <p className="text-gray-600 text-sm mb-4">{span.span_id}</p>
 
-        {/* Metrics */}
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Duration:</span>
-            <span className="ml-1 text-gray-900">
-              {formatDuration(span.start_time, span.end_time)}
-            </span>
+          {/* Metrics */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Duration:</span>
+              <span className="ml-1 text-gray-900">
+                {formatDuration(span.start_time, span.end_time)}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-600">Start Time:</span>
+              <span className="ml-1 text-gray-900">
+                {formatTimestamp(span.start_time)}
+              </span>
+            </div>
+            {totalTokens > 0 && (
+              <>
+                <div>
+                  <span className="text-gray-600">Input Tokens:</span>
+                  <span className="ml-1 text-gray-900">
+                    {inputTokens.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Output Tokens:</span>
+                  <span className="ml-1 text-gray-900">
+                    {outputTokens.toLocaleString()}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
-          <div>
-            <span className="text-gray-600">Start Time:</span>
-            <span className="ml-1 text-gray-900">
-              {formatTimestamp(span.start_time)}
-            </span>
-          </div>
-          {totalTokens > 0 && (
-            <>
-              <div>
-                <span className="text-gray-600">Input Tokens:</span>
-                <span className="ml-1 text-gray-900">
-                  {inputTokens.toLocaleString()}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Output Tokens:</span>
-                <span className="ml-1 text-gray-900">
-                  {outputTokens.toLocaleString()}
-                </span>
-              </div>
-            </>
-          )}
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="space-y-6">
-          {/* Input/Output */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Input</h3>
-            <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
-              {getInputContent(span)}
-            </div>
+        {/* Input/Output */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Input</h3>
+          <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
+            {getInputContent(span)}
           </div>
+        </div>
 
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Output</h3>
-            <div className="bg-gray-100 p-3 rounded text-sm text-gray-900 whitespace-pre-wrap">
-              {getOutputContent(span)}
-            </div>
+        <div>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Output</h3>
+          <div className="bg-gray-100 p-3 rounded text-sm text-gray-900 whitespace-pre-wrap">
+            {getOutputContent(span)}
           </div>
+        </div>
 
-          {/* Metadata */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-2">Metadata</h3>
-            <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
-              <div className="space-y-2">
-                <div className="flex">
-                  <span className="text-gray-600 w-24">Span ID:</span>
-                  <span className="font-mono text-xs text-gray-900">
-                    {span.span_id}
-                  </span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 w-24">Span Name:</span>
-                  <span className="text-gray-900">{span.span_name}</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 w-24">Start Time:</span>
-                  <span className="font-mono text-xs text-gray-900">
-                    {span.start_time}
-                  </span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 w-24">End Time:</span>
-                  <span className="font-mono text-xs text-gray-900">
-                    {span.end_time}
-                  </span>
-                </div>
-                {span.raw_data && span.raw_data.attributes && (
-                  <div>
-                    <span className="text-gray-600">Attributes:</span>
-                    <pre className="mt-1 text-xs bg-white p-2 rounded overflow-x-auto text-gray-900 border">
-                      {JSON.stringify(span.raw_data.attributes, null, 2)}
-                    </pre>
-                  </div>
-                )}
+        {/* Metadata */}
+        <div>
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Metadata</h3>
+          <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
+            <div className="space-y-2">
+              <div className="flex">
+                <span className="text-gray-600 w-24">Span ID:</span>
+                <span className="font-mono text-xs text-gray-900">
+                  {span.span_id}
+                </span>
               </div>
+              <div className="flex">
+                <span className="text-gray-600 w-24">Span Name:</span>
+                <span className="text-gray-900">{span.span_name}</span>
+              </div>
+              <div className="flex">
+                <span className="text-gray-600 w-24">Start Time:</span>
+                <span className="font-mono text-xs text-gray-900">
+                  {span.start_time}
+                </span>
+              </div>
+              <div className="flex">
+                <span className="text-gray-600 w-24">End Time:</span>
+                <span className="font-mono text-xs text-gray-900">
+                  {span.end_time}
+                </span>
+              </div>
+              {span.raw_data && span.raw_data.attributes && (
+                <div>
+                  <span className="text-gray-600">Attributes:</span>
+                  <pre className="mt-1 text-xs bg-white p-2 rounded overflow-x-auto text-gray-900 border">
+                    {JSON.stringify(span.raw_data.attributes, null, 2)}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -415,7 +412,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
 
           {/* Panel */}
           <motion.div
-            className="absolute right-0 top-0 h-full w-4/5 bg-white text-gray-900 shadow-xl"
+            className="absolute right-0 top-0 h-full w-4/5 bg-white text-gray-900 shadow-xl flex flex-col"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -505,10 +502,10 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
             </div>
 
             {/* Two-panel layout */}
-            <div className="flex h-full">
+            <div className="flex flex-1 min-h-0">
               {/* Left panel - Trace tree */}
-              <div className="w-1/2 border-r border-gray-200 overflow-y-auto">
-                <div className="p-4">
+              <div className="w-1/2 border-r border-gray-200 flex flex-col">
+                <div className="p-4 flex-1 overflow-y-auto">
                   <h3 className="text-sm font-medium text-gray-600 mb-4">
                     Trace
                   </h3>
@@ -531,7 +528,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
               </div>
 
               {/* Right panel - Span details */}
-              <div className="w-1/2">
+              <div className="w-1/2 flex flex-col min-h-0">
                 <SpanDetails span={selectedSpan} />
               </div>
             </div>
