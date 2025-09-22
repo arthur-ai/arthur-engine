@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
+import {
+  OpenInferenceSpanKind,
+  SemanticConventions,
+} from "@arizeai/openinference-semantic-conventions";
 
 interface TraceDetailsPanelProps {
   trace: TraceResponse | null;
@@ -69,9 +73,44 @@ const SpanNode: React.FC<SpanNodeProps> = ({
     return 0;
   };
 
+  const getSpanType = (span: NestedSpanWithMetricsResponse) => {
+    if (span.raw_data && span.raw_data.attributes) {
+      return span.raw_data.attributes[
+        SemanticConventions.OPENINFERENCE_SPAN_KIND
+      ];
+    }
+    return null;
+  };
+
+  const getSpanTypeColor = (spanType: string | null) => {
+    switch (spanType) {
+      case OpenInferenceSpanKind.LLM:
+        return "text-blue-600";
+      case OpenInferenceSpanKind.RETRIEVER:
+        return "text-green-600";
+      case OpenInferenceSpanKind.EMBEDDING:
+        return "text-purple-600";
+      case OpenInferenceSpanKind.CHAIN:
+        return "text-orange-600";
+      case OpenInferenceSpanKind.AGENT:
+        return "text-red-600";
+      case OpenInferenceSpanKind.TOOL:
+        return "text-yellow-600";
+      case OpenInferenceSpanKind.RERANKER:
+        return "text-indigo-600";
+      case OpenInferenceSpanKind.GUARDRAIL:
+        return "text-red-700";
+      case OpenInferenceSpanKind.EVALUATOR:
+        return "text-green-700";
+      default:
+        return "text-gray-600";
+    }
+  };
+
   const inputTokens = getInputTokens(span);
   const outputTokens = getOutputTokens(span);
   const totalTokens = inputTokens + outputTokens;
+  const spanType = getSpanType(span);
 
   return (
     <div className="ml-4">
@@ -92,6 +131,15 @@ const SpanNode: React.FC<SpanNodeProps> = ({
         {!hasChildren && <div className="mr-2 w-4" />}
 
         <div className="flex-1">
+          {spanType && (
+            <span
+              className={`mr-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 ${getSpanTypeColor(
+                spanType
+              )}`}
+            >
+              {spanType}
+            </span>
+          )}
           <span className="text-gray-900 font-medium">{span.span_name}</span>
           <span className="text-gray-600 ml-2">
             ({formatDuration(span.start_time, span.end_time)})

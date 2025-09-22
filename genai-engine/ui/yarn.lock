@@ -7,6 +7,11 @@
   resolved "https://registry.npmjs.org/@alloc/quick-lru/-/quick-lru-5.2.0.tgz"
   integrity sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==
 
+"@arizeai/openinference-semantic-conventions@^2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@arizeai/openinference-semantic-conventions/-/openinference-semantic-conventions-2.1.1.tgz#397dbba57a3f51017e4a485e22339edaab73aaef"
+  integrity sha512-dU1IJDqktU4nI1NsD7E6uveRYGejM7+pB8F3CxAAgMQ2/DVj08/gDMW6tZHYrOTfUsVuTEAvzZBZMP75Pckexg==
+
 "@biomejs/js-api@3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@biomejs/js-api/-/js-api-3.0.0.tgz#19d891dc01e858e812b543ea354151367a878085"
