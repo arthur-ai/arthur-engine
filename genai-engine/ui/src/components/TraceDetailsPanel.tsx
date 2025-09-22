@@ -192,6 +192,37 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
     return "No output data";
   };
 
+  const getInputMimeType = (span: NestedSpanWithMetricsResponse) => {
+    if (
+      span.raw_data &&
+      span.raw_data.attributes &&
+      span.raw_data.attributes["input.mime_type"]
+    ) {
+      return span.raw_data.attributes["input.mime_type"];
+    }
+    return null;
+  };
+
+  const getOutputMimeType = (span: NestedSpanWithMetricsResponse) => {
+    if (
+      span.raw_data &&
+      span.raw_data.attributes &&
+      span.raw_data.attributes["output.mime_type"]
+    ) {
+      return span.raw_data.attributes["output.mime_type"];
+    }
+    return null;
+  };
+
+  const formatJsonContent = (content: string) => {
+    try {
+      const parsed = JSON.parse(content);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return content;
+    }
+  };
+
   const getInputTokens = (span: NestedSpanWithMetricsResponse) => {
     if (span.raw_data && span.raw_data.attributes) {
       const inputTokens =
@@ -215,6 +246,10 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
   const inputTokens = getInputTokens(span);
   const outputTokens = getOutputTokens(span);
   const totalTokens = inputTokens + outputTokens;
+  const inputMimeType = getInputMimeType(span);
+  const outputMimeType = getOutputMimeType(span);
+  const inputContent = getInputContent(span);
+  const outputContent = getOutputContent(span);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -263,14 +298,26 @@ const SpanDetails: React.FC<SpanDetailsProps> = ({ span }) => {
         <div>
           <h3 className="text-sm font-medium text-gray-600 mb-2">Input</h3>
           <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
-            {getInputContent(span)}
+            {inputMimeType === "application/json" ? (
+              <pre className="whitespace-pre-wrap font-mono text-xs">
+                {formatJsonContent(inputContent)}
+              </pre>
+            ) : (
+              inputContent
+            )}
           </div>
         </div>
 
         <div>
           <h3 className="text-sm font-medium text-gray-600 mb-2">Output</h3>
-          <div className="bg-gray-100 p-3 rounded text-sm text-gray-900 whitespace-pre-wrap">
-            {getOutputContent(span)}
+          <div className="bg-gray-100 p-3 rounded text-sm text-gray-900">
+            {outputMimeType === "application/json" ? (
+              <pre className="whitespace-pre-wrap font-mono text-xs">
+                {formatJsonContent(outputContent)}
+              </pre>
+            ) : (
+              <div className="whitespace-pre-wrap">{outputContent}</div>
+            )}
           </div>
         </div>
 
