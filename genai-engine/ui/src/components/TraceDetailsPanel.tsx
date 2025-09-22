@@ -499,11 +499,7 @@ export const TraceDetailsPanel: React.FC<TraceDetailsPanelProps> = ({
               </div>
 
               {/* Metrics */}
-              <div className="grid grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Env:</span>
-                  <span className="ml-1 text-gray-900">default</span>
-                </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Duration:</span>
                   <span className="ml-1 text-gray-900">
