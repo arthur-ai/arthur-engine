@@ -4,6 +4,7 @@ import {
   useParams,
   useRouter,
   useSelectedLayoutSegment,
+  usePathname,
 } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
@@ -28,10 +29,21 @@ export default function TaskLayout({ children }: TaskLayoutProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const selectedLayoutSegment = useSelectedLayoutSegment();
+  const pathname = usePathname();
 
   const taskId = params.id as string;
   // Map the current route to the active section
-  const activeSection = selectedLayoutSegment || "task-details";
+  // For playgrounds routes, we need to extract the full path segment
+  let activeSection = selectedLayoutSegment || "task-details";
+
+  // Handle playgrounds routes - extract the full path after the task ID
+  if (pathname.includes("/playgrounds/")) {
+    const pathSegments = pathname.split("/");
+    const taskIndex = pathSegments.findIndex((segment) => segment === taskId);
+    if (taskIndex !== -1 && pathSegments[taskIndex + 1] === "playgrounds") {
+      activeSection = `playgrounds/${pathSegments[taskIndex + 2]}`;
+    }
+  }
 
   // Map section IDs to display titles
   const getPageTitle = (section: string): string => {
