@@ -16,19 +16,20 @@ from arthur_client.api_bindings import (
     ConnectorSpec,
     ConnectorType,
     DataResultFilter,
+    DataResultFilterOp,
     DatasetLocator,
     DatasetLocatorField,
 )
 from arthur_common.models.connectors import ConnectorPaginationOptions
+from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
 from config.config import Config
 from connectors.shield_connector import (
-    SHIELD_SORT_DESC,
-    SHIELD_SORT_FILTER,
     EngineInternalConnector,
     ShieldBaseConnector,
     ShieldConnector,
 )
+from tools.agentic_filters import SHIELD_SORT_DESC, SHIELD_SORT_FILTER
 
 logger = logging.getLogger("job_logger")
 
@@ -652,4 +653,193 @@ def test_shield_task_and_rule_management(
     conn.delete_task(task_id)
 
     # Verify all mocked responses were called
+    urllib3_mock.assert_all_responses_called()
+
+
+def test_agentic_dataset_parameter_conversion_integration(urllib3_mock: Urllib3Mock):
+    """Test end-to-end parameter conversion for agentic datasets in the connector."""
+    end_timestamp = datetime.now(timezone.utc)
+    start_timestamp = end_timestamp - timedelta(days=1)
+
+    # Create agentic dataset
+    agentic_dataset = AvailableDataset.model_validate(
+        {
+            **MOCK_SHIELD_AVAILABLE_DATASET,
+            "model_problem_type": ModelProblemType.AGENTIC_TRACE.value,
+        },
+    )
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    # Mock the traces endpoint - we'll verify the parameters in the URL
+    expected_params = {
+        "task_ids": MOCK_SHIELD_TASK_ID,
+        "start_time": start_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "end_time": end_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "page": "0",
+        "page_size": "1500",
+        "query_relevance_gt": "0.5",
+        "tool_name": "search_tool",
+        "sort": "desc",
+    }
+
+    expected_url = f"{MOCK_SHIELD_HOST}/v1/traces/query?" + parse.urlencode(
+        expected_params,
+        doseq=True,
+    )
+
+    urllib3_mock.add_response(
+        url=expected_url,
+        text=json.dumps({"count": 0, "traces": []}),
+        method="GET",
+        status=200,
+    )
+
+    # Test with agentic filters that should be converted to proper parameters
+    filters = [
+        DataResultFilter(
+            field_name="query_relevance",
+            op=DataResultFilterOp.GREATER_THAN,
+            value=0.5,
+        ),
+        DataResultFilter(
+            field_name="tool_name",
+            op=DataResultFilterOp.EQUALS,
+            value="search_tool",
+        ),
+    ]
+
+    rows = conn.read(
+        agentic_dataset,
+        start_time=start_timestamp,
+        end_time=end_timestamp,
+        filters=filters,
+    )
+
+    # Should successfully make the call without errors
+    urllib3_mock.assert_all_responses_called()
+
+
+def test_agentic_dataset_validation_error_handling(urllib3_mock: Urllib3Mock):
+    """Test that agentic dataset validation errors are properly handled."""
+    end_timestamp = datetime.now(timezone.utc)
+    start_timestamp = end_timestamp - timedelta(days=1)
+
+    agentic_dataset = AvailableDataset.model_validate(
+        {
+            **MOCK_SHIELD_AVAILABLE_DATASET,
+            "model_problem_type": ModelProblemType.AGENTIC_TRACE.value,
+        },
+    )
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    # Invalid filters (relevance > 1.0)
+    filters = [
+        DataResultFilter(
+            field_name="query_relevance",
+            op=DataResultFilterOp.GREATER_THAN,
+            value=1.5,  # Invalid: above maximum
+        ),
+    ]
+
+    with pytest.raises(ValueError) as exc_info:
+        conn.read(
+            agentic_dataset,
+            start_time=start_timestamp,
+            end_time=end_timestamp,
+            filters=filters,
+        )
+
+    assert "Invalid trace query filters" in str(exc_info.value)
+
+
+@pytest.mark.parametrize(
+    "connector_params,expected_params",
+    [
+        # Test various agentic filter types get converted correctly
+        (
+            {
+                "query_relevance": (DataResultFilterOp.GREATER_THAN, 0.6),
+                "response_relevance": (DataResultFilterOp.LESS_THAN_OR_EQUAL, 0.8),
+                "tool_name": (DataResultFilterOp.EQUALS, "calculator"),
+            },
+            {
+                "query_relevance_gt": "0.6",
+                "response_relevance_lte": "0.8",
+                "tool_name": "calculator",
+            },
+        ),
+        (
+            {
+                "trace_duration": (DataResultFilterOp.GREATER_THAN_OR_EQUAL, 1500),
+                "span_types": (DataResultFilterOp.IN, ["LLM", "CHAIN"]),
+            },
+            {
+                "trace_duration_gte": "1500",
+                "span_types": ["LLM", "CHAIN"],
+            },
+        ),
+    ],
+)
+def test_agentic_dataset_filter_parameter_mapping(
+    urllib3_mock: Urllib3Mock,
+    connector_params,
+    expected_params,
+):
+    """Test that agentic filter parameters are correctly mapped in connector calls."""
+    end_timestamp = datetime.now(timezone.utc)
+    start_timestamp = end_timestamp - timedelta(days=1)
+
+    agentic_dataset = AvailableDataset.model_validate(
+        {
+            **MOCK_SHIELD_AVAILABLE_DATASET,
+            "model_problem_type": ModelProblemType.AGENTIC_TRACE.value,
+        },
+    )
+
+    spec = ConnectorSpec.model_validate(mock_shield_connector_spec(MOCK_SHIELD_HOST))
+    conn = ShieldConnector(spec, logger)
+
+    # Build base parameters
+    base_params = {
+        "task_ids": MOCK_SHIELD_TASK_ID,
+        "start_time": start_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "end_time": end_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+        "page": "0",
+        "page_size": "1500",
+        "sort": "desc",
+    }
+
+    # Add expected parameters
+    all_params = {**base_params, **expected_params}
+    expected_url = f"{MOCK_SHIELD_HOST}/v1/traces/query?" + parse.urlencode(
+        all_params,
+        doseq=True,
+    )
+
+    urllib3_mock.add_response(
+        url=expected_url,
+        text=json.dumps({"count": 0, "traces": []}),
+        method="GET",
+        status=200,
+    )
+
+    # Convert connector_params to filters
+    filters = [
+        DataResultFilter(field_name=field, op=op, value=value)
+        for field, (op, value) in connector_params.items()
+    ]
+
+    # This should successfully make the call with correct parameter conversion
+    conn.read(
+        agentic_dataset,
+        start_time=start_timestamp,
+        end_time=end_timestamp,
+        filters=filters,
+    )
+
+    # Verify the correct URL was called
     urllib3_mock.assert_all_responses_called()
