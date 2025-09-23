@@ -23,6 +23,8 @@ local.env
 .env.local
 .env
 
+.vscode/
+
 .pre-commit-config-no-pytest-check.yaml
 oasdiff*
 new.openapi.json

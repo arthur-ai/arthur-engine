@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.79"
+        "version": "2.1.80"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2275,8 +2275,8 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Query Spans",
-                "description": "Query spans with filters. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
+                "summary": "Query Traces",
+                "description": "Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
                 "operationId": "query_spans_v1_traces_query_get",
                 "security": [
                     {
@@ -2284,6 +2284,41 @@
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
                     {
                         "name": "task_ids",
                         "in": "query",
@@ -2320,10 +2355,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
                             "title": "Start Time"
                         },
-                        "description": "Inclusive start date in ISO8601 string format."
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "end_time",
@@ -2332,45 +2367,245 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
                             "title": "End Time"
                         },
-                        "description": "Exclusive end date in ISO8601 string format."
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
-                        "name": "sort",
+                        "name": "tool_name",
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
+                            "type": "string",
+                            "description": "Return only results with this tool name.",
+                            "title": "Tool Name"
                         },
-                        "description": "Sort the results (asc/desc)"
+                        "description": "Return only results with this tool name."
                     },
                     {
-                        "name": "page_size",
+                        "name": "span_types",
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "title": "Span Types"
                         },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
                     },
                     {
-                        "name": "page",
+                        "name": "query_relevance_eq",
                         "in": "query",
                         "required": false,
                         "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Query Relevance Eq"
                         },
-                        "description": "Page number"
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Query Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "query_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Query Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Query Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "query_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Query Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Response Relevance Eq"
+                        },
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Response Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "response_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Response Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Response Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "response_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Response Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "tool_selection",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool selection evaluation result."
+                        },
+                        "description": "Tool selection evaluation result."
+                    },
+                    {
+                        "name": "tool_usage",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool usage evaluation result."
+                        },
+                        "description": "Tool usage evaluation result."
+                    },
+                    {
+                        "name": "trace_duration_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration exactly equal to this value (seconds).",
+                            "title": "Trace Duration Eq"
+                        },
+                        "description": "Duration exactly equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than this value (seconds).",
+                            "title": "Trace Duration Gt"
+                        },
+                        "description": "Duration greater than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than or equal to this value (seconds).",
+                            "title": "Trace Duration Gte"
+                        },
+                        "description": "Duration greater than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than this value (seconds).",
+                            "title": "Trace Duration Lt"
+                        },
+                        "description": "Duration less than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than or equal to this value (seconds).",
+                            "title": "Trace Duration Lte"
+                        },
+                        "description": "Duration less than or equal to this value (seconds)."
                     }
                 ],
                 "responses": {
@@ -2402,8 +2637,8 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Query Spans With Metrics",
-                "description": "Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.",
+                "summary": "Compute Missing Metrics and Query Traces",
+                "description": "Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
                 "operationId": "query_spans_with_metrics_v1_traces_metrics__get",
                 "security": [
                     {
@@ -2411,45 +2646,6 @@
                     }
                 ],
                 "parameters": [
-                    {
-                        "name": "task_ids",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "minItems": 1,
-                            "description": "Task IDs to filter on. At least one is required.",
-                            "title": "Task Ids"
-                        },
-                        "description": "Task IDs to filter on. At least one is required."
-                    },
-                    {
-                        "name": "start_time",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
-                            "title": "Start Time"
-                        },
-                        "description": "Inclusive start date in ISO8601 string format."
-                    },
-                    {
-                        "name": "end_time",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
-                            "title": "End Time"
-                        },
-                        "description": "Exclusive end date in ISO8601 string format."
-                    },
                     {
                         "name": "sort",
                         "in": "query",
@@ -2484,6 +2680,294 @@
                             "title": "Page"
                         },
                         "description": "Page number"
+                    },
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace IDs to filter on. Optional.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tool_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this tool name.",
+                            "title": "Tool Name"
+                        },
+                        "description": "Return only results with this tool name."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "query_relevance_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Query Relevance Eq"
+                        },
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Query Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "query_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Query Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Query Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "query_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Query Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Response Relevance Eq"
+                        },
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Response Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "response_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Response Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Response Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "response_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Response Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "tool_selection",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool selection evaluation result."
+                        },
+                        "description": "Tool selection evaluation result."
+                    },
+                    {
+                        "name": "tool_usage",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool usage evaluation result."
+                        },
+                        "description": "Tool usage evaluation result."
+                    },
+                    {
+                        "name": "trace_duration_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration exactly equal to this value (seconds).",
+                            "title": "Trace Duration Eq"
+                        },
+                        "description": "Duration exactly equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than this value (seconds).",
+                            "title": "Trace Duration Gt"
+                        },
+                        "description": "Duration greater than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than or equal to this value (seconds).",
+                            "title": "Trace Duration Gte"
+                        },
+                        "description": "Duration greater than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than this value (seconds).",
+                            "title": "Trace Duration Lt"
+                        },
+                        "description": "Duration less than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than or equal to this value (seconds).",
+                            "title": "Trace Duration Lte"
+                        },
+                        "description": "Duration less than or equal to this value (seconds)."
                     }
                 ],
                 "responses": {
@@ -2560,10 +3044,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Inclusive start date in ISO8601 string format.",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
                             "title": "Start Time"
                         },
-                        "description": "Inclusive start date in ISO8601 string format."
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "end_time",
@@ -2572,10 +3056,10 @@
                         "schema": {
                             "type": "string",
                             "format": "date-time",
-                            "description": "Exclusive end date in ISO8601 string format.",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
                             "title": "End Time"
                         },
-                        "description": "Exclusive end date in ISO8601 string format."
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
                         "name": "sort",
@@ -2648,7 +3132,7 @@
                 "tags": [
                     "Spans"
                 ],
-                "summary": "Compute Span Metrics",
+                "summary": "Compute Metrics for Span",
                 "description": "Compute metrics for a single span. Validates that the span is an LLM span.",
                 "operationId": "compute_span_metrics_v1_span__span_id__metrics_get",
                 "security": [
@@ -6299,6 +6783,15 @@
                     "task"
                 ],
                 "title": "TokenUsageScope"
+            },
+            "ToolClassEnum": {
+                "type": "integer",
+                "enum": [
+                    0,
+                    1,
+                    2
+                ],
+                "title": "ToolClassEnum"
             },
             "ToxicityConfig": {
                 "properties": {

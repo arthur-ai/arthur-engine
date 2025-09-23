@@ -33,3 +33,10 @@ class Config:
             settings.SEGMENTATION_COL_COUNT_LIMIT,
             "SEGMENTATION_COL_COUNT_LIMIT",
         )
+
+    @staticmethod
+    def aggregation_timeout() -> int:
+        return arthur_common_config.convert_to_int(
+            settings.ML_ENGINE_AGGREGATION_TIMEOUT,
+            "ML_ENGINE_AGGREGATION_TIMEOUT",
+        )

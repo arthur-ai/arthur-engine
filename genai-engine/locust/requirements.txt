@@ -1,5 +1,5 @@
-locust==2.40.2
-pydantic==2.11.7
+locust==2.40.5
+pydantic==2.11.9
 pandas==2.3.2
 pyarrow==21.0.0
 python-dotenv==1.1.1

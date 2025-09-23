@@ -1,4 +1,5 @@
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, List, Set, Tuple
 
 import pandas as pd
@@ -36,6 +37,7 @@ from arthur_common.models.metrics import (
     SketchTimeSeries,
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
+from config import Config
 from connectors.shield_connector import ShieldBaseConnector
 from dataset_loader import DatasetLoader
 from duckdb import DuckDBPyConnection
@@ -44,6 +46,8 @@ from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
 from tools.connector_constructor import ConnectorConstructor
 from tools.validators import validate_schedule
+
+ML_ENGINE_AGGREGATION_TIMEOUT = Config.aggregation_timeout()
 
 
 class MetricsCalculationExecutor:
@@ -280,15 +284,30 @@ class MetricsCalculationExecutor:
                 init_args, aggregate_args = calculator.process_agg_args(
                     datasets,
                 )
-                metrics_to_add = calculator.aggregate(
-                    init_args,
-                    aggregate_args,
+
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(
+                        calculator.aggregate,
+                        init_args,
+                        aggregate_args,
+                    )
+                    metrics_to_add = future.result(
+                        timeout=ML_ENGINE_AGGREGATION_TIMEOUT,
+                    )
+
+                self._add_dimensions_to_metrics(
+                    metrics_to_add, aggregate_args, agg_spec
                 )
-                self._add_dataset_dimensions_to_metrics(metrics_to_add, aggregate_args)
                 metrics.extend(metrics_to_add)
             except Exception as exc:
                 # continue with future metrics calculations in case they're successful and log an error
-                error_msg = f"Failed to process aggregation {agg_spec.aggregation_id}"
+                if isinstance(exc, TimeoutError):
+                    error_msg = f"Aggregation calculation timed out for {agg_spec.aggregation_id}"
+                else:
+                    error_msg = (
+                        f"Failed to process aggregation {agg_spec.aggregation_id}"
+                    )
+
                 if calculator:
                     error_msg += f" - {calculator.agg_schema.name}"
                 self.logger.error(
@@ -298,30 +317,45 @@ class MetricsCalculationExecutor:
                 failed_aggregation_ids.append(agg_spec.aggregation_id)
         return metrics, failed_aggregation_ids
 
-    def _add_dataset_dimensions_to_metrics(
+    def _add_dimensions_to_metrics(
         self,
         metrics_to_add: list[NumericMetric | SketchMetric],
         aggregate_args: dict[str, Any],
+        agg_spec: AggregationSpec,
     ) -> None:
         """
         If the aggregate args contain a dataset reference, this function adds dataset_name and dataset_id
         dimensions to the metrics in the list of metrics_to_add.
         It updates the metrics in the list in-place.
         """
+        dimensions_to_add = []
+
         # find the dataset reference in the aggregate_args
+        dataset_ref = None
         for arg_name, arg_value in aggregate_args.items():
             if isinstance(arg_value, DatasetReference):
                 dataset_ref = arg_value
                 break
-        else:
-            # no dataset arg found, metric isn't tied to a dataset
-            return
 
-        # add the dataset dimensions to the metrics
-        dimensions_to_add = [
-            Dimension(name="dataset_name", value=dataset_ref.dataset_name),
-            Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
-        ]
+        if dataset_ref is not None:
+            dimensions_to_add.extend(
+                [
+                    Dimension(name="dataset_name", value=dataset_ref.dataset_name),
+                    Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
+                ]
+            )
+
+        # add dimensions to the metrics
+        dimensions_to_add.append(
+            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id))
+        )
+
+        if agg_spec.aggregation_version is not None:
+            dimensions_to_add.append(
+                Dimension(
+                    name="aggregation_version", value=str(agg_spec.aggregation_version)
+                )
+            )
 
         for metric in metrics_to_add:
             series_list: list[NumericTimeSeries] | list[SketchTimeSeries] = []
