@@ -75,7 +75,7 @@ def build_validated_filter_params(
         # Handle direct mapping fields
         elif field_name in ["tool_name", "span_types", "trace_ids"]:
             if op == DataResultFilterOp.EQUALS:
-                if field_name == "trace_ids":
+                if field_name in ["trace_ids", "span_types"]:
                     filter_params[field_name] = (
                         [value] if isinstance(value, str) else value
                     )
