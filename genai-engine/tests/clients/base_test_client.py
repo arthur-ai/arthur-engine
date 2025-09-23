@@ -5,10 +5,6 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from pydantic import TypeAdapter
-from sqlalchemy.orm import sessionmaker
-
-from config.database_config import DatabaseConfig
 from arthur_common.models.common_schemas import (
     ExamplesConfig,
     KeywordsConfig,
@@ -54,6 +50,10 @@ from arthur_common.models.response_schemas import (
     UserResponse,
     ValidationResult,
 )
+from pydantic import TypeAdapter
+from sqlalchemy.orm import sessionmaker
+
+from config.database_config import DatabaseConfig
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -1201,26 +1201,72 @@ class GenaiEngineTestClientBase(httpx.Client):
     def query_traces_with_metrics(
         self,
         task_ids: list[str],
+        trace_ids: list[str] | None = None,
         start_time: datetime | None = None,
         end_time: datetime | None = None,
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        tool_name: str | None = None,
+        span_types: list | None = None,
+        # Query relevance filters
+        query_relevance_eq: float | None = None,
+        query_relevance_gt: float | None = None,
+        query_relevance_gte: float | None = None,
+        query_relevance_lt: float | None = None,
+        query_relevance_lte: float | None = None,
+        # Response relevance filters
+        response_relevance_eq: float | None = None,
+        response_relevance_gt: float | None = None,
+        response_relevance_gte: float | None = None,
+        response_relevance_lt: float | None = None,
+        response_relevance_lte: float | None = None,
+        # Tool classification filters
+        tool_selection: int | None = None,
+        tool_usage: int | None = None,
+        # Trace duration filters
+        trace_duration_eq: float | None = None,
+        trace_duration_gt: float | None = None,
+        trace_duration_gte: float | None = None,
+        trace_duration_lt: float | None = None,
+        trace_duration_lte: float | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with metrics for specified task IDs. Computes metrics for all LLM spans in the traces.
 
         Args:
             task_ids: Task IDs to filter on (required)
+            trace_ids: Trace IDs to filter on (optional)
             start_time: Filter by start time
             end_time: Filter by end time
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            tool_name: Return only results with this tool name
+            span_types: Span types to filter on (optional)
+            query_relevance_eq: Query relevance equal to this value
+            query_relevance_gt: Query relevance greater than this value
+            query_relevance_gte: Query relevance greater than or equal to this value
+            query_relevance_lt: Query relevance less than this value
+            query_relevance_lte: Query relevance less than or equal to this value
+            response_relevance_eq: Response relevance equal to this value
+            response_relevance_gt: Response relevance greater than this value
+            response_relevance_gte: Response relevance greater than or equal to this value
+            response_relevance_lt: Response relevance less than this value
+            response_relevance_lte: Response relevance less than or equal to this value
+            tool_selection: Tool selection evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            tool_usage: Tool usage evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            trace_duration_eq: Duration exactly equal to this value (seconds)
+            trace_duration_gt: Duration greater than this value (seconds)
+            trace_duration_gte: Duration greater than or equal to this value (seconds)
+            trace_duration_lt: Duration less than this value (seconds)
+            trace_duration_lte: Duration less than or equal to this value (seconds)
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
         """
         params = {"task_ids": task_ids}
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
         if start_time is not None:
             params["start_time"] = str(start_time)
         if end_time is not None:
@@ -1231,6 +1277,48 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if tool_name is not None:
+            params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
+        # Query relevance filters
+        if query_relevance_eq is not None:
+            params["query_relevance_eq"] = query_relevance_eq
+        if query_relevance_gt is not None:
+            params["query_relevance_gt"] = query_relevance_gt
+        if query_relevance_gte is not None:
+            params["query_relevance_gte"] = query_relevance_gte
+        if query_relevance_lt is not None:
+            params["query_relevance_lt"] = query_relevance_lt
+        if query_relevance_lte is not None:
+            params["query_relevance_lte"] = query_relevance_lte
+        # Response relevance filters
+        if response_relevance_eq is not None:
+            params["response_relevance_eq"] = response_relevance_eq
+        if response_relevance_gt is not None:
+            params["response_relevance_gt"] = response_relevance_gt
+        if response_relevance_gte is not None:
+            params["response_relevance_gte"] = response_relevance_gte
+        if response_relevance_lt is not None:
+            params["response_relevance_lt"] = response_relevance_lt
+        if response_relevance_lte is not None:
+            params["response_relevance_lte"] = response_relevance_lte
+        # Tool classification filters
+        if tool_selection is not None:
+            params["tool_selection"] = tool_selection
+        if tool_usage is not None:
+            params["tool_usage"] = tool_usage
+        # Trace duration filters
+        if trace_duration_eq is not None:
+            params["trace_duration_eq"] = trace_duration_eq
+        if trace_duration_gt is not None:
+            params["trace_duration_gt"] = trace_duration_gt
+        if trace_duration_gte is not None:
+            params["trace_duration_gte"] = trace_duration_gte
+        if trace_duration_lt is not None:
+            params["trace_duration_lt"] = trace_duration_lt
+        if trace_duration_lte is not None:
+            params["trace_duration_lte"] = trace_duration_lte
 
         resp = self.base_client.get(
             f"/v1/traces/metrics/?{urllib.parse.urlencode(params, doseq=True)}",
@@ -1256,6 +1344,29 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        tool_name: str | None = None,
+        span_types: list | None = None,
+        # Query relevance filters
+        query_relevance_eq: float | None = None,
+        query_relevance_gt: float | None = None,
+        query_relevance_gte: float | None = None,
+        query_relevance_lt: float | None = None,
+        query_relevance_lte: float | None = None,
+        # Response relevance filters
+        response_relevance_eq: float | None = None,
+        response_relevance_gt: float | None = None,
+        response_relevance_gte: float | None = None,
+        response_relevance_lt: float | None = None,
+        response_relevance_lte: float | None = None,
+        # Tool classification filters
+        tool_selection: int | None = None,
+        tool_usage: int | None = None,
+        # Trace duration filters
+        trace_duration_eq: float | None = None,
+        trace_duration_gt: float | None = None,
+        trace_duration_gte: float | None = None,
+        trace_duration_lt: float | None = None,
+        trace_duration_lte: float | None = None,
     ) -> tuple[int, QueryTracesWithMetricsResponse | str]:
         """Query traces with filters. Task IDs are required. Returns traces with any existing metrics but does not compute new ones.
 
@@ -1267,6 +1378,25 @@ class GenaiEngineTestClientBase(httpx.Client):
             page: Page number for pagination
             page_size: Number of items per page
             sort: Sort order ("asc" or "desc")
+            tool_name: Return only results with this tool name
+            span_types: Span types to filter on (optional)
+            query_relevance_eq: Query relevance equal to this value
+            query_relevance_gt: Query relevance greater than this value
+            query_relevance_gte: Query relevance greater than or equal to this value
+            query_relevance_lt: Query relevance less than this value
+            query_relevance_lte: Query relevance less than or equal to this value
+            response_relevance_eq: Response relevance equal to this value
+            response_relevance_gt: Response relevance greater than this value
+            response_relevance_gte: Response relevance greater than or equal to this value
+            response_relevance_lt: Response relevance less than this value
+            response_relevance_lte: Response relevance less than or equal to this value
+            tool_selection: Tool selection evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            tool_usage: Tool usage evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            trace_duration_eq: Duration exactly equal to this value (seconds)
+            trace_duration_gt: Duration greater than this value (seconds)
+            trace_duration_gte: Duration greater than or equal to this value (seconds)
+            trace_duration_lt: Duration less than this value (seconds)
+            trace_duration_lte: Duration less than or equal to this value (seconds)
 
         Returns:
             tuple[int, QueryTracesWithMetricsResponse | str]: Status code and response
@@ -1284,6 +1414,48 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if tool_name is not None:
+            params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
+        # Query relevance filters
+        if query_relevance_eq is not None:
+            params["query_relevance_eq"] = query_relevance_eq
+        if query_relevance_gt is not None:
+            params["query_relevance_gt"] = query_relevance_gt
+        if query_relevance_gte is not None:
+            params["query_relevance_gte"] = query_relevance_gte
+        if query_relevance_lt is not None:
+            params["query_relevance_lt"] = query_relevance_lt
+        if query_relevance_lte is not None:
+            params["query_relevance_lte"] = query_relevance_lte
+        # Response relevance filters
+        if response_relevance_eq is not None:
+            params["response_relevance_eq"] = response_relevance_eq
+        if response_relevance_gt is not None:
+            params["response_relevance_gt"] = response_relevance_gt
+        if response_relevance_gte is not None:
+            params["response_relevance_gte"] = response_relevance_gte
+        if response_relevance_lt is not None:
+            params["response_relevance_lt"] = response_relevance_lt
+        if response_relevance_lte is not None:
+            params["response_relevance_lte"] = response_relevance_lte
+        # Tool classification filters
+        if tool_selection is not None:
+            params["tool_selection"] = tool_selection
+        if tool_usage is not None:
+            params["tool_usage"] = tool_usage
+        # Trace duration filters
+        if trace_duration_eq is not None:
+            params["trace_duration_eq"] = trace_duration_eq
+        if trace_duration_gt is not None:
+            params["trace_duration_gt"] = trace_duration_gt
+        if trace_duration_gte is not None:
+            params["trace_duration_gte"] = trace_duration_gte
+        if trace_duration_lt is not None:
+            params["trace_duration_lt"] = trace_duration_lt
+        if trace_duration_lte is not None:
+            params["trace_duration_lte"] = trace_duration_lte
 
         resp = self.base_client.get(
             f"/v1/traces/query?{urllib.parse.urlencode(params, doseq=True)}",

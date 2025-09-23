@@ -4,11 +4,11 @@ import re
 import time
 from typing import List, Optional
 
+from arthur_common.models.common_schemas import ExamplesConfig, LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum, RuleType
 from dotenv import load_dotenv
 from opentelemetry import trace
 
-from arthur_common.models.common_schemas import ExamplesConfig, LLMTokenConsumption
-from arthur_common.models.enums import RuleResultEnum, RuleType
 from schemas.internal_schemas import Rule, RuleEngineResult, ValidationRequest
 from schemas.scorer_schemas import Example, RuleScore, ScoreRequest, ScorerRuleDetails
 from scorer.llm_client import get_llm_executor
@@ -92,7 +92,8 @@ class RuleEngine:
                 logger.error(str(exc), exc_info=(type(exc), exc, exc.__traceback__))
 
                 error_message = constants.ERROR_DEFAULT_RULE_ENGINE
-                RULE_FAILURE_COUNTER.add(1)
+                if RULE_FAILURE_COUNTER is not None:
+                    RULE_FAILURE_COUNTER.add(1)
                 rule_results.append(
                     RuleEngineResult(
                         rule_score_result=RuleScore(

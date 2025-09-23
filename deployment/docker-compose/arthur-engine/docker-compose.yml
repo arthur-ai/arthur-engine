@@ -55,9 +55,6 @@ services:
       - GENAI_ENGINE_INTERNAL_HOST=http://genai-engine:3030
     env_file:
       - .env
-    entrypoint:
-      - python3
-      - app/job_agent.py
     healthcheck:
       test: wget -qO - http://127.0.0.1:7492/health
       interval: 30s

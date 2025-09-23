@@ -4,6 +4,7 @@ from typing import List, Optional
 import pgvector.sqlalchemy
 import sqlalchemy.types as types
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     Boolean,
     Column,
@@ -539,10 +540,10 @@ class DatabaseMetricResult(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     metric_type: Mapped[str] = mapped_column(String, nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(
-        String,
+    details: Mapped[Optional[dict]] = mapped_column(
+        JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=True,
-    )  # JSON-serialized MetricScoreDetails
+    )  # Native JSON column for MetricScoreDetails
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)

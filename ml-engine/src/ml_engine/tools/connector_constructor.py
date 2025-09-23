@@ -7,6 +7,7 @@ from connectors.gcs_connector import GCSConnector
 from connectors.odbc_connector import ODBCConnector
 from connectors.s3_connector import S3Connector
 from connectors.shield_connector import EngineInternalConnector, ShieldConnector
+from connectors.snowflake_connector import SnowflakeConnector
 
 
 class ConnectorConstructor:
@@ -29,6 +30,8 @@ class ConnectorConstructor:
                 return EngineInternalConnector(connector_config, self.scope_logger)
             case ConnectorType.ODBC:
                 return ODBCConnector(connector_config, self.scope_logger)
+            case ConnectorType.SNOWFLAKE:
+                return SnowflakeConnector(connector_config, self.scope_logger)
             case _:
                 raise NotImplementedError(
                     f"Connector not available for type {connector_config.connector_type}",

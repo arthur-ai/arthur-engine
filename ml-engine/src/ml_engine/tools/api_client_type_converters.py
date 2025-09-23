@@ -1,6 +1,6 @@
 from typing import Optional, Union
 
-from arthur_client.api_bindings import Config, RuleResponseConfig
+from arthur_client.api_bindings import Config as RuleResponseConfig
 from arthur_client.api_bindings.models import ExampleConfig as ScopeExampleConfig
 from arthur_client.api_bindings.models import ExamplesConfig as ScopeExamplesConfig
 from arthur_client.api_bindings.models import KeywordsConfig as ScopeKeywordsConfig

@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -89,11 +90,14 @@ from db_models.db_models import (
 )
 from schemas.enums import (
     ApplicationConfigurations,
+    ComparisonOperatorEnum,
     DocumentStorageEnvironment,
     RuleDataType,
     RuleScoringMethod,
+    ToolClassEnum,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import TraceQueryRequest
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DocumentStorageConfigurationResponse,
@@ -361,7 +365,11 @@ class MetricResult(BaseModel):
             updated_at=x.updated_at,
             metric_type=x.metric_type,
             details=(
-                MetricScoreDetails.model_validate_json(x.details) if x.details else None
+                MetricScoreDetails.model_validate(
+                    json.loads(x.details) if isinstance(x.details, str) else x.details,
+                )
+                if x.details
+                else None
             ),
             prompt_tokens=x.prompt_tokens,
             completion_tokens=x.completion_tokens,
@@ -376,15 +384,15 @@ class MetricResult(BaseModel):
                 "span_id and metric_id must be set before converting to database model",
             )
 
-        details_json = None
+        details_dict = None
         if self.details:
-            details_json = self.details.model_dump_json()
+            details_dict = self.details.model_dump()
         return DatabaseMetricResult(
             id=self.id,
             created_at=self.created_at,
             updated_at=self.updated_at,
             metric_type=self.metric_type,
-            details=details_json,
+            details=details_dict,
             prompt_tokens=self.prompt_tokens,
             completion_tokens=self.completion_tokens,
             latency_ms=self.latency_ms,
@@ -1698,3 +1706,70 @@ def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
         return configs[key]
     else:
         return None
+
+
+class FloatRangeFilter(BaseModel):
+    value: float
+    operator: ComparisonOperatorEnum
+
+
+class TraceQuerySchema(BaseModel):
+    task_ids: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Task IDs to filter on. At least one is required.",
+    )
+    trace_ids: Optional[list[str]] = Field(
+        None,
+        description="Trace IDs to filter on. Optional.",
+    )
+    start_time: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date in ISO8601 string format.",
+    )
+    end_time: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date in ISO8601 string format.",
+    )
+    tool_name: Optional[str] = Field(
+        None,
+        description="Return only results with this tool name.",
+    )
+    span_types: Optional[list[str]] = Field(
+        None,
+        description="Span types to filter on. Optional.",
+    )
+    tool_selection: Optional[ToolClassEnum] = None
+    tool_usage: Optional[ToolClassEnum] = None
+    query_relevance_filters: Optional[list[FloatRangeFilter]] = None
+    response_relevance_filters: Optional[list[FloatRangeFilter]] = None
+    trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+
+    @staticmethod
+    def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
+        def resolve_filters(prefix: str) -> Optional[list[FloatRangeFilter]]:
+            filters = []
+            for op in ComparisonOperatorEnum:
+                attr_name = f"{prefix}_{op.value}"
+                value = getattr(request, attr_name, None)
+                if value is not None:
+                    filters.append(FloatRangeFilter(value=value, operator=op))
+            return filters if filters else None
+
+        query_relevance = resolve_filters("query_relevance")
+        response_relevance = resolve_filters("response_relevance")
+        trace_duration = resolve_filters("trace_duration")
+
+        return TraceQuerySchema(
+            task_ids=request.task_ids,
+            trace_ids=request.trace_ids,
+            start_time=request.start_time,
+            end_time=request.end_time,
+            tool_name=request.tool_name,
+            span_types=request.span_types,
+            tool_selection=request.tool_selection,
+            tool_usage=request.tool_usage,
+            query_relevance_filters=query_relevance,
+            response_relevance_filters=response_relevance,
+            trace_duration_filters=trace_duration,
+        )

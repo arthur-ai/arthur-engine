@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 09/10/2025
+- v1/traces/metrics and v1/traces/query added new optional request parameters: 'query_relevance_eq', 'query_relevance_gt', 'query_relevance_gte', 'query_relevance_lt', 'query_relevance_lte', 'response_relevance_eq', 'response_relevance_gt', 'response_relevance_gte', 'response_relevance_lt', 'response_relevance_lte', 'tool_name', 'tool_selection', 'tool_usage', 'trace_duration_eq', 'trace_duration_gt', 'trace_duration_gte', 'trace_duration_lt', 'trace_duration_lte', 'trace_ids', 'span_kind'
+
 # 09/05/2025
 - Added span_name to spans response
 
