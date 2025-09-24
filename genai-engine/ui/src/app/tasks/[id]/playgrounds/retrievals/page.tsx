@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { ConnectionForm } from "@/components/weaviate/ConnectionForm";
 import { QueryConfiguration } from "@/components/weaviate/QueryConfiguration";
-import { SettingsPanel } from "@/components/weaviate/SettingsPanel";
 import { ResultsDisplay } from "@/components/weaviate/ResultsDisplay";
 import {
   WeaviateConnection,
@@ -243,16 +242,9 @@ export default function PlaygroundsRetrievalsPage() {
                       isExecuting={isExecuting}
                       searchMethod={searchMethod}
                       onSearchMethodChange={setSearchMethod}
+                      settings={settings}
+                      onSettingsChange={handleSettingsChange}
                     />
-
-                    {selectedCollection && (
-                      <SettingsPanel
-                        settings={settings}
-                        onSettingsChange={handleSettingsChange}
-                        searchMethod={searchMethod}
-                        isExecuting={isExecuting}
-                      />
-                    )}
                   </>
                 ) : (
                   <div className="bg-white rounded-lg shadow p-6">
