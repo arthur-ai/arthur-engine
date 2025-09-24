@@ -75,6 +75,11 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
         {}
       );
       setStats(combinedStats);
+
+      // Auto-select the first collection if none is selected
+      if (fetchedCollections.length > 0 && !selectedCollection) {
+        onCollectionSelect(fetchedCollections[0]);
+      }
     } catch (err) {
       console.error("Failed to fetch collections:", err);
       setError("Failed to load collections. Please check your connection.");
