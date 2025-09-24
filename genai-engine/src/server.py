@@ -345,7 +345,7 @@ def get_app_with_routes() -> FastAPI:
 
 def get_test_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -375,7 +375,7 @@ def get_test_app() -> FastAPI:
 
 def get_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)

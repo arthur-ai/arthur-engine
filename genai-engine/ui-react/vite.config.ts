@@ -26,5 +26,5 @@ export default defineConfig({
     },
   },
   // Configure for SPA routing
-  base: "./",
+  base: "/",
 });
