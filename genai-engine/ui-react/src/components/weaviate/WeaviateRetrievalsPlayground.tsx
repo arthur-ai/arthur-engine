@@ -126,16 +126,47 @@ export const WeaviateRetrievalsPlayground: React.FC = () => {
             </div>
 
             {isConnected && (
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  <span>Connected to Weaviate</span>
-                  <span className="ml-2 text-gray-400">({connectionUrl})</span>
+              <div className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 self-start">
+                <div className="flex items-center">
+                  <svg
+                    className="h-5 w-5 text-green-500 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <div>
+                    <div className="text-sm font-medium text-green-800">
+                      Connected to Weaviate
+                    </div>
+                    <div className="text-xs text-green-600">
+                      {connectionUrl}
+                    </div>
+                  </div>
                 </div>
                 <button
                   onClick={handleDisconnect}
-                  className="text-sm text-gray-600 hover:text-gray-900"
+                  className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                 >
+                  <svg
+                    className="h-3 w-3 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
                   Disconnect
                 </button>
               </div>
