@@ -11,6 +11,7 @@ import { TaskDetailContent } from "./components/TaskDetailContent";
 import { ComingSoon } from "./components/ComingSoon";
 import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
 
 function App() {
@@ -32,25 +33,28 @@ function App() {
               }
             />
 
-            {/* Task routes */}
+            {/* Task routes with layout */}
             <Route
               path="/tasks/:id"
               element={
                 <ProtectedRoute>
-                  <TaskDetailContent />
+                  <TaskLayout>
+                    <TaskDetailContent />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
 
-            {/* Task sub-routes */}
             <Route
               path="/tasks/:id/agent-experiments"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Agent Experiments"
-                    description="Test and optimize agent-based task execution strategies."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Agent Experiments"
+                      description="Test and optimize agent-based task execution strategies."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -59,10 +63,12 @@ function App() {
               path="/tasks/:id/datasets"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Datasets"
-                    description="Create and manage datasets for training and evaluation."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Datasets"
+                      description="Create and manage datasets for training and evaluation."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -71,10 +77,12 @@ function App() {
               path="/tasks/:id/evaluators"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Evaluators"
-                    description="Manage and configure evaluation methods for your tasks."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Evaluators"
+                      description="Manage and configure evaluation methods for your tasks."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -83,10 +91,12 @@ function App() {
               path="/tasks/:id/playgrounds/prompts"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Prompts Playground"
-                    description="Experiment with and test different prompts in an interactive playground environment."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Prompts Playground"
+                      description="Experiment with and test different prompts in an interactive playground environment."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -95,7 +105,9 @@ function App() {
               path="/tasks/:id/playgrounds/retrievals"
               element={
                 <ProtectedRoute>
-                  <WeaviateRetrievalsPlayground />
+                  <TaskLayout>
+                    <WeaviateRetrievalsPlayground />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -104,10 +116,12 @@ function App() {
               path="/tasks/:id/prompt-experiments"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Prompt Experiments"
-                    description="Test and compare different prompt variations and their effectiveness."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Prompt Experiments"
+                      description="Test and compare different prompt variations and their effectiveness."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -116,10 +130,12 @@ function App() {
               path="/tasks/:id/rag-experiments"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="RAG Experiments"
-                    description="Experiment with different retrieval-augmented generation configurations."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="RAG Experiments"
+                      description="Experiment with different retrieval-augmented generation configurations."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -128,10 +144,12 @@ function App() {
               path="/tasks/:id/retrievals"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Retrievals"
-                    description="Monitor and analyze retrieval operations and their performance."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Retrievals"
+                      description="Monitor and analyze retrieval operations and their performance."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />
@@ -140,10 +158,12 @@ function App() {
               path="/tasks/:id/traces"
               element={
                 <ProtectedRoute>
-                  <ComingSoon
-                    featureName="Traces"
-                    description="View and analyze execution traces for debugging and optimization."
-                  />
+                  <TaskLayout>
+                    <ComingSoon
+                      featureName="Traces"
+                      description="View and analyze execution traces for debugging and optimization."
+                    />
+                  </TaskLayout>
                 </ProtectedRoute>
               }
             />

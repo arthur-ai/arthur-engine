@@ -1,7 +1,5 @@
-'use client';
-
-import React, { createContext, useContext, ReactNode } from 'react';
-import { TaskResponse } from '@/lib/api';
+import React, { createContext, useContext, ReactNode } from "react";
+import { TaskResponse } from "@/lib/api";
 
 interface TaskContextType {
   task: TaskResponse | null;
@@ -14,18 +12,19 @@ interface TaskProviderProps {
   task: TaskResponse | null;
 }
 
-export const TaskProvider: React.FC<TaskProviderProps> = ({ children, task }) => {
+export const TaskProvider: React.FC<TaskProviderProps> = ({
+  children,
+  task,
+}) => {
   return (
-    <TaskContext.Provider value={{ task }}>
-      {children}
-    </TaskContext.Provider>
+    <TaskContext.Provider value={{ task }}>{children}</TaskContext.Provider>
   );
 };
 
 export const useTask = (): TaskContextType => {
   const context = useContext(TaskContext);
   if (context === undefined) {
-    throw new Error('useTask must be used within a TaskProvider');
+    throw new Error("useTask must be used within a TaskProvider");
   }
   return context;
 };
