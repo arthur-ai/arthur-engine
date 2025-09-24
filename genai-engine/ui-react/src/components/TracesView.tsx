@@ -14,6 +14,7 @@ export const TracesView: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPageCount, setCurrentPageCount] = useState(0);
   const [selectedTrace, setSelectedTrace] = useState<TraceResponse | null>(
     null
   );
@@ -63,12 +64,15 @@ export const TracesView: React.FC = () => {
         });
 
         const tracesData = response.data.traces || [];
-        console.log("Raw traces data:", tracesData);
-        if (tracesData.length > 0) {
-          console.log("First trace start_time:", tracesData[0].start_time);
-        }
         setTraces(tracesData);
-        setTotalCount(response.data.count || 0);
+
+        // API returns count of traces on current page, not total count
+        const pageCount = response.data.count || tracesData.length;
+        setCurrentPageCount(pageCount);
+
+        // If we got a full page, assume there might be more pages
+        // If we got less than a full page, this is the last page
+        setTotalCount(pageCount);
       } catch (err) {
         console.error("Failed to fetch traces:", err);
         setError("Failed to load traces");
@@ -324,7 +328,10 @@ export const TracesView: React.FC = () => {
             <span className="text-sm text-gray-700">Rows per page</span>
             <select
               value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(0);
+              }}
               className="block px-2 py-1 border border-gray-300 rounded text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={10}>10</option>
@@ -335,7 +342,7 @@ export const TracesView: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-700">
-              Page {currentPage + 1} of {Math.ceil(totalCount / pageSize)}
+              Page {currentPage + 1}
             </span>
             <div className="flex space-x-1">
               <button
@@ -377,15 +384,8 @@ export const TracesView: React.FC = () => {
                 </svg>
               </button>
               <button
-                onClick={() =>
-                  setCurrentPage(
-                    Math.min(
-                      Math.ceil(totalCount / pageSize) - 1,
-                      currentPage + 1
-                    )
-                  )
-                }
-                disabled={currentPage >= Math.ceil(totalCount / pageSize) - 1}
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPageCount < pageSize}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg
@@ -403,10 +403,8 @@ export const TracesView: React.FC = () => {
                 </svg>
               </button>
               <button
-                onClick={() =>
-                  setCurrentPage(Math.ceil(totalCount / pageSize) - 1)
-                }
-                disabled={currentPage >= Math.ceil(totalCount / pageSize) - 1}
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPageCount < pageSize}
                 className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg
