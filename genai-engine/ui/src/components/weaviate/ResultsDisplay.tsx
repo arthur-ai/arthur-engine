@@ -258,7 +258,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                               searchMethod
                             )}`}
                           >
-                            {result.metadata.distance?.toFixed(4) ?? "N/A"}
+                            {typeof result.metadata.distance === "number"
+                              ? result.metadata.distance.toFixed(4)
+                              : result.metadata.distance ?? "N/A"}
                           </div>
                         </div>
                       )}
@@ -318,8 +320,10 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                       searchMethod
                                     )}`}
                                   >
-                                    {result.metadata.distance?.toFixed(6) ??
-                                      "N/A"}
+                                    {typeof result.metadata.distance ===
+                                    "number"
+                                      ? result.metadata.distance.toFixed(6)
+                                      : result.metadata.distance ?? "N/A"}
                                   </span>
                                 </div>
                               )}
@@ -327,7 +331,9 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Score:</span>
                                   <span className="font-medium text-gray-900">
-                                    {result.metadata.score?.toFixed(6) ?? "N/A"}
+                                    {typeof result.metadata.score === "number"
+                                      ? result.metadata.score.toFixed(6)
+                                      : result.metadata.score ?? "N/A"}
                                   </span>
                                 </div>
                               )}
@@ -358,7 +364,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 First 10 dimensions: [
                                 {result.vector
                                   .slice(0, 10)
-                                  .map((v) => v?.toFixed(4) ?? "N/A")
+                                  .map((v) =>
+                                    typeof v === "number"
+                                      ? v.toFixed(4)
+                                      : v ?? "N/A"
+                                  )
                                   .join(", ")}
                                 ...]
                               </div>
