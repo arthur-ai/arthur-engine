@@ -36,6 +36,7 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
     >
   >({});
   const [query, setQuery] = useState("");
+  const [limitInput, setLimitInput] = useState(settings.limit.toString());
 
   const fetchCollections = useCallback(async () => {
     if (!weaviateService.isConnected()) {
@@ -95,6 +96,11 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
     fetchCollections();
   }, [fetchCollections]);
 
+  // Sync local limit input with settings
+  useEffect(() => {
+    setLimitInput(settings.limit.toString());
+  }, [settings.limit]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim() && selectedCollection) {
@@ -111,6 +117,29 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
       ...settings,
       limit: Math.max(1, Math.min(100, value)),
     });
+  };
+
+  const handleLimitInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLimitInput(value);
+
+    // Allow empty input temporarily
+    if (value === "") {
+      return;
+    }
+    const numValue = parseInt(value);
+    if (!isNaN(numValue)) {
+      handleLimitChange(numValue);
+    }
+  };
+
+  const handleLimitBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // If empty on blur, set to 1
+    if (value === "") {
+      setLimitInput("1");
+      handleLimitChange(1);
+    }
   };
 
   const handleIncludeMetadataChange = (checked: boolean) => {
@@ -143,10 +172,16 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
 
   const handleExportConfig = () => {
     // Build settings object with only relevant properties for the current search method
-    const relevantSettings: any = {
+    const relevantSettings: {
+      limit: number;
+      includeMetadata: boolean;
+      includeVector: boolean;
+      distance?: number;
+      alpha?: number;
+    } = {
       limit: settings.limit,
-      includeMetadata: settings.includeMetadata,
-      includeVector: settings.includeVector,
+      includeMetadata: settings.includeMetadata ?? true,
+      includeVector: settings.includeVector ?? false,
     };
 
     // Add distance for vector-based searches
@@ -335,8 +370,9 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
             id="limit"
             min="1"
             max="100"
-            value={settings.limit}
-            onChange={(e) => handleLimitChange(parseInt(e.target.value) || 1)}
+            value={limitInput}
+            onChange={handleLimitInputChange}
+            onBlur={handleLimitBlur}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={isExecuting}
           />
