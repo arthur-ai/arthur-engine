@@ -31,7 +31,12 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
   const [collections, setCollections] = useState<WeaviateCollection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<Record<string, { count: number }>>({});
+  const [stats, setStats] = useState<
+    Record<
+      string,
+      { totalObjects: number; vectorizer: string; properties: number }
+    >
+  >({});
   const [query, setQuery] = useState("");
 
   const fetchCollections = useCallback(async () => {

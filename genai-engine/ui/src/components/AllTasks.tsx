@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { useApi } from '@/hooks/useApi';
-import { TaskResponse } from '@/lib/api';
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useApi } from "@/hooks/useApi";
+import { TaskResponse } from "@/lib/api";
 
 export const AllTasks: React.FC = () => {
   const router = useRouter();
@@ -20,20 +20,23 @@ export const AllTasks: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         if (!api) {
-          throw new Error('API client not available');
+          throw new Error("API client not available");
         }
 
-        const response = await api.api.searchTasksApiV2TasksSearchPost({}, {
-          page_size: 50,
-          page: 0,
-        });
+        const response = await api.api.searchTasksApiV2TasksSearchPost(
+          {
+            page_size: 50,
+            page: 0,
+          },
+          {}
+        );
 
         setTasks(response.data.tasks || []);
       } catch (err) {
-        console.error('Failed to fetch tasks:', err);
-        setError('Failed to load tasks. Please check your authentication.');
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please check your authentication.");
       } finally {
         setIsLoading(false);
       }
@@ -49,15 +52,15 @@ export const AllTasks: React.FC = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isMenuOpen) {
         const target = event.target as Element;
-        if (!target.closest('.relative')) {
+        if (!target.closest(".relative")) {
           setIsMenuOpen(false);
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isMenuOpen]);
 
@@ -172,7 +175,8 @@ export const AllTasks: React.FC = () => {
                         {task.name}
                       </h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        Created: {new Date(task.created_at).toLocaleDateString()}
+                        Created:{" "}
+                        {new Date(task.created_at).toLocaleDateString()}
                       </p>
                       <div className="flex items-center justify-between">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">

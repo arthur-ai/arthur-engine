@@ -44,10 +44,13 @@ export class AuthService {
 
       // Try to search for tasks with an empty request to test authentication
       const searchRequest: SearchTasksRequest = {};
-      await testClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
-        page_size: 1,
-        page: 0,
-      });
+      await testClient.api.searchTasksApiV2TasksSearchPost(
+        {
+          page_size: 1,
+          page: 0,
+        },
+        searchRequest
+      );
 
       // If successful, save the token and initialize the client
       this.token = token;
@@ -90,10 +93,13 @@ export class AuthService {
     try {
       // Test the token by making a simple API call
       const searchRequest: SearchTasksRequest = {};
-      await this.apiClient.api.searchTasksApiV2TasksSearchPost(searchRequest, {
-        page_size: 1,
-        page: 0,
-      });
+      await this.apiClient.api.searchTasksApiV2TasksSearchPost(
+        {
+          page_size: 1,
+          page: 0,
+        },
+        searchRequest
+      );
       return true;
     } catch (error) {
       console.error("Token validation failed:", error);
