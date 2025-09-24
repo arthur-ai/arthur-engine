@@ -235,7 +235,7 @@ export default function PlaygroundsRetrievalsPage() {
                   </div>
                 ) : isConnected ? (
                   <>
-                    <div className="border-t border-gray-200 pt-6">
+                    <div>
                       <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
                         Query Configuration
                       </h2>
@@ -282,7 +282,7 @@ export default function PlaygroundsRetrievalsPage() {
               {/* Right Column - Results Display */}
               <div className="space-y-6">
                 {isConnected && (
-                  <div className="border-t border-gray-200 pt-6">
+                  <div>
                     <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
                       Search Results
                     </h2>
