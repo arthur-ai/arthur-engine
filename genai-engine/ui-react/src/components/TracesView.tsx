@@ -203,7 +203,10 @@ export const TracesView: React.FC = () => {
   }
 
   return (
-    <div className="h-full bg-gray-50 flex flex-col">
+    <div
+      className="bg-gray-50 grid grid-rows-[auto_1fr_auto]"
+      style={{ height: "calc(100vh - 90px)" }}
+    >
       {/* Table Controls */}
       <div className="bg-white border-b border-gray-200 px-6 py-2">
         <div className="flex items-center justify-between">
@@ -227,11 +230,11 @@ export const TracesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Traces Table */}
-      <div className="flex-1 overflow-auto">
+      {/* Traces Table - Scrollable Content */}
+      <div className="overflow-y-auto min-h-0">
         <div className="bg-white">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Timestamp
@@ -254,6 +257,16 @@ export const TracesView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
+              {traces.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-6 py-8 text-center text-gray-500"
+                  >
+                    No traces found for the selected time period
+                  </td>
+                </tr>
+              )}
               {traces.map((trace) => (
                 <tr
                   key={trace.trace_id}
@@ -304,7 +317,7 @@ export const TracesView: React.FC = () => {
         </div>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Anchored to Bottom */}
       <div className="bg-white border-t border-gray-200 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
