@@ -11,7 +11,9 @@ class SPAStaticFiles(StaticFiles):
         try:
             return await super().get_response(path, scope)
         except starlette.middleware.exceptions.HTTPException as ex:
-            if ex.status_code == 404 and (path in [
+            if ex.status_code == 404:
+                # Handle specific legacy routes
+                if path in [
                     "chat",
                     "login",
                     "logout",
@@ -19,7 +21,12 @@ class SPAStaticFiles(StaticFiles):
                     "admin/inference-deep-dive",
                     "admin/tasks",
                     "admin/index.tsx",
-                ] or path.startswith("tasks/")):
-                return await super().get_response("index.html", scope)
+                ]:
+                    return await super().get_response("index.html", scope)
+                # Handle React SPA routes - any route starting with tasks or root
+                elif path.startswith("tasks") or path == "":
+                    return await super().get_response("index.html", scope)
+                else:
+                    raise ex
             else:
                 raise ex
