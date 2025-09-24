@@ -1,5 +1,3 @@
-
-
 import React, { useState } from "react";
 import { QueryResult } from "@/lib/weaviate-client";
 
@@ -200,7 +198,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="space-y-4">
           {results.results.map((result, index) => {
             const isExpanded = expandedResults.has(result.id);
-            const { ...properties } = result.properties;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { _additional, ...properties } = result.properties;
 
             return (
               <div
