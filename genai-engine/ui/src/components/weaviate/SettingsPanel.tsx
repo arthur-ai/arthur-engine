@@ -79,7 +79,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <div>
           <label
             htmlFor="limit"
-            className="block text-sm font-medium text-gray-700 mb-2"
+            className="block text-sm font-medium text-gray-900 mb-2 !text-gray-900"
           >
             Result Limit
           </label>
@@ -90,7 +90,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             max="100"
             value={settings.limit}
             onChange={(e) => handleLimitChange(parseInt(e.target.value) || 1)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 !text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={isExecuting}
           />
           <p className="mt-1 text-xs text-gray-500">
@@ -103,7 +103,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div>
             <label
               htmlFor="distance"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-gray-900 mb-2 !text-gray-900"
             >
               Distance Threshold
             </label>
@@ -137,7 +137,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div>
             <label
               htmlFor="alpha"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-gray-900 mb-2 !text-gray-900"
             >
               Hybrid Alpha
             </label>
@@ -165,7 +165,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         {/* Include Options */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-700">
+          <h4 className="text-sm font-medium text-gray-900 !text-gray-900">
             Include in Results
           </h4>
 
@@ -180,7 +180,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             />
             <label
               htmlFor="includeMetadata"
-              className="ml-2 text-sm text-gray-700"
+              className="ml-2 text-sm text-gray-900 !text-gray-900"
             >
               Metadata (distance, score, explainScore)
             </label>
@@ -197,7 +197,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             />
             <label
               htmlFor="includeVector"
-              className="ml-2 text-sm text-gray-700"
+              className="ml-2 text-sm text-gray-900 !text-gray-900"
             >
               Vector embeddings
             </label>
@@ -206,7 +206,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         {/* Search Method Info */}
         <div className="bg-gray-50 rounded-md p-3">
-          <h4 className="text-sm font-medium text-gray-700 mb-2">
+          <h4 className="text-sm font-medium text-gray-900 mb-2 !text-gray-900">
             Current Search Method
           </h4>
           <div className="text-sm text-gray-600">
