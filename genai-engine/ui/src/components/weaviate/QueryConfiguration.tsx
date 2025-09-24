@@ -124,6 +124,20 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
     });
   };
 
+  const handleDistanceChange = (value: number) => {
+    onSettingsChange({
+      ...settings,
+      distance: Math.max(0, Math.min(1, value)),
+    });
+  };
+
+  const handleAlphaChange = (value: number) => {
+    onSettingsChange({
+      ...settings,
+      alpha: Math.max(0, Math.min(1, value)),
+    });
+  };
+
   const isDisabled = !selectedCollection || !query.trim() || isExecuting;
 
   const getCollectionDisplayText = (collection: WeaviateCollection) => {
@@ -286,6 +300,71 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
             Maximum number of results to return (1-100)
           </p>
         </div>
+
+        {/* Distance Threshold (for vector search) */}
+        {(searchMethod === "nearText" || searchMethod === "hybrid") && (
+          <div>
+            <label
+              htmlFor="distance"
+              className="block text-sm font-medium text-gray-900 mb-2"
+            >
+              Distance Threshold
+            </label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="range"
+                id="distance"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.distance}
+                onChange={(e) =>
+                  handleDistanceChange(parseFloat(e.target.value))
+                }
+                className="flex-1"
+                disabled={isExecuting}
+              />
+              <span className="text-sm text-gray-600 w-12">
+                {settings.distance.toFixed(2)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Maximum distance for vector similarity (0 = exact match, 1 = any
+              match)
+            </p>
+          </div>
+        )}
+
+        {/* Alpha (for hybrid search) */}
+        {searchMethod === "hybrid" && (
+          <div>
+            <label
+              htmlFor="alpha"
+              className="block text-sm font-medium text-gray-900 mb-2"
+            >
+              Hybrid Alpha
+            </label>
+            <div className="flex items-center space-x-3">
+              <input
+                type="range"
+                id="alpha"
+                min="0"
+                max="1"
+                step="0.01"
+                value={settings.alpha || 0.5}
+                onChange={(e) => handleAlphaChange(parseFloat(e.target.value))}
+                className="flex-1"
+                disabled={isExecuting}
+              />
+              <span className="text-sm text-gray-600 w-12">
+                {(settings.alpha || 0.5).toFixed(2)}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Balance between vector search (0) and keyword search (1)
+            </p>
+          </div>
+        )}
 
         {/* Include Options */}
         <div>

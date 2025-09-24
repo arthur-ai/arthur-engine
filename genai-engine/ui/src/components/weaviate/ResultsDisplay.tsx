@@ -258,7 +258,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                               searchMethod
                             )}`}
                           >
-                            {result.metadata.distance.toFixed(4)}
+                            {result.metadata.distance?.toFixed(4) ?? "N/A"}
                           </div>
                         </div>
                       )}
@@ -318,7 +318,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                       searchMethod
                                     )}`}
                                   >
-                                    {result.metadata.distance.toFixed(6)}
+                                    {result.metadata.distance?.toFixed(6) ??
+                                      "N/A"}
                                   </span>
                                 </div>
                               )}
@@ -326,7 +327,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Score:</span>
                                   <span className="font-medium text-gray-900">
-                                    {result.metadata.score.toFixed(6)}
+                                    {result.metadata.score?.toFixed(6) ?? "N/A"}
                                   </span>
                                 </div>
                               )}
@@ -357,18 +358,26 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 First 10 dimensions: [
                                 {result.vector
                                   .slice(0, 10)
-                                  .map((v) => v.toFixed(4))
+                                  .map((v) => v?.toFixed(4) ?? "N/A")
                                   .join(", ")}
                                 ...]
                               </div>
                               <div className="text-gray-500">
-                                Min: {Math.min(...result.vector).toFixed(4)},
-                                Max: {Math.max(...result.vector).toFixed(4)},
-                                Mean:{" "}
-                                {(
-                                  result.vector.reduce((a, b) => a + b, 0) /
-                                  result.vector.length
-                                ).toFixed(4)}
+                                Min:{" "}
+                                {result.vector.length > 0
+                                  ? Math.min(...result.vector).toFixed(4)
+                                  : "N/A"}
+                                , Max:{" "}
+                                {result.vector.length > 0
+                                  ? Math.max(...result.vector).toFixed(4)
+                                  : "N/A"}
+                                , Mean:{" "}
+                                {result.vector.length > 0
+                                  ? (
+                                      result.vector.reduce((a, b) => a + b, 0) /
+                                      result.vector.length
+                                    ).toFixed(4)
+                                  : "N/A"}
                               </div>
                             </div>
                           </div>
