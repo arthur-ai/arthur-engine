@@ -198,7 +198,7 @@ export class WeaviateService {
         case "hybrid":
           graphqlQuery += ` hybrid: { query: "${query}" alpha: ${
             settings.alpha || 0.5
-          } }`;
+          } maxVectorDistance: ${settings.distance} }`;
           break;
         default:
           throw new Error(`Unsupported search method: ${searchMethod}`);
