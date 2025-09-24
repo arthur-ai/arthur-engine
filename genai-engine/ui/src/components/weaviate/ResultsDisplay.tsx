@@ -247,20 +247,43 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
                     <div className="flex items-center space-x-3">
                       {/* Score/Distance */}
-                      {result.metadata.distance !== undefined && (
+                      {(result.metadata.distance !== undefined ||
+                        result.metadata.score !== undefined) && (
                         <div className="text-right">
                           <div className="text-xs text-gray-500">
                             {getScoreLabel(searchMethod)}
                           </div>
                           <div
                             className={`text-sm font-medium ${getScoreColor(
-                              result.metadata.distance,
+                              searchMethod === "nearText"
+                                ? result.metadata.distance
+                                : result.metadata.score,
                               searchMethod
                             )}`}
                           >
-                            {typeof result.metadata.distance === "number"
-                              ? result.metadata.distance.toFixed(4)
-                              : result.metadata.distance ?? "N/A"}
+                            {(() => {
+                              // For nearText, show distance; for BM25/hybrid, show score
+                              if (searchMethod === "nearText") {
+                                return typeof result.metadata.distance ===
+                                  "number"
+                                  ? result.metadata.distance.toFixed(4)
+                                  : "N/A";
+                              } else {
+                                // Handle both number and string scores
+                                const score = result.metadata.score;
+                                if (typeof score === "number") {
+                                  return score.toFixed(4);
+                                } else if (
+                                  typeof score === "string" &&
+                                  score !== null &&
+                                  score !== undefined
+                                ) {
+                                  return parseFloat(score).toFixed(4);
+                                } else {
+                                  return "N/A";
+                                }
+                              }
+                            })()}
                           </div>
                         </div>
                       )}
@@ -317,7 +340,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                   <span
                                     className={`font-medium ${getScoreColor(
                                       result.metadata.distance,
-                                      searchMethod
+                                      "nearText"
                                     )}`}
                                   >
                                     {typeof result.metadata.distance ===
@@ -330,10 +353,26 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                               {result.metadata.score !== undefined && (
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Score:</span>
-                                  <span className="font-medium text-gray-900">
-                                    {typeof result.metadata.score === "number"
-                                      ? result.metadata.score.toFixed(6)
-                                      : result.metadata.score ?? "N/A"}
+                                  <span
+                                    className={`font-medium ${getScoreColor(
+                                      result.metadata.score,
+                                      "bm25"
+                                    )}`}
+                                  >
+                                    {(() => {
+                                      const score = result.metadata.score;
+                                      if (typeof score === "number") {
+                                        return score.toFixed(6);
+                                      } else if (
+                                        typeof score === "string" &&
+                                        score !== null &&
+                                        score !== undefined
+                                      ) {
+                                        return parseFloat(score).toFixed(6);
+                                      } else {
+                                        return "N/A";
+                                      }
+                                    })()}
                                   </span>
                                 </div>
                               )}
