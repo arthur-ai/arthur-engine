@@ -141,6 +141,47 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
     });
   };
 
+  const handleExportConfig = () => {
+    // Build settings object with only relevant properties for the current search method
+    const relevantSettings: any = {
+      limit: settings.limit,
+      includeMetadata: settings.includeMetadata,
+      includeVector: settings.includeVector,
+    };
+
+    // Add distance for vector-based searches
+    if (searchMethod === "nearText" || searchMethod === "hybrid") {
+      relevantSettings.distance = settings.distance;
+    }
+
+    // Add alpha only for hybrid search
+    if (searchMethod === "hybrid") {
+      relevantSettings.alpha = settings.alpha;
+    }
+
+    const exportData = {
+      collection: selectedCollection?.name || null,
+      searchMethod,
+      query,
+      settings: relevantSettings,
+      timestamp: new Date().toISOString(),
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `weaviate-search-config-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const isDisabled = !selectedCollection || !query.trim() || isExecuting;
 
   const getCollectionDisplayText = (collection: WeaviateCollection) => {
@@ -412,7 +453,29 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
+        <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={handleExportConfig}
+            disabled={!selectedCollection || !query.trim()}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg
+              className="h-4 w-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Export Config
+          </button>
+
           <div className="flex space-x-3">
             <button
               type="button"
