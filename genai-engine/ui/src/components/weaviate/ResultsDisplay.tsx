@@ -51,13 +51,13 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   ): string => {
     if (score === undefined) return "text-gray-500";
 
-    if (searchMethod === "nearText" || searchMethod === "hybrid") {
+    if (searchMethod === "nearText") {
       // For vector search, lower distance is better
       if (score < 0.3) return "text-green-600";
       if (score < 0.6) return "text-yellow-600";
       return "text-red-600";
     } else {
-      // For BM25, higher score is better
+      // For BM25 and hybrid (when showing score), higher score is better
       if (score > 0.7) return "text-green-600";
       if (score > 0.4) return "text-yellow-600";
       return "text-red-600";
@@ -258,7 +258,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                               searchMethod === "nearText"
                                 ? result.metadata.distance
                                 : result.metadata.score,
-                              searchMethod
+                              searchMethod === "nearText" ? "nearText" : "bm25"
                             )}`}
                           >
                             {(() => {
