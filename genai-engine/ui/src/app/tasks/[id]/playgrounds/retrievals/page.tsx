@@ -208,122 +208,77 @@ export default function PlaygroundsRetrievalsPage() {
       <div className="flex-1 overflow-hidden">
         <div className="h-full px-4 sm:px-6 lg:px-8">
           <div className="h-full py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6 h-full">
-              {/* Left Column - Collections, Query Interface, and Settings */}
-              <div className="space-y-6 lg:sticky lg:top-0 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
-                {/* Show ConnectionForm only when not connected */}
-                {!isConnected && (
+            {!isConnected ? (
+              /* Centered Connection Form at Top */
+              <div className="flex justify-center pt-12">
+                <div className="w-full max-w-md">
                   <ConnectionForm
                     onConnect={handleConnect}
                     isConnecting={isConnecting}
                     isConnected={isConnected}
                     onDisconnect={handleDisconnect}
                   />
-                )}
-
-                {isConnecting ? (
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <h3 className="text-sm font-medium text-gray-900">
-                        Connecting to Weaviate...
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Attempting to reconnect with saved credentials.
-                      </p>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6 h-full">
+                {/* Left Column - Collections, Query Interface, and Settings */}
+                <div className="space-y-6 lg:sticky lg:top-0 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
+                  {isConnecting ? (
+                    <div className="bg-white rounded-lg shadow p-6">
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <h3 className="text-sm font-medium text-gray-900">
+                          Connecting to Weaviate...
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-600">
+                          Attempting to reconnect with saved credentials.
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ) : isConnected ? (
-                  <>
+                  ) : isConnected ? (
+                    <>
+                      <div>
+                        <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
+                          Query Configuration
+                        </h2>
+                      </div>
+                      <QueryConfiguration
+                        selectedCollection={selectedCollection}
+                        onCollectionSelect={handleCollectionSelect}
+                        onExecuteQuery={handleExecuteQuery}
+                        isExecuting={isExecuting}
+                        searchMethod={searchMethod}
+                        onSearchMethodChange={setSearchMethod}
+                        settings={settings}
+                        onSettingsChange={handleSettingsChange}
+                      />
+                    </>
+                  ) : null}
+                </div>
+
+                {/* Right Column - Results Display */}
+                <div className="space-y-6 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
+                  {isConnected && (
                     <div>
                       <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
-                        Query Configuration
+                        Search Results
                       </h2>
                     </div>
-                    <QueryConfiguration
-                      selectedCollection={selectedCollection}
-                      onCollectionSelect={handleCollectionSelect}
-                      onExecuteQuery={handleExecuteQuery}
-                      isExecuting={isExecuting}
+                  )}
+
+                  {isConnected && (
+                    <ResultsDisplay
+                      results={results}
+                      isLoading={isExecuting}
+                      error={error}
+                      query={query}
                       searchMethod={searchMethod}
-                      onSearchMethodChange={setSearchMethod}
-                      settings={settings}
-                      onSettingsChange={handleSettingsChange}
                     />
-                  </>
-                ) : (
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-center py-12">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        Connect to Weaviate
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Please connect to your Weaviate instance to start
-                        experimenting with retrievals.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-
-              {/* Right Column - Results Display */}
-              <div className="space-y-6 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
-                {isConnected && (
-                  <div>
-                    <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
-                      Search Results
-                    </h2>
-                  </div>
-                )}
-
-                {isConnected ? (
-                  <ResultsDisplay
-                    results={results}
-                    isLoading={isExecuting}
-                    error={error}
-                    query={query}
-                    searchMethod={searchMethod}
-                  />
-                ) : (
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <div className="text-center py-12">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                      </svg>
-                      <h3 className="mt-2 text-sm font-medium text-gray-900">
-                        No Results Yet
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Connect to Weaviate and run a query to see results here.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

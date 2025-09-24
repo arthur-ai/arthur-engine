@@ -1,4 +1,54 @@
 // Browser-compatible Weaviate client using HTTP instead of gRPC
+
+// Type definitions for Weaviate API responses
+interface WeaviateSchemaClass {
+  class: string;
+  description?: string;
+  vectorizer?: string;
+  properties?: Array<{
+    name: string;
+    dataType: string[];
+    description?: string;
+  }>;
+}
+
+interface WeaviateSchemaResponse {
+  classes?: WeaviateSchemaClass[];
+}
+
+interface WeaviateGraphQLItem {
+  _additional?: {
+    id?: string;
+    distance?: number;
+    score?: number;
+    explainScore?: string;
+    vector?: number[];
+  };
+  [key: string]: unknown;
+}
+
+interface WeaviateGraphQLResponse {
+  data?: {
+    Get?: {
+      [collectionName: string]: WeaviateGraphQLItem[];
+    };
+    Aggregate?: {
+      [collectionName: string]: Array<{
+        meta?: {
+          count?: number;
+        };
+      }>;
+    };
+  };
+  errors?: Array<{
+    message: string;
+    locations?: Array<{
+      line: number;
+      column: number;
+    }>;
+  }>;
+}
+
 export interface WeaviateConnection {
   url: string;
   apiKey: string;
@@ -25,7 +75,7 @@ export interface SearchSettings {
 
 export interface SearchResult {
   id: string;
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
   metadata: {
     distance?: number;
     score?: number;
@@ -84,15 +134,15 @@ export class WeaviateService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const schema = await response.json();
+      const schema = (await response.json()) as WeaviateSchemaResponse;
 
       return (
-        schema.classes?.map((cls: any) => ({
+        schema.classes?.map((cls) => ({
           name: cls.class,
           description: cls.description,
           vectorizer: cls.vectorizer,
           properties:
-            cls.properties?.map((prop: any) => ({
+            cls.properties?.map((prop) => ({
               name: prop.name,
               dataType: prop.dataType,
               description: prop.description,
@@ -199,7 +249,7 @@ export class WeaviateService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as WeaviateGraphQLResponse;
       const queryTime = Date.now() - startTime;
 
       if (result.errors) {
@@ -207,7 +257,7 @@ export class WeaviateService {
       }
 
       const results: SearchResult[] =
-        result.data?.Get?.[collectionName]?.map((item: any) => ({
+        result.data?.Get?.[collectionName]?.map((item) => ({
           id: item._additional?.id || "",
           properties: { ...item },
           metadata: {
@@ -268,7 +318,8 @@ export class WeaviateService {
         );
       }
 
-      const countResult = await countResponse.json();
+      const countResult =
+        (await countResponse.json()) as WeaviateGraphQLResponse;
       const totalObjects =
         countResult.data?.Aggregate?.[collectionName]?.[0]?.meta?.count || 0;
 
@@ -286,9 +337,9 @@ export class WeaviateService {
         );
       }
 
-      const schema = await schemaResponse.json();
+      const schema = (await schemaResponse.json()) as WeaviateSchemaResponse;
       const collection = schema.classes?.find(
-        (cls: any) => cls.class === collectionName
+        (cls) => cls.class === collectionName
       );
 
       return {
