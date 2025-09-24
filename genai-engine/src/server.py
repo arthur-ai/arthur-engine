@@ -23,6 +23,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.staticfiles import StaticFiles
 
 from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
 from config.config import Config
@@ -397,12 +398,15 @@ def get_app() -> FastAPI:
         add_routers(app, [app_chat_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
-
-    if is_api_only_mode_enabled():
-
-        @app.get("/", include_in_schema=False)
-        async def redirect_to_docs():
-            return RedirectResponse("/docs")
+    
+    # Serve the React SPA
+    static_dir = "/app/static"
+    if os.path.exists(static_dir):
+        app.mount(
+            "/",
+            StaticFiles(directory=static_dir, html=True),
+            name="static",
+        )
 
     return app
 
