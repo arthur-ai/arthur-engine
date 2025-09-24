@@ -48,9 +48,13 @@ class JobAgent:
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(arthur_host=Config.settings.ARTHUR_API_HOST),
+            verify=Config.settings.KEYCLOAK_SSL_VERIFY,
         )
         client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(session=sess),
+            configuration=ArthurOAuthSessionAPIConfiguration(
+                session=sess,
+                verify_ssl=Config.settings.KEYCLOAK_SSL_VERIFY,
+            ),
         )
         self.jobs_client = JobsV1Api(client)
         users_client = UsersV1Api(client)

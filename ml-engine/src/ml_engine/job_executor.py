@@ -96,9 +96,13 @@ class JobExecutor:
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(arthur_host=Config.settings.ARTHUR_API_HOST),
+            verify=Config.settings.KEYCLOAK_SSL_VERIFY,
         )
         client = ApiClient(
-            configuration=ArthurOAuthSessionAPIConfiguration(session=sess),
+            configuration=ArthurOAuthSessionAPIConfiguration(
+                session=sess,
+                verify_ssl=Config.settings.KEYCLOAK_SSL_VERIFY,
+            ),
         )
         self.alerts_client = AlertsV1Api(client)
         self.alert_rules_client = AlertRulesV1Api(client)
