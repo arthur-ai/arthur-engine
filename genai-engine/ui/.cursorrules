@@ -1,9 +1,11 @@
 # Arthur GenAI Engine UI - Cursor Rules
 
 ## Project Overview
+
 This is a Next.js frontend application for the Arthur GenAI Engine. It uses Tailwind CSS for styling and communicates with a backend API via generated API clients.
 
 ## Core Technologies
+
 - **Framework**: Next.js 15+ with App Router
 - **Styling**: Tailwind CSS
 - **Language**: TypeScript
@@ -13,6 +15,7 @@ This is a Next.js frontend application for the Arthur GenAI Engine. It uses Tail
 ## API Client Guidelines
 
 ### ✅ DO
+
 - Always use the generated API client from `src/lib/api.ts`
 - Use the centralized API client creation functions (`createAuthenticatedApiClient`)
 - Use React hooks (`useApi`, `useApiWithToken`) for API calls in components
@@ -21,6 +24,7 @@ This is a Next.js frontend application for the Arthur GenAI Engine. It uses Tail
 - use toasts to convey information to users
 
 ### ❌ DON'T
+
 - Make direct HTTP requests (fetch, axios) - use the generated API client
 - Create API clients directly in components - use the centralized library
 - Modify generated API client files
@@ -28,12 +32,13 @@ This is a Next.js frontend application for the Arthur GenAI Engine. It uses Tail
 - do not use Alert(), prefer toasts to notify users of events
 
 ### Example Usage
+
 ```typescript
-import { useApi } from '@/hooks/useApi';
+import { useApi } from "@/hooks/useApi";
 
 function MyComponent() {
   const api = useApi();
-  
+
   useEffect(() => {
     if (api) {
       api.api.searchTasksApiV2TasksSearchPost({}, { page_size: 10 });
@@ -45,12 +50,14 @@ function MyComponent() {
 ## Design & UI Guidelines
 
 ### Visual Design Principles
+
 - **Professional & Polished**: Create sleek, modern interfaces that convey expertise
 - **Clean & Minimal**: Avoid clutter, use whitespace effectively
 - **Consistent**: Maintain consistent spacing, typography, and component patterns
 - **Accessible**: Ensure good contrast, readable fonts, and keyboard navigation
 
 ### Color Palette
+
 - **Primary**: Use neutral colors (grays, whites, subtle blues)
 - **Accent**: Minimal use of brand colors for important actions
 - **Status**: Use semantic colors (green for success, red for errors, yellow for warnings)
@@ -58,12 +65,21 @@ function MyComponent() {
 - **No Emojis**: Never use emojis in UI text or components
 
 ### Typography
+
 - Use clear, readable fonts
 - Maintain consistent font sizes and weights
 - Ensure proper line height and spacing
 - Use semantic HTML elements (h1, h2, p, etc.)
 
+### Text Color Standards
+
+- **Primary Text**: Use `text-gray-900` (almost black) for labels, headings, and important text
+- **Secondary Text**: Use `text-gray-600` (medium-dark gray) for help text and instructions
+- **Avoid**: `text-gray-500` and `text-gray-700` as they can appear too light against white backgrounds
+- **Rationale**: Ensures better readability across different displays and browser rendering
+
 ### Component Design
+
 - Create reusable, composable components
 - Use Tailwind utility classes for styling
 - Implement proper loading states and error boundaries
@@ -72,6 +88,7 @@ function MyComponent() {
 ## Code Organization
 
 ### File Structure
+
 ```
 src/
 ├── app/                 # Next.js App Router pages
@@ -85,6 +102,7 @@ src/
 ```
 
 ### Component Guidelines
+
 - Use functional components with TypeScript
 - Implement proper prop types and interfaces
 - Use React hooks for state management
@@ -95,6 +113,7 @@ src/
 - break large components in to small, reusable sub components
 
 ### Naming Conventions
+
 - **Components**: PascalCase (e.g., `UserDashboard`)
 - **Files**: kebab-case for pages, PascalCase for components
 - **Variables**: camelCase
@@ -104,12 +123,14 @@ src/
 ## Authentication & Security
 
 ### Authentication Flow
+
 - Use the centralized `AuthService` for token management
 - Implement proper token validation and refresh
 - Handle authentication errors gracefully
 - Protect routes with `AuthGuard` component
 
 ### Security Best Practices
+
 - Never expose sensitive data in client-side code
 - Validate all user inputs
 - Use environment variables for configuration
@@ -118,12 +139,14 @@ src/
 ## Performance & Optimization
 
 ### Next.js Best Practices
+
 - Use App Router features (Server Components, Streaming)
 - Implement proper loading states
 - Optimize images with Next.js Image component
 - Use dynamic imports for code splitting
 
 ### API Optimization
+
 - Implement proper caching strategies
 - Use React Query or SWR for data fetching (if needed)
 - Minimize API calls with proper state management
@@ -133,12 +156,14 @@ src/
 ## Error Handling
 
 ### API Errors
+
 - Always wrap API calls in try-catch blocks
 - Provide meaningful error messages to users
 - Log errors appropriately for debugging
 - Implement fallback UI for error states
 
 ### Component Errors
+
 - Use Error Boundaries for component-level error handling
 - Provide graceful degradation
 - Show helpful error messages without technical details
@@ -146,12 +171,14 @@ src/
 ## Testing Guidelines
 
 ### Component Testing
+
 - Write unit tests for utility functions
 - Test component behavior and user interactions
 - Mock API calls in tests
 - Ensure accessibility compliance
 
 ### Integration Testing
+
 - Test authentication flows
 - Verify API client integration
 - Test error handling scenarios
@@ -159,12 +186,14 @@ src/
 ## Development Workflow
 
 ### Code Quality
+
 - Use TypeScript strict mode
 - Follow ESLint rules
 - Format code with Prettier
 - Write self-documenting code with clear variable names
 
 ### Git Practices
+
 - Write clear, descriptive commit messages
 - Use conventional commit format
 - Keep commits focused and atomic
@@ -173,11 +202,13 @@ src/
 ## Environment Configuration
 
 ### Local Development
+
 - Use `.env.local` for local configuration
 - Set `NEXT_PUBLIC_API_BASE_URL=http://localhost:8435` for local backend
 - Document all required environment variables
 
 ### Production
+
 - Use domain-based API routing (current browser domain)
 - Ensure proper environment variable configuration
 - Test production builds locally
@@ -185,12 +216,14 @@ src/
 ## Documentation
 
 ### Code Documentation
+
 - Write JSDoc comments for complex functions
 - Document component props and usage
 - Keep README files updated
 - Document API client usage patterns
 
 ### User Documentation
+
 - Provide clear user instructions
 - Document authentication setup
 - Include troubleshooting guides
@@ -198,6 +231,7 @@ src/
 ## Accessibility
 
 ### WCAG Compliance
+
 - Ensure proper color contrast ratios
 - Implement keyboard navigation
 - Use semantic HTML elements
@@ -205,6 +239,7 @@ src/
 - Test with screen readers
 
 ### User Experience
+
 - Provide clear feedback for user actions
 - Implement proper loading states
 - Handle edge cases gracefully
@@ -213,6 +248,7 @@ src/
 ## Common Patterns
 
 ### API Integration
+
 ```typescript
 // ✅ Good: Using centralized API client
 const api = useApi();
@@ -221,10 +257,11 @@ if (api) {
 }
 
 // ❌ Bad: Direct HTTP calls
-const response = await fetch('/api/endpoint');
+const response = await fetch("/api/endpoint");
 ```
 
 ### Component Structure
+
 ```typescript
 // ✅ Good: Proper component structure
 interface ComponentProps {
@@ -234,7 +271,7 @@ interface ComponentProps {
 
 export function MyComponent({ title, onAction }: ComponentProps) {
   const [loading, setLoading] = useState(false);
-  
+
   return (
     <div className="p-4 bg-white rounded-lg shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
