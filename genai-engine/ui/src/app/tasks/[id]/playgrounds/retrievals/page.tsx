@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ConnectionForm } from "@/components/weaviate/ConnectionForm";
 import { CollectionSelector } from "@/components/weaviate/CollectionSelector";
 import { QueryInterface } from "@/components/weaviate/QueryInterface";
@@ -33,6 +33,39 @@ export default function PlaygroundsRetrievalsPage() {
   const [results, setResults] = useState<QueryResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-connect on page load if saved credentials exist
+  useEffect(() => {
+    const autoConnect = async () => {
+      const savedUrl = localStorage.getItem("weaviate-url");
+      const savedApiKey = localStorage.getItem("weaviate-api-key");
+
+      if (savedUrl && savedApiKey) {
+        setIsConnecting(true);
+        try {
+          const success = await weaviateService.connect({
+            url: savedUrl,
+            apiKey: savedApiKey,
+          });
+          setIsConnected(success);
+          if (!success) {
+            // Clear invalid credentials
+            localStorage.removeItem("weaviate-url");
+            localStorage.removeItem("weaviate-api-key");
+          }
+        } catch (err) {
+          console.error("Auto-connect failed:", err);
+          // Clear invalid credentials
+          localStorage.removeItem("weaviate-url");
+          localStorage.removeItem("weaviate-api-key");
+        } finally {
+          setIsConnecting(false);
+        }
+      }
+    };
+
+    autoConnect();
+  }, []);
 
   const handleConnect = async (
     connection: WeaviateConnection
@@ -100,9 +133,9 @@ export default function PlaygroundsRetrievalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white shadow">
+      <div className="bg-white shadow flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-6">
             <h1 className="text-3xl font-bold text-gray-900">
@@ -117,79 +150,93 @@ export default function PlaygroundsRetrievalsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Connection and Collection Selection */}
-            <div className="lg:col-span-1 space-y-6">
-              <ConnectionForm
-                onConnect={handleConnect}
-                isConnecting={isConnecting}
-                isConnected={isConnected}
-                onDisconnect={handleDisconnect}
-              />
-
-              {isConnected && (
-                <CollectionSelector
-                  onCollectionSelect={handleCollectionSelect}
-                  selectedCollection={selectedCollection}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Connection and Collection Selection */}
+              <div className="lg:col-span-1 space-y-6">
+                <ConnectionForm
+                  onConnect={handleConnect}
+                  isConnecting={isConnecting}
+                  isConnected={isConnected}
+                  onDisconnect={handleDisconnect}
                 />
-              )}
-            </div>
 
-            {/* Right Column - Query Interface, Settings, and Results */}
-            <div className="lg:col-span-2 space-y-6">
-              {isConnected ? (
-                <>
-                  <QueryInterface
+                {isConnected && (
+                  <CollectionSelector
+                    onCollectionSelect={handleCollectionSelect}
                     selectedCollection={selectedCollection}
-                    onExecuteQuery={handleExecuteQuery}
-                    isExecuting={isExecuting}
                   />
+                )}
+              </div>
 
-                  {selectedCollection && (
-                    <SettingsPanel
-                      settings={settings}
-                      onSettingsChange={handleSettingsChange}
-                      searchMethod={searchMethod}
+              {/* Right Column - Query Interface, Settings, and Results */}
+              <div className="lg:col-span-2 space-y-6">
+                {isConnecting ? (
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="text-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <h3 className="text-sm font-medium text-gray-900">
+                        Connecting to Weaviate...
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Attempting to reconnect with saved credentials.
+                      </p>
+                    </div>
+                  </div>
+                ) : isConnected ? (
+                  <>
+                    <QueryInterface
+                      selectedCollection={selectedCollection}
+                      onExecuteQuery={handleExecuteQuery}
                       isExecuting={isExecuting}
                     />
-                  )}
 
-                  <ResultsDisplay
-                    results={results}
-                    isLoading={isExecuting}
-                    error={error}
-                    query={query}
-                    searchMethod={searchMethod}
-                  />
-                </>
-              ) : (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <div className="text-center py-12">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    {selectedCollection && (
+                      <SettingsPanel
+                        settings={settings}
+                        onSettingsChange={handleSettingsChange}
+                        searchMethod={searchMethod}
+                        isExecuting={isExecuting}
                       />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      Connect to Weaviate
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Please connect to your Weaviate instance to start
-                      experimenting with retrievals.
-                    </p>
+                    )}
+
+                    <ResultsDisplay
+                      results={results}
+                      isLoading={isExecuting}
+                      error={error}
+                      query={query}
+                      searchMethod={searchMethod}
+                    />
+                  </>
+                ) : (
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <div className="text-center py-12">
+                      <svg
+                        className="mx-auto h-12 w-12 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">
+                        Connect to Weaviate
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-600">
+                        Please connect to your Weaviate instance to start
+                        experimenting with retrievals.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { WeaviateConnection } from "@/lib/weaviate-client";
 
 interface ConnectionFormProps {
@@ -19,6 +19,24 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   const [url, setUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [hasLoadedFromStorage, setHasLoadedFromStorage] = useState(false);
+
+  // Load saved connection details from localStorage on component mount
+  useEffect(() => {
+    const savedUrl = localStorage.getItem("weaviate-url");
+    const savedApiKey = localStorage.getItem("weaviate-api-key");
+
+    if (savedUrl) {
+      setUrl(savedUrl);
+    }
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+
+    if (savedUrl || savedApiKey) {
+      setHasLoadedFromStorage(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,13 +56,20 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
     }
 
     const success = await onConnect({ url: url.trim(), apiKey: apiKey.trim() });
-    if (!success) {
+    if (success) {
+      // Save connection details to localStorage on successful connection
+      localStorage.setItem("weaviate-url", url.trim());
+      localStorage.setItem("weaviate-api-key", apiKey.trim());
+    } else {
       setError("Failed to connect. Please check your URL and API key.");
     }
   };
 
   const handleDisconnect = () => {
     onDisconnect();
+    // Clear saved connection details from localStorage
+    localStorage.removeItem("weaviate-url");
+    localStorage.removeItem("weaviate-api-key");
     setUrl("");
     setApiKey("");
     setError(null);
@@ -99,9 +124,29 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4 !text-gray-900">
-        Connect to Weaviate
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-medium text-gray-900 !text-gray-900">
+          Connect to Weaviate
+        </h3>
+        {hasLoadedFromStorage && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <svg
+              className="h-3 w-3 mr-1"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            Saved
+          </span>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
