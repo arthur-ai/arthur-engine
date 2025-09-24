@@ -205,12 +205,12 @@ export default function PlaygroundsRetrievalsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="py-6 px-4 sm:px-6 lg:px-8">
-          <div className="py-6 pb-16">
-            <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6">
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full px-4 sm:px-6 lg:px-8">
+          <div className="h-full py-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6 h-full">
               {/* Left Column - Collections, Query Interface, and Settings */}
-              <div className="space-y-6">
+              <div className="space-y-6 lg:sticky lg:top-0 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
                 {/* Show ConnectionForm only when not connected */}
                 {!isConnected && (
                   <ConnectionForm
@@ -280,7 +280,7 @@ export default function PlaygroundsRetrievalsPage() {
               </div>
 
               {/* Right Column - Results Display */}
-              <div className="space-y-6">
+              <div className="space-y-6 lg:max-h-[calc(100vh-16rem)] lg:overflow-y-auto">
                 {isConnected && (
                   <div>
                     <h2 className="text-lg font-medium text-gray-900 mb-4 text-center">
