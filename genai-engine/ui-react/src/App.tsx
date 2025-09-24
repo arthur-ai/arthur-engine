@@ -10,6 +10,7 @@ import { AllTasks } from "./components/AllTasks";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { ComingSoon } from "./components/ComingSoon";
 import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
+import { TracesView } from "./components/TracesView";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
@@ -159,10 +160,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TaskLayout>
-                    <ComingSoon
-                      featureName="Traces"
-                      description="View and analyze execution traces for debugging and optimization."
-                    />
+                    <TracesView />
                   </TaskLayout>
                 </ProtectedRoute>
               }
