@@ -20,7 +20,7 @@ RUN pip3 install poetry==1.8.5
 WORKDIR /app
 
 ENV PYTHONPATH="$PYTHONPATH:/app/src"
-RUN poetry install --without dev,performance --no-ansi
+RUN poetry config virtualenvs.create false && poetry install --without dev,performance --no-ansi --no-root
 
 # install lsof for healthchecks
 RUN apt-get update && apt-get install -y lsof && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -89,7 +89,7 @@ COPY --from=ui-build /app/ui-dist /app/static
 #####################################################################################
 
 # Final Stage(s): Create genai-engine image
-FROM gcr.io/distroless/python3-debian12:latest AS genai_engine_distroless_base
+FROM gcr.io/distroless/python3-debian12:nonroot AS genai_engine_distroless_base
 
 COPY --from=install /bin/sh /bin/sh
 COPY --from=install /bin/bash /bin/bash
@@ -104,16 +104,19 @@ COPY --from=install /usr/lib /usr/lib
 COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
-COPY --from=install /root/.cache/pypoetry/virtualenvs/ /root/.cache/pypoetry/virtualenvs/
-COPY --from=install /app/ /app/
+COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
+COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
+COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
-ENV PYTHONPATH="$PYTHONPATH:/app/src"
+ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
+ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
+ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
 
 # Set working directory (this is where the entrypoint will be run)
-WORKDIR /app
+WORKDIR /home/nonroot/app
 
 # Expose the necessary ports
 EXPOSE 3030
 
-ENTRYPOINT ["bash", "-c", "/app/src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "-c", "src/docker-entrypoint.sh"]
