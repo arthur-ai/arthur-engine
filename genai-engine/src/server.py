@@ -23,8 +23,8 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.staticfiles import StaticFiles
 
+from auth.SPAStaticFiles import SPAStaticFiles
 from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
 from config.config import Config
 from config.extra_features import extra_feature_config
@@ -404,7 +404,7 @@ def get_app() -> FastAPI:
     if os.path.exists(static_dir):
         app.mount(
             "/",
-            StaticFiles(directory=static_dir, html=True),
+            SPAStaticFiles(directory=static_dir, html=True),
             name="static",
         )
 
