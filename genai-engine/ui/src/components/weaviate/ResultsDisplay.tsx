@@ -147,14 +147,6 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Search Results</h3>
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          {results.totalResults && <span>{results.totalResults} results</span>}
-          {results.queryTime && <span>{results.queryTime}ms</span>}
-        </div>
-      </div>
-
       {query && (
         <div className="mb-4 p-3 bg-gray-50 rounded-md">
           <div className="text-sm">
@@ -169,6 +161,14 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             </span>
             <span className="ml-2 text-gray-600 capitalize">
               {searchMethod}
+            </span>
+          </div>
+          <div className="text-sm mt-1">
+            <span className="font-medium text-gray-900 !text-gray-900">
+              Results:
+            </span>
+            <span className="ml-2 text-gray-600">
+              {results.totalResults} results in {results.queryTime}ms
             </span>
           </div>
         </div>
