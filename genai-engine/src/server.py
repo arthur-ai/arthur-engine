@@ -400,7 +400,7 @@ def get_app() -> FastAPI:
         add_routers(app, [auth_routes, user_management_routes])
     
     # Serve the React SPA
-    static_dir = "/app/static"
+    static_dir = "/home/nonroot/app/static"
     if os.path.exists(static_dir):
         app.mount(
             "/",
