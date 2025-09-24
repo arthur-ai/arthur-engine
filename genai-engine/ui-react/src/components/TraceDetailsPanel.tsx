@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
@@ -142,22 +140,15 @@ const SpanNode: React.FC<SpanNodeProps> = ({
   return (
     <div className="ml-4">
       <div
-        className={`flex items-center py-1 cursor-pointer hover:bg-gray-100 rounded ${
+        className={`flex items-center py-1 hover:bg-gray-100 rounded ${
           isSelected ? "bg-blue-100" : ""
         }`}
-        onClick={() => {
-          onSpanClick(span);
-          if (hasChildren) {
-            setIsExpanded(!isExpanded);
-          }
-        }}
+        style={{ marginLeft: `${level * 16}px` }}
       >
-        {hasChildren && (
-          <div className="mr-2 text-gray-600">{isExpanded ? "▼" : "▶"}</div>
-        )}
-        {!hasChildren && <div className="mr-2 w-4" />}
-
-        <div className="flex-1">
+        <div
+          className="flex-1 cursor-pointer flex items-center"
+          onClick={() => onSpanClick(span)}
+        >
           {spanType && (
             <span
               className={`mr-2 text-xs px-2 py-0.5 rounded-full bg-gray-100 ${getSpanTypeColor(
@@ -177,10 +168,31 @@ const SpanNode: React.FC<SpanNodeProps> = ({
             </span>
           )}
         </div>
+
+        {hasChildren && (
+          <div
+            className="ml-2 text-gray-600 cursor-pointer hover:text-gray-800 flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+          >
+            {isExpanded ? "▼" : "▶"}
+          </div>
+        )}
       </div>
 
       {hasChildren && isExpanded && (
-        <div className="ml-4">
+        <div className="relative ml-4">
+          {/* Vertical line from parent to middle of last child */}
+          <div
+            className="absolute w-px bg-gray-300"
+            style={{
+              left: `${level * 16 + 6}px`,
+              top: "0px",
+              height: "calc(100% - 12px)",
+            }}
+          />
           {span.children?.map((child, index) => (
             <SpanNode
               key={index}
