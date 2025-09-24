@@ -46,12 +46,12 @@ export class WeaviateService {
   async connect(connection: WeaviateConnection): Promise<boolean> {
     try {
       this.connection = connection;
-      
+
       // Test connection by getting meta information
       const response = await fetch(`${connection.url}/v1/meta`, {
         headers: {
-          'Authorization': `Bearer ${connection.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${connection.apiKey}`,
+          "Content-Type": "application/json",
         },
       });
 
@@ -75,8 +75,8 @@ export class WeaviateService {
     try {
       const response = await fetch(`${this.connection.url}/v1/schema`, {
         headers: {
-          'Authorization': `Bearer ${this.connection.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.connection.apiKey}`,
+          "Content-Type": "application/json",
         },
       });
 
@@ -85,7 +85,7 @@ export class WeaviateService {
       }
 
       const schema = await response.json();
-      
+
       return (
         schema.classes?.map((cls: any) => ({
           name: cls.class,
@@ -118,25 +118,26 @@ export class WeaviateService {
     const startTime = Date.now();
 
     try {
+      // First, get the collection schema to know what properties to request
+      const collections = await this.getCollections();
+      const collection = collections.find((c) => c.name === collectionName);
+
+      if (!collection) {
+        throw new Error(`Collection ${collectionName} not found`);
+      }
+
+      // Build property fields list
+      const propertyFields = collection.properties
+        .map((prop) => prop.name)
+        .join("\n              ");
+
       // Build GraphQL query
       let graphqlQuery = `
         query {
           Get {
-            ${collectionName}(limit: ${settings.limit})
-      `;
+            ${collectionName}(limit: ${settings.limit}`;
 
-      // Add fields
-      let fields = "*";
-      if (settings.includeMetadata) {
-        fields += " _additional { id distance score explainScore }";
-      }
-      if (settings.includeVector) {
-        fields += " _additional { id distance score explainScore vector }";
-      }
-
-      graphqlQuery += ` ${fields}`;
-
-      // Add search method
+      // Add search method parameters
       switch (searchMethod) {
         case "nearText":
           graphqlQuery += ` nearText: { concepts: ["${query}"] distance: ${settings.distance} }`;
@@ -145,10 +146,37 @@ export class WeaviateService {
           graphqlQuery += ` bm25: { query: "${query}" }`;
           break;
         case "hybrid":
-          graphqlQuery += ` hybrid: { query: "${query}" alpha: ${settings.alpha || 0.5} }`;
+          graphqlQuery += ` hybrid: { query: "${query}" alpha: ${
+            settings.alpha || 0.5
+          } }`;
           break;
         default:
           throw new Error(`Unsupported search method: ${searchMethod}`);
+      }
+
+      // Close the parameters and add fields
+      graphqlQuery += `) {
+              ${propertyFields}`;
+
+      if (settings.includeMetadata || settings.includeVector) {
+        graphqlQuery += `
+              _additional {`;
+
+        if (settings.includeMetadata) {
+          graphqlQuery += `
+                id
+                distance
+                score
+                explainScore`;
+        }
+
+        if (settings.includeVector) {
+          graphqlQuery += `
+                vector`;
+        }
+
+        graphqlQuery += `
+              }`;
       }
 
       graphqlQuery += `
@@ -158,10 +186,11 @@ export class WeaviateService {
       `;
 
       const response = await fetch(`${this.connection.url}/v1/graphql`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${this.connection.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.connection.apiKey}`,
+          "Content-Type": "application/json",
+          "X-Weaviate-Cluster-Url": this.connection.url,
         },
         body: JSON.stringify({ query: graphqlQuery }),
       });
@@ -224,31 +253,37 @@ export class WeaviateService {
       `;
 
       const countResponse = await fetch(`${this.connection.url}/v1/graphql`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${this.connection.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.connection.apiKey}`,
+          "Content-Type": "application/json",
+          "X-Weaviate-Cluster-Url": this.connection.url,
         },
         body: JSON.stringify({ query: countQuery }),
       });
 
       if (!countResponse.ok) {
-        throw new Error(`HTTP ${countResponse.status}: ${countResponse.statusText}`);
+        throw new Error(
+          `HTTP ${countResponse.status}: ${countResponse.statusText}`
+        );
       }
 
       const countResult = await countResponse.json();
-      const totalObjects = countResult.data?.Aggregate?.[collectionName]?.[0]?.meta?.count || 0;
+      const totalObjects =
+        countResult.data?.Aggregate?.[collectionName]?.[0]?.meta?.count || 0;
 
       // Get collection schema
       const schemaResponse = await fetch(`${this.connection.url}/v1/schema`, {
         headers: {
-          'Authorization': `Bearer ${this.connection.apiKey}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.connection.apiKey}`,
+          "Content-Type": "application/json",
         },
       });
 
       if (!schemaResponse.ok) {
-        throw new Error(`HTTP ${schemaResponse.status}: ${schemaResponse.statusText}`);
+        throw new Error(
+          `HTTP ${schemaResponse.status}: ${schemaResponse.statusText}`
+        );
       }
 
       const schema = await schemaResponse.json();
