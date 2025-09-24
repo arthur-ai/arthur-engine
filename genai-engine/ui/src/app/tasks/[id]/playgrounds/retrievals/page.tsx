@@ -206,9 +206,9 @@ export default function PlaygroundsRetrievalsPage() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 pb-16 sm:px-0">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="py-6 px-4 sm:px-6 lg:px-8">
+          <div className="py-6 pb-16">
+            <div className="grid grid-cols-1 lg:grid-cols-[600px_1fr] gap-6">
               {/* Left Column - Collections, Query Interface, and Settings */}
               <div className="space-y-6">
                 {/* Show ConnectionForm only when not connected */}
