@@ -41,4 +41,3 @@ services:
       timeout: 10s
       retries: 10
       start_period: 300s
-    entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
