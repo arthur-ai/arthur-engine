@@ -1,8 +1,6 @@
-
-
 import React, { useState, useEffect } from "react";
 import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/contexts/TaskContext";
+import { useTask } from "@/hooks/useTask";
 import { TraceResponse } from "@/lib/api";
 import { TraceDetailsPanel } from "./TraceDetailsPanel";
 

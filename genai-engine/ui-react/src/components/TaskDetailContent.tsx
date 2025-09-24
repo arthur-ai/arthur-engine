@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import React from "react";
+import { useTask } from "@/hooks/useTask";
 
 export const TaskDetailContent: React.FC = () => {
   const { task } = useTask();
-  
+
   if (!task) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -19,7 +19,7 @@ export const TaskDetailContent: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-900">
-              {task.name || 'Untitled Task'}
+              {task.name || "Untitled Task"}
             </h2>
             <div className="flex items-center space-x-2">
               {task.is_agentic && (
@@ -30,34 +30,40 @@ export const TaskDetailContent: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="px-6 py-4">
           <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
             <div>
               <dt className="text-sm font-medium text-gray-500">Task ID</dt>
-              <dd className="mt-1 text-sm text-gray-900 font-mono">{task.id}</dd>
+              <dd className="mt-1 text-sm text-gray-900 font-mono">
+                {task.id}
+              </dd>
             </div>
 
             {task.is_agentic !== undefined && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Type</dt>
                 <dd className="mt-1 text-sm text-gray-900">
-                  {task.is_agentic ? 'Agentic Task' : 'Standard Task'}
+                  {task.is_agentic ? "Agentic Task" : "Standard Task"}
                 </dd>
               </div>
             )}
-            
+
             <div>
               <dt className="text-sm font-medium text-gray-500">Created At</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {task.created_at ? new Date(task.created_at).toLocaleString() : 'Not available'}
+                {task.created_at
+                  ? new Date(task.created_at).toLocaleString()
+                  : "Not available"}
               </dd>
             </div>
-            
+
             <div>
               <dt className="text-sm font-medium text-gray-500">Updated At</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {task.updated_at ? new Date(task.updated_at).toLocaleString() : 'Not available'}
+                {task.updated_at
+                  ? new Date(task.updated_at).toLocaleString()
+                  : "Not available"}
               </dd>
             </div>
           </dl>

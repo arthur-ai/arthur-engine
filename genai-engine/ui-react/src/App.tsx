@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useParams,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LoginPage } from "./components/LoginPage";
@@ -14,6 +15,12 @@ import { TracesView } from "./components/TracesView";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
+
+// Component to redirect /tasks/:id to /tasks/:id/task-details
+const TaskRedirect = () => {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/tasks/${id}/task-details`} replace />;
+};
 
 function App() {
   return (
@@ -35,8 +42,10 @@ function App() {
             />
 
             {/* Task routes with layout */}
+            <Route path="/tasks/:id" element={<TaskRedirect />} />
+
             <Route
-              path="/tasks/:id"
+              path="/tasks/:id/task-details"
               element={
                 <ProtectedRoute>
                   <TaskLayout>

@@ -1,15 +1,9 @@
-import React, { createContext, useContext, ReactNode } from "react";
-import { TaskResponse } from "@/lib/api";
-
-interface TaskContextType {
-  task: TaskResponse | null;
-}
-
-const TaskContext = createContext<TaskContextType | undefined>(undefined);
+import React, { ReactNode } from "react";
+import { TaskContext, TaskContextType } from "./TaskContextDefinition";
 
 interface TaskProviderProps {
   children: ReactNode;
-  task: TaskResponse | null;
+  task: TaskContextType["task"];
 }
 
 export const TaskProvider: React.FC<TaskProviderProps> = ({
@@ -19,12 +13,4 @@ export const TaskProvider: React.FC<TaskProviderProps> = ({
   return (
     <TaskContext.Provider value={{ task }}>{children}</TaskContext.Provider>
   );
-};
-
-export const useTask = (): TaskContextType => {
-  const context = useContext(TaskContext);
-  if (context === undefined) {
-    throw new Error("useTask must be used within a TaskProvider");
-  }
-  return context;
 };
