@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ConnectionForm } from "@/components/weaviate/ConnectionForm";
-import { CollectionSelector } from "@/components/weaviate/CollectionSelector";
-import { QueryInterface } from "@/components/weaviate/QueryInterface";
+import { QueryConfiguration } from "@/components/weaviate/QueryConfiguration";
 import { SettingsPanel } from "@/components/weaviate/SettingsPanel";
 import { ResultsDisplay } from "@/components/weaviate/ResultsDisplay";
 import {
@@ -223,22 +222,6 @@ export default function PlaygroundsRetrievalsPage() {
                   />
                 )}
 
-                {isConnected && (
-                  <CollectionSelector
-                    onCollectionSelect={handleCollectionSelect}
-                    selectedCollection={selectedCollection}
-                  />
-                )}
-
-                {/* Query Configuration Section */}
-                {isConnected && (
-                  <div className="border-t border-gray-200 pt-6">
-                    <h2 className="text-lg font-medium text-gray-900 mb-4">
-                      Query Configuration
-                    </h2>
-                  </div>
-                )}
-
                 {isConnecting ? (
                   <div className="bg-white rounded-lg shadow p-6">
                     <div className="text-center py-12">
@@ -253,10 +236,13 @@ export default function PlaygroundsRetrievalsPage() {
                   </div>
                 ) : isConnected ? (
                   <>
-                    <QueryInterface
+                    <QueryConfiguration
                       selectedCollection={selectedCollection}
+                      onCollectionSelect={handleCollectionSelect}
                       onExecuteQuery={handleExecuteQuery}
                       isExecuting={isExecuting}
+                      searchMethod={searchMethod}
+                      onSearchMethodChange={setSearchMethod}
                     />
 
                     {selectedCollection && (
