@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   WeaviateCollection,
   weaviateService,
@@ -31,10 +31,10 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
   const [collections, setCollections] = useState<WeaviateCollection[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<Record<string, any>>({});
+  const [stats, setStats] = useState<Record<string, { count: number }>>({});
   const [query, setQuery] = useState("");
 
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     if (!weaviateService.isConnected()) {
       setError("Not connected to Weaviate");
       return;
@@ -86,11 +86,11 @@ export const QueryConfiguration: React.FC<QueryConfigurationProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCollection, onCollectionSelect]);
 
   useEffect(() => {
     fetchCollections();
-  }, []);
+  }, [fetchCollections]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

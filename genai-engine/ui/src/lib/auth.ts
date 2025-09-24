@@ -12,7 +12,7 @@ export interface AuthState {
 export class AuthService {
   private static instance: AuthService;
   private token: string | null = null;
-  private apiClient: Api<any> | null = null;
+  private apiClient: Api<unknown> | null = null;
 
   private constructor() {
     // Initialize token from localStorage if available
@@ -78,7 +78,7 @@ export class AuthService {
     return this.token !== null;
   }
 
-  public getApiClient(): Api<any> | null {
+  public getApiClient(): Api<unknown> | null {
     return this.apiClient;
   }
 

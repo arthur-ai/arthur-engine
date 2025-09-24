@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { QueryResult, SearchResult } from "@/lib/weaviate-client";
+import { QueryResult } from "@/lib/weaviate-client";
 
 interface ResultsDisplayProps {
   results: QueryResult | null;
@@ -32,7 +32,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     setExpandedResults(newExpanded);
   };
 
-  const formatValue = (value: any): string => {
+  const formatValue = (value: unknown): string => {
     if (value === null || value === undefined) {
       return "null";
     }
@@ -153,7 +153,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             <span className="font-medium text-gray-900 !text-gray-900">
               Query:
             </span>
-            <span className="ml-2 text-gray-600">"{query}"</span>
+            <span className="ml-2 text-gray-600">&quot;{query}&quot;</span>
           </div>
           <div className="text-sm mt-1">
             <span className="font-medium text-gray-900 !text-gray-900">
@@ -200,7 +200,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="space-y-4">
           {results.results.map((result, index) => {
             const isExpanded = expandedResults.has(result.id);
-            const { _additional, ...properties } = result.properties;
+            const { ...properties } = result.properties;
 
             return (
               <div

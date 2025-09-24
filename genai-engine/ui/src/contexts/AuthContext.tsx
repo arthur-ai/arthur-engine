@@ -1,7 +1,13 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { AuthService, AuthState } from '@/lib/auth';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { AuthService, AuthState } from "@/lib/auth";
 
 interface AuthContextType extends AuthState {
   login: (token: string) => Promise<boolean>;
@@ -14,7 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -36,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+        setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
         const token = authService.getToken();
         if (token) {
@@ -54,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               isAuthenticated: false,
               token: null,
               isLoading: false,
-              error: 'Token is invalid or expired',
+              error: "Token is invalid or expired",
             });
           }
         } else {
@@ -65,12 +71,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             error: null,
           });
         }
-      } catch (error) {
+      } catch {
         setAuthState({
           isAuthenticated: false,
           token: null,
           isLoading: false,
-          error: 'Failed to initialize authentication',
+          error: "Failed to initialize authentication",
         });
       }
     };
@@ -80,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (token: string): Promise<boolean> => {
     try {
-      setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
+      setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       const success = await authService.login(token);
       if (success) {
@@ -92,18 +98,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
         return true;
       } else {
-        setAuthState(prev => ({
+        setAuthState((prev) => ({
           ...prev,
           isLoading: false,
-          error: 'Invalid token or authentication failed',
+          error: "Invalid token or authentication failed",
         }));
         return false;
       }
-    } catch (error) {
-      setAuthState(prev => ({
+    } catch {
+      setAuthState((prev) => ({
         ...prev,
         isLoading: false,
-        error: 'Login failed',
+        error: "Login failed",
       }));
       return false;
     }
@@ -123,20 +129,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const isValid = await authService.validateToken();
       if (!isValid) {
-        setAuthState(prev => ({
+        setAuthState((prev) => ({
           ...prev,
           isAuthenticated: false,
           token: null,
-          error: 'Token validation failed',
+          error: "Token validation failed",
         }));
       }
       return isValid;
-    } catch (error) {
-      setAuthState(prev => ({
+    } catch {
+      setAuthState((prev) => ({
         ...prev,
         isAuthenticated: false,
         token: null,
-        error: 'Token validation failed',
+        error: "Token validation failed",
       }));
       return false;
     }
@@ -149,10 +155,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     validateToken,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

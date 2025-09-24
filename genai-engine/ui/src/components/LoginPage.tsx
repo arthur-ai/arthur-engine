@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const LoginPage: React.FC = () => {
-  const [token, setToken] = useState('');
+  const [token, setToken] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, error } = useAuth();
 
@@ -17,10 +17,10 @@ export const LoginPage: React.FC = () => {
       const success = await login(token.trim());
       if (!success) {
         // Error will be handled by the auth context
-        console.error('Login failed');
+        console.error("Login failed");
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -78,9 +78,7 @@ export const LoginPage: React.FC = () => {
                   <h3 className="text-sm font-medium text-red-800">
                     Authentication Error
                   </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    {error}
-                  </div>
+                  <div className="mt-2 text-sm text-red-700">{error}</div>
                 </div>
               </div>
             </div>
@@ -117,14 +115,14 @@ export const LoginPage: React.FC = () => {
                   Signing in...
                 </div>
               ) : (
-                'Sign in'
+                "Sign in"
               )}
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-sm text-gray-600">
-              Don't have a token? Contact your administrator to get access.
+              Don&apos;t have a token? Contact your administrator to get access.
             </p>
           </div>
         </form>
@@ -132,4 +130,3 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
-
