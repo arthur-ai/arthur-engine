@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { WeaviateConnection } from "@/lib/weaviate-client";
 
 interface ConnectionFormProps {
   onConnect: (url: string, apiKey: string) => Promise<void>;
@@ -58,7 +57,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
       // Save connection details to localStorage on successful connection
       localStorage.setItem("weaviate-url", url.trim());
       localStorage.setItem("weaviate-api-key", apiKey.trim());
-    } catch (error) {
+    } catch {
       setError("Failed to connect. Please check your URL and API key.");
     }
   };
