@@ -31,11 +31,7 @@ types-psutil = "7.0.0.20250822"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-<<<<<<< HEAD
 arthur-client = "1.4.1508"
-=======
-arthur-client = "1.4.1507"
->>>>>>> 1c35553 (fix(deps): update dependency arthur-client to v1.4.1507 (#500))
 arthur-common = "2.3.0"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"
