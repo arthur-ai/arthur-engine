@@ -81,7 +81,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
           </h3>
           <button
             onClick={handleDisconnect}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-900 !text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-900 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             <svg
               className="h-4 w-4 mr-2"
@@ -122,7 +122,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900 !text-gray-900">
+        <h3 className="text-lg font-medium text-gray-900">
           Connect to Weaviate
         </h3>
         {hasLoadedFromStorage && (
@@ -170,7 +170,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
         <div>
           <label
             htmlFor="url"
-            className="block text-sm font-medium text-gray-900 mb-1 !text-gray-900"
+            className="block text-sm font-medium text-gray-900 mb-1"
           >
             Weaviate URL
           </label>
@@ -180,7 +180,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://your-weaviate-instance.com"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 !text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={isConnecting}
           />
           <p className="mt-1 text-xs text-gray-600">
@@ -191,7 +191,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
         <div>
           <label
             htmlFor="apiKey"
-            className="block text-sm font-medium text-gray-900 mb-1 !text-gray-900"
+            className="block text-sm font-medium text-gray-900 mb-1"
           >
             API Key
           </label>
@@ -201,7 +201,7 @@ export const ConnectionForm: React.FC<ConnectionFormProps> = ({
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="Enter your Weaviate API key"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 !text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={isConnecting}
           />
           <p className="mt-1 text-xs text-gray-600">
