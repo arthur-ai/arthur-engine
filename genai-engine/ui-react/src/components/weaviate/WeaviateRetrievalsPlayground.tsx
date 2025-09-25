@@ -126,7 +126,7 @@ export const WeaviateRetrievalsPlayground: React.FC = () => {
             </div>
 
             {isConnected && (
-              <div className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3 self-start">
+              <div className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg px-4 py-1">
                 <div className="flex items-center">
                   <svg
                     className="h-5 w-5 text-green-500 mr-2"
