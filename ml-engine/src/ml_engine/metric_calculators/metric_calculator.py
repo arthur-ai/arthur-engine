@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Any, List
+from typing import Any, Dict, List
 from uuid import UUID
 
 import duckdb
@@ -8,6 +8,7 @@ from arthur_client.api_bindings import (
     AggregationSpec,
     CustomAggregationVersionSpecSchemaAggregateArgsInner,
     Dataset,
+    DatasetObjectType,
     MetricsArgSpec,
 )
 from arthur_common.models.metrics import (
@@ -18,6 +19,10 @@ from arthur_common.models.metrics import (
     SketchMetric,
 )
 from arthur_common.models.schema_definitions import ScopeSchemaTag
+from arthur_common.tools.duckdb_data_loader import (
+    escape_identifier,
+    unescape_identifier,
+)
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
 from config import Config
@@ -103,7 +108,7 @@ class MetricCalculator(ABC):
         dataset_key = arg_schema.source_dataset_parameter_key
         dataset_ref = aggregate_args[dataset_key]
         column_dtype = column_scalar_dtype_from_dataset_schema(
-            col_name,
+            unescape_identifier(col_name),
             ds_map[str(dataset_ref.dataset_id)],
         )
         if not column_dtype:
@@ -193,6 +198,74 @@ class MetricCalculator(ABC):
                 )
             return [all_dataset_columns[str(value)] for value in arg.arg_value]
 
+    def _field_names_from_object_type_column(
+        self,
+        obj_type: DatasetObjectType,
+        base_name: str = "",
+    ) -> Dict[str, str]:
+        """Returns map from column ID to column name of all columns nested in a DatasetObjectType typed column.
+
+        This usually means obj_type refers to a struct column.
+        The column names returned in the maps have escape identifiers applied as needed to the struct fields.
+
+        base_name: Used for recursion. Refers to the name of any parent column. For example, if this DatasetObjectType
+        typed column is already a nested field in a top-level column called "parent_column", the base_name should be
+        "parent_column", including the double-quoted escape identifiers.
+        """
+        nested_object = obj_type.object
+        field_names = {}
+        for key, value in nested_object.items():
+            # key is the name of the nested field
+            # value is the next DatasetObjectType or DatasetScalarType, etc.
+
+            if not isinstance(value, DatasetObjectType):
+                # base case - next field is not also an object type
+                if base_name:
+                    col_name = f"{base_name}.{escape_identifier(key)}"
+                else:
+                    col_name = key
+
+                field_names[value.actual_instance.id] = col_name
+            else:
+                # next field is also an object/struct type; recurse to get the names of the nested fields
+                field_names.update(
+                    self._field_names_from_object_type_column(value, base_name),
+                )
+                # there's some weirdness where the DatasetObjectType itself has an ID, but not a source name.
+                # the ID & source name of the column live in the DatasetColumn object.
+        return field_names
+
+    def _all_dataset_columns(self, datasets: List[Dataset]) -> Dict[str, str]:
+        """Returns a dict from column ID to column name for every column in the list of datasets.
+        Includes nested column names using dot syntax ("parent_column_name"."nested_column_name").
+        Nested column names are not included in column_names so we cannot just use that property from the
+         Dataset object here.
+        Escape identifiers are included in the names.
+        """
+        all_dataset_columns = {}
+        for ds in datasets:
+            # first, use the column_names property. We need to do this instead of iterating over the parent-level
+            # column names & adding them ourselves because this property applies alias masks as needed to the
+            # top-level column names.
+            top_level_col_names = ds.dataset_schema.column_names.copy()
+            for col_id, col_name in top_level_col_names.items():
+                # add escape identifier to column name
+                top_level_col_names[col_id] = escape_identifier(col_name)
+
+            all_dataset_columns.update(top_level_col_names)
+
+            # then, iterate over any object type columns to include the nested column names in the dict
+            for column in ds.dataset_schema.columns:
+                if isinstance(column.definition.actual_instance, DatasetObjectType):
+                    all_dataset_columns.update(
+                        self._field_names_from_object_type_column(
+                            column.definition.actual_instance,
+                            escape_identifier(column.source_name),
+                        ),
+                    )
+
+        return all_dataset_columns
+
     def process_agg_args(
         self,
         datasets: list[Dataset],
@@ -204,7 +277,8 @@ class MetricCalculator(ABC):
         These arguments have dict[str, Any] types. This dict represents a mapping from the parameter key of the
         argument (ie. the key by which the argument is referenced in an aggregation) to the value of the argument.
         In the case of literal arguments, the value is a scalar.
-        In the case of column arguments, the value is the column name.
+        In the case of column arguments, the value is the column name. The name includes the escape identifiers
+            needed to execute the query.
         In the case of dataset arguments, the value is the DatasetReference object for this dataset.
         """
         init_args = {
@@ -225,9 +299,9 @@ class MetricCalculator(ABC):
         )
 
         ds_map = {ds.id: ds for ds in datasets}
-        all_dataset_columns = {}  # column id: column name
-        for ds in datasets:
-            all_dataset_columns.update(ds.dataset_schema.column_names)
+        all_dataset_columns = self._all_dataset_columns(
+            datasets,
+        )  # column id: escaped column name
 
         aggregate_args: dict[str, Any] = {}
         for arg in self.agg_spec.aggregation_args:
