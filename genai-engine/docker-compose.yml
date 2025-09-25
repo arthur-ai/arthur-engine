@@ -7,6 +7,9 @@ services:
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - /var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -35,10 +38,8 @@ services:
       - OPENAI_API_VERSION=2023-07-01-preview
       - GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
+    volumes:
+      - /home/nonroot/.cache/huggingface/
     depends_on:
       db:
         condition: service_healthy
-#  adminer:
-#    image: adminer
-#    ports:
-#      - 8080:8080

@@ -5,6 +5,7 @@ import {
   WeaviateCollection,
   weaviateService,
   SearchSettings,
+  QueryResult,
 } from "../../lib/weaviate-client";
 
 export const WeaviateRetrievalsPlayground: React.FC = () => {
@@ -24,7 +25,7 @@ export const WeaviateRetrievalsPlayground: React.FC = () => {
     includeMetadata: true,
     includeVector: false,
   });
-  const [results, setResults] = useState<any>(null);
+  const [results, setResults] = useState<QueryResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectionUrl, setConnectionUrl] = useState<string>("");
