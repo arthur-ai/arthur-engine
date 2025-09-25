@@ -96,7 +96,10 @@ class JobExecutor:
         sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
-            metadata=ArthurOIDCMetadata(arthur_host=Config.settings.ARTHUR_API_HOST),
+            metadata=ArthurOIDCMetadata(
+                arthur_host=Config.settings.ARTHUR_API_HOST,
+                ssl_verify=ssl_verify,
+            ),
             verify=ssl_verify,
         )
         client = ApiClient(
