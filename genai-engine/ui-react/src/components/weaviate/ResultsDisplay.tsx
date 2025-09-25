@@ -148,23 +148,17 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       {query && (
         <div className="mb-4 p-3 bg-gray-50 rounded-md">
           <div className="text-sm">
-            <span className="font-medium text-gray-900 !text-gray-900">
-              Query:
-            </span>
+            <span className="font-medium text-gray-900">Query:</span>
             <span className="ml-2 text-gray-600">&quot;{query}&quot;</span>
           </div>
           <div className="text-sm mt-1">
-            <span className="font-medium text-gray-900 !text-gray-900">
-              Method:
-            </span>
+            <span className="font-medium text-gray-900">Method:</span>
             <span className="ml-2 text-gray-600 capitalize">
               {searchMethod}
             </span>
           </div>
           <div className="text-sm mt-1">
-            <span className="font-medium text-gray-900 !text-gray-900">
-              Results:
-            </span>
+            <span className="font-medium text-gray-900">Results:</span>
             <span className="ml-2 text-gray-600">
               {results.totalResults} results in {results.queryTime}ms
             </span>
@@ -227,7 +221,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                           .slice(0, 3)
                           .map(([key, value]) => (
                             <div key={key} className="text-sm">
-                              <span className="font-medium text-gray-900 !text-gray-900">
+                              <span className="font-medium text-gray-900">
                                 {key}:
                               </span>
                               <span className="ml-2 text-gray-600">
@@ -313,7 +307,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     <div className="space-y-4">
                       {/* Properties */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900 mb-2 !text-gray-900">
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">
                           Properties
                         </h4>
                         <div className="bg-white rounded border p-3">
@@ -326,7 +320,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       {/* Metadata */}
                       {result.metadata && (
                         <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2 !text-gray-900">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">
                             Metadata
                           </h4>
                           <div className="bg-white rounded border p-3">
@@ -393,7 +387,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                       {/* Vector (if included) */}
                       {result.vector && (
                         <div>
-                          <h4 className="text-sm font-medium text-gray-900 mb-2 !text-gray-900">
+                          <h4 className="text-sm font-medium text-gray-900 mb-2">
                             Vector Embedding ({result.vector.length} dimensions)
                           </h4>
                           <div className="bg-white rounded border p-3">
