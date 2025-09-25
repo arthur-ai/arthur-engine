@@ -92,16 +92,21 @@ class JobSpecRawParser:
 
 class JobExecutor:
     def __init__(self) -> None:
+        ssl_verify = (
+            Config.settings.KEYCLOAK_SSL_VERIFY.lower() == "true"
+            if isinstance(Config.settings.KEYCLOAK_SSL_VERIFY, str)
+            else Config.settings.KEYCLOAK_SSL_VERIFY
+        )
         sess = ArthurClientCredentialsAPISession(
             client_id=Config.settings.ARTHUR_CLIENT_ID,
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(arthur_host=Config.settings.ARTHUR_API_HOST),
-            verify=Config.settings.KEYCLOAK_SSL_VERIFY,
+            verify=ssl_verify,
         )
         client = ApiClient(
             configuration=ArthurOAuthSessionAPIConfiguration(
                 session=sess,
-                verify_ssl=Config.settings.KEYCLOAK_SSL_VERIFY,
+                verify_ssl=ssl_verify,
             ),
         )
         self.alerts_client = AlertsV1Api(client)
