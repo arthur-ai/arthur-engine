@@ -191,7 +191,7 @@ poetry run alembic upgrade head
    export POSTGRES_USER=postgres
    export POSTGRES_PASSWORD=changeme_pg_password
    export POSTGRES_URL=localhost
-   export POSTGRES_PORT=5435
+   export POSTGRES_PORT=5432
    export POSTGRES_DB=arthur_genai_engine
    export POSTGRES_USE_SSL=false
    export GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
