@@ -18,6 +18,7 @@ Vagrant.configure("2") do |config|
   # Port forwarding for GenAI Engine services
   # Main GenAI Engine server
   config.vm.network "forwarded_port", guest: 8435, host: 8435, id: "genai-engine"
+  config.vm.network "forwarded_port", guest: 3030, host: 3030, id: "genai-engine"
   
   # PostgreSQL database
   config.vm.network "forwarded_port", guest: 5432, host: 5432, id: "postgres"
