@@ -195,6 +195,10 @@ jobs:
       matrix:
         torch_device: [cpu, gpu]
     steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
@@ -233,6 +237,10 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     steps:
+      - uses: mathio/gha-cleanup@v1
+        with:
+          remove-browsers: true
+          verbose: true
       - uses: actions/checkout@v5
       - uses: ./.github/workflows/composite-actions/setup-git
         with:
