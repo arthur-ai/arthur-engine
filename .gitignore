@@ -31,3 +31,4 @@ Chart.lock
 values.yaml
 
 ml-engine/src/genai_client/**
+.vagrant
