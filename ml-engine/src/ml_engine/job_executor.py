@@ -98,7 +98,7 @@ class JobExecutor:
             client_secret=Config.settings.ARTHUR_CLIENT_SECRET,
             metadata=ArthurOIDCMetadata(
                 arthur_host=Config.settings.ARTHUR_API_HOST,
-                ssl_verify=ssl_verify,
+                verify_ssl=ssl_verify,
             ),
             verify=ssl_verify,
         )
