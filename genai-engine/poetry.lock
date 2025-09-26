@@ -577,18 +577,18 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.38"
+version = "1.40.39"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.40.38-py3-none-any.whl", hash = "sha256:fac337b4f0615e4d6ceee44686e662f51d8e57916ed2bc763468e3e8c611a658"},
-    {file = "boto3-1.40.38.tar.gz", hash = "sha256:932ebdd8dbf8ab5694d233df86d5d0950291e0b146c27cb46da8adb4f00f6ca4"},
+    {file = "boto3-1.40.39-py3-none-any.whl", hash = "sha256:e2cab5606269fe9f428981892aa592b7e0c087a038774475fa4cd6c8b5fe0a99"},
+    {file = "boto3-1.40.39.tar.gz", hash = "sha256:27ca06d4d6f838b056b4935c9eceb92c8d125dbe0e895c5583bcf7130627dcd2"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.38,<1.41.0"
+botocore = ">=1.40.39,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -597,14 +597,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.38"
+version = "1.40.39"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.38-py3-none-any.whl", hash = "sha256:7d60a7557db3a58f9394e7ecec1f6b87495ce947eb713f29d53aee83a6e9dc71"},
-    {file = "botocore-1.40.38.tar.gz", hash = "sha256:18039009e1eca2bff12e576e8dd3c80cd9b312294f1469c831de03169582ad59"},
+    {file = "botocore-1.40.39-py3-none-any.whl", hash = "sha256:144e0e887a9fc198c6772f660fc006028bd1a9ce5eea3caddd848db3e421bc79"},
+    {file = "botocore-1.40.39.tar.gz", hash = "sha256:c6efc55cac341811ba90c693d20097db6e2ce903451d94496bccd3f672b1709d"},
 ]
 
 [package.dependencies]
@@ -8177,4 +8177,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "dd30f0f610dd45680c0eb05cfce9dc08cbbf4deade2366c381a723204d810f10"
+content-hash = "f182e8d1b42996dd32417d479e3e32f7b3494492e9aa9bf01a5eb0a3a272cd08"
