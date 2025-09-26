@@ -26,11 +26,12 @@ This Vagrantfile sets up a Linux VM for developing Arthur Engine with all necess
 
    ```bash
    cd genai-engine
-   docker-compose up
+   docker-compose up -d db
+   ./scripts/start_local_server.sh
    ```
 
 4. **Access the application:**
-   - GenAI Engine UI: http://localhost:8435
+   - GenAI Engine UI: http://localhost:3030
    - PostgreSQL: localhost:5432
 
 ## VM Configuration

@@ -19,6 +19,8 @@ coverage.xml
 report.xml
 
 *.venv*
+local.env
+.env.local
 .env
 
 .vscode/
