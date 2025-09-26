@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.85"
+version = "2.1.87"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -31,7 +31,7 @@ types-psutil = "7.0.0.20250822"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = "1.4.1508"
+arthur-client = "1.4.1509"
 arthur-common = "2.3.0"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.43"

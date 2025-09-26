@@ -3,7 +3,7 @@ FROM python:3.13-slim-bookworm AS install
 # install poetry and wget
 RUN pip install poetry==2.1.3 && \
     apt-get update && \
-    apt-get install -y wget && \
+    apt-get install -y wget curl gnupg apt-transport-https && \
     rm -rf /var/lib/apt/lists/*
 
 # install system dependencies for database drivers
@@ -20,6 +20,30 @@ RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# install Microsoft ODBC Drivers 17 and 18
+RUN echo "deb [arch=amd64 signed-by=/usr/share/keyrings/msprod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
+      > /etc/apt/sources.list.d/msprod.list && \
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/msprod.gpg && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql18 msodbcsql17 mssql-tools18 && \
+    rm -rf /var/lib/apt/lists/*
+
+# configure ODBC drivers
+RUN set -eux; \
+    DRV18="$(basename /opt/microsoft/msodbcsql18/lib64/libmsodbcsql-*.so* | head -n1)"; \
+    DRV17="$(basename /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-*.so* | head -n1)"; \
+    printf '%s\n' \
+      "[ODBC Driver 18 for SQL Server]" \
+      "Description=Microsoft ODBC Driver 18 for SQL Server" \
+      "Driver=/opt/microsoft/msodbcsql18/lib64/${DRV18}" \
+      "UsageCount=1" \
+      "" \
+      "[ODBC Driver 17 for SQL Server]" \
+      "Description=Microsoft ODBC Driver 17 for SQL Server" \
+      "Driver=/opt/microsoft/msodbcsql17/lib64/${DRV17}" \
+      "UsageCount=1" \
+      > /etc/odbcinst.ini
 
 # install Oracle Instant Client
 RUN mkdir -p /opt/oracle && \
@@ -66,6 +90,9 @@ COPY --from=install /usr/local/lib/ /usr/local/lib/
 COPY --from=install /usr/local/bin/ /usr/local/bin/
 COPY --from=install /etc/ld.so.cache /etc/ld.so.cache
 COPY --from=install /opt/oracle/ /opt/oracle/
+COPY --from=install /opt/microsoft/msodbcsql18 /opt/microsoft/msodbcsql18
+COPY --from=install /opt/microsoft/msodbcsql17 /opt/microsoft/msodbcsql17
+COPY --from=install /etc/odbcinst.ini /etc/odbcinst.ini
 COPY --from=install --chown=nonroot:nonroot /app/ /home/nonroot/app/
 COPY --from=install --chown=nonroot:nonroot /root/.cache/pypoetry/ /home/nonroot/.cache/pypoetry/
 COPY --from=install --chown=nonroot:nonroot /root/.config/pypoetry/ /home/nonroot/.config/pypoetry/
@@ -74,10 +101,11 @@ ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 ENV PYTHONPATH="$PYTHONPATH:/home/nonroot/app/src"
 ENV POETRY_VIRTUALENVS_PATH="/home/nonroot/.cache/pypoetry/virtualenvs"
 ENV POETRY_CACHE_DIR="/home/nonroot/.cache/pypoetry"
+ENV LD_LIBRARY_PATH="/opt/microsoft/msodbcsql18/lib64:/opt/microsoft/msodbcsql17/lib64:/opt/oracle/instantclient:${LD_LIBRARY_PATH}"
+ENV ODBCSYSINI="/etc"
 
 # Set working directory (this is where the entrypoint will be run)
 WORKDIR /home/nonroot/app
 
 # start the ml-engine
-# TODO: start using WSGI server instead of direct python run
 ENTRYPOINT ["poetry", "run", "python", "src/ml_engine/job_agent.py"]
