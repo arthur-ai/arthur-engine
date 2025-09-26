@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
   
   # Allocate more resources for development
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
+    vb.memory = "8192"
     vb.cpus = 2
     vb.name = "arthur-engine-dev"
   end
