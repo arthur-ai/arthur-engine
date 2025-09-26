@@ -1,73 +1,87 @@
-# React + TypeScript + Vite
+# GenAI Engine UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A React + TypeScript + Vite frontend application for the Arthur GenAI Engine.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js (version 18 or higher)
+- npm or yarn package manager
 
-## React Compiler
+## Local Development Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Install Dependencies
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Start the Development Server
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+The development server will start on `http://localhost:3000` and will automatically reload when you make changes to the source code.
+
+### 3. Available Scripts
+
+- `npm run dev` - Start the development server with hot module replacement
+- `npm run build` - Build the application for production
+- `npm run preview` - Preview the production build locally
+- `npm run lint` - Run ESLint to check for code quality issues
+- `npm run generate-api` - Generate TypeScript API client from OpenAPI spec
+- `npm run generate-api:clean` - Clean and regenerate the API client
+
+### 4. API Client Generation
+
+The UI uses an auto-generated TypeScript client based on the OpenAPI specification. To regenerate the API client:
+
+```bash
+npm run generate-api:clean
+```
+
+This will:
+
+- Remove the existing API client
+- Generate a new client from `../staging.openapi.json`
+- Create TypeScript types and Axios-based HTTP client
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   └── api-client/     # Auto-generated API client
+├── components/         # React components
+├── pages/             # Page components
+├── hooks/             # Custom React hooks
+├── utils/             # Utility functions
+└── types/             # TypeScript type definitions
+```
+
+## Technology Stack
+
+- **React 19** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Styling
+- **React Router** - Client-side routing
+- **Framer Motion** - Animations
+- **Axios** - HTTP client
+- **ESLint** - Code linting
+
+## Development Notes
+
+- The development server runs on port 3000 and accepts external connections
+- Hot module replacement is enabled for fast development
+- TypeScript strict mode is enabled
+- ESLint is configured with React-specific rules
+- The build output is optimized for single-page application routing
+
+## Building for Production
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory, ready for deployment.

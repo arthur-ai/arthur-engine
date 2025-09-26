@@ -64,6 +64,7 @@ from utils.model_load import (
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
     new_relic_enabled,
@@ -399,14 +400,15 @@ def get_app() -> FastAPI:
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
     
-    # Serve the React SPA
-    static_dir = "/home/nonroot/app/static"
-    if os.path.exists(static_dir):
-        app.mount(
-            "/",
-            SPAStaticFiles(directory=static_dir, html=True),
-            name="static",
-        )
+    if is_agentic_ui_enabled():
+        # Serve the React SPA
+        static_dir = "/home/nonroot/app/static"
+        if os.path.exists(static_dir):
+            app.mount(
+                "/",
+                SPAStaticFiles(directory=static_dir, html=True),
+                name="static",
+            )
 
     return app
 
