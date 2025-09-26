@@ -211,6 +211,17 @@ def is_api_only_mode_enabled() -> bool:
     return api_only_mode_enabled
 
 
+def is_agentic_ui_enabled() -> bool:
+    agentic_ui_enabled = (
+        get_env_var(
+            constants.GENAI_ENGINE_AGENTIC_UI_ENABLED_ENV_VAR,
+            default="enabled",
+        )
+        == "enabled"
+    )
+    return agentic_ui_enabled
+
+
 def internal_features_enabled():
     ingress_url = get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
