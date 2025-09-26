@@ -185,7 +185,14 @@ class ODBCConnector(Connector):
         parts = []
 
         if self.driver:
-            parts.append(f"DRIVER={{{self.driver}}}")
+            driver_lower = self.driver.lower()
+            if "17" in driver_lower:
+                driver = "ODBC Driver 17 for SQL Server"
+            elif "18" in driver_lower:
+                driver = "ODBC Driver 18 for SQL Server"
+            else:
+                driver = self.driver
+            parts.append(f"DRIVER={{{driver}}}")
 
         if self.host:
             if self.port:
