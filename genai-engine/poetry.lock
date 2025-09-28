@@ -3063,14 +3063,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "locust"
-version = "2.40.5"
+version = "2.41.1"
 description = "Developer-friendly load testing framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 files = [
-    {file = "locust-2.40.5-py3-none-any.whl", hash = "sha256:c44a6c415c5218824895bd652a182a958c27a2ceb8427c835d2f4b90d735579b"},
-    {file = "locust-2.40.5.tar.gz", hash = "sha256:4332f03ebfac83c115763e462f22f495783a88f1d237ccbd618d5b27863f5053"},
+    {file = "locust-2.41.1-py3-none-any.whl", hash = "sha256:71b5ce8231cfe9a2923c274aa90083a441eed4aa7234b404218f2ff744826ad0"},
+    {file = "locust-2.41.1.tar.gz", hash = "sha256:0e6165d042ac2daaf868c195ad6ade766b70979644903312be4526331c822008"},
 ]
 
 [package.dependencies]
@@ -3080,7 +3080,7 @@ flask-cors = ">=3.0.10"
 flask-login = ">=0.6.3"
 gevent = ">=24.10.1,<25.8.1"
 geventhttpclient = ">=2.3.1"
-locust-cloud = ">=1.27.0"
+locust-cloud = ">=1.27.1"
 msgpack = ">=1.0.0"
 psutil = ">=5.9.1"
 pytest = ">=8.3.3,<9.0.0"
@@ -3094,17 +3094,18 @@ werkzeug = ">=2.0.0"
 
 [package.extras]
 milvus = ["pymilvus (>=2.5.0)"]
+mqtt = ["paho-mqtt (>=2.1.0)"]
 
 [[package]]
 name = "locust-cloud"
-version = "1.27.0"
+version = "1.27.1"
 description = "Locust Cloud"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 files = [
-    {file = "locust_cloud-1.27.0-py3-none-any.whl", hash = "sha256:0ddf732c1702d1d29f8359e261e23147d1bba373ac96c9125f80c290c2dcd9c1"},
-    {file = "locust_cloud-1.27.0.tar.gz", hash = "sha256:b371a6940d978bb221ada9780e796e10e3032ff49ffeacf02c515aa876679b75"},
+    {file = "locust_cloud-1.27.1-py3-none-any.whl", hash = "sha256:d2609af89bd7af7a33bda10b32a8edc50f116188c8da019f1785212678b55a11"},
+    {file = "locust_cloud-1.27.1.tar.gz", hash = "sha256:ea2790fc14eb78a816852444c4eca00aeb351ebeacb88fca16b8aa0fd41b740d"},
 ]
 
 [package.dependencies]
@@ -8177,4 +8178,4 @@ cffi = ["cffi (>=1.17) ; python_version >= \"3.13\" and platform_python_implemen
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "177eacf6b96be2278bf2730316c0512c134a6ac1f481945fb85a8d89fce3ebdf"
+content-hash = "95f4c9ec1e535b044c137cc22f3b9dbae5e7c3222c961044741a2459bb3aee5a"
