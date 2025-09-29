@@ -52,6 +52,7 @@ from routers.v2.routers import (
 from utils import constants as constants
 from utils.classifiers import get_device
 from utils.model_load import (
+    download_models,
     get_bert_scorer,
     get_claim_classifier_embedding_model,
     get_prompt_injection_model,
@@ -151,6 +152,15 @@ async def lifespan(app: FastAPI):
     if not is_api_only_mode_enabled():
         get_oauth_client()
         time.sleep(random.randint(0, 3))
+
+    # Download models in worker process
+    logger.info("Downloading models...")
+    try:
+        download_models(1)  # Use single process in worker
+    except Exception as e:
+        logger.error(f"Error downloading models: {e}")
+        raise e
+    logger.info("Models downloaded.")
 
     get_claim_classifier_embedding_model()
     get_prompt_injection_model()
