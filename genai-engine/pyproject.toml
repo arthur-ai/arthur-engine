@@ -96,7 +96,7 @@ priority = "explicit"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "8.4.2"
-pytest-asyncio = "1.1.0"
+pytest-asyncio = "1.2.0"
 pytest-cov = "6.3.0"
 pre-commit = "4.3.0"
 black = "25.9.0"
