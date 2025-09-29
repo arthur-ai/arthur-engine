@@ -6,11 +6,10 @@ services:
     ports:
       - "5435:5432"
     environment:
-      - PGDATA=/var/lib/postgresql/data/pgdata
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_DB=arthur_genai_engine
     volumes:
-      - /var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     env_file:
       - .env
   genai-engine:
@@ -62,3 +61,5 @@ services:
     depends_on:
       genai-engine:
         condition: service_healthy
+volumes:
+  db_data:
