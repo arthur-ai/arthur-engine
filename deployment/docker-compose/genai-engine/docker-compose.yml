@@ -4,11 +4,10 @@ services:
     image: postgres
     shm_size: 128mb
     environment:
-      - PGDATA=/var/lib/postgresql/data/pgdata
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_DB=arthur_genai_engine
     volumes:
-      - /var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
     env_file:
       - .env
     ports:
@@ -41,4 +40,5 @@ services:
       timeout: 10s
       retries: 10
       start_period: 300s
-    entrypoint: [ "bash", "-c", "/app/src/docker-entrypoint.sh" ]
+volumes:
+  db_data:
