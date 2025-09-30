@@ -111,6 +111,14 @@ class ShieldBaseConnector(Connector, ABC):
         filters: list[DataResultFilter] | None = None,
         pagination_options: ConnectorPaginationOptions | None = None,
     ) -> list[dict[str, Any]] | pd.DataFrame:
+
+        self.logger.info("READ Invoked:")
+        self.logger.info(f"Dataset: {dataset}")
+        self.logger.info(f"Start time: {start_time}")
+        self.logger.info(f"End time: {end_time}")
+        self.logger.info(f"Filters: {filters}")
+        self.logger.info(f"Pagination options: {pagination_options}")
+
         """
         Reads data from the shield /api/v1/inferences/query endpoint. By default, will fetch all data between start/end
         matching the filters. If the pagination is set, it will only fetch that single page. Note that it
@@ -227,6 +235,8 @@ class ShieldBaseConnector(Connector, ABC):
 
             params["page"] += 1
 
+        self.logger.info(f"TraceCount: {json.loads(resp.raw_data)["count"]}")
+
         return paginated_data
 
     def test_connection(self) -> ConnectorCheckResult:
@@ -280,6 +290,11 @@ class ShieldBaseConnector(Connector, ABC):
                 page=page,
             )
             for task in resp.tasks:
+                model_problem_type = (
+                    ModelProblemType.AGENTIC_TRACE
+                    if task.is_agentic
+                    else ModelProblemType.ARTHUR_SHIELD
+                )
                 datasets.available_datasets.append(
                     PutAvailableDataset(
                         name=task.name,
@@ -291,7 +306,7 @@ class ShieldBaseConnector(Connector, ABC):
                                 ),
                             ],
                         ),
-                        model_problem_type=ModelProblemType.ARTHUR_SHIELD,
+                        model_problem_type=model_problem_type,
                     ),
                 )
 
