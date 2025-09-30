@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arthur-genai-engine"
-version = "2.1.89"
+version = "2.1.90"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 readme = "README.md"
@@ -104,7 +104,7 @@ mypy = "^1.13.0"
 
 
 [tool.poetry.group.performance.dependencies]
-locust = "2.41.1"
+locust = "2.41.2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
