@@ -14,18 +14,21 @@ from arthur_common.models.common_schemas import (
     ToxicityConfig,
 )
 from arthur_common.models.enums import (
+    ComparisonOperatorEnum,
     InferenceFeedbackTarget,
     MetricType,
     PIIEntityTypes,
     RuleResultEnum,
     RuleScope,
     RuleType,
+    ToolClassEnum,
     ToxicityViolationType,
 )
 from arthur_common.models.request_schemas import (
     NewMetricRequest,
     NewRuleRequest,
     NewTaskRequest,
+    TraceQueryRequest,
 )
 from arthur_common.models.response_schemas import (
     ApiKeyResponse,
@@ -90,14 +93,11 @@ from db_models.db_models import (
 )
 from schemas.enums import (
     ApplicationConfigurations,
-    ComparisonOperatorEnum,
     DocumentStorageEnvironment,
     RuleDataType,
     RuleScoringMethod,
-    ToolClassEnum,
 )
 from schemas.metric_schemas import MetricScoreDetails
-from schemas.request_schemas import TraceQueryRequest
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DocumentStorageConfigurationResponse,
