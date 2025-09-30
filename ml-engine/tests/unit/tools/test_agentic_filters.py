@@ -366,6 +366,6 @@ def test_boundary_values_accepted(boundary_value, field_name, op):
     )
 
     # Should contain the filter
-    expected_key = f"{field_name}_{_map_comparison_operator_to_suffix(op)[1:]}"  # Remove leading underscore
+    expected_key = f"{field_name}{_map_comparison_operator_to_suffix(op)}"
     assert expected_key in result
     assert result[expected_key] == boundary_value
