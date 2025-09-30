@@ -6,7 +6,7 @@ from arthur_common.models.enums import ToolClassEnum
 from pydantic import ValidationError
 from tools.agentic_filters import (
     _map_comparison_operator_to_suffix,
-    build_validated_filter_params,
+    build_and_validate_agentic_filter_params,
     validate_filters,
 )
 
