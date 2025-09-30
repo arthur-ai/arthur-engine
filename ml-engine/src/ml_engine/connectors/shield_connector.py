@@ -59,6 +59,7 @@ from pydantic import ValidationError
 from tools.agentic_filters import (
     SHIELD_SORT_FILTER,
     add_default_sort_filter,
+    build_and_validate_agentic_filter_params,
     validate_filters,
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
@@ -176,17 +177,8 @@ class ShieldBaseConnector(Connector, ABC):
                     )
 
                 except ValidationError as e:
-                    # Rich validation errors from TraceQueryRequest
-                    error_details = []
-                    for error in e.errors():
-                        field = error["loc"][0] if error["loc"] else "unknown"
-                        msg = error["msg"]
-                        error_details.append(f"Field '{field}': {msg}")
-
-                    self.logger.error(f"Trace query validation failed: {error_details}")
-                    raise ValueError(
-                        f"Invalid trace query filters: {'; '.join(error_details)}",
-                    )
+                    self.logger.error(f"Trace query validation failed: {e}")
+                    raise
 
             else:
                 # use raw http info so we can load JSON directly to avoid API types

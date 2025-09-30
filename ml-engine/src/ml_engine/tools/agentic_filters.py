@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
 
 from arthur_client.api_bindings import DataResultFilter, DataResultFilterOp
 from arthur_common.models.enums import ToolClassEnum
 from arthur_common.models.request_schemas import TraceQueryRequest
+
+logger = logging.getLogger(__name__)
 
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
@@ -18,6 +21,18 @@ SHIELD_ALLOWED_FILTERS = {
     SHIELD_SORT_FILTER: str,
     "page": int,
     "page_size": int,
+}
+
+# Supported agentic filter fields
+AGENTIC_SUPPORTED_FIELDS = {
+    "query_relevance",
+    "response_relevance",
+    "trace_duration",
+    "tool_name",
+    "span_types",
+    "trace_ids",
+    "tool_selection",
+    "tool_usage",
 }
 
 
@@ -58,6 +73,15 @@ def build_and_validate_agentic_filter_params(
 
     # Build filter parameters
     filter_params = {}
+
+    # Check for unsupported fields and warn once
+    unsupported_fields = {
+        f.field_name for f in filters if f.field_name not in AGENTIC_SUPPORTED_FIELDS
+    }
+    if unsupported_fields:
+        logger.warning(
+            f"Ignoring unsupported agentic filters: {', '.join(sorted(unsupported_fields))}",
+        )
 
     # Map DataResultFilter to TraceQueryRequest fields
     for filter_item in filters:
@@ -111,7 +135,21 @@ def validate_filters(
     """Validate filters for agentic or non-agentic datasets."""
     if not is_agentic:
         # Keep existing non-agentic validation
-        return [f for f in filters if _validate_basic_shield_filter(f)]
+        valid_filters = []
+        invalid_fields = set()
+
+        for f in filters:
+            if _validate_basic_shield_filter(f):
+                valid_filters.append(f)
+            else:
+                invalid_fields.add(f.field_name)
+
+        if invalid_fields:
+            logger.warning(
+                f"Ignoring invalid Shield filters: {', '.join(sorted(invalid_fields))}",
+            )
+
+        return valid_filters
 
     # For agentic filters, validation happens through TraceQueryRequest
     return filters
