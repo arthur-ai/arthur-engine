@@ -241,14 +241,14 @@ trio = ["trio (>=0.31.0)"]
 
 [[package]]
 name = "arthur-common"
-version = "2.2.0"
+version = "2.3.0"
 description = "Utility code common to Arthur platform components."
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_common-2.2.0-py3-none-any.whl", hash = "sha256:9379bd2623b9c3a8e8dd50cdc8b60bade85ee2107396276fe5cc280a67e62d70"},
-    {file = "arthur_common-2.2.0.tar.gz", hash = "sha256:74026b90d1cc7a9c6d6bfd208748e2d271bbff2e62f6f0a368dd801b15debe8f"},
+    {file = "arthur_common-2.3.0-py3-none-any.whl", hash = "sha256:8368999b4aae3b60584bc4e81db43cb5377f38f31919fca59d700995ea994336"},
+    {file = "arthur_common-2.3.0.tar.gz", hash = "sha256:ed3063e597ac9699b5fdfa089a9658bf89b180f47fec8d83f55c8770e9c423c1"},
 ]
 
 [package.dependencies]
@@ -598,14 +598,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.41"
+version = "1.40.42"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.41-py3-none-any.whl", hash = "sha256:8246bf73a2e20647cf1d4dae1e9a7c40f97f38a34a6a1fbfd49aa6b3dce5ffaa"},
-    {file = "botocore-1.40.41.tar.gz", hash = "sha256:320873c6a34bfd64fb9bbc55e8ac38e7904a574cfc634d1f0f66b1490c62b89d"},
+    {file = "botocore-1.40.42-py3-none-any.whl", hash = "sha256:2682a4120be21234036003a806206b6b3963ba53a495d0a57d40d67fce4497a9"},
+    {file = "botocore-1.40.42.tar.gz", hash = "sha256:41bea751685fb2a51b4fc6be329a0cd0a285dbeb0686a21099e87ef146664bc0"},
 ]
 
 [package.dependencies]
@@ -8303,4 +8303,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "f659185786153cd7b8358e87d1778970ff5b7cd91883a22d6003b7d19fa694ae"
+content-hash = "3f4028844cdb500cddd2ee54f26bc45207d5a1766f30910af728040699146938"
