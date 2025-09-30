@@ -59,7 +59,6 @@ from pydantic import ValidationError
 from tools.agentic_filters import (
     SHIELD_SORT_FILTER,
     add_default_sort_filter,
-    build_validated_filter_params,
     validate_filters,
 )
 from tools.api_client_type_converters import ShieldClientTypeConverter
@@ -156,7 +155,7 @@ class ShieldBaseConnector(Connector, ABC):
             if is_agentic:
                 try:
                     # Build and validate filter parameters directly
-                    filter_params = build_validated_filter_params(
+                    filter_params = build_and_validate_agentic_filter_params(
                         task_ids=[dataset_locator_fields[SHIELD_DATASET_TASK_ID_FIELD]],
                         filters=filters or [],
                         start_time=start_time,
@@ -226,8 +225,6 @@ class ShieldBaseConnector(Connector, ABC):
                 break
 
             params["page"] += 1
-
-        self.logger.info(f"TraceCount: {json.loads(resp.raw_data)["count"]}")
 
         return paginated_data
 

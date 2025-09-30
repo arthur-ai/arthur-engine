@@ -5,7 +5,6 @@ from arthur_client.api_bindings import DataResultFilter, DataResultFilterOp
 from arthur_common.models.enums import ToolClassEnum
 from arthur_common.models.request_schemas import TraceQueryRequest
 
-# Constants for backward compatibility
 SHIELD_SORT_FILTER = "sort"
 SHIELD_SORT_DESC = "desc"
 SHIELD_ALLOWED_FILTERS = {
@@ -45,7 +44,7 @@ def _map_comparison_operator_to_suffix(op: DataResultFilterOp) -> Optional[str]:
     return suffix_map.get(op)
 
 
-def build_validated_filter_params(
+def build_and_validate_agentic_filter_params(
     task_ids: list[str],
     filters: list[DataResultFilter],
     start_time: datetime,
