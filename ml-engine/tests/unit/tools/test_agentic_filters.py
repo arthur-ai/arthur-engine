@@ -121,7 +121,7 @@ def test_filter_parameter_conversion(
     """Test that filters are converted to correct query parameters."""
     filters = [DataResultFilter(field_name=field_name, op=op, value=value)]
 
-    result = build_validated_filter_params(
+    result = build_and_validate_agentic_filter_params(
         task_ids=["task1"],
         filters=filters,
         start_time=datetime.now(timezone.utc),
@@ -149,7 +149,7 @@ def test_unsupported_operators_ignored(field_name, op, value):
     """Test that unsupported operators are ignored and don't appear in result."""
     filters = [DataResultFilter(field_name=field_name, op=op, value=value)]
 
-    result = build_validated_filter_params(
+    result = build_and_validate_agentic_filter_params(
         task_ids=["task1"],
         filters=filters,
         start_time=datetime.now(timezone.utc),
@@ -181,7 +181,7 @@ def test_invalid_relevance_values_raise_validation_error(invalid_value, field_na
     ]
 
     with pytest.raises(ValidationError) as exc_info:
-        build_validated_filter_params(
+        build_and_validate_agentic_filter_params(
             task_ids=["task1"],
             filters=filters,
             start_time=datetime.now(timezone.utc),
@@ -227,7 +227,7 @@ def test_conflicting_operators_raise_validation_error(filters_data, expected_err
     ]
 
     with pytest.raises(ValidationError) as exc_info:
-        build_validated_filter_params(
+        build_and_validate_agentic_filter_params(
             task_ids=["task1"],
             filters=filters,
             start_time=datetime.now(timezone.utc),
@@ -240,7 +240,7 @@ def test_conflicting_operators_raise_validation_error(filters_data, expected_err
 def test_empty_task_ids_raises_validation_error():
     """Test that empty task_ids raises ValidationError."""
     with pytest.raises(ValidationError) as exc_info:
-        build_validated_filter_params(
+        build_and_validate_agentic_filter_params(
             task_ids=[],  # Empty
             filters=[],
             start_time=datetime.now(timezone.utc),
@@ -321,7 +321,7 @@ def test_complex_filter_combination_parameter_conversion():
         ),
     ]
 
-    result = build_validated_filter_params(
+    result = build_and_validate_agentic_filter_params(
         task_ids=["task1"],
         filters=filters,
         start_time=datetime.now(timezone.utc),
@@ -358,7 +358,7 @@ def test_boundary_values_accepted(boundary_value, field_name, op):
     filters = [DataResultFilter(field_name=field_name, op=op, value=boundary_value)]
 
     # Should not raise ValidationError
-    result = build_validated_filter_params(
+    result = build_and_validate_agentic_filter_params(
         task_ids=["task1"],
         filters=filters,
         start_time=datetime.now(timezone.utc),
