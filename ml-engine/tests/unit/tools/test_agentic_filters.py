@@ -19,7 +19,7 @@ from tools.agentic_filters import (
         (DataResultFilterOp.GREATER_THAN_OR_EQUAL, "_gte"),
         (DataResultFilterOp.LESS_THAN, "_lt"),
         (DataResultFilterOp.LESS_THAN_OR_EQUAL, "_lte"),
-        (DataResultFilterOp.IN, None),  # Not supported, should return None
+        (DataResultFilterOp.IN, None),  # No suffix, should return None
     ],
 )
 def test_comparison_operator_mapping(op, expected_suffix):
