@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 import urllib3
+from pydantic import ValidationError
 from arthur_client.api_bindings import (
     AvailableDataset,
     ConnectorFieldDataType,
@@ -745,7 +746,7 @@ def test_agentic_dataset_validation_error_handling(urllib3_mock: Urllib3Mock):
         ),
     ]
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValidationError) as exc_info:
         conn.read(
             agentic_dataset,
             start_time=start_timestamp,
@@ -753,7 +754,11 @@ def test_agentic_dataset_validation_error_handling(urllib3_mock: Urllib3Mock):
             filters=filters,
         )
 
-    assert "Invalid trace query filters" in str(exc_info.value)
+    # Check that the ValidationError provides detailed field-level information
+    error_str = str(exc_info.value)
+    assert "query_relevance_gt" in error_str  # Exact field name should be mentioned
+    assert "must be between 0 and 1" in error_str  # Clear constraint explanation
+    assert "1.5" in error_str  # Actual failing value should be shown
 
 
 @pytest.mark.parametrize(
