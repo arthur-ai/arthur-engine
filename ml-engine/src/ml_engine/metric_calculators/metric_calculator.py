@@ -21,7 +21,6 @@ from arthur_common.models.metrics import (
 from arthur_common.models.schema_definitions import ScopeSchemaTag
 from arthur_common.tools.duckdb_data_loader import (
     escape_identifier,
-    unescape_identifier,
 )
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
@@ -91,6 +90,7 @@ class MetricCalculator(ABC):
 
     def _validate_segmentation_single_column(
         self,
+        col_id: str,
         col_name: str,
         arg_key: Any,
         arg_schema: MetricsColumnSchemaUnion,
@@ -108,7 +108,7 @@ class MetricCalculator(ABC):
         dataset_key = arg_schema.source_dataset_parameter_key
         dataset_ref = aggregate_args[dataset_key]
         column_dtype = column_scalar_dtype_from_dataset_schema(
-            unescape_identifier(col_name),
+            col_id,
             ds_map[str(dataset_ref.dataset_id)],
         )
         if not column_dtype:
@@ -132,6 +132,7 @@ class MetricCalculator(ABC):
 
     def _validate_segmentation_args(
         self,
+        col_names_to_id: dict[str, str],
         aggregate_args: dict[str, Any],
         ds_map: dict[str, Dataset],
     ) -> None:
@@ -164,6 +165,7 @@ class MetricCalculator(ABC):
                     )
                 for column_name in arg_val:
                     self._validate_segmentation_single_column(
+                        col_names_to_id.get(column_name, ""),
                         column_name,
                         arg_key,
                         arg_schema,
@@ -172,6 +174,7 @@ class MetricCalculator(ABC):
                     )
             else:
                 self._validate_segmentation_single_column(
+                    col_names_to_id.get(column_name, ""),
                     arg_val,
                     arg_key,
                     arg_schema,
@@ -243,6 +246,8 @@ class MetricCalculator(ABC):
         Escape identifiers are included in the names.
         """
         all_dataset_columns = {}
+        col_names_to_id = {}
+
         for ds in datasets:
             # first, use the column_names property. We need to do this instead of iterating over the parent-level
             # column names & adding them ourselves because this property applies alias masks as needed to the
@@ -250,21 +255,24 @@ class MetricCalculator(ABC):
             top_level_col_names = ds.dataset_schema.column_names.copy()
             for col_id, col_name in top_level_col_names.items():
                 # add escape identifier to column name
-                top_level_col_names[col_id] = escape_identifier(col_name)
+                escaped_col_name = escape_identifier(col_name)
+                top_level_col_names[col_id] = escaped_col_name
+                col_names_to_id[escaped_col_name] = col_id
 
             all_dataset_columns.update(top_level_col_names)
 
             # then, iterate over any object type columns to include the nested column names in the dict
             for column in ds.dataset_schema.columns:
                 if isinstance(column.definition.actual_instance, DatasetObjectType):
-                    all_dataset_columns.update(
-                        self._field_names_from_object_type_column(
-                            column.definition.actual_instance,
-                            escape_identifier(column.source_name),
-                        ),
+                    nested_fields = self._field_names_from_object_type_column(
+                        column.definition.actual_instance,
+                        escape_identifier(column.source_name),
                     )
+                    all_dataset_columns.update(nested_fields)
+                    for field_id, field_name in nested_fields.items():
+                        col_names_to_id[field_name] = field_id
 
-        return all_dataset_columns
+        return all_dataset_columns, col_names_to_id
 
     def process_agg_args(
         self,
@@ -299,7 +307,7 @@ class MetricCalculator(ABC):
         )
 
         ds_map = {ds.id: ds for ds in datasets}
-        all_dataset_columns = self._all_dataset_columns(
+        all_dataset_columns, col_names_to_id = self._all_dataset_columns(
             datasets,
         )  # column id: escaped column name
 
@@ -328,5 +336,5 @@ class MetricCalculator(ABC):
             else:
                 aggregate_args[arg.arg_key] = arg.arg_value
 
-        self._validate_segmentation_args(aggregate_args, ds_map)
+        self._validate_segmentation_args(col_names_to_id, aggregate_args, ds_map)
         return init_args, aggregate_args
