@@ -467,14 +467,14 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     # Add a nested column to the schema
     nested_column = DatasetColumn(
         id=nested_column_id,
-        source_name="nested_features",
+        source_name="nested.features",
         definition=Definition(
             DatasetObjectType(
                 tag_hints=[],
                 nullable=False,
                 id=nested_object_type_id,
                 object={
-                    "feature1": ObjectValue(
+                    "feature.1": ObjectValue(
                         DatasetScalarType(
                             tag_hints=[],
                             nullable=False,
@@ -528,9 +528,11 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     for column in dataset.dataset_schema.columns:
         if column.source_name == "timestamp":
             timestamp_col_id = column.id
-            break
+        elif column.source_name == "numeric_col":
+            numeric_col_id = column.id
 
     # Test with a nested column
+    # This test verifies segmentation works for nested columns, including those with '.' in the name and top level columns used for segmentation
     agg_spec = AggregationSpec(
         aggregation_id="00000000-0000-0000-0000-00000000000a",
         aggregation_init_args=[],
@@ -545,7 +547,7 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
             ),
             MetricsArgSpec(
                 arg_key="segmentation_cols",
-                arg_value=[feature1_scalar_id],
+                arg_value=[feature1_scalar_id, feature2_scalar_id, numeric_col_id],
             ),
         ],
     )
