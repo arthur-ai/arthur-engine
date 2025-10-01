@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from logging import Logger
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from uuid import UUID
 
 import duckdb
@@ -238,12 +238,29 @@ class MetricCalculator(ABC):
                 # the ID & source name of the column live in the DatasetColumn object.
         return field_names
 
-    def _all_dataset_columns(self, datasets: List[Dataset]) -> Dict[str, str]:
-        """Returns a dict from column ID to column name for every column in the list of datasets.
-        Includes nested column names using dot syntax ("parent_column_name"."nested_column_name").
-        Nested column names are not included in column_names so we cannot just use that property from the
-         Dataset object here.
-        Escape identifiers are included in the names.
+    def _all_dataset_columns(
+        self,
+        datasets: List[Dataset],
+    ) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """
+        This function is used to create two dictionaries, one from column ID to column name
+        for every column in the list of datasets, and one from column name back to column ID.
+
+        Notes:
+          - This includes nested column names using dot syntax ("parent_column_name"."nested_column_name").
+          - Nested column names are not included in column_names so we cannot just use that property from the Dataset object here.
+          - Escape identifiers are included in the names.
+
+        The first dictionary is used to validate that the columns exist in the datasets and
+        in the call to _get_col_list_arg_values. The second dictionary is uses the column ID in order
+        to get the dtype of a column with nested column support.
+
+        Parameters:
+            datasets (List[Dataset]): list of datasets to process
+
+        Returns:
+            all_dataset_columns (Dict[str, str]): dict from column ID to column name for every column in the list of datasets.
+            col_names_to_id (Dict[str, str]): dict from column name to column ID for every column in the list of datasets.
         """
         all_dataset_columns = {}
         col_names_to_id = {}
