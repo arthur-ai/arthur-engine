@@ -15,6 +15,7 @@ import { TracesView } from "./components/TracesView";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskLayout } from "./components/TaskLayout";
 import "./App.css";
+import PromptsPlayground from "./components/prompts/PromptsPlayground";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details
 const TaskRedirect = () => {
@@ -102,10 +103,11 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TaskLayout>
-                    <ComingSoon
+                    {/* <ComingSoon
                       featureName="Prompts Playground"
                       description="Experiment with and test different prompts in an interactive playground environment."
-                    />
+                    /> */}
+                    <PromptsPlayground />
                   </TaskLayout>
                 </ProtectedRoute>
               }
