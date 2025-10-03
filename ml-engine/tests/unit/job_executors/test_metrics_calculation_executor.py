@@ -446,9 +446,11 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
             "description": "test inference 1",
             "desc2": "another string col",
             "numeric_col": i,
+            'numeric"col': i * 2,
             "nested_features": {
-                "feature1": f"value_{i}",
+                "feature.1": f"value_{i}",
                 "feature2": i * 2,
+                '"feature3': i * 3,
             },
         }
         for i in range(10)  # smaller dataset
@@ -463,6 +465,22 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     nested_object_type_id = str(uuid4())
     feature1_scalar_id = str(uuid4())
     feature2_scalar_id = str(uuid4())
+    feature3_scalar_id = str(uuid4())
+    numeric_quote_col_id = str(uuid4())
+
+    # Add a column with a quote in the name to test special character handling
+    numeric_quote_column = DatasetColumn(
+        id=numeric_quote_col_id,
+        source_name='numeric"col',
+        definition=Definition(
+            DatasetScalarType(
+                tag_hints=[],
+                nullable=False,
+                id=str(uuid4()),
+                dtype="int",
+            ),
+        ),
+    )
 
     # Add a nested column to the schema
     nested_column = DatasetColumn(
@@ -490,6 +508,14 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
                             dtype="int",
                         ),
                     ),
+                    '"feature3': ObjectValue(
+                        DatasetScalarType(
+                            tag_hints=[],
+                            nullable=False,
+                            id=feature3_scalar_id,
+                            dtype="int",
+                        ),
+                    ),
                 },
             ),
         ),
@@ -497,6 +523,12 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
 
     # Add the nested column to the dataset schema properly
     mock_dataset_dict["dataset_schema"].columns.append(nested_column)
+    mock_dataset_dict["dataset_schema"].columns.append(numeric_quote_column)
+
+    # Also add to column_names mapping
+    mock_dataset_dict["dataset_schema"].column_names[
+        numeric_quote_col_id
+    ] = 'numeric"col'
 
     # configure dataset mocks
     datasets_client = Mock()
@@ -525,6 +557,7 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     assert len(unloaded_datasets) == 0
 
     timestamp_col_id = None
+    numeric_col_id = None
     for column in dataset.dataset_schema.columns:
         if column.source_name == "timestamp":
             timestamp_col_id = column.id
@@ -553,6 +586,46 @@ def test_process_agg_args_nested_columns(mock_bigquery_client) -> None:
     )
     agg_function_schema, agg_function_type = _get_aggregation_schema_by_id(
         "00000000-0000-0000-0000-00000000000a",
+    )
+
+    metrics_calculator = DefaultMetricCalculator(
+        conn,
+        logger,
+        agg_spec,
+        agg_function_schema,
+        agg_function_type,
+    )
+
+    # This should not raise an error
+    init_args, aggregate_args = metrics_calculator.process_agg_args([dataset])
+    result = metrics_calculator.aggregate(init_args, aggregate_args)
+
+    # Test both nested and top-level columns with a " in the name
+    # This also tests an aggregation that adds extra dimensions to segmentation columns
+    agg_spec = AggregationSpec(
+        aggregation_id="00000000-0000-0000-0000-00000000000c",
+        aggregation_init_args=[],
+        aggregation_args=[
+            MetricsArgSpec(
+                arg_key="dataset",
+                arg_value=dataset.id,
+            ),
+            MetricsArgSpec(
+                arg_key="timestamp_col",
+                arg_value=timestamp_col_id,
+            ),
+            MetricsArgSpec(
+                arg_key="categorical_col",
+                arg_value=feature1_scalar_id,
+            ),
+            MetricsArgSpec(
+                arg_key="segmentation_cols",
+                arg_value=[numeric_quote_col_id, feature3_scalar_id],
+            ),
+        ],
+    )
+    agg_function_schema, agg_function_type = _get_aggregation_schema_by_id(
+        "00000000-0000-0000-0000-00000000000c",
     )
 
     metrics_calculator = DefaultMetricCalculator(
