@@ -17,7 +17,7 @@ from sqlalchemy import and_, asc, cast, desc, exists, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.types import Float, Integer, Numeric
 
-from db_models.db_models import (
+from db_models import (
     DatabaseMetricResult,
     DatabaseSpan,
     DatabaseTraceMetadata,

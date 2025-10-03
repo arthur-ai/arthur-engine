@@ -4,10 +4,11 @@ from datetime import datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from db_models.db_models import DatabaseInference
 from arthur_common.models.enums import RuleResultEnum, RuleType
-from schemas.internal_schemas import InferencePrompt, Task
 from arthur_common.models.response_schemas import QueryInferencesResponse
+
+from db_models import DatabaseInference
+from schemas.internal_schemas import InferencePrompt, Task
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.mocks.mock_scorer_client import (
     MOCK_KEYWORD_FAILING_TEXT,

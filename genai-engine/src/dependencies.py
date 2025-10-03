@@ -5,6 +5,7 @@ from typing import Generator
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
+from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
@@ -25,10 +26,9 @@ from clients.s3.S3Client import S3Client
 from config.config import Config
 from config.database_config import DatabaseConfig
 from config.keycloak_config import KeyCloakSettings
-from db_models.db_models import Base
+from db_models import Base
 from metrics_engine import MetricsEngine
 from repositories.configuration_repository import ConfigurationRepository
-from arthur_common.models.enums import MetricType, RuleType
 from schemas.enums import DocumentStorageEnvironment
 from schemas.internal_schemas import (
     ApplicationConfiguration,

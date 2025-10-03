@@ -4,7 +4,7 @@ from typing import Optional
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.response_schemas import TraceResponse
 
-from db_models.db_models import DatabaseTraceMetadata
+from db_models import DatabaseTraceMetadata
 from schemas.internal_schemas import Span
 
 logger = logging.getLogger(__name__)
