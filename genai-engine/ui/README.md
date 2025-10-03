@@ -5,39 +5,47 @@ A React + TypeScript + Vite frontend application for the Arthur GenAI Engine.
 ## Prerequisites
 
 - Node.js (version 18 or higher)
-- npm or yarn package manager
+- Yarn (v4.9.2+ recommended)
 
 ## Local Development Setup
 
 ### 1. Install Dependencies
 
 ```bash
-npm install
+yarn install
+```
+
+Or simply:
+
+```bash
+yarn
 ```
 
 ### 2. Start the Development Server
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 The development server will start on `http://localhost:3000` and will automatically reload when you make changes to the source code.
 
 ### 3. Available Scripts
 
-- `npm run dev` - Start the development server with hot module replacement
-- `npm run build` - Build the application for production
-- `npm run preview` - Preview the production build locally
-- `npm run lint` - Run ESLint to check for code quality issues
-- `npm run generate-api` - Generate TypeScript API client from OpenAPI spec
-- `npm run generate-api:clean` - Clean and regenerate the API client
+- `yarn dev` - Start the development server with hot module replacement
+- `yarn build` - Build the application for production
+- `yarn preview` - Preview the production build locally
+- `yarn lint` - Run ESLint to check for code quality issues
+- `yarn type-check` - Run TypeScript type checking
+- `yarn check` - Run both type checking and linting
+- `yarn generate-api` - Generate TypeScript API client from OpenAPI spec
+- `yarn generate-api:clean` - Clean and regenerate the API client
 
 ### 4. API Client Generation
 
 The UI uses an auto-generated TypeScript client based on the OpenAPI specification. To regenerate the API client:
 
 ```bash
-npm run generate-api:clean
+yarn generate-api:clean
 ```
 
 This will:
@@ -64,11 +72,12 @@ src/
 - **React 19** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
-- **Tailwind CSS** - Styling
-- **React Router** - Client-side routing
+- **Tailwind CSS v4** - Modern utility-first CSS
+- **React Router v7** - Client-side routing
 - **Framer Motion** - Animations
 - **Axios** - HTTP client
 - **ESLint** - Code linting
+- **Yarn Berry (v4)** - Package manager
 
 ## Development Notes
 
@@ -77,11 +86,23 @@ src/
 - TypeScript strict mode is enabled
 - ESLint is configured with React-specific rules
 - The build output is optimized for single-page application routing
+- Using Yarn Berry (v4) with PnP for faster installs and better disk efficiency
 
 ## Building for Production
 
 ```bash
-npm run build
+yarn build
 ```
 
 The built files will be in the `dist/` directory, ready for deployment.
+
+## Package Manager
+
+This project uses **Yarn Berry (v4.9.2+)**. The version is enforced via the `packageManager` field in `package.json`.
+
+If you don't have Yarn installed:
+
+```bash
+corepack enable
+corepack prepare yarn@4.9.2 --activate
+```
