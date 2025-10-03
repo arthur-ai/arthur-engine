@@ -7,6 +7,8 @@
     "dev": "vite --mode dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "type-check": "tsc -b --noEmit",
+    "check": "npm run type-check && npm run lint",
     "preview": "vite preview",
     "generate-api": "npx swagger-typescript-api@13.0.16 -p ../staging.openapi.json -o src/lib/api-client --name api-client.ts --axios --clean-output --extract-request-params --extract-request-body --extract-response-body --extract-response-error --extract-enums --union-enums --add-readonly --sort-routes --sort-types",
     "generate-api:clean": "rm -rf src/lib/api-client && npm run generate-api"
