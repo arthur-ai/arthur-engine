@@ -1,9 +1,10 @@
+from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from fastapi import HTTPException
 from opentelemetry import trace
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from db_models.db_models import (
+from db_models import (
     DatabaseRule,
     DatabaseTask,
     DatabaseTaskToMetrics,
@@ -11,7 +12,6 @@ from db_models.db_models import (
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
-from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
 

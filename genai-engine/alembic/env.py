@@ -1,9 +1,10 @@
 from logging.config import fileConfig
 
-from alembic import context
-from db_models import db_models
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
+from db_models import Base
 from utils import constants
 from utils.utils import get_env_var, get_postgres_connection_string
 
@@ -34,7 +35,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = db_models.Base.metadata
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

@@ -2,7 +2,13 @@ from datetime import datetime
 from itertools import groupby
 from typing import Optional
 
-from db_models.db_models import (
+from arthur_common.models.enums import TokenUsageScope
+from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
+from pydantic import BaseModel
+from sqlalchemy import func, select, union
+from sqlalchemy.orm import Session
+
+from db_models import (
     DatabaseInference,
     DatabaseInferencePrompt,
     DatabaseInferenceResponse,
@@ -10,11 +16,6 @@ from db_models.db_models import (
     DatabaseResponseRuleResult,
     DatabaseRule,
 )
-from pydantic import BaseModel
-from arthur_common.models.enums import TokenUsageScope
-from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
-from sqlalchemy import func, select, union
-from sqlalchemy.orm import Session
 
 
 class TokenQueryRow(BaseModel):

@@ -1,11 +1,11 @@
 import logging
 
+from arthur_common.models.request_schemas import UpdateMetricRequest
 from cachetools import TTLCache
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseMetric
+from db_models import DatabaseMetric
 from schemas.internal_schemas import Metric
-from arthur_common.models.request_schemas import UpdateMetricRequest
 
 logger = logging.getLogger(__name__)
 

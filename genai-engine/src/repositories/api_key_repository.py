@@ -4,12 +4,12 @@ import secrets
 import uuid
 
 import bcrypt
+from arthur_common.models.enums import APIKeysRolesEnum
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from config.config import Config
-from db_models.db_models import DatabaseApiKey
-from arthur_common.models.enums import APIKeysRolesEnum
+from db_models import DatabaseApiKey
 from schemas.internal_schemas import ApiKey
 
 logger = logging.getLogger(__name__)

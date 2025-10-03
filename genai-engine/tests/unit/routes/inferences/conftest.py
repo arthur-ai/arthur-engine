@@ -1,13 +1,15 @@
 from typing import Generator
 
 import pytest
-from db_models.db_models import DatabaseInference
+from arthur_common.models.enums import RuleResultEnum, RuleScope
+from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
+
+from db_models import DatabaseInference
 from dependencies import get_application_config
 from repositories.inference_repository import InferenceRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
-from arthur_common.models.enums import RuleResultEnum, RuleScope
 from schemas.internal_schemas import (
     InferencePrompt,
     InferenceResponse,
@@ -15,7 +17,6 @@ from schemas.internal_schemas import (
     RuleEngineResult,
     Task,
 )
-from arthur_common.models.request_schemas import NewRuleRequest, NewTaskRequest
 from schemas.scorer_schemas import (
     RuleScore,
     ScorerHallucinationClaim,

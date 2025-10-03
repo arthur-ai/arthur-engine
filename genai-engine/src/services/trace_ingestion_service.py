@@ -15,7 +15,7 @@ from sqlalchemy.dialects.sqlite import (
 )
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseSpan, DatabaseTraceMetadata
+from db_models import DatabaseSpan, DatabaseTraceMetadata
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,

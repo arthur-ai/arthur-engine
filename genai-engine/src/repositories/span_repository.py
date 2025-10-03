@@ -182,7 +182,7 @@ class SpanRepository:
         """
         from sqlalchemy import insert
 
-        from db_models.db_models import DatabaseSpan
+        from db_models import DatabaseSpan
 
         if not spans:
             return

@@ -1,13 +1,14 @@
 import uuid
 from unittest.mock import MagicMock
 
-from clients.s3.S3Client import S3Client
-from db_models.db_models import DatabaseDocument, DatabaseEmbeddingReference
 from fastapi import HTTPException, UploadFile
-from schemas.enums import DocumentType
-from schemas.internal_schemas import Document
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
+from clients.s3.S3Client import S3Client
+from db_models import DatabaseDocument, DatabaseEmbeddingReference
+from schemas.enums import DocumentType
+from schemas.internal_schemas import Document
 
 
 class DocumentRepository:
