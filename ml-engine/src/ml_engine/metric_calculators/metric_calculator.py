@@ -114,8 +114,7 @@ class MetricCalculator(ABC):
         if not column_dtype:
             raise ValueError(
                 "Could not fetch scalar column data type for evaluation of segmentation column "
-                "requirements. Either the column does not exist or it is an object or list type "
-                "or a nested column, which are not supported for segmentation columns.",
+                "requirements. Either the column does not exist or it is an object or list type.",
             )
         column_can_be_segmented = is_column_possible_segmentation(
             self.conn,
@@ -250,10 +249,6 @@ class MetricCalculator(ABC):
           - This includes nested column names using dot syntax ("parent_column_name"."nested_column_name").
           - Nested column names are not included in column_names so we cannot just use that property from the Dataset object here.
           - Escape identifiers are included in the names.
-
-        The first dictionary is used to validate that the columns exist in the datasets and
-        in the call to _get_col_list_arg_values. The second dictionary is uses the column ID in order
-        to get the dtype of a column with nested column support.
 
         Parameters:
             datasets (List[Dataset]): list of datasets to process
