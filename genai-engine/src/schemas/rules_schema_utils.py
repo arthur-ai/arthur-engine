@@ -13,7 +13,7 @@ from arthur_common.models.enums import RuleType
 from fastapi import HTTPException
 from pydantic import BaseModel
 
-from db_models.db_models import DatabaseRuleData
+from db_models import DatabaseRuleData
 from schemas.enums import RuleDataType
 from utils.utils import constants
 

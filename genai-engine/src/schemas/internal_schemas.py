@@ -61,7 +61,7 @@ from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
-from db_models.db_models import (
+from db_models import (
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
     DatabaseDocument,

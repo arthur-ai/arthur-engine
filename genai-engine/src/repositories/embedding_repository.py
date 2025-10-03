@@ -1,11 +1,12 @@
 import uuid
 from typing import List
 
-from chat.embedding import EmbeddingModel
-from db_models.db_models import DatabaseDocument, DatabaseEmbedding
-from schemas.internal_schemas import Embedding
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from chat.embedding import EmbeddingModel
+from db_models import DatabaseDocument, DatabaseEmbedding
+from schemas.internal_schemas import Embedding
 
 CHUNK_SIZE = 512
 
