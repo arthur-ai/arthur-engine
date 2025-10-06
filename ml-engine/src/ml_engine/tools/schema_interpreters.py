@@ -4,6 +4,7 @@ from arthur_client.api_bindings import (
     AvailableDataset,
     CustomAggregationVersionSpecSchemaAggregateArgsInner,
     Dataset,
+    DatasetObjectType,
 )
 from arthur_common.models.metrics import (
     MetricsColumnSchemaUnion,
@@ -63,16 +64,42 @@ def get_args_with_tag_hint(
     }
 
 
+def _find_dtype_in_object(col_id: str, obj_type: DatasetObjectType):
+    """Find dtype for a field ID within an object type"""
+    for field_name, field_value in obj_type.object.items():
+        field_instance = field_value.actual_instance
+        if field_instance.id == col_id and hasattr(field_instance, "dtype"):
+            return DType(field_instance.dtype)
+
+        # recurse if nested
+        if hasattr(field_instance, "object"):
+            result = _find_dtype_in_object(col_id, field_instance)
+            if result:
+                return result
+    return None
+
+
 def column_scalar_dtype_from_dataset_schema(
-    column_name: str,
+    col_id: str,
     dataset: Dataset,
 ) -> Optional[DType]:
-    """Returns the scalar data type of any non-nested columns by the name column_name"""
+    """Returns the scalar data type of columns including nested columns by column ID"""
+    if col_id == "":
+        return None
+
     for column in dataset.dataset_schema.columns:
+        # Check top-level columns
         if (
-            column.source_name == column_name
+            column.id == col_id
             and column.definition.actual_instance
             and hasattr(column.definition.actual_instance, "dtype")
         ):
             return DType(column.definition.actual_instance.dtype)
+
+        # Check nested columns within DatasetObjectType columns
+        if hasattr(column.definition.actual_instance, "object"):
+            result = _find_dtype_in_object(col_id, column.definition.actual_instance)
+            if result:
+                return result
+
     return None
