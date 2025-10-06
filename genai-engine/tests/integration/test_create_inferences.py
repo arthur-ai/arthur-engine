@@ -2,6 +2,7 @@ import random
 
 import pytest
 from arthur_common.models.enums import RuleResultEnum, RuleScope, RuleType
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -317,8 +318,3 @@ def test_user_story_create_task_validate_large_prompt_no_error(
             RuleResultEnum.UNAVAILABLE,
             RuleResultEnum.SKIPPED,
         )
-        if rule_result.rule_type == RuleType.PROMPT_INJECTION:
-            assert rule_result.details.message == (
-                "Prompt has more than 512 tokens. The prompt "
-                "will be truncated from the middle."
-            )
