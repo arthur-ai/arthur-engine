@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from db_models.db_models import DatabaseApiKey
+from db_models import DatabaseApiKey
 from repositories.api_key_repository import ApiKeyRepository
 
 

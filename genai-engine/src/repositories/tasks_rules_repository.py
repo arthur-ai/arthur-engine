@@ -1,10 +1,11 @@
 import logging
 
 from cachetools import TTLCache
-from config.cache_config import cache_config
-from db_models.db_models import DatabaseTaskToRules
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
+
+from config.cache_config import cache_config
+from db_models import DatabaseTaskToRules
 
 CACHED_TASK_RULES = TTLCache(maxsize=1000, ttl=cache_config.TASK_RULES_CACHE_TTL)
 logger = logging.getLogger(__name__)

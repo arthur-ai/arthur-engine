@@ -2,7 +2,14 @@ import uuid
 from datetime import datetime
 
 import pytest
-from db_models.db_models import (
+from arthur_common.models.enums import (
+    InferenceFeedbackTarget,
+    PaginationSortMethod,
+    RuleResultEnum,
+)
+from sqlalchemy.orm import Session
+
+from db_models import (
     DatabaseInference,
     DatabaseInferenceFeedback,
     DatabaseInferencePrompt,
@@ -10,12 +17,6 @@ from db_models.db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from arthur_common.models.enums import (
-    InferenceFeedbackTarget,
-    PaginationSortMethod,
-    RuleResultEnum,
-)
-from sqlalchemy.orm import Session
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.unit.routes.feedback import FEEDBACK_DB_SESSION
 

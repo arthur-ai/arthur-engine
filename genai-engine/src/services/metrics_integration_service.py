@@ -6,7 +6,7 @@ from arthur_common.models.metric_schemas import MetricRequest
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseMetricResult
+from db_models import DatabaseMetricResult
 from dependencies import get_metrics_engine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
