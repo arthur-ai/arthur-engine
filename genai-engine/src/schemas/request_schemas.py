@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -41,3 +41,32 @@ class ApplicationConfigurationUpdateRequest(BaseModel):
         DocumentStorageConfigurationUpdateRequest
     ] = None
     max_llm_rules_per_task_count: Optional[int] = None
+
+
+class NewDatasetRequest(BaseModel):
+    name: str = Field(
+        description="Name of the dataset.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the dataset.",
+    )
+    metadata: Optional[dict] = Field(
+        default=None,
+        description="Any metadata to include that describes additional information about the dataset.",
+    )
+
+
+class DatasetUpdateRequest(BaseModel):
+    name: Optional[str] = Field(
+        description="Name of the dataset.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the dataset.",
+    )
+    metadata: Optional[dict] = Field(
+        default=None,
+        description="Any metadata to include that describes additional information about the dataset.",
+        examples=[{"created_by": "John Doe"}],
+    )

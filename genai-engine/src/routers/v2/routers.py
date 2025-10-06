@@ -1,3 +1,4 @@
+from .dataset_management_routes import dataset_management_routes
 from .feedback_routes import feedback_routes
 from .query_routes import query_routes
 from .rule_management_routes import rule_management_routes
@@ -12,4 +13,5 @@ all = [
     system_management_routes,
     task_management_routes,
     validate_routes,
+    dataset_management_routes,
 ]

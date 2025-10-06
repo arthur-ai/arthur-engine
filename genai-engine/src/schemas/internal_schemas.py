@@ -64,6 +64,7 @@ from pydantic import BaseModel, Field
 from db_models import (
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
+    DatabaseDataset,
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
@@ -98,8 +99,10 @@ from schemas.enums import (
     RuleScoringMethod,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import NewDatasetRequest
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
+    DatasetResponse,
     DocumentStorageConfigurationResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
@@ -1772,4 +1775,56 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+        )
+
+
+class Dataset(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    name: str
+    description: Optional[str]
+    metadata: Optional[dict]
+
+    def to_response_model(self) -> DatasetResponse:
+        return DatasetResponse(
+            id=self.id,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+            name=self.name,
+            description=self.description,
+            metadata=self.metadata,
+        )
+
+    def _to_database_model(self) -> DatabaseDataset:
+        return DatabaseDataset(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            name=self.name,
+            description=self.description,
+            dataset_metadata=self.metadata,
+        )
+
+    @staticmethod
+    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+        curr_time = datetime.now()
+        return Dataset(
+            id=uuid.uuid4(),
+            created_at=curr_time,
+            updated_at=curr_time,
+            name=request.name,
+            description=request.description,
+            metadata=request.metadata,
+        )
+
+    @staticmethod
+    def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
+        return Dataset(
+            id=db_dataset.id,
+            created_at=db_dataset.created_at,
+            updated_at=db_dataset.updated_at,
+            name=db_dataset.name,
+            description=db_dataset.description,
+            metadata=db_dataset.dataset_metadata,
         )

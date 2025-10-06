@@ -2,6 +2,15 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/10/2025
+- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
+
+# 10/09/2025
+- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+
 # 10/07/2025
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  endpoint added
