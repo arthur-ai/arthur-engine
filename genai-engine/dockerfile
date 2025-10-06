@@ -40,20 +40,14 @@ FROM node:20-alpine AS ui-build
 
 WORKDIR /app/ui
 
-# Copy UI package files
-COPY ui/package.json ./
-
-# generate package lock file
-RUN npm install
-
-# Install UI dependencies
-RUN npm ci
-
 # Copy UI source code
 COPY ui/ ./
 
+# Install UI dependencies
+RUN corepack enable && yarn install --immutable
+
 # Build the UI as static files
-RUN npm run build
+RUN yarn build
 
 # Copy the built static files
 RUN cp -r dist /app/ui-dist
