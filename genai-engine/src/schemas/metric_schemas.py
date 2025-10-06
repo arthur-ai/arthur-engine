@@ -1,12 +1,11 @@
 from typing import Optional
 
+from arthur_common.models.enums import ToolClassEnum
 from arthur_common.models.metric_schemas import (
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
 from pydantic import BaseModel
-
-from schemas.enums import ToolClassEnum
 
 
 class ToolSelectionCorrectnessMetric(BaseModel):

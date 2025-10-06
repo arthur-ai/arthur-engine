@@ -1,10 +1,11 @@
 import logging
 
 from cachetools import TTLCache
-from config.cache_config import cache_config
-from db_models.db_models import DatabaseTaskToMetrics
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
+
+from config.cache_config import cache_config
+from db_models import DatabaseTaskToMetrics
 
 CACHED_TASK_METRICS = TTLCache(maxsize=1000, ttl=cache_config.TASK_METRICS_CACHE_TTL)
 logger = logging.getLogger(__name__)
@@ -32,7 +33,9 @@ class TasksMetricsRepository:
         return metrics
 
     def _get_task_metrics_ids(
-        self, task_id: str, only_enabled: bool = True
+        self,
+        task_id: str,
+        only_enabled: bool = True,
     ) -> list[str]:
         statement = select(DatabaseTaskToMetrics).where(
             DatabaseTaskToMetrics.task_id == task_id,

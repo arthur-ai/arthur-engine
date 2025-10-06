@@ -2,15 +2,15 @@ import logging
 import uuid
 from datetime import datetime
 
-from dependencies import get_db_session
-from fastapi import Depends
-from opentelemetry import trace
 from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
+from fastapi import Depends
+from opentelemetry import trace
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from db_models.db_models import DatabaseInference, DatabaseInferenceFeedback
+from db_models import DatabaseInference, DatabaseInferenceFeedback
+from dependencies import get_db_session
 
 logger = logging.getLogger()
 tracer = trace.get_tracer(__name__)

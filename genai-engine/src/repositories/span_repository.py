@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
+from arthur_common.models.request_schemas import TraceQueryRequest
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from sqlalchemy.orm import Session
@@ -11,9 +12,6 @@ from sqlalchemy.orm import Session
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span, TraceQuerySchema
-
-# TODO: Migrate to arthur_common.models
-from schemas.request_schemas import TraceQueryRequest
 from services.metrics_integration_service import MetricsIntegrationService
 from services.span_query_service import SpanQueryService
 from services.trace_ingestion_service import TraceIngestionService
@@ -184,7 +182,7 @@ class SpanRepository:
         """
         from sqlalchemy import insert
 
-        from db_models.db_models import DatabaseSpan
+        from db_models import DatabaseSpan
 
         if not spans:
             return

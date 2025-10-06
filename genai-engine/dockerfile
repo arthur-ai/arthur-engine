@@ -35,6 +35,23 @@ RUN poetry run pip install --no-cache-dir --upgrade --force-reinstall -r /tmp/re
 # CPU Install: no-op for now
 FROM preinstall AS cpu-install
 
+# UI Build Stage: Build the React SPA
+FROM node:20-alpine AS ui-build
+
+WORKDIR /app/ui
+
+# Copy UI source code
+COPY ui/ ./
+
+# Install UI dependencies
+RUN corepack enable && yarn install --immutable
+
+# Build the UI as static files
+RUN yarn build
+
+# Copy the built static files
+RUN cp -r dist /app/ui-dist
+
 # Install Stage: Install GenAI Engine on either CPU Install or GPU Install depending on the TORCH_DEVICE variable
 FROM ${TORCH_DEVICE}-install AS install
 # Copy backend files
@@ -57,6 +74,9 @@ RUN apt-get update && apt-get install -y curl && \
 # Copy alembic files to run directory
 COPY alembic /app/alembic
 COPY alembic.ini /app/
+
+# Copy built UI from ui-build stage
+COPY --from=ui-build /app/ui-dist /app/static
 
 
 #####################################################################################

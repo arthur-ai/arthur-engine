@@ -24,6 +24,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
+from auth.SPAStaticFiles import SPAStaticFiles
 from clients.telemetry.telemetry_client import TelemetryEventTypes, send_telemetry_event
 from config.config import Config
 from config.extra_features import extra_feature_config
@@ -64,6 +65,7 @@ from utils.model_load import (
 from utils.utils import (
     get_env_var,
     get_genai_engine_version,
+    is_agentic_ui_enabled,
     is_api_only_mode_enabled,
     is_local_environment,
     new_relic_enabled,
@@ -305,6 +307,7 @@ def get_base_app(
         "http://localhost:3030",
         "http://localhost:8080",
         "http://localhost:3023",
+        "http://localhost:3000",
     ]
     if ingress_url := get_env_var(
         constants.GENAI_ENGINE_INGRESS_URI_ENV_VAR,
@@ -353,7 +356,7 @@ def get_app_with_routes() -> FastAPI:
 
 def get_test_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     add_routers(
         app,
@@ -383,7 +386,7 @@ def get_test_app() -> FastAPI:
 
 def get_app() -> FastAPI:
     app = get_base_app()
-    app.add_middleware(SecurityHeadersMiddleware)
+    # app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(SessionMiddleware, secret_key=Config.app_secret_key())
     if new_relic_enabled():
         setup_newrelic(app)
@@ -406,12 +409,16 @@ def get_app() -> FastAPI:
         add_routers(app, [app_chat_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
-
-    if is_api_only_mode_enabled():
-
-        @app.get("/", include_in_schema=False)
-        async def redirect_to_docs():
-            return RedirectResponse("/docs")
+    
+    if is_agentic_ui_enabled():
+        # Serve the React SPA
+        static_dir = "/home/nonroot/app/static"
+        if os.path.exists(static_dir):
+            app.mount(
+                "/",
+                SPAStaticFiles(directory=static_dir, html=True),
+                name="static",
+            )
 
     return app
 

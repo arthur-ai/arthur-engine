@@ -1,10 +1,22 @@
 import logging
-import sched
 import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from db_models.db_models import (
+from arthur_common.models.enums import PaginationSortMethod, RuleResultEnum, RuleType
+from arthur_common.models.response_schemas import (
+    ConversationBaseResponse,
+    ConversationResponse,
+)
+from fastapi import HTTPException
+from fastapi_pagination import Page, Params
+from fastapi_pagination.ext.sqlalchemy import paginate
+from opentelemetry import trace
+from sqlalchemy import and_, asc, desc, func, or_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, aliased, selectinload
+
+from db_models import (
     DatabaseEmbeddingReference,
     DatabaseInference,
     DatabaseInferencePrompt,
@@ -14,12 +26,7 @@ from db_models.db_models import (
     DatabaseRule,
     DatabaseTask,
 )
-from fastapi import HTTPException
-from fastapi_pagination import Page, Params
-from fastapi_pagination.ext.sqlalchemy import paginate
-from opentelemetry import trace
 from schemas.custom_exceptions import AlreadyValidatedException
-from arthur_common.models.enums import PaginationSortMethod, RuleResultEnum, RuleType
 from schemas.internal_schemas import (
     Embedding,
     Inference,
@@ -29,13 +36,6 @@ from schemas.internal_schemas import (
     ResponseRuleResult,
     RuleEngineResult,
 )
-from arthur_common.models.response_schemas import (
-    ConversationBaseResponse,
-    ConversationResponse,
-)
-from sqlalchemy import and_, asc, desc, func, or_
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, aliased, selectinload
 from utils.token_count import TokenCounter
 
 logger = logging.getLogger()

@@ -17,7 +17,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from db_models.db_models import (
+from db_models import (
     DatabaseMetric,
     DatabaseMetricResult,
     DatabaseSpan,

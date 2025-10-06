@@ -3,7 +3,10 @@ from typing import Generator
 from uuid import uuid4
 
 import pytest
-from db_models.db_models import (
+from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
+from sqlalchemy.orm import Session
+
+from db_models import (
     DatabaseInference,
     DatabaseInferenceFeedback,
     DatabaseInferencePrompt,
@@ -11,8 +14,6 @@ from db_models.db_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
-from arthur_common.models.enums import InferenceFeedbackTarget, RuleResultEnum
-from sqlalchemy.orm import Session
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,

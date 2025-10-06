@@ -2,12 +2,11 @@ import os
 from unittest.mock import Mock, patch
 
 import pytest
-
 from arthur_common.models.common_schemas import LLMTokenConsumption
-from arthur_common.models.enums import MetricType
-from schemas.internal_schemas import MetricResult
-from schemas.enums import ToolClassEnum
+from arthur_common.models.enums import MetricType, ToolClassEnum
 from arthur_common.models.metric_schemas import MetricRequest
+
+from schemas.internal_schemas import MetricResult
 from scorer.metrics.tool_selection.tool_selection import ToolSelectionCorrectnessScorer
 from utils import utils
 
@@ -65,13 +64,8 @@ def test_score_tool_selection_and_usage(mock_invoke_chain):
     mock_invoke_chain.assert_called_once()
     assert isinstance(score, MetricResult)
     assert score.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        score.details.tool_selection.tool_selection
-        == ToolClassEnum.CORRECT
-    )
-    assert (
-        score.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
-    )
+    assert score.details.tool_selection.tool_selection == ToolClassEnum.CORRECT
+    assert score.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
 
 
 @patch.object(ToolSelectionCorrectnessScorer, "invoke_chain")
@@ -134,9 +128,7 @@ def test_score_with_wrong_tool_selected(mock_invoke_chain):
     mock_invoke_chain.assert_called_once()
     assert isinstance(score, MetricResult)
     assert score.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        score.details.tool_selection.tool_selection == ToolClassEnum.INCORRECT
-    )
+    assert score.details.tool_selection.tool_selection == ToolClassEnum.INCORRECT
     assert score.details.tool_selection.tool_usage == ToolClassEnum.INCORRECT
 
 
@@ -202,13 +194,8 @@ def test_score_with_successful_tool_selection_and_usage_fixed(mock_get_llm_execu
     # Assert
     assert isinstance(score, MetricResult)
     assert score.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        score.details.tool_selection.tool_selection
-        == ToolClassEnum.CORRECT
-    )
-    assert (
-        score.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
-    )
+    assert score.details.tool_selection.tool_selection == ToolClassEnum.CORRECT
+    assert score.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
     assert score.prompt_tokens == 200
     assert score.completion_tokens == 100
 
@@ -297,13 +284,8 @@ def test_tool_selection_scorer_structured_outputs(mock_get_llm_executor):
     # Assert
     assert isinstance(result, MetricResult)
     assert result.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        result.details.tool_selection.tool_selection
-        == ToolClassEnum.CORRECT
-    )
-    assert (
-        result.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
-    )
+    assert result.details.tool_selection.tool_selection == ToolClassEnum.CORRECT
+    assert result.details.tool_selection.tool_usage == ToolClassEnum.CORRECT
     assert (
         result.details.tool_selection.tool_selection_reason
         == "Correct tool was selected using structured output"
@@ -362,10 +344,7 @@ def test_tool_selection_scorer_legacy_outputs(mock_get_llm_executor):
     # Assert
     assert isinstance(result, MetricResult)
     assert result.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        result.details.tool_selection.tool_selection
-        == ToolClassEnum.INCORRECT
-    )
+    assert result.details.tool_selection.tool_selection == ToolClassEnum.INCORRECT
     assert result.details.tool_selection.tool_usage == ToolClassEnum.INCORRECT
     assert (
         result.details.tool_selection.tool_selection_reason
@@ -416,9 +395,7 @@ def test_tool_selection_scorer_no_tool_structured(mock_get_llm_executor):
     # Assert
     assert isinstance(result, MetricResult)
     assert result.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        result.details.tool_selection.tool_selection == ToolClassEnum.NA
-    )
+    assert result.details.tool_selection.tool_selection == ToolClassEnum.NA
     assert result.details.tool_selection.tool_usage == ToolClassEnum.NA
     assert (
         result.details.tool_selection.tool_selection_reason
@@ -466,9 +443,7 @@ def test_tool_selection_scorer_no_tool_legacy(mock_get_llm_executor):
     # Assert
     assert isinstance(result, MetricResult)
     assert result.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        result.details.tool_selection.tool_selection == ToolClassEnum.NA
-    )
+    assert result.details.tool_selection.tool_selection == ToolClassEnum.NA
     assert result.details.tool_selection.tool_usage == ToolClassEnum.NA
     assert (
         result.details.tool_selection.tool_selection_reason
@@ -588,10 +563,7 @@ def test_tool_selection_scorer_exception_handling_structured(mock_get_llm_execut
     # Assert
     assert isinstance(result, MetricResult)
     assert result.metric_type == MetricType.TOOL_SELECTION
-    assert (
-        result.details.tool_selection.tool_selection
-        == ToolClassEnum.CORRECT
-    )
+    assert result.details.tool_selection.tool_selection == ToolClassEnum.CORRECT
     assert (
         result.details.tool_selection.tool_usage == ToolClassEnum.NA
     )  # Default fallback
