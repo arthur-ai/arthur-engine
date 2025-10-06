@@ -41,7 +41,10 @@ FROM node:20-alpine AS ui-build
 WORKDIR /app/ui
 
 # Copy UI package files
-COPY ui/package.json ui/package-lock.json ./
+COPY ui/package.json ./
+
+# generate package lock file
+RUN npm install
 
 # Install UI dependencies
 RUN npm ci
