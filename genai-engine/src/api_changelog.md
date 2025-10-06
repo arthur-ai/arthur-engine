@@ -1,6 +1,14 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 10/13/2025
+- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
+
+# 10/12/2025
+- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
 
 # 10/10/2025
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status

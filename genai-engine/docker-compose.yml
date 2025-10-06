@@ -7,9 +7,8 @@ services:
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
-      PGDATA: /var/lib/postgresql/data
     volumes:
-      - /var/lib/postgresql
+      - db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -40,3 +39,16 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  changelog-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile_changelog
+    volumes:
+      # Mount changelog output files to local machine
+      - ./staging.openapi.json:/app/genai-engine/staging.openapi.json
+      - ./src/api_changelog.md:/app/genai-engine/src/api_changelog.md
+      - ./src:/app/genai-engine/src
+    profiles:
+      - changelog
+volumes:
+  db_data:
