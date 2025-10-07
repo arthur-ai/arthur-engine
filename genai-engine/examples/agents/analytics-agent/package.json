@@ -1,0 +1,45 @@
+{
+  "name": "starter",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "dev:agent": "mastra dev",
+    "dev:ui": "next dev --turbopack",
+    "dev:debug": "LOG_LEVEL=debug npm run dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ag-ui/mastra": "0.1.0",
+    "@ai-sdk/openai": "^2.0.42",
+    "@copilotkit/react-core": "1.10.5",
+    "@copilotkit/react-ui": "1.10.5",
+    "@copilotkit/runtime": "1.10.5",
+    "@libsql/client": "^0.15.15",
+    "@mastra/client-js": "0.14.1",
+    "@mastra/core": "0.19.1",
+    "@mastra/libsql": "0.15.0",
+    "@mastra/memory": "0.15.4",
+    "mastra": "0.13.4",
+    "libsql": "^0.5.22",
+    "next": ">=15.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "concurrently": "^9.1.2",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+}
