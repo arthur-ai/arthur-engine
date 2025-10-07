@@ -35,6 +35,10 @@ type PromptAction =
   | {
       type: "changeMessageRole";
       payload: { parentId: string; id: string; role: string };
+    }
+  | {
+      type: "updateKeywords";
+      payload: { id: string; messageKeywords: string[] };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -55,7 +59,8 @@ type PromptType = {
 };
 
 interface PromptPlaygroundState {
-  keywords: Set<string>;
+  keywords: Map<string, string>;
+  keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
 }
 

@@ -16,23 +16,26 @@ const PromptsPlayground = () => {
   return (
     <div className="h-screen bg-gray-300">
       <div className={`h-full w-full p-1 flex flex-col gap-1`}>
-        <div className={`bg-gray-400 flex-shrink-0`}>
+        <div className={`bg-gray-400 flex-shrink-0 p-1`}>
           <div className="flex justify-between items-center">
             <div>HEADER</div>
             <Button variant="contained" onClick={handleAddPrompt}>
               Add Prompt
             </Button>
           </div>
-          <Container component="div">
-            <Paper elevation={3}>
-              <Collapse in={state.keywords.size > 0 || true}>
+          <Container component="div" maxWidth="xl" disableGutters>
+            <Paper elevation={3} className="p-1">
+              <Collapse in={state.keywords.size > 0}>
                 <div>KEYWORDS</div>
+                {Array.from(state.keywords.keys()).map((keyword) => (
+                  <div key={keyword}>{keyword}</div>
+                ))}
               </Collapse>
             </Paper>
           </Container>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(500px,1fr))] gap-1 p-1 min-h-full">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(500px,1fr))] gap-1 min-h-full">
             {state.prompts.map((prompt) => (
               <PromptComponent
                 key={prompt.id}

@@ -39,8 +39,8 @@ const generateId = () => {
 };
 
 /****************************
-* Message factory functions *
-****************************/
+ * Message factory functions *
+ ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId(),
   role: messageRoleEnum.USER,
@@ -64,8 +64,8 @@ const hydrateMessage = (data: Partial<MessageType>): MessageType =>
   createMessage(data);
 
 /***************************
-* Prompt factory functions *
-***************************/
+ * Prompt factory functions *
+ ***************************/
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   id: generateId(),
   classification: promptClassificationEnum.DEFAULT,
@@ -90,10 +90,11 @@ const hydratePrompt = (data: Partial<PromptType>): PromptType =>
   createPrompt(data);
 
 /****************
-* Reducer Logic *
-****************/
+ * Reducer Logic *
+ ****************/
 const initialState: PromptPlaygroundState = {
-  keywords: new Set(),
+  keywords: new Map<string, string>(),
+  keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
 };
 
@@ -236,6 +237,40 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
+    case "updateKeywords": {
+      const { id, messageKeywords } = action.payload;
+
+      if (messageKeywords.length === 0) {
+        // Remove message id from keyword tracker
+        state.keywordTracker.delete(id);
+      } else {
+        // Add or replace keyword array tied to new or existing message id
+        state.keywordTracker.set(id, messageKeywords);
+      }
+
+      // Create new keywords map. Delete keywords by omitting a copy.
+      const newKeywords = new Map<string, string>();
+      const newKeywordTracker = new Map<string, Array<string>>(
+        state.keywordTracker
+      );
+
+      // For each keyword array
+      newKeywordTracker.forEach((keywords) => {
+        // For each keyword in the array
+        keywords.forEach((keyword) => {
+          // Copy existing value if is exists, otherwise set to empty string
+          newKeywords.set(keyword, state.keywords.get(keyword) || "");
+        });
+      });
+
+      return {
+        ...state,
+        keywords: newKeywords,
+        keywordTracker: newKeywordTracker,
+      };
+    }
+    default:
+      return state;
   }
 };
 

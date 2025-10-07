@@ -70,12 +70,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           <div className="flex justify-start items-center gap-1">
             <div className="w-1/3">
               <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id="prompt-name">{PROMPT_NAME_TEXT}</InputLabel>
+                <InputLabel id={`prompt-name-${prompt.id}`}>{PROMPT_NAME_TEXT}</InputLabel>
                 <Select
-                  labelId="prompt-name"
-                  id="prompt-name"
+                  labelId={`prompt-name-${prompt.id}`}
+                  id={`prompt-name-${prompt.id}`}
                   label={PROMPT_NAME_TEXT}
-                  value={null}
+                  value={PROMPT_NAME_OPTIONS[0].value}
                   onChange={() => {}}
                 >
                   {PROMPT_NAME_OPTIONS.map((promptNameOption) => (
@@ -91,10 +91,10 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             </div>
             <div className="w-1/3">
               <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id="provider">{PROVIDER_TEXT}</InputLabel>
+                <InputLabel id={`provider-${prompt.id}`}>{PROVIDER_TEXT}</InputLabel>
                 <Select
-                  labelId="provider"
-                  id="provider"
+                  labelId={`provider-${prompt.id}`}
+                  id={`provider-${prompt.id}`}
                   label={PROVIDER_TEXT}
                   value={provider}
                   onChange={handleProviderChange}
@@ -109,12 +109,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             </div>
             <div className="w-1/3">
               <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id="model">{MODEL_TEXT}</InputLabel>
+                <InputLabel id={`model-${prompt.id}`}>{MODEL_TEXT}</InputLabel>
                 <Select
-                  labelId="model"
-                  id="model"
+                  labelId={`model-${prompt.id}`}
+                  id={`model-${prompt.id}`}
                   label={MODEL_TEXT}
-                  value={null}
+                  value={MODEL_OPTIONS[0].value}
                   onChange={() => {}}
                 >
                   {MODEL_OPTIONS.map((modelOption) => (
@@ -127,12 +127,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             </div>
           </div>
           <div className="flex justify-end items-center gap-1">
-            <Tooltip title="Add Message" placement="top" arrow>
+            <Tooltip title="Add Message" placement="top-start" arrow>
               <IconButton aria-label="add" onClick={handleAddMessage}>
                 <AddIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Duplicate Prompt" placement="top" arrow>
+            <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
               <IconButton
                 aria-label="duplicate"
                 onClick={handleDuplicatePrompt}
@@ -140,12 +140,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                 <ContentCopyIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Save Prompt" placement="top" arrow>
+            <Tooltip title="Save Prompt" placement="top-start" arrow>
               <IconButton aria-label="save" onClick={() => {}}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Delete Prompt" placement="top" arrow>
+            <Tooltip title="Delete Prompt" placement="top-start" arrow>
               <IconButton aria-label="delete" onClick={handleDeletePrompt}>
                 <DeleteIcon />
               </IconButton>
@@ -153,7 +153,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           </div>
         </div>
       </Container>
-      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+      <div>
         {prompt.messages.map((message) => (
           <MessageComponent
             key={message.id}
@@ -165,17 +165,17 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             dispatch={dispatch}
           />
         ))}
-      </Container>
-      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+      </div>
+      <div className="m-1">
         <Paper elevation={2} className="p-1">
           <div>Tools</div>
         </Paper>
-      </Container>
-      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+      </div>
+      <div className="m-1">
         <Paper elevation={2} className="p-1">
           <div>Output Field</div>
         </Paper>
-      </Container>
+      </div>
     </div>
   );
 };

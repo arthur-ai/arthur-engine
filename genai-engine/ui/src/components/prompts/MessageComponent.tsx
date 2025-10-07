@@ -11,6 +11,7 @@ import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { messageRoleEnum, MessageComponentProps } from "./types";
 import Paper from "@mui/material/Paper";
+import extractMustacheKeywords from "./mustacheExtractor";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
@@ -77,15 +78,34 @@ const Message: React.FC<MessageComponentProps> = ({
     debouncedSetMessage(inputValue);
   }, [inputValue, debouncedSetMessage]);
 
+  // When the content changes, whether by user or hydration, update the keyword values
+  useEffect(() => {
+    dispatch({
+      type: "updateKeywords",
+      payload: {
+        id,
+        messageKeywords: extractMustacheKeywords(content).keywords,
+      },
+    });
+
+    // Handle keyword tracking cleanup when message or prompt is deleted
+    return () => {
+      dispatch({
+        type: "updateKeywords",
+        payload: { id, messageKeywords: [] },
+      });
+    };
+  }, [id, content, dispatch]);
+
   return (
-    <Paper elevation={2} className="p-2">
+    <Paper elevation={2} className="m-1 p-2">
       <div className="grid grid-cols-2 gap-1">
         <div className="flex justify-start items-center">
           <FormControl sx={{ width: "50%" }} size="small">
-            <InputLabel id="message-role">{LABEL_TEXT}</InputLabel>
+            <InputLabel id={`message-role-${id}`}>{LABEL_TEXT}</InputLabel>
             <Select
-              labelId="message-role"
-              id="message-role"
+              labelId={`message-role-${id}`}
+              id={`message-role-${id}`}
               label={LABEL_TEXT}
               value={role}
               onChange={handleRoleChange}
@@ -99,7 +119,7 @@ const Message: React.FC<MessageComponentProps> = ({
           </FormControl>
         </div>
         <div className="flex justify-end items-center">
-          <Tooltip title="Duplicate Message" placement="top" arrow>
+          <Tooltip title="Duplicate Message" placement="top-start" arrow>
             <IconButton
               aria-label="duplicate message"
               onClick={handleDuplicate}
@@ -107,16 +127,17 @@ const Message: React.FC<MessageComponentProps> = ({
               <ContentCopyIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Delete Message" placement="top" arrow>
+          <Tooltip title="Delete Message" placement="top-start" arrow>
             <IconButton aria-label="delete message" onClick={handleDelete}>
               <DeleteIcon />
             </IconButton>
           </Tooltip>
         </div>
       </div>
-      <div className="mt-1">
+      <div className="mt-2">
         <TextField
-          id="message"
+          id={`message-${id}-input`}
+          label="Content"
           variant="outlined"
           maxRows={4}
           placeholder={role}
