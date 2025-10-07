@@ -46,7 +46,7 @@ Return your response in the following JSON format:
 }`;
 
     try {
-      const agent = mastra?.getAgent("analystAgent");
+      const agent = mastra?.getAgent("dataAnalystAgent");
       if (!agent) {
         throw new Error("Analyst agent not found");
       }

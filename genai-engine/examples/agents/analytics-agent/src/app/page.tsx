@@ -5,7 +5,7 @@ import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
 import { useState } from "react";
 import { AgentState as AgentStateSchema } from "@/mastra/agents";
 import { z } from "zod";
-import { WeatherToolResult } from "@/mastra/tools";
+import { WeatherToolResult, TextToSqlToolResult } from "@/mastra/tools";
 
 type AgentState = z.infer<typeof AgentStateSchema>;
 
@@ -15,59 +15,92 @@ export default function CopilotKitPage() {
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/guides/frontend-actions
   useCopilotAction({
     name: "setThemeColor",
-    parameters: [{
-      name: "themeColor",
-      description: "The theme color to set. Make sure to pick nice colors.",
-      required: true, 
-    }],
+    parameters: [
+      {
+        name: "themeColor",
+        description: "The theme color to set. Make sure to pick nice colors.",
+        required: true,
+      },
+    ],
     handler({ themeColor }) {
       setThemeColor(themeColor);
     },
   });
 
-    //🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
-    useCopilotAction({
-      name: "weatherTool",
-      description: "Get the weather for a given location.",
-      available: "frontend",
-      parameters: [
-        { name: "location", type: "string", required: true },
-      ],
-      render: ({ args, result, status }) => {
-        return <WeatherCard 
-          location={args.location} 
-          themeColor={themeColor} 
-          result={result} 
+  //🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
+  useCopilotAction({
+    name: "weatherTool",
+    description: "Get the weather for a given location.",
+    available: "frontend",
+    parameters: [{ name: "location", type: "string", required: true }],
+    render: ({ args, result, status }) => {
+      return (
+        <WeatherCard
+          location={args.location}
+          themeColor={themeColor}
+          result={result}
           status={status}
         />
-      },
-    });
-  
-    useCopilotAction({
-      name: "updateWorkingMemory",
-      available: "frontend",
-      render: ({ args }) => {
-        return <div style={{ backgroundColor: themeColor }} className="rounded-2xl max-w-md w-full text-white p-4">
+      );
+    },
+  });
+
+  useCopilotAction({
+    name: "textToSqlTool",
+    description:
+      "Convert natural language queries into PostgreSQL SQL statements.",
+    available: "frontend",
+    parameters: [{ name: "userQuery", type: "string", required: true }],
+    render: ({ args, result, status }) => {
+      return (
+        <SqlCard
+          userQuery={args.userQuery}
+          themeColor={themeColor}
+          result={result}
+          status={status}
+        />
+      );
+    },
+  });
+
+  useCopilotAction({
+    name: "updateWorkingMemory",
+    available: "frontend",
+    render: ({ args }) => {
+      return (
+        <div
+          style={{ backgroundColor: themeColor }}
+          className="rounded-2xl max-w-md w-full text-white p-4"
+        >
           <p>✨ Memory updated</p>
           <details className="mt-2">
             <summary className="cursor-pointer text-white">See updates</summary>
-            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }} className="overflow-x-auto text-sm bg-white/20 p-4 rounded-lg mt-2">
+            <pre
+              style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+              className="overflow-x-auto text-sm bg-white/20 p-4 rounded-lg mt-2"
+            >
               {JSON.stringify(args, null, 2)}
             </pre>
           </details>
         </div>
-      },
-    });
+      );
+    },
+  });
 
   return (
-    <main style={{ "--copilot-kit-primary-color": themeColor } as CopilotKitCSSProperties}>
+    <main
+      style={
+        { "--copilot-kit-primary-color": themeColor } as CopilotKitCSSProperties
+      }
+    >
       <YourMainContent themeColor={themeColor} />
       <CopilotSidebar
         clickOutsideToClose={false}
         defaultOpen={true}
         labels={{
           title: "Popup Assistant",
-          initial: "👋 Hi, there! You're chatting with an agent. This agent comes with a few tools to get you started.\n\nFor example you can try:\n- **Frontend Tools**: \"Set the theme to orange\"\n- **Shared State**: \"Write a proverb about AI\"\n- **Generative UI**: \"Get the weather in SF\"\n\nAs you interact with the agent, you'll see the UI update in real-time to reflect the agent's **state**, **tool calls**, and **progress**."
+          initial:
+            '👋 Hi, there! You\'re chatting with an agent. This agent comes with a few tools to get you started.\n\nFor example you can try:\n- **Frontend Tools**: "Set the theme to orange"\n- **Shared State**: "Write a proverb about AI"\n- **Generative UI**: "Get the weather in SF"\n\nAs you interact with the agent, you\'ll see the UI update in real-time to reflect the agent\'s **state**, **tool calls**, and **progress**.',
         }}
       />
     </main>
@@ -76,14 +109,14 @@ export default function CopilotKitPage() {
 
 function YourMainContent({ themeColor }: { themeColor: string }) {
   // 🪁 Shared State: https://docs.copilotkit.ai/coagents/shared-state
-  const {state, setState} = useCoAgent<AgentState>({
-    name: "weatherAgent",
+  const { state, setState } = useCoAgent<AgentState>({
+    name: "dataAnalystAgent",
     initialState: {
       proverbs: [
         "CopilotKit may be new, but its the best thing since sliced bread.",
       ],
     },
-  })
+  });
 
   return (
     <div
@@ -91,21 +124,27 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
       className="h-screen w-screen flex justify-center items-center flex-col transition-colors duration-300"
     >
       <div className="bg-white/20 backdrop-blur-md p-8 rounded-2xl shadow-xl max-w-2xl w-full">
-        <h1 className="text-4xl font-bold text-white mb-2 text-center">Proverbs</h1>
-        <p className="text-gray-200 text-center italic mb-6">This is a demonstrative page, but it could be anything you want! 🪁</p>
+        <h1 className="text-4xl font-bold text-white mb-2 text-center">
+          Proverbs
+        </h1>
+        <p className="text-gray-200 text-center italic mb-6">
+          This is a demonstrative page, but it could be anything you want! 🪁
+        </p>
         <hr className="border-white/20 my-6" />
         <div className="flex flex-col gap-3">
           {state.proverbs?.map((proverb, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className="bg-white/15 p-4 rounded-xl text-white relative group hover:bg-white/20 transition-all"
             >
               <p className="pr-8">{proverb}</p>
-              <button 
-                onClick={() => setState({
-                  ...state,
-                  proverbs: state.proverbs?.filter((_, i) => i !== index),
-                })}
+              <button
+                onClick={() =>
+                  setState({
+                    ...state,
+                    proverbs: state.proverbs?.filter((_, i) => i !== index),
+                  })
+                }
                 className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity 
                   bg-red-500 hover:bg-red-600 text-white rounded-full h-6 w-6 flex items-center justify-center"
               >
@@ -114,9 +153,11 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
             </div>
           ))}
         </div>
-        {state.proverbs?.length === 0 && <p className="text-center text-white/80 italic my-8">
-          No proverbs yet. Ask the assistant to add some!
-        </p>}
+        {state.proverbs?.length === 0 && (
+          <p className="text-center text-white/80 italic my-8">
+            No proverbs yet. Ask the assistant to add some!
+          </p>
+        )}
       </div>
     </div>
   );
@@ -124,28 +165,30 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
 
 // Weather card component where the location and themeColor are based on what the agent
 // sets via tool calls.
-function WeatherCard({ 
-  location, 
-  themeColor, 
-  result, 
-  status 
-}: { 
-  location?: string, 
-  themeColor: string, 
-  result: WeatherToolResult, 
-  status: "inProgress" | "executing" | "complete" 
+function WeatherCard({
+  location,
+  themeColor,
+  result,
+  status,
+}: {
+  location?: string;
+  themeColor: string;
+  result: WeatherToolResult;
+  status: "inProgress" | "executing" | "complete";
 }) {
   if (status !== "complete") {
     return (
-      <div 
+      <div
         className="rounded-xl shadow-xl mt-6 mb-4 max-w-md w-full"
         style={{ backgroundColor: themeColor }}
       >
         <div className="bg-white/20 p-4 w-full">
-          <p className="text-white animate-pulse">Loading weather for {location}...</p>
+          <p className="text-white animate-pulse">
+            Loading weather for {location}...
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -156,17 +199,17 @@ function WeatherCard({
       <div className="bg-white/20 p-4 w-full">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold text-white capitalize">{location}</h3>
+            <h3 className="text-xl font-bold text-white capitalize">
+              {location}
+            </h3>
             <p className="text-white">Current Weather</p>
           </div>
-          <WeatherIcon conditions={result.conditions} />         
+          <WeatherIcon conditions={result.conditions} />
         </div>
-        
+
         <div className="mt-4 flex items-end justify-between">
           <div className="text-3xl font-bold text-white">
-            <span className="">
-              {result.temperature}° C
-            </span>
+            <span className="">{result.temperature}° C</span>
             <span className="text-sm text-white/50">
               {" / "}
               {((result.temperature * 9) / 5 + 32).toFixed(1)}° F
@@ -174,7 +217,7 @@ function WeatherCard({
           </div>
           <div className="text-sm text-white">{result.conditions}</div>
         </div>
-        
+
         <div className="mt-4 pt-4 border-t border-white">
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
@@ -205,7 +248,7 @@ function WeatherIcon({ conditions }: { conditions: string }) {
   ) {
     return <SunIcon />;
   }
-  
+
   if (
     conditions.toLowerCase().includes("rain") ||
     conditions.toLowerCase().includes("drizzle") ||
@@ -213,8 +256,8 @@ function WeatherIcon({ conditions }: { conditions: string }) {
     conditions.toLowerCase().includes("thunderstorm")
   ) {
     return <RainIcon />;
-  } 
-  
+  }
+
   if (
     conditions.toLowerCase().includes("fog") ||
     conditions.toLowerCase().includes("cloud") ||
@@ -229,28 +272,136 @@ function WeatherIcon({ conditions }: { conditions: string }) {
 // Simple sun icon for the weather card
 function SunIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14 text-yellow-200">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-14 h-14 text-yellow-200"
+    >
       <circle cx="12" cy="12" r="5" />
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" strokeWidth="2" stroke="currentColor" />
+      <path
+        d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+        strokeWidth="2"
+        stroke="currentColor"
+      />
     </svg>
   );
 }
 
 function RainIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14 text-blue-200">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-14 h-14 text-blue-200"
+    >
       {/* Cloud */}
-      <path d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 10 0 4 4 0 0 1 0 8H7z" fill="currentColor" opacity="0.8"/>
+      <path
+        d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 10 0 4 4 0 0 1 0 8H7z"
+        fill="currentColor"
+        opacity="0.8"
+      />
       {/* Rain drops */}
-      <path d="M8 18l2 4M12 18l2 4M16 18l2 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <path
+        d="M8 18l2 4M12 18l2 4M16 18l2 4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
     </svg>
   );
 }
 
 function CloudIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14 text-gray-200">
-      <path d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 10 0 4 4 0 0 1 0 8H7z" fill="currentColor"/>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-14 h-14 text-gray-200"
+    >
+      <path
+        d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 10 0 4 4 0 0 1 0 8H7z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// SQL card component for displaying generated SQL with syntax highlighting
+function SqlCard({
+  userQuery,
+  themeColor,
+  result,
+  status,
+}: {
+  userQuery?: string;
+  themeColor: string;
+  result: TextToSqlToolResult;
+  status: "inProgress" | "executing" | "complete";
+}) {
+  if (status !== "complete") {
+    return (
+      <div
+        className="rounded-xl shadow-xl mt-6 mb-4 max-w-2xl w-full"
+        style={{ backgroundColor: themeColor }}
+      >
+        <div className="bg-white/20 p-4 w-full">
+          <p className="text-white animate-pulse">
+            Generating SQL for: &ldquo;{userQuery}&rdquo;...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ backgroundColor: themeColor }}
+      className="rounded-xl shadow-xl mt-6 mb-4 max-w-2xl w-full"
+    >
+      <div className="bg-white/20 p-4 w-full">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-xl font-bold text-white">
+              Generated SQL Query
+            </h3>
+            <p className="text-white/80 text-sm">
+              Query: &ldquo;{userQuery}&rdquo;
+            </p>
+          </div>
+          <DatabaseIcon />
+        </div>
+
+        <div className="bg-gray-900 rounded-lg p-4 mb-3">
+          <pre className="text-green-400 text-sm overflow-x-auto">
+            <code>{result.sqlQuery}</code>
+          </pre>
+        </div>
+
+        <div className="bg-white/10 rounded-lg p-3">
+          <p className="text-white text-sm">
+            <span className="font-semibold">Explanation:</span>{" "}
+            {result.explanation}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Database icon for the SQL card
+function DatabaseIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-8 h-8 text-white/80"
+    >
+      <path d="M12 2C6.48 2 2 3.79 2 6v12c0 2.21 4.48 4 10 4s10-1.79 10-4V6c0-2.21-4.48-4-10-4zM4 6c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2V6zm0 4c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2v-2zm0 4c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2v-2z" />
     </svg>
   );
 }
