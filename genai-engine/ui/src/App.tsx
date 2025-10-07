@@ -14,7 +14,7 @@ import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetr
 import { TracesView } from "./components/TracesView";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskLayout } from "./components/TaskLayout";
-import { PromptsPlayground } from "./components/prompts/PromptsPlayground";
+import PromptsPlayground from "./components/prompts/PromptsPlayground";
 import "./App.css";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details
