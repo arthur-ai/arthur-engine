@@ -160,7 +160,9 @@ class AgenticPromptRepository:
         )
 
         if not db_prompt:
-            raise ValueError(f"Prompt '{prompt_name}' not found for task '{task_id}'")
+            raise ValueError(
+                f"Prompt '{prompt["name"]}' not found for task '{task_id}'",
+            )
 
         # Update the fields
         updated_field = False

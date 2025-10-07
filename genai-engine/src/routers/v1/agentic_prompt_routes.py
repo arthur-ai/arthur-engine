@@ -2,6 +2,7 @@ from typing import Any, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import Session
 
 from dependencies import get_application_config, get_db_session
@@ -123,6 +124,8 @@ def run_agentic_prompt(
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.create_prompt(**prompt_body)
         return agentic_prompt_service.run_prompt(prompt)
+    except PydanticValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -173,6 +176,8 @@ def save_agentic_prompt(
         agentic_prompt_service.save_prompt(task.id, prompt_body)
 
         return {"message": "Prompt saved successfully"}
+    except PydanticValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -199,6 +204,8 @@ def update_agentic_prompt(
         agentic_prompt_service.update_prompt(task.id, prompt_body)
 
         return {"message": "Prompt updated successfully"}
+    except PydanticValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
