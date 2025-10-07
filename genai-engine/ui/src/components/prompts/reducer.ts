@@ -1,0 +1,241 @@
+import {
+  MessageType,
+  messageTypeEnum,
+  PromptAction,
+  promptClassificationEnum,
+  PromptPlaygroundState,
+  PromptType,
+  providerEnum,
+} from "./types";
+
+const TEMP_ID = "user-defined-name-timestamp";
+
+const arrayUtils = {
+  //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
+  //     ...array.slice(0, index),
+  //     item,
+  //     ...array.slice(index),
+  //   ],
+
+  // TODO
+  moveItem: <T>(array: T[], fromIndex: number, toIndex: number): T[] => {
+    const newArray = [...array];
+    const [item] = newArray.splice(fromIndex, 1);
+    newArray.splice(toIndex, 0, item);
+    return newArray;
+  },
+
+  duplicateAfter: <T>(array: T[], originalIndex: number, duplicate: T): T[] => [
+    ...array.slice(0, originalIndex + 1),
+    duplicate,
+    ...array.slice(originalIndex + 1),
+  ],
+};
+
+// TODO: replace with uuid
+const generateId = () => {
+  return TEMP_ID + (Math.random() * Math.random() * 1000).toString();
+};
+
+/****************************
+* Message factory functions *
+****************************/
+const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
+  id: generateId(),
+  type: messageTypeEnum.USER,
+  content: "Change me",
+  disabled: false,
+  ...overrides,
+});
+
+const newMessage = (
+  type: string = messageTypeEnum.USER,
+  content: string = "Change me"
+): MessageType => createMessage({ type, content });
+
+const duplicateMessage = (original: MessageType): MessageType =>
+  createMessage({
+    ...original,
+    id: generateId(),
+  });
+
+const hydrateMessage = (data: Partial<MessageType>): MessageType =>
+  createMessage(data);
+
+/***************************
+* Prompt factory functions *
+***************************/
+const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
+  id: generateId(),
+  classification: promptClassificationEnum.DEFAULT,
+  name: "",
+  provider: providerEnum.OPENAI,
+  messages: [newMessage()],
+  outputField: "",
+  ...overrides,
+});
+
+const newPrompt = (provider: string = providerEnum.OPENAI): PromptType =>
+  createPrompt({ provider });
+
+const duplicatePrompt = (original: PromptType): PromptType =>
+  createPrompt({
+    ...original,
+    id: generateId(),
+    name: `${original.name} (Copy)`,
+  });
+
+const hydratePrompt = (data: Partial<PromptType>): PromptType =>
+  createPrompt(data);
+
+/****************
+* Reducer Logic *
+****************/
+const initialState: PromptPlaygroundState = {
+  keywords: new Set(),
+  prompts: [newPrompt()],
+};
+
+const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
+  switch (action.type) {
+    case "addPrompt":
+      return { ...state, prompts: [...state.prompts, newPrompt()] };
+    case "deletePrompt": {
+      const { id } = action.payload;
+      const index = state.prompts.findIndex((prompt) => prompt.id === id);
+      return {
+        ...state,
+        prompts: [
+          ...state.prompts.slice(0, index),
+          ...state.prompts.slice(index + 1),
+        ],
+      };
+    }
+    case "duplicatePrompt": {
+      const { id } = action.payload;
+      const originalIndex = state.prompts.findIndex(
+        (prompt) => prompt.id === id
+      );
+
+      const originalPrompt = state.prompts[originalIndex];
+      const duplicatedPrompt = duplicatePrompt(originalPrompt);
+
+      return {
+        ...state,
+        prompts: arrayUtils.duplicateAfter(
+          state.prompts,
+          originalIndex,
+          duplicatedPrompt
+        ),
+      };
+    }
+    case "hydratePrompt": {
+      const { promptData } = action.payload;
+      return {
+        ...state,
+        prompts: [...state.prompts, hydratePrompt(promptData)],
+      };
+    }
+    case "addMessage": {
+      const { parentId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? { ...prompt, messages: [...prompt.messages, newMessage()] }
+            : prompt
+        ),
+      };
+    }
+    case "deleteMessage": {
+      const { parentId, id } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: prompt.messages.filter((msg) => msg.id !== id),
+              }
+            : prompt
+        ),
+      };
+    }
+    case "duplicateMessage": {
+      const { id, parentId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id !== parentId) return prompt;
+
+          const messageToDuplicate = prompt.messages.find(
+            (msg) => msg.id === id
+          );
+          if (!messageToDuplicate) return prompt;
+
+          const duplicatedMessage = duplicateMessage(messageToDuplicate);
+          const messageIndex = prompt.messages.findIndex(
+            (msg) => msg.id === id
+          );
+
+          return {
+            ...prompt,
+            messages: arrayUtils.duplicateAfter(
+              prompt.messages,
+              messageIndex,
+              duplicatedMessage
+            ),
+          };
+        }),
+      };
+    }
+    case "hydrateMessage": {
+      const { parentId, messageData } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: [...prompt.messages, hydrateMessage(messageData)],
+              }
+            : prompt
+        ),
+      };
+    }
+    case "editMessage": {
+      const { parentId, id, content } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: prompt.messages.map((message) =>
+                  message.id === id ? { ...message, content } : message
+                ),
+              }
+            : prompt
+        ),
+      };
+    }
+    case "changeMessageType": {
+      const { parentId, id, type } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: prompt.messages.map((message) =>
+                  message.id === id ? { ...message, type } : message
+                ),
+              }
+            : prompt
+        ),
+      };
+    }
+  }
+};
+
+export { promptsReducer, initialState };
