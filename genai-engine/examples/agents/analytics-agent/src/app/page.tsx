@@ -25,6 +25,40 @@ export default function CopilotKitPage() {
     },
   });
 
+    //🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
+    useCopilotAction({
+      name: "weatherTool",
+      description: "Get the weather for a given location.",
+      available: "frontend",
+      parameters: [
+        { name: "location", type: "string", required: true },
+      ],
+      render: ({ args, result, status }) => {
+        return <WeatherCard 
+          location={args.location} 
+          themeColor={themeColor} 
+          result={result} 
+          status={status}
+        />
+      },
+    });
+  
+    useCopilotAction({
+      name: "updateWorkingMemory",
+      available: "frontend",
+      render: ({ args }) => {
+        return <div style={{ backgroundColor: themeColor }} className="rounded-2xl max-w-md w-full text-white p-4">
+          <p>✨ Memory updated</p>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-white">See updates</summary>
+            <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }} className="overflow-x-auto text-sm bg-white/20 p-4 rounded-lg mt-2">
+              {JSON.stringify(args, null, 2)}
+            </pre>
+          </details>
+        </div>
+      },
+    });
+
   return (
     <main style={{ "--copilot-kit-primary-color": themeColor } as CopilotKitCSSProperties}>
       <YourMainContent themeColor={themeColor} />
@@ -50,40 +84,6 @@ function YourMainContent({ themeColor }: { themeColor: string }) {
       ],
     },
   })
-
-  //🪁 Generative UI: https://docs.copilotkit.ai/coagents/generative-ui
-  useCopilotAction({
-    name: "weatherTool",
-    description: "Get the weather for a given location.",
-    available: "frontend",
-    parameters: [
-      { name: "location", type: "string", required: true },
-    ],
-    render: ({ args, result, status }) => {
-      return <WeatherCard 
-        location={args.location} 
-        themeColor={themeColor} 
-        result={result} 
-        status={status}
-      />
-    },
-  });
-
-  useCopilotAction({
-    name: "updateWorkingMemory",
-    available: "frontend",
-    render: ({ args }) => {
-      return <div style={{ backgroundColor: themeColor }} className="rounded-2xl max-w-md w-full text-white p-4">
-        <p>✨ Memory updated</p>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-white">See updates</summary>
-          <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }} className="overflow-x-auto text-sm bg-white/20 p-4 rounded-lg mt-2">
-            {JSON.stringify(args, null, 2)}
-          </pre>
-        </details>
-      </div>
-    },
-  });
 
   return (
     <div
