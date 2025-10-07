@@ -159,12 +159,17 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             key={message.id}
             id={message.id}
             parentId={prompt.id}
-            type={message.type}
+            role={message.role}
             defaultContent={message.content}
             content={message.content}
             dispatch={dispatch}
           />
         ))}
+      </Container>
+      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+        <Paper elevation={2} className="p-1">
+          <div>Tools</div>
+        </Paper>
       </Container>
       <Container component="div" className="p-1" maxWidth="xl" disableGutters>
         <Paper elevation={2} className="p-1">

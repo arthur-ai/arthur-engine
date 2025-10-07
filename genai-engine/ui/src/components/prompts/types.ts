@@ -3,7 +3,7 @@ const promptClassificationEnum = {
   DEFAULT: "default",
 };
 
-const messageTypeEnum = {
+const messageRoleEnum = {
   SYSTEM: "system",
   USER: "user",
   AI: "ai",
@@ -33,14 +33,14 @@ type PromptAction =
       payload: { parentId: string; id: string; content: string };
     }
   | {
-      type: "changeMessageType";
-      payload: { parentId: string; id: string; type: string };
+      type: "changeMessageRole";
+      payload: { parentId: string; id: string; role: string };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
 type MessageType = {
   id: string;
-  type: string; // messageTypeEnum
+  role: string; // messageRoleEnum
   content: string;
   disabled: boolean;
 };
@@ -62,7 +62,7 @@ interface PromptPlaygroundState {
 interface MessageComponentProps {
   id: string;
   parentId: string;
-  type?: string;
+  role?: string;
   defaultContent?: string;
   content: string | "";
   dispatch: (action: PromptAction) => void;
@@ -74,7 +74,7 @@ interface PromptComponentProps {
 }
 
 export {
-  messageTypeEnum,
+  messageRoleEnum,
   MessageComponentProps,
   MessageType,
   providerEnum,

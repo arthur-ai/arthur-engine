@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import {
   MessageType,
-  messageTypeEnum,
+  messageRoleEnum,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
@@ -43,16 +43,16 @@ const generateId = () => {
 ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId(),
-  type: messageTypeEnum.USER,
+  role: messageRoleEnum.USER,
   content: "Change me",
   disabled: false,
   ...overrides,
 });
 
 const newMessage = (
-  type: string = messageTypeEnum.USER,
+  role: string = messageRoleEnum.USER,
   content: string = "Change me"
-): MessageType => createMessage({ type, content });
+): MessageType => createMessage({ role, content });
 
 const duplicateMessage = (original: MessageType): MessageType =>
   createMessage({
@@ -220,8 +220,8 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
-    case "changeMessageType": {
-      const { parentId, id, type } = action.payload;
+    case "changeMessageRole": {
+      const { parentId, id, role } = action.payload;
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
@@ -229,7 +229,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, type } : message
+                  message.id === id ? { ...message, role } : message
                 ),
               }
             : prompt

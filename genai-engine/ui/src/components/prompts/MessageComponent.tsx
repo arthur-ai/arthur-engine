@@ -9,33 +9,33 @@ import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Tooltip from "@mui/material/Tooltip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { messageTypeEnum, MessageComponentProps } from "./types";
+import { messageRoleEnum, MessageComponentProps } from "./types";
 import Paper from "@mui/material/Paper";
 
 const DEBOUNCE_TIME = 500;
-const LABEL_TEXT = "Message Type"; // Must be same for correct rendering
+const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 
 const Message: React.FC<MessageComponentProps> = ({
   id,
   parentId,
-  type,
+  role,
   defaultContent = "",
   content,
   dispatch,
 }) => {
   const [inputValue, setInputValue] = useState(defaultContent);
 
-  const handleTypeChange = useCallback(
+  const handleRoleChange = useCallback(
     (event: SelectChangeEvent) => {
-      const selectedType = event.target.value;
-      if (selectedType === type) return;
+      const selectedRole = event.target.value;
+      if (selectedRole === role) return;
 
       dispatch({
-        type: "changeMessageType",
-        payload: { id, type: selectedType, parentId },
+        type: "changeMessageRole",
+        payload: { id, role: selectedRole, parentId },
       });
     },
-    [id, dispatch, type, parentId]
+    [id, dispatch, role, parentId]
   );
 
   const handleContentChange = useCallback(
@@ -82,17 +82,17 @@ const Message: React.FC<MessageComponentProps> = ({
       <div className="grid grid-cols-2 gap-1">
         <div className="flex justify-start items-center">
           <FormControl sx={{ width: "50%" }} size="small">
-            <InputLabel id="message-type">{LABEL_TEXT}</InputLabel>
+            <InputLabel id="message-role">{LABEL_TEXT}</InputLabel>
             <Select
-              labelId="message-type"
-              id="message-type"
+              labelId="message-role"
+              id="message-role"
               label={LABEL_TEXT}
-              value={type}
-              onChange={handleTypeChange}
+              value={role}
+              onChange={handleRoleChange}
             >
-              {Object.values(messageTypeEnum).map((typeValue) => (
-                <MenuItem key={typeValue} value={typeValue}>
-                  {typeValue}
+              {Object.values(messageRoleEnum).map((roleValue) => (
+                <MenuItem key={roleValue} value={roleValue}>
+                  {roleValue}
                 </MenuItem>
               ))}
             </Select>
@@ -119,7 +119,7 @@ const Message: React.FC<MessageComponentProps> = ({
           id="message"
           variant="outlined"
           maxRows={4}
-          placeholder={type}
+          placeholder={role}
           value={inputValue}
           onChange={handleContentChange}
           type="text"
