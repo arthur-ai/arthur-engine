@@ -14,7 +14,10 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
   - [Developer Setup (for Mac)](#developer-setup-for-mac)
     - [Install the Python dependencies with Poetry](#install-the-python-dependencies-with-poetry)
     - [Run Postgres](#run-postgres)
-    - [Populate the Database Schema with Alembic](#populate-the-database-schema-with-alembic)
+    - [Alembic](#alembic)
+      - [Set up variables for Alembic](#set-up-variables-for-alembic)
+      - [Populate the Database Schema with Alembic](#populate-the-database-schema-with-alembic)
+      - [Autogenerate script with changes](#autogenerate-script-with-changes)
     - [Run the app with an IDE (Visual Studio Code / Cursor example)](#run-the-app-with-an-ide-visual-studio-code--cursor-example)
     - [Run the app via the terminal](#run-the-app-via-the-terminal)
   - [Making your first commit](#making-your-first-commit)
@@ -24,6 +27,7 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
   - [Unit Tests](#unit-tests)
   - [Integration Tests](#integration-tests)
   - [Performance Tests](#performance-tests)
+  - [Generate Changelog](#generate-changelog)
 
 ## Getting Started
 
@@ -112,13 +116,13 @@ A Postgres database is required to run the GenAI Engine. The easiest way to get 
 3. Run `docker compose up`
 4. Login with `postgres/changeme_pg_password`
 
-### Populate the Database Schema with Alembic
+### Alembic
+#### Set up variables for Alembic
 
-The Alembic database migration tool needs to be run the first time and every time a new database schema change is added.
-Maks sure the Poetry install is complete and you have a running Postgres instance first.
+Make sure the Poetry install is complete and you have a running Postgres instance first. After that setup the variables
+(example contains default valuse)
 
-`cd` to `/genai-engine` and run the commands below:
-
+ExampleL
 ```bash
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=changeme_pg_password
@@ -127,9 +131,27 @@ export POSTGRES_PORT=5435
 export POSTGRES_DB=arthur_genai_engine
 export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
+```
 
+#### Populate the Database Schema with Alembic
+After setting up variables you could run a migration scripts. To do it go to `genai-engine` directory and execute following command:
+
+```bash
 poetry run alembic upgrade head
 ```
+
+This command will apply newest migration scripts
+
+#### Autogenerate script with changes
+If you made some changes to DB models you should create migration script. You could use alembic to generate such script. If you create
+a new file that contains DB changes import this file to [DB Modelse init file](src/db_models/__init__.py).
+
+After that run following command:
+```bash
+poetry run alembic revision --autogenerate "<commit message>"
+```
+
+**Keep the message short, avoid special characters.**
 
 ### Run the app with an IDE (Visual Studio Code / Cursor example)
 

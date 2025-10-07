@@ -433,6 +433,10 @@
             "type": "string",
             "description": "Name of the secret for Azure OpenAI GPT-3.5 model endpoints"
         },
+        "genaiEngineSecretStoreKeyName": {
+            "type": "string",
+            "description": "GenAI Engine secret store key name"
+        },
         "genaiEngineAllowAdminKeyGeneralAccess": {
             "type": "string",
             "enum": [
@@ -472,6 +476,7 @@
         "imagePullSecretName",
         "genaiEngineSecretPostgresName",
         "genaiEngineSecretAdminKeyName",
-        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName"
+        "genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName",
+        "genaiEngineSecretStoreKeyName"
     ]
 }

@@ -42,9 +42,11 @@ class EncryptedJSON(types.TypeDecorator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        passphrase = os.getenv("SECRET_PASSPHRASE")
+        passphrase = os.getenv("GENAI_ENGINE_SECRET_STORE_KEY")
         if not passphrase:
-            raise ValueError("SECRET_PASSPHRASE environment variable not set")
+            raise ValueError(
+                "GENAI_ENGINE_SECRET_STORE_KEY environment variable not set",
+            )
         salt = b"some_static_or_dynamic_salt"  # Should be store/define securely
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),

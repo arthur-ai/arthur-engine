@@ -10,7 +10,10 @@ from db_models.custom_types import EncryptedJSON
 def test_encrypted_json_encryption():
     """Test that JSON data is properly encrypted when stored."""
     # Set up environment variable for passphrase
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         # Test data to encrypt
@@ -47,7 +50,10 @@ def test_encrypted_json_encryption():
 def test_encrypted_json_decryption():
     """Test that encrypted JSON data is properly decrypted when retrieved."""
     # Set up environment variable for passphrase
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         # Test data to encrypt and decrypt
@@ -84,7 +90,10 @@ def test_encrypted_json_decryption():
 @pytest.mark.unit_tests
 def test_encrypted_json_none_values():
     """Test that None values are handled correctly."""
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         # Test None input
@@ -99,7 +108,10 @@ def test_encrypted_json_none_values():
 @pytest.mark.unit_tests
 def test_encrypted_json_different_data_types():
     """Test encryption/decryption with various JSON data types."""
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         test_cases = [
@@ -137,7 +149,7 @@ def test_encrypted_json_missing_passphrase():
     with patch.dict(os.environ, {}, clear=True):
         with pytest.raises(
             ValueError,
-            match="SECRET_PASSPHRASE environment variable not set",
+            match="GENAI_ENGINE_SECRET_STORE_KEY environment variable not set",
         ):
             EncryptedJSON()
 
@@ -148,12 +160,12 @@ def test_encrypted_json_different_passphrases():
     test_data = {"secret": "sensitive_data"}
 
     # Test with first passphrase
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "passphrase1"}):
+    with patch.dict(os.environ, {"GENAI_ENGINE_SECRET_STORE_KEY": "passphrase1"}):
         encrypted_json1 = EncryptedJSON()
         encrypted1 = encrypted_json1.process_bind_param(test_data, None)
 
     # Test with second passphrase
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "passphrase2"}):
+    with patch.dict(os.environ, {"GENAI_ENGINE_SECRET_STORE_KEY": "passphrase2"}):
         encrypted_json2 = EncryptedJSON()
         encrypted2 = encrypted_json2.process_bind_param(test_data, None)
 
@@ -179,7 +191,10 @@ def test_encrypted_json_different_passphrases():
 def test_encrypted_json_roundtrip_database_simulation():
     """Test that encrypted JSON can be stored and retrieved like in a database."""
     # Set up environment variable for passphrase
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         # Test data to encrypt and decrypt
@@ -231,7 +246,10 @@ def test_encrypted_json_roundtrip_database_simulation():
 @pytest.mark.unit_tests
 def test_encrypted_json_multiple_records_simulation():
     """Test encryption/decryption of multiple records like in a database."""
-    with patch.dict(os.environ, {"SECRET_PASSPHRASE": "test_passphrase_123"}):
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "test_passphrase_123"},
+    ):
         encrypted_json = EncryptedJSON()
 
         # Test multiple records
