@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import {
   MessageType,
   messageTypeEnum,
@@ -32,9 +34,8 @@ const arrayUtils = {
   ],
 };
 
-// TODO: replace with uuid
 const generateId = () => {
-  return TEMP_ID + (Math.random() * Math.random() * 1000).toString();
+  return TEMP_ID + uuidv4();
 };
 
 /****************************
