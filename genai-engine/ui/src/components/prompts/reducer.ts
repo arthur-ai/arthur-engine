@@ -269,6 +269,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         keywordTracker: newKeywordTracker,
       };
     }
+    case "updateKeywordValue": {
+      const { keyword, value } = action.payload;
+      return {
+        ...state,
+        keywords: new Map(state.keywords).set(keyword, value),
+      };
+    }
     default:
       return state;
   }

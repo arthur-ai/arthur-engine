@@ -39,6 +39,10 @@ type PromptAction =
   | {
       type: "updateKeywords";
       payload: { id: string; messageKeywords: string[] };
+    }
+  | {
+      type: "updateKeywordValue";
+      payload: { keyword: string; value: string };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.

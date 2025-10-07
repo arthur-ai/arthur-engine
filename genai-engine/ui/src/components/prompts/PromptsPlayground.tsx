@@ -1,9 +1,9 @@
 import React, { useCallback, useReducer } from "react";
-import Collapse from "@mui/material/Collapse";
 import PromptComponent from "./PromptComponent";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
+import TextField from "@mui/material/TextField";
 import { promptsReducer, initialState } from "./reducer";
 
 const PromptsPlayground = () => {
@@ -12,6 +12,15 @@ const PromptsPlayground = () => {
   const handleAddPrompt = useCallback(() => {
     dispatch({ type: "addPrompt" });
   }, [dispatch]);
+
+  const handleKeywordValueChange = useCallback(
+    (keyword: string, value: string) => {
+      dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
+    },
+    [dispatch]
+  );
+
+  const keywords = Array.from(state.keywords.keys());
 
   return (
     <div className="h-screen bg-gray-300">
@@ -24,14 +33,25 @@ const PromptsPlayground = () => {
             </Button>
           </div>
           <Container component="div" maxWidth="xl" disableGutters>
-            <Paper elevation={3} className="p-1">
-              <Collapse in={state.keywords.size > 0}>
+              <Paper elevation={3} className="p-1">
                 <div>KEYWORDS</div>
-                {Array.from(state.keywords.keys()).map((keyword) => (
-                  <div key={keyword}>{keyword}</div>
-                ))}
-              </Collapse>
-            </Paper>
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
+                  {keywords.map((keyword) => (
+                    <div key={keyword} className="w-full">
+                      <TextField
+                        id={`keyword-${keyword}`}
+                        label={keyword}
+                        value={state.keywords.get(keyword)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          handleKeywordValueChange(keyword, e.target.value);
+                        }}
+                        variant="standard"
+                        fullWidth
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Paper>
           </Container>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
