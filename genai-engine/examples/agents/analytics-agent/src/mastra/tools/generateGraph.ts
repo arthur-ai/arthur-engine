@@ -19,7 +19,8 @@ const GenerateGraphToolResultSchema = z.object({
 
 export const generateGraphTool = createTool({
   id: "generate-graph",
-  description: "Generate a graph visualization from SQL query results",
+  description:
+    "Generate a graph visualization from SQL query results. Make sure to include both the sqlResults and sqlQuery in the arguments.",
   inputSchema: z.object({
     sqlResults: z
       .array(z.record(z.any()))
