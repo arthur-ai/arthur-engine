@@ -17,7 +17,7 @@ export function SqlResultsCard({
   if (status !== "complete") {
     return (
       <div
-        className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+        className="rounded-xl shadow-xl mt-6 mb-4 max-w-2xl w-full"
         style={{ backgroundColor: themeColor }}
       >
         <div className="bg-white/20 p-4 w-full">
@@ -30,7 +30,7 @@ export function SqlResultsCard({
   return (
     <div
       style={{ backgroundColor: themeColor }}
-      className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+      className="rounded-xl shadow-xl mt-6 mb-4 max-w-2xl w-full"
     >
       <div className="bg-white/20 p-4 w-full">
         <div className="flex items-center justify-between mb-3">

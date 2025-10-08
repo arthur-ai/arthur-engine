@@ -121,7 +121,7 @@ export default function CopilotKitPage() {
       }
       className="h-screen w-screen flex justify-center items-center bg-gray-50"
     >
-      <div className="w-full max-w-4xl h-full flex flex-col">
+      <div className="w-full max-w-6xl h-full flex flex-col">
         <CopilotChat
           labels={{
             title: "Data Analyst Assistant",
