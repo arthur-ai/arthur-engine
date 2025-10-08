@@ -177,8 +177,9 @@ function SimpleChart({
   yAxis: string;
 }) {
   const width = 400;
-  const height = 200;
+  const height = 280; // Further increased height to accommodate labels
   const padding = 40;
+  const labelSpace = 50; // More space for x-axis labels
 
   if (!data || data.length === 0) {
     return (
@@ -196,7 +197,7 @@ function SimpleChart({
   const yRange = maxY - minY || 1;
 
   const chartWidth = width - 2 * padding;
-  const chartHeight = height - 2 * padding;
+  const chartHeight = height - 2 * padding - labelSpace; // Account for label space
 
   if (graphType === "bar") {
     const barWidth = (chartWidth / data.length) * 0.8;
@@ -213,16 +214,16 @@ function SimpleChart({
           x1={padding}
           y1={padding}
           x2={padding}
-          y2={height - padding}
+          y2={height - padding - labelSpace}
           stroke="#374151"
           strokeWidth="2"
         />
         {/* X-axis */}
         <line
           x1={padding}
-          y1={height - padding}
+          y1={height - padding - labelSpace}
           x2={width - padding}
-          y2={height - padding}
+          y2={height - padding - labelSpace}
           stroke="#374151"
           strokeWidth="2"
         />
@@ -232,7 +233,7 @@ function SimpleChart({
           const barHeight =
             ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
           const x = padding + index * barSpacing + (barSpacing - barWidth) / 2;
-          const y = height - padding - barHeight;
+          const y = height - padding - labelSpace - barHeight;
 
           return (
             <g key={index}>
@@ -246,10 +247,10 @@ function SimpleChart({
               />
               <text
                 x={x + barWidth / 2}
-                y={height - padding + 15}
+                y={height - padding - labelSpace + 35}
                 textAnchor="middle"
                 className="text-xs fill-gray-600"
-                transform={`rotate(-45 ${x + barWidth / 2} ${height - padding + 15})`}
+                transform={`rotate(-45 ${x + barWidth / 2} ${height - padding - labelSpace + 35})`}
               >
                 {String(item[xAxis]).substring(0, 10)}
               </text>
@@ -268,6 +269,7 @@ function SimpleChart({
         const y =
           height -
           padding -
+          labelSpace -
           ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
         return `${x},${y}`;
       })
@@ -284,16 +286,16 @@ function SimpleChart({
           x1={padding}
           y1={padding}
           x2={padding}
-          y2={height - padding}
+          y2={height - padding - labelSpace}
           stroke="#374151"
           strokeWidth="2"
         />
         {/* X-axis */}
         <line
           x1={padding}
-          y1={height - padding}
+          y1={height - padding - labelSpace}
           x2={width - padding}
-          y2={height - padding}
+          y2={height - padding - labelSpace}
           stroke="#374151"
           strokeWidth="2"
         />
@@ -312,6 +314,7 @@ function SimpleChart({
           const y =
             height -
             padding -
+            labelSpace -
             ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
 
           return (
@@ -319,10 +322,10 @@ function SimpleChart({
               <circle cx={x} cy={y} r="4" fill="#3B82F6" />
               <text
                 x={x}
-                y={height - padding + 15}
+                y={height - padding - labelSpace + 35}
                 textAnchor="middle"
                 className="text-xs fill-gray-600"
-                transform={`rotate(-45 ${x} ${height - padding + 15})`}
+                transform={`rotate(-45 ${x} ${height - padding - labelSpace + 35})`}
               >
                 {String(item[xAxis]).substring(0, 10)}
               </text>
