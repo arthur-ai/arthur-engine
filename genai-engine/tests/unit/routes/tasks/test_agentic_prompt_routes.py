@@ -357,85 +357,6 @@ def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-def test_update_agentic_prompt_success(client: GenaiEngineTestClientBase):
-    """Test updating an existing agentic prompt"""
-    # Create an agentic task
-    task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
-
-    # First save a prompt
-    original_prompt_data = {
-        "name": "update_prompt",
-        "messages": [{"role": "user", "content": "Original content"}],
-        "model_name": "gpt-4",
-        "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
-    }
-
-    response = client.base_client.post(
-        f"/v1/{task.id}/agentic_prompt/save_prompt",
-        json=original_prompt_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-
-    # Update the prompt
-    updated_prompt_data = {
-        "name": "update_prompt",
-        "messages": [{"role": "user", "content": "Updated content"}],
-        "model_name": "gpt-4",
-        "model_provider": "openai",
-        "temperature": 0.9,
-        "max_tokens": 200,
-    }
-
-    response = client.base_client.post(
-        f"/v1/{task.id}/agentic_prompt/update_prompt",
-        json=updated_prompt_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-    assert response.json()["message"] == "Prompt updated successfully"
-
-    # Verify the prompt was updated
-    response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompt/get_prompt/update_prompt",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-
-    updated_prompt = response.json()
-    assert updated_prompt["messages"][0]["content"] == "Updated content"
-    assert updated_prompt["temperature"] == 0.9
-    assert updated_prompt["max_tokens"] == 200
-
-
-@pytest.mark.unit_tests
-def test_update_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
-    """Test updating a prompt that doesn't exist"""
-    # Create an agentic task
-    task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
-
-    # Try to update a non-existent prompt
-    update_data = {
-        "name": "nonexistent_prompt",
-        "temperature": 0.8,
-    }
-
-    response = client.base_client.post(
-        f"/v1/{task.id}/agentic_prompt/update_prompt",
-        json=update_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
-
-
-@pytest.mark.unit_tests
 def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
     """Test deleting an agentic prompt"""
     # Create an agentic task
@@ -499,7 +420,6 @@ def test_agentic_prompt_routes_require_authentication(
         ("POST", f"/v1/{task.id}/agentic_prompt/run_prompt"),
         ("POST", f"/v1/{task.id}/agentic_prompt/run_prompt/test"),
         ("POST", f"/v1/{task.id}/agentic_prompt/save_prompt"),
-        ("POST", f"/v1/{task.id}/agentic_prompt/update_prompt"),
         ("DELETE", f"/v1/{task.id}/agentic_prompt/delete_prompt/test"),
     ]
 

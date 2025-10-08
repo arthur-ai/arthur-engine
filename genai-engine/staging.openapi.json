@@ -3460,65 +3460,6 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/update_prompt": {
-            "post": {
-                "tags": [
-                    "AgenticPrompt"
-                ],
-                "summary": "Update an existing agentic prompt",
-                "description": "Updates an existing agentic prompt",
-                "operationId": "update_agentic_prompt_v1__task_id__agentic_prompt_update_prompt_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "title": "Prompt Body"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}": {
             "delete": {
                 "tags": [

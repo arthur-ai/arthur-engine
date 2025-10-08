@@ -184,37 +184,6 @@ def save_agentic_prompt(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@agentic_prompt_routes.post(
-    "/{task_id}/agentic_prompt/update_prompt",
-    summary="Update an existing agentic prompt",
-    description="Updates an existing agentic prompt",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def update_agentic_prompt(
-    prompt_body: Dict[str, Any] = Body(...),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-):
-    try:
-        agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.update_prompt(task.id, prompt_body)
-
-        return {"message": "Prompt updated successfully"}
-    except PydanticValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except ValueError as e:
-        if "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail=str(e))
-        else:
-            raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @agentic_prompt_routes.delete(
     "/{task_id}/agentic_prompt/delete_prompt/{prompt_name}",
     summary="Delete an agentic prompt",

@@ -51,12 +51,7 @@ def sample_agentic_prompt(sample_prompt_data):
 def sample_db_prompt(sample_prompt_data):
     """Create sample DatabaseAgenticPrompt instance"""
     task_id = str(uuid4())
-    return DatabaseAgenticPrompt(
-        task_id=task_id,
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        **sample_prompt_data,
-    )
+    return AgenticPrompt(**sample_prompt_data).to_db_model(task_id)
 
 
 @pytest.mark.unit_tests
@@ -165,7 +160,6 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
         model_name="gpt-3.5-turbo",
         model_provider="openai",
         created_at=datetime.now(),
-        updated_at=datetime.now(),
     )
 
     # Mock database query
@@ -264,133 +258,6 @@ def test_save_prompt_integrity_error(
         match="Prompt 'test_prompt' already exists for task 'test_task_id'",
     ):
         agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
-
-    # Verify rollback was called
-    mock_db_session.rollback.assert_called_once()
-
-
-@pytest.mark.unit_tests
-def test_update_prompt_with_agentic_prompt_object(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
-    sample_agentic_prompt,
-):
-    """Test updating a prompt with AgenticPrompt object"""
-    task_id = "test_task_id"
-
-    # Update some fields
-    sample_agentic_prompt.temperature = 0.9
-    sample_agentic_prompt.max_tokens = 200
-
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
-
-    agentic_prompt_repo.update_prompt(task_id, sample_agentic_prompt)
-
-    # Verify database operations
-    mock_db_session.commit.assert_called_once()
-    assert sample_db_prompt.temperature == 0.9
-    assert sample_db_prompt.max_tokens == 200
-    assert isinstance(sample_db_prompt.updated_at, datetime)
-
-
-@pytest.mark.unit_tests
-def test_update_prompt_with_dict(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
-):
-    """Test updating a prompt with dictionary data"""
-    task_id = "test_task_id"
-    update_data = {
-        "name": "test_prompt",
-        "temperature": 0.8,
-        "max_tokens": 150,
-    }
-
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
-
-    agentic_prompt_repo.update_prompt(task_id, update_data)
-
-    # Verify database operations
-    mock_db_session.commit.assert_called_once()
-    assert sample_db_prompt.temperature == 0.8
-    assert sample_db_prompt.max_tokens == 150
-
-
-@pytest.mark.unit_tests
-def test_update_prompt_not_found(agentic_prompt_repo, mock_db_session):
-    """Test updating a prompt that doesn't exist"""
-    task_id = "nonexistent_task"
-    update_data = {"name": "nonexistent_prompt", "temperature": 0.8}
-
-    # Mock database query returning None
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = None
-
-    with pytest.raises(ValueError, match="not found for task"):
-        agentic_prompt_repo.update_prompt(task_id, update_data)
-
-
-@pytest.mark.unit_tests
-def test_update_prompt_no_changes(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
-):
-    """Test updating a prompt with no actual changes"""
-    task_id = "test_task_id"
-    # Use same values as existing prompt
-    update_data = {
-        "name": sample_db_prompt.name,
-        "temperature": sample_db_prompt.temperature,
-        "max_tokens": sample_db_prompt.max_tokens,
-    }
-
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
-
-    with pytest.raises(ValueError, match="No fields to update"):
-        agentic_prompt_repo.update_prompt(task_id, update_data)
-
-
-@pytest.mark.unit_tests
-def test_update_prompt_integrity_error(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
-):
-    """Test updating a prompt with database integrity error"""
-    task_id = "test_task_id"
-    update_data = {"name": "test_prompt", "temperature": 0.8}
-
-    # Mock database query and IntegrityError on commit
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
-    mock_db_session.commit.side_effect = IntegrityError("", "", "")
-
-    with pytest.raises(ValueError, match="Error updating prompt"):
-        agentic_prompt_repo.update_prompt(task_id, update_data)
 
     # Verify rollback was called
     mock_db_session.rollback.assert_called_once()
