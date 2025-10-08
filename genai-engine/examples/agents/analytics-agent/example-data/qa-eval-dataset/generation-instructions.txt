@@ -1,5 +1,5 @@
 Please generate a dataset with 4 columns:
-- Question (string) - a dummy example data analytics question someone might ask about their product sales, e.g. "what is my top selling product over the last month?"
+- Question (string) - a dummy example data analytics question someone might ask about their product sales, e.g. "what are my top selling products over the last month?" These should ask questions that would be helpful to have a graph to visualize the trends in the answers
 - Answer (string) - a dummy answer to the question, make this up
 - SQL (string) - hypothetical postgres sql to run to answer the question, make up a likely database schema to use
 - Chart (JSON object) - a hypothetical chart to display the results of the answer, should have a format like this example JSON:
