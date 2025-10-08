@@ -1,17 +1,18 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
-import TextField from "@mui/material/TextField";
-import { debounce } from "@mui/material/utils";
-import Select, { SelectChangeEvent } from "@mui/material/Select";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
 import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
-import IconButton from "@mui/material/IconButton";
-import DeleteIcon from "@mui/icons-material/Delete";
-import Tooltip from "@mui/material/Tooltip";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { messageRoleEnum, MessageComponentProps } from "./types";
 import Paper from "@mui/material/Paper";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
+import { debounce } from "@mui/material/utils";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+
 import extractMustacheKeywords from "./mustacheExtractor";
+import { messageRoleEnum, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
@@ -36,14 +37,14 @@ const Message: React.FC<MessageComponentProps> = ({
         payload: { id, role: selectedRole, parentId },
       });
     },
-    [id, dispatch, role, parentId]
+    [id, dispatch, role, parentId],
   );
 
   const handleContentChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setInputValue(event.target.value);
     },
-    []
+    [],
   );
 
   const handleDuplicate = useCallback(() => {
@@ -71,7 +72,7 @@ const Message: React.FC<MessageComponentProps> = ({
           payload: { parentId, id, content: value },
         });
       }, DEBOUNCE_TIME),
-    [content, parentId, id, dispatch]
+    [content, parentId, id, dispatch],
   );
 
   useEffect(() => {

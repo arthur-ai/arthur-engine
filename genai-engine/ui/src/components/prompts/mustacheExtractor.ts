@@ -1,8 +1,8 @@
-  // Regex pattern to match {{keyword}} format
-  // \{\{ - matches literal {{
-  // ([^}]+) - captures one or more characters that are not }
-  // \}\} - matches literal }}
-  const MUSTACHE_REGEX = /\{\{([^}]+)\}\}/g;
+// Regex pattern to match {{keyword}} format
+// \{\{ - matches literal {{
+// ([^}]+) - captures one or more characters that are not }
+// \}\} - matches literal }}
+const MUSTACHE_REGEX = /\{\{([^}]+)\}\}/g;
 
 /**
  * Extracts keywords from mustache braces in a text string
@@ -17,7 +17,6 @@ export function extractMustacheKeywords(text: string): {
   keywords: string[];
   matches: Array<{ keyword: string; startIndex: number; endIndex: number }>;
 } {
-
   const matches: Array<{
     keyword: string;
     startIndex: number;

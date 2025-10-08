@@ -51,7 +51,7 @@ const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
 
 const newMessage = (
   role: string = messageRoleEnum.USER,
-  content: string = "Change me"
+  content: string = "Change me",
 ): MessageType => createMessage({ role, content });
 
 const duplicateMessage = (original: MessageType): MessageType =>
@@ -116,7 +116,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "duplicatePrompt": {
       const { id } = action.payload;
       const originalIndex = state.prompts.findIndex(
-        (prompt) => prompt.id === id
+        (prompt) => prompt.id === id,
       );
 
       const originalPrompt = state.prompts[originalIndex];
@@ -127,7 +127,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         prompts: arrayUtils.duplicateAfter(
           state.prompts,
           originalIndex,
-          duplicatedPrompt
+          duplicatedPrompt,
         ),
       };
     }
@@ -145,7 +145,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         prompts: state.prompts.map((prompt) =>
           prompt.id === parentId
             ? { ...prompt, messages: [...prompt.messages, newMessage()] }
-            : prompt
+            : prompt,
         ),
       };
     }
@@ -159,7 +159,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 ...prompt,
                 messages: prompt.messages.filter((msg) => msg.id !== id),
               }
-            : prompt
+            : prompt,
         ),
       };
     }
@@ -171,13 +171,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           if (prompt.id !== parentId) return prompt;
 
           const messageToDuplicate = prompt.messages.find(
-            (msg) => msg.id === id
+            (msg) => msg.id === id,
           );
           if (!messageToDuplicate) return prompt;
 
           const duplicatedMessage = duplicateMessage(messageToDuplicate);
           const messageIndex = prompt.messages.findIndex(
-            (msg) => msg.id === id
+            (msg) => msg.id === id,
           );
 
           return {
@@ -185,7 +185,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             messages: arrayUtils.duplicateAfter(
               prompt.messages,
               messageIndex,
-              duplicatedMessage
+              duplicatedMessage,
             ),
           };
         }),
@@ -201,7 +201,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 ...prompt,
                 messages: [...prompt.messages, hydrateMessage(messageData)],
               }
-            : prompt
+            : prompt,
         ),
       };
     }
@@ -214,10 +214,10 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, content } : message
+                  message.id === id ? { ...message, content } : message,
                 ),
               }
-            : prompt
+            : prompt,
         ),
       };
     }
@@ -230,10 +230,10 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, role } : message
+                  message.id === id ? { ...message, role } : message,
                 ),
               }
-            : prompt
+            : prompt,
         ),
       };
     }
@@ -251,7 +251,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       // Create new keywords map. Delete keywords by omitting a copy.
       const newKeywords = new Map<string, string>();
       const newKeywordTracker = new Map<string, Array<string>>(
-        state.keywordTracker
+        state.keywordTracker,
       );
 
       // For each keyword array

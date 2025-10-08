@@ -1,19 +1,21 @@
-import React, { useCallback, useState } from "react";
-import { PromptComponentProps } from "./types";
-import MessageComponent from "./MessageComponent";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select, { SelectChangeEvent } from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
-import IconButton from "@mui/material/IconButton";
+import AddIcon from "@mui/icons-material/Add";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
-import { providerEnum } from "./types";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import Tooltip from "@mui/material/Tooltip";
 import Container from "@mui/material/Container";
+import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
-import AddIcon from "@mui/icons-material/Add";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Tooltip from "@mui/material/Tooltip";
+import React, { useCallback, useState } from "react";
+
+import MessageComponent from "./MessageComponent";
+import { PromptComponentProps } from "./types";
+import { providerEnum } from "./types";
+
 
 const PROVIDER_TEXT = "Provider";
 const PROMPT_NAME_TEXT = "Prompt Name";
@@ -70,7 +72,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           <div className="flex justify-start items-center gap-1">
             <div className="w-1/3">
               <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id={`prompt-name-${prompt.id}`}>{PROMPT_NAME_TEXT}</InputLabel>
+                <InputLabel id={`prompt-name-${prompt.id}`}>
+                  {PROMPT_NAME_TEXT}
+                </InputLabel>
                 <Select
                   labelId={`prompt-name-${prompt.id}`}
                   id={`prompt-name-${prompt.id}`}
@@ -91,7 +95,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             </div>
             <div className="w-1/3">
               <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id={`provider-${prompt.id}`}>{PROVIDER_TEXT}</InputLabel>
+                <InputLabel id={`provider-${prompt.id}`}>
+                  {PROVIDER_TEXT}
+                </InputLabel>
                 <Select
                   labelId={`provider-${prompt.id}`}
                   id={`provider-${prompt.id}`}

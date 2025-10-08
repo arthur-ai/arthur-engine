@@ -1,12 +1,14 @@
-import React, { useCallback, useReducer } from "react";
-import PromptComponent from "./PromptComponent";
-import Container from "@mui/material/Container";
-import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import { promptsReducer, initialState } from "./reducer";
-import Typography from "@mui/material/Typography";
+import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
+import Paper from "@mui/material/Paper";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import React, { useCallback, useReducer } from "react";
+
+import PromptComponent from "./PromptComponent";
+import { promptsReducer, initialState } from "./reducer";
+
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -19,7 +21,7 @@ const PromptsPlayground = () => {
     (keyword: string, value: string) => {
       dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
     },
-    [dispatch]
+    [dispatch],
   );
 
   const keywords = Array.from(state.keywords.keys());
@@ -48,9 +50,10 @@ const PromptsPlayground = () => {
                 </div>
                 <div className="flex justify-center items-center">
                   <Typography variant="body2">
-                    Keywords are identified by mustache braces &#123;&#123;keyword&#125;&#125; and
-                    are used to replace values in the messages. You can use the
-                    same keyword in multiple prompts/messages.
+                    Keywords are identified by mustache braces
+                    &#123;&#123;keyword&#125;&#125; and are used to replace
+                    values in the messages. You can use the same keyword in
+                    multiple prompts/messages.
                   </Typography>
                 </div>
               </div>
