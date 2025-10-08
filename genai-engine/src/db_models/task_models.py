@@ -22,6 +22,10 @@ class DatabaseTask(Base, IsArchivable):
         back_populates="task",
         lazy="joined",
     )
+    agentic_prompts: Mapped[List["DatabaseAgenticPrompt"]] = relationship(
+        back_populates="task",
+        lazy="select",
+    )
 
 
 class DatabaseTaskToRules(Base):
