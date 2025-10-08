@@ -9,7 +9,7 @@
 import type {
   AITracingExporter,
   AITracingEvent,
-  AnyAISpan,
+  AnyExportedAISpan,
 } from "@mastra/core/ai-tracing";
 import { ConsoleLogger } from "@mastra/core/logger";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
@@ -84,45 +84,45 @@ export class ArthurExporter implements AITracingExporter {
 
   async exportEvent(event: AITracingEvent): Promise<void> {
     try {
-      if (event.span.isEvent) {
-        await this.handleEventSpan(event.span);
+      if (event.exportedSpan.isEvent) {
+        await this.handleEventSpan(event.exportedSpan);
         return;
       }
 
       switch (event.type) {
         case "span_started":
-          await this.handleSpanStarted(event.span);
+          await this.handleSpanStarted(event.exportedSpan);
           break;
         case "span_updated":
-          await this.handleSpanUpdate(event.span);
+          await this.handleSpanUpdate(event.exportedSpan);
           break;
         case "span_ended":
-          await this.handleSpanEnded(event.span);
+          await this.handleSpanEnded(event.exportedSpan);
           break;
       }
     } catch (error) {
       this.logger.error("Arthur exporter: Error processing event", {
         error: error instanceof Error ? error.message : String(error),
         eventType: event.type,
-        spanId: event.span.id,
-        traceId: event.span.traceId,
+        spanId: event.exportedSpan.id,
+        traceId: event.exportedSpan.traceId,
       });
     }
   }
 
-  private async handleSpanStarted(span: AnyAISpan): Promise<void> {
+  private async handleSpanStarted(span: AnyExportedAISpan): Promise<void> {
     const otelSpan = this.createOtelSpan(span);
     this.spanMap.set(span.id, otelSpan);
   }
 
-  private async handleSpanUpdate(span: AnyAISpan): Promise<void> {
+  private async handleSpanUpdate(span: AnyExportedAISpan): Promise<void> {
     const existingSpan = this.spanMap.get(span.id);
     if (existingSpan) {
       this.updateOtelSpan(existingSpan, span);
     }
   }
 
-  private async handleSpanEnded(span: AnyAISpan): Promise<void> {
+  private async handleSpanEnded(span: AnyExportedAISpan): Promise<void> {
     const existingSpan = this.spanMap.get(span.id);
     if (existingSpan) {
       this.updateOtelSpan(existingSpan, span);
@@ -131,20 +131,20 @@ export class ArthurExporter implements AITracingExporter {
     }
   }
 
-  private async handleEventSpan(span: AnyAISpan): Promise<void> {
+  private async handleEventSpan(span: AnyExportedAISpan): Promise<void> {
     const otelSpan = this.createOtelSpan(span);
     this.updateOtelSpan(otelSpan, span);
     // Event spans end immediately for events
     otelSpan.end();
   }
 
-  private createOtelSpan(span: AnyAISpan): OISpan {
+  private createOtelSpan(span: AnyExportedAISpan): OISpan {
     // Create parent context if parent exists
     // Use root context so we don't pick up any parent
     // spans set from other exporters in the current thread context
     let parentCtx: Context = ROOT_CONTEXT;
-    if (span.parent) {
-      const parentSpan = this.spanMap.get(span.parent.id);
+    if (span.parentSpanId) {
+      const parentSpan = this.spanMap.get(span.parentSpanId);
       if (parentSpan) {
         parentCtx = trace.setSpan(ROOT_CONTEXT, parentSpan);
       }
@@ -166,7 +166,7 @@ export class ArthurExporter implements AITracingExporter {
     return otelSpan;
   }
 
-  private updateOtelSpan(otelSpan: OISpan, span: AnyAISpan): void {
+  private updateOtelSpan(otelSpan: OISpan, span: AnyExportedAISpan): void {
     setSpanAttributes(otelSpan, span);
     setSpanErrorInfo(otelSpan, span.errorInfo);
   }

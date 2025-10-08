@@ -3,7 +3,7 @@
  */
 
 import type {
-  AnyAISpan,
+  AnyExportedAISpan,
   LLMGenerationAttributes,
   AgentRunAttributes,
   LLMChunkAttributes,
@@ -29,7 +29,7 @@ import { OISpan } from "@arizeai/openinference-core";
 
 export function setSpanErrorInfo(
   otelSpan: OISpan,
-  errorInfo: AnyAISpan["errorInfo"]
+  errorInfo: AnyExportedAISpan["errorInfo"]
 ): void {
   if (errorInfo) {
     otelSpan.setStatus({
@@ -41,7 +41,10 @@ export function setSpanErrorInfo(
   }
 }
 
-export function setSpanAttributes(otelSpan: OISpan, span: AnyAISpan): void {
+export function setSpanAttributes(
+  otelSpan: OISpan,
+  span: AnyExportedAISpan
+): void {
   // Set OpenInference span kind
   const openInferenceSpanKind = getOpenInferenceSpanKind(span);
   otelSpan.setAttributes({
@@ -116,7 +119,7 @@ export function setSpanAttributes(otelSpan: OISpan, span: AnyAISpan): void {
   setMetadataAttributes(otelSpan, mergedMetadata);
 }
 
-export function getOpenInferenceSpanKind(span: AnyAISpan): string {
+export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
   // Mastra doesn't have a retriever span yet, so work around it with naming
   if (
     span.type === AISpanType.GENERIC &&
@@ -154,7 +157,10 @@ export function getOpenInferenceSpanKind(span: AnyAISpan): string {
   }
 }
 
-function setInputOutputAttributes(otelSpan: OISpan, span: AnyAISpan): void {
+function setInputOutputAttributes(
+  otelSpan: OISpan,
+  span: AnyExportedAISpan
+): void {
   // set input
   if (span.input) {
     if (typeof span.input === "string") {
@@ -187,7 +193,7 @@ function setInputOutputAttributes(otelSpan: OISpan, span: AnyAISpan): void {
 
 function setMetadataAttributes(
   otelSpan: OISpan,
-  metadata: AnyAISpan["metadata"]
+  metadata: AnyExportedAISpan["metadata"]
 ): void {
   // set metadata based attributes
   const { userId, sessionId, ...remainingMetadata } = metadata ?? {};
@@ -215,7 +221,7 @@ function setMetadataAttributes(
 // Attribute handler functions for each AISpanType
 function setAgentRunAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as AgentRunAttributes;
@@ -248,7 +254,7 @@ function setAgentRunAttributes(
 
 function setLLMGenerationAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const llmAttr = span.attributes as LLMGenerationAttributes;
@@ -316,7 +322,7 @@ function setLLMGenerationAttributes(
 
 function setLLMChunkAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as LLMChunkAttributes;
@@ -335,7 +341,7 @@ function setLLMChunkAttributes(
 
 function setToolCallAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as ToolCallAttributes;
@@ -364,7 +370,7 @@ function setToolCallAttributes(
 
 function setMCPToolCallAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as MCPToolCallAttributes;
@@ -391,7 +397,7 @@ function setMCPToolCallAttributes(
 
 function setWorkflowRunAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowRunAttributes;
@@ -410,7 +416,7 @@ function setWorkflowRunAttributes(
 
 function setWorkflowStepAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowStepAttributes;
@@ -429,7 +435,7 @@ function setWorkflowStepAttributes(
 
 function setWorkflowConditionalAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowConditionalAttributes;
@@ -455,7 +461,7 @@ function setWorkflowConditionalAttributes(
 
 function setWorkflowConditionalEvalAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowConditionalEvalAttributes;
@@ -474,7 +480,7 @@ function setWorkflowConditionalEvalAttributes(
 
 function setWorkflowParallelAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowParallelAttributes;
@@ -495,7 +501,7 @@ function setWorkflowParallelAttributes(
 
 function setWorkflowLoopAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowLoopAttributes;
@@ -520,7 +526,7 @@ function setWorkflowLoopAttributes(
 
 function setWorkflowSleepAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowSleepAttributes;
@@ -543,7 +549,7 @@ function setWorkflowSleepAttributes(
 
 function setWorkflowWaitEventAttributes(
   otelSpan: OISpan,
-  span: AnyAISpan
+  span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
   const attr = span.attributes as WorkflowWaitEventAttributes;
@@ -566,7 +572,10 @@ function setWorkflowWaitEventAttributes(
   return additionalAttributes;
 }
 
-function setRetrieverAttributes(otelSpan: OISpan, span: AnyAISpan): void {
+function setRetrieverAttributes(
+  otelSpan: OISpan,
+  span: AnyExportedAISpan
+): void {
   // if the span.output is an object and it has the property "results", and results is an array,
   // iterate over each result setting
   if (
