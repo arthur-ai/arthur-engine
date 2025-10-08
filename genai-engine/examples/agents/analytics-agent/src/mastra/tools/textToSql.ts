@@ -1,8 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { openai } from "@ai-sdk/openai";
 import { TracingContext } from "@mastra/core/ai-tracing";
-import { MastraLLMVNext } from "@mastra/core/llm/model/model.loop";
 
 export type TextToSqlToolResult = z.infer<typeof TextToSqlToolResultSchema>;
 

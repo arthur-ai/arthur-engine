@@ -22,9 +22,11 @@
     "@mastra/core": "0.19.1",
     "@mastra/libsql": "0.15.0",
     "@mastra/memory": "0.15.4",
-    "mastra": "0.13.4",
+    "@types/prismjs": "^1.26.5",
     "libsql": "^0.5.22",
+    "mastra": "0.13.4",
     "next": ">=15.5.4",
+    "prismjs": "^1.30.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.25.0"

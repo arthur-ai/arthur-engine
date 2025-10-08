@@ -6,6 +6,9 @@ import { useState } from "react";
 import { AgentState as AgentStateSchema } from "@/mastra/agents";
 import { z } from "zod";
 import { WeatherToolResult, TextToSqlToolResult } from "@/mastra/tools";
+import Prism from "prismjs";
+import "prismjs/components/prism-sql";
+import "prismjs/themes/prism-tomorrow.css";
 
 type AgentState = z.infer<typeof AgentStateSchema>;
 
@@ -100,7 +103,7 @@ export default function CopilotKitPage() {
         labels={{
           title: "Popup Assistant",
           initial:
-            '👋 Hi, there! You\'re chatting with an agent. This agent comes with a few tools to get you started.\n\nFor example you can try:\n- **Frontend Tools**: "Set the theme to orange"\n- **Shared State**: "Write a proverb about AI"\n- **Generative UI**: "Get the weather in SF"\n\nAs you interact with the agent, you\'ll see the UI update in real-time to reflect the agent\'s **state**, **tool calls**, and **progress**.',
+            "👋 Hi, there! I'm a data analyst assistant. I can help you with your data analysis questions.",
         }}
       />
     </main>
@@ -376,8 +379,17 @@ function SqlCard({
         </div>
 
         <div className="bg-gray-900 rounded-lg p-4 mb-3">
-          <pre className="text-green-400 text-sm overflow-x-auto">
-            <code>{result.sqlQuery}</code>
+          <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+            <code
+              className="language-sql"
+              dangerouslySetInnerHTML={{
+                __html: Prism.highlight(
+                  result.sqlQuery,
+                  Prism.languages.sql,
+                  "sql"
+                ),
+              }}
+            />
           </pre>
         </div>
 
