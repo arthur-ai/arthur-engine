@@ -1,65 +1,61 @@
-# CopilotKit <> Mastra Starter
+# Analytics Agent - CopilotKit <> Mastra Starter
 
-This is a starter template for building AI agents using [Mastra](https://mastra.ai) and [CopilotKit](https://copilotkit.ai). It provides a modern Next.js application with integrated AI capabilities and a beautiful UI.
+This is a starter template for building AI agents using [Mastra](https://mastra.ai) and [CopilotKit](https://copilotkit.ai). It provides a modern Next.js application with integrated AI capabilities and a beautiful UI for analytics and data visualization.
 
 ## Prerequisites
 
-- Node.js 18+ 
-- Any of the following package managers:
-  - pnpm (recommended)
-  - npm
-  - yarn
-  - bun
-
-> **Note:** This repository ignores lock files (package-lock.json, yarn.lock, pnpm-lock.yaml, bun.lockb) to avoid conflicts between different package managers. Each developer should generate their own lock file using their preferred package manager. After that, make sure to delete it from the .gitignore.
+- Node.js 18+
+- Yarn package manager
 
 ## Getting Started
 
-1. Add your OpenAI API key
-```bash
-# you can use whatever model Mastra supports
-echo "OPENAI_API_KEY=your-key-here" >> .env
-```
+1. **Set up environment variables**
 
-2. Install dependencies using your preferred package manager:
-```bash
-# Using pnpm (recommended)
-pnpm install
+   Create a `.env` file in this directory and add the following environment variables:
 
-# Using npm
-npm install
+   ```bash
+   # Copy the example file
+   cp .env.example .env
+   ```
 
-# Using yarn
-yarn install
+   Then edit the `.env` file with your actual values:
 
-# Using bun
-bun install
-```
+   ```bash
+   # OpenAI API Configuration
+   OPENAI_API_KEY=your-openai-api-key-here
 
-2. Start the development server:
-```bash
-# Using pnpm
-pnpm dev
+   # Arthur Engine Configuration
+   ARTHUR_BASE_URL=https://your-arthur-instance.com
+   ARTHUR_API_KEY=your-arthur-api-key-here
+   ARTHUR_TASK_ID=your-arthur-task-id-here
 
-# Using npm
-npm run dev
+   # Logging Configuration (optional)
+   LOG_LEVEL=info
+   ```
 
-# Using yarn
-yarn dev
+2. **Install dependencies**
 
-# Using bun
-bun run dev
-```
+   ```bash
+   yarn install
+   ```
 
-This will start both the UI and agent servers concurrently.
+3. **Start the development server**
+
+   ```bash
+   yarn dev
+   ```
+
+   This will start both the UI and agent servers concurrently.
 
 ## Available Scripts
-The following scripts can also be run using your preferred package manager:
-- `dev` - Starts both UI and agent servers in development mode
-- `dev:debug` - Starts development servers with debug logging enabled
-- `build` - Builds the application for production
-- `start` - Starts the production server
-- `lint` - Runs ESLint for code linting
+
+The following scripts can be run using yarn:
+
+- `yarn dev` - Starts both UI and agent servers in development mode
+- `yarn dev:debug` - Starts development servers with debug logging enabled
+- `yarn build` - Builds the application for production
+- `yarn start` - Starts the production server
+- `yarn lint` - Runs ESLint for code linting
 
 ## Documentation
 
