@@ -63,7 +63,58 @@ class AgenticPrompt(BaseModel):
 
     @classmethod
     def from_db_model(cls, db_prompt: DatabaseAgenticPrompt) -> "AgenticPrompt":
-        return cls(**db_prompt.__dict__)
+        # Base fields that map directly
+        base_fields = {
+            "name": db_prompt.name,
+            "messages": db_prompt.messages,
+            "model_name": db_prompt.model_name,
+            "model_provider": db_prompt.model_provider,
+            "tools": db_prompt.tools,
+        }
+
+        # Merge in config JSON if present (LLM parameters)
+        if db_prompt.config:
+            base_fields.update(db_prompt.config)
+
+        return cls(**base_fields)
+
+    def to_db_model(self, task_id: str) -> DatabaseAgenticPrompt:
+        """Convert this AgenticPrompt into a DatabaseAgenticPrompt"""
+        # Flatten model and extract config fields
+        prompt_dict = self.model_dump()
+
+        config_keys = {
+            "tool_choice",
+            "timeout",
+            "temperature",
+            "top_p",
+            "stream",
+            "max_tokens",
+            "response_format",
+            "stop",
+            "presence_penalty",
+            "frequency_penalty",
+            "seed",
+            "logprobs",
+            "top_logprobs",
+            "logit_bias",
+            "max_completion_tokens",
+            "reasoning_effort",
+            "thinking",
+            "stream_options",
+        }
+
+        config = {
+            k: v for k, v in prompt_dict.items() if k in config_keys and v is not None
+        }
+        base_fields = {k: v for k, v in prompt_dict.items() if k not in config_keys}
+
+        return DatabaseAgenticPrompt(
+            task_id=task_id,
+            created_at=datetime.now(),
+            **base_fields,
+            config=config or None,
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         return self.model_dump()
@@ -124,12 +175,7 @@ class AgenticPromptRepository:
         if isinstance(prompt, dict):
             prompt = self.create_prompt(**prompt)
 
-        db_prompt = DatabaseAgenticPrompt(
-            task_id=task_id,
-            created_at=datetime.now(),
-            updated_at=datetime.now(),
-            **prompt.model_dump(),
-        )
+        db_prompt = prompt.to_db_model(task_id)
 
         try:
             self.db_session.add(db_prompt)
@@ -138,50 +184,6 @@ class AgenticPromptRepository:
             self.db_session.rollback()
             raise ValueError(
                 f"Prompt '{prompt.name}' already exists for task '{task_id}'",
-            )
-
-    def update_prompt(
-        self,
-        task_id: str,
-        prompt: AgenticPrompt | Dict[str, Any],
-    ) -> None:
-        """Update an existing agentic prompt in the database"""
-        if isinstance(prompt, AgenticPrompt):
-            prompt = prompt.to_dict()
-
-        # Get the existing prompt
-        db_prompt = (
-            self.db_session.query(DatabaseAgenticPrompt)
-            .filter(
-                DatabaseAgenticPrompt.task_id == task_id,
-                DatabaseAgenticPrompt.name == prompt["name"],
-            )
-            .first()
-        )
-
-        if not db_prompt:
-            raise ValueError(
-                f"Prompt '{prompt["name"]}' not found for task '{task_id}'",
-            )
-
-        # Update the fields
-        updated_field = False
-        for field, value in prompt.items():
-            if hasattr(db_prompt, field) and value != getattr(db_prompt, field):
-                setattr(db_prompt, field, value)
-                updated_field = True
-
-        if not updated_field:
-            raise ValueError(f"No fields to update for prompt '{prompt['name']}'")
-
-        db_prompt.updated_at = datetime.now()
-
-        try:
-            self.db_session.commit()
-        except IntegrityError:
-            self.db_session.rollback()
-            raise ValueError(
-                f"Error updating prompt '{prompt['name']}' for task '{task_id}'",
             )
 
     def delete_prompt(self, task_id: str, prompt_name: str) -> None:
