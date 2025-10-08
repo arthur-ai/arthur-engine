@@ -1,10 +1,10 @@
 from typing import List
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import OUTPUT_DIMENSION_SIZE_ADA_002, Base
-from db_models.custom_types import ConditionalVectorType
+from db_models.custom_types import ConditionalVectorType, is_pgvector_enabled
 
 
 class DatabaseDocument(Base):
@@ -36,6 +36,19 @@ class DatabaseEmbedding(Base):
         ConditionalVectorType(OUTPUT_DIMENSION_SIZE_ADA_002),
     )
     documents = relationship("DatabaseDocument", back_populates="embeddings")
+
+
+# Conditionally create the vector index based on environment
+if is_pgvector_enabled():
+    index = Index(
+        "my_index",
+        DatabaseEmbedding.embedding,
+        postgresql_using="ivfflat",
+        postgresql_with={"lists": 100},
+        postgresql_ops={"embedding": "vector_l2_ops"},
+    )
+else:
+    index = None
 
 
 class DatabaseEmbeddingReference(Base):
