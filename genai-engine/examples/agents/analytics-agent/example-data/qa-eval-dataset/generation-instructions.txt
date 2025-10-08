@@ -1,0 +1,56 @@
+Please generate a dataset with 4 columns:
+- Question (string) - a dummy example data analytics question someone might ask about their product sales, e.g. "what is my top selling product over the last month?"
+- Answer (string) - a dummy answer to the question, make this up
+- SQL (string) - hypothetical postgres sql to run to answer the question, make up a likely database schema to use
+- Chart (JSON object) - a hypothetical chart to display the results of the answer, should have a format like this example JSON:
+
+{
+  "graphType": "bar",
+  "title": "Top 10 Products by Quantity Sold (Current User)",
+  "xAxis": "product_name",
+  "yAxis": "total_sold",
+  "data": [
+    {
+      "product_name": "Wireless Mouse",
+      "total_sold": 18
+    },
+    {
+      "product_name": "USB-C Charger",
+      "total_sold": 15
+    },
+    {
+      "product_name": "Bluetooth Headphones",
+      "total_sold": 12
+    },
+    {
+      "product_name": "Laptop Stand",
+      "total_sold": 10
+    },
+    {
+      "product_name": "Mechanical Keyboard",
+      "total_sold": 8
+    },
+    {
+      "product_name": "Webcam 1080p",
+      "total_sold": 7
+    },
+    {
+      "product_name": "Portable SSD 1TB",
+      "total_sold": 6
+    },
+    {
+      "product_name": "Ergonomic Chair",
+      "total_sold": 5
+    },
+    {
+      "product_name": "Smartphone Stand",
+      "total_sold": 4
+    },
+    {
+      "product_name": "Noise Cancelling Earbuds",
+      "total_sold": 3
+    }
+  ],
+  "description": "This bar chart displays the top 10 products purchased by the current user, ranked by the total quantity sold for each product."
+}
+
