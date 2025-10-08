@@ -52,7 +52,7 @@ export function setSpanAttributes(otelSpan: OISpan, span: AnyAISpan): void {
   setInputOutputAttributes(otelSpan, span);
 
   // set the span-type specific attributes and collect any additional attributes
-  let additionalAttributes: Record<string, any> = {};
+  let additionalAttributes: Record<string, unknown> = {};
 
   // special case for RAG spans that mastra doesn't yet support
   if (openInferenceSpanKind === OpenInferenceSpanKind.RETRIEVER) {
@@ -580,18 +580,22 @@ function setRetrieverAttributes(otelSpan: OISpan, span: AnyAISpan): void {
     // - content
     // - metadata
     // - score
-    const documents = span.output.results.map((result: Record<string, unknown>) => {
-      return {
-        [SemanticConventions.DOCUMENT_ID]: result.id,
-        [SemanticConventions.DOCUMENT_CONTENT]: result.content
-          ? JSON.stringify(result.content)
-          : undefined,
-        [SemanticConventions.DOCUMENT_METADATA]: result.metadata
-          ? JSON.stringify(result.metadata)
-          : undefined,
-        [SemanticConventions.DOCUMENT_SCORE]: result.metadata?.distance,
-      };
-    });
+    const documents = span.output.results.map(
+      (result: Record<string, unknown>) => {
+        return {
+          [SemanticConventions.DOCUMENT_ID]: result.id,
+          [SemanticConventions.DOCUMENT_CONTENT]: result.content
+            ? JSON.stringify(result.content)
+            : undefined,
+          [SemanticConventions.DOCUMENT_METADATA]: result.metadata
+            ? JSON.stringify(result.metadata)
+            : undefined,
+          [SemanticConventions.DOCUMENT_SCORE]: (
+            result.metadata as Record<string, unknown>
+          )?.distance,
+        };
+      }
+    );
 
     const flattenedDocuments = flattenAttributes({
       [SemanticConventions.RETRIEVAL_DOCUMENTS]: documents,
