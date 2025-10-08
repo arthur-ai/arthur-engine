@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
-import { textToSqlTool } from "@/mastra/tools";
+import { textToSqlTool, executeSqlTool } from "@/mastra/tools";
 import { LibSQLStore } from "@mastra/libsql";
 import { z } from "zod";
 import { Memory } from "@mastra/memory";
@@ -11,7 +11,7 @@ export const AgentState = z.object({
 
 export const dataAnalystAgent = new Agent({
   name: "dataAnalystAgent",
-  tools: { textToSqlTool },
+  tools: { textToSqlTool, executeSqlTool },
   model: openai("gpt-4.1"),
   instructions: "You are a helpful data analyst assistant.",
   memory: new Memory({
@@ -47,5 +47,29 @@ Return your response in the following JSON format:
 {
   "sqlQuery": "SELECT * FROM table_name WHERE condition;",
   "explanation": "Brief explanation of what this query does"
+}`,
+});
+
+export const executeSqlAgent = new Agent({
+  name: "executeSqlAgent",
+  model: openai("gpt-4.1"),
+  instructions: `You are a database execution simulator for PostgreSQL queries.
+Your task is to analyze the provided SQL query and return realistic mock data that would be returned by executing that query.
+
+Guidelines:
+- Analyze the SQL query to understand what data it would return
+- Generate realistic mock data that matches the expected structure and data types
+- For SELECT queries, return an array of objects with appropriate column names and values
+- For INSERT/UPDATE/DELETE queries, return appropriate affected row counts
+- Make the data realistic and contextually appropriate
+- Do not ask for clarifications or additional information
+- Always return data in the specified JSON format
+
+Return your response in the following JSON format:
+{
+  "data": [{"column1": "value1", "column2": "value2"}, ...],
+  "rowCount": 5,
+  "executionTime": 150,
+  "query": "SELECT * FROM table_name WHERE condition;"
 }`,
 });

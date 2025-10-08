@@ -5,7 +5,11 @@ import { CopilotKitCSSProperties, CopilotSidebar } from "@copilotkit/react-ui";
 import { useState } from "react";
 import { AgentState as AgentStateSchema } from "@/mastra/agents";
 import { z } from "zod";
-import { WeatherToolResult, TextToSqlToolResult } from "@/mastra/tools";
+import {
+  WeatherToolResult,
+  TextToSqlToolResult,
+  ExecuteSqlToolResult,
+} from "@/mastra/tools";
 import Prism from "prismjs";
 import "prismjs/components/prism-sql";
 import "prismjs/themes/prism-tomorrow.css";
@@ -58,6 +62,22 @@ export default function CopilotKitPage() {
       return (
         <SqlCard
           userQuery={args.userQuery}
+          themeColor={themeColor}
+          result={result}
+          status={status}
+        />
+      );
+    },
+  });
+
+  useCopilotAction({
+    name: "executeSqlTool",
+    description: "Execute a PostgreSQL SQL query and return mock data results.",
+    available: "frontend",
+    parameters: [{ name: "sqlQuery", type: "string", required: true }],
+    render: ({ result, status }) => {
+      return (
+        <SqlResultsCard
           themeColor={themeColor}
           result={result}
           status={status}
@@ -415,5 +435,89 @@ function DatabaseIcon() {
     >
       <path d="M12 2C6.48 2 2 3.79 2 6v12c0 2.21 4.48 4 10 4s10-1.79 10-4V6c0-2.21-4.48-4-10-4zM4 6c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2V6zm0 4c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2v-2zm0 4c0-.55 2.4-2 8-2s8 1.45 8 2v2c0 .55-2.4 2-8 2s-8-1.45-8-2v-2z" />
     </svg>
+  );
+}
+
+// SQL Results card component for displaying query execution results
+function SqlResultsCard({
+  themeColor,
+  result,
+  status,
+}: {
+  themeColor: string;
+  result: ExecuteSqlToolResult;
+  status: "inProgress" | "executing" | "complete";
+}) {
+  if (status !== "complete") {
+    return (
+      <div
+        className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+        style={{ backgroundColor: themeColor }}
+      >
+        <div className="bg-white/20 p-4 w-full">
+          <p className="text-white animate-pulse">Executing SQL query...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{ backgroundColor: themeColor }}
+      className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+    >
+      <div className="bg-white/20 p-4 w-full">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-xl font-bold text-white">SQL Query Results</h3>
+            <p className="text-white/80 text-sm">Query executed successfully</p>
+          </div>
+          <DatabaseIcon />
+        </div>
+
+        <div className="bg-gray-900 rounded-lg p-4 mb-3">
+          <pre className="text-sm whitespace-pre-wrap overflow-x-auto">
+            <code
+              className="language-sql"
+              dangerouslySetInnerHTML={{
+                __html: Prism.highlight(
+                  result.query,
+                  Prism.languages.sql,
+                  "sql"
+                ),
+              }}
+            />
+          </pre>
+        </div>
+
+        <div className="grid grid-cols-3 gap-4 mb-3">
+          <div className="bg-white/10 rounded-lg p-3 text-center">
+            <p className="text-white text-sm">Rows Returned</p>
+            <p className="text-white font-bold text-lg">{result.rowCount}</p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-3 text-center">
+            <p className="text-white text-sm">Execution Time</p>
+            <p className="text-white font-bold text-lg">
+              {result.executionTime}ms
+            </p>
+          </div>
+          <div className="bg-white/10 rounded-lg p-3 text-center">
+            <p className="text-white text-sm">Status</p>
+            <p className="text-green-400 font-bold text-lg">✓ Success</p>
+          </div>
+        </div>
+
+        {result.data && result.data.length > 0 && (
+          <div className="bg-white/10 rounded-lg p-3">
+            <h4 className="text-white font-semibold mb-2">Query Results:</h4>
+            <div className="bg-gray-900 rounded p-3 max-h-64 overflow-y-auto">
+              <pre className="text-sm text-green-400 whitespace-pre-wrap">
+                {JSON.stringify(result.data, null, 2)}
+              </pre>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
