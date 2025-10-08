@@ -119,17 +119,50 @@ export default function CopilotKitPage() {
       style={
         { "--copilot-kit-primary-color": themeColor } as CopilotKitCSSProperties
       }
-      className="h-screen w-screen flex justify-center items-center bg-gray-50"
+      className="h-screen w-screen bg-gray-50"
     >
-      <div className="w-full max-w-6xl h-full flex flex-col">
-        <CopilotChat
-          labels={{
-            title: "Data Analyst Assistant",
-            initial:
-              "👋 Hi, there! I'm a data analyst assistant. I can help you with your data analysis questions.",
-          }}
-          className="h-full w-full"
-        />
+      {/* App Header */}
+      <header className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                style={{ backgroundColor: themeColor }}
+              >
+                DA
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Data Analyst Assistant
+                </h1>
+                <p className="text-sm text-gray-500">
+                  AI-powered analytics and insights
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-sm text-gray-600">Online</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="h-[calc(100vh-80px)] flex justify-center items-center">
+        <div className="w-full max-w-6xl h-full flex flex-col">
+          <CopilotChat
+            labels={{
+              title: "Data Analyst Assistant",
+              initial:
+                "👋 Hi, there! I'm a data analyst assistant. I can help you with your data analysis questions.",
+            }}
+            className="h-full w-full"
+          />
+        </div>
       </div>
     </main>
   );
