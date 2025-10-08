@@ -237,14 +237,14 @@ trio = ["trio (>=0.31.0)"]
 
 [[package]]
 name = "arthur-client"
-version = "1.4.1525"
+version = "1.4.1533"
 description = "Arthur Python API Client Library"
 optional = false
 python-versions = "<4.0,>=3.12"
 groups = ["main"]
 files = [
-    {file = "arthur_client-1.4.1525-py3-none-any.whl", hash = "sha256:46c69e4410bdc9570798955332595fef9c30d517c9ed36317552a5fe5529e42d"},
-    {file = "arthur_client-1.4.1525.tar.gz", hash = "sha256:eede124f115141d97f7684caf8d94f53f907b6e1627cffa6f52e4c1a1bcb3347"},
+    {file = "arthur_client-1.4.1533-py3-none-any.whl", hash = "sha256:b0cd5d856ca852cbfab31d15ade0696c349ae751087baeeadef74d9578854188"},
+    {file = "arthur_client-1.4.1533.tar.gz", hash = "sha256:657b4ce676c323edfbaf33b211160117e217d532c73f80e4d16c4a72e08e3404"},
 ]
 
 [package.dependencies]
@@ -4286,4 +4286,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.*"
-content-hash = "a47e3d0f230246b5085824f9b461bee643e4ab22f2bea5ecccf9a969911d3adf"
+content-hash = "d48a3866b08a32f5ed8fd38ec337662f8639bb112beeb8eb701613411180907c"
