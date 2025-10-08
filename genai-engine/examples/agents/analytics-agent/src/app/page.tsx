@@ -1,12 +1,13 @@
 "use client";
 
-import { useCopilotAction } from "@copilotkit/react-core";
+import { useCopilotAction, useCopilotChat } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotChat } from "@copilotkit/react-ui";
 import { useState } from "react";
 import { WeatherCard, SqlCard, SqlResultsCard, GraphCard } from "@/components";
 
 export default function CopilotKitPage() {
   const [themeColor, setThemeColor] = useState("#6366f1");
+  const { reset } = useCopilotChat();
 
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/guides/frontend-actions
   useCopilotAction({
@@ -142,6 +143,14 @@ export default function CopilotKitPage() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={() => reset()}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                style={{ backgroundColor: themeColor }}
+                title="Start a new conversation thread"
+              >
+                New Thread
+              </button>
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm text-gray-600">Online</span>

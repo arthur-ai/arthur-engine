@@ -376,7 +376,10 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
 
   // Extract content
   if (item.content !== undefined) {
-    message[SemanticConventions.MESSAGE_CONTENT] = item.content;
+    message[SemanticConventions.MESSAGE_CONTENT] =
+      typeof item.content === "string"
+        ? item.content
+        : JSON.stringify(item.content);
   } else if (item.contents !== undefined) {
     // Handle contents array (multimodal content)
     message[SemanticConventions.MESSAGE_CONTENTS] = item.contents;
