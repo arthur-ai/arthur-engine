@@ -2,6 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { textToSqlTool, TextToSqlToolResult } from "./textToSql";
 import { executeSqlTool, ExecuteSqlToolResult } from "./executeSql";
+import { generateGraphTool, GenerateGraphToolResult } from "./generateGraph";
 
 interface GeocodingResponse {
   results: {
@@ -107,5 +108,9 @@ function getWeatherCondition(code: number): string {
   return conditions[code] || "Unknown";
 }
 
-export { textToSqlTool, executeSqlTool };
-export type { TextToSqlToolResult, ExecuteSqlToolResult };
+export { textToSqlTool, executeSqlTool, generateGraphTool };
+export type {
+  TextToSqlToolResult,
+  ExecuteSqlToolResult,
+  GenerateGraphToolResult,
+};
