@@ -4503,14 +4503,14 @@ voice-helpers = ["numpy (>=2.0.2)", "sounddevice (>=0.5.1)"]
 
 [[package]]
 name = "openinference-semantic-conventions"
-version = "0.1.22"
+version = "0.1.23"
 description = "OpenInference Semantic Conventions"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "openinference_semantic_conventions-0.1.22-py3-none-any.whl", hash = "sha256:471b2ab9c4ae955b20d95bbeef1509da6392faeb8f7406a3bfa8f9d2e13a14d0"},
-    {file = "openinference_semantic_conventions-0.1.22.tar.gz", hash = "sha256:03afde641e4241b6bd53e615da8eb6705c3d2093dd65b565cac1afe3401f9b1a"},
+    {file = "openinference_semantic_conventions-0.1.23-py3-none-any.whl", hash = "sha256:f55d8c6c582416ff556a161a20919cbe3dceec3e00614628f1b243a18964c1ff"},
+    {file = "openinference_semantic_conventions-0.1.23.tar.gz", hash = "sha256:e3fee3b6d05c3253e1aa3389a55cd4f28dbadc4e12f94b047f9d01e440a445b5"},
 ]
 
 [[package]]
