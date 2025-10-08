@@ -23,7 +23,9 @@ export const generateGraphTool = createTool({
   inputSchema: z.object({
     sqlResults: z
       .array(z.record(z.any()))
-      .describe("The SQL query results to visualize"),
+      .describe(
+        "The SQL query results to visualize. This should be the output of the executeSqlTool."
+      ),
     sqlQuery: z
       .string()
       .describe("The original SQL query that generated the results"),

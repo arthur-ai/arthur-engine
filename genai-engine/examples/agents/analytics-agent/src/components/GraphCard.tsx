@@ -1,12 +1,59 @@
 import { GenerateGraphToolResult } from "@/mastra/tools";
 
+// Helper function to check if the result is an error
+function isErrorResult(
+  result: unknown
+): result is { error: true; message: string } {
+  if (!result || typeof result !== "object") {
+    return false;
+  }
+
+  const obj = result as Record<string, unknown>;
+  return (
+    "error" in obj &&
+    obj.error === true &&
+    "message" in obj &&
+    typeof obj.message === "string"
+  );
+}
+
 interface GraphCardProps {
   themeColor: string;
-  result: GenerateGraphToolResult;
+  result: GenerateGraphToolResult | null;
   status: "inProgress" | "executing" | "complete";
 }
 
 export function GraphCard({ themeColor, result, status }: GraphCardProps) {
+  // Handle error state - when result contains an error
+  if (status === "complete" && result && isErrorResult(result)) {
+    return (
+      <div
+        className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+        style={{ backgroundColor: "#ef4444" }} // Red background for errors
+      >
+        <div className="bg-white/20 p-4 w-full">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xl font-bold text-white">
+                Graph Generation Failed
+              </h3>
+              <p className="text-white/80 text-sm">
+                Unable to generate visualization
+              </p>
+            </div>
+            <ErrorIcon />
+          </div>
+          <div className="bg-white/10 rounded-lg p-3">
+            <p className="text-white text-sm">
+              <span className="font-semibold">Error:</span> {result.message}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle loading states
   if (status !== "complete") {
     return (
       <div
@@ -15,6 +62,36 @@ export function GraphCard({ themeColor, result, status }: GraphCardProps) {
       >
         <div className="bg-white/20 p-4 w-full">
           <p className="text-white animate-pulse">Generating graph...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle case where status is complete but no result
+  if (!result) {
+    return (
+      <div
+        className="rounded-xl shadow-xl mt-6 mb-4 max-w-4xl w-full"
+        style={{ backgroundColor: "#ef4444" }} // Red background for errors
+      >
+        <div className="bg-white/20 p-4 w-full">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-xl font-bold text-white">
+                Graph Generation Failed
+              </h3>
+              <p className="text-white/80 text-sm">
+                Unable to generate visualization
+              </p>
+            </div>
+            <ErrorIcon />
+          </div>
+          <div className="bg-white/10 rounded-lg p-3">
+            <p className="text-white text-sm">
+              <span className="font-semibold">Error:</span> No result returned
+              from the graph generation tool.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -69,6 +146,20 @@ function ChartIcon() {
       className="w-8 h-8 text-white/80"
     >
       <path d="M3 13h2v8H3v-8zm4-6h2v14H7V7zm4-4h2v18h-2V3zm4 8h2v10h-2V11zm4-4h2v14h-2V7z" />
+    </svg>
+  );
+}
+
+// Error icon for error states
+function ErrorIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-8 h-8 text-white/80"
+    >
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
     </svg>
   );
 }
