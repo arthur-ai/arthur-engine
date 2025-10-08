@@ -274,8 +274,8 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
     } else if (output.contents !== undefined) {
       message[SemanticConventions.MESSAGE_CONTENTS] = output.contents;
     } else {
-      // If no content/contents, use the entire object as content
-      message[SemanticConventions.MESSAGE_CONTENT] = output;
+      // If no content/contents, JSON serialize the entire object as content
+      message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(output);
     }
 
     // Preserve other message properties
