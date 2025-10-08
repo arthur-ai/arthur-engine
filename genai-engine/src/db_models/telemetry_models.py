@@ -74,7 +74,10 @@ class DatabaseSpan(Base):
         nullable=True,
         index=True,
     )
-    raw_data: Mapped[dict] = mapped_column(postgresql.JSONB, nullable=False)
+    raw_data: Mapped[dict] = mapped_column(
+        JSON().with_variant(postgresql.JSONB, "postgresql"),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),

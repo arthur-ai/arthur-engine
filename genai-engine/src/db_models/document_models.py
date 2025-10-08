@@ -1,10 +1,10 @@
 from typing import List
 
-import pgvector.sqlalchemy
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import OUTPUT_DIMENSION_SIZE_ADA_002, Base
+from db_models.custom_types import ConditionalVectorType
 
 
 class DatabaseDocument(Base):
@@ -33,7 +33,7 @@ class DatabaseEmbedding(Base):
     text: Mapped[str] = mapped_column(String)
     seq_num: Mapped[int] = mapped_column(Integer)
     embedding: Mapped[List[float]] = mapped_column(
-        pgvector.sqlalchemy.Vector(OUTPUT_DIMENSION_SIZE_ADA_002),
+        ConditionalVectorType(OUTPUT_DIMENSION_SIZE_ADA_002),
     )
     documents = relationship("DatabaseDocument", back_populates="embeddings")
 
