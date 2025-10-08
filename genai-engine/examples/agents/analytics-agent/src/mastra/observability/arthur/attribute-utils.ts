@@ -177,7 +177,7 @@ function setInputOutputAttributes(
   }
   // set output
   if (span.output) {
-    if (typeof span.input === "string") {
+    if (typeof span.output === "string") {
       otelSpan.setAttributes({
         [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
         [SemanticConventions.OUTPUT_VALUE]: span.output,
@@ -216,6 +216,204 @@ function setMetadataAttributes(
       [SemanticConventions.METADATA]: JSON.stringify(remainingMetadata),
     });
   }
+}
+
+/**
+ * Constructs LLM input and output messages from span input/output data
+ * following OpenInference semantic conventions and sets them on the OpenTelemetry span
+ */
+function constructLLMMessages(otelSpan: OISpan, span: AnyExportedAISpan): void {
+  // Process input messages
+  if (span.input) {
+    const inputMessages = extractMessagesFromData(span.input);
+    if (inputMessages.length > 0) {
+      const inputMessageAttributes = {
+        [SemanticConventions.LLM_INPUT_MESSAGES]: inputMessages,
+      };
+      const flattenedInput = flattenAttributes(inputMessageAttributes);
+      otelSpan.setAttributes(flattenedInput);
+    }
+  }
+
+  // Process output messages
+  if (span.output) {
+    // For output, wrap the entire output as a single assistant message
+    const outputMessage = wrapOutputAsMessage(span.output);
+    if (outputMessage) {
+      const outputMessageAttributes = {
+        [SemanticConventions.LLM_OUTPUT_MESSAGES]: [outputMessage],
+      };
+      const flattenedOutput = flattenAttributes(outputMessageAttributes);
+      otelSpan.setAttributes(flattenedOutput);
+    }
+  }
+}
+
+/**
+ * Wraps output data as a single assistant message
+ */
+function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
+  if (output === null || output === undefined) {
+    return null;
+  }
+
+  const message: Record<string, unknown> = {
+    [SemanticConventions.MESSAGE_ROLE]: "assistant",
+  };
+
+  // Handle different output formats
+  if (typeof output === "string") {
+    message[SemanticConventions.MESSAGE_CONTENT] = output;
+  } else if (isObject(output)) {
+    // If it's already a message-like object, preserve its structure
+    if (output.role) {
+      message[SemanticConventions.MESSAGE_ROLE] = output.role;
+    }
+    if (output.content !== undefined) {
+      message[SemanticConventions.MESSAGE_CONTENT] = output.content;
+    } else if (output.contents !== undefined) {
+      message[SemanticConventions.MESSAGE_CONTENTS] = output.contents;
+    } else {
+      // If no content/contents, use the entire object as content
+      message[SemanticConventions.MESSAGE_CONTENT] = output;
+    }
+
+    // Preserve other message properties
+    if (output.name) {
+      message[SemanticConventions.MESSAGE_NAME] = output.name;
+    }
+    if (output.tool_calls) {
+      message[SemanticConventions.MESSAGE_TOOL_CALLS] = output.tool_calls;
+    }
+    if (output.tool_call_id) {
+      message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = output.tool_call_id;
+    }
+    if (output.function_call && isObject(output.function_call)) {
+      const funcCall = output.function_call as Record<string, unknown>;
+      if (funcCall.name) {
+        message[SemanticConventions.MESSAGE_FUNCTION_CALL_NAME] = funcCall.name;
+      }
+      if (funcCall.arguments) {
+        message[SemanticConventions.MESSAGE_FUNCTION_CALL_ARGUMENTS_JSON] =
+          JSON.stringify(funcCall.arguments);
+      }
+    }
+  } else {
+    // For other types (numbers, booleans, etc.), convert to string content
+    message[SemanticConventions.MESSAGE_CONTENT] = String(output);
+  }
+
+  return message;
+}
+
+/**
+ * Extracts messages from various input/output data formats
+ */
+function extractMessagesFromData(
+  data: unknown
+): Array<Record<string, unknown>> {
+  const messages: Array<Record<string, unknown>> = [];
+
+  if (Array.isArray(data)) {
+    // Handle array of messages
+    data.forEach((item) => {
+      const message = extractMessageFromItem(item);
+      if (message) {
+        messages.push(message);
+      }
+    });
+  } else if (isObject(data)) {
+    // Handle single message object
+    const message = extractMessageFromItem(data);
+    if (message) {
+      messages.push(message);
+    } else if (data.messages && Array.isArray(data.messages)) {
+      // Handle object with messages array
+      data.messages.forEach((item: unknown) => {
+        const message = extractMessageFromItem(item);
+        if (message) {
+          messages.push(message);
+        }
+      });
+    } else if (data.content || data.role) {
+      // Handle direct message properties
+      const message = extractMessageFromItem(data);
+      if (message) {
+        messages.push(message);
+      }
+    }
+  } else if (typeof data === "string") {
+    // Handle string input as user message
+    messages.push({
+      [SemanticConventions.MESSAGE_ROLE]: "user",
+      [SemanticConventions.MESSAGE_CONTENT]: data,
+    });
+  }
+
+  return messages;
+}
+
+/**
+ * Extracts a single message from an item, handling various formats
+ */
+function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
+  if (!isObject(item)) {
+    return null;
+  }
+
+  const message: Record<string, unknown> = {};
+
+  // Extract role
+  if (item.role) {
+    message[SemanticConventions.MESSAGE_ROLE] = item.role;
+  } else if (item.type) {
+    // Some formats use 'type' instead of 'role'
+    message[SemanticConventions.MESSAGE_ROLE] = item.type;
+  } else {
+    // Default to 'user' if no role specified
+    message[SemanticConventions.MESSAGE_ROLE] = "user";
+  }
+
+  // Extract content
+  if (item.content !== undefined) {
+    message[SemanticConventions.MESSAGE_CONTENT] = item.content;
+  } else if (item.contents !== undefined) {
+    // Handle contents array (multimodal content)
+    message[SemanticConventions.MESSAGE_CONTENTS] = item.contents;
+  } else if (item.text !== undefined) {
+    message[SemanticConventions.MESSAGE_CONTENT] = item.text;
+  } else if (item.message !== undefined) {
+    message[SemanticConventions.MESSAGE_CONTENT] = item.message;
+  } else if (typeof item === "string") {
+    message[SemanticConventions.MESSAGE_CONTENT] = item;
+  }
+
+  // Extract additional message properties
+  if (item.name) {
+    message[SemanticConventions.MESSAGE_NAME] = item.name;
+  }
+  if (item.tool_calls) {
+    message[SemanticConventions.MESSAGE_TOOL_CALLS] = item.tool_calls;
+  }
+  if (item.tool_call_id) {
+    message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = item.tool_call_id;
+  }
+  if (item.function_call && isObject(item.function_call)) {
+    const funcCall = item.function_call as Record<string, unknown>;
+    if (funcCall.name) {
+      message[SemanticConventions.MESSAGE_FUNCTION_CALL_NAME] = funcCall.name;
+    }
+    if (funcCall.arguments) {
+      message[SemanticConventions.MESSAGE_FUNCTION_CALL_ARGUMENTS_JSON] =
+        JSON.stringify(funcCall.arguments);
+    }
+  }
+
+  // Only return message if it has content or contents
+  return message[SemanticConventions.MESSAGE_CONTENT] !== undefined ||
+    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined
+    ? message
+    : null;
 }
 
 // Attribute handler functions for each AISpanType
@@ -315,6 +513,9 @@ function setLLMGenerationAttributes(
       additionalAttributes["finish_reason"] = llmAttr.finishReason;
     }
   }
+
+  // Construct LLM input and output messages from span input/output
+  constructLLMMessages(otelSpan, span);
 
   // Return any additional attributes to be added to metadata
   return additionalAttributes;
