@@ -134,7 +134,7 @@ export default function CopilotKitPage() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">
-                  Data Analyst Assistant
+                  Inventory Data Analyst Agent
                 </h1>
                 <p className="text-sm text-gray-500">
                   AI-powered analytics and insights
