@@ -122,7 +122,7 @@ A Postgres database is required to run the GenAI Engine. The easiest way to get 
 Make sure the Poetry install is complete and you have a running Postgres instance first. After that setup the variables
 (example contains default valuse)
 
-ExampleL
+Example:
 ```bash
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=changeme_pg_password
@@ -195,7 +195,8 @@ poetry run alembic revision --autogenerate "<commit message>"
        "GENAI_ENGINE_INGRESS_URI": "http://localhost:3030",
 
        "GENAI_ENGINE_OPENAI_PROVIDER": "Azure",
-       "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key"
+       "GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS": "model_name::https://my_service.openai.azure.com/::my_api_key",
+       "GENAI_ENGINE_SECRET_STORE_KEY": "some_test_key"
      }
    }
    ```
@@ -225,6 +226,7 @@ poetry run alembic revision --autogenerate "<commit message>"
    export GENAI_ENGINE_OPENAI_PROVIDER=Azure
    export OPENAI_API_VERSION=2023-07-01-preview
    export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
+   export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
    ```
 
 4. Run the server
@@ -265,6 +267,11 @@ Script accepts the following arguments:
 - `--files-summary`: Print the summary of each file
 
 ## Unit Tests
+
+Setup variables:
+```bash
+export GENAI_ENGINE_SECRET_STORE_KEY="some_test_key"
+```
 
 Run the unit tests with the following command:
 
