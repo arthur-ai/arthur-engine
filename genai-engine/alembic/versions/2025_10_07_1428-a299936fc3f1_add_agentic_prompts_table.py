@@ -41,7 +41,6 @@ def upgrade() -> None:
         sa.Column("timeout", sa.Float(), nullable=True),
         sa.Column("temperature", sa.Float(), nullable=True),
         sa.Column("top_p", sa.Float(), nullable=True),
-        sa.Column("stream", sa.Boolean(), nullable=True),
         sa.Column("max_tokens", sa.Integer(), nullable=True),
         sa.Column("response_format", sa.JSON(), nullable=True),
         sa.Column("stop", sa.String(), nullable=True),

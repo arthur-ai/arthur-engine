@@ -46,7 +46,6 @@ class DatabaseAgenticPrompt(Base):
     timeout: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     temperature: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     top_p: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    stream: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
     max_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     response_format: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     stop: Mapped[Optional[str]] = mapped_column(String, nullable=True)
