@@ -41,6 +41,7 @@ from routers.auth_routes import auth_routes
 from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
+from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.span_routes import span_routes
 from routers.v2.routers import (
     feedback_routes,
@@ -347,6 +348,7 @@ def get_app_with_routes() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            agentic_prompt_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -370,6 +372,7 @@ def get_test_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            agentic_prompt_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -403,13 +406,14 @@ def get_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            agentic_prompt_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
         add_routers(app, [app_chat_routes])
     if not is_api_only_mode_enabled():
         add_routers(app, [auth_routes, user_management_routes])
-    
+
     if is_agentic_ui_enabled():
         # Serve the React SPA
         static_dir = "/home/nonroot/app/static"
