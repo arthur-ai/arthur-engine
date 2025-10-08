@@ -337,3 +337,336 @@ def test_encrypted_json_multiple_records_simulation():
             assert decrypted_record["value"] == expected_record["value"]
             assert decrypted_record["owner_id"] == expected_record["owner_id"]
             assert decrypted_record["secret_type"] == expected_record["secret_type"]
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_basic():
+    """Test that MultiFernet works with multiple encryption keys."""
+    # Set up environment variable with multiple keys
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "key1::key2::key3"},
+    ):
+        encrypted_json = EncryptedJSON()
+
+        # Test data to encrypt
+        test_data = {
+            "username": "test_user",
+            "password": "secret_password",
+            "api_key": "sk-1234567890abcdef",
+        }
+
+        # Test encryption
+        encrypted_value = encrypted_json.process_bind_param(test_data, None)
+
+        # Verify encryption worked
+        assert encrypted_value is not None
+        assert isinstance(encrypted_value, str)
+        assert encrypted_value != str(test_data)  # Should not be plain text
+
+        # Test decryption
+        decrypted_data = encrypted_json.process_result_value(encrypted_value, None)
+
+        # Verify decryption worked correctly
+        assert decrypted_data is not None
+        assert isinstance(decrypted_data, dict)
+        assert decrypted_data == test_data
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_single_key():
+    """Test that single key still works (backward compatibility)."""
+    # Set up environment variable with single key
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "single_key_only"},
+    ):
+        encrypted_json = EncryptedJSON()
+
+        # Test data to encrypt
+        test_data = {
+            "username": "test_user",
+            "password": "secret_password",
+        }
+
+        # Test encryption
+        encrypted_value = encrypted_json.process_bind_param(test_data, None)
+
+        # Verify encryption worked
+        assert encrypted_value is not None
+        assert isinstance(encrypted_value, str)
+        assert encrypted_value != str(test_data)
+
+        # Test decryption
+        decrypted_data = encrypted_json.process_result_value(encrypted_value, None)
+
+        # Verify decryption worked correctly
+        assert decrypted_data is not None
+        assert isinstance(decrypted_data, dict)
+        assert decrypted_data == test_data
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_key_rotation():
+    """Test key rotation scenario - encrypt with old key, decrypt with new key."""
+    test_data = {"secret": "sensitive_data"}
+
+    # First, encrypt with old key
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "old_key"},
+    ):
+        encrypted_json_old = EncryptedJSON()
+        encrypted_value = encrypted_json_old.process_bind_param(test_data, None)
+
+    # Then, decrypt with both old and new keys (key rotation scenario)
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "old_key::new_key"},
+    ):
+        encrypted_json_rotated = EncryptedJSON()
+        decrypted_data = encrypted_json_rotated.process_result_value(
+            encrypted_value,
+            None,
+        )
+
+        # Should be able to decrypt with the old key still present
+        assert decrypted_data == test_data
+
+    # Test that we can encrypt with new key and decrypt with both
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "old_key::new_key"},
+    ):
+        encrypted_json_rotated = EncryptedJSON()
+        new_encrypted_value = encrypted_json_rotated.process_bind_param(test_data, None)
+        new_decrypted_data = encrypted_json_rotated.process_result_value(
+            new_encrypted_value,
+            None,
+        )
+
+        # Should work with new key
+        assert new_decrypted_data == test_data
+
+    # Test that we can decrypt with just the new key (after rotation is complete)
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "new_key"},
+    ):
+        encrypted_json_new = EncryptedJSON()
+        # This should fail because we encrypted with old_key::new_key but only have new_key
+        with pytest.raises(Exception):  # Fernet will raise InvalidToken
+            encrypted_json_new.process_result_value(new_encrypted_value, None)
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_key_order_independence():
+    """Test that key order doesn't matter for decryption."""
+    test_data = {"secret": "order_test_data"}
+
+    # Encrypt with keys in one order
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "key_a::key_b::key_c"},
+    ):
+        encrypted_json_order1 = EncryptedJSON()
+        encrypted_value = encrypted_json_order1.process_bind_param(test_data, None)
+
+    # Decrypt with keys in different order
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "key_c::key_a::key_b"},
+    ):
+        encrypted_json_order2 = EncryptedJSON()
+        decrypted_data = encrypted_json_order2.process_result_value(
+            encrypted_value,
+            None,
+        )
+
+        # Should still work regardless of key order
+        assert decrypted_data == test_data
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_invalid_keys():
+    """Test handling of invalid or corrupted keys."""
+    test_data = {"secret": "test_data"}
+
+    # Test with empty key (current implementation allows this)
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "valid_key::"},
+    ):
+        # Current implementation doesn't validate empty keys, so this should work
+        encrypted_json = EncryptedJSON()
+        encrypted_value = encrypted_json.process_bind_param(test_data, None)
+        decrypted_data = encrypted_json.process_result_value(encrypted_value, None)
+        assert decrypted_data == test_data
+
+    # Test with only separators (current implementation not allows this)
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "::"},
+    ):
+        # Current implementation validate if there is at least one key
+        with pytest.raises(ValueError):
+            encrypted_json = EncryptedJSON()
+
+    # Test with valid keys but try to decrypt with wrong keys
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "correct_key1::correct_key2"},
+    ):
+        encrypted_json = EncryptedJSON()
+        encrypted_value = encrypted_json.process_bind_param(test_data, None)
+
+    # Try to decrypt with completely different keys
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "wrong_key1::wrong_key2"},
+    ):
+        encrypted_json_wrong = EncryptedJSON()
+        with pytest.raises(Exception):  # Should fail with wrong keys
+            encrypted_json_wrong.process_result_value(encrypted_value, None)
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_complex_data():
+    """Test MultiFernet with complex nested data structures."""
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": "key1::key2::key3::key4"},
+    ):
+        encrypted_json = EncryptedJSON()
+
+        # Complex test data
+        complex_data = {
+            "api_configs": [
+                {
+                    "name": "primary_api",
+                    "credentials": {
+                        "api_key": "sk-primary-1234567890abcdef",
+                        "secret": "very_secret_value_123",
+                        "endpoints": {
+                            "base_url": "https://api.primary.com",
+                            "backup_url": "https://backup.primary.com",
+                        },
+                    },
+                    "settings": {
+                        "timeout": 30,
+                        "retries": 3,
+                        "rate_limit": 1000,
+                    },
+                },
+                {
+                    "name": "secondary_api",
+                    "credentials": {
+                        "api_key": "sk-secondary-abcdef1234567890",
+                        "secret": "another_secret_value_456",
+                        "endpoints": {
+                            "base_url": "https://api.secondary.com",
+                        },
+                    },
+                    "settings": {
+                        "timeout": 60,
+                        "retries": 5,
+                        "rate_limit": 500,
+                    },
+                },
+            ],
+            "database_configs": {
+                "primary_db": {
+                    "host": "db-primary.example.com",
+                    "port": 5432,
+                    "username": "admin",
+                    "password": "super_secret_db_password",
+                    "ssl": True,
+                },
+                "replica_db": {
+                    "host": "db-replica.example.com",
+                    "port": 5432,
+                    "username": "readonly",
+                    "password": "readonly_password",
+                    "ssl": True,
+                },
+            },
+            "metadata": {
+                "created_at": "2024-01-01T00:00:00Z",
+                "version": "1.0.0",
+                "environment": "production",
+                "tags": ["critical", "encrypted", "multi-tenant"],
+            },
+        }
+
+        # Test encryption
+        encrypted_value = encrypted_json.process_bind_param(complex_data, None)
+
+        # Verify encryption worked
+        assert encrypted_value is not None
+        assert isinstance(encrypted_value, str)
+        assert encrypted_value != str(complex_data)
+
+        # Test decryption
+        decrypted_data = encrypted_json.process_result_value(encrypted_value, None)
+
+        # Verify decryption worked correctly
+        assert decrypted_data is not None
+        assert isinstance(decrypted_data, dict)
+        assert decrypted_data == complex_data
+
+        # Verify specific nested values
+        assert (
+            decrypted_data["api_configs"][0]["credentials"]["api_key"]
+            == "sk-primary-1234567890abcdef"
+        )
+        assert (
+            decrypted_data["api_configs"][1]["credentials"]["secret"]
+            == "another_secret_value_456"
+        )
+        assert (
+            decrypted_data["database_configs"]["primary_db"]["password"]
+            == "super_secret_db_password"
+        )
+        assert decrypted_data["metadata"]["tags"] == [
+            "critical",
+            "encrypted",
+            "multi-tenant",
+        ]
+
+
+@pytest.mark.unit_tests
+def test_encrypted_json_multifernet_many_keys():
+    """Test MultiFernet with many keys to ensure it scales properly."""
+    # Create a string with many keys
+    many_keys = "::".join([f"key_{i}" for i in range(10)])
+
+    with patch.dict(
+        os.environ,
+        {"GENAI_ENGINE_SECRET_STORE_KEY": many_keys},
+    ):
+        encrypted_json = EncryptedJSON()
+
+        test_data = {
+            "message": "Testing with many keys",
+            "key_count": 10,
+            "nested": {
+                "value": "deeply_nested_data",
+                "numbers": list(range(100)),
+            },
+        }
+
+        # Test encryption
+        encrypted_value = encrypted_json.process_bind_param(test_data, None)
+
+        # Verify encryption worked
+        assert encrypted_value is not None
+        assert isinstance(encrypted_value, str)
+        assert encrypted_value != str(test_data)
+
+        # Test decryption
+        decrypted_data = encrypted_json.process_result_value(encrypted_value, None)
+
+        # Verify decryption worked correctly
+        assert decrypted_data is not None
+        assert isinstance(decrypted_data, dict)
+        assert decrypted_data == test_data
