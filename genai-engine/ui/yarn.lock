@@ -5534,8 +5534,8 @@ __metadata:
   linkType: hard
 
 "swagger-typescript-api@npm:^13.2.13":
-  version: 13.2.14
-  resolution: "swagger-typescript-api@npm:13.2.14"
+  version: 13.2.15
+  resolution: "swagger-typescript-api@npm:13.2.15"
   dependencies:
     "@biomejs/js-api": "npm:3.0.0"
     "@biomejs/wasm-nodejs": "npm:2.2.5"
@@ -5555,7 +5555,7 @@ __metadata:
   bin:
     sta: ./dist/cli.js
     swagger-typescript-api: ./dist/cli.js
-  checksum: 10c0/170bafe6269ebcc022e36bef386e6bd5544a1ff130a01a1464d8d517446faf7d726d4a09e6e51c9662994974a3793e672c8ebef41ce2081c4d176c0457c89551
+  checksum: 10c0/dee67be9b16311d4a39496fdb146508dfa2b7d5739b306dceead01b096778ff7aa634e6945f0ad46f98bbfaa7b791a7695106552a988dbf59b91ff4c4414b806
   languageName: node
   linkType: hard
 
