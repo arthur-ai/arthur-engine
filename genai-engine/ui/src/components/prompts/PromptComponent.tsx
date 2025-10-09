@@ -2,6 +2,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
+import SettingsIcon from "@mui/icons-material/Settings";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -13,9 +14,9 @@ import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
+import ModelParamsDialog from "./ModelParamsDialog";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
-
 
 const PROVIDER_TEXT = "Provider";
 const PROMPT_NAME_TEXT = "Prompt Name";
@@ -39,6 +40,7 @@ const MODEL_OPTIONS = [
  */
 const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const [provider, setProvider] = useState<string>(providerEnum.OPENAI);
+  const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
 
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
@@ -64,6 +66,10 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
       payload: { parentId: prompt.id },
     });
   }, [dispatch, prompt.id]);
+
+  const handleParamsModelOpen = useCallback(() => {
+    setParamsModelOpen(true);
+  }, []);
 
   return (
     <div className="bg-purple-500 min-h-[500px]">
@@ -146,6 +152,22 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                 <ContentCopyIcon />
               </IconButton>
             </Tooltip>
+            <Tooltip title="Model Parameters" placement="top-start" arrow>
+              <IconButton
+                aria-label="model parameters"
+                onClick={handleParamsModelOpen}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
+            <ModelParamsDialog
+              open={paramsModelOpen}
+              setOpen={setParamsModelOpen}
+              promptId={prompt.id}
+              name={prompt.name}
+              modelParameters={prompt.modelParameters}
+              dispatch={dispatch}
+            />
             <Tooltip title="Save Prompt" placement="top-start" arrow>
               <IconButton aria-label="save" onClick={() => {}}>
                 <SaveIcon />

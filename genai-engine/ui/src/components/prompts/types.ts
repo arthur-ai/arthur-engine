@@ -16,6 +16,15 @@ const providerEnum = {
   AZURE: "azure",
 };
 
+const reasoningEffortEnum = {
+  NONE: "none",
+  MINIMAL: "minimal",
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+  DEFAULT: "default",
+};
+
 type PromptAction =
   | { type: "addPrompt" }
   | { type: "deletePrompt"; payload: { id: string } }
@@ -43,6 +52,10 @@ type PromptAction =
   | {
       type: "updateKeywordValue";
       payload: { keyword: string; value: string };
+    }
+  | {
+      type: "updateModelParameters";
+      payload: { promptId: string; modelParameters: ModelParametersType };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -53,13 +66,39 @@ type MessageType = {
   disabled: boolean;
 };
 
+type ModelParametersType = {
+  temperature?: number | null; // 0 < temperature <= 1 (or 2?)
+  top_p?: number | null; // 0 < top_p <= 1
+  timeout?: number | null; // In milliseconds
+  stream?: boolean; // Whether to stream the response, defautl false
+  stream_options?: object | null; // Stream options TODO
+  max_tokens?: number | null; // Length limit of generated response > 0
+  max_completion_tokens?: number | null; // ??
+  frequency_penalty?: number; // -2 < frequency_penalty <= 2
+  presence_penalty?: number; // -2 < presence_penalty <= 2, default 0
+  stop?: string | null; // Stop sequence
+  seed?: number | null; // Random seed
+  reasoning_effort?: typeof reasoningEffortEnum | "";
+  // The following do not appear in the UI
+  logprobs?: boolean | null; //Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
+  top_logprobs?: number | null; //An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
+  logit_bias?: object | null; //Logit bias TODO
+  thinking?: object | null; //Thinking TODO AnthropicThinkingParam
+};
+
 type PromptType = {
   id: string; // name + timestamp, probably
   classification: string;
   name: string;
+  modelName: string;
   provider: string;
   messages: MessageType[];
+  modelParameters: ModelParametersType;
   outputField: string;
+  // tools: ToolType[]; // TODO
+  // toolChoice: ?; // TODO
+  // responseFormat: ?; // TODO
+  // tags: Array<string>; // TODO
 };
 
 interface PromptPlaygroundState {
@@ -86,10 +125,12 @@ export {
   messageRoleEnum,
   MessageComponentProps,
   MessageType,
+  ModelParametersType,
   providerEnum,
   PromptType,
   PromptComponentProps,
   PromptPlaygroundState,
   PromptAction,
   promptClassificationEnum,
+  reasoningEffortEnum,
 };
