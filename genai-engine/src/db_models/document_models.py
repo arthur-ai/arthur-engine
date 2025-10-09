@@ -1,10 +1,9 @@
 from typing import List
 
-import pgvector.sqlalchemy
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import OUTPUT_DIMENSION_SIZE_ADA_002, Base
+from db_models.base import Base
 
 
 class DatabaseDocument(Base):
@@ -32,19 +31,8 @@ class DatabaseEmbedding(Base):
     )
     text: Mapped[str] = mapped_column(String)
     seq_num: Mapped[int] = mapped_column(Integer)
-    embedding: Mapped[List[float]] = mapped_column(
-        pgvector.sqlalchemy.Vector(OUTPUT_DIMENSION_SIZE_ADA_002),
-    )
+    embedding: Mapped[str] = mapped_column(String)  # Keep as string, no pgvector
     documents = relationship("DatabaseDocument", back_populates="embeddings")
-
-
-index = Index(
-    "my_index",
-    DatabaseEmbedding.embedding,
-    postgresql_using="ivfflat",
-    postgresql_with={"lists": 100},
-    postgresql_ops={"embedding": "vector_l2_ops"},
-)
 
 
 class DatabaseEmbeddingReference(Base):
