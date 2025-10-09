@@ -56,6 +56,10 @@ type PromptAction =
   | {
       type: "updateModelParameters";
       payload: { promptId: string; modelParameters: ModelParametersType };
+    }
+  | {
+      type: "updateResponseFormat";
+      payload: { promptId: string; responseFormat: string | null };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -95,9 +99,9 @@ type PromptType = {
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string;
+  responseFormat: string | null;
   // tools: ToolType[]; // TODO
   // toolChoice: ?; // TODO
-  // responseFormat: ?; // TODO
   // tags: Array<string>; // TODO
 };
 
@@ -121,6 +125,12 @@ interface PromptComponentProps {
   dispatch: (action: PromptAction) => void;
 }
 
+interface OutputFieldProps {
+  promptId: string;
+  responseFormat: string | null;
+  dispatch: (action: PromptAction) => void;
+}
+
 export {
   messageRoleEnum,
   MessageComponentProps,
@@ -133,4 +143,5 @@ export {
   PromptAction,
   promptClassificationEnum,
   reasoningEffortEnum,
+  OutputFieldProps,
 };

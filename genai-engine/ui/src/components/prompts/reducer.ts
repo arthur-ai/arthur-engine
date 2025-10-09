@@ -98,6 +98,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
+  responseFormat: null,
   ...overrides,
 });
 
@@ -305,7 +306,18 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelParameters } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => prompt.id === promptId ? { ...prompt, modelParameters } : prompt),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, modelParameters } : prompt
+        ),
+      };
+    }
+    case "updateResponseFormat": {
+      const { promptId, responseFormat } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, responseFormat } : prompt
+        ),
       };
     }
     default:
