@@ -9,6 +9,7 @@ import {
   PromptPlaygroundState,
   PromptType,
   providerEnum,
+  PromptTool,
 } from "./types";
 
 const TEMP_ID = "user-defined-name-timestamp";
@@ -65,6 +66,28 @@ const hydrateMessage = (data: Partial<MessageType>): MessageType =>
   createMessage(data);
 
 /***************************
+ * Tool factory functions *
+ ***************************/
+const createTool = (counter: number = 1, overrides: Partial<PromptTool> = {}): PromptTool => ({
+  id: generateId(),
+  type: "function",
+  function: {
+    name: `tool_func_${counter}`,
+    description: "description",
+    parameters: {
+      type: "object",
+      properties: {
+        "tool_arg": {
+          "type": "string"
+        }
+      },
+      required: []
+    }
+  },
+  ...overrides,
+});
+
+/***************************
  * Prompt factory functions *
  ***************************/
 const createModelParameters = (
@@ -98,6 +121,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
+  tools: [],
   ...overrides,
 });
 
@@ -306,6 +330,47 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) => prompt.id === promptId ? { ...prompt, modelParameters } : prompt),
+      };
+    }
+    case "addTool": {
+      const { parentId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? { ...prompt, tools: [...prompt.tools, createTool(prompt.tools.length + 1)] }
+            : prompt
+        ),
+      };
+    }
+    case "deleteTool": {
+      const { parentId, toolId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                tools: prompt.tools.filter((tool) => tool.id !== toolId),
+              }
+            : prompt
+        ),
+      };
+    }
+    case "updateTool": {
+      const { parentId, toolId, tool } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                tools: prompt.tools.map((t) =>
+                  t.id === toolId ? { ...t, ...tool } : t
+                ),
+              }
+            : prompt
+        ),
       };
     }
     default:
