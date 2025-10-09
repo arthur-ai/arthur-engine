@@ -3175,14 +3175,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}": {
+        "/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get an agentic prompt",
-                "description": "Get an agentic prompt",
-                "operationId": "get_agentic_prompt_v1__task_id__agentic_prompt_get_prompt__prompt_name__get",
+                "description": "Get an agentic prompt by name and version",
+                "operationId": "get_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__get",
                 "security": [
                     {
                         "API Key": []
@@ -3196,6 +3196,15 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
                         }
                     },
                     {
@@ -3231,16 +3240,79 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Delete an agentic prompt",
+                "description": "Deletes an agentic prompt",
+                "operationId": "delete_agentic_prompt_version_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
-        "/v1/{task_id}/agentic_prompt/get_all_prompts": {
+        "/v1/{task_id}/agentic_prompts": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get all agentic prompts",
                 "description": "Get all agentic prompts for a given task",
-                "operationId": "get_all_agentic_prompts_v1__task_id__agentic_prompt_get_all_prompts_get",
+                "operationId": "get_all_agentic_prompts_v1__task_id__agentic_prompts_get",
                 "security": [
                     {
                         "API Key": []
@@ -3282,20 +3354,138 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/run_prompt": {
+        "/v1/{task_id}/agentic_prompts/{prompt_name}/versions": {
+            "get": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "List all versions of an agentic prompt",
+                "description": "List all versions of an agentic prompt",
+                "operationId": "get_all_agentic_prompt_versions_v1__task_id__agentic_prompts__prompt_name__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/completions": {
             "post": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Run an agentic prompt",
                 "description": "Run an agentic prompt",
-                "operationId": "run_agentic_prompt_v1__task_id__agentic_prompt_run_prompt_post",
+                "operationId": "run_agentic_prompt_v1_completions_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgenticPromptUnsavedRunConfig"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}": {
+            "post": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Run a specific version of an agentic prompt",
+                "description": "Run a specific version of an existing agentic prompt",
+                "operationId": "run_saved_agentic_prompt_v1_completions_task__task_id__prompt__prompt_name__versions__prompt_version__post",
                 "security": [
                     {
                         "API Key": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
+                        }
+                    },
                     {
                         "name": "task_id",
                         "in": "path",
@@ -3308,13 +3498,14 @@
                     }
                 ],
                 "requestBody": {
-                    "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "title": "Prompt Body"
+                                "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                                "default": {
+                                    "variables": {},
+                                    "stream": false
+                                }
                             }
                         }
                     }
@@ -3343,131 +3534,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}": {
-            "post": {
-                "tags": [
-                    "AgenticPrompt"
-                ],
-                "summary": "Run an existing agentic prompt",
-                "description": "Run an existing agentic prompt",
-                "operationId": "run_saved_agentic_prompt_v1__task_id__agentic_prompt_run_prompt__prompt_name__post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "prompt_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Prompt Name"
-                        }
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AgenticPromptRunResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/{task_id}/agentic_prompt/save_prompt": {
-            "post": {
+        "/v1/{task_id}/agentic_prompts/{prompt_name}": {
+            "put": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Save an agentic prompt",
                 "description": "Save an agentic prompt to the database",
-                "operationId": "save_agentic_prompt_v1__task_id__agentic_prompt_save_prompt_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "title": "Prompt Body"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}": {
-            "delete": {
-                "tags": [
-                    "AgenticPrompt"
-                ],
-                "summary": "Delete an agentic prompt",
-                "description": "Deletes an agentic prompt",
-                "operationId": "delete_agentic_prompt_v1__task_id__agentic_prompt_delete_prompt__prompt_name__delete",
+                "operationId": "save_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__put",
                 "security": [
                     {
                         "API Key": []
@@ -3494,6 +3568,16 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgenticPromptBaseConfig"
+                            }
+                        }
+                    }
+                },
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4209,25 +4293,24 @@
             },
             "AgenticPrompt": {
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
                     "messages": {
                         "items": {
                             "additionalProperties": true,
                             "type": "object"
                         },
                         "type": "array",
-                        "title": "Messages"
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
                     },
                     "model_name": {
                         "type": "string",
-                        "title": "Model Name"
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
                         "type": "string",
-                        "title": "Model Provider"
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
                         "anyOf": [
@@ -4242,7 +4325,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tools"
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
                     "tool_choice": {
                         "anyOf": [
@@ -4257,7 +4341,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice"
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
                     },
                     "timeout": {
                         "anyOf": [
@@ -4268,7 +4353,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Timeout"
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
                     },
                     "temperature": {
                         "anyOf": [
@@ -4279,7 +4365,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Temperature"
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
                     },
                     "top_p": {
                         "anyOf": [
@@ -4290,18 +4377,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Top P"
-                    },
-                    "stream": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stream"
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
                     },
                     "max_tokens": {
                         "anyOf": [
@@ -4312,7 +4389,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Max Tokens"
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
                     },
                     "response_format": {
                         "anyOf": [
@@ -4325,7 +4403,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Response Format"
+                        "title": "Response Format",
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
                     },
                     "stop": {
                         "anyOf": [
@@ -4336,7 +4415,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Stop"
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
                     },
                     "presence_penalty": {
                         "anyOf": [
@@ -4347,7 +4427,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Presence Penalty"
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
                     },
                     "frequency_penalty": {
                         "anyOf": [
@@ -4358,7 +4439,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Frequency Penalty"
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
                     },
                     "seed": {
                         "anyOf": [
@@ -4369,7 +4451,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Seed"
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
                     },
                     "logprobs": {
                         "anyOf": [
@@ -4380,7 +4463,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Logprobs"
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
                     },
                     "top_logprobs": {
                         "anyOf": [
@@ -4391,7 +4475,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Top Logprobs"
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
                     },
                     "logit_bias": {
                         "anyOf": [
@@ -4403,7 +4488,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Logit Bias"
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
                     },
                     "max_completion_tokens": {
                         "anyOf": [
@@ -4414,7 +4500,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Max Completion Tokens"
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
                     },
                     "reasoning_effort": {
                         "anyOf": [
@@ -4433,7 +4520,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Reasoning Effort"
+                        "title": "Reasoning Effort",
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
                     },
                     "thinking": {
                         "anyOf": [
@@ -4443,7 +4531,8 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
                     },
                     "stream_options": {
                         "anyOf": [
@@ -4455,17 +4544,324 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Stream Options"
+                        "title": "Stream Options",
+                        "description": "Additional streaming configuration options"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agentic prompt"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "name",
+                    "messages",
+                    "model_name",
+                    "model_provider",
+                    "name"
+                ],
+                "title": "AgenticPrompt"
+            },
+            "AgenticPromptBaseConfig": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "type": "string",
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Response Format",
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "none",
+                                    "minimal",
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "default"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Effort",
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream Options",
+                        "description": "Additional streaming configuration options"
+                    }
+                },
+                "type": "object",
+                "required": [
                     "messages",
                     "model_name",
                     "model_provider"
                 ],
-                "title": "AgenticPrompt"
+                "title": "AgenticPromptBaseConfig"
+            },
+            "AgenticPromptRunConfig": {
+                "properties": {
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "type": "string"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "Dictionary of variable names to their values to use for an agentic prompt run",
+                        "default": {}
+                    },
+                    "stream": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream",
+                        "description": "Whether to stream the response",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "AgenticPromptRunConfig",
+                "description": "Request schema for running an agentic prompt"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -4499,6 +4895,307 @@
                     "cost"
                 ],
                 "title": "AgenticPromptRunResponse"
+            },
+            "AgenticPromptUnsavedRunConfig": {
+                "properties": {
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "type": "string"
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "Dictionary of variable names to their values to use for an agentic prompt run",
+                        "default": {}
+                    },
+                    "stream": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream",
+                        "description": "Whether to stream the response",
+                        "default": false
+                    },
+                    "messages": {
+                        "items": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "type": "string",
+                        "title": "Model Provider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "additionalProperties": true,
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Response Format",
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "none",
+                                    "minimal",
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "default"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Reasoning Effort",
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream Options",
+                        "description": "Additional streaming configuration options"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agentic prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider",
+                    "name"
+                ],
+                "title": "AgenticPromptUnsavedRunConfig",
+                "description": "Request schema for running an unsaved agentic prompt"
             },
             "AgenticPrompts": {
                 "properties": {

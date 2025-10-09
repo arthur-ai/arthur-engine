@@ -1,7 +1,6 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
-
 # 10/10/2025
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the required property 'status_code' to the response with the '200' status
@@ -11,6 +10,21 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+  
+# 10/09/2025
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  api path removed without deprecation
+- **CHANGE** for **URL**: /v1/completions  endpoint added
+- **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
 
 # 10/07/2025
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added

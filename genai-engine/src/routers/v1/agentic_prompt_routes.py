@@ -1,16 +1,17 @@
-from typing import Any, Dict
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import ValidationError as PydanticValidationError
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from dependencies import get_application_config, get_db_session
 from repositories.agentic_prompts_repository import (
     AgenticPrompt,
+    AgenticPromptBaseConfig,
     AgenticPromptRepository,
+    AgenticPromptRunConfig,
     AgenticPromptRunResponse,
     AgenticPrompts,
+    AgenticPromptUnsavedRunConfig,
 )
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
@@ -55,9 +56,9 @@ def get_validated_agentic_task(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompt/get_prompt/{prompt_name}",
+    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
     summary="Get an agentic prompt",
-    description="Get an agentic prompt",
+    description="Get an agentic prompt by name and version",
     response_model=AgenticPrompt,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
@@ -65,10 +66,12 @@ def get_validated_agentic_task(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agentic_prompt(
     prompt_name: str,
+    prompt_version: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
+    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
@@ -83,7 +86,7 @@ def get_agentic_prompt(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompt/get_all_prompts",
+    "/{task_id}/agentic_prompts",
     summary="Get all agentic prompts",
     description="Get all agentic prompts for a given task",
     response_model=AgenticPrompts,
@@ -105,27 +108,37 @@ def get_all_agentic_prompts(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@agentic_prompt_routes.get(
+    "/{task_id}/agentic_prompts/{prompt_name}/versions",
+    summary="List all versions of an agentic prompt",
+    description="List all versions of an agentic prompt",
+    response_model=AgenticPrompts,
+    response_model_exclude_none=True,
+    tags=["AgenticPrompt"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_all_agentic_prompt_versions(
+    prompt_name: str,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+):
+    # TODO: Implement with versioning
+    return AgenticPrompts(prompts=[])
+
+
 @agentic_prompt_routes.post(
-    "/{task_id}/agentic_prompt/run_prompt",
+    "/completions",
     summary="Run an agentic prompt",
     description="Run an agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
 )
-@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_agentic_prompt(
-    prompt_body: Dict[str, Any] = Body(...),
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-):
+def run_agentic_prompt(run_config: AgenticPromptUnsavedRunConfig):
     try:
-        agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.create_prompt(**prompt_body)
-        return agentic_prompt_service.run_prompt(prompt)
-    except PydanticValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        agentic_prompt_service = AgenticPromptRepository(None)
+        return agentic_prompt_service.run_unsaved_prompt(run_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -133,9 +146,9 @@ def run_agentic_prompt(
 
 
 @agentic_prompt_routes.post(
-    "/{task_id}/agentic_prompt/run_prompt/{prompt_name}",
-    summary="Run an existing agentic prompt",
-    description="Run an existing agentic prompt",
+    "/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}",
+    summary="Run a specific version of an agentic prompt",
+    description="Run a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
@@ -143,21 +156,24 @@ def run_agentic_prompt(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def run_saved_agentic_prompt(
     prompt_name: str,
+    prompt_version: str,
+    run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
+    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.run_saved_prompt(task.id, prompt_name)
+        return agentic_prompt_service.run_saved_prompt(task.id, prompt_name, run_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@agentic_prompt_routes.post(
-    "/{task_id}/agentic_prompt/save_prompt",
+@agentic_prompt_routes.put(
+    "/{task_id}/agentic_prompts/{prompt_name}",
     summary="Save an agentic prompt",
     description="Save an agentic prompt to the database",
     response_model=None,
@@ -166,18 +182,18 @@ def run_saved_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
-    prompt_body: Dict[str, Any] = Body(...),
+    prompt_name: str,
+    prompt_config: AgenticPromptBaseConfig,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.save_prompt(task.id, prompt_body)
+        full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())
+        agentic_prompt_service.save_prompt(task.id, full_prompt)
 
         return {"message": "Prompt saved successfully"}
-    except PydanticValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -185,7 +201,7 @@ def save_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
-    "/{task_id}/agentic_prompt/delete_prompt/{prompt_name}",
+    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
     summary="Delete an agentic prompt",
     description="Deletes an agentic prompt",
     response_model=None,
@@ -193,12 +209,14 @@ def save_agentic_prompt(
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def delete_agentic_prompt(
+def delete_agentic_prompt_version(
     prompt_name: str,
+    prompt_version: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
+    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.delete_prompt(task.id, prompt_name)
