@@ -3829,6 +3829,164 @@
                 }
             }
         },
+        "/api/v2/datasets/{dataset_id}/versions": {
+            "post": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Create Dataset Version",
+                "description": "Create a new dataset version.",
+                "operationId": "create_dataset_version_api_v2_datasets__dataset_id__versions_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset to create a new version for.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset to create a new version for."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/NewDatasetVersionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatasetVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v2/datasets/{dataset_id}/versions/{version_number}": {
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Get Dataset Version",
+                "description": "Fetch a dataset version.",
+                "operationId": "get_dataset_version_api_v2_datasets__dataset_id__versions__version_number__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset to fetch the version for.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset to fetch the version for."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number to fetch.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number to fetch."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DatasetVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -5323,6 +5481,110 @@
                 ],
                 "title": "DatasetUpdateRequest"
             },
+            "DatasetVersionResponse": {
+                "properties": {
+                    "version_number": {
+                        "type": "integer",
+                        "title": "Version Number",
+                        "description": "Version number of the dataset version."
+                    },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset."
+                    },
+                    "created_at": {
+                        "type": "integer",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of dataset version creation in unix milliseconds."
+                    },
+                    "rows": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetVersionRowResponse"
+                        },
+                        "type": "array",
+                        "title": "Rows",
+                        "description": "list of rows in the dataset version."
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "The current page number for the included rows."
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "The number of rows per page."
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "The total number of pages."
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "The total number of rows in the dataset version."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version_number",
+                    "dataset_id",
+                    "created_at",
+                    "rows",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "DatasetVersionResponse"
+            },
+            "DatasetVersionRowColumnItemResponse": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of the column."
+                    },
+                    "column_value": {
+                        "type": "string",
+                        "title": "Column Value",
+                        "description": "Value of the column."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "column_value"
+                ],
+                "title": "DatasetVersionRowColumnItemResponse"
+            },
+            "DatasetVersionRowResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "ID of the version field."
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetVersionRowColumnItemResponse"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of column names and values in the row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "data"
+                ],
+                "title": "DatasetVersionRowResponse"
+            },
             "ExampleConfig": {
                 "properties": {
                     "example": {
@@ -6471,6 +6733,103 @@
                     "name"
                 ],
                 "title": "NewDatasetRequest"
+            },
+            "NewDatasetVersionRequest": {
+                "properties": {
+                    "rows_to_add": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowRequest"
+                        },
+                        "type": "array",
+                        "title": "Rows To Add",
+                        "description": "List of rows to be added to the new dataset version."
+                    },
+                    "rows_to_delete": {
+                        "items": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "type": "array",
+                        "title": "Rows To Delete",
+                        "description": "List of IDs of rows to be deleted from the new dataset version."
+                    },
+                    "rows_to_update": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionUpdateRowRequest"
+                        },
+                        "type": "array",
+                        "title": "Rows To Update",
+                        "description": "List of IDs of rows to be updated in the new dataset version with their new values. Should include the value in the row for every column in the dataset, not just the updated column values."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "rows_to_add",
+                    "rows_to_delete",
+                    "rows_to_update"
+                ],
+                "title": "NewDatasetVersionRequest"
+            },
+            "NewDatasetVersionRowColumnItemRequest": {
+                "properties": {
+                    "column_name": {
+                        "type": "string",
+                        "title": "Column Name",
+                        "description": "Name of column."
+                    },
+                    "column_value": {
+                        "type": "string",
+                        "title": "Column Value",
+                        "description": "Value of column for the row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "column_name",
+                    "column_value"
+                ],
+                "title": "NewDatasetVersionRowColumnItemRequest"
+            },
+            "NewDatasetVersionRowRequest": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of column-value pairs in the new dataset row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data"
+                ],
+                "title": "NewDatasetVersionRowRequest"
+            },
+            "NewDatasetVersionUpdateRowRequest": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "UUID of row to be updated."
+                    },
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/NewDatasetVersionRowColumnItemRequest"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of column-value pairs in the updated row."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "data"
+                ],
+                "title": "NewDatasetVersionUpdateRowRequest"
             },
             "NewMetricRequest": {
                 "properties": {

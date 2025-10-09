@@ -39,6 +39,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # mount source code so devs don't have to rebuild when they make changes, just restart the app
+      - ./src:/home/nonroot/app/src
+      - ./version:/home/nonroot/app/src/version
   changelog-generator:
     build:
       context: .
