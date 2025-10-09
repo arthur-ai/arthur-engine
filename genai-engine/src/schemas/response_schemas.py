@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 from arthur_common.models.response_schemas import ExternalInference
@@ -62,4 +62,33 @@ class SearchDatasetsResponse(BaseModel):
     )
     datasets: list[DatasetResponse] = Field(
         description="List of datasets matching the search filters. Length is less than or equal to page_size parameter",
+    )
+
+
+class DatasetVersionRowColumnItemResponse(BaseModel):
+    column_name: str = Field(description="Name of the column.")
+    column_value: str = Field(description="Value of the column.")
+
+
+class DatasetVersionRowResponse(BaseModel):
+    id: UUID = Field(description="ID of the version field.")
+    data: List[DatasetVersionRowColumnItemResponse] = Field(
+        description="List of column names and values in the row.",
+    )
+
+
+class DatasetVersionResponse(BaseModel):
+    version_number: int = Field(description="Version number of the dataset version.")
+    dataset_id: UUID = Field(description="ID of the dataset.")
+    created_at: int = Field(
+        description="Timestamp representing the time of dataset version creation in unix milliseconds.",
+    )
+    rows: list[DatasetVersionRowResponse] = Field(
+        description="list of rows in the dataset version.",
+    )
+    page: int = Field(description="The current page number for the included rows.")
+    page_size: int = Field(description="The number of rows per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of rows in the dataset version.",
     )

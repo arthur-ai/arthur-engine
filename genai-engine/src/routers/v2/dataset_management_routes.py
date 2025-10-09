@@ -16,8 +16,13 @@ from schemas.internal_schemas import Dataset, User
 from schemas.request_schemas import (
     DatasetUpdateRequest,
     NewDatasetRequest,
+    NewDatasetVersionRequest,
 )
-from schemas.response_schemas import DatasetResponse, SearchDatasetsResponse
+from schemas.response_schemas import (
+    DatasetResponse,
+    DatasetVersionResponse,
+    SearchDatasetsResponse,
+)
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -149,5 +154,58 @@ def get_dataset(
     try:
         dataset_repo = DatasetRepository(db_session)
         return dataset_repo.get_dataset(dataset_id).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/versions",
+    description="Create a new dataset version.",
+    tags=[datasets_router_tag],
+    response_model=DatasetVersionResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def create_dataset_version(
+    new_version_request: NewDatasetVersionRequest,
+    dataset_id: UUID = Path(
+        description="ID of the dataset to create a new version for.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetVersionResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        dataset_repo.create_dataset_version(dataset_id, new_version_request)
+        return dataset_repo.get_latest_dataset_version(dataset_id).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/versions/{version_number}",
+    description="Fetch a dataset version.",
+    tags=[datasets_router_tag],
+    response_model=DatasetVersionResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_dataset_version(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    dataset_id: UUID = Path(
+        description="ID of the dataset to fetch the version for.",
+    ),
+    version_number: int = Path(description="Version number to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetVersionResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        return dataset_repo.get_dataset_version(
+            dataset_id,
+            version_number,
+            pagination_parameters,
+        ).to_response_model()
     finally:
         db_session.close()
