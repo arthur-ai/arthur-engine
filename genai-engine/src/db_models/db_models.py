@@ -129,6 +129,7 @@ class DatabaseInference(Base):
         lazy="joined",
     )
     task: Mapped[DatabaseTask] = relationship(lazy="joined")
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
     __table_args__ = (
         Index(
@@ -421,6 +422,7 @@ class DatabaseInferenceFeedback(Base):
     user_id: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
 
 class DatabaseApiKey(Base):
