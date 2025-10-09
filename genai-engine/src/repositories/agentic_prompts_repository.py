@@ -46,7 +46,7 @@ class AgenticPromptRunConfig(BaseModel):
 
             # Replace all {{variable_name}} patterns
             updated_content = re.sub(
-                r"\{\{\s*(\w+)\s*\}\}",
+                r"\{\{\s*([^\{\}]+?)\s*\}\}",
                 self._replace_match,
                 content,
             )
