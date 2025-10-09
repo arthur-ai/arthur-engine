@@ -13,6 +13,7 @@ import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
+import OutputField from "./OutputField";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
 
@@ -179,7 +180,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <div>Output Field</div>
+          <OutputField />
         </Paper>
       </div>
     </div>
