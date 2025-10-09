@@ -135,6 +135,7 @@ def get_all_agentic_prompt_versions(
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
 )
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def run_agentic_prompt(run_config: AgenticPromptUnsavedRunConfig):
     try:
         agentic_prompt_service = AgenticPromptRepository(None)

@@ -457,6 +457,11 @@ def test_agentic_prompt_run_chat_completion(
             None,
             "This is a message without variables",
         ),
+        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
+        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
+        ("{{{{ name variable 1 }}}}", {"name variable 1": "Alice"}, "{{Alice}}"),
+        ("{{{{ name.variable.1      }}}}", {"name.variable.1": "Alice"}, "{{Alice}}"),
+        ("{{{{ name-variable_1      }}}", {"name-variable_1": "Alice"}, "{{Alice}"),
     ],
 )
 def test_agentic_prompt_variable_replacement(message, variables, expected_message):
