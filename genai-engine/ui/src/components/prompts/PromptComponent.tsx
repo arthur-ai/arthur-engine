@@ -310,16 +310,16 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                       <span className="text-sm font-mono">
                         📋 {tool.function.name}
                       </span>
-                      <IconButton
-                        size="small"
+                      <div
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteTool(tool.id);
                         }}
-                        sx={{ color: '#374151' }} 
+                        className="p-1 rounded hover:bg-gray-300 cursor-pointer flex items-center justify-center"
+                        style={{ color: '#374151', width: '24px', height: '24px' }}
                       >
                         <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      </div>
                     </div>
                   </AccordionSummary>
                   <AccordionDetails sx={{ padding: 0 }}>
