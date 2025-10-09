@@ -44,6 +44,7 @@ from db_models.telemetry_models import (
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
 )
+from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 
 __all__ = [
     # Base classes
@@ -89,4 +90,6 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    # Agentic Prompt models
+    "DatabaseAgenticPrompt",
 ]

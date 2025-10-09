@@ -14,6 +14,7 @@ import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetr
 import { TracesView } from "./components/TracesView";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskLayout } from "./components/TaskLayout";
+import PromptsPlayground from "./components/prompts/PromptsPlayground";
 import "./App.css";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details
@@ -102,10 +103,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TaskLayout>
-                    <ComingSoon
-                      featureName="Prompts Playground"
-                      description="Experiment with and test different prompts in an interactive playground environment."
-                    />
+                    <PromptsPlayground />
                   </TaskLayout>
                 </ProtectedRoute>
               }
