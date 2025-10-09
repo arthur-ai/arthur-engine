@@ -136,7 +136,10 @@ def get_all_agentic_prompt_versions(
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_agentic_prompt(run_config: AgenticPromptUnsavedRunConfig):
+def run_agentic_prompt(
+    run_config: AgenticPromptUnsavedRunConfig,
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
     try:
         agentic_prompt_service = AgenticPromptRepository(None)
         return agentic_prompt_service.run_unsaved_prompt(run_config)

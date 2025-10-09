@@ -186,6 +186,7 @@ def test_run_agentic_prompt_success(
     response = client.base_client.post(
         f"/v1/completions",
         json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
 
