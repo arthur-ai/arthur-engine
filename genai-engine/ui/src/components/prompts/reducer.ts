@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import {
   MessageType,
   messageRoleEnum,
+  ModelParametersType,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
@@ -51,7 +52,7 @@ const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
 
 const newMessage = (
   role: string = messageRoleEnum.USER,
-  content: string = "Change me",
+  content: string = "Change me"
 ): MessageType => createMessage({ role, content });
 
 const duplicateMessage = (original: MessageType): MessageType =>
@@ -66,12 +67,36 @@ const hydrateMessage = (data: Partial<MessageType>): MessageType =>
 /***************************
  * Prompt factory functions *
  ***************************/
+const createModelParameters = (
+  overrides: Partial<ModelParametersType> = {}
+): ModelParametersType => ({
+  temperature: 1,
+  top_p: 1,
+  timeout: null,
+  stream: false,
+  stream_options: null,
+  max_tokens: null,
+  max_completion_tokens: null,
+  frequency_penalty: 0,
+  presence_penalty: 0,
+  stop: null,
+  seed: null,
+  reasoning_effort: "",
+  logprobs: null,
+  top_logprobs: null,
+  logit_bias: null,
+  thinking: null,
+  ...overrides,
+});
+
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   id: generateId(),
   classification: promptClassificationEnum.DEFAULT,
   name: "",
+  modelName: "",
   provider: providerEnum.OPENAI,
   messages: [newMessage()],
+  modelParameters: createModelParameters(),
   outputField: "",
   ...overrides,
 });
@@ -116,7 +141,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
     case "duplicatePrompt": {
       const { id } = action.payload;
       const originalIndex = state.prompts.findIndex(
-        (prompt) => prompt.id === id,
+        (prompt) => prompt.id === id
       );
 
       const originalPrompt = state.prompts[originalIndex];
@@ -127,7 +152,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         prompts: arrayUtils.duplicateAfter(
           state.prompts,
           originalIndex,
-          duplicatedPrompt,
+          duplicatedPrompt
         ),
       };
     }
@@ -145,7 +170,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         prompts: state.prompts.map((prompt) =>
           prompt.id === parentId
             ? { ...prompt, messages: [...prompt.messages, newMessage()] }
-            : prompt,
+            : prompt
         ),
       };
     }
@@ -159,7 +184,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 ...prompt,
                 messages: prompt.messages.filter((msg) => msg.id !== id),
               }
-            : prompt,
+            : prompt
         ),
       };
     }
@@ -171,13 +196,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           if (prompt.id !== parentId) return prompt;
 
           const messageToDuplicate = prompt.messages.find(
-            (msg) => msg.id === id,
+            (msg) => msg.id === id
           );
           if (!messageToDuplicate) return prompt;
 
           const duplicatedMessage = duplicateMessage(messageToDuplicate);
           const messageIndex = prompt.messages.findIndex(
-            (msg) => msg.id === id,
+            (msg) => msg.id === id
           );
 
           return {
@@ -185,7 +210,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             messages: arrayUtils.duplicateAfter(
               prompt.messages,
               messageIndex,
-              duplicatedMessage,
+              duplicatedMessage
             ),
           };
         }),
@@ -201,7 +226,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 ...prompt,
                 messages: [...prompt.messages, hydrateMessage(messageData)],
               }
-            : prompt,
+            : prompt
         ),
       };
     }
@@ -214,10 +239,10 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, content } : message,
+                  message.id === id ? { ...message, content } : message
                 ),
               }
-            : prompt,
+            : prompt
         ),
       };
     }
@@ -230,10 +255,10 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, role } : message,
+                  message.id === id ? { ...message, role } : message
                 ),
               }
-            : prompt,
+            : prompt
         ),
       };
     }
@@ -251,7 +276,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       // Create new keywords map. Delete keywords by omitting a copy.
       const newKeywords = new Map<string, string>();
       const newKeywordTracker = new Map<string, Array<string>>(
-        state.keywordTracker,
+        state.keywordTracker
       );
 
       // For each keyword array
@@ -274,6 +299,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         keywords: new Map(state.keywords).set(keyword, value),
+      };
+    }
+    case "updateModelParameters": {
+      const { promptId, modelParameters } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) => prompt.id === promptId ? { ...prompt, modelParameters } : prompt),
       };
     }
     default:
