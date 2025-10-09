@@ -1523,6 +1523,8 @@ class Span(BaseModel):
     start_time: datetime
     end_time: datetime
     task_id: Optional[str] = None
+    session_id: Optional[str] = None
+    status_code: str = "Unset"
     raw_data: dict
     created_at: datetime
     updated_at: datetime
@@ -1597,6 +1599,8 @@ class Span(BaseModel):
             start_time=db_span.start_time,
             end_time=db_span.end_time,
             task_id=db_span.task_id,
+            session_id=db_span.session_id,
+            status_code=db_span.status_code,
             raw_data=db_span.raw_data,
             created_at=db_span.created_at,
             updated_at=db_span.updated_at,
@@ -1617,6 +1621,8 @@ class Span(BaseModel):
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
+            session_id=self.session_id,
+            status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -1633,6 +1639,8 @@ class Span(BaseModel):
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
+            session_id=self.session_id,
+            status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -1659,6 +1667,8 @@ class Span(BaseModel):
             start_time=self.start_time,
             end_time=self.end_time,
             task_id=self.task_id,
+            session_id=self.session_id,
+            status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
@@ -1685,6 +1695,8 @@ class Span(BaseModel):
             start_time=span_data["start_time"],
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],
+            session_id=span_data.get("session_id"),
+            status_code=span_data.get("status_code", "Unset"),
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
             updated_at=datetime.now(),

@@ -1,6 +1,8 @@
+import json
 import logging
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Optional, Tuple, Union
 
 from google.protobuf.json_format import MessageToDict
@@ -36,6 +38,11 @@ class TraceIngestionService:
     def process_trace_data(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and return statistics."""
         json_traces = self._grpc_trace_to_dict(trace_data)
+
+        # TODO: REMOVE THIS DEBUG LOGGING - TEMPORARY FOR DEBUGGING PURPOSES
+        # This logs all incoming trace data to a JSONL file for debugging
+        self._debug_log_trace_to_file(json_traces)
+
         spans_data, stats = self._extract_and_process_spans(json_traces)
 
         if spans_data:
@@ -150,6 +157,10 @@ class TraceIngestionService:
         span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
         start_time, end_time = self._extract_timestamps(span_data)
 
+        # Extract and normalize status code
+        span_status_code = span_data.get("status", {}).get("code", "Unset")
+        span_status_code = trace_utils.clean_status_code(span_status_code)
+
         return DatabaseSpan(
             id=str(uuid.uuid4()),
             trace_id=trace_utils.convert_id_to_hex(span_data.get("traceId")),
@@ -160,6 +171,8 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
+            session_id=self._get_attribute_value(span_data, "session.id"),
+            status_code=span_status_code,
             raw_data=span_data,
         )
 
@@ -252,6 +265,27 @@ class TraceIngestionService:
             end_time = trace_utils.timestamp_ns_to_datetime(end_time_ns)
 
         return start_time, end_time
+
+    def _debug_log_trace_to_file(self, json_traces: dict):
+        """
+        TODO: REMOVE THIS METHOD - TEMPORARY DEBUG LOGGING
+
+        Logs raw trace data to a JSONL file for debugging purposes.
+        Each line contains one complete trace record.
+        """
+        try:
+            # Create debug log file path
+            debug_file = Path("arthur_trace_debug.jsonl")
+
+            # Append raw trace data to JSONL file
+            with open(debug_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(json_traces, default=str) + "\n")
+
+            logger.debug(f"Debug logged trace data to {debug_file}")
+
+        except Exception as e:
+            # Don't let debug logging break the main flow
+            logger.warning(f"Failed to write debug trace log: {e}")
 
     def _store_spans(self, spans: list[DatabaseSpan], commit: bool = True):
         """Store spans in the database with optional commit control."""

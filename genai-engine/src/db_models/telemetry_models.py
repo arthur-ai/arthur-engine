@@ -74,6 +74,12 @@ class DatabaseSpan(Base):
         nullable=True,
         index=True,
     )
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    status_code: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=text("'Unset'"),
+    )
     raw_data: Mapped[dict] = mapped_column(
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=False,

@@ -321,6 +321,24 @@ def extract_llm_data(attributes):
         "invocation_parameters": None,
         "input_conversation": [],
         "output_conversation": [],
+        "function_call": None,
+        "prompts": None,
+        "prompt_template": {
+            "template": None,
+            "variables": None,
+            "version": None,
+        },
+        "token_count": {
+            "prompt": None,
+            "completion": None,
+            "total": None,
+        },
+        "tool": {
+            "name": None,
+            "description": None,
+            "parameters": None,
+        },
+        "retrieval_documents": None,
     }
 
     # Extract input if it exists and is JSON
@@ -346,6 +364,50 @@ def extract_llm_data(attributes):
     if "llm.invocation_parameters" in attributes:
         llm_data["invocation_parameters"] = json_to_dict(
             attributes["llm.invocation_parameters"],
+        )
+
+    # Extract function call
+    if "llm.function_call" in attributes:
+        llm_data["function_call"] = json_to_dict(attributes["llm.function_call"])
+
+    # Extract prompts
+    if "llm.prompts" in attributes:
+        llm_data["prompts"] = json_to_dict(attributes["llm.prompts"])
+
+    # Extract prompt template attributes
+    if "llm.prompt_template.template" in attributes:
+        llm_data["prompt_template"]["template"] = attributes[
+            "llm.prompt_template.template"
+        ]
+    if "llm.prompt_template.variables" in attributes:
+        llm_data["prompt_template"]["variables"] = json_to_dict(
+            attributes["llm.prompt_template.variables"],
+        )
+    if "llm.prompt_template.version" in attributes:
+        llm_data["prompt_template"]["version"] = attributes[
+            "llm.prompt_template.version"
+        ]
+
+    # Extract token counts
+    if "llm.token_count.prompt" in attributes:
+        llm_data["token_count"]["prompt"] = attributes["llm.token_count.prompt"]
+    if "llm.token_count.completion" in attributes:
+        llm_data["token_count"]["completion"] = attributes["llm.token_count.completion"]
+    if "llm.token_count.total" in attributes:
+        llm_data["token_count"]["total"] = attributes["llm.token_count.total"]
+
+    # Extract tool attributes
+    if "tool.name" in attributes:
+        llm_data["tool"]["name"] = attributes["tool.name"]
+    if "tool.description" in attributes:
+        llm_data["tool"]["description"] = attributes["tool.description"]
+    if "tool.parameters" in attributes:
+        llm_data["tool"]["parameters"] = json_to_dict(attributes["tool.parameters"])
+
+    # Extract retrieval documents
+    if "retrieval.documents" in attributes:
+        llm_data["retrieval_documents"] = json_to_dict(
+            attributes["retrieval.documents"],
         )
 
     def extract_tool_calls(attributes, base_key):
@@ -527,3 +589,17 @@ def json_to_dict(json_str):
         return json.loads(json_str)
     except json.JSONDecodeError:
         return json_str
+
+
+def clean_status_code(status_code: str) -> str:
+    """
+    Clean a status code string by converting to OTEL Semantic Conventions format.
+    """
+    if status_code == "STATUS_CODE_OK":
+        return "Ok"
+    elif status_code == "STATUS_CODE_ERROR":
+        return "Error"
+    elif status_code == "STATUS_CODE_UNSET":
+        return "Unset"
+    else:
+        return status_code

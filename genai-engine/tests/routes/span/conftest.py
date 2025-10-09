@@ -143,6 +143,7 @@ def _create_span(
     model_name="gpt-4",
     parent_span_id=None,
     status=None,
+    session_id=None,
 ):
     """Helper function to create a span with specified type and optional parent ID."""
     span = Span(status=status)
@@ -183,6 +184,12 @@ def _create_span(
             value=AnyValue(string_value=metadata_str),
         ),
     )
+
+    # Add session_id if provided
+    if session_id:
+        attributes.append(
+            KeyValue(key="session.id", value=AnyValue(string_value=session_id)),
+        )
 
     span.attributes.extend(attributes)
     return span
