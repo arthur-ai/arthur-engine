@@ -3451,7 +3451,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
             }
         },
         "/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}": {
