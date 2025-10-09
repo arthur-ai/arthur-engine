@@ -65,16 +65,21 @@ const OutputField = ({
     setIsOpen(false);
   };
 
+  const handleCancel = () => {
+    handleClose();
+    setCopiedFormat(responseFormat);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCopiedFormat(e.target.value);
   };
 
   const handleSave = () => {
+    handleClose();
     dispatch({
       type: "updateResponseFormat",
       payload: { promptId, responseFormat: copiedFormat },
     });
-    handleClose();
   };
 
   return (
@@ -140,7 +145,7 @@ const OutputField = ({
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleCancel}>Cancel</Button>
           <Button onClick={handleSave}>Save</Button>
         </DialogActions>
       </Dialog>
