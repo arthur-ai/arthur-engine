@@ -1295,7 +1295,7 @@ class Embedding(BaseModel):
     document_id: str
     text: str
     seq_num: int
-    embedding: List[float]
+    embedding: str
     owner_id: Optional[str] = None
 
     @classmethod
@@ -1305,7 +1305,7 @@ class Embedding(BaseModel):
             document_id=e.document_id,
             text=e.text,
             seq_num=e.seq_num,
-            embedding=list(e.embedding),
+            embedding=e.embedding,
             owner_id=e.documents.owner_id,
         )
 

@@ -1,20 +1,9 @@
 import json
 import logging
-import os
 
-import pgvector.sqlalchemy
 import sqlalchemy.types as types
-from sqlalchemy import String, TypeDecorator
 
 logger = logging.getLogger(__name__)
-
-
-def is_pgvector_enabled() -> bool:
-    """Check if pgvector functionality is enabled via environment variables"""
-    return (
-        os.environ.get("GENAI_ENGINE_CHAT_ENABLED") == "enabled"
-        or os.environ.get("CHAT_ENABLED") == "enabled"
-    )
 
 
 class JsonType(types.TypeDecorator):
@@ -40,25 +29,3 @@ class RoleType(JsonType):
             return roles
         else:
             return []
-
-
-class ConditionalVectorType(TypeDecorator):
-    """Vector type that falls back to String if pgvector isn't available"""
-
-    impl = String
-
-    def __init__(self, dimension, **kwargs):
-        self.dimension = dimension
-        super().__init__(**kwargs)
-
-    def load_dialect_impl(self, dialect):
-        # Check if we're in an environment that supports vector
-        if is_pgvector_enabled():
-            try:
-                # Try to use vector type
-                return pgvector.sqlalchemy.Vector(self.dimension)
-            except:
-                pass
-
-        # Fall back to String
-        return String()

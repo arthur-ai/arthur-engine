@@ -15,7 +15,6 @@ from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
-    index,
 )
 from db_models.inference_models import (
     DatabaseInference,
@@ -92,7 +91,3 @@ __all__ = [
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
 ]
-
-# Conditionally add index to exports if it exists
-if index is not None:
-    __all__.append("index")
