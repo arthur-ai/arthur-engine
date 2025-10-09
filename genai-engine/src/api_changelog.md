@@ -2,6 +2,21 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/09/2025
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  api path removed without deprecation
+- **CHANGE** for **URL**: /v1/completions  endpoint added
+- **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+
 # 10/07/2025
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  endpoint added

@@ -9,8 +9,10 @@ from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from repositories.agentic_prompts_repository import (
     AgenticPrompt,
     AgenticPromptRepository,
+    AgenticPromptRunConfig,
     AgenticPromptRunResponse,
     AgenticPrompts,
+    AgenticPromptUnsavedRunConfig,
 )
 
 
@@ -48,6 +50,12 @@ def sample_agentic_prompt(sample_prompt_data):
 
 
 @pytest.fixture
+def sample_unsaved_run_config(sample_prompt_data):
+    """Create sample AgenticPrompt instance"""
+    return AgenticPromptUnsavedRunConfig(**sample_prompt_data)
+
+
+@pytest.fixture
 def sample_db_prompt(sample_prompt_data):
     """Create sample DatabaseAgenticPrompt instance"""
     task_id = str(uuid4())
@@ -75,7 +83,7 @@ def test_run_prompt(
     mock_completion_cost,
     mock_completion,
     agentic_prompt_repo,
-    sample_agentic_prompt,
+    sample_unsaved_run_config,
 ):
     """Test running a prompt and getting response"""
     # Mock completion response
@@ -88,7 +96,7 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    result = agentic_prompt_repo.run_prompt(sample_agentic_prompt)
+    result = agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -99,8 +107,8 @@ def test_run_prompt(
     mock_completion.assert_called_once()
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
-    assert call_args["messages"] == sample_agentic_prompt.messages
-    assert call_args["temperature"] == sample_agentic_prompt.temperature
+    assert call_args["messages"] == sample_unsaved_run_config.messages
+    assert call_args["temperature"] == sample_unsaved_run_config.temperature
 
 
 @pytest.mark.unit_tests
@@ -394,3 +402,66 @@ def test_agentic_prompt_run_chat_completion(
     mock_completion.assert_called_once()
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "message,variables,expected_message",
+    [
+        (
+            "What is the capital of {{country}}?",
+            {"country": "France"},
+            "What is the capital of France?",
+        ),
+        (
+            "What is the capital of {{country}}?",
+            {"city": "Paris"},
+            "What is the capital of {{country}}?",
+        ),
+        (
+            "What is the capital of {country}?",
+            {"country": "France"},
+            "What is the capital of {country}?",
+        ),
+        (
+            "What is the capital of country?",
+            {"country": "France"},
+            "What is the capital of country?",
+        ),
+        (
+            "What is the capital of {{}}?",
+            {"country": "France"},
+            "What is the capital of {{}}?",
+        ),
+        (
+            "What is the capital of {{}}?",
+            {"country": "France"},
+            "What is the capital of {{}}?",
+        ),
+        (
+            "User {{user_id}} has {{item_count}} items",
+            {"user_id": "123", "item_count": "5"},
+            "User 123 has 5 items",
+        ),
+        ("{{first}}{{second}}", {"first": "Hello", "second": "World"}, "HelloWorld"),
+        ("{{first}} {{first}}", {"first": "Hello", "second": "World"}, "Hello Hello"),
+        ("{{{name}}}", {"name": "Alice"}, "{Alice}"),
+        ("{{     name     }}", {"name": "Alice"}, "Alice"),
+        (
+            "This is a message without variables",
+            {},
+            "This is a message without variables",
+        ),
+        (
+            "This is a message without variables",
+            None,
+            "This is a message without variables",
+        ),
+    ],
+)
+def test_agentic_prompt_variable_replacement(message, variables, expected_message):
+    """Test running unsaved prompt with variables"""
+    prompt = AgenticPromptRunConfig(variables=variables)
+    message = [{"role": "user", "content": message}]
+    result = prompt.replace_variables(message)
+    assert result[0]["content"] == expected_message
