@@ -35,7 +35,7 @@ arthur-genai-engine:
   # GPU deployment - Uncomment the below 4 lines
   #gpuEnabled: true
   #genaiEngineDeploymentType: "daemonset"
-  #genaiEngineWorkers: 5
+  #genaiEngineWorkers: 2
   #genaiEngineContainerImageLocation: "arthurplatform/genai-engine-gpu"
   arthurGenaiEngineHPA:
     # Set it to 'false' for GPU deployment
