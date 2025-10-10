@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
+from uuid import UUID
 
 from arthur_common.models.response_schemas import ExternalInference
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -32,3 +33,62 @@ class ConversationResponse(ConversationBaseResponse):
 class HealthResponse(BaseModel):
     message: str
     build_version: Optional[str] = None
+
+
+class DatasetResponse(BaseModel):
+    id: UUID = Field(description="ID of the dataset.")
+    name: str = Field(
+        description="Name of the dataset.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the dataset.",
+    )
+    metadata: Optional[dict] = Field(
+        default=None,
+        description="Any metadata to include that describes additional information about the dataset.",
+    )
+    created_at: int = Field(
+        description="Timestamp representing the time of dataset creation in unix milliseconds.",
+    )
+    updated_at: int = Field(
+        description="Timestamp representing the time of the last dataset update in unix milliseconds.",
+    )
+
+
+class SearchDatasetsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of datasets matching the parameters.",
+    )
+    datasets: list[DatasetResponse] = Field(
+        description="List of datasets matching the search filters. Length is less than or equal to page_size parameter",
+    )
+
+
+class DatasetVersionRowColumnItemResponse(BaseModel):
+    column_name: str = Field(description="Name of the column.")
+    column_value: str = Field(description="Value of the column.")
+
+
+class DatasetVersionRowResponse(BaseModel):
+    id: UUID = Field(description="ID of the version field.")
+    data: List[DatasetVersionRowColumnItemResponse] = Field(
+        description="List of column names and values in the row.",
+    )
+
+
+class DatasetVersionResponse(BaseModel):
+    version_number: int = Field(description="Version number of the dataset version.")
+    dataset_id: UUID = Field(description="ID of the dataset.")
+    created_at: int = Field(
+        description="Timestamp representing the time of dataset version creation in unix milliseconds.",
+    )
+    rows: list[DatasetVersionRowResponse] = Field(
+        description="list of rows in the dataset version.",
+    )
+    page: int = Field(description="The current page number for the included rows.")
+    page_size: int = Field(description="The number of rows per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of rows in the dataset version.",
+    )

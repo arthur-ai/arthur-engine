@@ -54,6 +54,18 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
+from schemas.request_schemas import (
+    DatasetUpdateRequest,
+    NewDatasetRequest,
+    NewDatasetVersionRequest,
+    NewDatasetVersionRowRequest,
+    NewDatasetVersionUpdateRowRequest,
+)
+from schemas.response_schemas import (
+    DatasetResponse,
+    DatasetVersionResponse,
+    SearchDatasetsResponse,
+)
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -858,6 +870,127 @@ class GenaiEngineTestClientBase(httpx.Client):
 
         return resp.status_code
 
+    def create_dataset(
+        self,
+        name: str,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = NewDatasetRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.post(
+            "/api/v2/datasets",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset(self, dataset_id: str) -> tuple[int, DatasetResponse]:
+        resp = self.base_client.get(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_dataset(
+        self,
+        dataset_id: str,
+        name: str = None,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = DatasetUpdateRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v2/datasets/{dataset_id}",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_dataset(self, dataset_id: str) -> int:
+        resp = self.base_client.delete(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def search_datasets(
+        self,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        dataset_ids: list[str] = None,
+        dataset_name: str = None,
+    ) -> tuple[int, SearchDatasetsResponse]:
+        """Search datasets with optional filters and pagination."""
+        path = "api/v2/datasets/search?"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if dataset_ids:
+            params["dataset_ids"] = dataset_ids
+        if dataset_name:
+            params["dataset_name"] = dataset_name
+
+        resp = self.base_client.get(
+            "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchDatasetsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
     def send_chat(
         self,
         user_prompt: str,
@@ -1549,6 +1682,79 @@ class GenaiEngineTestClientBase(httpx.Client):
                 QuerySpansResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
+            ),
+        )
+
+    def create_dataset_version(
+        self,
+        dataset_id: str,
+        rows_to_add: list[NewDatasetVersionRowRequest] = None,
+        rows_to_delete: list[str] = None,
+        rows_to_update: list[NewDatasetVersionUpdateRowRequest] = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Create a new dataset version."""
+        if rows_to_add is None:
+            rows_to_add = []
+        if rows_to_delete is None:
+            rows_to_delete = []
+        if rows_to_update is None:
+            rows_to_update = []
+
+        request = NewDatasetVersionRequest(
+            rows_to_add=rows_to_add,
+            rows_to_delete=rows_to_delete,
+            rows_to_update=rows_to_update,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Get a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
             ),
         )
 

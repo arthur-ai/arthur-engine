@@ -123,7 +123,7 @@ Maks sure the Poetry install is complete and you have a running Postgres instanc
 export POSTGRES_USER=postgres
 export POSTGRES_PASSWORD=changeme_pg_password
 export POSTGRES_URL=localhost
-export POSTGRES_PORT=5435
+export POSTGRES_PORT=5432
 export POSTGRES_DB=arthur_genai_engine
 export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
@@ -284,3 +284,6 @@ Follow the steps below to run performance tests:
 ## Generate Changelog
 
 `poetry run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.
+
+If you can't install torch on your computer and want to generate the changelog from a container, run
+`docker compose up -d changelog-generator` from the genai-engine directory instead.
