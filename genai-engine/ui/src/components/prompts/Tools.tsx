@@ -2,12 +2,50 @@ import Editor from "@monaco-editor/react";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Accordion, AccordionSummary, Collapse } from "@mui/material";
+import {
+  Accordion,
+  AccordionSummary,
+  Collapse,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+} from "@mui/material";
 import { AccordionDetails } from "@mui/material";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { PromptAction, PromptType } from "./types";
+
+// Helper function to render tool choice options consistently
+const renderToolChoiceOption = (value: string, toolName?: string) => {
+  const isSpecificTool = !["auto", "none", "required"].includes(value);
+
+  const textMap: Record<string, string> = {
+    auto: "Let LLM decide",
+    none: "Don't use tools",
+    required: "Use one or more tools",
+  };
+
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <span>{textMap[value] || toolName || value}</span>
+      <Chip
+        label={isSpecificTool ? "tool" : value}
+        size="small"
+        sx={{
+          backgroundColor: isSpecificTool ? "#dbeafe" : "#e5e7eb",
+          color: isSpecificTool ? "#1e40af" : "#374151",
+          height: "20px",
+          fontSize: "0.75rem",
+        }}
+      />
+    </Box>
+  );
+};
 
 const Tools = ({
   dispatch,
@@ -83,6 +121,16 @@ const Tools = ({
     [dispatch, prompt.id]
   );
 
+  const handleToolChoiceChange = useCallback(
+    (event: SelectChangeEvent) => {
+      dispatch({
+        type: "updateToolChoice",
+        payload: { promptId: prompt.id, toolChoice: event.target.value },
+      });
+    },
+    [dispatch, prompt.id]
+  );
+
   const handleToolChange = useCallback(
     (toolId: string, newValue: string) => {
       try {
@@ -105,12 +153,12 @@ const Tools = ({
     [dispatch, prompt.id]
   );
 
-  const pointerClasse =
+  const pointerClass =
     prompt.tools.length > 0 ? "cursor-pointer" : "cursor-default";
   return (
     <>
       <div
-        className={`flex justify-between items-center ${pointerClasse}`}
+        className={`flex justify-between items-center ${pointerClass}`}
         onClick={handleToggleTools}
       >
         <div className="flex items-center gap-2">
@@ -127,6 +175,50 @@ const Tools = ({
         </Button>
       </div>
       <Collapse in={toolsExpanded}>
+      <div className="mt-2 mb-3 px-2">
+          <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
+            <InputLabel>Tool Choice</InputLabel>
+            <Select
+              value={prompt.toolChoice}
+              label="Tool Choice"
+              onChange={handleToolChoiceChange}
+              renderValue={(selected) => {
+                if (["auto", "none", "required"].includes(selected)) {
+                  return renderToolChoiceOption(selected);
+                } else {
+                  const selectedTool = prompt.tools.find(
+                    (tool) => tool.id === selected
+                  );
+                  return selectedTool
+                    ? renderToolChoiceOption(
+                        selected,
+                        selectedTool.function.name
+                      )
+                    : selected;
+                }
+              }}
+              sx={{
+                backgroundColor: "white",
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "white",
+                },
+              }}
+            >
+              <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
+              <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
+              <MenuItem value="required">
+                {renderToolChoiceOption("required")}
+              </MenuItem>
+              {prompt.tools.length > 0 && [
+                ...prompt.tools.map((tool) => (
+                  <MenuItem key={tool.id} value={tool.id}>
+                    {renderToolChoiceOption(tool.id, tool.function.name)}
+                  </MenuItem>
+                )),
+              ]}
+            </Select>
+          </FormControl>
+        </div>
         <div className="space-y-2 mt-2">
           {prompt.tools.map((tool) => (
             <Accordion

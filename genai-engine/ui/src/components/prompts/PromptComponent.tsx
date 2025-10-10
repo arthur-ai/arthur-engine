@@ -3,11 +3,6 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
-import Accordion from "@mui/material/Accordion";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -53,13 +48,6 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
     setProvider(event.target.value);
   };
 
-  const handleToolChoiceChange = useCallback((event: SelectChangeEvent) => {
-    dispatch({
-      type: "updateToolChoice",
-      payload: { promptId: prompt.id, toolChoice: event.target.value },
-    });
-  }, [dispatch, prompt.id]);
-
   const handleDeletePrompt = useCallback(() => {
     dispatch({
       type: "deletePrompt",
@@ -84,59 +72,6 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const handleParamsModelOpen = useCallback(() => {
     setParamsModelOpen(true);
   }, []);
-
-  const handleDeleteTool = useCallback((toolId: string) => {
-    dispatch({
-      type: "deleteTool",
-      payload: { parentId: prompt.id, toolId },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleToolChange = useCallback((toolId: string, newValue: string) => {
-    try {
-      const parsedTool = JSON.parse(newValue);
-      dispatch({
-        type: "updateTool",
-        payload: { 
-          parentId: prompt.id, 
-          toolId, 
-          tool: {
-            ...parsedTool,
-            id: toolId
-          }
-        },
-      });
-    } catch (error) {
-      console.error("Invalid JSON:", error);
-    }
-  }, [dispatch, prompt.id]);
-
-  // Helper function to render tool choice options consistently
-  const renderToolChoiceOption = (value: string, toolName?: string) => {
-    const isSpecificTool = !["auto", "none", "required"].includes(value);
-    
-    const textMap: Record<string, string> = {
-      auto: "Let LLM decide",
-      none: "Don't use tools", 
-      required: "Use one or more tools"
-    };
-
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <span>{textMap[value] || toolName || value}</span>
-        <Chip 
-          label={isSpecificTool ? "tool" : value}
-          size="small" 
-          sx={{ 
-            backgroundColor: isSpecificTool ? '#dbeafe' : '#e5e7eb',
-            color: isSpecificTool ? '#1e40af' : '#374151',
-            height: '20px', 
-            fontSize: '0.75rem' 
-          }} 
-        />
-      </Box>
-    );
-  };
 
   return (
     <div className="bg-purple-500 min-h-[500px]">
