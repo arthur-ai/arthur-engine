@@ -17,6 +17,15 @@ const PromptsPlayground = () => {
     dispatch({ type: "addPrompt" });
   }, [dispatch]);
 
+  const handleAddTool = useCallback(() => {
+    if (state.prompts.length > 0) {
+      dispatch({ 
+        type: "addTool", 
+        payload: { parentId: state.prompts[0].id } 
+      });
+    }
+  }, [dispatch, state.prompts]);
+
   const handleKeywordValueChange = useCallback(
     (keyword: string, value: string) => {
       dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
@@ -38,7 +47,7 @@ const PromptsPlayground = () => {
             <Button variant="contained" size="small" onClick={() => {}}>
               Output Schemas
             </Button>
-            <Button variant="contained" size="small" onClick={() => {}}>
+            <Button variant="contained" size="small" onClick={handleAddTool}>
               Tools
             </Button>
           </div>

@@ -16,6 +16,23 @@ const providerEnum = {
   AZURE: "azure",
 };
 
+type PromptTool = {
+  id: string;
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: {
+      type: "object";
+      properties: Record<string, {
+        type: string;
+        description?: string;
+      }>;
+      required: string[];
+    };
+  };
+};
+
 const reasoningEffortEnum = {
   NONE: "none",
   MINIMAL: "minimal",
@@ -60,6 +77,18 @@ type PromptAction =
   | {
       type: "updateResponseFormat";
       payload: { promptId: string; responseFormat: string | null };
+  | { type: "addTool"; 
+      payload: { parentId: string } 
+    }
+  | { type: "deleteTool"; 
+      payload: { parentId: string; toolId: string } 
+    }
+  | {
+      type: "updateTool";
+      payload: { parentId: string; toolId: string; tool: Partial<PromptTool> };
+    }
+  | { type: "expandTools"; 
+      payload: { parentId: string } 
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -100,7 +129,7 @@ type PromptType = {
   modelParameters: ModelParametersType;
   outputField: string;
   responseFormat: string | null;
-  // tools: ToolType[]; // TODO
+  tools: PromptTool[];
   // toolChoice: ?; // TODO
   // tags: Array<string>; // TODO
 };
@@ -144,4 +173,5 @@ export {
   promptClassificationEnum,
   reasoningEffortEnum,
   OutputFieldProps,
+  PromptTool,
 };
