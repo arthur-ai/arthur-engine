@@ -1,439 +1,229 @@
-import React, { useState, useEffect } from "react";
+import Box from "@mui/material/Box";
+import LinearProgress from "@mui/material/LinearProgress";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TableSortLabel from "@mui/material/TableSortLabel";
+import Typography from "@mui/material/Typography";
+import { useThrottler } from "@tanstack/react-pacer";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
+  useReactTable,
+} from "@tanstack/react-table";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import { TraceDetailsPanel } from "./TraceDetailsPanel";
+import { TraceDrawer } from "./traces/components/TraceDrawer";
+import { columns } from "./traces/data/columns";
+import { useTracesStore } from "./traces/store";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { TraceResponse } from "@/lib/api";
+import { TraceResponse } from "@/lib/api-client/api-client";
+import { getFilteredTraces } from "@/services/tracing";
+
+const DEFAULT_DATA: TraceResponse[] = [];
+const FETCH_SIZE = 20;
 
 export const TracesView: React.FC = () => {
   const api = useApi();
   const { task } = useTask();
-  const [traces, setTraces] = useState<TraceResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState("Past 24 hours");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPageCount, setCurrentPageCount] = useState(0);
-  const [selectedTrace, setSelectedTrace] = useState<TraceResponse | null>(
-    null
+  const tableContainerRef = useRef(null);
+
+  const [, store] = useTracesStore(() => null);
+
+  const { data, fetchNextPage, isFetching } = useInfiniteQuery({
+    queryKey: ["traces", { api, taskId: task?.id }],
+    queryFn: ({ pageParam = 0 }) => {
+      return getFilteredTraces(api!, {
+        taskId: task?.id ?? "",
+        page: pageParam as number,
+        pageSize: FETCH_SIZE,
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (_, __, lastPageParam = 0) => {
+      return lastPageParam + 1;
+    },
+    refetchOnWindowFocus: false,
+    placeholderData: keepPreviousData,
+  });
+
+  const flatData = useMemo(
+    () => data?.pages?.flatMap((page) => page.traces) ?? [],
+    [data]
   );
-  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
+
+  const totalDBRowCount = data?.pages?.[0]?.count ?? 0;
+  const totalFetched = flatData.length;
+
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "start_time", desc: true },
+  ]);
+
+  const table = useReactTable({
+    data: flatData ?? DEFAULT_DATA, // Use test data to verify scrolling
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    debugTable: true,
+    debugHeaders: true,
+    debugColumns: true,
+  });
+
+  const scrollThrottler = useThrottler(
+    (containerRef?: HTMLDivElement | null) => {
+      console.log("scrollThrottler");
+      if (containerRef) {
+        const { scrollHeight, scrollTop, clientHeight } = containerRef;
+        const offset = scrollHeight - scrollTop - clientHeight;
+
+        if (offset < 50 && !isFetching && totalDBRowCount >= FETCH_SIZE)
+          fetchNextPage();
+      }
+    },
+    {
+      wait: 100,
+    }
+  );
 
   useEffect(() => {
-    const fetchTraces = async () => {
-      if (!api || !task) {
-        setError("API client or task not available");
-        setLoading(false);
-        return;
-      }
+    scrollThrottler.flush();
+    scrollThrottler.maybeExecute(tableContainerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Calculate time range based on filter
-        const startTime = new Date();
-        switch (timeFilter) {
-          case "Past 5 minutes":
-            startTime.setMinutes(startTime.getMinutes() - 5);
-            break;
-          case "Past 30 minutes":
-            startTime.setMinutes(startTime.getMinutes() - 30);
-            break;
-          case "Past 1 hour":
-            startTime.setHours(startTime.getHours() - 1);
-            break;
-          case "Past 24 hours":
-            startTime.setDate(startTime.getDate() - 1);
-            break;
-          case "Past 7 days":
-            startTime.setDate(startTime.getDate() - 7);
-            break;
-          case "Past 30 days":
-            startTime.setDate(startTime.getDate() - 30);
-            break;
-        }
-
-        const response = await api.v1.querySpansV1TracesQueryGet({
-          task_ids: [task.id],
-          page: currentPage,
-          page_size: pageSize,
-          sort: "desc",
-          start_time: startTime.toISOString(),
-        });
-
-        const tracesData = response.data.traces || [];
-        setTraces(tracesData);
-
-        // API returns count of traces on current page, not total count
-        const pageCount = response.data.count || tracesData.length;
-        setCurrentPageCount(pageCount);
-
-        // If we got a full page, assume there might be more pages
-        // If we got less than a full page, this is the last page
-        setTotalCount(pageCount);
-      } catch (err) {
-        console.error("Failed to fetch traces:", err);
-        setError("Failed to load traces");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTraces();
-  }, [api, task, currentPage, pageSize, timeFilter]);
-
-  const formatTimestamp = (timestamp: string) => {
-    try {
-      // Ensure the timestamp is treated as UTC by adding 'Z' if not present
-      const utcTimestamp = timestamp.endsWith("Z")
-        ? timestamp
-        : timestamp + "Z";
-      const date = new Date(utcTimestamp);
-      if (isNaN(date.getTime())) {
-        console.warn("Invalid timestamp:", timestamp);
-        return "Invalid Date";
-      }
-      return date.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false, // Use 24-hour format
-        timeZoneName: "short", // Show timezone abbreviation
-      });
-    } catch (error) {
-      console.error("Error formatting timestamp:", timestamp, error);
-      return "Invalid Date";
-    }
-  };
-
-  const formatDuration = (startTime: string, endTime: string) => {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const durationMs = end.getTime() - start.getTime();
-
-    if (durationMs < 1000) {
-      return `${durationMs}ms`;
-    } else if (durationMs < 60000) {
-      return `${(durationMs / 1000).toFixed(2)}s`;
-    } else {
-      const minutes = Math.floor(durationMs / 60000);
-      const seconds = Math.floor((durationMs % 60000) / 1000);
-      return `${minutes}m ${seconds}s`;
-    }
-  };
-
-  const getSpanName = (trace: TraceResponse) => {
-    if (trace.root_spans && trace.root_spans.length > 0) {
-      return trace.root_spans[0].span_name || "Unknown";
-    }
-    return "Unknown";
-  };
-
-  const getInputContent = (trace: TraceResponse) => {
-    if (trace.root_spans && trace.root_spans.length > 0) {
-      const span = trace.root_spans[0];
-      if (
-        span.raw_data &&
-        span.raw_data.attributes &&
-        span.raw_data.attributes["input.value"]
-      ) {
-        return span.raw_data.attributes["input.value"];
-      }
-    }
-    return "No input data";
-  };
-
-  const getOutputContent = (trace: TraceResponse) => {
-    if (trace.root_spans && trace.root_spans.length > 0) {
-      const span = trace.root_spans[0];
-      if (
-        span.raw_data &&
-        span.raw_data.attributes &&
-        span.raw_data.attributes["output.value"]
-      ) {
-        return span.raw_data.attributes["output.value"];
-      }
-    }
-    return "No output data";
-  };
-
-  const getTokenCount = (trace: TraceResponse) => {
-    if (trace.root_spans && trace.root_spans.length > 0) {
-      const span = trace.root_spans[0];
-      if (span.raw_data && span.raw_data.tokens) {
-        return span.raw_data.tokens;
-      }
-    }
-    return 0;
-  };
-
-  const truncateText = (text: string, maxLength: number = 100) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + "...";
-  };
-
-  const handleTraceClick = (trace: TraceResponse) => {
-    setSelectedTrace(trace);
-    setIsDetailsPanelOpen(true);
-  };
-
-  const handleCloseDetailsPanel = () => {
-    setIsDetailsPanelOpen(false);
-    setSelectedTrace(null);
-  };
-
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 mb-2">Error loading traces</div>
-          <div className="text-gray-600">{error}</div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    console.log({ sorting });
+  }, [sorting]);
 
   return (
-    <div
-      className="bg-gray-50 grid grid-rows-[auto_1fr_auto]"
-      style={{ height: "calc(100vh - 90px)" }}
-    >
-      {/* Table Controls */}
-      <div className="bg-white border-b border-gray-200 px-6 py-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">Traces: {totalCount}</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <select
-              value={timeFilter}
-              onChange={(e) => setTimeFilter(e.target.value)}
-              className="block w-40 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="Past 5 minutes">Past 5 minutes</option>
-              <option value="Past 30 minutes">Past 30 minutes</option>
-              <option value="Past 1 hour">Past 1 hour</option>
-              <option value="Past 24 hours">Past 24 hours</option>
-              <option value="Past 7 days">Past 7 days</option>
-              <option value="Past 30 days">Past 30 days</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Traces Table - Scrollable Content */}
-      <div className="overflow-y-auto min-h-0">
-        <div className="bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Input
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Output
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tokens
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {traces.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-6 py-8 text-center text-gray-500"
-                  >
-                    No traces found for the selected time period
-                  </td>
-                </tr>
-              )}
-              {traces.map((trace) => (
-                <tr
-                  key={trace.trace_id}
-                  className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => handleTraceClick(trace)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatTimestamp(trace.start_time)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getSpanName(trace)}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    <div className="truncate">
-                      {truncateText(getInputContent(trace))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    <div className="truncate">
-                      {truncateText(getOutputContent(trace))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDuration(trace.start_time, trace.end_time)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center">
-                      {getTokenCount(trace).toLocaleString()}
-                      <svg
-                        className="h-4 w-4 text-gray-400 ml-1"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+    <>
+      <Box
+        sx={{
+          maxHeight: "calc(100vh - 88px)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          p: 2,
+          gap: 2,
+        }}
+      >
+        <Paper
+          component={Stack}
+          elevation={0}
+          direction="row"
+          spacing={2}
+          justifyContent="flex-end"
+          sx={{
+            py: 1,
+            px: 2,
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontFamily: "monospace" }}
+          >
+            {totalFetched} rows fetched
+          </Typography>
+        </Paper>
+        <TableContainer
+          component={Paper}
+          sx={{ flexGrow: 1 }}
+          ref={tableContainerRef}
+          onScroll={(e) => {
+            scrollThrottler.maybeExecute(e.currentTarget);
+          }}
+        >
+          {isFetching && <LinearProgress />}
+          <Table stickyHeader size="small">
+            <TableHead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableCell
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      sx={{
+                        backgroundColor: "grey.50",
+                      }}
+                      sortDirection={header.column.getIsSorted()}
+                    >
+                      <TableSortLabel
+                        disabled={!header.column.getCanSort()}
+                        active={header.column.getIsSorted() !== false}
+                        direction={header.column.getIsSorted() || undefined}
+                        onClick={() => {
+                          table.setSorting((prev) => [
+                            { id: header.column.id, desc: !prev[0].desc },
+                          ]);
+                        }}
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </td>
-                </tr>
+                        <Box sx={{ width: header.getSize() }}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </Box>
+                      </TableSortLabel>
+                    </TableCell>
+                  ))}
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Pagination - Anchored to Bottom */}
-      <div className="bg-white border-t border-gray-200 px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-700">Rows per page</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(0);
-              }}
-              className="block px-2 py-1 border border-gray-300 rounded text-sm text-black focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-700">
-              Page {currentPage + 1}
-            </span>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => setCurrentPage(0)}
-                disabled={currentPage === 0}
-                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            </TableHead>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  hover
+                  onClick={() => {
+                    store.send({
+                      type: "selectTrace",
+                      id: row.original.trace_id,
+                    });
+                  }}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                disabled={currentPage === 0}
-                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPageCount < pageSize}
-                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPageCount < pageSize}
-                className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Trace Details Panel */}
-      <TraceDetailsPanel
-        trace={selectedTrace}
-        isOpen={isDetailsPanelOpen}
-        onClose={handleCloseDetailsPanel}
-      />
-    </div>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      sx={{
+                        maxWidth: cell.column.getSize(),
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+      <TraceDrawer />
+    </>
   );
 };
