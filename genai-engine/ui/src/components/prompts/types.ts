@@ -24,10 +24,13 @@ type PromptTool = {
     description: string;
     parameters: {
       type: "object";
-      properties: Record<string, {
-        type: string;
-        description?: string;
-      }>;
+      properties: Record<
+        string,
+        {
+          type: string;
+          description?: string;
+        }
+      >;
       required: string[];
     };
   };
@@ -76,20 +79,15 @@ type PromptAction =
     }
   | {
       type: "updateResponseFormat";
-      payload: { promptId: string; responseFormat: string | null };
-  | { type: "addTool"; 
-      payload: { parentId: string } 
+      payload: { promptId: string; responseFormat: string | undefined };
     }
-  | { type: "deleteTool"; 
-      payload: { parentId: string; toolId: string } 
-    }
+  | { type: "addTool"; payload: { promptId: string } }
+  | { type: "deleteTool"; payload: { promptId: string; toolId: string } }
   | {
       type: "updateTool";
       payload: { parentId: string; toolId: string; tool: Partial<PromptTool> };
     }
-  | { type: "expandTools"; 
-      payload: { parentId: string } 
-    };
+  | { type: "expandTools"; payload: { parentId: string } };
 
 // The id is used in the FE, but may not need to be stored in BE.
 type MessageType = {
@@ -127,8 +125,8 @@ type PromptType = {
   provider: string;
   messages: MessageType[];
   modelParameters: ModelParametersType;
-  outputField: string;
-  responseFormat: string | null;
+  outputField: string; // The actual output content
+  responseFormat: string | undefined;
   tools: PromptTool[];
   // toolChoice: ?; // TODO
   // tags: Array<string>; // TODO
@@ -156,7 +154,7 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
-  responseFormat: string | null;
+  responseFormat: string | undefined;
   dispatch: (action: PromptAction) => void;
 }
 

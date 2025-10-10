@@ -1,6 +1,7 @@
+import Editor from "@monaco-editor/react";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DataObjectIcon from "@mui/icons-material/DataObject";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import GeneratingTokensIcon from "@mui/icons-material/GeneratingTokens"; // Probably change in future
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
@@ -11,7 +12,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
-import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
@@ -43,6 +43,15 @@ const SAMPLE_RESPONSE_OBJECT = {
   },
 };
 
+const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
+  {
+    type: "json_schema",
+    schema: {},
+  },
+  null,
+  2
+);
+
 const OutputField = ({
   promptId,
   responseFormat,
@@ -50,7 +59,9 @@ const OutputField = ({
 }: OutputFieldProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [copiedFormat, setCopiedFormat] = useState(responseFormat);
+  const [copiedFormat, setCopiedFormat] = useState<string | undefined>(
+    responseFormat || DEFAULT_RESPONSE_FORMAT
+  );
 
   const handleExpand = () => {
     setIsExpanded((prev) => !prev);
@@ -70,8 +81,8 @@ const OutputField = ({
     setCopiedFormat(responseFormat);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCopiedFormat(e.target.value);
+  const handleChange = (value: string) => {
+    setCopiedFormat(value);
   };
 
   const handleSave = () => {
@@ -89,8 +100,8 @@ const OutputField = ({
         className="flex justify-between cursor-pointer"
       >
         <div className="flex items-center">
+          {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
           <span>Output</span>
-          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </div>
         <div className="flex items-center">
           <Tooltip title="Format Output">
@@ -134,15 +145,26 @@ const OutputField = ({
       <Dialog open={isOpen} onClose={handleClose} fullWidth>
         <DialogTitle>Format Response Output</DialogTitle>
         <DialogContent>
-          <TextField
-            id="output-format"
-            name="output-format"
-            value={copiedFormat}
-            onChange={handleChange}
-            fullWidth
-            multiline
-            rows={5}
-          />
+          <div style={{ height: "300px", width: "100%" }}>
+            <Editor
+              height="300px"
+              defaultLanguage="json"
+              theme="light"
+              value={copiedFormat}
+              onChange={(value) => {
+                if (value) {
+                  handleChange(value);
+                }
+              }}
+              options={{
+                minimap: { enabled: false },
+                lineNumbers: "on",
+                fontSize: 12,
+                tabSize: 2,
+                automaticLayout: true,
+              }}
+            />
+          </div>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
