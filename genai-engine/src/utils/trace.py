@@ -4,6 +4,12 @@ import logging
 import re
 from datetime import datetime
 
+from openinference.semconv.trace import (
+    MessageAttributes,
+    OpenInferenceMimeTypeValues,
+    SpanAttributes,
+)
+
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)
@@ -325,27 +331,29 @@ def extract_llm_data(attributes):
 
     # Extract input if it exists and is JSON
     if (
-        "input.mime_type" in attributes
-        and attributes["input.mime_type"] == "application/json"
+        SpanAttributes.INPUT_MIME_TYPE in attributes
+        and attributes[SpanAttributes.INPUT_MIME_TYPE]
+        == OpenInferenceMimeTypeValues.JSON.value
     ):
-        if "input.value" in attributes:
-            llm_data["input"] = json_to_dict(attributes["input.value"])
+        if SpanAttributes.INPUT_VALUE in attributes:
+            llm_data["input"] = json_to_dict(attributes[SpanAttributes.INPUT_VALUE])
 
     # Extract output if it exists and is JSON
     if (
-        "output.mime_type" in attributes
-        and attributes["output.mime_type"] == "application/json"
+        SpanAttributes.OUTPUT_MIME_TYPE in attributes
+        and attributes[SpanAttributes.OUTPUT_MIME_TYPE]
+        == OpenInferenceMimeTypeValues.JSON.value
     ):
-        if "output.value" in attributes:
-            llm_data["output"] = json_to_dict(attributes["output.value"])
+        if SpanAttributes.OUTPUT_VALUE in attributes:
+            llm_data["output"] = json_to_dict(attributes[SpanAttributes.OUTPUT_VALUE])
 
     # Extract model name
-    llm_data["model_name"] = attributes.get("llm.model_name")
+    llm_data["model_name"] = attributes.get(SpanAttributes.LLM_MODEL_NAME)
 
     # Extract invocation parameters
-    if "llm.invocation_parameters" in attributes:
+    if SpanAttributes.LLM_INVOCATION_PARAMETERS in attributes:
         llm_data["invocation_parameters"] = json_to_dict(
-            attributes["llm.invocation_parameters"],
+            attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS],
         )
 
     def extract_tool_calls(attributes, base_key):
@@ -399,10 +407,18 @@ def extract_llm_data(attributes):
         base_key = f"llm.{message_type}_messages.{msg_idx}.message"
 
         # Extract basic message fields
-        if f"{base_key}.role" in attributes:
-            message["role"] = attributes[f"{base_key}.role"]
-        if f"{base_key}.content" in attributes:
-            content = attributes[f"{base_key}.content"]
+        role_field = MessageAttributes.MESSAGE_ROLE.split(".")[
+            -1
+        ]  # Extract "role" from "message.role"
+        content_field = MessageAttributes.MESSAGE_CONTENT.split(".")[
+            -1
+        ]  # Extract "content" from "message.content"
+        role_key = f"{base_key}.{role_field}"
+        content_key = f"{base_key}.{content_field}"
+        if role_key in attributes:
+            message["role"] = attributes[role_key]
+        if content_key in attributes:
+            content = attributes[content_key]
 
             # If this is a tool message, get the tool name from the queue
             if message.get("role") == "tool" and tool_queue:
@@ -427,7 +443,11 @@ def extract_llm_data(attributes):
     MESSAGE_INDEX_POSITION = 2
 
     # Extract input messages
-    input_keys = [k for k in attributes.keys() if k.startswith("llm.input_messages.")]
+    input_keys = [
+        k
+        for k in attributes.keys()
+        if k.startswith(f"{SpanAttributes.LLM_INPUT_MESSAGES}.")
+    ]
     input_indices = sorted(
         set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in input_keys),
     )
@@ -445,7 +465,11 @@ def extract_llm_data(attributes):
                 tool_queue = []
 
     # Extract output messages
-    output_keys = [k for k in attributes.keys() if k.startswith("llm.output_messages.")]
+    output_keys = [
+        k
+        for k in attributes.keys()
+        if k.startswith(f"{SpanAttributes.LLM_OUTPUT_MESSAGES}.")
+    ]
     output_indices = sorted(
         set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in output_keys),
     )

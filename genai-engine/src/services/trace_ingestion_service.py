@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
@@ -165,7 +166,7 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
-            session_id=self._get_attribute_value(span_data, "session.id"),
+            session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
             status_code=span_status_code,
             raw_data=span_data,
         )
