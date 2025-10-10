@@ -23,6 +23,7 @@
     "@mui/material": "^7.3.3",
     "axios": "^1.12.2",
     "framer-motion": "^12.23.21",
+    "monaco-editor": "^0.54.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.2",

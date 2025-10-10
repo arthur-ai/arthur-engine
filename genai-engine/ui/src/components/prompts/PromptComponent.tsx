@@ -9,6 +9,8 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import Accordion from "@mui/material/Accordion";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -98,6 +100,13 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
     setProvider(event.target.value);
   };
 
+  const handleToolChoiceChange = useCallback((event: SelectChangeEvent) => {
+    dispatch({
+      type: "updateToolChoice",
+      payload: { promptId: prompt.id, toolChoice: event.target.value },
+    });
+  }, [dispatch, prompt.id]);
+
   const handleDeletePrompt = useCallback(() => {
     dispatch({
       type: "deletePrompt",
@@ -148,6 +157,33 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
       console.error("Invalid JSON:", error);
     }
   }, [dispatch, prompt.id]);
+
+  // Helper function to render tool choice options consistently
+  const renderToolChoiceOption = (value: string, toolName?: string) => {
+    const isSpecificTool = !["auto", "none", "required"].includes(value);
+    
+    const textMap: Record<string, string> = {
+      auto: "Let LLM decide",
+      none: "Don't use tools", 
+      required: "Use one or more tools"
+    };
+
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <span>{textMap[value] || toolName || value}</span>
+        <Chip 
+          label={isSpecificTool ? "tool" : value}
+          size="small" 
+          sx={{ 
+            backgroundColor: isSpecificTool ? '#dbeafe' : '#e5e7eb',
+            color: isSpecificTool ? '#1e40af' : '#374151',
+            height: '20px', 
+            fontSize: '0.75rem' 
+          }} 
+        />
+      </Box>
+    );
+  };
 
   return (
     <div className="bg-purple-500 min-h-[500px]">
@@ -290,6 +326,43 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               )}
             </div>
           </div>
+          {toolsExpanded && (
+            <div className="mt-2 mb-3 px-2">
+              <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
+                <InputLabel>Tool Choice</InputLabel>
+                <Select
+                  value={prompt.toolChoice}
+                  label="Tool Choice"
+                  onChange={handleToolChoiceChange}
+                  renderValue={(selected) => {
+                    if (["auto", "none", "required"].includes(selected)) {
+                      return renderToolChoiceOption(selected);
+                    } else {
+                      const selectedTool = prompt.tools.find(tool => tool.id === selected);
+                      return selectedTool ? renderToolChoiceOption(selected, selectedTool.function.name) : selected;
+                    }
+                  }}
+                  sx={{
+                    backgroundColor: 'white',
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                    }
+                  }}
+                >
+                  <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
+                  <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
+                  <MenuItem value="required">{renderToolChoiceOption("required")}</MenuItem>
+                  {prompt.tools.length > 0 && [
+                    ...prompt.tools.map((tool) => (
+                      <MenuItem key={tool.id} value={tool.id}>
+                        {renderToolChoiceOption(tool.id, tool.function.name)}
+                      </MenuItem>
+                    ))
+                  ]}
+                </Select>
+              </FormControl>
+            </div>
+          )}
           {toolsExpanded && (
             <div className="space-y-2 mt-2">
               {prompt.tools.map((tool) => (
