@@ -36,6 +36,13 @@ jobs:
           cache: yarn
           cache-dependency-path: genai-engine/ui/yarn.lock
 
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare Yarn
+        working-directory: genai-engine/ui
+        run: corepack prepare yarn@4.9.2 --activate
+
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
