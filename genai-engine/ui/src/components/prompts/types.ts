@@ -24,10 +24,13 @@ type PromptTool = {
     description: string;
     parameters: {
       type: "object";
-      properties: Record<string, {
-        type: string;
-        description?: string;
-      }>;
+      properties: Record<
+        string,
+        {
+          type: string;
+          description?: string;
+        }
+      >;
       required: string[];
     };
   };
@@ -74,19 +77,17 @@ type PromptAction =
       type: "updateModelParameters";
       payload: { promptId: string; modelParameters: ModelParametersType };
     }
-  | { type: "addTool"; 
-      payload: { parentId: string } 
+  | {
+      type: "updateResponseFormat";
+      payload: { promptId: string; responseFormat: string | undefined };
     }
-  | { type: "deleteTool"; 
-      payload: { parentId: string; toolId: string } 
-    }
+  | { type: "addTool"; payload: { promptId: string } }
+  | { type: "deleteTool"; payload: { promptId: string; toolId: string } }
   | {
       type: "updateTool";
       payload: { parentId: string; toolId: string; tool: Partial<PromptTool> };
     }
-  | { type: "expandTools"; 
-      payload: { parentId: string } 
-    }
+  | { type: "expandTools"; payload: { parentId: string } }
   | {
       type: "updateToolChoice";
       payload: { promptId: string; toolChoice: string };
@@ -128,10 +129,10 @@ type PromptType = {
   provider: string;
   messages: MessageType[];
   modelParameters: ModelParametersType;
-  outputField: string;
+  outputField: string; // The actual output content
+  responseFormat: string | undefined;
   tools: PromptTool[];
   toolChoice: string; // "auto", "none", "required", or tool ID
-  // responseFormat: ?; // TODO
   // tags: Array<string>; // TODO
 };
 
@@ -155,6 +156,12 @@ interface PromptComponentProps {
   dispatch: (action: PromptAction) => void;
 }
 
+interface OutputFieldProps {
+  promptId: string;
+  responseFormat: string | undefined;
+  dispatch: (action: PromptAction) => void;
+}
+
 export {
   messageRoleEnum,
   MessageComponentProps,
@@ -167,5 +174,6 @@ export {
   PromptAction,
   promptClassificationEnum,
   reasoningEffortEnum,
+  OutputFieldProps,
   PromptTool,
 };
