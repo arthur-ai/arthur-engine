@@ -404,17 +404,11 @@ def extract_llm_data(attributes):
     def extract_message(message_type, msg_idx, tool_queue=None):
         """Helper function to extract a single message with its tool calls"""
         message = {"index": msg_idx}
-        base_key = f"llm.{message_type}_messages.{msg_idx}.message"
+        base_key = f"llm.{message_type}_messages.{msg_idx}"
 
         # Extract basic message fields
-        role_field = MessageAttributes.MESSAGE_ROLE.split(".")[
-            -1
-        ]  # Extract "role" from "message.role"
-        content_field = MessageAttributes.MESSAGE_CONTENT.split(".")[
-            -1
-        ]  # Extract "content" from "message.content"
-        role_key = f"{base_key}.{role_field}"
-        content_key = f"{base_key}.{content_field}"
+        role_key = f"{base_key}.{MessageAttributes.MESSAGE_ROLE}"
+        content_key = f"{base_key}.{MessageAttributes.MESSAGE_CONTENT}"
         if role_key in attributes:
             message["role"] = attributes[role_key]
         if content_key in attributes:
@@ -434,7 +428,7 @@ def extract_llm_data(attributes):
 
         # Extract tool calls if this is an assistant message
         if message.get("role") == "assistant":
-            tool_calls = extract_tool_calls(attributes, base_key)
+            tool_calls = extract_tool_calls(attributes, f"{base_key}.message")
             if tool_calls:
                 message["tool_calls"] = tool_calls
 
