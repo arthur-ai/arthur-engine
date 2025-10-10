@@ -54,7 +54,7 @@ repos:
     hooks:
       - id: genai-engine-routes-security-check
         name: "genai-engine: check routes security"
-        entry: poetry -C genai-engine run routes_security_check
+        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && poetry -C genai-engine run routes_security_check"
         language: system
         types: [python]
         pass_filenames: false
@@ -62,7 +62,7 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-pytest-check
         name: "genai-engine: pytest unit tests and coverage"
-        entry: poetry -C genai-engine run pytest genai-engine/tests/ -m "unit_tests" --cov=genai_engine --cov-fail-under=79
+        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && poetry -C genai-engine run pytest genai-engine/tests/ -m "unit_tests" --cov=genai_engine --cov-fail-under=79"
         language: system
         types: [python]
         pass_filenames: false
@@ -70,7 +70,7 @@ repos:
         files: ^genai-engine/src/
       - id: genai-engine-api-changelog-check
         name: "genai-engine: api changelog"
-        entry: poetry -C genai-engine run generate_changelog
+        entry: bash -c "export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key && poetry -C genai-engine run generate_changelog"
         language: system
         always_run: false
         files: ^genai-engine/src/schemas/

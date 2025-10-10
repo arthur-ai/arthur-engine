@@ -44,6 +44,7 @@ from db_models.telemetry_models import (
     DatabaseTraceMetadata,
 )
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.secret_storage_models import DatabaseSecretStorage
 
 __all__ = [
     # Base classes
@@ -90,4 +91,6 @@ __all__ = [
     "DatabaseMetricResult",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
+    # Secret storage models
+    "DatabaseSecretStorage",
 ]
