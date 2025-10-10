@@ -16,24 +16,34 @@
   },
   "dependencies": {
     "@arizeai/openinference-semantic-conventions": "^2.1.1",
+    "@base-ui-components/react": "^1.0.0-beta.4",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.3",
+    "@tanstack/react-pacer": "^0.16.4",
+    "@tanstack/react-query": "^5.90.2",
+    "@tanstack/react-table": "^8.21.3",
+    "@xstate/store": "^3.9.3",
     "axios": "^1.12.2",
+    "dayjs": "^1.11.18",
     "framer-motion": "^12.23.21",
+    "prism-react-renderer": "^2.4.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.2",
+    "sonner": "^2.0.7",
     "swagger-typescript-api": "^13.2.13",
     "tailwindcss": "^4.1.13",
     "uuid": "^13.0.0",
+    "vaul": "^1.1.2",
     "weaviate-client": "^3.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@tailwindcss/vite": "^4.1.13",
+    "@tanstack/eslint-plugin-query": "^5.91.0",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
@@ -46,5 +56,8 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.44.0",
     "vite": "^7.1.7"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.52.2"
   }
 }

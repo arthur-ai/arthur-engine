@@ -5,8 +5,10 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
 import { defineConfig, globalIgnores } from "eslint/config";
+import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default defineConfig([
+  ...pluginQuery.configs["flat/recommended"],
   globalIgnores(["dist", ".pnp.*", ".yarn"]),
   {
     files: ["**/*.{ts,tsx}"],
