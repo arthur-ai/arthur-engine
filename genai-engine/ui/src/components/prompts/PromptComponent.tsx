@@ -9,6 +9,8 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import Accordion from "@mui/material/Accordion";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -97,6 +99,13 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
   };
+
+  const handleToolChoiceChange = useCallback((event: SelectChangeEvent) => {
+    dispatch({
+      type: "updateToolChoice",
+      payload: { promptId: prompt.id, toolChoice: event.target.value },
+    });
+  }, [dispatch, prompt.id]);
 
   const handleDeletePrompt = useCallback(() => {
     dispatch({
@@ -290,6 +299,88 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               )}
             </div>
           </div>
+          {toolsExpanded && (
+            <div className="mt-2 mb-3 px-2">
+              <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
+                <InputLabel>Tool Choice</InputLabel>
+                <Select
+                  value={prompt.toolChoice}
+                  label="Tool Choice"
+                  onChange={handleToolChoiceChange}
+                  renderValue={(selected) => {
+                    if (selected === "auto") {
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>Let LLM decide</span>
+                          <Chip label="auto" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                        </Box>
+                      );
+                    } else if (selected === "none") {
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>Don't use tools</span>
+                          <Chip label="none" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                        </Box>
+                      );
+                    } else if (selected === "required") {
+                      return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>Use one or more tools</span>
+                          <Chip label="required" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                        </Box>
+                      );
+                    } else {
+                      const selectedTool = prompt.tools.find(tool => tool.id === selected);
+                      if (selectedTool) {
+                        return (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <span>{selectedTool.function.name}</span>
+                            <Chip label="tool" size="small" sx={{ backgroundColor: '#dbeafe', color: '#1e40af', height: '20px', fontSize: '0.75rem' }} />
+                          </Box>
+                        );
+                      }
+                    }
+                    return selected;
+                  }}
+                  sx={{
+                    backgroundColor: 'white',
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: 'white',
+                    }
+                  }}
+                >
+                  <MenuItem value="auto">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Let LLM decide</span>
+                      <Chip label="auto" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="none">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Don't use tools</span>
+                      <Chip label="none" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="required">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <span>Use one or more tools</span>
+                      <Chip label="required" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
+                    </Box>
+                  </MenuItem>
+                  {prompt.tools.length > 0 && [
+                    ...prompt.tools.map((tool) => (
+                      <MenuItem key={tool.id} value={tool.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <span>{tool.function.name}</span>
+                          <Chip label="tool" size="small" sx={{ backgroundColor: '#dbeafe', color: '#1e40af', height: '20px', fontSize: '0.75rem' }} />
+                        </Box>
+                      </MenuItem>
+                    ))
+                  ]}
+                </Select>
+              </FormControl>
+            </div>
+          )}
           {toolsExpanded && (
             <div className="space-y-2 mt-2">
               {prompt.tools.map((tool) => (

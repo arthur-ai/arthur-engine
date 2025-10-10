@@ -86,6 +86,10 @@ type PromptAction =
     }
   | { type: "expandTools"; 
       payload: { parentId: string } 
+    }
+  | {
+      type: "updateToolChoice";
+      payload: { promptId: string; toolChoice: string };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -126,7 +130,7 @@ type PromptType = {
   modelParameters: ModelParametersType;
   outputField: string;
   tools: PromptTool[];
-  // toolChoice: ?; // TODO
+  toolChoice: string; // "auto", "none", "required", or tool ID
   // responseFormat: ?; // TODO
   // tags: Array<string>; // TODO
 };
