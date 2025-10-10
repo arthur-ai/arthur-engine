@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -6,12 +7,22 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
-from repositories.agentic_prompts_repository import (
+from repositories.agentic_prompts_repository import AgenticPromptRepository
+from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
-    AgenticPromptRepository,
-    AgenticPromptRunResponse,
+    AgenticPromptMessage,
+    AgenticPromptRunConfig,
     AgenticPrompts,
+    AgenticPromptUnsavedRunConfig,
+    VariableTemplateValue,
 )
+from schemas.response_schemas import AgenticPromptRunResponse
+
+
+def to_agentic_prompt_messages(
+    messages: List[Dict[str, Any]],
+) -> List[AgenticPromptMessage]:
+    return [AgenticPromptMessage(**message) for message in messages]
 
 
 @pytest.fixture
@@ -48,10 +59,22 @@ def sample_agentic_prompt(sample_prompt_data):
 
 
 @pytest.fixture
+def sample_unsaved_run_config(sample_prompt_data):
+    """Create sample AgenticPrompt instance"""
+    return AgenticPromptUnsavedRunConfig(**sample_prompt_data)
+
+
+@pytest.fixture
 def sample_db_prompt(sample_prompt_data):
     """Create sample DatabaseAgenticPrompt instance"""
     task_id = str(uuid4())
     return AgenticPrompt(**sample_prompt_data).to_db_model(task_id)
+
+
+@pytest.fixture
+def expected_db_prompt_messages(sample_db_prompt):
+    """Create expected DatabaseAgenticPrompt messages"""
+    return to_agentic_prompt_messages(sample_db_prompt.messages)
 
 
 @pytest.mark.unit_tests
@@ -61,7 +84,7 @@ def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
 
     assert isinstance(prompt, AgenticPrompt)
     assert prompt.name == sample_prompt_data["name"]
-    assert prompt.messages == sample_prompt_data["messages"]
+    assert prompt.messages == to_agentic_prompt_messages(sample_prompt_data["messages"])
     assert prompt.model_name == sample_prompt_data["model_name"]
     assert prompt.model_provider == sample_prompt_data["model_provider"]
     assert prompt.temperature == sample_prompt_data["temperature"]
@@ -69,13 +92,13 @@ def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
 
 
 @pytest.mark.unit_tests
-@patch("repositories.agentic_prompts_repository.completion")
-@patch("repositories.agentic_prompts_repository.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_prompt(
     mock_completion_cost,
     mock_completion,
     agentic_prompt_repo,
-    sample_agentic_prompt,
+    sample_unsaved_run_config,
 ):
     """Test running a prompt and getting response"""
     # Mock completion response
@@ -88,7 +111,7 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    result = agentic_prompt_repo.run_prompt(sample_agentic_prompt)
+    result = agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -99,12 +122,20 @@ def test_run_prompt(
     mock_completion.assert_called_once()
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
-    assert call_args["messages"] == sample_agentic_prompt.messages
-    assert call_args["temperature"] == sample_agentic_prompt.temperature
+    assert (
+        to_agentic_prompt_messages(call_args["messages"])
+        == sample_unsaved_run_config.messages
+    )
+    assert call_args["temperature"] == sample_unsaved_run_config.temperature
 
 
 @pytest.mark.unit_tests
-def test_get_prompt_success(agentic_prompt_repo, mock_db_session, sample_db_prompt):
+def test_get_prompt_success(
+    agentic_prompt_repo,
+    mock_db_session,
+    sample_db_prompt,
+    expected_db_prompt_messages,
+):
     """Test successfully getting a prompt from database"""
     task_id = "test_task_id"
     prompt_name = "test_prompt"
@@ -120,7 +151,7 @@ def test_get_prompt_success(agentic_prompt_repo, mock_db_session, sample_db_prom
 
     assert isinstance(result, AgenticPrompt)
     assert result.name == sample_db_prompt.name
-    assert result.messages == sample_db_prompt.messages
+    assert result.messages == expected_db_prompt_messages
 
     # Verify database query was called correctly
     mock_db_session.query.assert_called_once_with(DatabaseAgenticPrompt)
@@ -213,10 +244,12 @@ def test_save_prompt_with_agentic_prompt_object(
 
     # Check the DatabaseAgenticPrompt object that was added
     added_prompt = mock_db_session.add.call_args[0][0]
+    messages = to_agentic_prompt_messages(added_prompt.messages)
+
     assert isinstance(added_prompt, DatabaseAgenticPrompt)
     assert added_prompt.task_id == task_id
     assert added_prompt.name == sample_agentic_prompt.name
-    assert added_prompt.messages == sample_agentic_prompt.messages
+    assert messages == sample_agentic_prompt.messages
 
 
 @pytest.mark.unit_tests
@@ -304,8 +337,8 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 
 @pytest.mark.unit_tests
-@patch("repositories.agentic_prompts_repository.completion")
-@patch("repositories.agentic_prompts_repository.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_prompt(
     mock_completion_cost,
     mock_completion,
@@ -342,13 +375,13 @@ def test_run_saved_prompt(
 
 
 @pytest.mark.unit_tests
-def test_agentic_prompt_from_db_model(sample_db_prompt):
+def test_agentic_prompt_from_db_model(sample_db_prompt, expected_db_prompt_messages):
     """Test creating AgenticPrompt from DatabaseAgenticPrompt"""
     prompt = AgenticPrompt.from_db_model(sample_db_prompt)
 
     assert isinstance(prompt, AgenticPrompt)
     assert prompt.name == sample_db_prompt.name
-    assert prompt.messages == sample_db_prompt.messages
+    assert prompt.messages == expected_db_prompt_messages
     assert prompt.model_name == sample_db_prompt.model_name
     assert prompt.model_provider == sample_db_prompt.model_provider
 
@@ -358,16 +391,20 @@ def test_agentic_prompt_to_dict(sample_agentic_prompt):
     """Test converting AgenticPrompt to dictionary"""
     prompt_dict = sample_agentic_prompt.to_dict()
 
+    expected_messages = [
+        message.to_dict() for message in sample_agentic_prompt.messages
+    ]
+
     assert isinstance(prompt_dict, dict)
     assert prompt_dict["name"] == sample_agentic_prompt.name
-    assert prompt_dict["messages"] == sample_agentic_prompt.messages
+    assert prompt_dict["messages"] == expected_messages
     assert prompt_dict["model_name"] == sample_agentic_prompt.model_name
     assert prompt_dict["model_provider"] == sample_agentic_prompt.model_provider
 
 
 @pytest.mark.unit_tests
-@patch("repositories.agentic_prompts_repository.completion")
-@patch("repositories.agentic_prompts_repository.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_agentic_prompt_run_chat_completion(
     mock_completion_cost,
     mock_completion,
@@ -394,3 +431,79 @@ def test_agentic_prompt_run_chat_completion(
     mock_completion.assert_called_once()
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "message,variables,expected_message",
+    [
+        (
+            "What is the capital of {{country}}?",
+            {"country": "France"},
+            "What is the capital of France?",
+        ),
+        (
+            "What is the capital of {{country}}?",
+            {"city": "Paris"},
+            "What is the capital of {{country}}?",
+        ),
+        (
+            "What is the capital of {country}?",
+            {"country": "France"},
+            "What is the capital of {country}?",
+        ),
+        (
+            "What is the capital of country?",
+            {"country": "France"},
+            "What is the capital of country?",
+        ),
+        (
+            "What is the capital of {{}}?",
+            {"country": "France"},
+            "What is the capital of {{}}?",
+        ),
+        (
+            "What is the capital of {{}}?",
+            {"country": "France"},
+            "What is the capital of {{}}?",
+        ),
+        (
+            "User {{user_id}} has {{item_count}} items",
+            {"user_id": "123", "item_count": "5"},
+            "User 123 has 5 items",
+        ),
+        ("{{first}}{{second}}", {"first": "Hello", "second": "World"}, "HelloWorld"),
+        ("{{first}} {{first}}", {"first": "Hello", "second": "World"}, "Hello Hello"),
+        ("{{{name}}}", {"name": "Alice"}, "{Alice}"),
+        ("{{     name     }}", {"name": "Alice"}, "Alice"),
+        (
+            "This is a message without variables",
+            {},
+            "This is a message without variables",
+        ),
+        (
+            "This is a message without variables",
+            None,
+            "This is a message without variables",
+        ),
+        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
+        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
+        ("{{{{ name variable 1 }}}}", {"name variable 1": "Alice"}, "{{Alice}}"),
+        ("{{{{ name.variable.1      }}}}", {"name.variable.1": "Alice"}, "{{Alice}}"),
+        ("{{{{ name-variable_1      }}}", {"name-variable_1": "Alice"}, "{{Alice}"),
+    ],
+)
+def test_agentic_prompt_variable_replacement(message, variables, expected_message):
+    """Test running unsaved prompt with variables"""
+    if variables is not None:
+        variables = [
+            VariableTemplateValue(name=name, value=value)
+            for name, value in variables.items()
+        ]
+    else:
+        variables = []
+
+    prompt = AgenticPromptRunConfig(variables=variables)
+    message = [{"role": "user", "content": message}]
+    result = prompt.replace_variables(message)
+    assert result[0]["content"] == expected_message
