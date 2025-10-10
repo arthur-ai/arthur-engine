@@ -1,0 +1,63 @@
+# .github/workflows/meticulous.yaml
+name: Meticulous
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - "genai-engine/ui/**"
+  pull_request:
+    paths:
+      - "genai-engine/ui/**"
+  workflow_dispatch: {}
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: read
+
+jobs:
+  test:
+    name: Meticulous
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: genai-engine/ui/yarn.lock
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: genai-engine/ui/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('genai-engine/ui/yarn.lock') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}
+
+      - name: Install dependencies
+        working-directory: genai-engine/ui
+        run: |
+          yarn install --immutable
+
+      - name: Build project
+        working-directory: genai-engine/ui
+        env:
+          METICULOUS_RECORDING_TOKEN: ${{ secrets.METICULOUS_RECORDING_TOKEN }}
+        run: |
+          yarn build --mode development
+
+      - name: Run Meticulous tests
+        uses: alwaysmeticulous/report-diffs-action/upload-assets@v1
+        with:
+          api-token: ${{ secrets.METICULOUS_API_TOKEN }}
+          app-directory: "genai-engine/ui/dist"
