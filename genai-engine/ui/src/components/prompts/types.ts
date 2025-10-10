@@ -87,7 +87,11 @@ type PromptAction =
       type: "updateTool";
       payload: { parentId: string; toolId: string; tool: Partial<PromptTool> };
     }
-  | { type: "expandTools"; payload: { parentId: string } };
+  | { type: "expandTools"; payload: { parentId: string } }
+  | {
+      type: "updateToolChoice";
+      payload: { promptId: string; toolChoice: string };
+    };
 
 // The id is used in the FE, but may not need to be stored in BE.
 type MessageType = {
@@ -128,7 +132,7 @@ type PromptType = {
   outputField: string; // The actual output content
   responseFormat: string | undefined;
   tools: PromptTool[];
-  // toolChoice: ?; // TODO
+  toolChoice: string; // "auto", "none", "required", or tool ID
   // tags: Array<string>; // TODO
 };
 

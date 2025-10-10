@@ -126,6 +126,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   outputField: "",
   responseFormat: undefined,
   tools: [],
+  toolChoice: "auto",
   ...overrides,
 });
 
@@ -370,6 +371,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: prompt.tools.filter((tool) => tool.id !== toolId),
+                toolChoice: prompt.toolChoice === toolId ? "auto" : prompt.toolChoice,
               }
             : prompt
         ),
@@ -387,6 +389,17 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                   t.id === toolId ? { ...t, ...tool } : t
                 ),
               }
+            : prompt
+        ),
+      };
+    }
+    case "updateToolChoice": {
+      const { promptId, toolChoice } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId
+            ? { ...prompt, toolChoice }
             : prompt
         ),
       };
