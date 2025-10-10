@@ -297,6 +297,7 @@ class TraceIngestionService:
                 trace_updates[trace_id] = {
                     "trace_id": trace_id,
                     "task_id": span.task_id,
+                    "session_id": span.session_id,
                     "start_time": span.start_time,
                     "end_time": span.end_time,
                     "span_count": 0,
@@ -313,6 +314,10 @@ class TraceIngestionService:
                 span.end_time,
             )
             trace_updates[trace_id]["span_count"] += 1
+
+            # Handle session_id conflicts: use first non-null session_id found
+            if span.session_id and not trace_updates[trace_id]["session_id"]:
+                trace_updates[trace_id]["session_id"] = span.session_id
 
         if not trace_updates:
             return
@@ -336,6 +341,10 @@ class TraceIngestionService:
                     ),
                     span_count=DatabaseTraceMetadata.span_count
                     + stmt.excluded.span_count,
+                    session_id=func.coalesce(
+                        DatabaseTraceMetadata.session_id,
+                        stmt.excluded.session_id,
+                    ),
                     updated_at=stmt.excluded.updated_at,
                 ),
             )
@@ -357,6 +366,10 @@ class TraceIngestionService:
                     ),
                     span_count=DatabaseTraceMetadata.span_count
                     + stmt.excluded.span_count,
+                    session_id=func.coalesce(
+                        DatabaseTraceMetadata.session_id,
+                        stmt.excluded.session_id,
+                    ),
                     updated_at=stmt.excluded.updated_at,
                 ),
             )

@@ -519,6 +519,7 @@ class Task(BaseModel):
 class TraceMetadata(BaseModel):
     trace_id: str
     task_id: str
+    session_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
     span_count: int
@@ -530,6 +531,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
+            session_id=x.session_id,
             start_time=x.start_time,
             end_time=x.end_time,
             span_count=x.span_count,
@@ -541,6 +543,7 @@ class TraceMetadata(BaseModel):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
