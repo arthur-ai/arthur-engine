@@ -1,0 +1,42 @@
+# Lightweight Dockerfile for changelog generation
+FROM python:3.12.8-slim-bookworm
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy files needed for changelog generation to the expected structure
+COPY . /app/genai-engine/
+
+# Install Poetry
+RUN pip3 install poetry==1.8.5
+
+# Set environment variables
+ENV PYTHONPATH="$PYTHONPATH:/app/genai-engine/src"
+ENV POETRY_VIRTUALENVS_CREATE=false
+
+# Install only the minimal dependencies needed for changelog generation
+# We need FastAPI and its dependencies, but not the heavy ML dependencies
+WORKDIR /app/genai-engine
+RUN poetry install
+
+# Install oasdiff - detect architecture and install correct version
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        curl -L -o oasdiff.deb https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        curl -L -o oasdiff.deb https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_arm64.deb; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    dpkg -i oasdiff.deb && \
+    rm oasdiff.deb
+
+# Set the default command
+WORKDIR /app
+CMD ["bash", "-c", "cd genai-engine && poetry run python changelog.py"]

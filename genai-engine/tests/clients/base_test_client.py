@@ -54,6 +54,11 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
+from schemas.request_schemas import (
+    DatasetUpdateRequest,
+    NewDatasetRequest,
+)
+from schemas.response_schemas import DatasetResponse, SearchDatasetsResponse
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -857,6 +862,127 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def create_dataset(
+        self,
+        name: str,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = NewDatasetRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.post(
+            "/api/v2/datasets",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset(self, dataset_id: str) -> tuple[int, DatasetResponse]:
+        resp = self.base_client.get(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_dataset(
+        self,
+        dataset_id: str,
+        name: str = None,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = DatasetUpdateRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v2/datasets/{dataset_id}",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_dataset(self, dataset_id: str) -> int:
+        resp = self.base_client.delete(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def search_datasets(
+        self,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        dataset_ids: list[str] = None,
+        dataset_name: str = None,
+    ) -> tuple[int, SearchDatasetsResponse]:
+        """Search datasets with optional filters and pagination."""
+        path = "api/v2/datasets/search?"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if dataset_ids:
+            params["dataset_ids"] = dataset_ids
+        if dataset_name:
+            params["dataset_name"] = dataset_name
+
+        resp = self.base_client.get(
+            "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchDatasetsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
     def send_chat(
         self,
