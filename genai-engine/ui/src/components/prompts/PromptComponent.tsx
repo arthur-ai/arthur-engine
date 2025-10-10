@@ -158,6 +158,33 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
     }
   }, [dispatch, prompt.id]);
 
+  // Helper function to render tool choice options consistently
+  const renderToolChoiceOption = (value: string, toolName?: string) => {
+    const isSpecificTool = !["auto", "none", "required"].includes(value);
+    
+    const textMap: Record<string, string> = {
+      auto: "Let LLM decide",
+      none: "Don't use tools", 
+      required: "Use one or more tools"
+    };
+
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <span>{textMap[value] || toolName || value}</span>
+        <Chip 
+          label={isSpecificTool ? "tool" : value}
+          size="small" 
+          sx={{ 
+            backgroundColor: isSpecificTool ? '#dbeafe' : '#e5e7eb',
+            color: isSpecificTool ? '#1e40af' : '#374151',
+            height: '20px', 
+            fontSize: '0.75rem' 
+          }} 
+        />
+      </Box>
+    );
+  };
+
   return (
     <div className="bg-purple-500 min-h-[500px]">
       <Container component="div" className="p-1" maxWidth="xl" disableGutters>
@@ -308,39 +335,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label="Tool Choice"
                   onChange={handleToolChoiceChange}
                   renderValue={(selected) => {
-                    if (selected === "auto") {
-                      return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>Let LLM decide</span>
-                          <Chip label="auto" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                        </Box>
-                      );
-                    } else if (selected === "none") {
-                      return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>Don't use tools</span>
-                          <Chip label="none" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                        </Box>
-                      );
-                    } else if (selected === "required") {
-                      return (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>Use one or more tools</span>
-                          <Chip label="required" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                        </Box>
-                      );
+                    if (["auto", "none", "required"].includes(selected)) {
+                      return renderToolChoiceOption(selected);
                     } else {
                       const selectedTool = prompt.tools.find(tool => tool.id === selected);
-                      if (selectedTool) {
-                        return (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <span>{selectedTool.function.name}</span>
-                            <Chip label="tool" size="small" sx={{ backgroundColor: '#dbeafe', color: '#1e40af', height: '20px', fontSize: '0.75rem' }} />
-                          </Box>
-                        );
-                      }
+                      return selectedTool ? renderToolChoiceOption(selected, selectedTool.function.name) : selected;
                     }
-                    return selected;
                   }}
                   sx={{
                     backgroundColor: 'white',
@@ -349,31 +349,13 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                     }
                   }}
                 >
-                  <MenuItem value="auto">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <span>Let LLM decide</span>
-                      <Chip label="auto" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="none">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <span>Don't use tools</span>
-                      <Chip label="none" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="required">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <span>Use one or more tools</span>
-                      <Chip label="required" size="small" sx={{ backgroundColor: '#e5e7eb', color: '#374151', height: '20px', fontSize: '0.75rem' }} />
-                    </Box>
-                  </MenuItem>
+                  <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
+                  <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
+                  <MenuItem value="required">{renderToolChoiceOption("required")}</MenuItem>
                   {prompt.tools.length > 0 && [
                     ...prompt.tools.map((tool) => (
                       <MenuItem key={tool.id} value={tool.id}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{tool.function.name}</span>
-                          <Chip label="tool" size="small" sx={{ backgroundColor: '#dbeafe', color: '#1e40af', height: '20px', fontSize: '0.75rem' }} />
-                        </Box>
+                        {renderToolChoiceOption(tool.id, tool.function.name)}
                       </MenuItem>
                     ))
                   ]}
