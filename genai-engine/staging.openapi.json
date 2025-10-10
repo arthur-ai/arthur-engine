@@ -3246,7 +3246,7 @@
                     "AgenticPrompt"
                 ],
                 "summary": "Delete an agentic prompt",
-                "description": "Deletes an agentic prompt",
+                "description": "Deletes a specific version of an agentic prompt",
                 "operationId": "delete_agentic_prompt_version_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
                 "security": [
                     {
@@ -3508,7 +3508,7 @@
                             "schema": {
                                 "$ref": "#/components/schemas/AgenticPromptRunConfig",
                                 "default": {
-                                    "variables": {},
+                                    "variables": [],
                                     "stream": false
                                 }
                             }
@@ -3583,6 +3583,60 @@
                         }
                     }
                 },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Delete an agentic prompt",
+                "description": "Deletes an entire agentic prompt",
+                "operationId": "delete_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful Response",
@@ -4300,8 +4354,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/AgenticPromptMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4313,8 +4366,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "type": "string",
-                        "title": "Model Provider",
+                        "$ref": "#/components/schemas/ProviderEnum",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -4336,18 +4388,17 @@
                     "tool_choice": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
                         "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "timeout": {
                         "anyOf": [
@@ -4486,8 +4537,10 @@
                     "logit_bias": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -4511,21 +4564,12 @@
                     "reasoning_effort": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "none",
-                                    "minimal",
-                                    "low",
-                                    "medium",
-                                    "high",
-                                    "default"
-                                ]
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Reasoning Effort",
                         "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
                     },
                     "thinking": {
@@ -4542,14 +4586,12 @@
                     "stream_options": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/StreamOptions"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Stream Options",
                         "description": "Additional streaming configuration options"
                     },
                     "name": {
@@ -4571,8 +4613,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/AgenticPromptMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4584,8 +4625,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "type": "string",
-                        "title": "Model Provider",
+                        "$ref": "#/components/schemas/ProviderEnum",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -4607,18 +4647,17 @@
                     "tool_choice": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
                         "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "timeout": {
                         "anyOf": [
@@ -4757,8 +4796,10 @@
                     "logit_bias": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -4782,21 +4823,12 @@
                     "reasoning_effort": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "none",
-                                    "minimal",
-                                    "low",
-                                    "medium",
-                                    "high",
-                                    "default"
-                                ]
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Reasoning Effort",
                         "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
                     },
                     "thinking": {
@@ -4813,14 +4845,12 @@
                     "stream_options": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/StreamOptions"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Stream Options",
                         "description": "Additional streaming configuration options"
                     }
                 },
@@ -4832,15 +4862,34 @@
                 ],
                 "title": "AgenticPromptBaseConfig"
             },
+            "AgenticPromptMessage": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "Description": "Role of the message"
+                    },
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "Description": "Content of the message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role",
+                    "content"
+                ],
+                "title": "AgenticPromptMessage"
+            },
             "AgenticPromptRunConfig": {
                 "properties": {
                     "variables": {
                         "anyOf": [
                             {
-                                "additionalProperties": {
-                                    "type": "string"
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
                                 },
-                                "type": "object"
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -4848,7 +4897,7 @@
                         ],
                         "title": "Variables",
                         "description": "Dictionary of variable names to their values to use for an agentic prompt run",
-                        "default": {}
+                        "default": []
                     },
                     "stream": {
                         "anyOf": [
@@ -4903,39 +4952,9 @@
             },
             "AgenticPromptUnsavedRunConfig": {
                 "properties": {
-                    "variables": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": {
-                                    "type": "string"
-                                },
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Variables",
-                        "description": "Dictionary of variable names to their values to use for an agentic prompt run",
-                        "default": {}
-                    },
-                    "stream": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stream",
-                        "description": "Whether to stream the response",
-                        "default": false
-                    },
                     "messages": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/AgenticPromptMessage"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4947,8 +4966,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "type": "string",
-                        "title": "Model Provider",
+                        "$ref": "#/components/schemas/ProviderEnum",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -4970,18 +4988,17 @@
                     "tool_choice": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
                         "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', or specific tool selection)"
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "timeout": {
                         "anyOf": [
@@ -5120,8 +5137,10 @@
                     "logit_bias": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -5145,21 +5164,12 @@
                     "reasoning_effort": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "none",
-                                    "minimal",
-                                    "low",
-                                    "medium",
-                                    "high",
-                                    "default"
-                                ]
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Reasoning Effort",
                         "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
                     },
                     "thinking": {
@@ -5176,28 +5186,28 @@
                     "stream_options": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/StreamOptions"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Stream Options",
                         "description": "Additional streaming configuration options"
                     },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the agentic prompt"
+                    "run_config": {
+                        "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                        "description": "Run configuration for the unsaved prompt",
+                        "default": {
+                            "variables": [],
+                            "stream": false
+                        }
                     }
                 },
                 "type": "object",
                 "required": [
                     "messages",
                     "model_name",
-                    "model_provider",
-                    "name"
+                    "model_provider"
                 ],
                 "title": "AgenticPromptUnsavedRunConfig",
                 "description": "Request schema for running an unsaved agentic prompt"
@@ -6343,6 +6353,36 @@
                     ]
                 }
             },
+            "LogitBiasItem": {
+                "properties": {
+                    "token_id": {
+                        "type": "integer",
+                        "title": "Token Id",
+                        "description": "Token ID to bias"
+                    },
+                    "bias": {
+                        "type": "number",
+                        "title": "Bias",
+                        "description": "Bias value between -100 and 100"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "token_id",
+                    "bias"
+                ],
+                "title": "LogitBiasItem"
+            },
+            "MessageRole": {
+                "type": "string",
+                "enum": [
+                    "system",
+                    "user",
+                    "ai",
+                    "tool"
+                ],
+                "title": "MessageRole"
+            },
             "MetricResponse": {
                 "properties": {
                     "id": {
@@ -7262,6 +7302,41 @@
                 ],
                 "title": "PromptValidationRequest"
             },
+            "ProviderEnum": {
+                "type": "string",
+                "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "azure",
+                    "deepseek",
+                    "mistral",
+                    "meta_llama",
+                    "groq",
+                    "bedrock",
+                    "sagemaker",
+                    "vertex_ai",
+                    "huggingface",
+                    "cloudflare",
+                    "ai21",
+                    "baseten",
+                    "cohere",
+                    "empower",
+                    "featherless_ai",
+                    "friendliai",
+                    "galadriel",
+                    "nebius",
+                    "nlp_cloud",
+                    "novita",
+                    "openrouter",
+                    "petals",
+                    "replicate",
+                    "together_ai",
+                    "vllm",
+                    "watsonx"
+                ],
+                "title": "ProviderEnum"
+            },
             "QueryFeedbackResponse": {
                 "properties": {
                     "feedback": {
@@ -7488,6 +7563,18 @@
                 ],
                 "title": "QueryTracesWithMetricsResponse",
                 "description": "New response format that groups spans into traces with nested structure"
+            },
+            "ReasoningEffortEnum": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "default"
+                ],
+                "title": "ReasoningEffortEnum"
             },
             "RegexConfig": {
                 "properties": {
@@ -8100,6 +8187,24 @@
                 ],
                 "title": "SpanWithMetricsResponse"
             },
+            "StreamOptions": {
+                "properties": {
+                    "include_usage": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Usage",
+                        "description": "Whether to include usage information in the stream"
+                    }
+                },
+                "type": "object",
+                "title": "StreamOptions"
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -8256,6 +8361,15 @@
                     "task"
                 ],
                 "title": "TokenUsageScope"
+            },
+            "ToolChoiceEnum": {
+                "type": "string",
+                "enum": [
+                    "auto",
+                    "none",
+                    "required"
+                ],
+                "title": "ToolChoiceEnum"
             },
             "ToolClassEnum": {
                 "type": "integer",
@@ -8575,6 +8689,26 @@
                         }
                     ]
                 }
+            },
+            "VariableTemplateValue": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "Description": "Name of the variable"
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "Description": "Value of the variable"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "value"
+                ],
+                "title": "VariableTemplateValue"
             }
         },
         "securitySchemes": {
