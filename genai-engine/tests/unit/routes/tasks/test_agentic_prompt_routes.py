@@ -152,8 +152,8 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-@patch("repositories.agentic_prompts_repository.completion")
-@patch("repositories.agentic_prompts_repository.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_agentic_prompt_success(
     mock_completion_cost,
     mock_completion,
@@ -196,8 +196,8 @@ def test_run_agentic_prompt_success(
 
 
 @pytest.mark.unit_tests
-@patch("repositories.agentic_prompts_repository.completion")
-@patch("repositories.agentic_prompts_repository.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_agentic_prompt_success(
     mock_completion_cost,
     mock_completion,

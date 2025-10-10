@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 
 from arthur_common.models.response_schemas import ExternalInference
 from pydantic import BaseModel
@@ -32,3 +32,9 @@ class ConversationResponse(ConversationBaseResponse):
 class HealthResponse(BaseModel):
     message: str
     build_version: Optional[str] = None
+
+
+class AgenticPromptRunResponse(BaseModel):
+    content: str
+    tool_calls: Optional[List[Dict]] = None
+    cost: str

@@ -4,22 +4,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from dependencies import get_application_config, get_db_session
-from repositories.agentic_prompts_repository import (
-    AgenticPrompt,
-    AgenticPromptBaseConfig,
-    AgenticPromptRepository,
-    AgenticPromptRunConfig,
-    AgenticPromptRunResponse,
-    AgenticPrompts,
-    AgenticPromptUnsavedRunConfig,
-)
+from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
+from schemas.agentic_prompt_schemas import (
+    AgenticPrompt,
+    AgenticPromptBaseConfig,
+    AgenticPromptRunConfig,
+    AgenticPrompts,
+    AgenticPromptUnsavedRunConfig,
+)
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
+from schemas.response_schemas import AgenticPromptRunResponse
 from utils.users import permission_checker
 
 agentic_prompt_routes = APIRouter(
@@ -205,9 +205,38 @@ def save_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
+    "/{task_id}/agentic_prompts/{prompt_name}",
+    summary="Delete an agentic prompt",
+    description="Deletes an entire agentic prompt",
+    response_model=None,
+    response_model_exclude_none=True,
+    tags=["AgenticPrompt"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_agentic_prompt(
+    prompt_name: str,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+):
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        agentic_prompt_service.delete_prompt(task.id, prompt_name)
+
+        return {"message": "Prompt deleted successfully"}
+    except ValueError as e:
+        if "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        else:
+            raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.delete(
     "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
     summary="Delete an agentic prompt",
-    description="Deletes an agentic prompt",
+    description="Deletes a specific version of an agentic prompt",
     response_model=None,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
@@ -220,7 +249,7 @@ def delete_agentic_prompt_version(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
-    # TODO: Implement with versioning
+    # TODO: Modify to actually delete a specific version of an agentic prompt
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.delete_prompt(task.id, prompt_name)

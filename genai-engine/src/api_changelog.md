@@ -2,32 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 10/09/2025
-- **CHANGE** for **URL**: /v1/completions  the endpoint scheme security 'API Key' was added to the API
-
-# 10/09/2025
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  api path removed without deprecation
-- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  api path removed without deprecation
+# 10/10/2025
 - **CHANGE** for **URL**: /v1/completions  endpoint added
 - **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
-
-# 10/07/2025
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt  endpoint added
 
 # 09/10/2025
 - v1/traces/metrics and v1/traces/query added new optional request parameters: 'query_relevance_eq', 'query_relevance_gt', 'query_relevance_gte', 'query_relevance_lt', 'query_relevance_lte', 'response_relevance_eq', 'response_relevance_gt', 'response_relevance_gte', 'response_relevance_lt', 'response_relevance_lte', 'tool_name', 'tool_selection', 'tool_usage', 'trace_duration_eq', 'trace_duration_gt', 'trace_duration_gte', 'trace_duration_lt', 'trace_duration_lte', 'trace_ids', 'span_kind'
