@@ -3274,14 +3274,14 @@ utils = ["numpydoc"]
 
 [[package]]
 name = "locust"
-version = "2.41.5"
+version = "2.41.6"
 description = "Developer-friendly load testing framework"
 optional = false
 python-versions = ">=3.10"
 groups = ["performance"]
 files = [
-    {file = "locust-2.41.5-py3-none-any.whl", hash = "sha256:3ab1311a0921e8a2eafed4c376f7c870724a4e9d89cbba4aac4c30f31a4bc451"},
-    {file = "locust-2.41.5.tar.gz", hash = "sha256:f37338b0016382fd4341fc9b8a8f15a37dbfadaa86512195bef69a8e79c39c24"},
+    {file = "locust-2.41.6-py3-none-any.whl", hash = "sha256:6679bf9e2d92e3c6500551f29dfa58a84d6f767d398cedefbc8a4765659a2126"},
+    {file = "locust-2.41.6.tar.gz", hash = "sha256:1fd76545f41639ba8c1ee57b5cafdf8bd426a264a0656fd927a99040bb86150b"},
 ]
 
 [package.dependencies]
@@ -8666,4 +8666,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "d7e18f861cf6911160604e76b9e8a4b392c9b14881285a7c9a78e018ec6456ae"
+content-hash = "3fc19d20016942e840bb1755c92c0f48a7b1127f73250c14518f20653608beee"
