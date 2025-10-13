@@ -27,6 +27,7 @@ class DatabaseTraceMetadata(Base):
         nullable=False,
         index=True,
     )
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     span_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -73,6 +74,12 @@ class DatabaseSpan(Base):
         ForeignKey("tasks.id"),
         nullable=True,
         index=True,
+    )
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    status_code: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=text("'Unset'"),
     )
     raw_data: Mapped[dict] = mapped_column(
         JSON().with_variant(postgresql.JSONB, "postgresql"),

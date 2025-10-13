@@ -96,6 +96,7 @@ def _create_database_span(
     end_time: datetime,
     parent_span_id: str = None,
     span_kind: str = "LLM",
+    session_id: str = None,
 ) -> DatabaseSpan:
     """Helper to create a test DatabaseSpan for trace metadata testing."""
     return DatabaseSpan(
@@ -107,6 +108,7 @@ def _create_database_span(
         start_time=start_time,
         end_time=end_time,
         task_id=task_id,
+        session_id=session_id,
         raw_data={
             "name": f"Test Span {span_id}",
             "spanId": span_id,
@@ -143,6 +145,7 @@ def _create_span(
     model_name="gpt-4",
     parent_span_id=None,
     status=None,
+    session_id=None,
 ):
     """Helper function to create a span with specified type and optional parent ID."""
     span = Span(status=status)
@@ -183,6 +186,12 @@ def _create_span(
             value=AnyValue(string_value=metadata_str),
         ),
     )
+
+    # Add session_id if provided
+    if session_id:
+        attributes.append(
+            KeyValue(key="session.id", value=AnyValue(string_value=session_id)),
+        )
 
     span.attributes.extend(attributes)
     return span
@@ -436,6 +445,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
             start_time=span.start_time,
             end_time=span.end_time,
             task_id=span.task_id,
+            session_id=span.session_id,
             raw_data=span.raw_data,
             created_at=span.created_at,
             updated_at=span.updated_at,
@@ -456,6 +466,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
+            session_id=trace_spans[0].session_id,  # Use session_id from first span
             span_count=len(trace_spans),
             start_time=trace_start_time,
             end_time=trace_end_time,
