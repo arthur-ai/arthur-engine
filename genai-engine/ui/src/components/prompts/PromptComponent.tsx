@@ -74,7 +74,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   }, []);
 
   return (
-    <div className="bg-purple-500 min-h-[500px]">
+    <div className="min-h-[500px]">
       <Container component="div" className="p-1" maxWidth="xl" disableGutters>
         <div className="grid grid-cols-2 gap-1">
           <div className="flex justify-start items-center gap-1">
@@ -89,6 +89,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label={PROMPT_NAME_TEXT}
                   value={PROMPT_NAME_OPTIONS[0].value}
                   onChange={() => {}}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
                   {PROMPT_NAME_OPTIONS.map((promptNameOption) => (
                     <MenuItem
@@ -112,6 +115,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label={PROVIDER_TEXT}
                   value={provider}
                   onChange={handleProviderChange}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
                   {Object.values(providerEnum).map((providerValue) => (
                     <MenuItem key={providerValue} value={providerValue}>
@@ -130,6 +136,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label={MODEL_TEXT}
                   value={MODEL_OPTIONS[0].value}
                   onChange={() => {}}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
                   {MODEL_OPTIONS.map((modelOption) => (
                     <MenuItem key={modelOption.value} value={modelOption.value}>

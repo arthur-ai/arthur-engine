@@ -4,14 +4,36 @@ import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useReducer } from "react";
+import React, { useCallback, useReducer, useEffect } from "react";
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
 
 import PromptComponent from "./PromptComponent";
 import { promptsReducer, initialState } from "./reducer";
 
-
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
+
+  const api = useApi()?.api;
+  const { task } = useTask();
+  const taskId = task?.id;
+  console.log(api);
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      if (!api || !taskId) {
+        return;
+      }
+      console.log("fetching prompts");
+      // const response = await api.getTaskApiV2TasksTaskIdGet(taskId);
+      // console.log(response);
+      // const response = await api.api.getPromptsApiV2TasksTaskIdPromptsGet(
+      //   taskId
+      // );
+      // dispatch({ type: "setPrompts", payload: response.data });
+    };
+
+    fetchPrompts();
+  }, [api, taskId]);
 
   const handleAddPrompt = useCallback(() => {
     dispatch({ type: "addPrompt" });
@@ -21,21 +43,29 @@ const PromptsPlayground = () => {
     (keyword: string, value: string) => {
       dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
     },
-    [dispatch],
+    [dispatch]
   );
 
   const keywords = Array.from(state.keywords.keys());
 
   return (
-    <div className="h-screen bg-gray-300">
+    <div className="h-screen bg-gray-200">
       <div className={`h-full w-full p-1 flex flex-col gap-1`}>
-        <div className={`bg-gray-400 flex-shrink-0 p-1`}>
-          <div className="flex justify-around items-center mb-1">
+        <div className={`bg-gray-300 flex-shrink-0 p-1`}>
+          <Container
+            component="div"
+            className="flex justify-between items-center mb-1"
+            maxWidth="xl"
+            disableGutters
+          >
             <div>Prompts Playground</div>
             <Button variant="contained" size="small" onClick={handleAddPrompt}>
               Add Prompt
             </Button>
-          </div>
+            <Button variant="contained" size="small" onClick={() => {}}>
+              Run Prompts
+            </Button>
+          </Container>
           <Container component="div" maxWidth="xl" disableGutters>
             <Paper elevation={3} className="p-1">
               <div className="grid grid-template-rows-2">
