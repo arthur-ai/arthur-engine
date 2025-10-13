@@ -1,16 +1,8 @@
-import Editor from "@monaco-editor/react";
 import AddIcon from "@mui/icons-material/Add";
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
-import Accordion from "@mui/material/Accordion";
-import AccordionDetails from "@mui/material/AccordionDetails";
-import AccordionSummary from "@mui/material/AccordionSummary";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -19,10 +11,12 @@ import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
 import ModelParamsDialog from "./ModelParamsDialog";
+import OutputField from "./OutputField";
+import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
 
@@ -49,63 +43,10 @@ const MODEL_OPTIONS = [
 const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const [provider, setProvider] = useState<string>(providerEnum.OPENAI);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
-  const [toolsExpanded, setToolsExpanded] = useState<boolean>(prompt.tools.length > 0);
-
-  // Add state to track which accordions are expanded
-  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
-
-  // Track the previous tool count to detect new additions
-  const [prevToolCount, setPrevToolCount] = useState(prompt.tools.length);
-
-  const handleToggleTools = useCallback(() => {
-    // Only allow toggle if there are tools
-    if (prompt.tools.length > 0) {
-      setToolsExpanded(!toolsExpanded);
-    }
-  }, [toolsExpanded, prompt.tools.length]);
-
-  useEffect(() => {
-    // Check if a new tool was added (count increased)
-    if (prompt.tools.length > prevToolCount) {
-      // Tools section auto-expand only if it was closed
-      if (!toolsExpanded) {
-        setToolsExpanded(true);
-      }
-      // Always set the newest tool as the one to expand
-      const newestTool = prompt.tools[prompt.tools.length - 1];
-      setExpandedTools(prev => new Set(prev).add(newestTool.id));
-    }
-    // Auto-collapse when all tools are deleted
-    else if (prompt.tools.length === 0 && toolsExpanded) {
-      setToolsExpanded(false);
-    }
-    // Update the previous count
-    setPrevToolCount(prompt.tools.length);
-  }, [prompt.tools, prevToolCount, toolsExpanded]);
-
-  // Handle accordion expand/collapse
-  const handleToolAccordionChange = (toolId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpandedTools(prev => {
-      const newSet = new Set(prev);
-      if (isExpanded) {
-        newSet.add(toolId);
-      } else {
-        newSet.delete(toolId);
-      }
-      return newSet;
-    });
-  };
 
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
   };
-
-  const handleToolChoiceChange = useCallback((event: SelectChangeEvent) => {
-    dispatch({
-      type: "updateToolChoice",
-      payload: { promptId: prompt.id, toolChoice: event.target.value },
-    });
-  }, [dispatch, prompt.id]);
 
   const handleDeletePrompt = useCallback(() => {
     dispatch({
@@ -131,59 +72,6 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const handleParamsModelOpen = useCallback(() => {
     setParamsModelOpen(true);
   }, []);
-
-  const handleDeleteTool = useCallback((toolId: string) => {
-    dispatch({
-      type: "deleteTool",
-      payload: { parentId: prompt.id, toolId },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleToolChange = useCallback((toolId: string, newValue: string) => {
-    try {
-      const parsedTool = JSON.parse(newValue);
-      dispatch({
-        type: "updateTool",
-        payload: { 
-          parentId: prompt.id, 
-          toolId, 
-          tool: {
-            ...parsedTool,
-            id: toolId
-          }
-        },
-      });
-    } catch (error) {
-      console.error("Invalid JSON:", error);
-    }
-  }, [dispatch, prompt.id]);
-
-  // Helper function to render tool choice options consistently
-  const renderToolChoiceOption = (value: string, toolName?: string) => {
-    const isSpecificTool = !["auto", "none", "required"].includes(value);
-    
-    const textMap: Record<string, string> = {
-      auto: "Let LLM decide",
-      none: "Don't use tools", 
-      required: "Use one or more tools"
-    };
-
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <span>{textMap[value] || toolName || value}</span>
-        <Chip 
-          label={isSpecificTool ? "tool" : value}
-          size="small" 
-          sx={{ 
-            backgroundColor: isSpecificTool ? '#dbeafe' : '#e5e7eb',
-            color: isSpecificTool ? '#1e40af' : '#374151',
-            height: '20px', 
-            fontSize: '0.75rem' 
-          }} 
-        />
-      </Box>
-    );
-  };
 
   return (
     <div className="bg-purple-500 min-h-[500px]">
@@ -310,125 +198,16 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <div 
-            className={`flex justify-between items-center p-2 bg-white text-gray-800 rounded ${
-              prompt.tools.length > 0 ? 'cursor-pointer' : 'cursor-default'
-            }`}
-            onClick={handleToggleTools}
-          >
-            <div className="flex items-center gap-2">
-              {toolsExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-              <span className="font-medium">Tools</span>
-              {prompt.tools.length > 0 && (
-                <span className="bg-gray-300 px-2 py-1 rounded text-sm">
-                  {prompt.tools.length}
-                </span>
-              )}
-            </div>
-          </div>
-          {toolsExpanded && (
-            <div className="mt-2 mb-3 px-2">
-              <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
-                <InputLabel>Tool Choice</InputLabel>
-                <Select
-                  value={prompt.toolChoice}
-                  label="Tool Choice"
-                  onChange={handleToolChoiceChange}
-                  renderValue={(selected) => {
-                    if (["auto", "none", "required"].includes(selected)) {
-                      return renderToolChoiceOption(selected);
-                    } else {
-                      const selectedTool = prompt.tools.find(tool => tool.id === selected);
-                      return selectedTool ? renderToolChoiceOption(selected, selectedTool.function.name) : selected;
-                    }
-                  }}
-                  sx={{
-                    backgroundColor: 'white',
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'white',
-                    }
-                  }}
-                >
-                  <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
-                  <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
-                  <MenuItem value="required">{renderToolChoiceOption("required")}</MenuItem>
-                  {prompt.tools.length > 0 && [
-                    ...prompt.tools.map((tool) => (
-                      <MenuItem key={tool.id} value={tool.id}>
-                        {renderToolChoiceOption(tool.id, tool.function.name)}
-                      </MenuItem>
-                    ))
-                  ]}
-                </Select>
-              </FormControl>
-            </div>
-          )}
-          {toolsExpanded && (
-            <div className="space-y-2 mt-2">
-              {prompt.tools.map((tool) => (
-                <Accordion 
-                  key={tool.id}
-                  expanded={expandedTools.has(tool.id)}
-                  onChange={handleToolAccordionChange(tool.id)}
-                >
-                  <AccordionSummary
-                    expandIcon={<ExpandMoreIcon />}
-                    sx={{ 
-                      backgroundColor: '#d1d5db',
-                      color: '#374151',
-                      minHeight: '32px'
-                    }}
-                  >
-                    <div className="flex items-center justify-between w-full mr-4">
-                      <span className="text-sm font-mono">
-                        📋 {tool.function.name}
-                      </span>
-                      <div
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTool(tool.id);
-                        }}
-                        className="p-1 rounded hover:bg-gray-300 cursor-pointer flex items-center justify-center"
-                        style={{ color: '#374151', width: '24px', height: '24px' }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </div>
-                    </div>
-                  </AccordionSummary>
-                  <AccordionDetails sx={{ padding: 0 }}>
-                    <div style={{ height: '300px', width: '100%' }}>
-                      <Editor
-                        height="300px"
-                        defaultLanguage="json"
-                        theme="light"
-                        value={JSON.stringify({
-                          type: tool.type,
-                          function: tool.function
-                        }, null, 2)}
-                        onChange={(value) => {
-                          if (value) {
-                            handleToolChange(tool.id, value);
-                          }
-                        }}
-                        options={{
-                          minimap: { enabled: false },
-                          lineNumbers: 'on',
-                          fontSize: 12,
-                          tabSize: 2,
-                          automaticLayout: true
-                        }}
-                      />
-                    </div>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </div>
-          )}
+          <Tools dispatch={dispatch} prompt={prompt} />
         </Paper>
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <div>Output Field</div>
+          <OutputField
+            promptId={prompt.id}
+            responseFormat={prompt.responseFormat}
+            dispatch={dispatch}
+          />
         </Paper>
       </div>
     </div>
