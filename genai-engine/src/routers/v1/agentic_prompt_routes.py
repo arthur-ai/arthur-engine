@@ -22,7 +22,7 @@ from schemas.internal_schemas import ApplicationConfiguration, Task, User
 from utils.users import permission_checker
 
 agentic_prompt_routes = APIRouter(
-    prefix="/v1",
+    prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
 
