@@ -1,6 +1,14 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+# 10/13/2025
+- **CHANGE** for **URL**: /v1/completions  endpoint added
+- **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+  
 # 10/10/2025
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the required property 'status_code' to the response with the '200' status
@@ -10,12 +18,6 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
-- - **CHANGE** for **URL**: /v1/completions  endpoint added
-- **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
-- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
   
 # 10/09/2025
 - **CHANGE** for **URL**: /v1/completions  the endpoint scheme security 'API Key' was added to the API

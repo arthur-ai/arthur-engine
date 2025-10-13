@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from arthur_common.models.response_schemas import ExternalInference
+from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel
 
 
@@ -35,6 +36,6 @@ class HealthResponse(BaseModel):
 
 
 class AgenticPromptRunResponse(BaseModel):
-    content: str
-    tool_calls: Optional[List[Dict]] = None
+    content: Optional[str] = None
+    tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
     cost: str

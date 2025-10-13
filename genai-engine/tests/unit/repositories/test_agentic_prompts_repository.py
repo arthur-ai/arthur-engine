@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from litellm.types.utils import ChatCompletionMessageToolCall, Function
 from sqlalchemy.exc import IntegrityError
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
@@ -115,7 +116,13 @@ def test_run_prompt(
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
-    assert result.tool_calls == [{"id": "call_123", "function": {"name": "test_tool"}}]
+    assert result.tool_calls == [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_123",
+            type="function",
+        ),
+    ]
     assert result.cost == "0.001234"
 
     # Verify completion was called with correct parameters
@@ -416,7 +423,7 @@ def test_agentic_prompt_run_chat_completion(
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Direct completion response",
-        "tool_calls": [{"id": "call_456"}],
+        "tool_calls": [{"id": "call_456", "function": {"name": "test_tool"}}],
     }
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.003456
@@ -424,7 +431,13 @@ def test_agentic_prompt_run_chat_completion(
     result = sample_agentic_prompt.run_chat_completion()
 
     assert result.content == "Direct completion response"
-    assert result.tool_calls == [{"id": "call_456"}]
+    assert result.tool_calls == [
+        ChatCompletionMessageToolCall(
+            function=Function(arguments="", name="test_tool"),
+            id="call_456",
+            type="function",
+        ),
+    ]
     assert result.cost == "0.003456"
 
     # Verify completion was called with correct model format
@@ -507,3 +520,139 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
     message = [{"role": "user", "content": message}]
     result = prompt.replace_variables(message)
     assert result[0]["content"] == expected_message
+
+
+@pytest.mark.unit_tests
+def test_agentic_prompt_tools_serialization():
+    """Test that tools serialize and deserialize correctly"""
+    prompt_data = {
+        "name": "test_tools",
+        "messages": [{"role": "user", "content": "Test"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "tools": [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Get weather info",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {"type": "string", "description": "City name"},
+                        },
+                        "required": ["location"],
+                    },
+                },
+                "strict": True,
+            },
+        ],
+        "tool_choice": "get_weather",
+    }
+
+    # Create prompt
+    prompt = AgenticPrompt(**prompt_data)
+
+    # Convert to DB model
+    task_id = str(uuid4())
+    db_model = prompt.to_db_model(task_id)
+
+    # Verify tools are serialized correctly
+    assert len(db_model.tools) == 1
+    assert db_model.tools[0]["type"] == "function"
+    assert db_model.tools[0]["function"]["name"] == "get_weather"
+    assert db_model.tools[0]["function"]["description"] == "Get weather info"
+    assert (
+        db_model.tools[0]["function"]["parameters"]["properties"]["location"]["type"]
+        == "string"
+    )
+    assert db_model.tools[0]["function"]["parameters"]["required"] == ["location"]
+    assert db_model.tools[0]["strict"] == True
+
+    # Verify tool_choice is serialized correctly
+    assert db_model.config["tool_choice"]["type"] == "function"
+    assert db_model.config["tool_choice"]["function"]["name"] == "get_weather"
+
+    # Convert back from DB model
+    reconstructed_prompt = AgenticPrompt.from_db_model(db_model)
+
+    # Verify tools are deserialized correctly
+    assert len(reconstructed_prompt.tools) == 1
+    assert reconstructed_prompt.tools[0].name == "get_weather"
+    assert reconstructed_prompt.tools[0].description == "Get weather info"
+    assert reconstructed_prompt.tools[0].strict == True
+    assert len(reconstructed_prompt.tools[0].function_definition.properties) == 1
+    assert reconstructed_prompt.tools[0].function_definition.required == ["location"]
+
+    # Verify tool_choice is deserialized correctly (should be function name string)
+    assert reconstructed_prompt.tool_choice == "get_weather"
+
+
+@pytest.mark.unit_tests
+def test_agentic_prompt_response_format_serialization():
+    """Test that response_format serializes and deserializes correctly"""
+    prompt_data = {
+        "name": "test_response_format",
+        "messages": [{"role": "user", "content": "Test"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "user_schema",
+                "description": "User information",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "User's name"},
+                    },
+                    "required": ["name"],
+                },
+            },
+        },
+    }
+
+    # Create prompt
+    prompt = AgenticPrompt(**prompt_data)
+
+    # Convert to DB model
+    task_id = str(uuid4())
+    db_model = prompt.to_db_model(task_id)
+
+    # Verify response_format is serialized correctly
+    assert db_model.config["response_format"]["type"] == "json_schema"
+    assert db_model.config["response_format"]["json_schema"]["name"] == "user_schema"
+    assert (
+        db_model.config["response_format"]["json_schema"]["description"]
+        == "User information"
+    )
+    assert (
+        db_model.config["response_format"]["json_schema"]["schema"]["properties"][
+            "name"
+        ]["type"]
+        == "string"
+    )
+    assert db_model.config["response_format"]["json_schema"]["schema"]["required"] == [
+        "name",
+    ]
+    assert db_model.config["response_format"]["json_schema"].get("strict") == None
+
+    # Convert back from DB model
+    reconstructed_prompt = AgenticPrompt.from_db_model(db_model)
+
+    # Verify response_format is deserialized correctly
+    assert reconstructed_prompt.response_format.type == "json_schema"
+    assert reconstructed_prompt.response_format.response_schema.name == "user_schema"
+    assert (
+        reconstructed_prompt.response_format.response_schema.description
+        == "User information"
+    )
+    assert reconstructed_prompt.response_format.response_schema.strict == None
+    assert (
+        len(reconstructed_prompt.response_format.response_schema.json_schema.properties)
+        == 1
+    )
+    assert (
+        reconstructed_prompt.response_format.response_schema.json_schema.required
+        == ["name"]
+    )

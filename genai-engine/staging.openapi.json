@@ -4354,7 +4354,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage"
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Output"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4373,8 +4373,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/LLMTool-Output"
                                 },
                                 "type": "array"
                             },
@@ -4451,15 +4450,12 @@
                     "response_format": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/LLMResponseFormat-Output"
                             },
-                            {},
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Response Format",
                         "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
                     },
                     "stop": {
@@ -4613,7 +4609,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage"
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4632,8 +4628,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/LLMTool-Input"
                                 },
                                 "type": "array"
                             },
@@ -4710,15 +4705,12 @@
                     "response_format": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
                             },
-                            {},
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Response Format",
                         "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
                     },
                     "stop": {
@@ -4862,22 +4854,107 @@
                 ],
                 "title": "AgenticPromptBaseConfig"
             },
-            "AgenticPromptMessage": {
+            "AgenticPromptMessage-Input": {
                 "properties": {
                     "role": {
                         "$ref": "#/components/schemas/MessageRole",
                         "Description": "Role of the message"
                     },
                     "content": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Content",
                         "Description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "Description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "Description": "ID of the tool call this message is responding to"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "role",
-                    "content"
+                    "role"
+                ],
+                "title": "AgenticPromptMessage"
+            },
+            "AgenticPromptMessage-Output": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "Description": "Role of the message"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "Description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "Description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "Description": "ID of the tool call this message is responding to"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
                 ],
                 "title": "AgenticPromptMessage"
             },
@@ -4920,15 +4997,21 @@
             "AgenticPromptRunResponse": {
                 "properties": {
                     "content": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Content"
                     },
                     "tool_calls": {
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
                                 },
                                 "type": "array"
                             },
@@ -4945,7 +5028,6 @@
                 },
                 "type": "object",
                 "required": [
-                    "content",
                     "cost"
                 ],
                 "title": "AgenticPromptRunResponse"
@@ -4954,7 +5036,7 @@
                 "properties": {
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage"
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -4973,8 +5055,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/LLMTool-Input"
                                 },
                                 "type": "array"
                             },
@@ -5051,15 +5132,12 @@
                     "response_format": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
                             },
-                            {},
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Response Format",
                         "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
                     },
                     "stop": {
@@ -5403,6 +5481,12 @@
                     "file"
                 ],
                 "title": "Body_upload_embeddings_file_api_chat_files_post"
+            },
+            "ChatCompletionMessageToolCall": {
+                "properties": {},
+                "additionalProperties": true,
+                "type": "object",
+                "title": "ChatCompletionMessageToolCall"
             },
             "ChatDefaultTaskRequest": {
                 "properties": {
@@ -6278,6 +6362,105 @@
                 ],
                 "title": "InferenceFeedbackTarget"
             },
+            "JsonPropertySchema": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the argument"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "The argument's type (e.g. string, boolean, etc.)",
+                        "default": "string"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "A description of the argument"
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "An enum for the argument (e.g. ['celsius', 'fahrenheit'])"
+                    },
+                    "items": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Items",
+                        "description": "For array types, describes the items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "JsonPropertySchema"
+            },
+            "JsonSchema": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "object"
+                    },
+                    "properties": {
+                        "items": {
+                            "$ref": "#/components/schemas/JsonPropertySchema"
+                        },
+                        "type": "array",
+                        "title": "Properties",
+                        "description": "The properties of the function"
+                    },
+                    "required": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Required",
+                        "description": "The required properties of the function"
+                    },
+                    "additional_properties": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Additional Properties",
+                        "description": "Whether the function definition should allow additional properties"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "properties"
+                ],
+                "title": "JsonSchema"
+            },
             "KeywordDetailsResponse": {
                 "properties": {
                     "score": {
@@ -6353,6 +6536,240 @@
                     ]
                 }
             },
+            "LLMResponseFormat-Input": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                    },
+                    "response_schema": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseSchema-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "JSON schema definition (required when type is 'json_schema')"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "LLMResponseFormat"
+            },
+            "LLMResponseFormat-Output": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                    },
+                    "response_schema": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseSchema-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "JSON schema definition (required when type is 'json_schema')"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "LLMResponseFormat"
+            },
+            "LLMResponseSchema-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the schema"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the schema"
+                    },
+                    "json_schema": {
+                        "$ref": "#/components/schemas/JsonSchema",
+                        "description": "The JSON schema object"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict schema adherence"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "json_schema"
+                ],
+                "title": "LLMResponseSchema"
+            },
+            "LLMResponseSchema-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the schema"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the schema"
+                    },
+                    "json_schema": {
+                        "$ref": "#/components/schemas/JsonSchema",
+                        "description": "The JSON schema object"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict schema adherence"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "json_schema"
+                ],
+                "title": "LLMResponseSchema"
+            },
+            "LLMTool-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "function_definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether the function definition should use OpenAI's strict mode"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMTool"
+            },
+            "LLMTool-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "function_definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether the function definition should use OpenAI's strict mode"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMTool"
+            },
             "LogitBiasItem": {
                 "properties": {
                     "token_id": {
@@ -6378,7 +6795,7 @@
                 "enum": [
                     "system",
                     "user",
-                    "ai",
+                    "assistant",
                     "tool"
                 ],
                 "title": "MessageRole"
@@ -8361,6 +8778,51 @@
                     "task"
                 ],
                 "title": "TokenUsageScope"
+            },
+            "ToolCall": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the tool call"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "Type of tool call",
+                        "default": "function"
+                    },
+                    "function": {
+                        "$ref": "#/components/schemas/ToolCallFunction",
+                        "description": "Function details"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "function"
+                ],
+                "title": "ToolCall"
+            },
+            "ToolCallFunction": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the function to call"
+                    },
+                    "arguments": {
+                        "type": "string",
+                        "title": "Arguments",
+                        "description": "JSON string of function arguments"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "arguments"
+                ],
+                "title": "ToolCallFunction"
             },
             "ToolChoiceEnum": {
                 "type": "string",

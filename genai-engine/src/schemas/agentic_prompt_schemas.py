@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Union
 
 from litellm import completion, completion_cost
 from litellm.types.llms.anthropic import AnthropicThinkingParam
@@ -11,65 +10,14 @@ from pydantic import (
     PrivateAttr,
     field_serializer,
     field_validator,
+    model_serializer,
     model_validator,
 )
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from schemas.common_schemas import JsonSchema
+from schemas.enums import MessageRole, ProviderEnum, ReasoningEffortEnum, ToolChoiceEnum
 from schemas.response_schemas import AgenticPromptRunResponse
-
-
-class ProviderEnum(str, Enum):
-    ANTHROPIC = "anthropic"
-    OPENAI = "openai"
-    GEMINI = "gemini"
-    AZURE = "azure"
-    DEEPSEEK = "deepseek"
-    MISTRAL = "mistral"
-    META_LLAMA = "meta_llama"
-    GROQ = "groq"
-    BEDROCK = "bedrock"
-    SAGEMAKER = "sagemaker"
-    VERTEX_AI = "vertex_ai"
-    HUGGINGFACE = "huggingface"
-    CLOUDFLARE = "cloudflare"
-    AI21 = "ai21"
-    BASETEN = "baseten"
-    COHERE = "cohere"
-    EMPOWER = "empower"
-    FEATHERLESS_AI = "featherless_ai"
-    FRIENDLIAI = "friendliai"
-    GALADRIEL = "galadriel"
-    NEBIUS = "nebius"
-    NLP_CLOUD = "nlp_cloud"
-    NOVITA = "novita"
-    OPENROUTER = "openrouter"
-    PETALS = "petals"
-    REPLICATE = "replicate"
-    TOGETHER_AI = "together_ai"
-    VLLM = "vllm"
-    WATSONX = "watsonx"
-
-
-class MessageRole(Enum):
-    SYSTEM = "system"
-    USER = "user"
-    AI = "ai"
-    TOOL = "tool"
-
-
-class ReasoningEffortEnum(str, Enum):
-    NONE = "none"
-    MINIMAL = "minimal"
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    DEFAULT = "default"
-
-
-class ToolChoiceEnum(str, Enum):
-    AUTO = "auto"
-    NONE = "none"
-    REQUIRED = "required"
 
 
 class StreamOptions(BaseModel):
@@ -145,16 +93,157 @@ class AgenticPromptRunConfig(BaseModel):
         return updated_messages
 
 
+class ToolCallFunction(BaseModel):
+    name: str = Field(..., description="Name of the function to call")
+    arguments: str = Field(..., description="JSON string of function arguments")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"name": self.name, "arguments": self.arguments}
+
+
+class ToolCall(BaseModel):
+    id: str = Field(..., description="Unique identifier for the tool call")
+    type: str = Field(default="function", description="Type of tool call")
+    function: ToolCallFunction = Field(..., description="Function details")
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {"id": self.id, "type": self.type, "function": self.function.to_dict()}
+
+
 class AgenticPromptMessage(BaseModel):
     role: MessageRole = Field(Description="Role of the message")
-    content: str = Field(Description="Content of the message")
+    content: Optional[str] = Field(default=None, Description="Content of the message")
+    tool_calls: Optional[List[ToolCall]] = Field(
+        default=None,
+        Description="Tool calls made by assistant",
+    )
+    tool_call_id: Optional[str] = Field(
+        default=None,
+        Description="ID of the tool call this message is responding to",
+    )
 
     @field_serializer("role")
     def serialize_role(self, v, _info):
         return v.value
 
     def to_dict(self) -> Dict[str, Any]:
-        return self.model_dump()
+        result = {"role": self.role.value}
+
+        if self.content is not None:
+            result["content"] = self.content
+
+        if self.tool_calls is not None:
+            result["tool_calls"] = [tc.to_dict() for tc in self.tool_calls]
+
+        if self.tool_call_id is not None:
+            result["tool_call_id"] = self.tool_call_id
+
+        return result
+
+
+class LLMTool(BaseModel):
+    name: str = Field(..., description="The name of the tool/function")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of what the tool does",
+    )
+    function_definition: Optional[JsonSchema] = Field(
+        default=None,
+        description="The function's parameter schema",
+    )
+    strict: Optional[bool] = Field(
+        default=None,
+        description="Whether the function definition should use OpenAI's strict mode",
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result = {"type": "function", "function": {"name": self.name}}
+
+        if self.description:
+            result["function"]["description"] = self.description
+
+        if self.strict is not None:
+            result["strict"] = self.strict
+
+        if self.function_definition:
+            result["function"]["parameters"] = self.function_definition.to_dict()
+
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMTool":
+        function_definition = None
+        if "parameters" in data["function"]:
+            function_definition = JsonSchema.from_dict(data["function"]["parameters"])
+
+        return cls(
+            name=data["function"]["name"],
+            description=data["function"].get("description"),
+            function_definition=function_definition,
+            strict=data.get("strict"),
+        )
+
+
+class LLMResponseSchema(BaseModel):
+    name: str = Field(..., description="Name of the schema")
+    description: Optional[str] = Field(None, description="Description of the schema")
+    json_schema: JsonSchema = Field(..., description="The JSON schema object")
+    strict: Optional[bool] = Field(
+        None,
+        description="Whether to enforce strict schema adherence",
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result = {
+            "name": self.name,
+            "schema": self.json_schema.to_dict(),
+        }
+
+        if self.description:
+            result["description"] = self.description
+
+        if self.strict is not None:
+            result["strict"] = self.strict
+
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMResponseSchema":
+        return cls(
+            name=data["name"],
+            description=data.get("description"),
+            json_schema=JsonSchema.from_dict(data["schema"]),
+            strict=data.get("strict"),
+        )
+
+
+class LLMResponseFormat(BaseModel):
+    type: str = Field(
+        ...,
+        description="Response format type: 'text', 'json_object', or 'json_schema'",
+    )
+    response_schema: Optional[LLMResponseSchema] = Field(
+        None,
+        description="JSON schema definition (required when type is 'json_schema')",
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result = {"type": self.type}
+
+        if self.response_schema:
+            result["json_schema"] = self.response_schema.to_dict()
+
+        return result
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMResponseFormat":
+        if data.get("type") == "json_schema" and "json_schema" in data:
+            return cls(
+                type=data["type"],
+                response_schema=LLMResponseSchema.from_dict(data["json_schema"]),
+            )
+        else:
+            return cls(type=data["type"])
 
 
 class AgenticPromptBaseConfig(BaseModel):
@@ -167,7 +256,7 @@ class AgenticPromptBaseConfig(BaseModel):
     model_provider: ProviderEnum = Field(
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
-    tools: Optional[List[Dict]] = Field(
+    tools: Optional[List[LLMTool]] = Field(
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
     )
@@ -188,7 +277,7 @@ class AgenticPromptBaseConfig(BaseModel):
         None,
         description="Maximum number of tokens to generate in the response",
     )
-    response_format: Optional[Union[dict, Type[BaseModel]]] = Field(
+    response_format: Optional[LLMResponseFormat] = Field(
         None,
         description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
     )
@@ -237,10 +326,38 @@ class AgenticPromptBaseConfig(BaseModel):
         description="Additional streaming configuration options",
     )
 
+    @field_validator("tools", mode="before")
+    @classmethod
+    def convert_tools(cls, v):
+        if v is None:
+            return v
+
+        return [
+            LLMTool.from_dict(tool) if isinstance(tool, dict) else tool for tool in v
+        ]
+
+    @field_validator("response_format", mode="before")
+    @classmethod
+    def convert_response_format(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, dict):
+            return LLMResponseFormat.from_dict(v)
+        return v
+
     def model_dump(self, **kwargs):
         """Override to auto-format tool_choice before dumping."""
         data = super().model_dump(**kwargs)
         tool_choice = data.get("tool_choice")
+
+        if data.get("messages"):
+            data["messages"] = [message.to_dict() for message in self.messages]
+
+        if data.get("tools"):
+            data["tools"] = [tool.to_dict() for tool in self.tools]
+
+        if data.get("response_format") and self.response_format:
+            data["response_format"] = self.response_format.to_dict()
 
         if isinstance(tool_choice, ToolChoiceEnum):
             data["tool_choice"] = tool_choice.value
@@ -264,7 +381,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         self,
         run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
     ) -> AgenticPromptRunResponse:
-        model = self.model_provider + "/" + self.model_name
+        model = self.model_provider.value + "/" + self.model_name
 
         completion_params = self.model_dump(
             exclude={"name", "model_name", "model_provider"},
@@ -275,7 +392,8 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 completion_params["messages"],
             )
 
-        completion_params["stream"] = run_config.stream
+        # TODO: Re-implement streaming to actually work
+        # completion_params["stream"] = run_config.stream
 
         # not allowed to have tool_choice if no tools are provided
         if self.tools is None:
@@ -292,6 +410,25 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             cost=f"{cost:.6f}",
         )
 
+    @model_serializer(mode="wrap")
+    def serialize_model(self, serializer):
+        data = serializer(self)
+
+        if data.get("tools"):
+            data["tools"] = [tool.to_dict() for tool in self.tools]
+
+        if data.get("response_format") and self.response_format:
+            data["response_format"] = self.response_format.to_dict()
+
+        tool_choice = data.get("tool_choice")
+        if tool_choice is not None and tool_choice not in ["auto", "none", "required"]:
+            data["tool_choice"] = {
+                "type": "function",
+                "function": {"name": tool_choice},
+            }
+
+        return data
+
     @classmethod
     def from_db_model(cls, db_prompt: DatabaseAgenticPrompt) -> "AgenticPrompt":
         # Base fields that map directly
@@ -303,9 +440,30 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "tools": db_prompt.tools,
         }
 
+        if db_prompt.tools:
+            base_fields["tools"] = [LLMTool.from_dict(tool) for tool in db_prompt.tools]
+
         # Merge in config JSON if present (LLM parameters)
         if db_prompt.config:
-            base_fields.update(db_prompt.config)
+            config = db_prompt.config.copy()
+
+            if "tool_choice" in config:
+                if isinstance(config["tool_choice"], dict):
+                    config["tool_choice"] = config["tool_choice"]["function"]["name"]
+                elif isinstance(config["tool_choice"], str) and config[
+                    "tool_choice"
+                ] in ["auto", "none", "required"]:
+                    config["tool_choice"] = ToolChoiceEnum(config["tool_choice"])
+
+            if "response_format" in config and isinstance(
+                config["response_format"],
+                dict,
+            ):
+                config["response_format"] = LLMResponseFormat.from_dict(
+                    config["response_format"],
+                )
+
+            base_fields.update(config)
 
         return cls(**base_fields)
 

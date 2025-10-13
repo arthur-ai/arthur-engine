@@ -245,7 +245,11 @@ def test_run_saved_agentic_prompt_success(
     assert run_response["content"] == "Saved prompt response"
     assert run_response["cost"] == "0.002345"
     assert run_response["tool_calls"] == [
-        {"id": "call_123", "function": {"name": "test_tool"}},
+        {
+            "function": {"arguments": "", "name": "test_tool"},
+            "id": "call_123",
+            "type": "function",
+        },
     ]
 
 
