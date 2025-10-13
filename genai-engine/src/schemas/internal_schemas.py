@@ -101,6 +101,9 @@ from schemas.metric_schemas import MetricScoreDetails
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DocumentStorageConfigurationResponse,
+    SessionMetadataResponse,
+    SpanMetadataResponse,
+    TraceMetadataResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -115,6 +118,7 @@ from schemas.scorer_schemas import (
 from utils import constants
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
+from utils.utils import calculate_duration_ms
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -547,6 +551,21 @@ class TraceMetadata(BaseModel):
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def _to_metadata_response_model(self) -> TraceMetadataResponse:
+        """Convert to lightweight metadata response"""
+        duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+        return TraceMetadataResponse(
+            trace_id=self.trace_id,
+            task_id=self.task_id,
+            session_id=self.session_id,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            span_count=self.span_count,
+            duration_ms=duration_ms,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -1685,6 +1704,26 @@ class Span(BaseModel):
             children=children or [],
         )
 
+    def _to_metadata_response_model(self) -> SpanMetadataResponse:
+        """Convert to lightweight metadata response"""
+        duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+        return SpanMetadataResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
+            span_name=self.span_name,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            duration_ms=duration_ms,
+            task_id=self.task_id,
+            session_id=self.session_id,
+            status_code=self.status_code,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
     @staticmethod
     def from_span_data(span_data: dict, user_id: str) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""
@@ -1713,6 +1752,33 @@ class Span(BaseModel):
 class OrderedClaim(BaseModel):
     index_number: int
     text: str
+
+
+class SessionMetadata(BaseModel):
+    """Internal session metadata representation"""
+
+    session_id: str
+    task_ids: list[str]
+    trace_count: int
+    span_count: int
+    earliest_start_time: datetime
+    latest_end_time: datetime
+
+    def _to_metadata_response_model(self) -> SessionMetadataResponse:
+        """Convert to API response model"""
+        duration_ms = calculate_duration_ms(
+            self.earliest_start_time,
+            self.latest_end_time,
+        )
+        return SessionMetadataResponse(
+            session_id=self.session_id,
+            task_ids=self.task_ids,
+            trace_count=self.trace_count,
+            span_count=self.span_count,
+            earliest_start_time=self.earliest_start_time,
+            latest_end_time=self.latest_end_time,
+            duration_ms=duration_ms,
+        )
 
 
 def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
