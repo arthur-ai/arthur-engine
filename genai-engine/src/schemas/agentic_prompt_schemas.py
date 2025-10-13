@@ -1,7 +1,7 @@
-import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from jinja2.sandbox import SandboxedEnvironment
 from litellm import completion, completion_cost
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
@@ -57,6 +57,9 @@ class AgenticPromptRunConfig(BaseModel):
     )
 
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
+    _jinja_env: SandboxedEnvironment = PrivateAttr(
+        default_factory=lambda: SandboxedEnvironment(autoescape=False),
+    )
 
     @model_validator(mode="after")
     def _build_variable_map(self):
@@ -65,29 +68,13 @@ class AgenticPromptRunConfig(BaseModel):
             self._variable_map = {v.name: v.value for v in self.variables}
         return self
 
-    def _replace_match(self, match):
-        """Find all {{variable_name}} patterns and replace them"""
-        var_name = match.group(1)
-
-        # Return original if not found
-        return self._variable_map.get(var_name, match.group(0))
-
     def replace_variables(self, messages: List[Dict]) -> List[Dict]:
-        """Replace template variables in messages with actual values"""
         updated_messages = []
 
         for message in messages:
             updated_message = message.copy()
-            content = updated_message["content"]
-
-            # Replace all {{variable_name}} patterns
-            updated_content = re.sub(
-                r"\{\{\s*([^\{\}]+?)\s*\}\}",
-                self._replace_match,
-                content,
-            )
-            updated_message["content"] = updated_content
-
+            template = self._jinja_env.from_string(updated_message["content"])
+            updated_message["content"] = template.render(**self._variable_map)
             updated_messages.append(updated_message)
 
         return updated_messages

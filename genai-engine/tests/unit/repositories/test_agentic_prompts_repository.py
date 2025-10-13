@@ -458,7 +458,7 @@ def test_agentic_prompt_run_chat_completion(
         (
             "What is the capital of {{country}}?",
             {"city": "Paris"},
-            "What is the capital of {{country}}?",
+            "What is the capital of ?",
         ),
         (
             "What is the capital of {country}?",
@@ -469,16 +469,6 @@ def test_agentic_prompt_run_chat_completion(
             "What is the capital of country?",
             {"country": "France"},
             "What is the capital of country?",
-        ),
-        (
-            "What is the capital of {{}}?",
-            {"country": "France"},
-            "What is the capital of {{}}?",
-        ),
-        (
-            "What is the capital of {{}}?",
-            {"country": "France"},
-            "What is the capital of {{}}?",
         ),
         (
             "User {{user_id}} has {{item_count}} items",
@@ -487,8 +477,9 @@ def test_agentic_prompt_run_chat_completion(
         ),
         ("{{first}}{{second}}", {"first": "Hello", "second": "World"}, "HelloWorld"),
         ("{{first}} {{first}}", {"first": "Hello", "second": "World"}, "Hello Hello"),
-        ("{{{name}}}", {"name": "Alice"}, "{Alice}"),
+        ("{{ name }}", {"name": "Alice"}, "Alice"),
         ("{{     name     }}", {"name": "Alice"}, "Alice"),
+        ("   {{     name     }}   ", {"name": "Alice"}, "   Alice   "),
         (
             "This is a message without variables",
             {},
@@ -499,11 +490,7 @@ def test_agentic_prompt_run_chat_completion(
             None,
             "This is a message without variables",
         ),
-        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
-        ("{{ name variable 1 }}", {"name variable 1": "Alice"}, "Alice"),
-        ("{{{{ name variable 1 }}}}", {"name variable 1": "Alice"}, "{{Alice}}"),
-        ("{{{{ name.variable.1      }}}}", {"name.variable.1": "Alice"}, "{{Alice}}"),
-        ("{{{{ name-variable_1      }}}", {"name-variable_1": "Alice"}, "{{Alice}"),
+        ("{{ name_variable_1 }}", {"name_variable_1": "Alice"}, "Alice"),
     ],
 )
 def test_agentic_prompt_variable_replacement(message, variables, expected_message):
