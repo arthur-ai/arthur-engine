@@ -15,6 +15,8 @@ import React, { useCallback, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
 import ModelParamsDialog from "./ModelParamsDialog";
+import OutputField from "./OutputField";
+import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
 
@@ -196,12 +198,16 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <div>Tools</div>
+          <Tools dispatch={dispatch} prompt={prompt} />
         </Paper>
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <div>Output Field</div>
+          <OutputField
+            promptId={prompt.id}
+            responseFormat={prompt.responseFormat}
+            dispatch={dispatch}
+          />
         </Paper>
       </div>
     </div>

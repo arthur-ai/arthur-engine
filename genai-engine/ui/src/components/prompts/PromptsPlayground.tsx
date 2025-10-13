@@ -35,12 +35,6 @@ const PromptsPlayground = () => {
             <Button variant="contained" size="small" onClick={handleAddPrompt}>
               Add Prompt
             </Button>
-            <Button variant="contained" size="small" onClick={() => {}}>
-              Output Schemas
-            </Button>
-            <Button variant="contained" size="small" onClick={() => {}}>
-              Tools
-            </Button>
           </div>
           <Container component="div" maxWidth="xl" disableGutters>
             <Paper elevation={3} className="p-1">

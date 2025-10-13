@@ -16,7 +16,6 @@ from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
-    index,
 )
 from db_models.inference_models import (
     DatabaseInference,
@@ -79,7 +78,6 @@ __all__ = [
     "DatabaseDocument",
     "DatabaseEmbedding",
     "DatabaseEmbeddingReference",
-    "index",
     # Auth models
     "DatabaseUser",
     "DatabaseApiKey",

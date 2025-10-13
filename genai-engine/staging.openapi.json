@@ -5128,6 +5128,18 @@
                         "type": "array",
                         "title": "Response Results",
                         "description": "list of rule results for the llm response"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -5485,6 +5497,18 @@
                             }
                         ],
                         "title": "User Id"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version used for this inference (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -5540,6 +5564,18 @@
                             }
                         ],
                         "title": "Tokens"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -5607,6 +5643,18 @@
                             }
                         ],
                         "title": "Tokens"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -6236,6 +6284,22 @@
                         ],
                         "title": "Task Id"
                     },
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
+                    },
+                    "status_code": {
+                        "type": "string",
+                        "title": "Status Code",
+                        "description": "Status code for the span (Unset, Error, Ok)"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -6325,6 +6389,7 @@
                     "span_id",
                     "start_time",
                     "end_time",
+                    "status_code",
                     "created_at",
                     "updated_at",
                     "raw_data"
@@ -6936,6 +7001,18 @@
                         ],
                         "title": "User Id",
                         "description": "The user ID this prompt belongs to"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version being used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -7302,6 +7379,18 @@
                         ],
                         "title": "Context",
                         "description": "Optional data provided as context for the validation."
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version being used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -7690,6 +7779,22 @@
                         ],
                         "title": "Task Id"
                     },
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id"
+                    },
+                    "status_code": {
+                        "type": "string",
+                        "title": "Status Code",
+                        "description": "Status code for the span (Unset, Error, Ok)"
+                    },
                     "created_at": {
                         "type": "string",
                         "format": "date-time",
@@ -7770,6 +7875,7 @@
                     "span_id",
                     "start_time",
                     "end_time",
+                    "status_code",
                     "created_at",
                     "updated_at",
                     "raw_data"
@@ -8220,6 +8326,18 @@
                         ],
                         "title": "User Id",
                         "description": "The user ID this prompt belongs to"
+                    },
+                    "model_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Model Name",
+                        "description": "The model name and version used for this validation (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
