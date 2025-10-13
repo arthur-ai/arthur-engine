@@ -254,6 +254,46 @@ class SpanRepository:
 
         return count, traces
 
+    def compute_session_metrics(
+        self,
+        session_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list]:
+        """Get all traces in a session and compute missing metrics.
+
+        Returns list of full trace trees with computed metrics.
+        """
+        # Get trace IDs for this session
+        count, trace_ids = self.span_query_service.get_trace_ids_for_session(
+            session_id=session_id,
+            pagination_parameters=pagination_parameters,
+        )
+
+        if not trace_ids:
+            return 0, []
+
+        # Query all spans for these traces
+        spans, _ = self.span_query_service.query_spans_from_db(
+            trace_ids=trace_ids,
+            sort=pagination_parameters.sort,
+        )
+
+        # Validate spans and compute metrics
+        valid_spans = self.span_query_service.validate_spans(spans)
+        if valid_spans:
+            valid_spans = self.metrics_integration_service.add_metrics_to_spans(
+                valid_spans,
+                compute_new_metrics=True,  # Compute missing metrics
+            )
+
+        # Build trace tree structures
+        traces = self.tree_building_service.group_spans_into_traces(
+            valid_spans,
+            pagination_parameters.sort,
+        )
+
+        return count, traces
+
     # ============================================================================
     # Public API Methods - Used by Legacy Endpoints (ML Engine)
     # ============================================================================
