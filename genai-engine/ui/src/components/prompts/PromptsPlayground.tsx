@@ -5,31 +5,31 @@ import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect } from "react";
-import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
 
 import PromptComponent from "./PromptComponent";
 import { promptsReducer, initialState } from "./reducer";
 
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
+
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
 
-  const api = useApi()?.api;
+  const apiClient = useApi();
   const { task } = useTask();
+  const api = apiClient?.v1; // Prompt endpoints live here
   const taskId = task?.id;
-  console.log(api);
+
   useEffect(() => {
     const fetchPrompts = async () => {
       if (!api || !taskId) {
         return;
       }
-      console.log("fetching prompts");
-      // const response = await api.getTaskApiV2TasksTaskIdGet(taskId);
-      // console.log(response);
-      // const response = await api.api.getPromptsApiV2TasksTaskIdPromptsGet(
-      //   taskId
-      // );
-      // dispatch({ type: "setPrompts", payload: response.data });
+
+      const response =
+        await api.getAllAgenticPromptsV1TaskIdAgenticPromptGetAllPromptsGet(
+          taskId
+        );
     };
 
     fetchPrompts();
