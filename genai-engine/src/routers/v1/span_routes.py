@@ -394,7 +394,7 @@ def query_spans_by_type(
         )
 
         span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        spans, total_count = span_repo.query_spans(
             task_ids=query_request.task_ids,
             span_types=query_request.span_types,
             start_time=query_request.start_time,
@@ -406,7 +406,7 @@ def query_spans_by_type(
             compute_new_metrics=False,  # Don't compute new metrics
         )
         return QuerySpansResponse(
-            count=len(spans),
+            count=total_count,
             spans=[span._to_response_model() for span in spans],
         )
     except ValidationError as e:

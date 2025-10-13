@@ -11,7 +11,12 @@ from sqlalchemy.orm import Session
 
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
-from schemas.internal_schemas import Span, TraceQuerySchema
+from schemas.internal_schemas import (
+    SessionMetadata,
+    Span,
+    TraceMetadata,
+    TraceQuerySchema,
+)
 from services.metrics_integration_service import MetricsIntegrationService
 from services.span_query_service import SpanQueryService
 from services.trace_ingestion_service import TraceIngestionService
@@ -47,8 +52,214 @@ class SpanRepository:
         self.tree_building_service = TreeBuildingService()
 
     # ============================================================================
-    # Public API Methods
+    # Public API Methods - Used by Optimized Trace Endpoints
     # ============================================================================
+
+    def get_traces_metadata(
+        self,
+        filters: TraceQueryRequest,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[TraceMetadata]]:
+        """Get lightweight trace metadata for browsing/filtering operations.
+
+        Returns metadata only without spans or metrics for fast performance.
+        """
+        # Convert to internal schema format
+        filters = TraceQuerySchema._from_request_model(filters)
+
+        if not filters.task_ids:
+            raise ValueError("task_ids are required for trace queries")
+
+        # Get trace metadata without loading spans
+        paginated_trace_ids, total_count = (
+            self.span_query_service.get_paginated_trace_ids_with_filters(
+                filters=filters,
+                pagination_parameters=pagination_parameters,
+            )
+        )
+
+        if total_count == 0:
+            return 0, []
+
+        # Get trace metadata objects directly
+        trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
+            trace_ids=paginated_trace_ids,
+        )
+
+        return total_count, trace_metadata_list
+
+    def get_trace_by_id(
+        self,
+        trace_id: str,
+        include_metrics: bool = False,
+        compute_new_metrics: bool = False,
+    ):
+        """Get complete trace tree with existing metrics (no computation).
+
+        Returns full trace structure with spans.
+        """
+        # Query all spans for this trace
+        spans, _ = self.span_query_service.query_spans_from_db(trace_ids=[trace_id])
+
+        if not spans:
+            return None
+
+        # Validate spans
+        valid_spans = self.span_query_service.validate_spans(spans)
+
+        # Add existing metrics if requested
+        if include_metrics and valid_spans:
+            valid_spans = self.metrics_integration_service.add_metrics_to_spans(
+                valid_spans,
+                compute_new_metrics,
+            )
+
+        # Build trace tree structure
+        traces = self.tree_building_service.group_spans_into_traces(
+            valid_spans,
+            PaginationSortMethod.DESCENDING,
+        )
+
+        return traces[0] if traces else None
+
+    def compute_trace_metrics(
+        self,
+        trace_id: str,
+    ):
+        """Compute all missing metrics for trace spans on-demand.
+
+        Returns full trace tree with computed metrics.
+        """
+        return self.get_trace_by_id(
+            trace_id=trace_id,
+            include_metrics=True,
+            compute_new_metrics=True,
+        )
+
+    def get_span_by_id(
+        self,
+        span_id: str,
+        include_metrics: bool = False,
+        compute_new_metrics: bool = False,
+    ) -> Optional[Span]:
+        """Get single span with existing metrics (no computation).
+
+        Returns full span object with any existing metrics.
+        """
+        # Query the specific span directly from database
+        span = self.span_query_service.query_span_by_id(span_id)
+
+        if not span:
+            return None
+
+        # Validate span version
+        if not trace_utils.validate_span_version(span.raw_data):
+            logger.warning(f"Span {span_id} failed version validation")
+            return None
+
+        # Add existing metrics if requested
+        if include_metrics:
+            spans_with_metrics = self.metrics_integration_service.add_metrics_to_spans(
+                [span],
+                compute_new_metrics,
+            )
+            return spans_with_metrics[0] if spans_with_metrics else span
+
+        return span
+
+    def compute_span_metrics(
+        self,
+        span_id: str,
+    ) -> Optional[Span]:
+        """Compute missing span metrics on-demand.
+
+        Returns span with computed metrics.
+        """
+        # Query the specific span directly from database
+        span = self.span_query_service.query_span_by_id(span_id)
+
+        if not span:
+            return None
+
+        # Validate span version
+        if not trace_utils.validate_span_version(span.raw_data):
+            raise ValueError(f"Span {span_id} failed version validation")
+
+        # Validate that this is an LLM span (required for metrics computation)
+        self.span_query_service.validate_span_for_metrics(span, span_id)
+
+        # Compute metrics for this span
+        spans_with_metrics = self.metrics_integration_service.add_metrics_to_spans(
+            [span],
+            compute_new_metrics=True,
+        )
+        return spans_with_metrics[0] if spans_with_metrics else None
+
+    def get_sessions_metadata(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[SessionMetadata]]:
+        """Return session aggregation data.
+
+        Returns aggregated session information with pagination.
+        """
+        if not task_ids:
+            raise ValueError("task_ids are required for session queries")
+
+        # Get session aggregation data from query service
+        count, session_metadata_list = self.span_query_service.get_sessions_aggregated(
+            task_ids=task_ids,
+            pagination_parameters=pagination_parameters,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return count, session_metadata_list
+
+    def get_session_traces(
+        self,
+        session_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list]:
+        """Get all trace trees in a session.
+
+        Returns list of full trace trees without metrics computation.
+        """
+        # Get trace IDs for this session
+        count, trace_ids = self.span_query_service.get_trace_ids_for_session(
+            session_id=session_id,
+            pagination_parameters=pagination_parameters,
+        )
+
+        if not trace_ids:
+            return 0, []
+
+        # Query all spans for these traces
+        spans, _ = self.span_query_service.query_spans_from_db(
+            trace_ids=trace_ids,
+            sort=pagination_parameters.sort,
+        )
+
+        # Validate spans (no metrics computation for session listing)
+        valid_spans = self.span_query_service.validate_spans(spans)
+
+        # Build trace tree structures
+        traces = self.tree_building_service.group_spans_into_traces(
+            valid_spans,
+            pagination_parameters.sort,
+        )
+
+        return count, traces
+
+    # ============================================================================
+    # Public API Methods - Used by Legacy Endpoints (ML Engine)
+    # ============================================================================
+    # These methods maintain backward compatibility with existing endpoints
+    # in span_routes.py. They combine data retrieval with metrics computation
+    # for compatibility with the original API design.
 
     def create_traces(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and store in database."""
@@ -69,8 +280,12 @@ class SpanRepository:
         end_time: Optional[datetime] = None,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
-    ) -> list[Span]:
-        """Query spans with optional metrics computation."""
+    ) -> tuple[list[Span], int]:
+        """Query spans with optional metrics computation.
+
+        Returns:
+            tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
+        """
         # Validate parameters
         if not task_ids:
             raise ValueError("task_ids are required for span queries")
@@ -80,8 +295,8 @@ class SpanRepository:
                 "task_ids are required when include_metrics=True and compute_new_metrics=True",
             )
 
-        # Query spans directly with span-level pagination
-        spans = self.span_query_service.query_spans_from_db(
+        # Query spans directly with span-level pagination - always returns count now
+        spans, total_count = self.span_query_service.query_spans_from_db(
             trace_ids=trace_ids,
             task_ids=task_ids,
             span_types=span_types,
@@ -100,7 +315,7 @@ class SpanRepository:
                 compute_new_metrics,
             )
 
-        return valid_spans
+        return valid_spans, total_count
 
     def query_span_by_span_id_with_metrics(self, span_id: str) -> Span:
         """Query a single span by span_id and compute metrics for it."""
@@ -150,7 +365,7 @@ class SpanRepository:
         paginated_trace_ids, total_count = result
 
         # Query all spans in the paginated traces
-        spans = self.span_query_service.query_spans_from_db(
+        spans, _ = self.span_query_service.query_spans_from_db(
             trace_ids=paginated_trace_ids,
             sort=pagination_parameters.sort,
         )

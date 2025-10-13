@@ -4,7 +4,7 @@ from typing import Annotated
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.request_schemas import TraceQueryRequest
-from arthur_common.models.response_schemas import TraceResponse
+from arthur_common.models.response_schemas import SpanWithMetricsResponse, TraceResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -46,7 +46,7 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
 
 
 @optimized_trace_routes.get(
-    "/traces/list",
+    "/traces",
     summary="List Trace Metadata",
     description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
     response_model=TraceListResponse,
@@ -128,6 +128,7 @@ def get_trace_by_id(
         db_session.close()
 
 
+# TODO Resolve thread w Ian
 @optimized_trace_routes.post(
     "/traces/{trace_id}/compute_metrics",
     summary="Compute Missing Trace Metrics",
@@ -166,7 +167,7 @@ def compute_trace_metrics(
 
 
 @optimized_trace_routes.get(
-    "/spans/list",
+    "/spans",
     summary="List Span Metadata",
     description="Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
     response_model=SpanListResponse,
@@ -202,19 +203,22 @@ def list_spans_metadata(
     """Get lightweight span metadata for browsing/filtering operations."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, span_metadata_list = span_repo.get_spans_metadata(
+        # Reuse existing query_spans infrastructure but without metrics
+        spans, total_count = span_repo.query_spans(
             task_ids=task_ids,
             span_types=span_types,
             start_time=start_time,
             end_time=end_time,
-            pagination_parameters=pagination_parameters,
+            sort=pagination_parameters.sort,
+            page=pagination_parameters.page,
+            page_size=pagination_parameters.page_size,
+            include_metrics=False,  # No metrics for metadata endpoint
+            compute_new_metrics=False,
         )
 
-        spans = [
-            span_metadata._to_metadata_response_model()
-            for span_metadata in span_metadata_list
-        ]
-        return SpanListResponse(count=count, spans=spans)
+        # Transform to metadata response format
+        metadata_spans = [span._to_metadata_response_model() for span in spans]
+        return SpanListResponse(count=total_count, spans=metadata_spans)
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -232,7 +236,7 @@ def list_spans_metadata(
     "/spans/{span_id}",
     summary="Get Single Span",
     description="Get single span with existing metrics (no computation). Returns full span object with any existing metrics.",
-    response_model=None,  # Will use SpanWithMetricsResponse from arthur_common
+    response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Optimized Spans"],
 )
@@ -264,11 +268,12 @@ def get_span_by_id(
         db_session.close()
 
 
+# TODO Resolve thread w Ian
 @optimized_trace_routes.post(
     "/spans/{span_id}/compute_metrics",
     summary="Compute Missing Span Metrics",
     description="Compute all missing metrics for a single span on-demand. Returns span with computed metrics.",
-    response_model=None,  # Will use SpanWithMetricsResponse from arthur_common
+    response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
     tags=["Optimized Spans"],
 )
@@ -302,7 +307,7 @@ def compute_span_metrics(
 
 
 @optimized_trace_routes.get(
-    "/sessions/list",
+    "/sessions",
     summary="List Session Metadata",
     description="Get session metadata with pagination and filtering. Returns aggregated session information.",
     response_model=SessionListResponse,
