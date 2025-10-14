@@ -191,6 +191,34 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
     }
 }
 
+# Prompt for secret store key if not already set
+if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
+    Write-Host ""
+    Write-Host "Enter the secret store encryption key for securing sensitive data:"
+    Write-Host "This key is used to encrypt/decrypt secrets stored in the database."
+    Write-Host "Keep this key secure and consistent across deployments."
+    $secretKey = Prompt-EnvVar -VarName "GENAI_ENGINE_SECRET_STORE_KEY" -DefaultValue "changeme_secret_key"
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+} else {
+    Write-Host ""
+    Write-Host "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
+}
+
+# Prompt for secret store salt if not already set
+if (-not $GENAI_ENGINE_SECRET_STORE_SALT) {
+    Write-Host ""
+    Write-Host "Enter the secret store salt for additional encryption security:"
+    Write-Host "This salt is used alongside the encryption key to secure secrets."
+    Write-Host "Keep this salt secure and consistent across deployments."
+    $secretSalt = Prompt-EnvVar -VarName "GENAI_ENGINE_SECRET_STORE_SALT" -DefaultValue "changeme_salt"
+    $envLines += "GENAI_ENGINE_SECRET_STORE_SALT=$secretSalt"
+} else {
+    Write-Host ""
+    Write-Host "Using existing GENAI_ENGINE_SECRET_STORE_SALT from config file..."
+    $envLines += "GENAI_ENGINE_SECRET_STORE_SALT=$GENAI_ENGINE_SECRET_STORE_SALT"
+}
+
 $envLines | Set-Content -Path $envFilePath
 
 Write-Host ""

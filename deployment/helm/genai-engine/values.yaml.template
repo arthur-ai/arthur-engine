@@ -141,3 +141,5 @@ genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
 genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
 # GenAI Engine secret store key name (expecting value for key 'key')
 genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
+# GenAI Engine secret store salt name (expecting value for key 'salt')
+genaiEngineSecretStoreSaltName: "genai-engine-secret-store-salt"
