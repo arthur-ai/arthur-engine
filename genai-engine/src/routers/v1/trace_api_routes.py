@@ -8,7 +8,7 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TraceResponse,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from routers.route_handler import GenaiEngineRoute
-from routers.v1.span_routes import trace_query_parameters
+from routers.v1.legacy_span_routes import _create_response, trace_query_parameters
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
@@ -48,13 +48,42 @@ def _get_span_repository(db_session: Session) -> SpanRepository:
 # TRACE ENDPOINTS
 
 
+@trace_api_routes.post(
+    "/traces",
+    summary="Receive Traces",
+    description="Receiver for OpenInference trace standard.",
+    response_model=None,
+    response_model_exclude_none=True,
+    tags=["Traces"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
+def receive_traces(
+    body: bytes = Body(...),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
+    """Receive and process OpenInference trace data."""
+    try:
+        span_repo = _get_span_repository(db_session)
+        span_results = span_repo.create_traces(body)
+        return _create_response(*span_results)
+    except DecodeError as e:
+        logger.error(f"Failed to decode protobuf message: {e}")
+        raise HTTPException(status_code=400, detail="Invalid protobuf message format")
+    except Exception as e:
+        logger.error(f"Error processing traces: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
 @trace_api_routes.get(
     "/traces",
     summary="List Trace Metadata",
     description="Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
     response_model=TraceListResponse,
     response_model_exclude_none=True,
-    tags=["API Traces"],
+    tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def list_traces_metadata(
@@ -101,7 +130,7 @@ def list_traces_metadata(
     description="Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.",
     response_model=TraceResponse,
     response_model_exclude_none=True,
-    tags=["API Traces"],
+    tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def get_trace_by_id(
@@ -137,7 +166,7 @@ def get_trace_by_id(
     description="Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.",
     response_model=TraceResponse,
     response_model_exclude_none=True,
-    tags=["API Traces"],
+    tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def compute_trace_metrics(
@@ -174,7 +203,7 @@ def compute_trace_metrics(
     description="Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
     response_model=SpanListResponse,
     response_model_exclude_none=True,
-    tags=["API Spans"],
+    tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def list_spans_metadata(
@@ -240,7 +269,7 @@ def list_spans_metadata(
     description="Get single span with existing metrics (no computation). Returns full span object with any existing metrics.",
     response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
-    tags=["API Spans"],
+    tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def get_span_by_id(
@@ -276,7 +305,7 @@ def get_span_by_id(
     description="Compute all missing metrics for a single span on-demand. Returns span with computed metrics.",
     response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
-    tags=["API Spans"],
+    tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def compute_span_metrics(
@@ -314,7 +343,7 @@ def compute_span_metrics(
     description="Get session metadata with pagination and filtering. Returns aggregated session information.",
     response_model=SessionListResponse,
     response_model_exclude_none=True,
-    tags=["API Sessions"],
+    tags=["Sessions"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def list_sessions_metadata(
@@ -372,7 +401,7 @@ def list_sessions_metadata(
     description="Get all traces in a session. Returns list of full trace trees without metrics computation.",
     response_model=SessionTracesResponse,
     response_model_exclude_none=True,
-    tags=["API Sessions"],
+    tags=["Sessions"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def get_session_traces(
@@ -418,7 +447,7 @@ def get_session_traces(
     description="Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.",
     response_model=SessionTracesResponse,
     response_model_exclude_none=True,
-    tags=["API Sessions"],
+    tags=["Sessions"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
 def compute_session_metrics(

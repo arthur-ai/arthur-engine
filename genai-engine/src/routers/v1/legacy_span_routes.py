@@ -234,6 +234,7 @@ def trace_query_parameters(
     description="Receiver for OpenInference trace standard.",
     response_model=None,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
@@ -263,6 +264,7 @@ def receive_traces(
     description="Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
@@ -307,6 +309,7 @@ def query_spans(
     description="Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
@@ -352,6 +355,7 @@ def query_spans_with_metrics(
     response_model=QuerySpansResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
+    deprecated=True,
     responses={
         400: {"description": "Invalid span types, parameters, or validation error"},
         404: {"description": "No spans found"},
@@ -430,6 +434,7 @@ def query_spans_by_type(
     description="Compute metrics for a single span. Validates that the span is an LLM span.",
     response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
