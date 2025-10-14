@@ -3175,14 +3175,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}": {
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get an agentic prompt",
                 "description": "Get an agentic prompt by name and version",
-                "operationId": "get_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__get",
+                "operationId": "get_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__get",
                 "security": [
                     {
                         "API Key": []
@@ -3247,7 +3247,7 @@
                 ],
                 "summary": "Delete an agentic prompt",
                 "description": "Deletes a specific version of an agentic prompt",
-                "operationId": "delete_agentic_prompt_version_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
+                "operationId": "delete_agentic_prompt_version_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
                 "security": [
                     {
                         "API Key": []
@@ -3305,14 +3305,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompts": {
+        "/api/v1/{task_id}/agentic_prompts": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get all agentic prompts",
                 "description": "Get all agentic prompts for a given task",
-                "operationId": "get_all_agentic_prompts_v1__task_id__agentic_prompts_get",
+                "operationId": "get_all_agentic_prompts_api_v1__task_id__agentic_prompts_get",
                 "security": [
                     {
                         "API Key": []
@@ -3354,14 +3354,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompts/{prompt_name}/versions": {
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "List all versions of an agentic prompt",
                 "description": "List all versions of an agentic prompt",
-                "operationId": "get_all_agentic_prompt_versions_v1__task_id__agentic_prompts__prompt_name__versions_get",
+                "operationId": "get_all_agentic_prompt_versions_api_v1__task_id__agentic_prompts__prompt_name__versions_get",
                 "security": [
                     {
                         "API Key": []
@@ -3412,14 +3412,14 @@
                 }
             }
         },
-        "/v1/completions": {
+        "/api/v1/completions": {
             "post": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Run an agentic prompt",
                 "description": "Run an agentic prompt",
-                "operationId": "run_agentic_prompt_v1_completions_post",
+                "operationId": "run_agentic_prompt_api_v1_completions_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -3459,14 +3459,14 @@
                 ]
             }
         },
-        "/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}": {
+        "/api/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}": {
             "post": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Run a specific version of an agentic prompt",
                 "description": "Run a specific version of an existing agentic prompt",
-                "operationId": "run_saved_agentic_prompt_v1_completions_task__task_id__prompt__prompt_name__versions__prompt_version__post",
+                "operationId": "run_saved_agentic_prompt_api_v1_completions_task__task_id__prompt__prompt_name__versions__prompt_version__post",
                 "security": [
                     {
                         "API Key": []
@@ -3539,14 +3539,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompts/{prompt_name}": {
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}": {
             "put": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Save an agentic prompt",
                 "description": "Save an agentic prompt to the database",
-                "operationId": "save_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__put",
+                "operationId": "save_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__put",
                 "security": [
                     {
                         "API Key": []
@@ -3610,7 +3610,7 @@
                 ],
                 "summary": "Delete an agentic prompt",
                 "description": "Deletes an entire agentic prompt",
-                "operationId": "delete_agentic_prompt_v1__task_id__agentic_prompts__prompt_name__delete",
+                "operationId": "delete_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__delete",
                 "security": [
                     {
                         "API Key": []

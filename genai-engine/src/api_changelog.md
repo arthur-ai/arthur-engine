@@ -1,6 +1,25 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 10/14/2025
+- **BREAKING CHANGE** for **URL**: /v1/completions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  api path removed without deprecation
+- **CHANGE** for **URL**: /api/v1/completions  endpoint added
+- **CHANGE** for **URL**: /api/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+
 # 10/13/2025
 - **CHANGE** for **URL**: /v1/completions  endpoint added
 - **CHANGE** for **URL**: /v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added

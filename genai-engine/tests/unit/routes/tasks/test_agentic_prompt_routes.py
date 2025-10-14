@@ -26,7 +26,7 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
     }
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -34,7 +34,7 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Now get the prompt
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -58,7 +58,7 @@ def test_get_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
     # Try to get a non-existent prompt
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/nonexistent_prompt/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/nonexistent_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 404
@@ -76,7 +76,7 @@ def test_get_agentic_prompt_non_agentic_task(client: GenaiEngineTestClientBase):
 
     # Try to get a prompt from non-agentic task
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/test_prompt/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -109,7 +109,7 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
 
     for prompt_data in prompts_data:
         response = client.base_client.put(
-            f"/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+            f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
             json=prompt_data,
             headers=client.authorized_user_api_key_headers,
         )
@@ -117,7 +117,7 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
 
     # Get all prompts
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts",
+        f"/api/v1/{task.id}/agentic_prompts",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -141,7 +141,7 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
     # Get all prompts (should be empty)
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts",
+        f"/api/v1/{task.id}/agentic_prompts",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -184,7 +184,7 @@ def test_run_agentic_prompt_success(
     }
 
     response = client.base_client.post(
-        f"/v1/completions",
+        f"/api/v1/completions",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -228,7 +228,7 @@ def test_run_saved_agentic_prompt_success(
     }
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -236,7 +236,7 @@ def test_run_saved_agentic_prompt_success(
 
     # Now run the saved prompt
     response = client.base_client.post(
-        f"/v1/completions/task/{task.id}/prompt/{prompt_data['name']}/versions/1",
+        f"/api/v1/completions/task/{task.id}/prompt/{prompt_data['name']}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -263,7 +263,7 @@ def test_run_saved_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
     # Try to run a non-existent saved prompt
     response = client.base_client.post(
-        f"/v1/completions/task/{task.id}/prompt/nonexistent_prompt/versions/1",
+        f"/api/v1/completions/task/{task.id}/prompt/nonexistent_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -292,7 +292,7 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
     prompt_name = "new_prompt"
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -301,7 +301,7 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Verify the prompt was saved by retrieving it
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -332,7 +332,7 @@ def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
     }
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -347,7 +347,7 @@ def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
     }
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{duplicate_prompt_data['name']}",
+        f"/api/v1/{task.id}/agentic_prompts/{duplicate_prompt_data['name']}",
         json=duplicate_prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -373,7 +373,7 @@ def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
     prompt_name = "delete_prompt"
 
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -381,14 +381,14 @@ def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Verify the prompt exists
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
 
     # Delete the prompt
     response = client.base_client.delete(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -396,7 +396,7 @@ def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Verify the prompt no longer exists
     response = client.base_client.get(
-        f"/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 404
@@ -415,11 +415,11 @@ def test_agentic_prompt_routes_require_authentication(
 
     # Test all routes without authentication headers
     routes_and_methods = [
-        ("GET", f"/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
-        ("GET", f"/v1/{task.id}/agentic_prompts"),
-        ("POST", f"/v1/completions/task/{task.id}/prompt/test_prompt/versions/1"),
-        ("PUT", f"/v1/{task.id}/agentic_prompts/test_prompt"),
-        ("DELETE", f"/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
+        ("GET", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
+        ("GET", f"/api/v1/{task.id}/agentic_prompts"),
+        ("POST", f"/api/v1/completions/task/{task.id}/prompt/test_prompt/versions/1"),
+        ("PUT", f"/api/v1/{task.id}/agentic_prompts/test_prompt"),
+        ("DELETE", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
     ]
 
     for method, url in routes_and_methods:
@@ -444,7 +444,7 @@ def test_agentic_prompt_invalid_task_id(client: GenaiEngineTestClientBase):
     invalid_task_id = "00000000-0000-0000-0000-000000000000"
 
     response = client.base_client.get(
-        f"/v1/{invalid_task_id}/agentic_prompts/test_prompt/versions/1",
+        f"/api/v1/{invalid_task_id}/agentic_prompts/test_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     # Should return 404 for non-existent task
@@ -462,7 +462,7 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
     # Test save prompt with missing required fields
     # Missing messages, model_name, model_provider
     response = client.base_client.put(
-        f"/v1/{task.id}/agentic_prompts/incomplete_prompt",
+        f"/api/v1/{task.id}/agentic_prompts/incomplete_prompt",
         json={"model_name": "incomplete_prompt"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -470,7 +470,7 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
     # Test run prompt with invalid data
     response = client.base_client.post(
-        f"/v1/completions/task/{task.id}/prompt/incomplete_prompt/versions/1",
+        f"/api/v1/completions/task/{task.id}/prompt/incomplete_prompt/versions/1",
         json={"invalid": "data"},
         headers=client.authorized_user_api_key_headers,
     )

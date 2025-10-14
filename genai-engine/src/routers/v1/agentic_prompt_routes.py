@@ -23,7 +23,7 @@ from schemas.response_schemas import AgenticPromptRunResponse
 from utils.users import permission_checker
 
 agentic_prompt_routes = APIRouter(
-    prefix="/v1",
+    prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
 
