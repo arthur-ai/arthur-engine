@@ -50,5 +50,3 @@ services:
       - ./src:/app/genai-engine/src
     profiles:
       - changelog
-volumes:
-  db_data_dev:
