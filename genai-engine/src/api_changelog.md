@@ -4,7 +4,7 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 10/14/2025
 - **CHANGE** for **URL**: /api/v1/completions  endpoint added
-- **CHANGE** for **URL**: /api/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added

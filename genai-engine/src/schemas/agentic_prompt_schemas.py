@@ -8,7 +8,7 @@ from pydantic import (
     BaseModel,
     Field,
     PrivateAttr,
-    field_serializer,
+    computed_field,
     field_validator,
     model_serializer,
     model_validator,
@@ -16,7 +16,13 @@ from pydantic import (
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.common_schemas import JsonSchema
-from schemas.enums import MessageRole, ProviderEnum, ReasoningEffortEnum, ToolChoiceEnum
+from schemas.enums import (
+    LLMResponseFormatEnum,
+    MessageRole,
+    ProviderEnum,
+    ReasoningEffortEnum,
+    ToolChoiceEnum,
+)
 from schemas.response_schemas import AgenticPromptRunResponse
 
 
@@ -28,27 +34,25 @@ class StreamOptions(BaseModel):
 
 
 class VariableTemplateValue(BaseModel):
-    name: str = Field(..., Description="Name of the variable")
-    value: str = Field(..., Description="Value of the variable")
+    name: str = Field(..., description="Name of the variable")
+    value: str = Field(..., description="Value of the variable")
 
 
 class LogitBiasItem(BaseModel):
     token_id: int = Field(..., description="Token ID to bias")
-    bias: float = Field(..., description="Bias value between -100 and 100")
-
-    @field_validator("bias")
-    @classmethod
-    def validate_bias(cls, v):
-        if not -100 <= v <= 100:
-            raise ValueError("Bias must be between -100 and 100.")
-        return v
+    bias: float = Field(
+        ...,
+        ge=-100,
+        le=100,
+        description="Bias value between -100 and 100",
+    )
 
 
 class AgenticPromptRunConfig(BaseModel):
     """Request schema for running an agentic prompt"""
 
     variables: Optional[List[VariableTemplateValue]] = Field(
-        description="Dictionary of variable names to their values to use for an agentic prompt run",
+        description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
         default=[],
     )
     stream: Optional[bool] = Field(
@@ -57,6 +61,11 @@ class AgenticPromptRunConfig(BaseModel):
     )
 
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
+
+    # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
+    #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
+    #   autoescape=False "{{ name }}" -> "<Bob>"
+    #   autoescape=True "{{ name }}" -> "&lt;Bob&gt;"
     _jinja_env: SandboxedEnvironment = PrivateAttr(
         default_factory=lambda: SandboxedEnvironment(autoescape=False),
     )
@@ -84,48 +93,32 @@ class ToolCallFunction(BaseModel):
     name: str = Field(..., description="Name of the function to call")
     arguments: str = Field(..., description="JSON string of function arguments")
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {"name": self.name, "arguments": self.arguments}
-
 
 class ToolCall(BaseModel):
     id: str = Field(..., description="Unique identifier for the tool call")
-    type: str = Field(default="function", description="Type of tool call")
     function: ToolCallFunction = Field(..., description="Function details")
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {"id": self.id, "type": self.type, "function": self.function.to_dict()}
+    # The type of tool call. Currently the only type supported is 'function'. Type is still a required parameter to recognize a message as a tool call.
+    # This field is set here so users can still set what looks like valid Json on their end and we won't throw errors for misformatted types.
+    @computed_field(return_type=str)
+    def type(self) -> str:
+        return "function"
 
 
 class AgenticPromptMessage(BaseModel):
-    role: MessageRole = Field(Description="Role of the message")
-    content: Optional[str] = Field(default=None, Description="Content of the message")
+    role: MessageRole = Field(description="Role of the message")
+    content: Optional[str] = Field(default=None, description="Content of the message")
     tool_calls: Optional[List[ToolCall]] = Field(
         default=None,
-        Description="Tool calls made by assistant",
+        description="Tool calls made by assistant",
     )
     tool_call_id: Optional[str] = Field(
         default=None,
-        Description="ID of the tool call this message is responding to",
+        description="ID of the tool call this message is responding to",
     )
 
-    @field_serializer("role")
-    def serialize_role(self, v, _info):
-        return v.value
-
-    def to_dict(self) -> Dict[str, Any]:
-        result = {"role": self.role.value}
-
-        if self.content is not None:
-            result["content"] = self.content
-
-        if self.tool_calls is not None:
-            result["tool_calls"] = [tc.to_dict() for tc in self.tool_calls]
-
-        if self.tool_call_id is not None:
-            result["tool_call_id"] = self.tool_call_id
-
-        return result
+    class Config:
+        use_enum_values = True
 
 
 class LLMTool(BaseModel):
@@ -205,7 +198,7 @@ class LLMResponseSchema(BaseModel):
 
 
 class LLMResponseFormat(BaseModel):
-    type: str = Field(
+    type: LLMResponseFormatEnum = Field(
         ...,
         description="Response format type: 'text', 'json_object', or 'json_schema'",
     )
@@ -213,6 +206,9 @@ class LLMResponseFormat(BaseModel):
         None,
         description="JSON schema definition (required when type is 'json_schema')",
     )
+
+    class Config:
+        use_enum_values = True
 
     def to_dict(self) -> Dict[str, Any]:
         result = {"type": self.type}
@@ -313,6 +309,9 @@ class AgenticPromptBaseConfig(BaseModel):
         description="Additional streaming configuration options",
     )
 
+    class Config:
+        use_enum_values = True
+
     @field_validator("tools", mode="before")
     @classmethod
     def convert_tools(cls, v):
@@ -338,7 +337,9 @@ class AgenticPromptBaseConfig(BaseModel):
         tool_choice = data.get("tool_choice")
 
         if data.get("messages"):
-            data["messages"] = [message.to_dict() for message in self.messages]
+            data["messages"] = [
+                message.model_dump(exclude_none=True) for message in self.messages
+            ]
 
         if data.get("tools"):
             data["tools"] = [tool.to_dict() for tool in self.tools]
@@ -368,7 +369,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         self,
         run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
     ) -> AgenticPromptRunResponse:
-        model = self.model_provider.value + "/" + self.model_name
+        model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(
             exclude={"name", "model_name", "model_provider"},

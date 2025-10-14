@@ -236,7 +236,7 @@ def test_run_saved_agentic_prompt_success(
 
     # Now run the saved prompt
     response = client.base_client.post(
-        f"/api/v1/completions/task/{task.id}/prompt/{prompt_data['name']}/versions/1",
+        f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -263,7 +263,7 @@ def test_run_saved_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
     # Try to run a non-existent saved prompt
     response = client.base_client.post(
-        f"/api/v1/completions/task/{task.id}/prompt/nonexistent_prompt/versions/1",
+        f"/api/v1/task/{task.id}/prompt/nonexistent_prompt/versions/1/completions",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -417,7 +417,7 @@ def test_agentic_prompt_routes_require_authentication(
     routes_and_methods = [
         ("GET", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
         ("GET", f"/api/v1/{task.id}/agentic_prompts"),
-        ("POST", f"/api/v1/completions/task/{task.id}/prompt/test_prompt/versions/1"),
+        ("POST", f"/api/v1/task/{task.id}/prompt/test_prompt/versions/1/completions"),
         ("PUT", f"/api/v1/{task.id}/agentic_prompts/test_prompt"),
         ("DELETE", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
     ]
@@ -470,7 +470,7 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
     # Test run prompt with invalid data
     response = client.base_client.post(
-        f"/api/v1/completions/task/{task.id}/prompt/incomplete_prompt/versions/1",
+        f"/api/v1/task/{task.id}/prompt/incomplete_prompt/versions/1/completions",
         json={"invalid": "data"},
         headers=client.authorized_user_api_key_headers,
     )

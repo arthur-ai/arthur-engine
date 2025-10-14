@@ -195,3 +195,9 @@ class ToolChoiceEnum(str, Enum):
     AUTO = "auto"
     NONE = "none"
     REQUIRED = "required"
+
+
+class LLMResponseFormatEnum(str, Enum):
+    TEXT = "text"
+    JSON_OBJECT = "json_object"
+    JSON_SCHEMA = "json_schema"

@@ -3459,14 +3459,14 @@
                 ]
             }
         },
-        "/api/v1/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}": {
+        "/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions": {
             "post": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Run a specific version of an agentic prompt",
                 "description": "Run a specific version of an existing agentic prompt",
-                "operationId": "run_saved_agentic_prompt_api_v1_completions_task__task_id__prompt__prompt_name__versions__prompt_version__post",
+                "operationId": "run_saved_agentic_prompt_api_v1_task__task_id__prompt__prompt_name__versions__prompt_version__completions_post",
                 "security": [
                     {
                         "API Key": []
@@ -4858,7 +4858,7 @@
                 "properties": {
                     "role": {
                         "$ref": "#/components/schemas/MessageRole",
-                        "Description": "Role of the message"
+                        "description": "Role of the message"
                     },
                     "content": {
                         "anyOf": [
@@ -4870,13 +4870,13 @@
                             }
                         ],
                         "title": "Content",
-                        "Description": "Content of the message"
+                        "description": "Content of the message"
                     },
                     "tool_calls": {
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
+                                    "$ref": "#/components/schemas/ToolCall-Input"
                                 },
                                 "type": "array"
                             },
@@ -4885,7 +4885,7 @@
                             }
                         ],
                         "title": "Tool Calls",
-                        "Description": "Tool calls made by assistant"
+                        "description": "Tool calls made by assistant"
                     },
                     "tool_call_id": {
                         "anyOf": [
@@ -4897,7 +4897,7 @@
                             }
                         ],
                         "title": "Tool Call Id",
-                        "Description": "ID of the tool call this message is responding to"
+                        "description": "ID of the tool call this message is responding to"
                     }
                 },
                 "type": "object",
@@ -4910,7 +4910,7 @@
                 "properties": {
                     "role": {
                         "$ref": "#/components/schemas/MessageRole",
-                        "Description": "Role of the message"
+                        "description": "Role of the message"
                     },
                     "content": {
                         "anyOf": [
@@ -4922,13 +4922,13 @@
                             }
                         ],
                         "title": "Content",
-                        "Description": "Content of the message"
+                        "description": "Content of the message"
                     },
                     "tool_calls": {
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
+                                    "$ref": "#/components/schemas/ToolCall-Output"
                                 },
                                 "type": "array"
                             },
@@ -4937,7 +4937,7 @@
                             }
                         ],
                         "title": "Tool Calls",
-                        "Description": "Tool calls made by assistant"
+                        "description": "Tool calls made by assistant"
                     },
                     "tool_call_id": {
                         "anyOf": [
@@ -4949,7 +4949,7 @@
                             }
                         ],
                         "title": "Tool Call Id",
-                        "Description": "ID of the tool call this message is responding to"
+                        "description": "ID of the tool call this message is responding to"
                     }
                 },
                 "type": "object",
@@ -4973,7 +4973,7 @@
                             }
                         ],
                         "title": "Variables",
-                        "description": "Dictionary of variable names to their values to use for an agentic prompt run",
+                        "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
                         "default": []
                     },
                     "stream": {
@@ -6539,8 +6539,7 @@
             "LLMResponseFormat-Input": {
                 "properties": {
                     "type": {
-                        "type": "string",
-                        "title": "Type",
+                        "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'"
                     },
                     "response_schema": {
@@ -6564,8 +6563,7 @@
             "LLMResponseFormat-Output": {
                 "properties": {
                     "type": {
-                        "type": "string",
-                        "title": "Type",
+                        "$ref": "#/components/schemas/LLMResponseFormatEnum",
                         "description": "Response format type: 'text', 'json_object', or 'json_schema'"
                     },
                     "response_schema": {
@@ -6585,6 +6583,15 @@
                     "type"
                 ],
                 "title": "LLMResponseFormat"
+            },
+            "LLMResponseFormatEnum": {
+                "type": "string",
+                "enum": [
+                    "text",
+                    "json_object",
+                    "json_schema"
+                ],
+                "title": "LLMResponseFormatEnum"
             },
             "LLMResponseSchema-Input": {
                 "properties": {
@@ -6779,6 +6786,8 @@
                     },
                     "bias": {
                         "type": "number",
+                        "maximum": 100.0,
+                        "minimum": -100.0,
                         "title": "Bias",
                         "description": "Bias value between -100 and 100"
                     }
@@ -8779,18 +8788,12 @@
                 ],
                 "title": "TokenUsageScope"
             },
-            "ToolCall": {
+            "ToolCall-Input": {
                 "properties": {
                     "id": {
                         "type": "string",
                         "title": "Id",
                         "description": "Unique identifier for the tool call"
-                    },
-                    "type": {
-                        "type": "string",
-                        "title": "Type",
-                        "description": "Type of tool call",
-                        "default": "function"
                     },
                     "function": {
                         "$ref": "#/components/schemas/ToolCallFunction",
@@ -8801,6 +8804,31 @@
                 "required": [
                     "id",
                     "function"
+                ],
+                "title": "ToolCall"
+            },
+            "ToolCall-Output": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the tool call"
+                    },
+                    "function": {
+                        "$ref": "#/components/schemas/ToolCallFunction",
+                        "description": "Function details"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "readOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "function",
+                    "type"
                 ],
                 "title": "ToolCall"
             },
@@ -9157,12 +9185,12 @@
                     "name": {
                         "type": "string",
                         "title": "Name",
-                        "Description": "Name of the variable"
+                        "description": "Name of the variable"
                     },
                     "value": {
                         "type": "string",
                         "title": "Value",
-                        "Description": "Value of the variable"
+                        "description": "Value of the variable"
                     }
                 },
                 "type": "object",

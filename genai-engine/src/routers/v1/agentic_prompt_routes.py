@@ -150,7 +150,7 @@ def run_agentic_prompt(
 
 
 @agentic_prompt_routes.post(
-    "/completions/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}",
+    "/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions",
     summary="Run a specific version of an agentic prompt",
     description="Run a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,

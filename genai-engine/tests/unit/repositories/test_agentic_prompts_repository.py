@@ -399,7 +399,8 @@ def test_agentic_prompt_to_dict(sample_agentic_prompt):
     prompt_dict = sample_agentic_prompt.to_dict()
 
     expected_messages = [
-        message.to_dict() for message in sample_agentic_prompt.messages
+        message.model_dump(exclude_none=True)
+        for message in sample_agentic_prompt.messages
     ]
 
     assert isinstance(prompt_dict, dict)
@@ -643,3 +644,80 @@ def test_agentic_prompt_response_format_serialization():
         reconstructed_prompt.response_format.response_schema.json_schema.required
         == ["name"]
     )
+
+
+@pytest.mark.unit_tests
+@patch("schemas.agentic_prompt_schemas.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
+def test_agentic_prompt_tool_call_message_serialization(
+    mock_completion_cost,
+    mock_completion,
+    agentic_prompt_repo,
+):
+    """Test that assistant tool_call messages are still serialized correctly when set with an invalid type"""
+    # Construct an unsaved prompt that includes a tool_call assistant message
+    messages = [
+        {"role": "user", "content": "What’s the weather?"},
+        {
+            "role": "assistant",
+            "tool_calls": [
+                {
+                    "id": "call_999",
+                    "type": "not_function",  # tests an invalid type is set for a tool call message
+                    "function": {
+                        "name": "get_weather",
+                        "arguments": '{"location": "Paris"}',
+                    },
+                },
+            ],
+            "content": None,
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_999",
+            "content": '{"temperature": "20C"}',
+        },
+    ]
+
+    run_config = AgenticPromptUnsavedRunConfig(
+        name="tool_call_prompt",
+        messages=messages,
+        model_name="gpt-4o",
+        model_provider="openai",
+    )
+
+    # Mock LiteLLM completion response
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": "Got it!",
+        "tool_calls": None,
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.000123
+
+    # Run the unsaved prompt
+    result = agentic_prompt_repo.run_unsaved_prompt(run_config)
+    call_args = mock_completion.call_args[1]
+
+    # Extract messages sent to LiteLLM
+    sent_messages = call_args["messages"]
+
+    # Validate proper assistant tool_call serialization
+    assert any(
+        msg.get("role") == "assistant" and "tool_calls" in msg for msg in sent_messages
+    ), "Assistant tool_call message missing from LiteLLM payload"
+
+    assistant_msg = next(msg for msg in sent_messages if msg["role"] == "assistant")
+    tool_call = assistant_msg["tool_calls"][0]
+
+    assert tool_call["id"] == "call_999"
+    assert (
+        tool_call["type"] == "function"
+    )  # verifies the type is changed to function on the return
+    assert tool_call["function"]["name"] == "get_weather"
+    assert tool_call["function"]["arguments"] == '{"location": "Paris"}'
+
+    # Ensure the response object is still parsed properly
+    assert isinstance(result.content, str)
+    assert result.cost == "0.000123"
