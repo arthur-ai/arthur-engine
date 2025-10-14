@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import DecodeError
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,
 )
@@ -36,6 +37,7 @@ class TraceIngestionService:
     def process_trace_data(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and return statistics."""
         json_traces = self._grpc_trace_to_dict(trace_data)
+
         spans_data, stats = self._extract_and_process_spans(json_traces)
 
         if spans_data:
@@ -150,6 +152,10 @@ class TraceIngestionService:
         span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
         start_time, end_time = self._extract_timestamps(span_data)
 
+        # Extract and normalize status code
+        span_status_code = span_data.get("status", {}).get("code", "Unset")
+        span_status_code = trace_utils.clean_status_code(span_status_code)
+
         return DatabaseSpan(
             id=str(uuid.uuid4()),
             trace_id=trace_utils.convert_id_to_hex(span_data.get("traceId")),
@@ -160,6 +166,8 @@ class TraceIngestionService:
             start_time=start_time,
             end_time=end_time,
             task_id=resource_task_id,
+            session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
+            status_code=span_status_code,
             raw_data=span_data,
         )
 
@@ -290,6 +298,7 @@ class TraceIngestionService:
                 trace_updates[trace_id] = {
                     "trace_id": trace_id,
                     "task_id": span.task_id,
+                    "session_id": span.session_id,
                     "start_time": span.start_time,
                     "end_time": span.end_time,
                     "span_count": 0,
@@ -306,6 +315,10 @@ class TraceIngestionService:
                 span.end_time,
             )
             trace_updates[trace_id]["span_count"] += 1
+
+            # Handle session_id conflicts: use first non-null session_id found
+            if span.session_id and not trace_updates[trace_id]["session_id"]:
+                trace_updates[trace_id]["session_id"] = span.session_id
 
         if not trace_updates:
             return
@@ -329,6 +342,10 @@ class TraceIngestionService:
                     ),
                     span_count=DatabaseTraceMetadata.span_count
                     + stmt.excluded.span_count,
+                    session_id=func.coalesce(
+                        DatabaseTraceMetadata.session_id,
+                        stmt.excluded.session_id,
+                    ),
                     updated_at=stmt.excluded.updated_at,
                 ),
             )
@@ -350,6 +367,10 @@ class TraceIngestionService:
                     ),
                     span_count=DatabaseTraceMetadata.span_count
                     + stmt.excluded.span_count,
+                    session_id=func.coalesce(
+                        DatabaseTraceMetadata.session_id,
+                        stmt.excluded.session_id,
+                    ),
                     updated_at=stmt.excluded.updated_at,
                 ),
             )

@@ -2,6 +2,25 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/10/2025
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the required property 'status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the optional property 'spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/spans/query  added the required property 'spans/items/status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/metrics/  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
+- **CHANGE** for **URL**: /v1/traces/query  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+
+# 10/07/2025
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  endpoint added
+- **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt  endpoint added
+
 # 09/10/2025
 - v1/traces/metrics and v1/traces/query added new optional request parameters: 'query_relevance_eq', 'query_relevance_gt', 'query_relevance_gte', 'query_relevance_lt', 'query_relevance_lte', 'response_relevance_eq', 'response_relevance_gt', 'response_relevance_gte', 'response_relevance_lt', 'response_relevance_lte', 'tool_name', 'tool_selection', 'tool_usage', 'trace_duration_eq', 'trace_duration_gt', 'trace_duration_gte', 'trace_duration_lt', 'trace_duration_lte', 'trace_ids', 'span_kind'
 

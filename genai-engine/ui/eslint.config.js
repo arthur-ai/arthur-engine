@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
+import importPlugin from "eslint-plugin-import";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
@@ -19,8 +20,29 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    plugins: {
+      import: importPlugin,
+    },
     rules: {
       "react-refresh/only-export-components": "off",
+      "import/order": [
+        "error",
+        {
+          groups: [
+            "builtin", // Node built-in modules
+            "external", // npm packages
+            "internal", // Internal modules (if you have any)
+            "parent", // Parent directory imports
+            "sibling", // Same directory imports
+            "index", // Index file imports
+          ],
+          "newlines-between": "always",
+          alphabetize: {
+            order: "asc",
+            caseInsensitive: true,
+          },
+        },
+      ],
     },
   },
 ]);

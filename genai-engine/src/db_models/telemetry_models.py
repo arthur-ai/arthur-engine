@@ -6,6 +6,7 @@ from sqlalchemy import (
     TIMESTAMP,
     Boolean,
     ForeignKey,
+    Index,
     Integer,
     String,
     text,
@@ -26,16 +27,30 @@ class DatabaseTraceMetadata(Base):
         nullable=False,
         index=True,
     )
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     span_count: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        Index("idx_traces_task_start", "task_id", "start_time"),
+        Index("idx_traces_task_time_range", "task_id", "start_time", "end_time"),
+        Index(
+            "idx_traces_covering",
+            "task_id",
+            "start_time",
+            postgresql_include=["trace_id", "end_time", "span_count"],
+        ),
     )
 
 
@@ -60,16 +75,46 @@ class DatabaseSpan(Base):
         nullable=True,
         index=True,
     )
-    raw_data: Mapped[dict] = mapped_column(postgresql.JSON, nullable=False)
+    session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    status_code: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        server_default=text("'Unset'"),
+    )
+    raw_data: Mapped[dict] = mapped_column(
+        JSON().with_variant(postgresql.JSONB, "postgresql"),
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
         index=True,
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
     )
+
+    __table_args__ = (
+        Index("idx_spans_task_time_kind", "task_id", "start_time", "span_kind"),
+        Index(
+            "idx_spans_task_span_name",
+            "task_id",
+            "span_name",
+            "start_time",
+            postgresql_where=text("span_name IS NOT NULL"),
+        ),
+        Index("idx_spans_trace_task_time", "trace_id", "task_id", "start_time"),
+        Index(
+            "idx_spans_llm_task_time",
+            "task_id",
+            "start_time",
+            postgresql_where=text("span_kind = 'LLM'"),
+        ),
+    )
+
     metric_results: Mapped[List["DatabaseMetricResult"]] = relationship(
         "DatabaseMetricResult",
         back_populates="span",
@@ -133,3 +178,7 @@ class DatabaseMetricResult(Base):
         index=True,
     )
     span: Mapped["DatabaseSpan"] = relationship(back_populates="metric_results")
+
+    __table_args__ = (
+        Index("idx_metric_results_span_id_metric_type", "span_id", "metric_type"),
+    )
