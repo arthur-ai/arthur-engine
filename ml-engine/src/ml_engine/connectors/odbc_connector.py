@@ -429,7 +429,7 @@ class ODBCConnector(Connector):
                         or []
                     )
                     if pk_cols:
-                        order_col = getattr(table.c, pk_cols[0])
+                        order_col = table.c[pk_cols[0]]
                     else:
                         order_col = next(
                             (c for c in table.c if not c.nullable),
