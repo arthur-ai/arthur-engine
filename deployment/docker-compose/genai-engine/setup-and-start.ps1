@@ -83,12 +83,31 @@ if ((Test-Path $envPath) -and (Get-Item $envPath -ErrorAction SilentlyContinue).
 $provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$model::$endpoint::$apiKey
 "@
-        Set-Content -Path $envPath -Value $envContent -Encoding UTF8
     } else {
         Write-Host ""
         Write-Host "Skipping OpenAI configuration..."
-        New-Item -ItemType File -Path $envPath -Force | Out-Null
+        $envContent = ""
     }
+
+    Write-Host ""
+    Write-Host "Enter the secret store encryption key for securing sensitive data:"
+    Write-Host "This key is used to encrypt/decrypt secrets stored in the database."
+    Write-Host "Keep this key secure and consistent across deployments."
+    $secretKey = Prompt-EnvVar -VarName "GENAI_ENGINE_SECRET_STORE_KEY" -DefaultValue "changeme_secret_key"
+
+    Write-Host ""
+    Write-Host "Enter the secret store salt for additional encryption security:"
+    Write-Host "This salt is used alongside the encryption key to secure secrets."
+    Write-Host "Keep this salt secure and consistent across deployments."
+    $secretSalt = Prompt-EnvVar -VarName "GENAI_ENGINE_SECRET_STORE_SALT" -DefaultValue "changeme_salt"
+
+    if ([string]::IsNullOrWhiteSpace($envContent)) {
+        $envContent = "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey`nGENAI_ENGINE_SECRET_STORE_SALT=$secretSalt"
+    } else {
+        $envContent += "`nGENAI_ENGINE_SECRET_STORE_KEY=$secretKey`nGENAI_ENGINE_SECRET_STORE_SALT=$secretSalt"
+    }
+
+    Set-Content -Path $envPath -Value $envContent -Encoding UTF8
 }
 
 Write-Host ""

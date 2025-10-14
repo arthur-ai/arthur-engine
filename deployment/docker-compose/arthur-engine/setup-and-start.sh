@@ -217,6 +217,38 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDP
     fi
 fi
 
+# Prompt for secret store key if not already set
+if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
+    echo ""
+    echo "Enter the secret store encryption key for securing sensitive data:"
+    echo "This key is used to encrypt/decrypt secrets stored in the database."
+    echo "Keep this key secure and consistent across deployments."
+    genai_engine_secret_store_key=$(prompt_env_var "GENAI_ENGINE_SECRET_STORE_KEY" "changeme_secret_key")
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+else
+    echo ""
+    echo "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
+fi
+
+# Prompt for secret store salt if not already set
+if [[ -z "$GENAI_ENGINE_SECRET_STORE_SALT" ]]; then
+    echo ""
+    echo "Enter the secret store salt for additional encryption security:"
+    echo "This salt is used alongside the encryption key to secure secrets."
+    echo "Keep this salt secure and consistent across deployments."
+    genai_engine_secret_store_salt=$(prompt_env_var "GENAI_ENGINE_SECRET_STORE_SALT" "changeme_salt")
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_SALT=$genai_engine_secret_store_salt"
+else
+    echo ""
+    echo "Using existing GENAI_ENGINE_SECRET_STORE_SALT from config file..."
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_SALT=$GENAI_ENGINE_SECRET_STORE_SALT"
+fi
+
 echo "$all_env_vars" > "$engine_subdir/$env_file"
 echo ""
 echo "Updated $env_file file at $engine_subdir/$env_file"

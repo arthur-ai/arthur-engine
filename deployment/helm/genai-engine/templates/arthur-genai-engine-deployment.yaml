@@ -115,6 +115,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretStoreKeyName }}
                   key: key
+            - name: GENAI_ENGINE_SECRET_STORE_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretStoreSaltName }}
+                  key: salt
             {{- if .Values.gpuEnabled }}
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
