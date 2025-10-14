@@ -3,6 +3,8 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
+import Alert, { AlertColor } from "@mui/material/Alert";
+import Autocomplete from "@mui/material/Autocomplete";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -10,8 +12,11 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Snackbar from "@mui/material/Snackbar";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useState } from "react";
+import { debounce } from "@mui/material/utils";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
 import ModelParamsDialog from "./ModelParamsDialog";
@@ -19,17 +24,18 @@ import OutputField from "./OutputField";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
+import { toBackendPrompt } from "./utils";
+
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
 
 const PROVIDER_TEXT = "Provider";
 const PROMPT_NAME_TEXT = "Prompt Name";
 const MODEL_TEXT = "Model";
+const DEBOUNCE_TIME = 500;
+const SNACKBAR_AUTO_HIDE_DURATION = 6000;
 
-// TODO: Pull from backend
-const PROMPT_NAME_OPTIONS = [
-  { label: "Prompt 1", value: "prompt1" },
-  { label: "Prompt 2", value: "prompt2" },
-  { label: "Prompt 3", value: "prompt3" },
-];
+const simpleOptions = ["Prompt 1", "Prompt 2", "Prompt 3"];
 
 const MODEL_OPTIONS = [
   { label: "Model 1", value: "model1" },
@@ -41,12 +47,54 @@ const MODEL_OPTIONS = [
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
 const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
+  const [NameInputValue, setNameInputValue] = useState("");
   const [provider, setProvider] = useState<string>(providerEnum.OPENAI);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
+  const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const [snackbarSeverity, setSnackbarSeverity] =
+    useState<AlertColor>("success");
+
+  const apiClient = useApi();
+  const { task } = useTask();
+  const api = apiClient?.v1; // Prompt endpoints live here
+  const taskId = task?.id;
 
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
   };
+
+  const handleSavePrompt = useCallback(() => {
+    if (prompt.name === "") {
+      return;
+    }
+    if (!api || !taskId) {
+      console.error("No api client or task");
+      return;
+    }
+
+    const backendPrompt = toBackendPrompt(prompt);
+
+    api
+      .saveAgenticPromptV1TaskIdAgenticPromptSavePromptPost(
+        taskId,
+        backendPrompt
+      )
+      .then((response) => {
+        // {message: "Prompt saved successfully"}
+        const { data } = response;
+        setSnackbarMessage(data.message);
+        setSnackbarSeverity("success");
+        setOpenSnackbar(true);
+      })
+      .catch((error) => {
+        // {detail: "Prompt ... already exists for task ..."}
+        const { data } = error.response;
+        setSnackbarMessage(data.detail);
+        setSnackbarSeverity("error");
+        setOpenSnackbar(true);
+      });
+  }, [prompt, api, taskId]);
 
   const handleDeletePrompt = useCallback(() => {
     dispatch({
@@ -73,39 +121,56 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
     setParamsModelOpen(true);
   }, []);
 
+  const handleCloseSnackbar = useCallback(() => {
+    setOpenSnackbar(false);
+    setSnackbarMessage("");
+  }, []);
+
+  const debouncedSetPromptName = useMemo(
+    () =>
+      debounce((value: string) => {
+        if (value === prompt.name) return;
+        dispatch({
+          type: "updatePromptName",
+          payload: { promptId: prompt.id, name: value },
+        });
+      }, DEBOUNCE_TIME),
+    [prompt.name, prompt.id, dispatch]
+  );
+
+  useEffect(() => {
+    debouncedSetPromptName(NameInputValue);
+  }, [NameInputValue, debouncedSetPromptName]);
+
   return (
     <div className="min-h-[500px]">
-      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+      <Container
+        component="div"
+        className="p-1 mt-1"
+        maxWidth="xl"
+        disableGutters
+      >
         <div className="grid grid-cols-2 gap-1">
           <div className="flex justify-start items-center gap-1">
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id={`prompt-name-${prompt.id}`}>
-                  {PROMPT_NAME_TEXT}
-                </InputLabel>
-                <Select
-                  labelId={`prompt-name-${prompt.id}`}
-                  id={`prompt-name-${prompt.id}`}
-                  label={PROMPT_NAME_TEXT}
-                  value={PROMPT_NAME_OPTIONS[0].value}
-                  onChange={() => {}}
-                  sx={{
-                    backgroundColor: "white",
-                  }}
-                >
-                  {PROMPT_NAME_OPTIONS.map((promptNameOption) => (
-                    <MenuItem
-                      key={promptNameOption.value}
-                      value={promptNameOption.value}
-                    >
-                      {promptNameOption.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                freeSolo
+                options={simpleOptions}
+                value={prompt.name}
+                renderInput={(params) => (
+                  <TextField {...params} label={PROMPT_NAME_TEXT} />
+                )}
+                inputValue={NameInputValue}
+                onInputChange={(event, value) => {
+                  setNameInputValue(value);
+                }}
+                sx={{
+                  backgroundColor: "white",
+                }}
+              />
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
+              <FormControl fullWidth variant="filled">
                 <InputLabel id={`provider-${prompt.id}`}>
                   {PROVIDER_TEXT}
                 </InputLabel>
@@ -128,7 +193,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               </FormControl>
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
+              <FormControl fullWidth variant="filled">
                 <InputLabel id={`model-${prompt.id}`}>{MODEL_TEXT}</InputLabel>
                 <Select
                   labelId={`model-${prompt.id}`}
@@ -180,7 +245,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               dispatch={dispatch}
             />
             <Tooltip title="Save Prompt" placement="top-start" arrow>
-              <IconButton aria-label="save" onClick={() => {}}>
+              <IconButton aria-label="save" onClick={handleSavePrompt}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
@@ -219,6 +284,14 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           />
         </Paper>
       </div>
+      <Snackbar
+        open={openSnackbar}
+        autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert severity={snackbarSeverity}>{snackbarMessage}</Alert>
+      </Snackbar>
     </div>
   );
 };
