@@ -7,8 +7,9 @@ services:
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
+      PGDATA: /var/lib/postgresql/18/docker
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - db_data_dev:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -51,4 +52,4 @@ services:
     profiles:
       - changelog
 volumes:
-  db_data:
+  db_data_dev:
