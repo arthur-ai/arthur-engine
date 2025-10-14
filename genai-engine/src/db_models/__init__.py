@@ -15,7 +15,6 @@ from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
-    index,
 )
 from db_models.inference_models import (
     DatabaseInference,
@@ -44,6 +43,7 @@ from db_models.telemetry_models import (
     DatabaseTaskToMetrics,
     DatabaseTraceMetadata,
 )
+from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 
 __all__ = [
     # Base classes
@@ -77,7 +77,6 @@ __all__ = [
     "DatabaseDocument",
     "DatabaseEmbedding",
     "DatabaseEmbeddingReference",
-    "index",
     # Auth models
     "DatabaseUser",
     "DatabaseApiKey",
@@ -89,4 +88,6 @@ __all__ = [
     "DatabaseMetric",
     "DatabaseTaskToMetrics",
     "DatabaseMetricResult",
+    # Agentic Prompt models
+    "DatabaseAgenticPrompt",
 ]

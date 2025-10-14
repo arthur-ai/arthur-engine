@@ -1,6 +1,11 @@
 import math
 import os
 
+from openinference.semconv.trace import (
+    OpenInferenceSpanKindValues,
+    SpanAttributes,
+)
+
 ##################################################################
 # Application Server
 GENAI_ENGINE_INGRESS_URI_ENV_VAR = "GENAI_ENGINE_INGRESS_URI"
@@ -370,12 +375,12 @@ AZURE_OPENAI_STRUCTURED_OUTPUT_MODELS = set(
 ##################################################################
 
 # Span-related constants
-SPAN_KIND_LLM = "LLM"
-SPAN_KIND_TOOL = "TOOL"
+SPAN_KIND_LLM = OpenInferenceSpanKindValues.LLM.value
+SPAN_KIND_TOOL = OpenInferenceSpanKindValues.TOOL.value
 SPAN_VERSION_KEY = "arthur_span_version"
 EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"
-METADATA_KEY = "metadata"
-SPAN_KIND_KEY = "openinference.span.kind"
+METADATA_KEY = SpanAttributes.METADATA
+SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
 
 ##################################################################
