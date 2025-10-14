@@ -12,12 +12,6 @@ const messageRoleEnum = {
   TOOL: "tool",
 };
 
-const providerEnum = {
-  OPENAI: "openai",
-  GOOGLE: "google",
-  AZURE: "azure",
-};
-
 type PromptTool = {
   id: string;
   type: "function";
@@ -44,6 +38,10 @@ type PromptAction =
   | { type: "duplicatePrompt"; payload: { id: string } }
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
+  | {
+      type: "updatePrompt";
+      payload: { promptId: string; prompt: Partial<PromptType> };
+    }
   | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
@@ -155,12 +153,44 @@ interface OutputFieldProps {
   responseFormat: string | undefined;
 }
 
+const temporaryProviderEnum = {
+  ANTHROPIC: "anthropic",
+  OPENAI: "openai",
+  GEMINI: "gemini",
+  AZURE: "azure",
+  DEEPSEEK: "deepseek",
+  MISTRAL: "mistral",
+  META_LLAMA: "meta_llama",
+  GROQ: "groq",
+  BEDROCK: "bedrock",
+  SAGEMAKER: "sagemaker",
+  VERTEX_AI: "vertex_ai",
+  HUGGINGFACE: "huggingface",
+  CLOUDFLARE: "cloudflare",
+  AI21: "ai21",
+  BASETEN: "baseten",
+  COHERE: "cohere",
+  EMPOWER: "empower",
+  FEATHERLESS_AI: "featherless_ai",
+  FRIENDLIAI: "friendliai",
+  GALADRIEL: "galadriel",
+  NEBIUS: "nebius",
+  NLP_CLOUD: "nlp_cloud",
+  NOVITA: "novita",
+  OPENROUTER: "openrouter",
+  PETALS: "petals",
+  REPLICATE: "replicate",
+  TOGETHER_AI: "together_ai",
+  VLLM: "vllm",
+  WATSONX: "watsonx",
+};
+
 export {
   messageRoleEnum,
   MessageComponentProps,
   MessageType,
   ModelParametersType,
-  providerEnum,
+  temporaryProviderEnum,
   PromptType,
   PromptComponentProps,
   PromptPlaygroundState,

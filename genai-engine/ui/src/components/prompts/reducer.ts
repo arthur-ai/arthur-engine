@@ -8,7 +8,7 @@ import {
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  providerEnum,
+  temporaryProviderEnum,
   PromptTool,
 } from "./types";
 
@@ -120,7 +120,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   modelName: "",
-  provider: providerEnum.OPENAI,
+  provider: temporaryProviderEnum.OPENAI,
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
@@ -130,8 +130,9 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: string = providerEnum.OPENAI): PromptType =>
-  createPrompt({ provider });
+const newPrompt = (
+  provider: string = temporaryProviderEnum.OPENAI
+): PromptType => createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType =>
   createPrompt({
@@ -199,6 +200,25 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ...state,
         prompts: state.prompts.map((prompt) =>
           prompt.id === promptId ? { ...prompt, name } : prompt
+        ),
+      };
+    }
+    case "updatePrompt": {
+      const { promptId, prompt } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((p) =>
+          p.id === promptId
+            ? {
+                ...p,
+                ...prompt,
+                // Ensure required properties are always defined
+                messages: prompt.messages ?? p.messages,
+                tools: prompt.tools ?? p.tools,
+                modelParameters: prompt.modelParameters ?? p.modelParameters,
+                responseFormat: prompt.responseFormat,
+              }
+            : p
         ),
       };
     }
