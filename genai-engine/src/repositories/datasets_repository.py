@@ -50,7 +50,7 @@ class DatasetRepository:
         db_dataset = self._get_db_dataset(dataset_id)
         if update_dataset_request.name:
             db_dataset.name = update_dataset_request.name
-        if update_dataset_request.description:
+        if update_dataset_request.description is not None:
             db_dataset.description = update_dataset_request.description
         if update_dataset_request.metadata is not None:
             db_dataset.dataset_metadata = update_dataset_request.metadata

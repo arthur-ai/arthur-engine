@@ -1,15 +1,14 @@
 name: genai-engine-dev
 services:
   db:
-    image: postgres
+    image: postgres:18
     ports:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
-      PGDATA: /var/lib/postgresql/18/docker
     volumes:
-      - db_data_dev:/var/lib/postgresql
+      - /var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
