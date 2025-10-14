@@ -18,7 +18,8 @@ import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { PromptAction, PromptType } from "./types";
+import { usePromptContext } from "./PromptContext";
+import { PromptType } from "./types";
 
 // Helper function to render tool choice options consistently
 const renderToolChoiceOption = (value: string, toolName?: string) => {
@@ -47,13 +48,8 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
   );
 };
 
-const Tools = ({
-  dispatch,
-  prompt,
-}: {
-  dispatch: (action: PromptAction) => void;
-  prompt: PromptType;
-}) => {
+const Tools = ({ prompt }: { prompt: PromptType }) => {
+  const { dispatch } = usePromptContext();
   const [toolsExpanded, setToolsExpanded] = useState<boolean>(
     prompt.tools.length > 0
   );
@@ -175,7 +171,7 @@ const Tools = ({
         </Button>
       </div>
       <Collapse in={toolsExpanded}>
-      <div className="mt-2 mb-3 px-2">
+        <div className="mt-2 mb-3 px-2">
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select

@@ -12,6 +12,7 @@ import { debounce } from "@mui/material/utils";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import extractMustacheKeywords from "./mustacheExtractor";
+import { usePromptContext } from "./PromptContext";
 import { messageRoleEnum, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
@@ -23,8 +24,8 @@ const Message: React.FC<MessageComponentProps> = ({
   role,
   defaultContent = "",
   content,
-  dispatch,
 }) => {
+  const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
 
   const handleRoleChange = useCallback(
@@ -37,14 +38,14 @@ const Message: React.FC<MessageComponentProps> = ({
         payload: { id, role: selectedRole, parentId },
       });
     },
-    [id, dispatch, role, parentId],
+    [id, dispatch, role, parentId]
   );
 
   const handleContentChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setInputValue(event.target.value);
     },
-    [],
+    []
   );
 
   const handleDuplicate = useCallback(() => {
@@ -72,7 +73,7 @@ const Message: React.FC<MessageComponentProps> = ({
           payload: { parentId, id, content: value },
         });
       }, DEBOUNCE_TIME),
-    [content, parentId, id, dispatch],
+    [content, parentId, id, dispatch]
   );
 
   useEffect(() => {

@@ -1,3 +1,5 @@
+import { AgenticPromptReasoningEffortEnum } from "@/lib/api-client/api-client";
+
 const promptClassificationEnum = {
   EVAL: "eval",
   DEFAULT: "default",
@@ -36,20 +38,13 @@ type PromptTool = {
   };
 };
 
-const reasoningEffortEnum = {
-  NONE: "none",
-  MINIMAL: "minimal",
-  LOW: "low",
-  MEDIUM: "medium",
-  HIGH: "high",
-  DEFAULT: "default",
-};
-
 type PromptAction =
   | { type: "addPrompt" }
   | { type: "deletePrompt"; payload: { id: string } }
   | { type: "duplicatePrompt"; payload: { id: string } }
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
+  | { type: "updatePromptName"; payload: { promptId: string; name: string } }
+  | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
   | { type: "duplicateMessage"; payload: { parentId: string; id: string } }
@@ -113,7 +108,7 @@ type ModelParametersType = {
   presence_penalty?: number; // -2 < presence_penalty <= 2, default 0
   stop?: string | null; // Stop sequence
   seed?: number | null; // Random seed
-  reasoning_effort?: typeof reasoningEffortEnum | "";
+  reasoning_effort?: AgenticPromptReasoningEffortEnum | null;
   // The following do not appear in the UI
   logprobs?: boolean | null; //Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
   top_logprobs?: number | null; //An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
@@ -140,6 +135,7 @@ interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
+  backendPrompts: PromptType[];
 }
 
 interface MessageComponentProps {
@@ -148,18 +144,15 @@ interface MessageComponentProps {
   role?: string;
   defaultContent?: string;
   content: string | "";
-  dispatch: (action: PromptAction) => void;
 }
 
 interface PromptComponentProps {
   prompt: PromptType;
-  dispatch: (action: PromptAction) => void;
 }
 
 interface OutputFieldProps {
   promptId: string;
   responseFormat: string | undefined;
-  dispatch: (action: PromptAction) => void;
 }
 
 export {
@@ -173,7 +166,6 @@ export {
   PromptPlaygroundState,
   PromptAction,
   promptClassificationEnum,
-  reasoningEffortEnum,
   OutputFieldProps,
   PromptTool,
 };

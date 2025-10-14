@@ -12,7 +12,7 @@ import {
   PromptTool,
 } from "./types";
 
-const TEMP_ID = "user-defined-name-timestamp";
+const TEMP_ID = "user-defined-name-";
 
 const arrayUtils = {
   //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
@@ -107,7 +107,7 @@ const createModelParameters = (
   presence_penalty: 0,
   stop: null,
   seed: null,
-  reasoning_effort: "",
+  reasoning_effort: "default",
   logprobs: null,
   top_logprobs: null,
   logit_bias: null,
@@ -150,6 +150,7 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
+  backendPrompts: new Array<PromptType>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -190,6 +191,22 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: [...state.prompts, hydratePrompt(promptData)],
+      };
+    }
+    case "updatePromptName": {
+      const { promptId, name } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, name } : prompt
+        ),
+      };
+    }
+    case "updateBackendPrompts": {
+      const { prompts } = action.payload;
+      return {
+        ...state,
+        backendPrompts: prompts,
       };
     }
     case "addMessage": {
@@ -371,7 +388,8 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: prompt.tools.filter((tool) => tool.id !== toolId),
-                toolChoice: prompt.toolChoice === toolId ? "auto" : prompt.toolChoice,
+                toolChoice:
+                  prompt.toolChoice === toolId ? "auto" : prompt.toolChoice,
               }
             : prompt
         ),
@@ -398,9 +416,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? { ...prompt, toolChoice }
-            : prompt
+          prompt.id === promptId ? { ...prompt, toolChoice } : prompt
         ),
       };
     }

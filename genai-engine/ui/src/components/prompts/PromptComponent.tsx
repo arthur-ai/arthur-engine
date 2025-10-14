@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import MessageComponent from "./MessageComponent";
 import ModelParamsDialog from "./ModelParamsDialog";
 import OutputField from "./OutputField";
+import { usePromptContext } from "./PromptContext";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 import { providerEnum } from "./types";
@@ -35,8 +36,6 @@ const MODEL_TEXT = "Model";
 const DEBOUNCE_TIME = 500;
 const SNACKBAR_AUTO_HIDE_DURATION = 6000;
 
-const simpleOptions = ["Prompt 1", "Prompt 2", "Prompt 3"];
-
 const MODEL_OPTIONS = [
   { label: "Model 1", value: "model1" },
   { label: "Model 2", value: "model2" },
@@ -46,7 +45,7 @@ const MODEL_OPTIONS = [
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
+const Prompt = ({ prompt }: PromptComponentProps) => {
   const [NameInputValue, setNameInputValue] = useState("");
   const [provider, setProvider] = useState<string>(providerEnum.OPENAI);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
@@ -55,6 +54,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
   const [snackbarSeverity, setSnackbarSeverity] =
     useState<AlertColor>("success");
 
+  const { state, dispatch } = usePromptContext();
   const apiClient = useApi();
   const { task } = useTask();
   const api = apiClient?.v1; // Prompt endpoints live here
@@ -155,7 +155,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             <div className="w-1/3">
               <Autocomplete
                 freeSolo
-                options={simpleOptions}
+                options={state.backendPrompts.map((prompt) => prompt.name)}
                 value={prompt.name}
                 renderInput={(params) => (
                   <TextField {...params} label={PROMPT_NAME_TEXT} />
@@ -242,7 +242,6 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               promptId={prompt.id}
               name={prompt.name}
               modelParameters={prompt.modelParameters}
-              dispatch={dispatch}
             />
             <Tooltip title="Save Prompt" placement="top-start" arrow>
               <IconButton aria-label="save" onClick={handleSavePrompt}>
@@ -266,13 +265,12 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             role={message.role}
             defaultContent={message.content}
             content={message.content}
-            dispatch={dispatch}
           />
         ))}
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <Tools dispatch={dispatch} prompt={prompt} />
+          <Tools prompt={prompt} />
         </Paper>
       </div>
       <div className="m-1">
@@ -280,7 +278,6 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           <OutputField
             promptId={prompt.id}
             responseFormat={prompt.responseFormat}
-            dispatch={dispatch}
           />
         </Paper>
       </div>

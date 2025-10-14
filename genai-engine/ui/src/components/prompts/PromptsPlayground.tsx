@@ -7,7 +7,9 @@ import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect } from "react";
 
 import PromptComponent from "./PromptComponent";
+import { PromptProvider } from "./PromptContext";
 import { promptsReducer, initialState } from "./reducer";
+import { toFrontendPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -23,6 +25,7 @@ const PromptsPlayground = () => {
   useEffect(() => {
     const fetchPrompts = async () => {
       if (!api || !taskId) {
+        console.error("No api client or task id");
         return;
       }
 
@@ -30,6 +33,13 @@ const PromptsPlayground = () => {
         await api.getAllAgenticPromptsV1TaskIdAgenticPromptGetAllPromptsGet(
           taskId
         );
+      const { data } = response;
+      const convertedPrompts = data.prompts.map(toFrontendPrompt);
+
+      dispatch({
+        type: "updateBackendPrompts",
+        payload: { prompts: convertedPrompts },
+      });
     };
 
     fetchPrompts();
@@ -49,71 +59,73 @@ const PromptsPlayground = () => {
   const keywords = Array.from(state.keywords.keys());
 
   return (
-    <div className="h-screen bg-gray-200">
-      <div className={`h-full w-full p-1 flex flex-col gap-1`}>
-        <div className={`bg-gray-300 flex-shrink-0 p-1`}>
-          <Container
-            component="div"
-            className="flex justify-between items-center mb-1"
-            maxWidth="xl"
-            disableGutters
-          >
-            <div>Prompts Playground</div>
-            <Button variant="contained" size="small" onClick={handleAddPrompt}>
-              Add Prompt
-            </Button>
-            <Button variant="contained" size="small" onClick={() => {}}>
-              Run Prompts
-            </Button>
-          </Container>
-          <Container component="div" maxWidth="xl" disableGutters>
-            <Paper elevation={3} className="p-1">
-              <div className="grid grid-template-rows-2">
-                <div className="flex justify-center items-center">
-                  <Typography variant="h5">Keyword Templates</Typography>
-                </div>
-                <div className="flex justify-center items-center">
-                  <Typography variant="body2">
-                    Keywords are identified by mustache braces
-                    &#123;&#123;keyword&#125;&#125; and are used to replace
-                    values in the messages. You can use the same keyword in
-                    multiple prompts/messages.
-                  </Typography>
-                </div>
-              </div>
-              <Divider />
-              <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
-                {keywords.map((keyword) => (
-                  <div key={keyword} className="w-full">
-                    <TextField
-                      id={`keyword-${keyword}`}
-                      label={keyword}
-                      value={state.keywords.get(keyword)}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        handleKeywordValueChange(keyword, e.target.value);
-                      }}
-                      variant="standard"
-                      fullWidth
-                    />
+    <PromptProvider state={state} dispatch={dispatch}>
+      <div className="h-screen bg-gray-200">
+        <div className={`h-full w-full p-1 flex flex-col gap-1`}>
+          <div className={`bg-gray-300 flex-shrink-0 p-1`}>
+            <Container
+              component="div"
+              className="flex justify-between items-center mb-1"
+              maxWidth="xl"
+              disableGutters
+            >
+              <div>Prompts Playground</div>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleAddPrompt}
+              >
+                Add Prompt
+              </Button>
+              <Button variant="contained" size="small" onClick={() => {}}>
+                Run Prompts
+              </Button>
+            </Container>
+            <Container component="div" maxWidth="xl" disableGutters>
+              <Paper elevation={3} className="p-1">
+                <div className="grid grid-template-rows-2">
+                  <div className="flex justify-center items-center">
+                    <Typography variant="h5">Keyword Templates</Typography>
                   </div>
-                ))}
-              </div>
-            </Paper>
-          </Container>
-        </div>
-        <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(500px,1fr))] gap-1 min-h-full">
-            {state.prompts.map((prompt) => (
-              <PromptComponent
-                key={prompt.id}
-                prompt={prompt}
-                dispatch={dispatch}
-              />
-            ))}
+                  <div className="flex justify-center items-center">
+                    <Typography variant="body2">
+                      Keywords are identified by mustache braces
+                      &#123;&#123;keyword&#125;&#125; and are used to replace
+                      values in the messages. You can use the same keyword in
+                      multiple prompts/messages.
+                    </Typography>
+                  </div>
+                </div>
+                <Divider />
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
+                  {keywords.map((keyword) => (
+                    <div key={keyword} className="w-full">
+                      <TextField
+                        id={`keyword-${keyword}`}
+                        label={keyword}
+                        value={state.keywords.get(keyword)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          handleKeywordValueChange(keyword, e.target.value);
+                        }}
+                        variant="standard"
+                        fullWidth
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Paper>
+            </Container>
+          </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(500px,1fr))] gap-1 min-h-full">
+              {state.prompts.map((prompt) => (
+                <PromptComponent key={prompt.id} prompt={prompt} />
+              ))}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </PromptProvider>
   );
 };
 
