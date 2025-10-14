@@ -153,6 +153,15 @@ interface OutputFieldProps {
   responseFormat: string | undefined;
 }
 
+interface SavePromptDialogProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  prompt: PromptType;
+  initialName?: string;
+  onSaveSuccess?: () => void;
+  onSaveError?: (error: string) => void;
+}
+
 const temporaryProviderEnum = {
   ANTHROPIC: "anthropic",
   OPENAI: "openai",
@@ -198,4 +207,5 @@ export {
   promptClassificationEnum,
   OutputFieldProps,
   PromptTool,
+  SavePromptDialogProps,
 };

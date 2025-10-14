@@ -8,22 +8,13 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { PromptType } from "./types";
+import { SavePromptDialogProps } from "./types";
 import { toBackendPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 
 const SNACKBAR_AUTO_HIDE_DURATION = 6000;
-
-interface SavePromptDialogProps {
-  open: boolean;
-  setOpen: (open: boolean) => void;
-  prompt: PromptType;
-  initialName?: string;
-  onSaveSuccess?: () => void;
-  onSaveError?: (error: string) => void;
-}
 
 const SavePromptDialog = ({
   open,
