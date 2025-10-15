@@ -105,7 +105,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   }, [currentPromptName]);
 
   return (
-    <div className="min-h-[500px]">
+    <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
         component="div"
         className="p-1 mt-1"
@@ -129,7 +129,18 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                     backgroundColor: "white",
                   }}
                 >
-                  <MenuItem value=""></MenuItem>
+                  <MenuItem value="">&nbsp;</MenuItem>
+                  {currentPromptName &&
+                    !state.backendPrompts.some(
+                      (bp) => bp.name === currentPromptName
+                    ) && (
+                      <MenuItem
+                        key={currentPromptName}
+                        value={currentPromptName}
+                      >
+                        {currentPromptName}
+                      </MenuItem>
+                    )}
                   {state.backendPrompts.map((prompt) => (
                     <MenuItem key={prompt.name} value={prompt.name}>
                       {prompt.name}
