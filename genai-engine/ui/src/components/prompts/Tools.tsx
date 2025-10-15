@@ -18,7 +18,8 @@ import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { PromptAction, PromptType } from "./types";
+import { usePromptContext } from "./PromptContext";
+import { PromptType } from "./types";
 
 // Helper function to render tool choice options consistently
 const renderToolChoiceOption = (value: string, toolName?: string) => {
@@ -47,13 +48,8 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
   );
 };
 
-const Tools = ({
-  dispatch,
-  prompt,
-}: {
-  dispatch: (action: PromptAction) => void;
-  prompt: PromptType;
-}) => {
+const Tools = ({ prompt }: { prompt: PromptType }) => {
+  const { dispatch } = usePromptContext();
   const [toolsExpanded, setToolsExpanded] = useState<boolean>(
     prompt.tools.length > 0
   );
@@ -175,7 +171,7 @@ const Tools = ({
         </Button>
       </div>
       <Collapse in={toolsExpanded}>
-      <div className="mt-2 mb-3 px-2">
+        <div className="mt-2 mb-3 px-2">
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
@@ -192,7 +188,7 @@ const Tools = ({
                   return selectedTool
                     ? renderToolChoiceOption(
                         selected,
-                        selectedTool.function.name
+                        selectedTool.name
                       )
                     : selected;
                 }
@@ -212,7 +208,7 @@ const Tools = ({
               {prompt.tools.length > 0 && [
                 ...prompt.tools.map((tool) => (
                   <MenuItem key={tool.id} value={tool.id}>
-                    {renderToolChoiceOption(tool.id, tool.function.name)}
+                    {renderToolChoiceOption(tool.id, tool.name)}
                   </MenuItem>
                 )),
               ]}
@@ -236,7 +232,7 @@ const Tools = ({
               >
                 <div className="flex items-center justify-between w-full mr-4">
                   <span className="text-sm font-mono">
-                    📋 {tool.function.name}
+                    📋 {tool.name}
                   </span>
                   <div
                     onClick={(e) => {
@@ -258,8 +254,10 @@ const Tools = ({
                     theme="light"
                     value={JSON.stringify(
                       {
-                        type: tool.type,
-                        function: tool.function,
+                        name: tool.name,
+                        description: tool.description,
+                        function_definition: tool.function_definition,
+                        strict: tool.strict,
                       },
                       null,
                       2
