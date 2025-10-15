@@ -10,7 +10,6 @@ GENAI_ENGINE_OPENAI_PROVIDER=Azure
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
 GENAI_ENGINE_INGRESS_URL=genai-engine.mycompany.ai
 GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_key
-GENAI_ENGINE_SECRET_STORE_SALT=changeme_salt
 ML_ENGINE_CLIENT_ID=changeme_ml_engine_client_id
 ML_ENGINE_CLIENT_SECRET=changeme_ml_engine_client_secret
 
@@ -23,8 +22,6 @@ kubectl -n $K8S_NAMESPACE create secret generic genai-engine-secret-open-ai-gpt-
     --from-literal=keys=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS
 kubectl -n $K8S_NAMESPACE create secret generic genai-engine-secret-store-key \
     --from-literal=key=$GENAI_ENGINE_SECRET_STORE_KEY
-kubectl -n $K8S_NAMESPACE create secret generic genai-engine-secret-store-salt \
-    --from-literal=salt=$GENAI_ENGINE_SECRET_STORE_SALT
 kubectl -n arthur create secret generic ml-engine-client-secret \
     --from-literal=client_id=$ML_ENGINE_CLIENT_ID \
     --from-literal=client_secret=$ML_ENGINE_CLIENT_SECRET

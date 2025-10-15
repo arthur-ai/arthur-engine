@@ -1,13 +1,9 @@
-import base64
 import json
 import logging
 import os
 
 import sqlalchemy.types as types
 from cryptography.fernet import Fernet, MultiFernet
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 logger = logging.getLogger(__name__)
 
@@ -42,32 +38,20 @@ class EncryptedJSON(types.TypeDecorator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        encryption_keys: list[bytes] = []
-        salt = os.getenv(
-            "GENAI_ENGINE_SECRET_STORAGE_SALT",
-            "some_static_or_dynamic_salt",
-        ).encode()
-        passphrase = os.getenv("GENAI_ENGINE_SECRET_STORE_KEY")
-        if not passphrase:
+        encryption_keys: list[Fernet] = []
+        raw_keys_str = os.getenv("GENAI_ENGINE_SECRET_STORE_KEY")
+        if not raw_keys_str:
             raise ValueError(
                 "GENAI_ENGINE_SECRET_STORE_KEY environment variable not set",
             )
-        raw_keys = passphrase.split("::")
+        raw_keys = raw_keys_str.split("::")
         if not any(raw_keys):
             raise ValueError(
                 "GENAI_ENGINE_SECRET_STORE_KEY environment variable must contain at least one key",
             )
         for key in raw_keys:
             if key:
-                kdf = PBKDF2HMAC(
-                    algorithm=hashes.SHA256(),
-                    length=32,
-                    salt=salt,
-                    iterations=100000,
-                    backend=default_backend(),
-                )
-                encoded_key = base64.urlsafe_b64encode(kdf.derive(key.encode()))
-                encryption_keys.append(Fernet(encoded_key))
+                encryption_keys.append(Fernet(key.encode()))
 
         self.cipher = MultiFernet(encryption_keys)
 
