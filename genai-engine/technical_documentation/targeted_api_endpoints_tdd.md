@@ -8,9 +8,24 @@ This technical design document outlines the implementation of new lightweight, t
 
 1. **Performance Optimization**: Provide fast metadata-only endpoints for UI browsing operations
 2. **Separation of Concerns**: Separate data retrieval from metrics computation operations
-3. **Granular Control**: Enable targeted operations at span, trace, and session levels
+3. **Granular Control**: Enable targeted operations at span, trace, and session levels with controlled scope
 4. **Backward Compatibility**: Maintain existing endpoints unchanged while adding new capabilities
 5. **Caching Efficiency**: Enable lightweight responses that can be cached more aggressively
+
+**Current API Issues**: The existing API loads entire pages of traces (bounded by page size) and computes metrics for all LLM spans within them. This creates:
+- Unpredictable response times (potentially >60 seconds)
+- Poor user experience with slow UI operations
+- Expensive operations triggered during simple browsing
+
+**New API Benefits**: 
+- **Metadata-only operations**: Fast responses for browsing and filtering
+- **Scoped metrics computation**: Limited to individual traces or sessions rather than page-wide operations
+
+### Timeout Mitigation Strategies
+
+1. **Session-scoped limits**: While session metrics can still be large, they're more bounded and predictable than page-wide operations
+2. **Progressive loading**: UI can load metadata first, then request metrics for specific items as needed
+3. **Caching opportunities**: Lightweight metadata responses can be cached aggressively
 
 ## API Specification
 
@@ -25,7 +40,7 @@ This technical design document outlines the implementation of new lightweight, t
 | `GET /api/v1/spans/{span_id}` | Single span detail | Full span object | Existing |
 | `GET /api/v1/spans/{span_id}/metrics` | Compute missing span metrics | Span with metrics | All |
 | `GET /api/v1/sessions` | Session browsing | Session metadata | No |
-| `GET /api/v1/sessions/{session_id}` | Session traces | List of trace trees | No |
+| `GET /api/v1/sessions/{session_id}` | Session traces | List of trace trees | Existing |
 | `GET /api/v1/sessions/{session_id}/metrics` | Compute missing session metrics | List of trace trees | All |
 
 ## Phase 1: Response Model Creation
@@ -83,7 +98,8 @@ class SpanMetadataResponse(BaseModel):
 class SessionMetadataResponse(BaseModel):
     """Session summary metadata"""
     session_id: str = Field(description="Session identifier")
-    task_ids: list[str] = Field(description="Unique task IDs in this session")
+    task_id: str = Field(description="Unique task IDs in this session")
+    trace_ids: list[str] = Field(description="Unique trace IDs captured in this session.")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
     earliest_start_time: datetime = Field(description="Start time of earliest trace")
