@@ -19,20 +19,20 @@ const PromptsPlayground = () => {
 
   const apiClient = useApi();
   const { task } = useTask();
-  const api = apiClient?.v1; // Prompt endpoints live here
   const taskId = task?.id;
 
   useEffect(() => {
     const fetchPrompts = async () => {
-      if (!api || !taskId) {
+      if (!apiClient || !taskId) {
         console.error("No api client or task id");
         return;
       }
 
       const response =
-        await api.getAllAgenticPromptsV1TaskIdAgenticPromptGetAllPromptsGet(
+        await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
           taskId
         );
+
       const { data } = response;
       const convertedPrompts = data.prompts.map(toFrontendPrompt);
 
@@ -43,7 +43,7 @@ const PromptsPlayground = () => {
     };
 
     fetchPrompts();
-  }, [api, taskId]);
+  }, [apiClient, taskId]);
 
   const handleAddPrompt = useCallback(() => {
     dispatch({ type: "addPrompt" });
