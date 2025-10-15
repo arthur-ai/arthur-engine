@@ -9,7 +9,7 @@ import TextField from "@mui/material/TextField";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { SavePromptDialogProps } from "./types";
-import { toBackendPrompt } from "./utils";
+import { toBackendPromptBaseConfig } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -61,10 +61,11 @@ const SavePromptDialog = ({
 
     // Create prompt with updated name
     const promptWithName = { ...prompt, name: nameInputValue };
-    const backendPrompt = toBackendPrompt(promptWithName);
+    const backendPrompt = toBackendPromptBaseConfig(promptWithName);
 
     apiClient.api
       .saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut(
+        nameInputValue,
         taskId,
         backendPrompt
       )

@@ -240,8 +240,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             id={message.id}
             parentId={prompt.id}
             role={message.role}
-            defaultContent={message.content}
-            content={message.content}
+            defaultContent={message.content || ""}
+            content={message.content || ""}
           />
         ))}
       </div>

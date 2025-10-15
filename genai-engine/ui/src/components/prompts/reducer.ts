@@ -12,7 +12,11 @@ import {
   FrontendTool,
 } from "./types";
 
-import { MessageRole, ProviderEnum } from "@/lib/api-client/api-client";
+import {
+  MessageRole,
+  ProviderEnum,
+  ToolChoiceEnum,
+} from "@/lib/api-client/api-client";
 
 const TEMP_ID = "user-defined-name-";
 
@@ -47,14 +51,14 @@ const generateId = () => {
  ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId(),
-  role: MESSAGE_ROLE_OPTIONS[1],
+  role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: "Change me",
   disabled: false,
   ...overrides,
 });
 
 const newMessage = (
-  role: MessageRole = MESSAGE_ROLE_OPTIONS[1],
+  role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: string = "Change me"
 ): MessageType => createMessage({ role, content });
 
@@ -131,7 +135,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   outputField: "",
   responseFormat: undefined,
   tools: [],
-  toolChoice: "auto",
+  toolChoice: "auto" as ToolChoiceEnum,
   ...overrides,
 });
 
@@ -330,7 +334,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, role } : message
+                  message.id === id
+                    ? { ...message, role: role as MessageRole }
+                    : message
                 ),
               }
             : prompt
@@ -418,7 +424,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 ...prompt,
                 tools: prompt.tools.filter((tool) => tool.id !== toolId),
                 toolChoice:
-                  prompt.toolChoice === toolId ? "auto" : prompt.toolChoice,
+                  prompt.toolChoice === toolId
+                    ? ("auto" as ToolChoiceEnum)
+                    : prompt.toolChoice,
               }
             : prompt
         ),
@@ -445,7 +453,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, toolChoice } : prompt
+          prompt.id === promptId
+            ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum }
+            : prompt
         ),
       };
     }

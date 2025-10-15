@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { PromptType } from "./types";
 
-import { AgenticPrompt, ToolChoiceEnum } from "@/lib/api-client/api-client";
+import { AgenticPrompt, AgenticPromptBaseConfig, ToolChoiceEnum } from "@/lib/api-client/api-client";
 
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
@@ -40,6 +40,12 @@ export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
     ? JSON.parse(prompt.responseFormat)
     : null,
 });
+
+export const toBackendPromptBaseConfig = (prompt: PromptType): AgenticPromptBaseConfig => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { name, ...rest } = toBackendPrompt(prompt);
+  return rest;
+};
 
 export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   id: `${backendPrompt.name}-${uuidv4()}`,
