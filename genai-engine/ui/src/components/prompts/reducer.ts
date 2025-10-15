@@ -2,15 +2,17 @@ import { v4 as uuidv4 } from "uuid";
 
 import {
   MessageType,
-  messageRoleEnum,
+  MESSAGE_ROLE_OPTIONS,
   ModelParametersType,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  PromptTool,
   PROVIDER_OPTIONS,
+  FrontendTool,
 } from "./types";
+
+import { MessageRole, ProviderEnum } from "@/lib/api-client/api-client";
 
 const TEMP_ID = "user-defined-name-";
 
@@ -45,14 +47,14 @@ const generateId = () => {
  ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId(),
-  role: messageRoleEnum.USER,
+  role: MESSAGE_ROLE_OPTIONS[1],
   content: "Change me",
   disabled: false,
   ...overrides,
 });
 
 const newMessage = (
-  role: string = messageRoleEnum.USER,
+  role: MessageRole = MESSAGE_ROLE_OPTIONS[1],
   content: string = "Change me"
 ): MessageType => createMessage({ role, content });
 
@@ -70,23 +72,26 @@ const hydrateMessage = (data: Partial<MessageType>): MessageType =>
  ***************************/
 const createTool = (
   counter: number = 1,
-  overrides: Partial<PromptTool> = {}
-): PromptTool => ({
+  overrides: Partial<FrontendTool> = {}
+): FrontendTool => ({
   id: generateId(),
-  type: "function",
-  function: {
-    name: `tool_func_${counter}`,
-    description: "description",
-    parameters: {
-      type: "object",
-      properties: {
-        tool_arg: {
-          type: "string",
-        },
+  name: `tool_func_${counter}`,
+  description: "description",
+  function_definition: {
+    type: "object",
+    properties: [
+      {
+        name: "tool_arg",
+        type: "string",
+        description: null,
+        enum: null,
+        items: null,
       },
-      required: [],
-    },
+    ],
+    required: [],
+    additional_properties: null,
   },
+  strict: null,
   ...overrides,
 });
 
@@ -130,7 +135,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: string = PROVIDER_OPTIONS[0]): PromptType =>
+const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType =>

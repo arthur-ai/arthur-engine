@@ -13,11 +13,11 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import extractMustacheKeywords from "./mustacheExtractor";
 import { usePromptContext } from "./PromptContext";
-import { messageRoleEnum, MessageComponentProps } from "./types";
+import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
-
+// export interface AgenticPromptMessageInput {
 const Message: React.FC<MessageComponentProps> = ({
   id,
   parentId,
@@ -112,9 +112,9 @@ const Message: React.FC<MessageComponentProps> = ({
               value={role}
               onChange={handleRoleChange}
             >
-              {Object.values(messageRoleEnum).map((roleValue) => (
+              {MESSAGE_ROLE_OPTIONS.map((roleValue) => (
                 <MenuItem key={roleValue} value={roleValue}>
-                  {roleValue}
+                  {roleValue.charAt(0).toUpperCase() + roleValue.slice(1)}
                 </MenuItem>
               ))}
             </Select>

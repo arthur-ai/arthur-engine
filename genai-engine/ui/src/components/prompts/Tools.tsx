@@ -188,7 +188,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                   return selectedTool
                     ? renderToolChoiceOption(
                         selected,
-                        selectedTool.function.name
+                        selectedTool.name
                       )
                     : selected;
                 }
@@ -208,7 +208,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
               {prompt.tools.length > 0 && [
                 ...prompt.tools.map((tool) => (
                   <MenuItem key={tool.id} value={tool.id}>
-                    {renderToolChoiceOption(tool.id, tool.function.name)}
+                    {renderToolChoiceOption(tool.id, tool.name)}
                   </MenuItem>
                 )),
               ]}
@@ -232,7 +232,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
               >
                 <div className="flex items-center justify-between w-full mr-4">
                   <span className="text-sm font-mono">
-                    📋 {tool.function.name}
+                    📋 {tool.name}
                   </span>
                   <div
                     onClick={(e) => {
@@ -254,8 +254,10 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                     theme="light"
                     value={JSON.stringify(
                       {
-                        type: tool.type,
-                        function: tool.function,
+                        name: tool.name,
+                        description: tool.description,
+                        function_definition: tool.function_definition,
+                        strict: tool.strict,
                       },
                       null,
                       2

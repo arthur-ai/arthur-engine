@@ -1,36 +1,23 @@
-import { ReasoningEffortEnum, ProviderEnum } from "@/lib/api-client/api-client";
+import {
+  ReasoningEffortEnum,
+  ProviderEnum,
+  AgenticPromptMessageInput,
+  MessageRole,
+  LogitBiasItem,
+  StreamOptions,
+  AnthropicThinkingParam,
+  ToolChoiceEnum,
+  LLMToolInput,
+} from "@/lib/api-client/api-client";
+
+// Frontend tool type that extends LLMToolInput with an id for UI purposes
+type FrontendTool = LLMToolInput & { id: string };
 
 const promptClassificationEnum = {
   EVAL: "eval",
   DEFAULT: "default",
 };
 
-const messageRoleEnum = {
-  SYSTEM: "system",
-  USER: "user",
-  AI: "ai",
-  TOOL: "tool",
-};
-
-type PromptTool = {
-  id: string;
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: {
-      type: "object";
-      properties: Record<
-        string,
-        {
-          type: string;
-          description?: string;
-        }
-      >;
-      required: string[];
-    };
-  };
-};
 
 type PromptAction =
   | { type: "addPrompt" }
@@ -78,7 +65,7 @@ type PromptAction =
   | { type: "deleteTool"; payload: { promptId: string; toolId: string } }
   | {
       type: "updateTool";
-      payload: { parentId: string; toolId: string; tool: Partial<PromptTool> };
+      payload: { parentId: string; toolId: string; tool: Partial<FrontendTool> };
     }
   | { type: "expandTools"; payload: { parentId: string } }
   | {
@@ -87,31 +74,29 @@ type PromptAction =
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
-type MessageType = {
+interface MessageType extends AgenticPromptMessageInput {
   id: string;
-  role: string; // messageRoleEnum
-  content: string;
   disabled: boolean;
-};
+}
 
 type ModelParametersType = {
   temperature?: number | null; // 0 < temperature <= 1 (or 2?)
   top_p?: number | null; // 0 < top_p <= 1
   timeout?: number | null; // In milliseconds
   stream?: boolean; // Whether to stream the response, defautl false
-  stream_options?: object | null; // Stream options TODO
+  stream_options?: StreamOptions | null;
   max_tokens?: number | null; // Length limit of generated response > 0
   max_completion_tokens?: number | null; // ??
-  frequency_penalty?: number; // -2 < frequency_penalty <= 2
-  presence_penalty?: number; // -2 < presence_penalty <= 2, default 0
+  frequency_penalty?: number | null; // -2 < frequency_penalty <= 2
+  presence_penalty?: number | null; // -2 < presence_penalty <= 2, default 0
   stop?: string | null; // Stop sequence
   seed?: number | null; // Random seed
   reasoning_effort?: ReasoningEffortEnum | null;
   // The following do not appear in the UI
   logprobs?: boolean | null; //Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
   top_logprobs?: number | null; //An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
-  logit_bias?: object | null; //Logit bias TODO
-  thinking?: object | null; //Thinking TODO AnthropicThinkingParam
+  logit_bias?: LogitBiasItem[] | null;
+  thinking?: AnthropicThinkingParam | null;
 };
 
 type PromptType = {
@@ -119,13 +104,13 @@ type PromptType = {
   classification: string;
   name: string;
   modelName: string;
-  provider: string;
+  provider: ProviderEnum;
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
-  responseFormat: string | undefined;
-  tools: PromptTool[];
-  toolChoice: string; // "auto", "none", "required", or tool ID
+  responseFormat: string | undefined;//LLMResponseSchemaInput
+  tools: FrontendTool[];//LLMToolOutput
+  toolChoice?: ToolChoiceEnum;
   // tags: Array<string>; // TODO
 };
 
@@ -162,6 +147,13 @@ interface SavePromptDialogProps {
   onSaveError?: (error: string) => void;
 }
 
+const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
+  "system",
+  "user",
+  "assistant",
+  "tool",
+];
+
 const PROVIDER_OPTIONS: ProviderEnum[] = [
   "anthropic",
   "openai",
@@ -195,7 +187,7 @@ const PROVIDER_OPTIONS: ProviderEnum[] = [
 ];
 
 export {
-  messageRoleEnum,
+  MESSAGE_ROLE_OPTIONS,
   MessageComponentProps,
   MessageType,
   ModelParametersType,
@@ -205,7 +197,7 @@ export {
   PromptAction,
   promptClassificationEnum,
   OutputFieldProps,
-  PromptTool,
   SavePromptDialogProps,
   PROVIDER_OPTIONS,
+  FrontendTool,
 };

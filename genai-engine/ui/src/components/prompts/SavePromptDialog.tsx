@@ -31,7 +31,6 @@ const SavePromptDialog = ({
     useState<AlertColor>("success");
 
   const apiClient = useApi();
-  const api = apiClient?.v1;
   const { task } = useTask();
   const taskId = task?.id;
 
@@ -52,7 +51,7 @@ const SavePromptDialog = ({
       return;
     }
 
-    if (!api || !taskId) {
+    if (!apiClient || !taskId) {
       console.error("No api client or task");
       setSnackbarMessage("API Error");
       setSnackbarSeverity("error");
@@ -64,8 +63,8 @@ const SavePromptDialog = ({
     const promptWithName = { ...prompt, name: nameInputValue };
     const backendPrompt = toBackendPrompt(promptWithName);
 
-    api
-      .saveAgenticPromptV1TaskIdAgenticPromptSavePromptPost(
+    apiClient.api
+      .saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut(
         taskId,
         backendPrompt
       )
@@ -87,7 +86,7 @@ const SavePromptDialog = ({
   }, [
     nameInputValue,
     prompt,
-    api,
+    apiClient,
     taskId,
     onSaveSuccess,
     onSaveError,

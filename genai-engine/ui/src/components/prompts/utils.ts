@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import { PromptType } from "./types";
 
-import { AgenticPrompt } from "@/lib/api-client/api-client";
+import { AgenticPrompt, ToolChoiceEnum } from "@/lib/api-client/api-client";
 
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
@@ -11,16 +11,19 @@ export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   messages: prompt.messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
+    tool_call_id: null,
+    tool_calls: null,
   })),
   tools: prompt.tools.map((tool) => ({
-    type: tool.type,
-    function: tool.function,
+    name: tool.name,
+    description: tool.description,
+    function_definition: tool.function_definition,
+    strict: tool.strict,
   })),
   tool_choice: prompt.toolChoice,
   temperature: prompt.modelParameters.temperature,
   top_p: prompt.modelParameters.top_p,
   timeout: prompt.modelParameters.timeout,
-  stream: prompt.modelParameters.stream,
   stream_options: prompt.modelParameters.stream_options,
   max_tokens: prompt.modelParameters.max_tokens,
   max_completion_tokens: prompt.modelParameters.max_completion_tokens,
@@ -52,18 +55,16 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   })),
   tools: (backendPrompt.tools || []).map((tool, index) => ({
     id: `tool-${backendPrompt.name}-${index}-${Date.now()}`,
-    type: "function",
-    function: tool.function || tool,
+    name: tool.name,
+    description: tool.description,
+    function_definition: tool.function_definition,
+    strict: tool.strict,
   })),
-  toolChoice:
-    typeof backendPrompt.tool_choice === "string"
-      ? backendPrompt.tool_choice
-      : "auto",
+  toolChoice: backendPrompt.tool_choice as ToolChoiceEnum || "auto",
   modelParameters: {
     temperature: backendPrompt.temperature ?? 1,
     top_p: backendPrompt.top_p ?? 1,
     timeout: backendPrompt.timeout,
-    stream: backendPrompt.stream ?? false,
     stream_options: backendPrompt.stream_options,
     max_tokens: backendPrompt.max_tokens,
     max_completion_tokens: backendPrompt.max_completion_tokens,
