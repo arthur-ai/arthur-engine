@@ -11,25 +11,19 @@ import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import MessageComponent from "./MessageComponent";
 import ModelParamsDialog from "./ModelParamsDialog";
 import OutputField from "./OutputField";
+import { usePromptContext } from "./PromptContext";
+import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
-import { PromptComponentProps } from "./types";
-import { providerEnum } from "./types";
+import { PromptComponentProps, PROVIDER_OPTIONS } from "./types";
 
 const PROVIDER_TEXT = "Provider";
-const PROMPT_NAME_TEXT = "Prompt Name";
+const PROMPT_NAME_TEXT = "Select Prompt";
 const MODEL_TEXT = "Model";
-
-// TODO: Pull from backend
-const PROMPT_NAME_OPTIONS = [
-  { label: "Prompt 1", value: "prompt1" },
-  { label: "Prompt 2", value: "prompt2" },
-  { label: "Prompt 3", value: "prompt3" },
-];
 
 const MODEL_OPTIONS = [
   { label: "Model 1", value: "model1" },
@@ -40,12 +34,42 @@ const MODEL_OPTIONS = [
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
-  const [provider, setProvider] = useState<string>(providerEnum.OPENAI);
+const Prompt = ({ prompt }: PromptComponentProps) => {
+  const [nameInputValue, setNameInputValue] = useState("");
+  const [currentPromptName, setCurrentPromptName] = useState<string>(
+    prompt.name || ""
+  );
+  const [provider, setProvider] = useState<string>(PROVIDER_OPTIONS[0]);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
+  const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
+
+  const { state, dispatch } = usePromptContext();
+
+  const handleSelectPrompt = useCallback(
+    (event: SelectChangeEvent) => {
+      const selection = event.target.value;
+      if (selection === "") {
+        return;
+      }
+      setCurrentPromptName(selection);
+
+      const selectedPromptData = state.backendPrompts.find(
+        (bp) => bp.name === selection
+      );
+      dispatch({
+        type: "updatePrompt",
+        payload: { promptId: prompt.id, prompt: selectedPromptData! },
+      });
+    },
+    [prompt.id, state.backendPrompts, dispatch]
+  );
 
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
+  };
+
+  const handleSavePromptOpen = () => {
+    setSavePromptOpen(true);
   };
 
   const handleDeletePrompt = useCallback(() => {
@@ -73,36 +97,57 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
     setParamsModelOpen(true);
   }, []);
 
+  useEffect(() => {
+    setNameInputValue(currentPromptName);
+  }, [currentPromptName]);
+
   return (
-    <div className="bg-purple-500 min-h-[500px]">
-      <Container component="div" className="p-1" maxWidth="xl" disableGutters>
+    <div className="min-h-[500px] shadow-md rounded-lg p-4">
+      <Container
+        component="div"
+        className="p-1 mt-1"
+        maxWidth="xl"
+        disableGutters
+      >
         <div className="grid grid-cols-2 gap-1">
           <div className="flex justify-start items-center gap-1">
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
-                <InputLabel id={`prompt-name-${prompt.id}`}>
+              <FormControl fullWidth variant="filled" size="small">
+                <InputLabel id={`prompt-select-${prompt.id}`}>
                   {PROMPT_NAME_TEXT}
                 </InputLabel>
                 <Select
-                  labelId={`prompt-name-${prompt.id}`}
-                  id={`prompt-name-${prompt.id}`}
+                  labelId={`prompt-select-${prompt.id}`}
+                  id={`prompt-select-${prompt.id}`}
                   label={PROMPT_NAME_TEXT}
-                  value={PROMPT_NAME_OPTIONS[0].value}
-                  onChange={() => {}}
+                  value={currentPromptName}
+                  onChange={handleSelectPrompt}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
-                  {PROMPT_NAME_OPTIONS.map((promptNameOption) => (
-                    <MenuItem
-                      key={promptNameOption.value}
-                      value={promptNameOption.value}
-                    >
-                      {promptNameOption.label}
+                  <MenuItem value="">&nbsp;</MenuItem>
+                  {currentPromptName &&
+                    !state.backendPrompts.some(
+                      (bp) => bp.name === currentPromptName
+                    ) && (
+                      <MenuItem
+                        key={currentPromptName}
+                        value={currentPromptName}
+                      >
+                        {currentPromptName}
+                      </MenuItem>
+                    )}
+                  {state.backendPrompts.map((prompt) => (
+                    <MenuItem key={prompt.name} value={prompt.name}>
+                      {prompt.name}
                     </MenuItem>
                   ))}
-                </Select>
+                </Select>{" "}
               </FormControl>
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
+              <FormControl fullWidth variant="filled" size="small">
                 <InputLabel id={`provider-${prompt.id}`}>
                   {PROVIDER_TEXT}
                 </InputLabel>
@@ -112,8 +157,11 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label={PROVIDER_TEXT}
                   value={provider}
                   onChange={handleProviderChange}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
-                  {Object.values(providerEnum).map((providerValue) => (
+                  {PROVIDER_OPTIONS.map((providerValue) => (
                     <MenuItem key={providerValue} value={providerValue}>
                       {providerValue}
                     </MenuItem>
@@ -122,7 +170,7 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               </FormControl>
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth size="small" variant="filled">
+              <FormControl fullWidth variant="filled" size="small">
                 <InputLabel id={`model-${prompt.id}`}>{MODEL_TEXT}</InputLabel>
                 <Select
                   labelId={`model-${prompt.id}`}
@@ -130,6 +178,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
                   label={MODEL_TEXT}
                   value={MODEL_OPTIONS[0].value}
                   onChange={() => {}}
+                  sx={{
+                    backgroundColor: "white",
+                  }}
                 >
                   {MODEL_OPTIONS.map((modelOption) => (
                     <MenuItem key={modelOption.value} value={modelOption.value}>
@@ -168,10 +219,9 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
               promptId={prompt.id}
               name={prompt.name}
               modelParameters={prompt.modelParameters}
-              dispatch={dispatch}
             />
             <Tooltip title="Save Prompt" placement="top-start" arrow>
-              <IconButton aria-label="save" onClick={() => {}}>
+              <IconButton aria-label="save" onClick={handleSavePromptOpen}>
                 <SaveIcon />
               </IconButton>
             </Tooltip>
@@ -190,15 +240,14 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
             id={message.id}
             parentId={prompt.id}
             role={message.role}
-            defaultContent={message.content}
-            content={message.content}
-            dispatch={dispatch}
+            defaultContent={message.content || ""}
+            content={message.content || ""}
           />
         ))}
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">
-          <Tools dispatch={dispatch} prompt={prompt} />
+          <Tools prompt={prompt} />
         </Paper>
       </div>
       <div className="m-1">
@@ -206,10 +255,15 @@ const Prompt = ({ prompt, dispatch }: PromptComponentProps) => {
           <OutputField
             promptId={prompt.id}
             responseFormat={prompt.responseFormat}
-            dispatch={dispatch}
           />
         </Paper>
       </div>
+      <SavePromptDialog
+        open={savePromptOpen}
+        setOpen={setSavePromptOpen}
+        prompt={prompt}
+        initialName={nameInputValue}
+      />
     </div>
   );
 };

@@ -11,11 +11,10 @@ import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import React, { useEffect, useState } from "react";
 
-import {
-  ModelParametersType,
-  PromptAction,
-  reasoningEffortEnum,
-} from "./types";
+import { usePromptContext } from "./PromptContext";
+import { ModelParametersType } from "./types";
+
+const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
 
 const ModelParamsDialog = ({
   open,
@@ -23,15 +22,14 @@ const ModelParamsDialog = ({
   promptId,
   name,
   modelParameters,
-  dispatch,
 }: {
   open: boolean;
   setOpen: (open: boolean) => void;
   promptId: string;
   name: string;
   modelParameters: ModelParametersType;
-  dispatch: (action: PromptAction) => void;
 }) => {
+  const { dispatch } = usePromptContext();
   const [copiedParams, setCopiedParams] =
     useState<ModelParametersType>(modelParameters);
 
@@ -268,9 +266,8 @@ const ModelParamsDialog = ({
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="text"
-              disabled
             >
-              {Object.values(reasoningEffortEnum).map((effort) => (
+              {(Object.values(EFFORT_OPTIONS) as string[]).map((effort) => (
                 <MenuItem key={effort} value={effort}>
                   {effort}
                 </MenuItem>
