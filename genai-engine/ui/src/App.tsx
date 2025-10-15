@@ -8,6 +8,8 @@ import {
 
 import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
+import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
+import { DatasetsView } from "./components/datasets/DatasetsView";
 import { LoginPage } from "./components/LoginPage";
 import PromptsPlayground from "./components/prompts/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -76,10 +78,18 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TaskLayout>
-                    <ComingSoon
-                      featureName="Datasets"
-                      description="Create and manage datasets for training and evaluation."
-                    />
+                    <DatasetsView />
+                  </TaskLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tasks/:id/datasets/:datasetId"
+              element={
+                <ProtectedRoute>
+                  <TaskLayout>
+                    <DatasetDetailView />
                   </TaskLayout>
                 </ProtectedRoute>
               }
