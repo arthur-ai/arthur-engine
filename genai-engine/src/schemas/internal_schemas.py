@@ -1045,6 +1045,7 @@ class InferenceResponse(BaseModel):
     context: Optional[str] = None
     response_rule_results: List[ResponseRuleResult] = []
     tokens: int | None = None
+    model_name: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseInferenceResponse):
@@ -1295,6 +1296,10 @@ class ValidationRequest(BaseModel):
     )
     context: Optional[str] = Field(
         description="Optional data provided as context for the validation.",
+        default=None,
+    )
+    model_name: Optional[str] = Field(
+        description="Model name to be used for the validation.",
         default=None,
     )
     tokens: Optional[List[str]] = Field(

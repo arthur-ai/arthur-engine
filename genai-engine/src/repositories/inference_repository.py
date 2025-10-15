@@ -328,6 +328,7 @@ class InferenceRepository:
         response: str,
         response_context: str,
         response_rule_results: List[RuleEngineResult],
+        model_name: str | None = None,
     ):
         inference_response = get_inference_response(
             inference_id,
@@ -350,6 +351,7 @@ class InferenceRepository:
                 )
                 else RuleResultEnum.FAIL
             )
+            db_inference.model_name = model_name
             self.db_session.commit()
         except IntegrityError as err:
             logger.warning("Response was already validated.")
@@ -504,6 +506,7 @@ def get_inference_response(
     response_context: str,
     rule_engine_results: List[RuleEngineResult],
     tokens: Optional[int] = None,
+    model_name: str | None = None,
 ) -> InferenceResponse:
     response_rule_results = [
         ResponseRuleResult._from_rule_engine_model(r) for r in rule_engine_results
@@ -525,6 +528,7 @@ def get_inference_response(
         context=response_context,
         response_rule_results=response_rule_results,
         tokens=tokens,
+        model_name=model_name,
     )
 
     return inference_response

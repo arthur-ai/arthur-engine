@@ -17,7 +17,11 @@ def validate_response(
 ) -> ValidationResult:
     inference_repo = InferenceRepository(db_session)
 
-    validation_request = ValidationRequest(response=body.response, context=body.context)
+    validation_request = ValidationRequest(
+        response=body.response,
+        context=body.context,
+        model_name=body.model_name,
+    )
 
     # create RuleEngine object and evaluate the rules
     rule_engine = RuleEngine(scorer_client)
@@ -28,6 +32,7 @@ def validate_response(
         body.response,
         body.context,
         rule_results,
+        model_name=body.model_name,
     )
 
     return ValidationResult(

@@ -13,7 +13,9 @@ __pycache__
 *.egg-info
 build/
 
-@node_modules/
+# Node.js
+node_modules/
+package-lock.json
 
 .html_cov*
 .coverage*
