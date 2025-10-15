@@ -98,7 +98,7 @@ class SpanMetadataResponse(BaseModel):
 class SessionMetadataResponse(BaseModel):
     """Session summary metadata"""
     session_id: str = Field(description="Session identifier")
-    task_id: str = Field(description="Unique task IDs in this session")
+    task_id: str = Field(description="Unique task ID in this session")
     trace_ids: list[str] = Field(description="Unique trace IDs captured in this session.")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
