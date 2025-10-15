@@ -67,9 +67,9 @@ class DatabaseDatasetVersionRow(Base):
     # https://docs.sqlalchemy.org/en/20/core/constraints.html#:~:text=It%E2%80%99s%20important%20to%20note%20that%20the%20ForeignKeyConstraint%20is%20the%20only%20way%20to%20define%20a%20composite%20foreign%20key.)
     __table_args__ = (
         Index(
-            "ix_dataset_version_rows_version_dataset",
-            "version_number",
+            "ix_dataset_version_rows_dataset_version",
             "dataset_id",
+            "version_number",
         ),
         ForeignKeyConstraint(
             ["version_number", "dataset_id"],
