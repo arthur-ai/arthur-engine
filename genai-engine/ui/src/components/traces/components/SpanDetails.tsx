@@ -1,4 +1,6 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { Collapsible } from "@base-ui-components/react/collapsible";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -62,12 +64,35 @@ export const SpanDetails = ({ span }: Props) => {
 
       <Stack direction="column" spacing={2}>
         {strategy?.panels.map((panel) => (
-          <Stack key={panel.label} direction="column" spacing={1}>
-            <Typography variant="body2" color="text.primary" fontWeight={700}>
-              {panel.label}
-            </Typography>
-            {panel.render(span)}
-          </Stack>
+          <Collapsible.Root
+            render={<Stack direction="column" spacing={1} />}
+            key={panel.label}
+            defaultOpen={panel.defaultOpen}
+          >
+            <Collapsible.Trigger className="group">
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{
+                  color: "text.primary",
+                }}
+              >
+                <KeyboardArrowDownIcon
+                  fontSize="small"
+                  className="group-data-panel-open:rotate-180 transition-transform duration-75"
+                />
+                <Typography
+                  variant="body2"
+                  color="text.primary"
+                  fontWeight={700}
+                >
+                  {panel.label}
+                </Typography>
+              </Stack>
+            </Collapsible.Trigger>
+            <Collapsible.Panel>{panel.render(span)}</Collapsible.Panel>
+          </Collapsible.Root>
         ))}
       </Stack>
     </Stack>

@@ -2,12 +2,15 @@ import {
   OpenInferenceSpanKind,
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
+import { Box, Paper } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
 import { getSpanCost, getSpanModel } from "../utils/spans";
 
 import { Highlight } from "@/components/common/Highlight";
+import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { getMessages, getOutputMessages, getTotalTokens } from "@/utils/llm";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime: string =
@@ -33,6 +36,7 @@ const PANELS = {
         />
       );
     },
+    defaultOpen: true,
   },
   OUTPUT: {
     label: "Output",
@@ -45,6 +49,7 @@ const PANELS = {
         />
       );
     },
+    defaultOpen: true,
   },
   RAW_DATA: {
     label: "Raw Data",
@@ -56,6 +61,7 @@ const PANELS = {
         />
       );
     },
+    defaultOpen: false,
   },
 } as const;
 
@@ -72,7 +78,60 @@ const spanDetailsStrategy = [
   },
   {
     kind: OpenInferenceSpanKind.LLM,
-    panels: [PANELS.RAW_DATA],
+    panels: [
+      {
+        label: "Input Messages",
+        render: (span: NestedSpanWithMetricsResponse) => {
+          const messages = getMessages(span);
+          const model = getSpanModel(span);
+
+          return (
+            <Paper
+              variant="outlined"
+              sx={{ display: "flex", flexDirection: "column" }}
+            >
+              <Box
+                p={1}
+                sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.primary"
+                  fontWeight={700}
+                  fontSize={12}
+                >
+                  {model}
+                </Typography>
+              </Box>
+              <Box
+                p={1}
+                sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+              >
+                {messages.map((message, index) => (
+                  <MessageRenderer message={message} key={index} />
+                ))}
+              </Box>
+            </Paper>
+          );
+        },
+        defaultOpen: true,
+      },
+      {
+        label: "Output Messages",
+        render: (span: NestedSpanWithMetricsResponse) => {
+          const messages = getOutputMessages(span);
+
+          return (
+            <Highlight
+              code={JSON.stringify(JSON.parse(messages), null, 2)}
+              language="json"
+            />
+          );
+        },
+        defaultOpen: true,
+      },
+      PANELS.RAW_DATA,
+    ],
     widgets: [
       {
         render: (span: NestedSpanWithMetricsResponse) => {
@@ -92,6 +151,17 @@ const spanDetailsStrategy = [
           return (
             <Typography variant="body2" color="text.secondary">
               cost: ${cost.toFixed(5)}
+            </Typography>
+          );
+        },
+      },
+      {
+        render: (span: NestedSpanWithMetricsResponse) => {
+          const totalTokens = getTotalTokens(span);
+
+          return (
+            <Typography variant="body2" color="text.secondary">
+              total tokens: {totalTokens}
             </Typography>
           );
         },
