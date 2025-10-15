@@ -8,8 +8,8 @@ import {
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  temporaryProviderEnum,
   PromptTool,
+  PROVIDER_OPTIONS,
 } from "./types";
 
 const TEMP_ID = "user-defined-name-";
@@ -120,7 +120,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   modelName: "",
-  provider: temporaryProviderEnum.OPENAI,
+  provider: PROVIDER_OPTIONS[0],
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
@@ -130,9 +130,8 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (
-  provider: string = temporaryProviderEnum.OPENAI
-): PromptType => createPrompt({ provider });
+const newPrompt = (provider: string = PROVIDER_OPTIONS[0]): PromptType =>
+  createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType =>
   createPrompt({

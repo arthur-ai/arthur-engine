@@ -19,8 +19,7 @@ import OutputField from "./OutputField";
 import { usePromptContext } from "./PromptContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
-import { PromptComponentProps } from "./types";
-import { temporaryProviderEnum } from "./types";
+import { PromptComponentProps, PROVIDER_OPTIONS } from "./types";
 
 const PROVIDER_TEXT = "Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -40,9 +39,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [currentPromptName, setCurrentPromptName] = useState<string>(
     prompt.name || ""
   );
-  const [provider, setProvider] = useState<string>(
-    temporaryProviderEnum.OPENAI
-  );
+  const [provider, setProvider] = useState<string>(PROVIDER_OPTIONS[0]);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
@@ -164,7 +161,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                     backgroundColor: "white",
                   }}
                 >
-                  {Object.values(temporaryProviderEnum).map((providerValue) => (
+                  {PROVIDER_OPTIONS.map((providerValue) => (
                     <MenuItem key={providerValue} value={providerValue}>
                       {providerValue}
                     </MenuItem>

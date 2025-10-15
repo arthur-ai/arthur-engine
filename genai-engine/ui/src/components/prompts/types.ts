@@ -1,4 +1,4 @@
-import { AgenticPromptReasoningEffortEnum } from "@/lib/api-client/api-client";
+import { ReasoningEffortEnum, ProviderEnum } from "@/lib/api-client/api-client";
 
 const promptClassificationEnum = {
   EVAL: "eval",
@@ -106,7 +106,7 @@ type ModelParametersType = {
   presence_penalty?: number; // -2 < presence_penalty <= 2, default 0
   stop?: string | null; // Stop sequence
   seed?: number | null; // Random seed
-  reasoning_effort?: AgenticPromptReasoningEffortEnum | null;
+  reasoning_effort?: ReasoningEffortEnum | null;
   // The following do not appear in the UI
   logprobs?: boolean | null; //Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.
   top_logprobs?: number | null; //An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. logprobs must be set to true if this parameter is used.
@@ -162,44 +162,43 @@ interface SavePromptDialogProps {
   onSaveError?: (error: string) => void;
 }
 
-const temporaryProviderEnum = {
-  ANTHROPIC: "anthropic",
-  OPENAI: "openai",
-  GEMINI: "gemini",
-  AZURE: "azure",
-  DEEPSEEK: "deepseek",
-  MISTRAL: "mistral",
-  META_LLAMA: "meta_llama",
-  GROQ: "groq",
-  BEDROCK: "bedrock",
-  SAGEMAKER: "sagemaker",
-  VERTEX_AI: "vertex_ai",
-  HUGGINGFACE: "huggingface",
-  CLOUDFLARE: "cloudflare",
-  AI21: "ai21",
-  BASETEN: "baseten",
-  COHERE: "cohere",
-  EMPOWER: "empower",
-  FEATHERLESS_AI: "featherless_ai",
-  FRIENDLIAI: "friendliai",
-  GALADRIEL: "galadriel",
-  NEBIUS: "nebius",
-  NLP_CLOUD: "nlp_cloud",
-  NOVITA: "novita",
-  OPENROUTER: "openrouter",
-  PETALS: "petals",
-  REPLICATE: "replicate",
-  TOGETHER_AI: "together_ai",
-  VLLM: "vllm",
-  WATSONX: "watsonx",
-};
+const PROVIDER_OPTIONS: ProviderEnum[] = [
+  "anthropic",
+  "openai",
+  "gemini",
+  "azure",
+  "deepseek",
+  "mistral",
+  "meta_llama",
+  "groq",
+  "bedrock",
+  "sagemaker",
+  "vertex_ai",
+  "huggingface",
+  "cloudflare",
+  "ai21",
+  "baseten",
+  "cohere",
+  "empower",
+  "featherless_ai",
+  "friendliai",
+  "galadriel",
+  "nebius",
+  "nlp_cloud",
+  "novita",
+  "openrouter",
+  "petals",
+  "replicate",
+  "together_ai",
+  "vllm",
+  "watsonx",
+];
 
 export {
   messageRoleEnum,
   MessageComponentProps,
   MessageType,
   ModelParametersType,
-  temporaryProviderEnum,
   PromptType,
   PromptComponentProps,
   PromptPlaygroundState,
@@ -208,4 +207,5 @@ export {
   OutputFieldProps,
   PromptTool,
   SavePromptDialogProps,
+  PROVIDER_OPTIONS,
 };
