@@ -139,6 +139,11 @@ const duplicatePrompt = (original: PromptType): PromptType =>
     ...original,
     id: generateId(),
     name: `${original.name} (Copy)`,
+    messages: original.messages.map(duplicateMessage),
+    tools: original.tools.map((tool) => ({
+      ...tool,
+      id: generateId(),
+    })),
   });
 
 const hydratePrompt = (data: Partial<PromptType>): PromptType =>

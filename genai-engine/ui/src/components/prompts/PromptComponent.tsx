@@ -66,7 +66,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     },
     [prompt.id, state.backendPrompts, dispatch]
   );
-  console.log(nameInputValue, currentPromptName);
+
   const handleProviderChange = (event: SelectChangeEvent) => {
     setProvider(event.target.value);
   };
