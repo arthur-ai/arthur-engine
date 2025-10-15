@@ -4,7 +4,7 @@ import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useCallback, useReducer, useEffect } from "react";
+import React, { useCallback, useReducer, useEffect, useRef } from "react";
 
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptContext";
@@ -16,6 +16,7 @@ import { useTask } from "@/hooks/useTask";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
+  const hasFetchedRef = useRef(false);
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -23,11 +24,16 @@ const PromptsPlayground = () => {
 
   useEffect(() => {
     const fetchPrompts = async () => {
+      if (hasFetchedRef.current) {
+        return;
+      }
+
       if (!apiClient || !taskId) {
         console.error("No api client or task id");
         return;
       }
 
+      hasFetchedRef.current = true;
       const response =
         await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
           taskId
