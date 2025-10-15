@@ -64,6 +64,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
+    ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
 from tests.constants import (
@@ -1753,6 +1754,43 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_versions(
+        self,
+        dataset_id: str,
+        page: int = None,
+        page_size: int = None,
+        latest_version_only: bool = False,
+    ) -> tuple[int, ListDatasetVersionsResponse]:
+        """Get dataset versions for a dataset."""
+        path = f"/api/v2/datasets/{dataset_id}/versions"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if latest_version_only:
+            params["latest_version_only"] = latest_version_only
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListDatasetVersionsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

@@ -3888,6 +3888,102 @@
                         }
                     }
                 }
+            },
+            "get": {
+                "tags": [
+                    "Datasets"
+                ],
+                "summary": "Get Dataset Versions",
+                "description": "List dataset versions.",
+                "operationId": "get_dataset_versions_api_v2_datasets__dataset_id__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "dataset_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the dataset to fetch versions for.",
+                            "title": "Dataset Id"
+                        },
+                        "description": "ID of the dataset to fetch versions for."
+                    },
+                    {
+                        "name": "latest_version_only",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Whether to only include the latest version for the dataset in the response. Defaults to False.",
+                            "default": false,
+                            "title": "Latest Version Only"
+                        },
+                        "description": "Whether to only include the latest version for the dataset in the response. Defaults to False."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListDatasetVersionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v2/datasets/{dataset_id}/versions/{version_number}": {
@@ -5481,6 +5577,26 @@
                 ],
                 "title": "DatasetUpdateRequest"
             },
+            "DatasetVersionMetadataResponse": {
+                "properties": {
+                    "version_number": {
+                        "type": "integer",
+                        "title": "Version Number",
+                        "description": "Version number of the dataset version."
+                    },
+                    "created_at": {
+                        "type": "integer",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of dataset version creation in unix milliseconds."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version_number",
+                    "created_at"
+                ],
+                "title": "DatasetVersionMetadataResponse"
+            },
             "DatasetVersionResponse": {
                 "properties": {
                     "version_number": {
@@ -6324,6 +6440,47 @@
                         "Blocked_Keyword_2"
                     ]
                 }
+            },
+            "ListDatasetVersionsResponse": {
+                "properties": {
+                    "versions": {
+                        "items": {
+                            "$ref": "#/components/schemas/DatasetVersionMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Versions",
+                        "description": "List of existing versions for the dataset."
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "The current page number for the included rows."
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "The number of rows per page."
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "The total number of pages."
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "The total number of rows in the dataset version."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "versions",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "ListDatasetVersionsResponse"
             },
             "MetricResponse": {
                 "properties": {

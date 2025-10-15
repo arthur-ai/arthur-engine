@@ -21,6 +21,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
+    ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
 from utils.users import permission_checker
@@ -177,6 +178,39 @@ def create_dataset_version(
         dataset_repo = DatasetRepository(db_session)
         dataset_repo.create_dataset_version(dataset_id, new_version_request)
         return dataset_repo.get_latest_dataset_version(dataset_id).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/versions",
+    description="List dataset versions.",
+    tags=[datasets_router_tag],
+    response_model=ListDatasetVersionsResponse,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_dataset_versions(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    dataset_id: UUID = Path(
+        description="ID of the dataset to fetch versions for.",
+    ),
+    latest_version_only: bool = Query(
+        default=False,
+        description="Whether to only include the latest version for the dataset in the response. Defaults to False.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListDatasetVersionsResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        return dataset_repo.get_dataset_versions(
+            dataset_id,
+            latest_version_only,
+            pagination_parameters,
+        ).to_response_model()
     finally:
         db_session.close()
 

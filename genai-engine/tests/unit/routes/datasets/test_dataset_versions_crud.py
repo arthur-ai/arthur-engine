@@ -189,6 +189,46 @@ def test_dataset_versions_basic_functionality(
     assert version_1_data["Jane Smith"] == "25"  # Still present in v1
     assert version_1_data["Bob Johnson"] == "35"  # Original age in v1
 
+    # test fetching all versions
+    status_code, versions_response = client.get_dataset_versions(created_dataset.id)
+    assert status_code == 200
+    assert versions_response.total_count == 2
+    assert len(versions_response.versions) == 2
+    # default sort is latest version first
+    last_version = versions_response.versions[0]
+    assert last_version.version_number == 2
+    assert versions_response.page_size == 10
+    assert versions_response.page == 0
+    assert versions_response.total_pages == 1
+
+    # test fetching only the latest version
+    status_code, versions_response = client.get_dataset_versions(
+        created_dataset.id,
+        latest_version_only=True,
+    )
+    assert status_code == 200
+    assert versions_response.total_count == 1
+    assert len(versions_response.versions) == 1
+    last_version = versions_response.versions[0]
+    assert last_version.version_number == 2
+    assert versions_response.page_size == 10
+
+    # test pagination
+    status_code, versions_response = client.get_dataset_versions(
+        created_dataset.id,
+        page=1,
+        page_size=1,
+    )
+    assert status_code == 200
+    assert versions_response.total_count == 2
+    assert len(versions_response.versions) == 1
+    # fetched the second page of versions, sorted from highest version number to lowest
+    last_version = versions_response.versions[0]
+    assert last_version.version_number == 1
+    assert versions_response.page_size == 1
+    assert versions_response.page == 1
+    assert versions_response.total_pages == 2
+
     # Test 5: Verify deleting dataset with versions doesn't result in an error
     status_code = client.delete_dataset(dataset_id)
     assert status_code == 204
