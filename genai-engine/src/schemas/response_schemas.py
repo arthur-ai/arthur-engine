@@ -1,8 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
+<<<<<<< HEAD
 from arthur_common.models.response_schemas import ExternalInference, TraceResponse
 from pydantic import BaseModel, Field
+=======
+from arthur_common.models.response_schemas import ExternalInference
+from litellm.types.utils import ChatCompletionMessageToolCall
+from pydantic import BaseModel
+>>>>>>> dev
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -109,3 +115,9 @@ class SessionTracesResponse(BaseModel):
     session_id: str = Field(description="Session identifier")
     count: int = Field(description="Number of traces in this session")
     traces: list[TraceResponse] = Field(description="List of full trace trees")
+
+
+class AgenticPromptRunResponse(BaseModel):
+    content: Optional[str] = None
+    tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
+    cost: str
