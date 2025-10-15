@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import json
 import logging
 import os
@@ -51,7 +53,11 @@ class EncryptedJSON(types.TypeDecorator):
             )
         for key in raw_keys:
             if key:
-                encryption_keys.append(Fernet(key.encode()))
+                # Derive a proper 32-byte Fernet key from the provided string
+                # using SHA256 hash to ensure exactly 32 bytes
+                key_bytes = hashlib.sha256(key.encode()).digest()
+                fernet_key = base64.urlsafe_b64encode(key_bytes)
+                encryption_keys.append(Fernet(fernet_key))
 
         self.cipher = MultiFernet(encryption_keys)
 
