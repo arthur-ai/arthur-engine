@@ -11,6 +11,7 @@ import {
   PROVIDER_OPTIONS,
   FrontendTool,
 } from "./types";
+import { extractName } from "./utils";
 
 import {
   MessageRole,
@@ -125,7 +126,7 @@ const createModelParameters = (
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: generateId(),
+  id: "-" + Date.now(),
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   modelName: "",
@@ -142,10 +143,17 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
-const duplicatePrompt = (original: PromptType): PromptType =>
-  createPrompt({
+const duplicatePrompt = (original: PromptType): PromptType => {
+  const [name, timestamp] = extractName(original.id);
+
+  let newId = "-" + Date.now();
+  if (timestamp !== "") {
+    newId = name + " (Copy)" + timestamp;
+  }
+
+  return createPrompt({
     ...original,
-    id: generateId(),
+    id: newId,
     name: `${original.name} (Copy)`,
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
@@ -153,7 +161,7 @@ const duplicatePrompt = (original: PromptType): PromptType =>
       id: generateId(),
     })),
   });
-
+};
 const hydratePrompt = (data: Partial<PromptType>): PromptType =>
   createPrompt(data);
 
