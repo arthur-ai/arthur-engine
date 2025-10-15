@@ -4025,7 +4025,7 @@
                     "Sessions"
                 ],
                 "summary": "Get Session Traces",
-                "description": "Get all traces in a session. Returns list of full trace trees without metrics computation.",
+                "description": "Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).",
                 "operationId": "get_session_traces_api_v1_sessions__session_id__get",
                 "security": [
                     {
@@ -9483,13 +9483,18 @@
                         "title": "Session Id",
                         "description": "Session identifier"
                     },
-                    "task_ids": {
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID this session belongs to"
+                    },
+                    "trace_ids": {
                         "items": {
                             "type": "string"
                         },
                         "type": "array",
-                        "title": "Task Ids",
-                        "description": "Unique task IDs in this session"
+                        "title": "Trace Ids",
+                        "description": "List of trace IDs in this session"
                     },
                     "trace_count": {
                         "type": "integer",
@@ -9522,7 +9527,8 @@
                 "type": "object",
                 "required": [
                     "session_id",
-                    "task_ids",
+                    "task_id",
+                    "trace_ids",
                     "trace_count",
                     "span_count",
                     "earliest_start_time",

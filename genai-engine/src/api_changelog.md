@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/15/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/trace_ids' to the response with the '200' status
+
 # 10/14/2025
 - **CHANGE** for **URL**: /api/v1/sessions  endpoint added
 - **CHANGE** for **URL**: /api/v1/sessions/{session_id}  endpoint added

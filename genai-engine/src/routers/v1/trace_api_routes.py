@@ -9,6 +9,7 @@ from arthur_common.models.response_schemas import (
     TraceResponse,
 )
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -150,7 +151,7 @@ def get_trace_by_id(
         if not trace:
             raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
 
-        return trace._to_response_model()
+        return trace
     except HTTPException:
         raise
     except Exception as e:
@@ -184,7 +185,7 @@ def compute_trace_metrics(
         if not trace:
             raise HTTPException(status_code=404, detail=f"Trace {trace_id} not found")
 
-        return trace._to_response_model()
+        return trace
     except HTTPException:
         raise
     except Exception as e:
@@ -316,7 +317,7 @@ def compute_span_metrics(
     """Compute all missing metrics for a single span on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
-        span = span_repo.query_span_by_span_id_with_metrics(span_id)
+        span = span_repo.compute_span_metrics(span_id)
 
         if not span:
             raise HTTPException(status_code=404, detail=f"Span {span_id} not found")

@@ -84,6 +84,7 @@ class SpanRepository:
         # Get trace metadata objects directly
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             trace_ids=paginated_trace_ids,
+            sort_method=pagination_parameters.sort,
         )
 
         return total_count, trace_metadata_list
