@@ -1,10 +1,11 @@
+from arthur_common.models.request_schemas import PromptValidationRequest
+from arthur_common.models.response_schemas import ValidationResult
+from sqlalchemy.orm import Session
+
 from repositories.inference_repository import InferenceRepository
 from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
-from arthur_common.models.request_schemas import PromptValidationRequest
-from arthur_common.models.response_schemas import ValidationResult
 from scorer.score import ScorerClient
-from sqlalchemy.orm import Session
 
 
 def validate_prompt(
@@ -27,10 +28,12 @@ def validate_prompt(
         task_id=task_id,
         conversation_id=body.conversation_id,
         user_id=body.user_id,
+        model_name=body.model_name,
     )
 
     return ValidationResult(
         inference_id=inference_prompt.inference_id,
         rule_results=inference_prompt._to_response_model().prompt_rule_results,
         user_id=body.user_id,
+        model_name=body.model_name,
     )

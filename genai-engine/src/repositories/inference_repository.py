@@ -72,6 +72,7 @@ class InferenceRepository:
         task_name: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
+        model_name: str | None = None,
         page_size: int = 10,
         start_time: datetime = None,
         end_time: datetime = None,
@@ -124,6 +125,8 @@ class InferenceRepository:
             stmt = stmt.where(DatabaseInference.conversation_id == conversation_id)
         if user_id:
             stmt = stmt.where(DatabaseInference.user_id == user_id)
+        if model_name:
+            stmt = stmt.where(DatabaseInference.model_name.ilike(f"%{model_name}%"))
         if start_time:
             stmt = stmt.where(DatabaseInference.created_at >= start_time)
         if end_time:
@@ -291,6 +294,7 @@ class InferenceRepository:
         task_id: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
+        model_name: str | None = None,
     ) -> InferencePrompt:
         inference = get_new_inference(task_id, conversation_id)
         inference_prompt = get_inference_prompt(
@@ -303,6 +307,7 @@ class InferenceRepository:
         inference.result = inference_prompt.result
         inference.inference_prompt = inference_prompt
         inference.user_id = user_id
+        inference.model_name = model_name
 
         if any(
             [

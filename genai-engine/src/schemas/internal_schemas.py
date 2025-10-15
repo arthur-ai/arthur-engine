@@ -1163,6 +1163,7 @@ class InferenceFeedback(BaseModel):
     score: int
     reason: Optional[str] = None
     user_id: str | None = None
+    model_name: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -1175,6 +1176,7 @@ class InferenceFeedback(BaseModel):
             score=dif.score,
             reason=dif.reason,
             user_id=dif.user_id,
+            model_name=dif.model_name,
             created_at=dif.created_at,
             updated_at=dif.updated_at,
         )
@@ -1187,6 +1189,7 @@ class InferenceFeedback(BaseModel):
             score=self.score,
             reason=self.reason,
             user_id=self.user_id,
+            model_name=self.model_name,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -1204,6 +1207,7 @@ class Inference(BaseModel):
     inference_response: Optional[InferenceResponse] = None
     inference_feedback: List[InferenceFeedback]
     user_id: Optional[str] = None
+    model_name: Optional[str] = None
 
     def has_prompt(self):
         return self.inference_prompt != None
@@ -1238,6 +1242,7 @@ class Inference(BaseModel):
                 InferenceFeedback.from_database_model(i) for i in x.inference_feedback
             ],
             user_id=x.user_id,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1257,6 +1262,7 @@ class Inference(BaseModel):
             ),
             inference_feedback=[i.to_response_model() for i in self.inference_feedback],
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
     def _to_database_model(self):
@@ -1274,6 +1280,7 @@ class Inference(BaseModel):
                 else None
             ),
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
 

@@ -1,10 +1,11 @@
+from arthur_common.models.request_schemas import ResponseValidationRequest
+from arthur_common.models.response_schemas import ValidationResult
+from sqlalchemy.orm import Session
+
 from repositories.inference_repository import InferenceRepository
 from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
-from arthur_common.models.request_schemas import ResponseValidationRequest
-from arthur_common.models.response_schemas import ValidationResult
 from scorer.score import ScorerClient
-from sqlalchemy.orm import Session
 
 
 def validate_response(
@@ -32,4 +33,5 @@ def validate_response(
     return ValidationResult(
         inference_id=inference_response.inference_id,
         rule_results=inference_response._to_response_model().response_rule_results,
+        model_name=body.model_name,
     )
