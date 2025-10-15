@@ -475,3 +475,75 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.unit_tests
+@patch(
+    "repositories.agentic_prompts_repository.AgenticPromptRepository.stream_prompt_completion",
+)
+@patch("litellm.completion_cost")
+def test_streaming_agentic_prompt(
+    mock_completion_cost,
+    mock_stream_prompt_completion,
+    client: GenaiEngineTestClientBase,
+):
+    """Test streaming works for both unsaved and saved agentic prompts"""
+
+    async def mock_stream(*args, **kwargs):
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            yield chunk
+
+    mock_stream_prompt_completion.side_effect = mock_stream
+    mock_completion_cost.return_value = 0.001
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Run a streaming prompt (with stream=True in run_config)
+    prompt_data = {
+        "name": "streaming_prompt",
+        "messages": [{"role": "user", "content": "Stream this"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+    }
+
+    run_config = {"stream": True}
+    unsaved_run_data = prompt_data.copy()
+    unsaved_run_data["run_config"] = run_config
+
+    # Test streaming an unsaved prompt
+    with client.base_client.stream(
+        "POST",
+        "/api/v1/completions",
+        json=unsaved_run_data,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        content = b"".join(response.iter_bytes())
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            assert chunk.encode() in content
+
+    # Save the prompt
+    response = client.base_client.put(
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # Test saved prompt streaming
+    with client.base_client.stream(
+        "POST",
+        f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
+        json=run_config,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        content = b"".join(response.iter_bytes())
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            assert chunk.encode() in content

@@ -112,7 +112,8 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    result = agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
+    prompt, config = sample_unsaved_run_config._to_prompt_and_config()
+    result = agentic_prompt_repo.run_prompt_completion(prompt, config)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -374,7 +375,8 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    result = agentic_prompt_repo.run_saved_prompt(task_id, prompt_name)
+    prompt = agentic_prompt_repo.get_prompt(task_id, prompt_name)
+    result = agentic_prompt_repo.run_prompt_completion(prompt)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"
@@ -697,7 +699,8 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost.return_value = 0.000123
 
     # Run the unsaved prompt
-    result = agentic_prompt_repo.run_unsaved_prompt(run_config)
+    prompt, config = run_config._to_prompt_and_config()
+    result = agentic_prompt_repo.run_prompt_completion(prompt, config)
     call_args = mock_completion.call_args[1]
 
     # Extract messages sent to LiteLLM

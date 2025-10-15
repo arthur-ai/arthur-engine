@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from dependencies import get_application_config, get_db_session
@@ -53,6 +54,33 @@ def get_validated_agentic_task(
         raise HTTPException(status_code=400, detail="Task is not agentic")
 
     return task
+
+
+async def execute_prompt_completion(
+    agentic_prompt_service: AgenticPromptRepository,
+    prompt: AgenticPrompt,
+    run_config: AgenticPromptRunConfig,
+):
+    """Helper to execute prompt completion with or without streaming"""
+    if run_config.stream is None or run_config.stream == False:
+        return agentic_prompt_service.run_prompt_completion(prompt, run_config)
+
+    async def generate_prompt_stream():
+        async for chunk in agentic_prompt_service.stream_prompt_completion(
+            prompt,
+            run_config,
+        ):
+            if isinstance(chunk, str):
+                yield chunk
+            elif isinstance(chunk, AgenticPromptRunResponse):
+                yield "[END_STREAMING]"
+                yield chunk.model_dump_json()
+
+    return StreamingResponse(
+        generate_prompt_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @agentic_prompt_routes.get(
@@ -129,20 +157,36 @@ def get_all_agentic_prompt_versions(
 
 @agentic_prompt_routes.post(
     "/completions",
-    summary="Run an agentic prompt",
-    description="Run an agentic prompt",
+    summary="Run/Stream an unsaved agentic prompt",
+    description="Runs or streams an unsaved agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_agentic_prompt(
-    run_config: AgenticPromptUnsavedRunConfig,
+async def run_agentic_prompt(
+    unsaved_prompt: AgenticPromptUnsavedRunConfig,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """
+    Run and/or stream an unsaved agentic prompt.
+    Note: For streaming, the response will be a StreamingResponse object.
+
+    Args:
+        unsaved_prompt: AgenticPromptUnsavedRunConfig
+        current_user: User
+
+    Returns:
+        AgenticPromptRunResponse or StreamingResponse
+    """
     try:
         agentic_prompt_service = AgenticPromptRepository(None)
-        return agentic_prompt_service.run_unsaved_prompt(run_config)
+        prompt, run_config = unsaved_prompt._to_prompt_and_config()
+        return await execute_prompt_completion(
+            agentic_prompt_service,
+            prompt,
+            run_config,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -151,14 +195,14 @@ def run_agentic_prompt(
 
 @agentic_prompt_routes.post(
     "/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions",
-    summary="Run a specific version of an agentic prompt",
-    description="Run a specific version of an existing agentic prompt",
+    summary="Run/Stream a specific version of an agentic prompt",
+    description="Run or stream a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_saved_agentic_prompt(
+async def run_saved_agentic_prompt(
     prompt_name: str,
     prompt_version: str,
     run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
@@ -166,10 +210,26 @@ def run_saved_agentic_prompt(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
+    """
+    Run and/or stream an unsaved agentic prompt.
+    Note: For streaming, the response will be a StreamingResponse object.
+
+    Args:
+        unsaved_prompt: AgenticPromptUnsavedRunConfig
+        current_user: User
+
+    Returns:
+        AgenticPromptRunResponse or StreamingResponse
+    """
     # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.run_saved_prompt(task.id, prompt_name, run_config)
+        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        return await execute_prompt_completion(
+            agentic_prompt_service,
+            prompt,
+            run_config,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

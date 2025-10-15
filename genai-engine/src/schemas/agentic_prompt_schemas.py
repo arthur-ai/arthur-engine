@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
-from litellm import completion, completion_cost
+from litellm import acompletion, completion, completion_cost, stream_chunk_builder
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
     BaseModel,
@@ -365,7 +365,7 @@ class AgenticPromptBaseConfig(BaseModel):
 class AgenticPrompt(AgenticPromptBaseConfig):
     name: str = Field(description="Name of the agentic prompt")
 
-    def run_chat_completion(
+    def _get_completion_params(
         self,
         run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
     ) -> AgenticPromptRunResponse:
@@ -380,19 +380,57 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 completion_params["messages"],
             )
 
-        # TODO: Re-implement streaming to actually work
-        # completion_params["stream"] = run_config.stream
+        if run_config.stream is not None:
+            completion_params["stream"] = run_config.stream
 
         # not allowed to have tool_choice if no tools are provided
         if self.tools is None:
             completion_params.pop("tool_choice", None)
 
+        return model, completion_params
+
+    def run_chat_completion(
+        self,
+        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+    ) -> AgenticPromptRunResponse:
+        model, completion_params = self._get_completion_params(run_config)
         response = completion(model=model, **completion_params)
 
         cost = completion_cost(response)
         msg = response.choices[0].message
 
         return AgenticPromptRunResponse(
+            content=msg.get("content"),
+            tool_calls=msg.get("tool_calls"),
+            cost=f"{cost:.6f}",
+        )
+
+    async def stream_chat_completion(
+        self,
+        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+    ):
+        model, completion_params = self._get_completion_params(run_config)
+        response = await acompletion(model=model, **completion_params)
+
+        collected_chunks = []
+        async for chunk in response:
+            collected_chunks.append(chunk)
+
+            if chunk.choices and chunk.choices[0].delta:
+                delta = chunk.choices[0].delta.get("content", "")
+                if delta:
+                    yield delta
+
+        # Build complete response from chunks
+        complete_response = stream_chunk_builder(
+            collected_chunks,
+            messages=completion_params.get("messages", []),
+        )
+
+        cost = completion_cost(complete_response)
+        msg = complete_response.choices[0].message
+
+        yield AgenticPromptRunResponse(
             content=msg.get("content"),
             tool_calls=msg.get("tool_calls"),
             cost=f"{cost:.6f}",
@@ -505,13 +543,12 @@ class AgenticPromptUnsavedRunConfig(AgenticPromptBaseConfig):
         description="Run configuration for the unsaved prompt",
     )
 
-    def run_unsaved_prompt(self) -> AgenticPromptRunResponse:
-        """Run the unsaved prompt"""
+    def _to_prompt_and_config(self) -> Tuple[AgenticPrompt, AgenticPromptRunConfig]:
         prompt = AgenticPrompt(
             name="test_unsaved_prompt",
             **self.model_dump(exclude={"run_config"}),
         )
-        return prompt.run_chat_completion(self.run_config)
+        return prompt, self.run_config
 
 
 class AgenticPrompts(BaseModel):

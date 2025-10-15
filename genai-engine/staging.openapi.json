@@ -4427,8 +4427,8 @@
                 "tags": [
                     "AgenticPrompt"
                 ],
-                "summary": "Run an agentic prompt",
-                "description": "Run an agentic prompt",
+                "summary": "Run/Stream an unsaved agentic prompt",
+                "description": "Runs or streams an unsaved agentic prompt",
                 "operationId": "run_agentic_prompt_api_v1_completions_post",
                 "requestBody": {
                     "content": {
@@ -4474,8 +4474,8 @@
                 "tags": [
                     "AgenticPrompt"
                 ],
-                "summary": "Run a specific version of an agentic prompt",
-                "description": "Run a specific version of an existing agentic prompt",
+                "summary": "Run/Stream a specific version of an agentic prompt",
+                "description": "Run or stream a specific version of an existing agentic prompt",
                 "operationId": "run_saved_agentic_prompt_api_v1_task__task_id__prompt__prompt_name__versions__prompt_version__completions_post",
                 "security": [
                     {
