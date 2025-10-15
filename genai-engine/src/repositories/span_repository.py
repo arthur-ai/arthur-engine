@@ -59,7 +59,7 @@ class SpanRepository:
         self,
         filters: TraceQueryRequest,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list[TraceMetadata]]:
+    ) -> tuple[list[TraceMetadata], int]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
         Returns metadata only without spans or metrics for fast performance.
@@ -79,14 +79,39 @@ class SpanRepository:
         )
 
         if total_count == 0:
-            return 0, []
+            return [], 0
 
         # Get trace metadata objects directly
         trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
             trace_ids=paginated_trace_ids,
         )
 
-        return total_count, trace_metadata_list
+        return trace_metadata_list, total_count
+
+    def get_spans_metadata(
+        self,
+        filters: TraceQueryRequest,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[list[Span], int]:
+        """
+        Get lightweight span metadata for browsing/filtering operations.
+        """
+        # Convert to internal schema format
+        filters = TraceQuerySchema._from_request_model(filters)
+
+        if not filters.task_ids:
+            raise ValueError("task_ids are required for span queries")
+
+        # Use the new advanced filtering method that properly handles OR logic
+        spans, total_count = self.span_query_service.query_spans_with_advanced_filters(
+            filters=filters,
+            pagination_parameters=pagination_parameters,
+        )
+
+        # Validate spans (no metrics needed for metadata)
+        valid_spans = self.span_query_service.validate_spans(spans)
+
+        return valid_spans, total_count
 
     def get_trace_by_id(
         self,
@@ -201,7 +226,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-    ) -> tuple[int, list[SessionMetadata]]:
+    ) -> tuple[list[SessionMetadata], int]:
         """Return session aggregation data.
 
         Returns aggregated session information with pagination.
@@ -210,32 +235,32 @@ class SpanRepository:
             raise ValueError("task_ids are required for session queries")
 
         # Get session aggregation data from query service
-        count, session_metadata_list = self.span_query_service.get_sessions_aggregated(
+        session_metadata_list, count = self.span_query_service.get_sessions_aggregated(
             task_ids=task_ids,
             pagination_parameters=pagination_parameters,
             start_time=start_time,
             end_time=end_time,
         )
 
-        return count, session_metadata_list
+        return session_metadata_list, count
 
     def get_session_traces(
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[list, int]:
         """Get all trace trees in a session.
 
         Returns list of full trace trees without metrics computation.
         """
         # Get trace IDs for this session
-        count, trace_ids = self.span_query_service.get_trace_ids_for_session(
+        trace_ids, count = self.span_query_service.get_trace_ids_for_session(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
         )
 
         if not trace_ids:
-            return 0, []
+            return [], 0
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
@@ -252,25 +277,25 @@ class SpanRepository:
             pagination_parameters.sort,
         )
 
-        return count, traces
+        return traces, count
 
     def compute_session_metrics(
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[list, int]:
         """Get all traces in a session and compute missing metrics.
 
         Returns list of full trace trees with computed metrics.
         """
         # Get trace IDs for this session
-        count, trace_ids = self.span_query_service.get_trace_ids_for_session(
+        trace_ids, count = self.span_query_service.get_trace_ids_for_session(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
         )
 
         if not trace_ids:
-            return 0, []
+            return [], 0
 
         # Query all spans for these traces
         spans, _ = self.span_query_service.query_spans_from_db(
@@ -292,7 +317,7 @@ class SpanRepository:
             pagination_parameters.sort,
         )
 
-        return count, traces
+        return traces, count
 
     # ============================================================================
     # Public API Methods - Used by Legacy Endpoints (ML Engine)
@@ -384,7 +409,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
-    ) -> tuple[int, list]:
+    ) -> tuple[list, int]:
         """Query traces with comprehensive filtering and optional metrics computation."""
         # Validate parameters
 
@@ -400,7 +425,7 @@ class SpanRepository:
         )
 
         if not result:
-            return 0, []
+            return [], 0
 
         paginated_trace_ids, total_count = result
 
@@ -423,7 +448,7 @@ class SpanRepository:
             valid_spans,
             pagination_parameters.sort,
         )
-        return total_count, traces
+        return traces, total_count
 
     # ============================================================================
     # Testing/Utility Methods

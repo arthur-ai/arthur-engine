@@ -40,11 +40,15 @@ DEFAULT_PAGE_SIZE = 5
 
 class SpanQueryService:
     """
-    SpanQueryService with single-query strategy. This implements the proposed optimizations for comparison.
+    SpanQueryService with single-query strategy.
     """
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
+        # Query builder state
+        self._current_query = None
+        self._current_context = None  # 'trace' or 'span'
+        self._joined_spans = False
 
     def get_paginated_trace_ids_with_filters(
         self,
@@ -58,18 +62,28 @@ class SpanQueryService:
         if not filters.task_ids:
             return None, 0
 
-        # Build comprehensive query with all filters combined
-        base_query = self._build_unified_trace_query(filters)
+        # Build base query once (without sorting/pagination)
+        base_query = (
+            self.start_from_traces(filters.task_ids)
+            .add_trace_conditions(filters)  # Duration, time range, etc.
+            .add_span_conditions(filters)  # Auto-JOINs spans if needed
+            .add_metric_conditions(filters)  # EXISTS clauses
+            .build_base_query()
+        )  # Get base query without pagination
 
-        # Get total count before pagination
+        # Get total count from base query
         count_query = select(func.count()).select_from(base_query.subquery())
         total_count = self.db_session.execute(count_query).scalar()
 
-        # Apply sorting and pagination at database level
-        query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
+        # Create final query with sorting and pagination
+        final_query = self._apply_sorting_and_pagination(
+            base_query,
+            pagination_parameters,
+            "trace",
+        )
 
         # Execute with database-level pagination
-        results = self.db_session.execute(query).scalars().all()
+        results = self.db_session.execute(final_query).scalars().all()
         trace_ids = [tm.trace_id for tm in results]
 
         return trace_ids, total_count
@@ -124,6 +138,43 @@ class SpanQueryService:
 
         return Span._from_database_model(results[0])
 
+    def query_spans_with_advanced_filters(
+        self,
+        filters: TraceQuerySchema,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[list[Span], int]:
+        """
+        Advanced span filtering with comprehensive filtering and OR/AND logic.
+        """
+        if not filters.task_ids:
+            return [], 0
+
+        # Build base query once (without sorting/pagination)
+        base_query = (
+            self.start_from_spans(filters.task_ids)
+            .add_trace_conditions(filters)  # Works with span context
+            .add_span_conditions(filters)  # Direct span filtering
+            .add_metric_conditions(filters)  # Same EXISTS logic
+            .build_base_query()
+        )  # Get base query without pagination
+
+        # Get total count from base query
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
+
+        # Create final query with sorting and pagination
+        final_query = self._apply_sorting_and_pagination(
+            base_query,
+            pagination_parameters,
+            "span",
+        )
+
+        # Execute paginated query
+        results = self.db_session.execute(final_query).scalars().unique().all()
+        spans = [Span._from_database_model(span) for span in results]
+
+        return spans, total_count
+
     def validate_spans(self, spans: list[Span]) -> list[Span]:
         """Validate spans and return only valid ones."""
         valid_spans = [
@@ -145,297 +196,6 @@ class SpanQueryService:
 
         if not span.task_id:
             raise ValueError(f"Span {span_id} has no task_id")
-
-    def _build_unified_trace_query(self, filters: TraceQuerySchema) -> select:
-        """
-        Build a single query that combines all filtering logic using JOINs.
-        This replaces the current two-phase approach.
-        """
-        # Start with base metadata query
-        query = select(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.task_id.in_(filters.task_ids),
-        )
-
-        # Apply trace-level filters (fast indexed operations)
-        query = self._apply_trace_level_filters(query, filters)
-
-        # Apply span-level filters using JOINs instead of EXISTS
-        if self._has_span_level_filters(filters):
-            query = self._apply_span_level_filters_with_joins(query, filters)
-
-        return query
-
-    def _apply_trace_level_filters(
-        self,
-        query: select,
-        filters: TraceQuerySchema,
-    ) -> select:
-        """Apply fast indexed trace-level filters."""
-        conditions = []
-
-        # Direct trace metadata filters
-        if filters.trace_ids:
-            conditions.append(DatabaseTraceMetadata.trace_id.in_(filters.trace_ids))
-        if filters.start_time:
-            conditions.append(DatabaseTraceMetadata.start_time >= filters.start_time)
-        if filters.end_time:
-            conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
-
-        # Duration filters with optimized calculation
-        if filters.trace_duration_filters:
-            duration_conditions = []
-            for filter_item in filters.trace_duration_filters:
-                #  duration calculation
-                start_epoch = func.extract("epoch", DatabaseTraceMetadata.start_time)
-                end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
-                duration_seconds = func.round(cast(end_epoch - start_epoch, Numeric), 3)
-
-                duration_conditions.append(
-                    self._build_comparison_condition(duration_seconds, filter_item),
-                )
-            conditions.extend(duration_conditions)
-
-        if conditions:
-            query = query.where(and_(*conditions))
-
-        return query
-
-    def _apply_span_level_filters_with_joins(
-        self,
-        query: select,
-        filters: TraceQuerySchema,
-    ) -> select:
-        """
-        Apply span-level filters using JOINs for simple filters and EXISTS for metric filters.
-        """
-
-        span_conditions = []
-
-        # Build JOINs for simple span filters
-        if filters.tool_name or filters.span_types:
-            query = query.join(
-                DatabaseSpan,
-                and_(
-                    DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
-                    DatabaseSpan.task_id.in_(filters.task_ids),
-                ),
-            )
-
-            # Tool name filter
-            if filters.tool_name:
-                span_conditions.extend(
-                    [
-                        DatabaseSpan.span_kind == SPAN_KIND_TOOL,
-                        DatabaseSpan.span_name == filters.tool_name,
-                    ],
-                )
-
-            # Span types filter
-            if filters.span_types:
-                span_conditions.append(DatabaseSpan.span_kind.in_(filters.span_types))
-
-            # Apply span conditions
-            if span_conditions:
-                query = query.where(and_(*span_conditions))
-
-            # Use DISTINCT to avoid duplicate traces from JOINs
-            # Note: DISTINCT() without arguments works across all databases
-            query = query.distinct()
-
-        # Use EXISTS for metric filters (handles multiple metric types correctly)
-        if self._has_metric_filters(filters):
-            exists_conditions = self._build_metric_exists_conditions(filters)
-            if exists_conditions:
-                query = query.where(and_(*exists_conditions))
-
-        return query
-
-    def _build_metric_exists_conditions(self, filters: TraceQuerySchema) -> list:
-        """Build optimized EXISTS conditions for metric filtering."""
-        exists_conditions = []
-
-        # Relevance filters
-        if filters.query_relevance_filters:
-            exists_conditions.append(
-                self._build_relevance_exists(
-                    MetricType.QUERY_RELEVANCE,
-                    filters.query_relevance_filters,
-                    filters.task_ids,
-                ),
-            )
-
-        if filters.response_relevance_filters:
-            exists_conditions.append(
-                self._build_relevance_exists(
-                    MetricType.RESPONSE_RELEVANCE,
-                    filters.response_relevance_filters,
-                    filters.task_ids,
-                ),
-            )
-
-        # Tool classification filters
-        if filters.tool_selection is not None:
-            exists_conditions.append(
-                self._build_tool_classification_exists(
-                    MetricType.TOOL_SELECTION,
-                    filters.tool_selection,
-                    filters.task_ids,
-                    "tool_selection",
-                ),
-            )
-
-        if filters.tool_usage is not None:
-            exists_conditions.append(
-                self._build_tool_classification_exists(
-                    MetricType.TOOL_SELECTION,
-                    filters.tool_usage,
-                    filters.task_ids,
-                    "tool_usage",
-                ),
-            )
-
-        return exists_conditions
-
-    def _build_relevance_exists(
-        self,
-        metric_type: MetricType,
-        relevance_filters: list[FloatRangeFilter],
-        task_ids: list[str],
-    ):
-        """Optimized relevance filtering using EXISTS."""
-        # Create aliases to avoid conflicts
-        inner_span = DatabaseSpan.__table__.alias("inner_span")
-        inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
-
-        # Build relevance conditions
-        paths = {
-            MetricType.QUERY_RELEVANCE: "query_relevance",
-            MetricType.RESPONSE_RELEVANCE: "response_relevance",
-        }
-        if metric_type not in paths:
-            raise ValueError(f"Unsupported relevance metric type: {metric_type}")
-
-        # Use database-specific JSON extraction functions
-        if self.db_session.bind.dialect.name == "postgresql":
-            # PostgreSQL: jsonb_extract_path_text(column, 'path1', 'path2')
-            score_path = func.jsonb_extract_path_text(
-                inner_metric.c.details,
-                paths[metric_type],
-                "llm_relevance_score",
-            )
-        else:  # SQLite
-            # SQLite: json_extract(column, '$.path1.path2')
-            json_path = f"$.{paths[metric_type]}.llm_relevance_score"
-            score_path = func.json_extract(inner_metric.c.details, json_path)
-
-        relevance_conditions = [
-            self._build_comparison_condition(func.cast(score_path, Float), f)
-            for f in relevance_filters
-        ]
-
-        return exists(
-            select(1)
-            .select_from(
-                inner_span.join(
-                    inner_metric,
-                    inner_span.c.id == inner_metric.c.span_id,
-                ),
-            )
-            .where(
-                and_(
-                    inner_span.c.trace_id
-                    == DatabaseTraceMetadata.trace_id,  # Correlation
-                    inner_span.c.task_id.in_(task_ids),
-                    inner_span.c.span_kind == SPAN_KIND_LLM,
-                    inner_metric.c.metric_type == metric_type.value,
-                    *relevance_conditions,
-                ),
-            ),
-        )
-
-    def _build_tool_classification_exists(
-        self,
-        metric_type: MetricType,
-        tool_class: ToolClassEnum,
-        task_ids: list[str],
-        field_name: str,
-    ):
-        """Optimized tool classification filtering using EXISTS."""
-        # Create aliases to avoid conflicts
-        inner_span = DatabaseSpan.__table__.alias("inner_span")
-        inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
-
-        # Use database-specific JSON extraction for tool classification
-        if self.db_session.bind.dialect.name == "postgresql":
-            # PostgreSQL: jsonb_extract_path_text(column, 'path1', 'path2')
-            classification_path = func.jsonb_extract_path_text(
-                inner_metric.c.details,
-                "tool_selection",
-                field_name,
-            )
-        else:  # SQLite
-            # SQLite: json_extract(column, '$.path1.path2')
-            json_path = f"$.tool_selection.{field_name}"
-            classification_path = func.json_extract(inner_metric.c.details, json_path)
-
-        classification_condition = (
-            func.cast(classification_path, Integer) == tool_class.value
-        )
-
-        return exists(
-            select(1)
-            .select_from(
-                inner_span.join(
-                    inner_metric,
-                    inner_span.c.id == inner_metric.c.span_id,
-                ),
-            )
-            .where(
-                and_(
-                    inner_span.c.trace_id
-                    == DatabaseTraceMetadata.trace_id,  # Correlation
-                    inner_span.c.task_id.in_(task_ids),
-                    inner_span.c.span_kind == SPAN_KIND_LLM,
-                    inner_metric.c.metric_type == metric_type.value,
-                    classification_condition,
-                ),
-            ),
-        )
-
-    def _apply_sorting_and_pagination(
-        self,
-        query: select,
-        pagination_parameters: PaginationParameters,
-    ) -> select:
-        """Apply database-level sorting and pagination."""
-        # Apply sorting
-        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseTraceMetadata.start_time))
-        else:
-            query = query.order_by(asc(DatabaseTraceMetadata.start_time))
-
-        # Apply database-level pagination (much more efficient)
-        offset = pagination_parameters.page * pagination_parameters.page_size
-        query = query.offset(offset).limit(pagination_parameters.page_size)
-
-        return query
-
-    def _has_span_level_filters(self, filters: TraceQuerySchema) -> bool:
-        """Check if span-level filtering is needed."""
-        return bool(
-            filters.tool_name
-            or filters.span_types
-            or self._has_metric_filters(filters),
-        )
-
-    def _has_metric_filters(self, filters: TraceQuerySchema) -> bool:
-        """Check if metric filtering is needed."""
-        return bool(
-            filters.query_relevance_filters
-            or filters.response_relevance_filters
-            or filters.tool_selection is not None
-            or filters.tool_usage is not None,
-        )
 
     def _build_spans_query(
         self,
@@ -511,10 +271,10 @@ class SpanQueryService:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-    ) -> tuple[int, list[SessionMetadata]]:
+    ) -> tuple[list[SessionMetadata], int]:
         """Perform session-level aggregations with filtering."""
         if not task_ids:
-            return 0, []
+            return [], 0
 
         # Build base query for session aggregation
         query = select(
@@ -573,13 +333,13 @@ class SpanQueryService:
                 ),
             )
 
-        return total_count, sessions
+        return sessions, total_count
 
     def get_trace_ids_for_session(
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list[str]]:
+    ) -> tuple[list[str], int]:
         """Get paginated trace IDs for a specific session."""
         # Build query for traces in this session
         query = select(DatabaseTraceMetadata.trace_id).where(
@@ -607,3 +367,336 @@ class SpanQueryService:
         trace_ids = [trace_id for trace_id in results]
 
         return total_count, trace_ids
+
+    # ============================================================================
+    # Unified Query Building Methods
+    # ============================================================================
+
+    def start_from_traces(self, task_ids: list[str]):
+        """Start building a query from trace metadata."""
+        self._current_query = select(DatabaseTraceMetadata).where(
+            DatabaseTraceMetadata.task_id.in_(task_ids),
+        )
+        self._current_context = "trace"
+        self._joined_spans = False
+        return self
+
+    def start_from_spans(self, task_ids: list[str]):
+        """Start building a query from spans."""
+        self._current_query = select(DatabaseSpan).where(
+            DatabaseSpan.task_id.in_(task_ids),
+        )
+        self._current_context = "span"
+        self._joined_spans = False
+        return self
+
+    def add_trace_conditions(self, filters: TraceQuerySchema):
+        """Add trace-level conditions (time, duration, trace_ids)."""
+        conditions = []
+
+        if self.is_trace_ctx():
+            # Direct conditions on DatabaseTraceMetadata
+            if filters.trace_ids:
+                conditions.append(DatabaseTraceMetadata.trace_id.in_(filters.trace_ids))
+            if filters.start_time:
+                conditions.append(
+                    DatabaseTraceMetadata.start_time >= filters.start_time,
+                )
+            if filters.end_time:
+                conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
+
+            # Duration filters
+            if filters.trace_duration_filters:
+                for filter_item in filters.trace_duration_filters:
+                    start_epoch = func.extract(
+                        "epoch",
+                        DatabaseTraceMetadata.start_time,
+                    )
+                    end_epoch = func.extract("epoch", DatabaseTraceMetadata.end_time)
+                    duration_seconds = func.round(
+                        cast(end_epoch - start_epoch, Numeric),
+                        3,
+                    )
+                    conditions.append(
+                        self._build_comparison_condition(duration_seconds, filter_item),
+                    )
+
+        else:  # span context
+            # Conditions on DatabaseSpan (which has trace_id, start_time)
+            if filters.trace_ids:
+                conditions.append(DatabaseSpan.trace_id.in_(filters.trace_ids))
+            if filters.start_time:
+                conditions.append(DatabaseSpan.start_time >= filters.start_time)
+            if filters.end_time:
+                conditions.append(DatabaseSpan.start_time <= filters.end_time)
+            # Note: Duration filters don't make sense in span context
+
+        if conditions:
+            self._current_query = self._current_query.where(and_(*conditions))
+        return self
+
+    def add_span_conditions(self, filters: TraceQuerySchema):
+        """Add span-level conditions (span_types, tool_name)."""
+        conditions = []
+
+        # For trace context, JOIN spans if we have span conditions
+        if (
+            self.is_trace_ctx()
+            and (filters.span_types or filters.tool_name)
+            and not self._joined_spans
+        ):
+            self._current_query = self._current_query.join(
+                DatabaseSpan,
+                and_(
+                    DatabaseTraceMetadata.trace_id == DatabaseSpan.trace_id,
+                    DatabaseSpan.task_id.in_(filters.task_ids),
+                ),
+            )
+            self._joined_spans = True
+
+        # Build span conditions (same for both contexts)
+        if filters.span_types:
+            conditions.append(DatabaseSpan.span_kind.in_(filters.span_types))
+
+        if filters.tool_name:
+            conditions.extend(
+                [
+                    DatabaseSpan.span_kind == SPAN_KIND_TOOL,
+                    DatabaseSpan.span_name == filters.tool_name,
+                ],
+            )
+
+        if conditions:
+            self._current_query = self._current_query.where(and_(*conditions))
+
+        # Add DISTINCT for trace context with JOINs
+        if self.is_trace_ctx() and self._joined_spans:
+            self._current_query = self._current_query.distinct()
+
+        return self
+
+    def add_metric_conditions(self, filters: TraceQuerySchema):
+        """Add metric EXISTS conditions (works for both contexts)."""
+        exists_conditions = []
+
+        # Query relevance
+        if filters.query_relevance_filters:
+            exists_conditions.append(
+                self._build_metric_exists_for_context(
+                    MetricType.QUERY_RELEVANCE,
+                    filters.query_relevance_filters,
+                    filters.task_ids,
+                    "query_relevance",
+                ),
+            )
+
+        # Response relevance
+        if filters.response_relevance_filters:
+            exists_conditions.append(
+                self._build_metric_exists_for_context(
+                    MetricType.RESPONSE_RELEVANCE,
+                    filters.response_relevance_filters,
+                    filters.task_ids,
+                    "response_relevance",
+                ),
+            )
+
+        # Tool classification
+        if filters.tool_selection is not None:
+            exists_conditions.append(
+                self._build_tool_classification_for_context(
+                    MetricType.TOOL_SELECTION,
+                    filters.tool_selection,
+                    "tool_selection",
+                    filters.task_ids,
+                ),
+            )
+
+        if filters.tool_usage is not None:
+            exists_conditions.append(
+                self._build_tool_classification_for_context(
+                    MetricType.TOOL_SELECTION,
+                    filters.tool_usage,
+                    "tool_usage",
+                    filters.task_ids,
+                ),
+            )
+
+        if exists_conditions:
+            self._current_query = self._current_query.where(and_(*exists_conditions))
+
+        return self
+
+    def build_base_query(self):
+        """Return the built query without pagination/sorting and reset state."""
+        query = self._current_query
+        self._reset_builder_state()
+        return query
+
+    def _apply_sorting_and_pagination(
+        self,
+        base_query,
+        pagination_parameters: PaginationParameters,
+        context: str,
+    ):
+        """Apply sorting and pagination to a base query."""
+        query = base_query
+
+        # Apply sorting based on context
+        if context == "trace":
+            time_column = DatabaseTraceMetadata.start_time
+        else:
+            time_column = DatabaseSpan.start_time
+
+        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(time_column))
+        else:
+            query = query.order_by(asc(time_column))
+
+        # Apply pagination
+        offset = pagination_parameters.page * pagination_parameters.page_size
+        query = query.offset(offset).limit(pagination_parameters.page_size)
+
+        return query
+
+    def _build_metric_exists_for_context(
+        self,
+        metric_type: MetricType,
+        relevance_filters: list,
+        task_ids: list[str],
+        relevance_type: str,
+    ):
+        """Build metric EXISTS that adapts to current context."""
+        if self.is_trace_ctx():
+            # Use aliases and correlate with DatabaseTraceMetadata.trace_id
+            inner_span = DatabaseSpan.__table__.alias("inner_span")
+            inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
+
+            correlation = inner_span.c.trace_id == DatabaseTraceMetadata.trace_id
+            from_clause = inner_span.join(
+                inner_metric,
+                inner_span.c.id == inner_metric.c.span_id,
+            )
+            metric_details = inner_metric.c.details
+
+            additional_conditions = [
+                correlation,
+                inner_span.c.task_id.in_(task_ids),
+                inner_span.c.span_kind == SPAN_KIND_LLM,
+                inner_metric.c.metric_type == metric_type.value,
+            ]
+        else:  # span context
+            # Direct correlation
+            from_clause = DatabaseMetricResult
+            metric_details = DatabaseMetricResult.details
+
+            additional_conditions = [
+                DatabaseMetricResult.span_id == DatabaseSpan.id,
+                DatabaseMetricResult.metric_type == metric_type.value,
+            ]
+
+        # JSON extraction (same for both)
+        if self.db_session.bind.dialect.name == "postgresql":
+            score_path = func.jsonb_extract_path_text(
+                metric_details,
+                relevance_type,
+                "llm_relevance_score",
+            )
+        else:
+            json_path = f"$.{relevance_type}.llm_relevance_score"
+            score_path = func.json_extract(metric_details, json_path)
+
+        relevance_conditions = [
+            self._build_comparison_condition(func.cast(score_path, Float), f)
+            for f in relevance_filters
+        ]
+
+        return exists(
+            select(1)
+            .select_from(from_clause)
+            .where(and_(*additional_conditions, *relevance_conditions)),
+        )
+
+    def _build_tool_classification_for_context(
+        self,
+        metric_type: MetricType,
+        tool_class: ToolClassEnum,
+        field_name: str,
+        task_ids: list[str],
+    ):
+        """Build tool classification EXISTS that adapts to current context."""
+        if self.is_trace_ctx():
+            # Use aliases and correlate with DatabaseTraceMetadata.trace_id
+            inner_span = DatabaseSpan.__table__.alias("inner_span")
+            inner_metric = DatabaseMetricResult.__table__.alias("inner_metric")
+
+            correlation = inner_span.c.trace_id == DatabaseTraceMetadata.trace_id
+            from_clause = inner_span.join(
+                inner_metric,
+                inner_span.c.id == inner_metric.c.span_id,
+            )
+            metric_details = inner_metric.c.details
+
+            additional_conditions = [
+                correlation,
+                inner_span.c.task_id.in_(task_ids),
+                inner_span.c.span_kind == SPAN_KIND_LLM,
+                inner_metric.c.metric_type == metric_type.value,
+            ]
+        else:  # span context
+            # Direct correlation
+            from_clause = DatabaseMetricResult
+            metric_details = DatabaseMetricResult.details
+
+            additional_conditions = [
+                DatabaseMetricResult.span_id == DatabaseSpan.id,
+                DatabaseMetricResult.metric_type == metric_type.value,
+            ]
+
+        # JSON extraction (same for both)
+        if self.db_session.bind.dialect.name == "postgresql":
+            classification_path = func.jsonb_extract_path_text(
+                metric_details,
+                "tool_selection",
+                field_name,
+            )
+        else:
+            json_path = f"$.tool_selection.{field_name}"
+            classification_path = func.json_extract(metric_details, json_path)
+
+        classification_condition = (
+            func.cast(classification_path, Integer) == tool_class.value
+        )
+
+        return exists(
+            select(1)
+            .select_from(from_clause)
+            .where(and_(*additional_conditions, classification_condition)),
+        )
+
+    # ============================================================================
+    # Helper Methods
+    # ============================================================================
+
+    def is_trace_ctx(self) -> bool:
+        """Check if currently building a trace-level query."""
+        return self._current_context == "trace"
+
+    def _has_llm_filters(self, filters: TraceQuerySchema) -> bool:
+        """Check if there are LLM-specific filters."""
+        return bool(
+            filters.query_relevance_filters
+            or filters.response_relevance_filters
+            or filters.tool_selection is not None
+            or filters.tool_usage is not None,
+        )
+
+    def _has_tool_filters(self, filters: TraceQuerySchema) -> bool:
+        """Check if there are TOOL-specific filters."""
+        return bool(filters.tool_name)
+
+    def _reset_builder_state(self):
+        """Reset builder state for next query."""
+        self._current_query = None
+        self._current_context = None
+        self._joined_spans = False

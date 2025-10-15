@@ -9,6 +9,7 @@ from arthur_common.models.response_schemas import (
     TraceResponse,
 )
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -101,7 +102,7 @@ def list_traces_metadata(
     """Get lightweight trace metadata for browsing/filtering operations."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, trace_metadata_list = span_repo.get_traces_metadata(
+        trace_metadata_list, count = span_repo.get_traces_metadata(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
         )
@@ -200,7 +201,7 @@ def compute_trace_metrics(
 @trace_api_routes.get(
     "/spans",
     summary="List Span Metadata",
-    description="Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
+    description="Get lightweight span metadata for browsing/filtering operations with comprehensive filtering. Returns metadata only without raw data or metrics for fast performance.",
     response_model=SpanListResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
@@ -211,45 +212,26 @@ def list_spans_metadata(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    task_ids: list[str] = Query(
-        ...,
-        description="Task IDs to filter on. At least one is required.",
-        min_length=1,
-    ),
-    span_types: list[str] = Query(
-        None,
-        description="Span types to filter on. Optional.",
-    ),
-    start_time: datetime = Query(
-        None,
-        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
-    ),
-    end_time: datetime = Query(
-        None,
-        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
-    ),
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Get lightweight span metadata for browsing/filtering operations."""
+    """Get lightweight span metadata for browsing/filtering operations with comprehensive filtering."""
     try:
         span_repo = _get_span_repository(db_session)
-        # Reuse existing query_spans infrastructure but without metrics
-        spans, total_count = span_repo.query_spans(
-            task_ids=task_ids,
-            span_types=span_types,
-            start_time=start_time,
-            end_time=end_time,
-            sort=pagination_parameters.sort,
-            page=pagination_parameters.page,
-            page_size=pagination_parameters.page_size,
-            include_metrics=False,  # No metrics for metadata endpoint
-            compute_new_metrics=False,
+        span_metadata_list, count = span_repo.get_spans_metadata(
+            filters=trace_query,
+            pagination_parameters=pagination_parameters,
         )
 
         # Transform to metadata response format
-        metadata_spans = [span._to_metadata_response_model() for span in spans]
-        return SpanListResponse(count=total_count, spans=metadata_spans)
+        metadata_spans = [
+            span._to_metadata_response_model() for span in span_metadata_list
+        ]
+        return SpanListResponse(count=count, spans=metadata_spans)
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -370,7 +352,7 @@ def list_sessions_metadata(
     """Get session metadata with pagination and filtering."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, session_metadata_list = span_repo.get_sessions_metadata(
+        session_metadata_list, count = span_repo.get_sessions_metadata(
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
@@ -416,7 +398,7 @@ def get_session_traces(
     """Get all traces in a session."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, traces = span_repo.get_session_traces(
+        traces, count = span_repo.get_session_traces(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
         )
@@ -462,7 +444,7 @@ def compute_session_metrics(
     """Get all traces in a session and compute missing metrics."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, traces = span_repo.compute_session_metrics(
+        traces, count = span_repo.compute_session_metrics(
             session_id=session_id,
             pagination_parameters=pagination_parameters,
         )

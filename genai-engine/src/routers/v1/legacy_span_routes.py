@@ -283,7 +283,7 @@ def query_spans(
     """Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves."""
     try:
         span_repo = _get_span_repository(db_session)
-        span_count, traces = span_repo.query_traces_with_filters(
+        traces, span_count = span_repo.query_traces_with_filters(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
             include_metrics=True,  # Include existing metrics
@@ -328,7 +328,7 @@ def query_spans_with_metrics(
     """Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics."""
     try:
         span_repo = _get_span_repository(db_session)
-        span_count, traces = span_repo.query_traces_with_filters(
+        traces, span_count = span_repo.query_traces_with_filters(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
             include_metrics=True,  # Include existing metrics
