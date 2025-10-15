@@ -69,7 +69,7 @@ const SavePromptDialog = ({
         taskId,
         backendPrompt
       )
-      .then((response) => {
+      .then((response: { data: { message: string } }) => {
         const { data } = response;
         setSnackbarMessage(data.message);
         setSnackbarSeverity("success");
@@ -77,7 +77,7 @@ const SavePromptDialog = ({
         onSaveSuccess?.();
         handleClose();
       })
-      .catch((error) => {
+      .catch((error: { response: { data: { detail: string } } }) => {
         const { data } = error.response;
         setSnackbarMessage(data.detail);
         setSnackbarSeverity("error");
