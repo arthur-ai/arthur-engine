@@ -517,12 +517,11 @@ class SpanQueryService:
             return 0, []
 
         # Build base query for session aggregation
+        # Group by both session_id and task_id to ensure clean session boundaries
         query = select(
             DatabaseTraceMetadata.session_id,
-            func.array_agg(func.distinct(DatabaseTraceMetadata.task_id)).label(
-                "task_ids",
-            ),
-            func.count(DatabaseTraceMetadata.trace_id).label("trace_count"),
+            DatabaseTraceMetadata.task_id,
+            func.array_agg(DatabaseTraceMetadata.trace_id).label("trace_ids"),
             func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
             func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
             func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
@@ -539,8 +538,11 @@ class SpanQueryService:
         if end_time:
             query = query.where(DatabaseTraceMetadata.end_time <= end_time)
 
-        # Group by session_id
-        query = query.group_by(DatabaseTraceMetadata.session_id)
+        # Group by both session_id and task_id to ensure proper session boundaries
+        query = query.group_by(
+            DatabaseTraceMetadata.session_id,
+            DatabaseTraceMetadata.task_id,
+        )
 
         # Apply sorting
         if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
@@ -565,8 +567,8 @@ class SpanQueryService:
             sessions.append(
                 SessionMetadata(
                     session_id=row.session_id,
-                    task_ids=row.task_ids,
-                    trace_count=row.trace_count,
+                    task_id=row.task_id,
+                    trace_ids=row.trace_ids,
                     span_count=row.span_count,
                     earliest_start_time=row.earliest_start_time,
                     latest_end_time=row.latest_end_time,

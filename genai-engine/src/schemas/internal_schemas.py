@@ -1758,8 +1758,8 @@ class SessionMetadata(BaseModel):
     """Internal session metadata representation"""
 
     session_id: str
-    task_ids: list[str]
-    trace_count: int
+    task_id: str
+    trace_ids: list[str]
     span_count: int
     earliest_start_time: datetime
     latest_end_time: datetime
@@ -1772,8 +1772,9 @@ class SessionMetadata(BaseModel):
         )
         return SessionMetadataResponse(
             session_id=self.session_id,
-            task_ids=self.task_ids,
-            trace_count=self.trace_count,
+            task_id=self.task_id,
+            trace_ids=self.trace_ids,
+            trace_count=len(self.trace_ids),
             span_count=self.span_count,
             earliest_start_time=self.earliest_start_time,
             latest_end_time=self.latest_end_time,

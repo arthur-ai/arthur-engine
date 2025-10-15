@@ -398,7 +398,7 @@ def list_sessions_metadata(
 @trace_api_routes.get(
     "/sessions/{session_id}",
     summary="Get Session Traces",
-    description="Get all traces in a session. Returns list of full trace trees without metrics computation.",
+    description="Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).",
     response_model=SessionTracesResponse,
     response_model_exclude_none=True,
     tags=["Sessions"],
@@ -413,7 +413,7 @@ def get_session_traces(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Get all traces in a session."""
+    """Get all traces in a session with existing metrics (no computation)."""
     try:
         span_repo = _get_span_repository(db_session)
         count, traces = span_repo.get_session_traces(

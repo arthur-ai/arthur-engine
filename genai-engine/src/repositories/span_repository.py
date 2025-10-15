@@ -226,7 +226,7 @@ class SpanRepository:
     ) -> tuple[int, list]:
         """Get all trace trees in a session.
 
-        Returns list of full trace trees without metrics computation.
+        Returns list of full trace trees with existing metrics (no computation).
         """
         # Get trace IDs for this session
         count, trace_ids = self.span_query_service.get_trace_ids_for_session(
@@ -243,8 +243,13 @@ class SpanRepository:
             sort=pagination_parameters.sort,
         )
 
-        # Validate spans (no metrics computation for session listing)
+        # Validate spans and add existing metrics
         valid_spans = self.span_query_service.validate_spans(spans)
+        if valid_spans:
+            valid_spans = self.metrics_integration_service.add_metrics_to_spans(
+                valid_spans,
+                compute_new_metrics=False,  # Only include existing metrics
+            )
 
         # Build trace tree structures
         traces = self.tree_building_service.group_spans_into_traces(

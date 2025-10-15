@@ -1,14 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-<<<<<<< HEAD
 from arthur_common.models.response_schemas import ExternalInference, TraceResponse
-from pydantic import BaseModel, Field
-=======
-from arthur_common.models.response_schemas import ExternalInference
 from litellm.types.utils import ChatCompletionMessageToolCall
-from pydantic import BaseModel
->>>>>>> dev
+from pydantic import BaseModel, Field
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -78,7 +73,8 @@ class SessionMetadataResponse(BaseModel):
     """Session summary metadata"""
 
     session_id: str = Field(description="Session identifier")
-    task_ids: list[str] = Field(description="Unique task IDs in this session")
+    task_id: str = Field(description="Task ID this session belongs to")
+    trace_ids: list[str] = Field(description="List of trace IDs in this session")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
     earliest_start_time: datetime = Field(description="Start time of earliest trace")
