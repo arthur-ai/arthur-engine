@@ -2,17 +2,23 @@ import { v4 as uuidv4 } from "uuid";
 
 import {
   MessageType,
-  messageRoleEnum,
+  MESSAGE_ROLE_OPTIONS,
   ModelParametersType,
   PromptAction,
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  providerEnum,
-  PromptTool,
+  PROVIDER_OPTIONS,
+  FrontendTool,
 } from "./types";
 
-const TEMP_ID = "user-defined-name-timestamp";
+import {
+  MessageRole,
+  ProviderEnum,
+  ToolChoiceEnum,
+} from "@/lib/api-client/api-client";
+
+const TEMP_ID = "user-defined-name-";
 
 const arrayUtils = {
   //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
@@ -45,14 +51,14 @@ const generateId = () => {
  ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId(),
-  role: messageRoleEnum.USER,
+  role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: "Change me",
   disabled: false,
   ...overrides,
 });
 
 const newMessage = (
-  role: string = messageRoleEnum.USER,
+  role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: string = "Change me"
 ): MessageType => createMessage({ role, content });
 
@@ -70,23 +76,26 @@ const hydrateMessage = (data: Partial<MessageType>): MessageType =>
  ***************************/
 const createTool = (
   counter: number = 1,
-  overrides: Partial<PromptTool> = {}
-): PromptTool => ({
+  overrides: Partial<FrontendTool> = {}
+): FrontendTool => ({
   id: generateId(),
-  type: "function",
-  function: {
-    name: `tool_func_${counter}`,
-    description: "description",
-    parameters: {
-      type: "object",
-      properties: {
-        tool_arg: {
-          type: "string",
-        },
+  name: `tool_func_${counter}`,
+  description: "description",
+  function_definition: {
+    type: "object",
+    properties: [
+      {
+        name: "tool_arg",
+        type: "string",
+        description: null,
+        enum: null,
+        items: null,
       },
-      required: [],
-    },
+    ],
+    required: [],
+    additional_properties: null,
   },
+  strict: null,
   ...overrides,
 });
 
@@ -107,7 +116,7 @@ const createModelParameters = (
   presence_penalty: 0,
   stop: null,
   seed: null,
-  reasoning_effort: "",
+  reasoning_effort: "default",
   logprobs: null,
   top_logprobs: null,
   logit_bias: null,
@@ -120,17 +129,17 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   modelName: "",
-  provider: providerEnum.OPENAI,
+  provider: PROVIDER_OPTIONS[0],
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
   responseFormat: undefined,
   tools: [],
-  toolChoice: "auto",
+  toolChoice: "auto" as ToolChoiceEnum,
   ...overrides,
 });
 
-const newPrompt = (provider: string = providerEnum.OPENAI): PromptType =>
+const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType =>
@@ -138,6 +147,11 @@ const duplicatePrompt = (original: PromptType): PromptType =>
     ...original,
     id: generateId(),
     name: `${original.name} (Copy)`,
+    messages: original.messages.map(duplicateMessage),
+    tools: original.tools.map((tool) => ({
+      ...tool,
+      id: generateId(),
+    })),
   });
 
 const hydratePrompt = (data: Partial<PromptType>): PromptType =>
@@ -150,6 +164,7 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
+  backendPrompts: new Array<PromptType>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -190,6 +205,41 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: [...state.prompts, hydratePrompt(promptData)],
+      };
+    }
+    case "updatePromptName": {
+      const { promptId, name } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, name } : prompt
+        ),
+      };
+    }
+    case "updatePrompt": {
+      const { promptId, prompt } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((p) =>
+          p.id === promptId
+            ? {
+                ...p,
+                ...prompt,
+                // Ensure required properties are always defined
+                messages: prompt.messages ?? p.messages,
+                tools: prompt.tools ?? p.tools,
+                modelParameters: prompt.modelParameters ?? p.modelParameters,
+                responseFormat: prompt.responseFormat,
+              }
+            : p
+        ),
+      };
+    }
+    case "updateBackendPrompts": {
+      const { prompts } = action.payload;
+      return {
+        ...state,
+        backendPrompts: prompts,
       };
     }
     case "addMessage": {
@@ -284,7 +334,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) =>
-                  message.id === id ? { ...message, role } : message
+                  message.id === id
+                    ? { ...message, role: role as MessageRole }
+                    : message
                 ),
               }
             : prompt
@@ -371,7 +423,10 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: prompt.tools.filter((tool) => tool.id !== toolId),
-                toolChoice: prompt.toolChoice === toolId ? "auto" : prompt.toolChoice,
+                toolChoice:
+                  prompt.toolChoice === toolId
+                    ? ("auto" as ToolChoiceEnum)
+                    : prompt.toolChoice,
               }
             : prompt
         ),
@@ -399,7 +454,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ...state,
         prompts: state.prompts.map((prompt) =>
           prompt.id === promptId
-            ? { ...prompt, toolChoice }
+            ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum }
             : prompt
         ),
       };

@@ -2,20 +2,40 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 10/15/2025
+# 10/16/2025
+- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
-
-# 10/13/2025
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
-# 10/13/2025
-- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
 
-# 10/12/2025
-- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+# 10/15/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/trace_ids' to the response with the '200' status
+
+# 10/14/2025
+- **CHANGE** for **URL**: /api/v1/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/sessions/{session_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/sessions/{session_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans/{span_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans/{span_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/completions  endpoint added
+- **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  endpoint added
 
 # 10/10/2025
 - **CHANGE** for **URL**: /v1/span/{span_id}/metrics  added the optional property 'session_id' to the response with the '200' status
@@ -26,6 +46,15 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /v1/traces/metrics/  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the optional property 'traces/items/root_spans/items/session_id' to the response with the '200' status
 - **CHANGE** for **URL**: /v1/traces/query  added the required property 'traces/items/root_spans/items/status_code' to the response with the '200' status
+
+# 10/09/2025
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_all_prompts  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/save_prompt  api path removed without deprecation
+- **BREAKING CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/update_prompt  api path removed without deprecation
 
 # 10/07/2025
 - **CHANGE** for **URL**: /v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}  endpoint added

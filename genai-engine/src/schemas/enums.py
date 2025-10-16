@@ -147,3 +147,63 @@ class PermissionLevelsEnum(Enum):
     DATASET_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
     )
+
+
+class ProviderEnum(str, Enum):
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    GEMINI = "gemini"
+    AZURE = "azure"
+    DEEPSEEK = "deepseek"
+    MISTRAL = "mistral"
+    META_LLAMA = "meta_llama"
+    GROQ = "groq"
+    BEDROCK = "bedrock"
+    SAGEMAKER = "sagemaker"
+    VERTEX_AI = "vertex_ai"
+    HUGGINGFACE = "huggingface"
+    CLOUDFLARE = "cloudflare"
+    AI21 = "ai21"
+    BASETEN = "baseten"
+    COHERE = "cohere"
+    EMPOWER = "empower"
+    FEATHERLESS_AI = "featherless_ai"
+    FRIENDLIAI = "friendliai"
+    GALADRIEL = "galadriel"
+    NEBIUS = "nebius"
+    NLP_CLOUD = "nlp_cloud"
+    NOVITA = "novita"
+    OPENROUTER = "openrouter"
+    PETALS = "petals"
+    REPLICATE = "replicate"
+    TOGETHER_AI = "together_ai"
+    VLLM = "vllm"
+    WATSONX = "watsonx"
+
+
+class MessageRole(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    AI = "assistant"
+    TOOL = "tool"
+
+
+class ReasoningEffortEnum(str, Enum):
+    NONE = "none"
+    MINIMAL = "minimal"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    DEFAULT = "default"
+
+
+class ToolChoiceEnum(str, Enum):
+    AUTO = "auto"
+    NONE = "none"
+    REQUIRED = "required"
+
+
+class LLMResponseFormatEnum(str, Enum):
+    TEXT = "text"
+    JSON_OBJECT = "json_object"
+    JSON_SCHEMA = "json_schema"

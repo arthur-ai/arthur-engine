@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from tests.routes.span.conftest import (
+from tests.routes.legacy_span.conftest import (
     _create_database_span,
     _get_trace_metadata,
 )

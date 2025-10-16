@@ -16,6 +16,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 
+import { usePromptContext } from "./PromptContext";
 import { OutputFieldProps } from "./types";
 
 const OUTPUT_TEXT = "I'm an llm response";
@@ -52,11 +53,8 @@ const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   2
 );
 
-const OutputField = ({
-  promptId,
-  responseFormat,
-  dispatch,
-}: OutputFieldProps) => {
+const OutputField = ({ promptId, responseFormat }: OutputFieldProps) => {
+  const { dispatch } = usePromptContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(

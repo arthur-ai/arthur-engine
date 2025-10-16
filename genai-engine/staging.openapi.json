@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.93"
+        "version": "2.1.94"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -2263,6 +2263,7 @@
                         }
                     }
                 },
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -2278,6 +2279,7 @@
                 "summary": "Query Traces",
                 "description": "Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
                 "operationId": "query_spans_v1_traces_query_get",
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -2640,6 +2642,7 @@
                 "summary": "Compute Missing Metrics and Query Traces",
                 "description": "Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
                 "operationId": "query_spans_with_metrics_v1_traces_metrics__get",
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -3002,6 +3005,7 @@
                 "summary": "Query Spans By Type",
                 "description": "Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones.",
                 "operationId": "query_spans_by_type_v1_spans_query_get",
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -3135,6 +3139,7 @@
                 "summary": "Compute Metrics for Span",
                 "description": "Compute metrics for a single span. Validates that the span is an LLM span.",
                 "operationId": "compute_span_metrics_v1_span__span_id__metrics_get",
+                "deprecated": true,
                 "security": [
                     {
                         "API Key": []
@@ -3175,14 +3180,1019 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/get_prompt/{prompt_name}": {
+        "/api/v1/traces": {
+            "post": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Receive Traces",
+                "description": "Receiver for OpenInference trace standard.",
+                "operationId": "receive_traces_api_v1_traces_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "string",
+                                "format": "binary",
+                                "title": "Body"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "List Trace Metadata",
+                "description": "Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.",
+                "operationId": "list_traces_metadata_api_v1_traces_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "trace_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Trace IDs to filter on. Optional.",
+                            "title": "Trace Ids"
+                        },
+                        "description": "Trace IDs to filter on. Optional."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "tool_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "description": "Return only results with this tool name.",
+                            "title": "Tool Name"
+                        },
+                        "description": "Return only results with this tool name."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN"
+                    },
+                    {
+                        "name": "query_relevance_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Query Relevance Eq"
+                        },
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Query Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "query_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Query Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "query_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Query Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "query_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Query Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Equal to this value.",
+                            "title": "Response Relevance Eq"
+                        },
+                        "description": "Equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than this value.",
+                            "title": "Response Relevance Gt"
+                        },
+                        "description": "Greater than this value."
+                    },
+                    {
+                        "name": "response_relevance_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Greater than or equal to this value.",
+                            "title": "Response Relevance Gte"
+                        },
+                        "description": "Greater than or equal to this value."
+                    },
+                    {
+                        "name": "response_relevance_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than this value.",
+                            "title": "Response Relevance Lt"
+                        },
+                        "description": "Less than this value."
+                    },
+                    {
+                        "name": "response_relevance_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "maximum": 1,
+                            "minimum": 0,
+                            "description": "Less than or equal to this value.",
+                            "title": "Response Relevance Lte"
+                        },
+                        "description": "Less than or equal to this value."
+                    },
+                    {
+                        "name": "tool_selection",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool selection evaluation result."
+                        },
+                        "description": "Tool selection evaluation result."
+                    },
+                    {
+                        "name": "tool_usage",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/ToolClassEnum",
+                            "description": "Tool usage evaluation result."
+                        },
+                        "description": "Tool usage evaluation result."
+                    },
+                    {
+                        "name": "trace_duration_eq",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration exactly equal to this value (seconds).",
+                            "title": "Trace Duration Eq"
+                        },
+                        "description": "Duration exactly equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than this value (seconds).",
+                            "title": "Trace Duration Gt"
+                        },
+                        "description": "Duration greater than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_gte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration greater than or equal to this value (seconds).",
+                            "title": "Trace Duration Gte"
+                        },
+                        "description": "Duration greater than or equal to this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lt",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than this value (seconds).",
+                            "title": "Trace Duration Lt"
+                        },
+                        "description": "Duration less than this value (seconds)."
+                    },
+                    {
+                        "name": "trace_duration_lte",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Duration less than or equal to this value (seconds).",
+                            "title": "Trace Duration Lte"
+                        },
+                        "description": "Duration less than or equal to this value (seconds)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Single Trace",
+                "description": "Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.",
+                "operationId": "get_trace_by_id_api_v1_traces__trace_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}/metrics": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Compute Missing Trace Metrics",
+                "description": "Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.",
+                "operationId": "compute_trace_metrics_api_v1_traces__trace_id__metrics_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/spans": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "List Span Metadata",
+                "description": "Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
+                "operationId": "list_spans_metadata_api_v1_spans_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional.",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SpanListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/spans/{span_id}": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Get Single Span",
+                "description": "Get single span with existing metrics (no computation). Returns full span object with any existing metrics.",
+                "operationId": "get_span_by_id_api_v1_spans__span_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "span_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Span Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/spans/{span_id}/metrics": {
+            "get": {
+                "tags": [
+                    "Spans"
+                ],
+                "summary": "Compute Missing Span Metrics",
+                "description": "Compute all missing metrics for a single span on-demand. Returns span with computed metrics.",
+                "operationId": "compute_span_metrics_api_v1_spans__span_id__metrics_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "span_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Span Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SpanWithMetricsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions": {
+            "get": {
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "List Session Metadata",
+                "description": "Get session metadata with pagination and filtering. Returns aggregated session information.",
+                "operationId": "list_sessions_metadata_api_v1_sessions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions/{session_id}": {
+            "get": {
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Get Session Traces",
+                "description": "Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).",
+                "operationId": "get_session_traces_api_v1_sessions__session_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Session Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionTracesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sessions/{session_id}/metrics": {
+            "get": {
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Compute Missing Session Metrics",
+                "description": "Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.",
+                "operationId": "compute_session_metrics_api_v1_sessions__session_id__metrics_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "session_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Session Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SessionTracesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get an agentic prompt",
-                "description": "Get an agentic prompt",
-                "operationId": "get_agentic_prompt_v1__task_id__agentic_prompt_get_prompt__prompt_name__get",
+                "description": "Get an agentic prompt by name and version",
+                "operationId": "get_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__get",
                 "security": [
                     {
                         "API Key": []
@@ -3196,6 +4206,15 @@
                         "schema": {
                             "type": "string",
                             "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
                         }
                     },
                     {
@@ -3231,16 +4250,79 @@
                         }
                     }
                 }
+            },
+            "delete": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Delete an agentic prompt",
+                "description": "Deletes a specific version of an agentic prompt",
+                "operationId": "delete_agentic_prompt_version_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
-        "/v1/{task_id}/agentic_prompt/get_all_prompts": {
+        "/api/v1/{task_id}/agentic_prompts": {
             "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Get all agentic prompts",
                 "description": "Get all agentic prompts for a given task",
-                "operationId": "get_all_agentic_prompts_v1__task_id__agentic_prompt_get_all_prompts_get",
+                "operationId": "get_all_agentic_prompts_api_v1__task_id__agentic_prompts_get",
                 "security": [
                     {
                         "API Key": []
@@ -3282,75 +4364,14 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/run_prompt": {
-            "post": {
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions": {
+            "get": {
                 "tags": [
                     "AgenticPrompt"
                 ],
-                "summary": "Run an agentic prompt",
-                "description": "Run an agentic prompt",
-                "operationId": "run_agentic_prompt_v1__task_id__agentic_prompt_run_prompt_post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "title": "Prompt Body"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AgenticPromptRunResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/{task_id}/agentic_prompt/run_prompt/{prompt_name}": {
-            "post": {
-                "tags": [
-                    "AgenticPrompt"
-                ],
-                "summary": "Run an existing agentic prompt",
-                "description": "Run an existing agentic prompt",
-                "operationId": "run_saved_agentic_prompt_v1__task_id__agentic_prompt_run_prompt__prompt_name__post",
+                "summary": "List all versions of an agentic prompt",
+                "description": "List all versions of an agentic prompt",
+                "operationId": "get_all_agentic_prompt_versions_api_v1__task_id__agentic_prompts__prompt_name__versions_get",
                 "security": [
                     {
                         "API Key": []
@@ -3383,6 +4404,133 @@
                         "content": {
                             "application/json": {
                                 "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/completions": {
+            "post": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Run an agentic prompt",
+                "description": "Run an agentic prompt",
+                "operationId": "run_agentic_prompt_api_v1_completions_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgenticPromptUnsavedRunConfig"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions": {
+            "post": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Run a specific version of an agentic prompt",
+                "description": "Run a specific version of an existing agentic prompt",
+                "operationId": "run_saved_agentic_prompt_api_v1_task__task_id__prompt__prompt_name__versions__prompt_version__completions_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Version"
+                        }
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                                "default": {
+                                    "variables": [],
+                                    "stream": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
                                     "$ref": "#/components/schemas/AgenticPromptRunResponse"
                                 }
                             }
@@ -3401,20 +4549,29 @@
                 }
             }
         },
-        "/v1/{task_id}/agentic_prompt/save_prompt": {
-            "post": {
+        "/api/v1/{task_id}/agentic_prompts/{prompt_name}": {
+            "put": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Save an agentic prompt",
                 "description": "Save an agentic prompt to the database",
-                "operationId": "save_agentic_prompt_v1__task_id__agentic_prompt_save_prompt_post",
+                "operationId": "save_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__put",
                 "security": [
                     {
                         "API Key": []
                     }
                 ],
                 "parameters": [
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name"
+                        }
+                    },
                     {
                         "name": "task_id",
                         "in": "path",
@@ -3431,9 +4588,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "type": "object",
-                                "additionalProperties": true,
-                                "title": "Prompt Body"
+                                "$ref": "#/components/schemas/AgenticPromptBaseConfig"
                             }
                         }
                     }
@@ -3458,16 +4613,14 @@
                         }
                     }
                 }
-            }
-        },
-        "/v1/{task_id}/agentic_prompt/delete_prompt/{prompt_name}": {
+            },
             "delete": {
                 "tags": [
                     "AgenticPrompt"
                 ],
                 "summary": "Delete an agentic prompt",
-                "description": "Deletes an agentic prompt",
-                "operationId": "delete_agentic_prompt_v1__task_id__agentic_prompt_delete_prompt__prompt_name__delete",
+                "description": "Deletes an entire agentic prompt",
+                "operationId": "delete_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__delete",
                 "security": [
                     {
                         "API Key": []
@@ -4776,32 +5929,28 @@
             },
             "AgenticPrompt": {
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name"
-                    },
                     "messages": {
                         "items": {
-                            "additionalProperties": true,
-                            "type": "object"
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Output"
                         },
                         "type": "array",
-                        "title": "Messages"
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
                     },
                     "model_name": {
                         "type": "string",
-                        "title": "Model Name"
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "type": "string",
-                        "title": "Model Provider"
+                        "$ref": "#/components/schemas/ProviderEnum",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/LLMTool-Output"
                                 },
                                 "type": "array"
                             },
@@ -4809,22 +5958,23 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Tools"
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
                     "tool_choice": {
                         "anyOf": [
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "type": "string"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice"
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
                     },
                     "timeout": {
                         "anyOf": [
@@ -4835,7 +5985,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Timeout"
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
                     },
                     "temperature": {
                         "anyOf": [
@@ -4846,7 +5997,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Temperature"
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
                     },
                     "top_p": {
                         "anyOf": [
@@ -4857,18 +6009,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Top P"
-                    },
-                    "stream": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stream"
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
                     },
                     "max_tokens": {
                         "anyOf": [
@@ -4879,20 +6021,19 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Max Tokens"
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
                     },
                     "response_format": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/LLMResponseFormat-Output"
                             },
-                            {},
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Response Format"
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
                     },
                     "stop": {
                         "anyOf": [
@@ -4903,7 +6044,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Stop"
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
                     },
                     "presence_penalty": {
                         "anyOf": [
@@ -4914,7 +6056,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Presence Penalty"
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
                     },
                     "frequency_penalty": {
                         "anyOf": [
@@ -4925,7 +6068,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Frequency Penalty"
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
                     },
                     "seed": {
                         "anyOf": [
@@ -4936,7 +6080,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Seed"
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
                     },
                     "logprobs": {
                         "anyOf": [
@@ -4947,7 +6092,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Logprobs"
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
                     },
                     "top_logprobs": {
                         "anyOf": [
@@ -4958,19 +6104,23 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Top Logprobs"
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
                     },
                     "logit_bias": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Logit Bias"
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
                     },
                     "max_completion_tokens": {
                         "anyOf": [
@@ -4981,26 +6131,19 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Max Completion Tokens"
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
                     },
                     "reasoning_effort": {
                         "anyOf": [
                             {
-                                "type": "string",
-                                "enum": [
-                                    "none",
-                                    "minimal",
-                                    "low",
-                                    "medium",
-                                    "high",
-                                    "default"
-                                ]
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Reasoning Effort"
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
                     },
                     "thinking": {
                         "anyOf": [
@@ -5010,42 +6153,442 @@
                             {
                                 "type": "null"
                             }
-                        ]
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
                     },
                     "stream_options": {
                         "anyOf": [
                             {
-                                "additionalProperties": true,
-                                "type": "object"
+                                "$ref": "#/components/schemas/StreamOptions"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Stream Options"
+                        "description": "Additional streaming configuration options"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agentic prompt"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "name",
+                    "messages",
+                    "model_name",
+                    "model_provider",
+                    "name"
+                ],
+                "title": "AgenticPrompt"
+            },
+            "AgenticPromptBaseConfig": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ProviderEnum",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    }
+                },
+                "type": "object",
+                "required": [
                     "messages",
                     "model_name",
                     "model_provider"
                 ],
-                "title": "AgenticPrompt"
+                "title": "AgenticPromptBaseConfig"
+            },
+            "AgenticPromptMessage-Input": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "description": "Role of the message"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "description": "ID of the tool call this message is responding to"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
+                ],
+                "title": "AgenticPromptMessage"
+            },
+            "AgenticPromptMessage-Output": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "description": "Role of the message"
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall-Output"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "description": "ID of the tool call this message is responding to"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
+                ],
+                "title": "AgenticPromptMessage"
+            },
+            "AgenticPromptRunConfig": {
+                "properties": {
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
+                        "default": []
+                    },
+                    "stream": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream",
+                        "description": "Whether to stream the response",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "AgenticPromptRunConfig",
+                "description": "Request schema for running an agentic prompt"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
                     "content": {
-                        "type": "string",
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
                         "title": "Content"
                     },
                     "tool_calls": {
                         "anyOf": [
                             {
                                 "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
+                                    "$ref": "#/components/schemas/ChatCompletionMessageToolCall"
                                 },
                                 "type": "array"
                             },
@@ -5062,10 +6605,267 @@
                 },
                 "type": "object",
                 "required": [
-                    "content",
                     "cost"
                 ],
                 "title": "AgenticPromptRunResponse"
+            },
+            "AgenticPromptUnsavedRunConfig": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ProviderEnum",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    },
+                    "run_config": {
+                        "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                        "description": "Run configuration for the unsaved prompt",
+                        "default": {
+                            "variables": [],
+                            "stream": false
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider"
+                ],
+                "title": "AgenticPromptUnsavedRunConfig",
+                "description": "Request schema for running an unsaved agentic prompt"
             },
             "AgenticPrompts": {
                 "properties": {
@@ -5258,6 +7058,12 @@
                     "file"
                 ],
                 "title": "Body_upload_embeddings_file_api_chat_files_post"
+            },
+            "ChatCompletionMessageToolCall": {
+                "properties": {},
+                "additionalProperties": true,
+                "type": "object",
+                "title": "ChatCompletionMessageToolCall"
             },
             "ChatDefaultTaskRequest": {
                 "properties": {
@@ -6373,6 +8179,105 @@
                 ],
                 "title": "InferenceFeedbackTarget"
             },
+            "JsonPropertySchema": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the argument"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "The argument's type (e.g. string, boolean, etc.)",
+                        "default": "string"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "A description of the argument"
+                    },
+                    "enum": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Enum",
+                        "description": "An enum for the argument (e.g. ['celsius', 'fahrenheit'])"
+                    },
+                    "items": {
+                        "anyOf": [
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Items",
+                        "description": "For array types, describes the items"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "JsonPropertySchema"
+            },
+            "JsonSchema": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "default": "object"
+                    },
+                    "properties": {
+                        "items": {
+                            "$ref": "#/components/schemas/JsonPropertySchema"
+                        },
+                        "type": "array",
+                        "title": "Properties",
+                        "description": "The properties of the function"
+                    },
+                    "required": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Required",
+                        "description": "The required properties of the function"
+                    },
+                    "additional_properties": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Additional Properties",
+                        "description": "Whether the function definition should allow additional properties"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "properties"
+                ],
+                "title": "JsonSchema"
+            },
             "KeywordDetailsResponse": {
                 "properties": {
                     "score": {
@@ -6448,6 +8353,247 @@
                     ]
                 }
             },
+            "LLMResponseFormat-Input": {
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/LLMResponseFormatEnum",
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                    },
+                    "response_schema": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseSchema-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "JSON schema definition (required when type is 'json_schema')"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "LLMResponseFormat"
+            },
+            "LLMResponseFormat-Output": {
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/LLMResponseFormatEnum",
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                    },
+                    "response_schema": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseSchema-Output"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "JSON schema definition (required when type is 'json_schema')"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "LLMResponseFormat"
+            },
+            "LLMResponseFormatEnum": {
+                "type": "string",
+                "enum": [
+                    "text",
+                    "json_object",
+                    "json_schema"
+                ],
+                "title": "LLMResponseFormatEnum"
+            },
+            "LLMResponseSchema-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the schema"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the schema"
+                    },
+                    "json_schema": {
+                        "$ref": "#/components/schemas/JsonSchema",
+                        "description": "The JSON schema object"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict schema adherence"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "json_schema"
+                ],
+                "title": "LLMResponseSchema"
+            },
+            "LLMResponseSchema-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the schema"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the schema"
+                    },
+                    "json_schema": {
+                        "$ref": "#/components/schemas/JsonSchema",
+                        "description": "The JSON schema object"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict schema adherence"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "json_schema"
+                ],
+                "title": "LLMResponseSchema"
+            },
+            "LLMTool-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "function_definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether the function definition should use OpenAI's strict mode"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMTool"
+            },
+            "LLMTool-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "function_definition": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether the function definition should use OpenAI's strict mode"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "LLMTool"
+            },
             "ListDatasetVersionsResponse": {
                 "properties": {
                     "versions": {
@@ -6488,6 +8634,38 @@
                     "total_count"
                 ],
                 "title": "ListDatasetVersionsResponse"
+            },
+            "LogitBiasItem": {
+                "properties": {
+                    "token_id": {
+                        "type": "integer",
+                        "title": "Token Id",
+                        "description": "Token ID to bias"
+                    },
+                    "bias": {
+                        "type": "number",
+                        "maximum": 100.0,
+                        "minimum": -100.0,
+                        "title": "Bias",
+                        "description": "Bias value between -100 and 100"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "token_id",
+                    "bias"
+                ],
+                "title": "LogitBiasItem"
+            },
+            "MessageRole": {
+                "type": "string",
+                "enum": [
+                    "system",
+                    "user",
+                    "assistant",
+                    "tool"
+                ],
+                "title": "MessageRole"
             },
             "MetricResponse": {
                 "properties": {
@@ -7544,6 +9722,41 @@
                 ],
                 "title": "PromptValidationRequest"
             },
+            "ProviderEnum": {
+                "type": "string",
+                "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "azure",
+                    "deepseek",
+                    "mistral",
+                    "meta_llama",
+                    "groq",
+                    "bedrock",
+                    "sagemaker",
+                    "vertex_ai",
+                    "huggingface",
+                    "cloudflare",
+                    "ai21",
+                    "baseten",
+                    "cohere",
+                    "empower",
+                    "featherless_ai",
+                    "friendliai",
+                    "galadriel",
+                    "nebius",
+                    "nlp_cloud",
+                    "novita",
+                    "openrouter",
+                    "petals",
+                    "replicate",
+                    "together_ai",
+                    "vllm",
+                    "watsonx"
+                ],
+                "title": "ProviderEnum"
+            },
             "QueryFeedbackResponse": {
                 "properties": {
                     "feedback": {
@@ -7770,6 +9983,18 @@
                 ],
                 "title": "QueryTracesWithMetricsResponse",
                 "description": "New response format that groups spans into traces with nested structure"
+            },
+            "ReasoningEffortEnum": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "minimal",
+                    "low",
+                    "medium",
+                    "high",
+                    "default"
+                ],
+                "title": "ReasoningEffortEnum"
             },
             "RegexConfig": {
                 "properties": {
@@ -8234,6 +10459,273 @@
                 ],
                 "title": "SearchTasksResponse"
             },
+            "SessionListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of sessions matching filters"
+                    },
+                    "sessions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SessionMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Sessions",
+                        "description": "List of session metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "sessions"
+                ],
+                "title": "SessionListResponse",
+                "description": "Response for session list endpoint"
+            },
+            "SessionMetadataResponse": {
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "title": "Session Id",
+                        "description": "Session identifier"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID this session belongs to"
+                    },
+                    "trace_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Trace Ids",
+                        "description": "List of trace IDs in this session"
+                    },
+                    "trace_count": {
+                        "type": "integer",
+                        "title": "Trace Count",
+                        "description": "Number of traces in this session"
+                    },
+                    "span_count": {
+                        "type": "integer",
+                        "title": "Span Count",
+                        "description": "Total number of spans in this session"
+                    },
+                    "earliest_start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Earliest Start Time",
+                        "description": "Start time of earliest trace"
+                    },
+                    "latest_end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Latest End Time",
+                        "description": "End time of latest trace"
+                    },
+                    "duration_ms": {
+                        "type": "number",
+                        "title": "Duration Ms",
+                        "description": "Total session duration in milliseconds"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "session_id",
+                    "task_id",
+                    "trace_ids",
+                    "trace_count",
+                    "span_count",
+                    "earliest_start_time",
+                    "latest_end_time",
+                    "duration_ms"
+                ],
+                "title": "SessionMetadataResponse",
+                "description": "Session summary metadata"
+            },
+            "SessionTracesResponse": {
+                "properties": {
+                    "session_id": {
+                        "type": "string",
+                        "title": "Session Id",
+                        "description": "Session identifier"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of traces in this session"
+                    },
+                    "traces": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceResponse"
+                        },
+                        "type": "array",
+                        "title": "Traces",
+                        "description": "List of full trace trees"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "session_id",
+                    "count",
+                    "traces"
+                ],
+                "title": "SessionTracesResponse",
+                "description": "Response for session traces endpoint"
+            },
+            "SpanListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of spans matching filters"
+                    },
+                    "spans": {
+                        "items": {
+                            "$ref": "#/components/schemas/SpanMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Spans",
+                        "description": "List of span metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "spans"
+                ],
+                "title": "SpanListResponse",
+                "description": "Response for span list endpoint"
+            },
+            "SpanMetadataResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Internal database ID"
+                    },
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the parent trace"
+                    },
+                    "span_id": {
+                        "type": "string",
+                        "title": "Span Id",
+                        "description": "OpenTelemetry span ID"
+                    },
+                    "parent_span_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Parent Span Id",
+                        "description": "Parent span ID"
+                    },
+                    "span_kind": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Kind",
+                        "description": "Type of span (LLM, TOOL, etc.)"
+                    },
+                    "span_name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Span Name",
+                        "description": "Human-readable span name"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Span start time"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "Span end time"
+                    },
+                    "duration_ms": {
+                        "type": "number",
+                        "title": "Duration Ms",
+                        "description": "Span duration in milliseconds"
+                    },
+                    "task_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Task Id",
+                        "description": "Task ID this span belongs to"
+                    },
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id",
+                        "description": "Session ID if available"
+                    },
+                    "status_code": {
+                        "type": "string",
+                        "title": "Status Code",
+                        "description": "Status code (Unset, Error, Ok)"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the span was created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the span was updated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "trace_id",
+                    "span_id",
+                    "start_time",
+                    "end_time",
+                    "duration_ms",
+                    "status_code",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "SpanMetadataResponse",
+                "description": "Lightweight span metadata for list operations"
+            },
             "SpanWithMetricsResponse": {
                 "properties": {
                     "id": {
@@ -8405,6 +10897,24 @@
                 ],
                 "title": "SpanWithMetricsResponse"
             },
+            "StreamOptions": {
+                "properties": {
+                    "include_usage": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Usage",
+                        "description": "Whether to include usage information in the stream"
+                    }
+                },
+                "type": "object",
+                "title": "StreamOptions"
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -8562,6 +11072,79 @@
                 ],
                 "title": "TokenUsageScope"
             },
+            "ToolCall-Input": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the tool call"
+                    },
+                    "function": {
+                        "$ref": "#/components/schemas/ToolCallFunction",
+                        "description": "Function details"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "function"
+                ],
+                "title": "ToolCall"
+            },
+            "ToolCall-Output": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the tool call"
+                    },
+                    "function": {
+                        "$ref": "#/components/schemas/ToolCallFunction",
+                        "description": "Function details"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "readOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "function",
+                    "type"
+                ],
+                "title": "ToolCall"
+            },
+            "ToolCallFunction": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the function to call"
+                    },
+                    "arguments": {
+                        "type": "string",
+                        "title": "Arguments",
+                        "description": "JSON string of function arguments"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "arguments"
+                ],
+                "title": "ToolCallFunction"
+            },
+            "ToolChoiceEnum": {
+                "type": "string",
+                "enum": [
+                    "auto",
+                    "none",
+                    "required"
+                ],
+                "title": "ToolChoiceEnum"
+            },
             "ToolClassEnum": {
                 "type": "integer",
                 "enum": [
@@ -8643,6 +11226,103 @@
                     "unknown"
                 ],
                 "title": "ToxicityViolationType"
+            },
+            "TraceListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of traces matching filters"
+                    },
+                    "traces": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Traces",
+                        "description": "List of trace metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "traces"
+                ],
+                "title": "TraceListResponse",
+                "description": "Response for trace list endpoint"
+            },
+            "TraceMetadataResponse": {
+                "properties": {
+                    "trace_id": {
+                        "type": "string",
+                        "title": "Trace Id",
+                        "description": "ID of the trace"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "Task ID this trace belongs to"
+                    },
+                    "session_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Session Id",
+                        "description": "Session ID if available"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Start Time",
+                        "description": "Start time of the earliest span"
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "End Time",
+                        "description": "End time of the latest span"
+                    },
+                    "span_count": {
+                        "type": "integer",
+                        "title": "Span Count",
+                        "description": "Number of spans in this trace"
+                    },
+                    "duration_ms": {
+                        "type": "number",
+                        "title": "Duration Ms",
+                        "description": "Total trace duration in milliseconds"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "When the trace was first created"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Updated At",
+                        "description": "When the trace was last updated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "trace_id",
+                    "task_id",
+                    "start_time",
+                    "end_time",
+                    "span_count",
+                    "duration_ms",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "TraceMetadataResponse",
+                "description": "Lightweight trace metadata for list operations"
             },
             "TraceResponse": {
                 "properties": {
@@ -8880,6 +11560,26 @@
                         }
                     ]
                 }
+            },
+            "VariableTemplateValue": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the variable"
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": "Value of the variable"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "value"
+                ],
+                "title": "VariableTemplateValue"
             }
         },
         "securitySchemes": {

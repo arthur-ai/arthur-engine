@@ -12,6 +12,386 @@
 /** APIKeysRolesEnum */
 export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
 
+/** AgenticPrompt */
+export interface AgenticPrompt {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageOutput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ProviderEnum;
+  /**
+   * Name
+   * Name of the agentic prompt
+   */
+  name: string;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatOutput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | string | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolOutput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** AgenticPromptBaseConfig */
+export interface AgenticPromptBaseConfig {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageInput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ProviderEnum;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | string | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolInput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** AgenticPromptMessage */
+export interface AgenticPromptMessageInput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCallInput[] | null;
+}
+
+/** AgenticPromptMessage */
+export interface AgenticPromptMessageOutput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCallOutput[] | null;
+}
+
+/**
+ * AgenticPromptRunConfig
+ * Request schema for running an agentic prompt
+ */
+export interface AgenticPromptRunConfig {
+  /**
+   * Stream
+   * Whether to stream the response
+   * @default false
+   */
+  stream?: boolean | null;
+  /**
+   * Variables
+   * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt
+   * @default []
+   */
+  variables?: VariableTemplateValue[] | null;
+}
+
+/** AgenticPromptRunResponse */
+export interface AgenticPromptRunResponse {
+  /** Content */
+  content?: string | null;
+  /** Cost */
+  cost: string;
+  /** Tool Calls */
+  tool_calls?: ChatCompletionMessageToolCall[] | null;
+}
+
+/**
+ * AgenticPromptUnsavedRunConfig
+ * Request schema for running an unsaved agentic prompt
+ */
+export interface AgenticPromptUnsavedRunConfig {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageInput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ProviderEnum;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Run configuration for the unsaved prompt
+   * @default {"variables":[],"stream":false}
+   */
+  run_config?: AgenticPromptRunConfig;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | string | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolInput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** AgenticPrompts */
+export interface AgenticPrompts {
+  /** Prompts */
+  prompts: AgenticPrompt[];
+}
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParam {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: "enabled";
+}
+
 /** ApiKeyResponse */
 export interface ApiKeyResponse {
   /**
@@ -103,6 +483,9 @@ export interface BodyUploadEmbeddingsFileApiChatFilesPost {
   file: File;
 }
 
+/** ChatCompletionMessageToolCall */
+export type ChatCompletionMessageToolCall = Record<string, any>;
+
 /** ChatDefaultTaskRequest */
 export interface ChatDefaultTaskRequest {
   /** Task Id */
@@ -165,6 +548,11 @@ export interface ChatResponse {
    * response from the LLM for the original user prompt
    */
   llm_response: string;
+  /**
+   * Model Name
+   * The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   /**
    * Prompt Results
    * list of rule results for the user prompt
@@ -268,6 +656,15 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
+export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData = any;
+
+export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError = HTTPValidationError;
+
+export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData = any;
+
+export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError =
+  HTTPValidationError;
+
 export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
 export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
@@ -334,6 +731,11 @@ export interface ExternalInference {
   inference_feedback: InferenceFeedbackResponse[];
   inference_prompt: ExternalInferencePrompt;
   inference_response?: ExternalInferenceResponse | null;
+  /**
+   * Model Name
+   * The model name and version used for this inference (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   result: RuleResultEnum;
   /** Task Id */
   task_id?: string | null;
@@ -355,6 +757,11 @@ export interface ExternalInferencePrompt {
   inference_id: string;
   /** Message */
   message: string;
+  /**
+   * Model Name
+   * The model name and version used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   /** Prompt Rule Results */
   prompt_rule_results: ExternalRuleResult[];
   result: RuleResultEnum;
@@ -376,6 +783,11 @@ export interface ExternalInferenceResponse {
   inference_id: string;
   /** Message */
   message: string;
+  /**
+   * Model Name
+   * The model name and version used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   /** Response Rule Results */
   response_rule_results: ExternalRuleResult[];
   result: RuleResultEnum;
@@ -450,8 +862,20 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
+
+export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
+
+export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData = AgenticPrompts;
+
+export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError = HTTPValidationError;
+
+export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData = AgenticPrompts;
+
+export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError = HTTPValidationError;
 
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
@@ -592,6 +1016,60 @@ export interface InferenceFeedbackResponse {
 /** InferenceFeedbackTarget */
 export type InferenceFeedbackTarget = "context" | "response_results" | "prompt_results";
 
+/** JsonPropertySchema */
+export interface JsonPropertySchema {
+  /**
+   * Description
+   * A description of the argument
+   */
+  description?: string | null;
+  /**
+   * Enum
+   * An enum for the argument (e.g. ['celsius', 'fahrenheit'])
+   */
+  enum?: string[] | null;
+  /**
+   * Items
+   * For array types, describes the items
+   */
+  items?: null;
+  /**
+   * Name
+   * The name of the argument
+   */
+  name: string;
+  /**
+   * Type
+   * The argument's type (e.g. string, boolean, etc.)
+   * @default "string"
+   */
+  type?: string;
+}
+
+/** JsonSchema */
+export interface JsonSchema {
+  /**
+   * Additional Properties
+   * Whether the function definition should allow additional properties
+   */
+  additional_properties?: boolean | null;
+  /**
+   * Properties
+   * The properties of the function
+   */
+  properties: JsonPropertySchema[];
+  /**
+   * Required
+   * The required properties of the function
+   */
+  required?: string[];
+  /**
+   * Type
+   * @default "object"
+   */
+  type?: string;
+}
+
 /** KeywordDetailsResponse */
 export interface KeywordDetailsResponse {
   /**
@@ -626,6 +1104,128 @@ export interface KeywordsConfig {
    */
   keywords: string[];
 }
+
+/** LLMResponseFormatEnum */
+export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
+
+/** LLMResponseFormat */
+export interface LLMResponseFormatInput {
+  /** JSON schema definition (required when type is 'json_schema') */
+  response_schema?: LLMResponseSchemaInput | null;
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
+  type: LLMResponseFormatEnum;
+}
+
+/** LLMResponseFormat */
+export interface LLMResponseFormatOutput {
+  /** JSON schema definition (required when type is 'json_schema') */
+  response_schema?: LLMResponseSchemaOutput | null;
+  /** Response format type: 'text', 'json_object', or 'json_schema' */
+  type: LLMResponseFormatEnum;
+}
+
+/** LLMResponseSchema */
+export interface LLMResponseSchemaInput {
+  /**
+   * Description
+   * Description of the schema
+   */
+  description?: string | null;
+  /** The JSON schema object */
+  json_schema: JsonSchema;
+  /**
+   * Name
+   * Name of the schema
+   */
+  name: string;
+  /**
+   * Strict
+   * Whether to enforce strict schema adherence
+   */
+  strict?: boolean | null;
+}
+
+/** LLMResponseSchema */
+export interface LLMResponseSchemaOutput {
+  /**
+   * Description
+   * Description of the schema
+   */
+  description?: string | null;
+  /** The JSON schema object */
+  json_schema: JsonSchema;
+  /**
+   * Name
+   * Name of the schema
+   */
+  name: string;
+  /**
+   * Strict
+   * Whether to enforce strict schema adherence
+   */
+  strict?: boolean | null;
+}
+
+/** LLMTool */
+export interface LLMToolInput {
+  /**
+   * Description
+   * Description of what the tool does
+   */
+  description?: string | null;
+  /** The function's parameter schema */
+  function_definition?: JsonSchema | null;
+  /**
+   * Name
+   * The name of the tool/function
+   */
+  name: string;
+  /**
+   * Strict
+   * Whether the function definition should use OpenAI's strict mode
+   */
+  strict?: boolean | null;
+}
+
+/** LLMTool */
+export interface LLMToolOutput {
+  /**
+   * Description
+   * Description of what the tool does
+   */
+  description?: string | null;
+  /** The function's parameter schema */
+  function_definition?: JsonSchema | null;
+  /**
+   * Name
+   * The name of the tool/function
+   */
+  name: string;
+  /**
+   * Strict
+   * Whether the function definition should use OpenAI's strict mode
+   */
+  strict?: boolean | null;
+}
+
+/** LogitBiasItem */
+export interface LogitBiasItem {
+  /**
+   * Bias
+   * Bias value between -100 and 100
+   * @min -100
+   * @max 100
+   */
+  bias: number;
+  /**
+   * Token Id
+   * Token ID to bias
+   */
+  token_id: number;
+}
+
+/** MessageRole */
+export type MessageRole = "system" | "user" | "assistant" | "tool";
 
 /** MetricResponse */
 export interface MetricResponse {
@@ -763,6 +1363,8 @@ export interface NestedSpanWithMetricsResponse {
   raw_data: Record<string, any>;
   /** Response */
   response?: string | null;
+  /** Session Id */
+  session_id?: string | null;
   /** Span Id */
   span_id: string;
   /** Span Kind */
@@ -774,6 +1376,11 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Status Code
+   * Status code for the span (Unset, Error, Ok)
+   */
+  status_code: string;
   /** System Prompt */
   system_prompt?: string | null;
   /** Task Id */
@@ -836,9 +1443,9 @@ export interface NewRuleRequest {
   apply_to_response: boolean;
   /**
    * Config
-   * Config for the rule
+   * Config of the rule
    */
-  config?: RegexConfig | KeywordsConfig | ToxicityConfig | PIIConfig | ExamplesConfig | null;
+  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
   /**
    * Name
    * Name of the rule
@@ -987,6 +1594,11 @@ export interface PromptValidationRequest {
    */
   conversation_id?: string | null;
   /**
+   * Model Name
+   * The model name and version being used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Prompt
    * Prompt to be validated by GenAI Engine
    */
@@ -997,6 +1609,38 @@ export interface PromptValidationRequest {
    */
   user_id?: string | null;
 }
+
+/** ProviderEnum */
+export type ProviderEnum =
+  | "anthropic"
+  | "openai"
+  | "gemini"
+  | "azure"
+  | "deepseek"
+  | "mistral"
+  | "meta_llama"
+  | "groq"
+  | "bedrock"
+  | "sagemaker"
+  | "vertex_ai"
+  | "huggingface"
+  | "cloudflare"
+  | "ai21"
+  | "baseten"
+  | "cohere"
+  | "empower"
+  | "featherless_ai"
+  | "friendliai"
+  | "galadriel"
+  | "nebius"
+  | "nlp_cloud"
+  | "novita"
+  | "openrouter"
+  | "petals"
+  | "replicate"
+  | "together_ai"
+  | "vllm"
+  | "watsonx";
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
 
@@ -1613,6 +2257,9 @@ export interface QueryTracesWithMetricsResponse {
   traces: TraceResponse[];
 }
 
+/** ReasoningEffortEnum */
+export type ReasoningEffortEnum = "none" | "minimal" | "low" | "medium" | "high" | "default";
+
 export type ReceiveTracesV1TracesPostData = any;
 
 export type ReceiveTracesV1TracesPostError = HTTPValidationError;
@@ -1695,6 +2342,11 @@ export interface ResponseValidationRequest {
    */
   context?: string | null;
   /**
+   * Model Name
+   * The model name and version being used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Response
    * LLM Response to be validated by GenAI Engine
    */
@@ -1770,6 +2422,20 @@ export type RuleType =
   | "PromptInjectionRule"
   | "RegexRule"
   | "ToxicityRule";
+
+export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
+
+export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
+
+export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData =
+  AgenticPromptRunResponse;
+
+export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError =
+  HTTPValidationError;
+
+export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData = any;
+
+export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError = HTTPValidationError;
 
 export type SearchRulesApiV2RulesSearchPostData = SearchRulesResponse;
 
@@ -1953,6 +2619,8 @@ export interface SpanWithMetricsResponse {
   raw_data: Record<string, any>;
   /** Response */
   response?: string | null;
+  /** Session Id */
+  session_id?: string | null;
   /** Span Id */
   span_id: string;
   /** Span Kind */
@@ -1964,6 +2632,11 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Status Code
+   * Status code for the span (Unset, Error, Ok)
+   */
+  status_code: string;
   /** System Prompt */
   system_prompt?: string | null;
   /** Task Id */
@@ -1977,6 +2650,15 @@ export interface SpanWithMetricsResponse {
   updated_at: string;
   /** User Query */
   user_query?: string | null;
+}
+
+/** StreamOptions */
+export interface StreamOptions {
+  /**
+   * Include Usage
+   * Whether to include usage information in the stream
+   */
+  include_usage?: boolean | null;
 }
 
 /** TaskResponse */
@@ -2066,6 +2748,47 @@ export interface TokenUsageResponse {
 
 /** TokenUsageScope */
 export type TokenUsageScope = "rule_type" | "task";
+
+/** ToolCallFunction */
+export interface ToolCallFunction {
+  /**
+   * Arguments
+   * JSON string of function arguments
+   */
+  arguments: string;
+  /**
+   * Name
+   * Name of the function to call
+   */
+  name: string;
+}
+
+/** ToolCall */
+export interface ToolCallInput {
+  /** Function details */
+  function: ToolCallFunction;
+  /**
+   * Id
+   * Unique identifier for the tool call
+   */
+  id: string;
+}
+
+/** ToolCall */
+export interface ToolCallOutput {
+  /** Function details */
+  function: ToolCallFunction;
+  /**
+   * Id
+   * Unique identifier for the tool call
+   */
+  id: string;
+  /** Type */
+  readonly type: string;
+}
+
+/** ToolChoiceEnum */
+export type ToolChoiceEnum = "auto" | "none" | "required";
 
 /** ToolClassEnum */
 export type ToolClassEnum = 0 | 1 | 2;
@@ -2220,6 +2943,11 @@ export interface ValidationResult {
    */
   inference_id?: string | null;
   /**
+   * Model Name
+   * The model name and version used for this validation (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Rule Results
    * List of rule results
    */
@@ -2229,6 +2957,20 @@ export interface ValidationResult {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+/** VariableTemplateValue */
+export interface VariableTemplateValue {
+  /**
+   * Name
+   * Name of the variable
+   */
+  name: string;
+  /**
+   * Value
+   * Value of the variable
+   */
+  value: string;
 }
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
@@ -2367,7 +3109,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.79
+ * @version 2.1.94
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -2606,6 +3348,57 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Deletes an entire agentic prompt
+     *
+     * @tags AgenticPrompt
+     * @name DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete
+     * @summary Delete an agentic prompt
+     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @secure
+     */
+    deleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete: (
+      promptName: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData,
+        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Deletes a specific version of an agentic prompt
+     *
+     * @tags AgenticPrompt
+     * @name DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete
+     * @summary Delete an agentic prompt
+     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @secure
+     */
+    deleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData,
+        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        method: "DELETE",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Remove a file by ID. This action cannot be undone.
      *
      * @tags Chat
@@ -2617,6 +3410,78 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
         path: `/api/chat/files/${fileId}`,
         method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an agentic prompt by name and version
+     *
+     * @tags AgenticPrompt
+     * @name GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet
+     * @summary Get an agentic prompt
+     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @secure
+     */
+    getAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData,
+        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all agentic prompts for a given task
+     *
+     * @tags AgenticPrompt
+     * @name GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGet
+     * @summary Get all agentic prompts
+     * @request GET:/api/v1/{task_id}/agentic_prompts
+     * @secure
+     */
+    getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet: (taskId: string, params: RequestParams = {}) =>
+      this.request<
+        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData,
+        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an agentic prompt
+     *
+     * @tags AgenticPrompt
+     * @name GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet
+     * @summary List all versions of an agentic prompt
+     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
+     * @secure
+     */
+    getAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet: (
+      promptName: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData,
+        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions`,
+        method: "GET",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -2868,6 +3733,83 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<RedirectToTasksApiV2TaskPostData, any>({
         path: `/api/v2/task`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Run an agentic prompt
+     *
+     * @tags AgenticPrompt
+     * @name RunAgenticPromptApiV1CompletionsPost
+     * @summary Run an agentic prompt
+     * @request POST:/api/v1/completions
+     * @secure
+     */
+    runAgenticPromptApiV1CompletionsPost: (data: AgenticPromptUnsavedRunConfig, params: RequestParams = {}) =>
+      this.request<RunAgenticPromptApiV1CompletionsPostData, RunAgenticPromptApiV1CompletionsPostError>({
+        path: `/api/v1/completions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Run a specific version of an existing agentic prompt
+     *
+     * @tags AgenticPrompt
+     * @name RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost
+     * @summary Run a specific version of an agentic prompt
+     * @request POST:/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions
+     * @secure
+     */
+    runSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      data: AgenticPromptRunConfig,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData,
+        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError
+      >({
+        path: `/api/v1/task/${taskId}/prompt/${promptName}/versions/${promptVersion}/completions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Save an agentic prompt to the database
+     *
+     * @tags AgenticPrompt
+     * @name SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut
+     * @summary Save an agentic prompt
+     * @request PUT:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @secure
+     */
+    saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut: (
+      promptName: string,
+      taskId: string,
+      data: AgenticPromptBaseConfig,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData,
+        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError
+      >({
+        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
