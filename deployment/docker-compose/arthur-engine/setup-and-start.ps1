@@ -197,7 +197,19 @@ if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
     Write-Host "Enter the secret store encryption key for securing sensitive data:"
     Write-Host "This key is used to encrypt/decrypt secrets stored in the database."
     Write-Host "Keep this key secure and consistent across deployments."
-    $secretKey = Prompt-EnvVar -VarName "GENAI_ENGINE_SECRET_STORE_KEY" -DefaultValue "changeme_secret_key"
+    Write-Host "(Leave empty to auto-generate a secure random key)"
+    $secretKey = Read-Host "GENAI_ENGINE_SECRET_STORE_KEY"
+
+    if ([string]::IsNullOrWhiteSpace($secretKey)) {
+        # Generate a secure random key using .NET
+        $randomBytes = New-Object byte[] 32
+        $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+        $rng.GetBytes($randomBytes)
+        $secretKey = [Convert]::ToBase64String($randomBytes)
+        Write-Host "Generated random secret key: $secretKey" -ForegroundColor Green
+        Write-Host "Please save this key securely for future deployments!" -ForegroundColor Yellow
+    }
+
     $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
 } else {
     Write-Host ""

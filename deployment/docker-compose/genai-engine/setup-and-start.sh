@@ -87,10 +87,19 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$gen
     echo "Enter the secret store encryption key for securing sensitive data:"
     echo "This key is used to encrypt/decrypt secrets stored in the database."
     echo "Keep this key secure and consistent across deployments."
-    genai_engine_secret_store_key=$(prompt_env_var "GENAI_ENGINE_SECRET_STORE_KEY" "changeme_secret_key")
+    echo "(Leave empty to auto-generate a secure random key)"
+    read -p "GENAI_ENGINE_SECRET_STORE_KEY: " genai_engine_secret_store_key
+
+    if [[ -z "$genai_engine_secret_store_key" ]]; then
+        # Generate a secure random key using openssl
+        genai_engine_secret_store_key=$(openssl rand -base64 32)
+        echo "Generated random secret key: $genai_engine_secret_store_key"
+        echo "Please save this key securely for future deployments!"
+    fi
 
     if [[ -n "$all_env_vars" ]]; then
-        all_env_vars="$all_env_vars GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+        all_env_vars="$all_env_vars
+GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
     else
         all_env_vars="GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
     fi
