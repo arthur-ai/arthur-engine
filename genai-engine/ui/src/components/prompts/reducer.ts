@@ -19,8 +19,6 @@ import {
   ToolChoiceEnum,
 } from "@/lib/api-client/api-client";
 
-const TEMP_ID = "user-defined-name-";
-
 const arrayUtils = {
   //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
   //     ...array.slice(0, index),
@@ -43,15 +41,15 @@ const arrayUtils = {
   ],
 };
 
-const generateId = () => {
-  return TEMP_ID + uuidv4();
+const generateId = (type: "msg" | "tool") => {
+  return type + "-" + uuidv4();
 };
 
 /****************************
  * Message factory functions *
  ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
-  id: generateId(),
+  id: generateId("msg"),
   role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: "Change me",
   disabled: false,
@@ -66,7 +64,7 @@ const newMessage = (
 const duplicateMessage = (original: MessageType): MessageType =>
   createMessage({
     ...original,
-    id: generateId(),
+    id: generateId("msg"),
   });
 
 const hydrateMessage = (data: Partial<MessageType>): MessageType =>
@@ -79,7 +77,7 @@ const createTool = (
   counter: number = 1,
   overrides: Partial<FrontendTool> = {}
 ): FrontendTool => ({
-  id: generateId(),
+  id: generateId("tool"),
   name: `tool_func_${counter}`,
   description: "description",
   function_definition: {
@@ -158,7 +156,7 @@ const duplicatePrompt = (original: PromptType): PromptType => {
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
       ...tool,
-      id: generateId(),
+      id: generateId("tool"),
     })),
   });
 };
@@ -176,6 +174,7 @@ const initialState: PromptPlaygroundState = {
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
+  console.log(action.type);
   switch (action.type) {
     case "addPrompt":
       return { ...state, prompts: [...state.prompts, newPrompt()] };

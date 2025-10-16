@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import { PromptType } from "./types";
 
 import {
@@ -88,22 +90,21 @@ export const toBackendPromptBaseConfig = (
 
 export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => {
   const baseName = extractNameFromBackend(backendPrompt.name);
-  const timestamp = Date.now();
 
   return {
-    id: backendPrompt.name, // Use the backend name directly as it already contains timestamp
+    id: backendPrompt.name, // TODO: this will have to be name + backend timestamp
     classification: "default",
     name: baseName, // Extract just the base name for display
     modelName: backendPrompt.model_name,
     provider: backendPrompt.model_provider,
-    messages: backendPrompt.messages.map((msg, index) => ({
-      id: `msg-${baseName}-${index}-${timestamp}`,
+    messages: backendPrompt.messages.map((msg) => ({
+      id: `msg-${uuidv4()}`,
       role: msg.role,
       content: msg.content,
       disabled: false,
     })),
-    tools: (backendPrompt.tools || []).map((tool, index) => ({
-      id: `tool-${baseName}-${index}-${timestamp}`,
+    tools: (backendPrompt.tools || []).map((tool) => ({
+      id: `tool-${uuidv4()}`,
       name: tool.name,
       description: tool.description,
       function_definition: tool.function_definition,
