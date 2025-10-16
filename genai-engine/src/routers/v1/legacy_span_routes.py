@@ -397,17 +397,22 @@ def query_spans_by_type(
             end_time=end_time,
         )
 
-        span_repo = _get_span_repository(db_session)
-        spans, total_count = span_repo.query_spans(
+        # Create minimal TraceQueryRequest for legacy filtering
+        trace_query_filter = TraceQueryRequest(
             task_ids=query_request.task_ids,
             span_types=query_request.span_types,
             start_time=query_request.start_time,
             end_time=query_request.end_time,
+        )
+
+        span_repo = _get_span_repository(db_session)
+        spans, total_count = span_repo.query_spans(
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
             include_metrics=True,  # Include existing metrics
             compute_new_metrics=False,  # Don't compute new metrics
+            filters=trace_query_filter,  # Use comprehensive filtering with minimal filter
         )
         return QuerySpansResponse(
             count=total_count,

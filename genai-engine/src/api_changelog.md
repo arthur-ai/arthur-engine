@@ -13,6 +13,27 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
 
 # 10/15/2025
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_eq'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_eq'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_name'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_selection'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_usage'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_eq'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lt'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lte'
+- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_ids'
+
+# 10/15/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/trace_ids' to the response with the '200' status

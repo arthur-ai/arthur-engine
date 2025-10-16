@@ -326,32 +326,59 @@ class SpanRepository:
         end_time: Optional[datetime] = None,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
+        filters: Optional[TraceQueryRequest] = None,
     ) -> tuple[list[Span], int]:
         """Query spans with optional metrics computation.
+
+        Uses comprehensive filtering if filters parameter provided, otherwise uses basic filtering.
 
         Returns:
             tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
         """
-        # Validate parameters
-        if not task_ids:
-            raise ValueError("task_ids are required for span queries")
+        # Use comprehensive filtering if filters parameter provided
+        if filters is not None:
 
-        if include_metrics and compute_new_metrics and not task_ids:
-            raise ValueError(
-                "task_ids are required when include_metrics=True and compute_new_metrics=True",
+            # Convert filters to internal schema format
+            internal_filters = TraceQuerySchema._from_request_model(filters)
+
+            if not internal_filters.task_ids:
+                raise ValueError("task_ids are required for span queries")
+
+            # Use comprehensive span-based filtering
+            spans, total_count = (
+                self.span_query_service.get_paginated_spans_with_filters(
+                    filters=internal_filters,
+                    pagination_parameters=PaginationParameters(
+                        sort=sort,
+                        page=page,
+                        page_size=page_size,
+                    ),
+                )
             )
 
-        # Query spans directly with span-level pagination - always returns count now
-        spans, total_count = self.span_query_service.query_spans_from_db(
-            trace_ids=trace_ids,
-            task_ids=task_ids,
-            span_types=span_types,
-            start_time=start_time,
-            end_time=end_time,
-            sort=sort,
-            page=page,
-            page_size=page_size,
-        )
+            if spans is None:
+                spans, total_count = [], 0
+        else:
+            # Use basic filtering (legacy behavior) - create minimal filter from parameters
+            if not task_ids:
+                raise ValueError("task_ids are required for span queries")
+
+            if include_metrics and compute_new_metrics and not task_ids:
+                raise ValueError(
+                    "task_ids are required when include_metrics=True and compute_new_metrics=True",
+                )
+
+            # Query spans directly with basic filtering
+            spans, total_count = self.span_query_service.query_spans_from_db(
+                trace_ids=trace_ids,
+                task_ids=task_ids,
+                span_types=span_types,
+                start_time=start_time,
+                end_time=end_time,
+                sort=sort,
+                page=page,
+                page_size=page_size,
+            )
 
         # Validate spans and add metrics if requested
         valid_spans = self.span_query_service.validate_spans(spans)
