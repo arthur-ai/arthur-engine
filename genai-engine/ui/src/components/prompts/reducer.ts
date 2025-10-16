@@ -174,7 +174,7 @@ const initialState: PromptPlaygroundState = {
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
-  console.log(action.type);
+
   switch (action.type) {
     case "addPrompt":
       return { ...state, prompts: [...state.prompts, newPrompt()] };
