@@ -3,20 +3,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from arthur_common.models.enums import (
-    PaginationSortMethod,
     UserPermissionAction,
     UserPermissionResource,
 )
 from pydantic import BaseModel, Field
-
-
-class PaginationParameters(BaseModel):
-    sort: Optional[PaginationSortMethod] = PaginationSortMethod.DESCENDING
-    page_size: int = 10
-    page: int = 0
-
-    def calculate_total_pages(self, total_items_count: int) -> int:
-        return total_items_count // self.page_size + 1
 
 
 class LLMTokenConsumption(BaseModel):
