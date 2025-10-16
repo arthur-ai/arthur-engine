@@ -7,7 +7,7 @@ from opentelemetry.proto.trace.v1.trace_pb2 import (
 )
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
-from tests.routes.span.conftest import _create_base_trace_request, _create_span
+from tests.routes.legacy_span.conftest import _create_base_trace_request, _create_span
 
 # ============================================================================
 # HELPER FUNCTIONS
