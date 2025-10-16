@@ -57,8 +57,16 @@ from config.database_config import DatabaseConfig
 from schemas.request_schemas import (
     DatasetUpdateRequest,
     NewDatasetRequest,
+    NewDatasetVersionRequest,
+    NewDatasetVersionRowRequest,
+    NewDatasetVersionUpdateRowRequest,
 )
-from schemas.response_schemas import DatasetResponse, SearchDatasetsResponse
+from schemas.response_schemas import (
+    DatasetResponse,
+    DatasetVersionResponse,
+    ListDatasetVersionsResponse,
+    SearchDatasetsResponse,
+)
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -1675,6 +1683,116 @@ class GenaiEngineTestClientBase(httpx.Client):
                 QuerySpansResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
+            ),
+        )
+
+    def create_dataset_version(
+        self,
+        dataset_id: str,
+        rows_to_add: list[NewDatasetVersionRowRequest] = None,
+        rows_to_delete: list[str] = None,
+        rows_to_update: list[NewDatasetVersionUpdateRowRequest] = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Create a new dataset version."""
+        if rows_to_add is None:
+            rows_to_add = []
+        if rows_to_delete is None:
+            rows_to_delete = []
+        if rows_to_update is None:
+            rows_to_update = []
+
+        request = NewDatasetVersionRequest(
+            rows_to_add=rows_to_add,
+            rows_to_delete=rows_to_delete,
+            rows_to_update=rows_to_update,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Get a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_versions(
+        self,
+        dataset_id: str,
+        page: int = None,
+        page_size: int = None,
+        latest_version_only: bool = False,
+    ) -> tuple[int, ListDatasetVersionsResponse]:
+        """Get dataset versions for a dataset."""
+        path = f"/api/v2/datasets/{dataset_id}/versions"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if latest_version_only:
+            params["latest_version_only"] = latest_version_only
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListDatasetVersionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
             ),
         )
 

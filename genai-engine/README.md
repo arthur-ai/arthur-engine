@@ -290,7 +290,9 @@ If you can't install torch on your computer and want to generate the changelog f
 
 ## Generate a new Alembic Migration
 To generate a new Alembic migration from changes made in the `db_models` folder, run the following command from the
-genai_engine directory:
+genai_engine directory.
+
+Make sure you follow the env variable exports in [this step](#populate-the-database-schema-with-alembic) first.
 
 ```bash
 poetry run alembic revision --autogenerate -m "description of changes"

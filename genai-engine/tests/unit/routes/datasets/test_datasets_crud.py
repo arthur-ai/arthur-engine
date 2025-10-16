@@ -56,6 +56,12 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     assert final_dataset.description == updated_description
     assert final_dataset.metadata == updated_metadata
 
+    # test list dataset versions for dataset with no versions
+    status_code, versions_response = client.get_dataset_versions(created_dataset.id)
+    assert status_code == 200
+    assert versions_response.total_count == 0
+    assert len(versions_response.versions) == 0
+
     # delete dataset
     status_code = client.delete_dataset(created_dataset.id)
     assert status_code == 204

@@ -1,6 +1,13 @@
 The intention of this changelog is to document API changes as they happen to effectively communicate them to customers.
 
 ---
+
+# 10/15/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
+
+# 10/13/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
 # 10/13/2025
 - **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
 
