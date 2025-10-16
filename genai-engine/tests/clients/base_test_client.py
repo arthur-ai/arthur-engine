@@ -727,6 +727,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         response: str = None,
         task_id: str = None,
         context: str = None,
+        model_name: str = None,
     ) -> tuple[int, ValidationResult]:
         uri = "/api/v2/validate_response/"
         if task_id != None:
@@ -735,6 +736,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
             body["context"] = context
+        if model_name:
+            body["model_name"] = model_name
         resp = self.base_client.post(
             uri + inference_id,
             json=body,

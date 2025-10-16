@@ -1,6 +1,7 @@
 import pytest
-from schemas.internal_schemas import InferencePrompt, Rule, Task
 from arthur_common.models.request_schemas import ResponseValidationRequest
+
+from schemas.internal_schemas import InferencePrompt, Rule, Task
 from tests.clients.base_test_client import (
     override_get_db_session,
     override_get_scorer_client,
@@ -49,3 +50,42 @@ def test_validate_response(
             create_rule_for_task_hallucination_v2.id,
         ],
     )
+
+
+@pytest.mark.unit_tests
+def test_validate_response_with_model_name(
+    create_task: Task,
+    create_rule_for_task_regex: Rule,
+    create_rule_for_task_keywords: Rule,
+    create_rule_for_task_pii: Rule,
+    create_rule_for_task_toxicity: Rule,
+    create_rule_for_task_hallucination_v2: Rule,
+    create_prompt_inference_with_task: tuple[Task, InferencePrompt],
+):
+    """Test that model_name is properly handled in response validation."""
+    _, inference_prompt = create_prompt_inference_with_task
+    model_name = "gpt-4o-mini"
+    response_validation_request = ResponseValidationRequest(
+        response="Hello, citizen!",
+        model_name=model_name,
+    )
+    db_session = override_get_db_session()
+    scorer_client = override_get_scorer_client()
+
+    validated_response = validate_response(
+        inference_id=inference_prompt.inference_id,
+        body=response_validation_request,
+        db_session=db_session,
+        scorer_client=scorer_client,
+        rules=[
+            create_rule_for_task_regex,
+            create_rule_for_task_keywords,
+            create_rule_for_task_pii,
+            create_rule_for_task_toxicity,
+            create_rule_for_task_hallucination_v2,
+        ],
+    )
+
+    # Verify model_name is returned in the validation result
+    assert validated_response.model_name == model_name
+    assert len(validated_response.rule_results) == 5
