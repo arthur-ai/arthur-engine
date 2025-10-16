@@ -346,7 +346,6 @@ def test_pii_results_with_model_name(
     _, prompt = client.create_prompt(
         text,
         task_id=task_id,
-        model_name="gpt-4o-mini",
     )
 
     _, response = client.create_response(
@@ -357,7 +356,6 @@ def test_pii_results_with_model_name(
 
     assert prompt.rule_results[0].result == expected_result
     assert response.rule_results[0].result == expected_result
-    assert prompt.model_name == "gpt-4o-mini"
 
     if expected_result == RuleResultEnum.FAIL:
         assert (
@@ -390,11 +388,10 @@ def test_response_validation_with_model_name(client: GenaiEngineTestClientBase):
     )
     assert status_code == 200
 
-    # Create prompt with model_name
+    # Create prompt
     status_code, prompt = client.create_prompt(
         "Tell me about AI",
         task_id=task_id,
-        model_name="gpt-4o-mini",
     )
     assert status_code == 200
 

@@ -28,12 +28,10 @@ def validate_prompt(
         task_id=task_id,
         conversation_id=body.conversation_id,
         user_id=body.user_id,
-        model_name=body.model_name,
     )
 
     return ValidationResult(
         inference_id=inference_prompt.inference_id,
         rule_results=inference_prompt._to_response_model().prompt_rule_results,
         user_id=body.user_id,
-        model_name=body.model_name,
     )

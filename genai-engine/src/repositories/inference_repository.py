@@ -294,7 +294,6 @@ class InferenceRepository:
         task_id: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
-        model_name: str | None = None,
     ) -> InferencePrompt:
         inference = get_new_inference(task_id, conversation_id)
         inference_prompt = get_inference_prompt(
@@ -307,7 +306,6 @@ class InferenceRepository:
         inference.result = inference_prompt.result
         inference.inference_prompt = inference_prompt
         inference.user_id = user_id
-        inference.model_name = model_name
 
         if any(
             [

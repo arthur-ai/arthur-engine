@@ -688,7 +688,6 @@ class GenaiEngineTestClientBase(httpx.Client):
         task_id: str = None,
         conversation_id: str = None,
         user_id: str = None,
-        model_name: str = None,
     ) -> tuple[int, ValidationResult]:
         uri = "/api/v2/validate_prompt"
         if task_id != None:
@@ -701,9 +700,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             "conversation_id": conversation_id,
             "user_id": user_id,
         }
-
-        if model_name:
-            request_body["model_name"] = model_name
 
         resp = self.base_client.post(
             url=uri,
