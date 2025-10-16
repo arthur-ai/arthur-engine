@@ -179,6 +179,194 @@ def test_span_metadata_filtering_by_types(
 
 
 @pytest.mark.unit_tests
+def test_span_metadata_filtering_by_tool_name(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata filtering by tool name."""
+
+    # Filter by existing tool name
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        tool_name="test_tool",
+    )
+    assert status_code == 200
+    assert data.count == 1  # Only api_span6 has this tool name
+
+    for span in data.spans:
+        assert span.span_kind == "TOOL"
+        # The span name should match the tool name for TOOL spans
+        assert span.span_name == "test_tool"
+
+    # Filter by non-existent tool name
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        tool_name="non_existent_tool",
+    )
+    assert status_code == 200
+    assert data.count == 0
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_filtering_by_time_range(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata filtering by time range."""
+    now = datetime.now()
+
+    # Filter by start_time - should return recent spans
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        start_time=now - timedelta(hours=2),
+    )
+    assert status_code == 200
+    assert data.count >= 1  # Should have recent spans
+
+    # Verify all returned spans are within time range
+    for span in data.spans:
+        assert span.start_time >= (now - timedelta(hours=2))
+
+    # Filter by end_time - should return older spans
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        end_time=now - timedelta(hours=1),
+    )
+    assert status_code == 200
+    # Should have some older spans (depending on test data timing)
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_filtering_with_relevance_scores(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata filtering by relevance scores."""
+
+    # Filter by high query relevance - should return spans with high scores
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        query_relevance_gte=0.8,
+    )
+    assert status_code == 200
+    # Should return spans that have query relevance >= 0.8
+
+    # Filter by response relevance
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        response_relevance_gt=0.9,
+    )
+    assert status_code == 200
+    # Should return spans with response relevance > 0.9
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_filtering_with_tool_selection(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata filtering by tool selection metrics."""
+
+    # Filter by correct tool selection
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        tool_selection=1,  # CORRECT
+    )
+    assert status_code == 200
+    # Should return spans with correct tool selection
+
+    # Filter by incorrect tool usage
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        tool_usage=0,  # INCORRECT
+    )
+    assert status_code == 200
+    # Should return spans with incorrect tool usage
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_combined_filtering(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata with combined filters."""
+
+    # Combine span types with tool name filtering
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_types=["LLM", "TOOL"],
+        tool_name="test_tool",
+    )
+    assert status_code == 200
+    # Should return LLM spans AND TOOL spans with the specific tool name
+
+    # Combine span types with relevance filtering
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_types=["LLM"],
+        query_relevance_gte=0.5,
+    )
+    assert status_code == 200
+    # Should return only LLM spans with query relevance >= 0.5
+
+    for span in data.spans:
+        assert span.span_kind == "LLM"
+
+    # Combine time range with span types
+    now = datetime.now()
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_types=["LLM", "CHAIN"],
+        start_time=now - timedelta(days=1),
+        end_time=now + timedelta(hours=1),
+    )
+    assert status_code == 200
+
+    for span in data.spans:
+        assert span.span_kind in ["LLM", "CHAIN"]
+        assert span.start_time >= (now - timedelta(days=1))
+        assert span.start_time <= (now + timedelta(hours=1))
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_sorting(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata sorting by start_time."""
+
+    # Test descending sort (default)
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        sort="desc",
+    )
+    assert status_code == 200
+    assert len(data.spans) > 1
+
+    # Verify descending order
+    start_times = [span.start_time for span in data.spans]
+    for i in range(len(start_times) - 1):
+        assert (
+            start_times[i] >= start_times[i + 1]
+        ), f"Spans not in descending order: {start_times[i]} should be >= {start_times[i + 1]}"
+
+    # Test ascending sort
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        sort="asc",
+    )
+    assert status_code == 200
+    assert len(data.spans) > 1
+
+    # Verify ascending order
+    start_times = [span.start_time for span in data.spans]
+    for i in range(len(start_times) - 1):
+        assert (
+            start_times[i] <= start_times[i + 1]
+        ), f"Spans not in ascending order: {start_times[i]} should be <= {start_times[i + 1]}"
+
+
+@pytest.mark.unit_tests
 def test_span_metadata_pagination(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
@@ -221,6 +409,50 @@ def test_span_metadata_pagination(
     single_ids = {span.span_id for span in all_spans_single}
     paginated_ids = {span.span_id for span in all_spans_paginated}
     assert single_ids == paginated_ids
+
+
+@pytest.mark.unit_tests
+def test_span_metadata_filter_validation_edge_cases(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test span metadata filtering validation and edge cases."""
+
+    # Test filtering with incompatible combinations
+    # LLM metric filters without LLM spans should return empty results
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_types=["CHAIN"],  # Non-LLM span type
+        query_relevance_gte=0.5,  # LLM metric filter
+    )
+    assert status_code == 200
+    assert data.count == 0  # Should return no results due to incompatible filters
+
+    # Test tool_name filter without TOOL spans
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        span_types=["LLM"],  # Non-TOOL span type
+        tool_name="test_tool",  # Tool filter
+    )
+    assert status_code == 200
+    assert data.count == 0  # Should return no results due to incompatible filters
+
+    # Test with very restrictive filters
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["api_task1", "api_task2"],
+        query_relevance_gte=0.99,  # Very high threshold
+        response_relevance_gte=0.99,  # Very high threshold
+        tool_selection=1,  # CORRECT
+        tool_usage=1,  # CORRECT
+    )
+    assert status_code == 200
+    # Should return very few or no results due to restrictive filters
+
+    # Test empty task_ids - should return validation error
+    status_code, response = client.trace_api_list_spans_metadata(
+        task_ids=[],
+    )
+    assert status_code == 400  # Should return validation error
 
 
 # ============================================================================
