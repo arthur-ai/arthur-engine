@@ -22,7 +22,13 @@ from db_models import (
     DatabaseSpan,
     DatabaseTraceMetadata,
 )
-from schemas.internal_schemas import FloatRangeFilter, Span, TraceQuerySchema
+from schemas.internal_schemas import (
+    FloatRangeFilter,
+    SessionMetadata,
+    Span,
+    TraceMetadata,
+    TraceQuerySchema,
+)
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM, SPAN_KIND_TOOL
 
@@ -47,23 +53,26 @@ class SpanQueryService:
     ) -> Optional[Tuple[List[str], int]]:
         """
         Single-query strategy that combines all filters and uses database pagination.
-        Returns tuple of (trace_ids, page_count).
+        Returns tuple of (trace_ids, total_count).
         """
         if not filters.task_ids:
             return None, 0
 
         # Build comprehensive query with all filters combined
-        query = self._build_unified_trace_query(filters)
+        base_query = self._build_unified_trace_query(filters)
+
+        # Get total count before pagination
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
 
         # Apply sorting and pagination at database level
-        query = self._apply_sorting_and_pagination(query, pagination_parameters)
+        query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
 
         # Execute with database-level pagination
         results = self.db_session.execute(query).scalars().all()
         trace_ids = [tm.trace_id for tm in results]
 
-        # Return count of traces in current page, not total count
-        return trace_ids, len(trace_ids)
+        return trace_ids, total_count
 
     def query_spans_from_db(
         self,
@@ -75,9 +84,13 @@ class SpanQueryService:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
-    ) -> list[Span]:
-        """Query individual spans with basic filtering and pagination."""
-        query = self._build_spans_query(
+    ) -> tuple[list[Span], int]:
+        """Query individual spans with basic filtering and pagination.
+
+        Returns:
+            tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
+        """
+        base_query = self._build_spans_query(
             trace_ids=trace_ids,
             task_ids=task_ids,
             span_types=span_types,
@@ -86,13 +99,20 @@ class SpanQueryService:
             sort=sort,
         )
 
+        # Always get total count before pagination
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
+
         # Apply pagination if provided
+        query = base_query
         if page is not None and page_size is not None:
             offset = page * page_size
             query = query.offset(offset).limit(page_size)
 
         results = self.db_session.execute(query).scalars().unique().all()
-        return [Span._from_database_model(span) for span in results]
+        spans = [Span._from_database_model(span) for span in results]
+
+        return spans, total_count
 
     def query_span_by_id(self, span_id: str) -> Optional[Span]:
         """Query a single span by span_id."""
@@ -468,3 +488,159 @@ class SpanQueryService:
             return column <= filter_item.value
         else:
             raise ValueError(f"Unsupported operator: {filter_item.operator}")
+
+    # ============================================================================
+    # New methods for optimized trace endpoints
+    # ============================================================================
+
+    def get_trace_metadata_by_ids(
+        self,
+        trace_ids: list[str],
+        sort_method: Optional[PaginationSortMethod] = None,
+    ) -> list[TraceMetadata]:
+        """Query trace metadata table directly by trace IDs.
+
+        Args:
+            trace_ids: List of trace IDs to fetch metadata for
+            sort_method: Optional sort method to apply to results by start_time
+        """
+        if not trace_ids:
+            return []
+
+        query = select(DatabaseTraceMetadata).where(
+            DatabaseTraceMetadata.trace_id.in_(trace_ids),
+        )
+
+        results = self.db_session.execute(query).scalars().all()
+        trace_metadata_list = [TraceMetadata._from_database_model(tm) for tm in results]
+
+        # Apply sorting if specified (IN clause doesn't preserve order)
+        if sort_method is not None:
+            if sort_method == PaginationSortMethod.DESCENDING:
+                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=True)
+            else:
+                trace_metadata_list.sort(key=lambda tm: tm.start_time, reverse=False)
+
+        return trace_metadata_list
+
+    def get_sessions_aggregated(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[SessionMetadata]]:
+        """Perform session-level aggregations with filtering."""
+        if not task_ids:
+            return 0, []
+
+        # Build base query for session aggregation
+        # Group by both session_id and task_id to ensure clean session boundaries
+
+        # Use database-appropriate aggregation function
+        if self.db_session.bind.dialect.name == "postgresql":
+            trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+        else:  # SQLite and others
+            trace_ids_agg = func.group_concat(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+
+        query = select(
+            DatabaseTraceMetadata.session_id,
+            DatabaseTraceMetadata.task_id,
+            trace_ids_agg,
+            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
+            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
+            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+        ).where(
+            and_(
+                DatabaseTraceMetadata.task_id.in_(task_ids),
+                DatabaseTraceMetadata.session_id.is_not(None),
+            ),
+        )
+
+        # Apply time range filters
+        if start_time:
+            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
+        if end_time:
+            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+
+        # Group by both session_id and task_id to ensure proper session boundaries
+        query = query.group_by(
+            DatabaseTraceMetadata.session_id,
+            DatabaseTraceMetadata.task_id,
+        )
+
+        # Apply sorting
+        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc("earliest_start_time"))
+        else:
+            query = query.order_by(asc("earliest_start_time"))
+
+        # Get total count before pagination
+        count_query = select(func.count()).select_from(query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
+
+        # Apply pagination
+        offset = pagination_parameters.page * pagination_parameters.page_size
+        query = query.offset(offset).limit(pagination_parameters.page_size)
+
+        # Execute query
+        results = self.db_session.execute(query).all()
+
+        # Convert to SessionMetadata objects
+        sessions = []
+        for row in results:
+            # Handle trace_ids based on database type
+            if self.db_session.bind.dialect.name == "postgresql":
+                trace_ids = row.trace_ids  # Already a list from array_agg
+            else:  # SQLite - split the group_concat result
+                trace_ids = row.trace_ids.split(",") if row.trace_ids else []
+
+            sessions.append(
+                SessionMetadata(
+                    session_id=row.session_id,
+                    task_id=row.task_id,
+                    trace_ids=trace_ids,
+                    span_count=row.span_count,
+                    earliest_start_time=row.earliest_start_time,
+                    latest_end_time=row.latest_end_time,
+                ),
+            )
+
+        return total_count, sessions
+
+    def get_trace_ids_for_session(
+        self,
+        session_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[str]]:
+        """Get paginated trace IDs for a specific session."""
+        # Build query for traces in this session
+        query = select(DatabaseTraceMetadata.trace_id).where(
+            DatabaseTraceMetadata.session_id == session_id,
+        )
+
+        # Apply sorting
+        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(DatabaseTraceMetadata.start_time))
+        else:
+            query = query.order_by(asc(DatabaseTraceMetadata.start_time))
+
+        # Get total count before pagination
+        count_query = select(func.count(DatabaseTraceMetadata.trace_id)).where(
+            DatabaseTraceMetadata.session_id == session_id,
+        )
+        total_count = self.db_session.execute(count_query).scalar()
+
+        # Apply pagination
+        offset = pagination_parameters.page * pagination_parameters.page_size
+        query = query.offset(offset).limit(pagination_parameters.page_size)
+
+        # Execute query
+        results = self.db_session.execute(query).scalars().all()
+        trace_ids = [trace_id for trace_id in results]
+
+        return total_count, trace_ids

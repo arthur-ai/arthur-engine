@@ -8,6 +8,11 @@ import urllib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Union
 
+from arthur_common.models.common_schemas import (
+    LLMTokenConsumption,
+    PaginationParameters,
+)
+from arthur_common.models.enums import PaginationSortMethod
 from dotenv import load_dotenv
 from fastapi import HTTPException, Query
 from opentelemetry import context as otel_context
@@ -16,11 +21,6 @@ from opentelemetry.sdk.trace import Tracer
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
-from arthur_common.models.common_schemas import (
-    LLMTokenConsumption,
-    PaginationParameters,
-)
-from arthur_common.models.enums import PaginationSortMethod
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -274,6 +274,20 @@ def alphanumericize(text: str) -> str:
     :param text: text to alphanumericize
     """
     return re.sub(r"\W+", "", text).lower()
+
+
+def calculate_duration_ms(start_time, end_time) -> float:
+    """
+    Calculate duration between two datetime objects in milliseconds.
+
+    Args:
+        start_time: Start datetime
+        end_time: End datetime
+
+    Returns:
+        Duration in milliseconds as a float
+    """
+    return (end_time - start_time).total_seconds() * 1000.0
 
 
 def public_endpoint(func):

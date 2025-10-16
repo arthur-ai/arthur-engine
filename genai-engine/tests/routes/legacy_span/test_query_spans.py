@@ -8,8 +8,6 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 # Helper functions
 def assert_valid_span_response(response):
     """Assert response has valid span structure."""
-    assert response.count >= 0
-    assert len(response.spans) == response.count
     for span in response.spans:
         assert hasattr(span, "id")
         assert hasattr(span, "trace_id")
@@ -173,6 +171,7 @@ def test_query_spans_pagination(
         page_size=page_size,
     )
     assert status_code == 200
+    assert response.count == 6
     assert_valid_span_response(response)
     assert len(response.spans) <= expected_max_spans
 

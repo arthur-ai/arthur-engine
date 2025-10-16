@@ -70,7 +70,8 @@ def test_query_traces_basic_functionality(
     # Test pagination
     status_code, response = client.query_traces(task_ids=["task1"], page=0, page_size=1)
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert response.count == 2
+    assert len(response.traces) == 1
 
     # Test time filtering
     now = datetime.now()
@@ -309,7 +310,8 @@ def test_query_traces_with_metrics_sorting(
         page_size=1,
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert response.count == 3  # Full size
+    assert len(response.traces) == 1  # Page size
     assert response.traces[0].trace_id == "trace3"  # trace3 is now the newest
     most_recent_trace = response.traces[0]
 
@@ -321,7 +323,9 @@ def test_query_traces_with_metrics_sorting(
         page=1,
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert response.count == 3
+    assert len(response.traces) == 1
+
     assert response.traces[0].trace_id == "trace2"  # trace2 is second newest
 
     # test pagination reverse sort
@@ -331,7 +335,8 @@ def test_query_traces_with_metrics_sorting(
         page_size=1,
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert response.count == 3
+    assert len(response.traces) == 1
     assert response.traces[0].trace_id == "trace1"
     oldest_trace = response.traces[0]
 
@@ -343,7 +348,8 @@ def test_query_traces_with_metrics_sorting(
         page=1,
     )
     assert status_code == 200
-    assert response.count == len(response.traces) == 1
+    assert response.count == 3
+    assert len(response.traces) == 1
     assert response.traces[0].trace_id == "trace2"
 
     # test pagination with time filters, filtering out the most recent trace (trace3)

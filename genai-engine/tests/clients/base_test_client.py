@@ -47,6 +47,7 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TaskResponse,
     TokenUsageResponse,
+    TraceResponse,
     UserResponse,
     ValidationResult,
 )
@@ -54,6 +55,12 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
+from schemas.response_schemas import (
+    SessionListResponse,
+    SessionTracesResponse,
+    SpanListResponse,
+    TraceListResponse,
+)
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -1547,6 +1554,437 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 QuerySpansResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    # ============================================================================
+    # NEW TRACE API METHODS (/api/v1/ endpoints)
+    # ============================================================================
+
+    def trace_api_receive_traces(self, trace_data: bytes) -> tuple[int, str]:
+        """Send OpenInference trace data to the new trace API endpoint.
+
+        Args:
+            trace_data: Raw protobuf trace data in bytes
+
+        Returns:
+            tuple[int, str]: Status code and response message
+        """
+        headers = self.authorized_user_api_key_headers.copy()
+        headers["Content-Type"] = "application/x-protobuf"
+
+        resp = self.base_client.post(
+            "/api/v1/traces",
+            content=trace_data,
+            headers=headers,
+        )
+        log_response(resp)
+        return resp.status_code, resp.text
+
+    def trace_api_list_traces_metadata(
+        self,
+        task_ids: list[str],
+        trace_ids: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+        tool_name: str | None = None,
+        span_types: list | None = None,
+        # Query relevance filters
+        query_relevance_eq: float | None = None,
+        query_relevance_gt: float | None = None,
+        query_relevance_gte: float | None = None,
+        query_relevance_lt: float | None = None,
+        query_relevance_lte: float | None = None,
+        # Response relevance filters
+        response_relevance_eq: float | None = None,
+        response_relevance_gt: float | None = None,
+        response_relevance_gte: float | None = None,
+        response_relevance_lt: float | None = None,
+        response_relevance_lte: float | None = None,
+        # Tool classification filters
+        tool_selection: int | None = None,
+        tool_usage: int | None = None,
+        # Trace duration filters
+        trace_duration_eq: float | None = None,
+        trace_duration_gt: float | None = None,
+        trace_duration_gte: float | None = None,
+        trace_duration_lt: float | None = None,
+        trace_duration_lte: float | None = None,
+    ) -> tuple[int, TraceListResponse | str]:
+        """Get lightweight trace metadata for browsing/filtering operations.
+
+        Returns:
+            tuple[int, TraceListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+        if tool_name is not None:
+            params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
+        # Query relevance filters
+        if query_relevance_eq is not None:
+            params["query_relevance_eq"] = query_relevance_eq
+        if query_relevance_gt is not None:
+            params["query_relevance_gt"] = query_relevance_gt
+        if query_relevance_gte is not None:
+            params["query_relevance_gte"] = query_relevance_gte
+        if query_relevance_lt is not None:
+            params["query_relevance_lt"] = query_relevance_lt
+        if query_relevance_lte is not None:
+            params["query_relevance_lte"] = query_relevance_lte
+        # Response relevance filters
+        if response_relevance_eq is not None:
+            params["response_relevance_eq"] = response_relevance_eq
+        if response_relevance_gt is not None:
+            params["response_relevance_gt"] = response_relevance_gt
+        if response_relevance_gte is not None:
+            params["response_relevance_gte"] = response_relevance_gte
+        if response_relevance_lt is not None:
+            params["response_relevance_lt"] = response_relevance_lt
+        if response_relevance_lte is not None:
+            params["response_relevance_lte"] = response_relevance_lte
+        # Tool classification filters
+        if tool_selection is not None:
+            params["tool_selection"] = tool_selection
+        if tool_usage is not None:
+            params["tool_usage"] = tool_usage
+        # Trace duration filters
+        if trace_duration_eq is not None:
+            params["trace_duration_eq"] = trace_duration_eq
+        if trace_duration_gt is not None:
+            params["trace_duration_gt"] = trace_duration_gt
+        if trace_duration_gte is not None:
+            params["trace_duration_gte"] = trace_duration_gte
+        if trace_duration_lt is not None:
+            params["trace_duration_lt"] = trace_duration_lt
+        if trace_duration_lte is not None:
+            params["trace_duration_lte"] = trace_duration_lte
+
+        resp = self.base_client.get(
+            f"/api/v1/traces?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_trace_by_id(
+        self,
+        trace_id: str,
+    ) -> tuple[int, TraceResponse | str]:
+        """Get complete trace tree with existing metrics (no computation).
+
+        Args:
+            trace_id: The trace ID to retrieve
+
+        Returns:
+            tuple[int, TraceResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/{trace_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_trace_metrics(
+        self,
+        trace_id: str,
+    ) -> tuple[int, TraceResponse | str]:
+        """Compute all missing metrics for trace spans on-demand.
+
+        Args:
+            trace_id: The trace ID to compute metrics for
+
+        Returns:
+            tuple[int, TraceResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/{trace_id}/metrics",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_spans_metadata(
+        self,
+        task_ids: list[str],
+        span_types: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SpanListResponse | str]:
+        """Get lightweight span metadata for browsing/filtering operations.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            span_types: Span types to filter on (optional)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SpanListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if span_types is not None:
+            params["span_types"] = span_types
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            f"/api/v1/spans?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_span_by_id(
+        self,
+        span_id: str,
+    ) -> tuple[int, SpanWithMetricsResponse | str]:
+        """Get single span with existing metrics (no computation).
+
+        Args:
+            span_id: The span ID to retrieve
+
+        Returns:
+            tuple[int, SpanWithMetricsResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/spans/{span_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_span_metrics(
+        self,
+        span_id: str,
+    ) -> tuple[int, SpanWithMetricsResponse | str]:
+        """Compute all missing metrics for a single span on-demand.
+
+        Args:
+            span_id: The span ID to compute metrics for
+
+        Returns:
+            tuple[int, SpanWithMetricsResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/spans/{span_id}/metrics",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_sessions_metadata(
+        self,
+        task_ids: list[str],
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SessionListResponse | str]:
+        """Get session metadata with pagination and filtering.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        resp = self.base_client.get(
+            f"/api/v1/sessions?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_session_traces(
+        self,
+        session_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SessionTracesResponse | str]:
+        """Get all traces in a session with existing metrics (no computation).
+
+        Args:
+            session_id: The session ID to retrieve traces for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionTracesResponse | str]: Status code and response
+        """
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/sessions/{session_id}{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionTracesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_session_metrics(
+        self,
+        session_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SessionTracesResponse | str]:
+        """Get all traces in a session and compute missing metrics.
+
+        Args:
+            session_id: The session ID to compute metrics for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionTracesResponse | str]: Status code and response
+        """
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/sessions/{session_id}/metrics{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionTracesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
