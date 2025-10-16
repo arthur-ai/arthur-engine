@@ -389,16 +389,20 @@ def test_trace_query_with_combined_filters(
     trace_ids = {trace.trace_id for trace in response.traces}
     assert trace_ids == {"trace3"}
 
-    # Test combining span_types with tool_name filter - should return trace3
+    # Test combining span_types with tool_name filter - should return trace1 (LLM) and trace3 (LLM + TOOL with test_tool)
     status_code, response = client.query_traces(
         task_ids=["task1", "task2"],
         span_types=["LLM", "TOOL"],
         tool_name="test_tool",
     )
     assert status_code == 200
-    assert response.count == 1
-    assert len(response.traces) == 1
-    assert response.traces[0].trace_id == "trace3"
+    assert response.count == 2
+    assert len(response.traces) == 2
+    trace_ids = {trace.trace_id for trace in response.traces}
+    assert trace_ids == {
+        "trace1",
+        "trace3",
+    }  # trace1 has LLM, trace3 has LLM + TOOL with test_tool
 
     # Test combining relevance filters with span types - should return trace1 (high score)
     status_code, response = client.query_traces(

@@ -200,8 +200,8 @@ def compute_trace_metrics(
 
 @trace_api_routes.get(
     "/spans",
-    summary="List Span Metadata",
-    description="Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
+    summary="List Span Metadata with Filtering",
+    description="Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.",
     response_model=SpanListResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
@@ -212,40 +212,25 @@ def list_spans_metadata(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
-    task_ids: list[str] = Query(
-        ...,
-        description="Task IDs to filter on. At least one is required.",
-        min_length=1,
-    ),
-    span_types: list[str] = Query(
-        None,
-        description="Span types to filter on. Optional.",
-    ),
-    start_time: datetime = Query(
-        None,
-        description="Inclusive start date in ISO8601 string format. Use local time (not UTC).",
-    ),
-    end_time: datetime = Query(
-        None,
-        description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
-    ),
+    trace_query: Annotated[
+        TraceQueryRequest,
+        Depends(trace_query_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """Get lightweight span metadata for browsing/filtering operations."""
     try:
         span_repo = _get_span_repository(db_session)
-        # Reuse existing query_spans infrastructure but without metrics
+
+        # Use query_spans with comprehensive filtering via filters parameter
         spans, total_count = span_repo.query_spans(
-            task_ids=task_ids,
-            span_types=span_types,
-            start_time=start_time,
-            end_time=end_time,
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
             include_metrics=False,  # No metrics for metadata endpoint
             compute_new_metrics=False,
+            filters=trace_query,  # Enables comprehensive filtering
         )
 
         # Transform to metadata response format
