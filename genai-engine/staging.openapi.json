@@ -3688,8 +3688,13 @@
                 "tags": [
                     "Spans"
                 ],
+<<<<<<< HEAD
                 "summary": "List Span Metadata with Filtering",
                 "description": "Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.",
+=======
+                "summary": "List Span Metadata",
+                "description": "Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.",
+>>>>>>> dev
                 "operationId": "list_spans_metadata_api_v1_spans_get",
                 "security": [
                     {
@@ -3698,6 +3703,62 @@
                 ],
                 "parameters": [
                     {
+<<<<<<< HEAD
+=======
+                        "name": "task_ids",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
+                        },
+                        "description": "Task IDs to filter on. At least one is required."
+                    },
+                    {
+                        "name": "span_types",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Span types to filter on. Optional.",
+                            "title": "Span Types"
+                        },
+                        "description": "Span types to filter on. Optional."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time",
+                            "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+>>>>>>> dev
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -3731,6 +3792,7 @@
                             "title": "Page"
                         },
                         "description": "Page number"
+<<<<<<< HEAD
                     },
                     {
                         "name": "task_ids",
@@ -4019,6 +4081,8 @@
                             "title": "Trace Duration Lte"
                         },
                         "description": "Duration less than or equal to this value (seconds)."
+=======
+>>>>>>> dev
                     }
                 ],
                 "responses": {

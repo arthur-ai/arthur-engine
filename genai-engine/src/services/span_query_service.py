@@ -49,6 +49,7 @@ class SpanQueryService:
         """
         Single-query strategy that combines all filters and uses database pagination.
         Returns tuple of (trace_ids, total_count).
+        Returns tuple of (trace_ids, total_count).
         """
         if not filters.task_ids:
             return None, 0
@@ -59,14 +60,21 @@ class SpanQueryService:
         # Get total count before pagination
         count_query = select(func.count()).select_from(base_query.subquery())
         total_count = self.db_session.execute(count_query).scalar()
+        base_query = self._build_unified_trace_query(filters)
+
+        # Get total count before pagination
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
 
         # Apply sorting and pagination at database level
+        query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
         query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
 
         # Execute with database-level pagination
         results = self.db_session.execute(query).scalars().all()
         trace_ids = [tm.trace_id for tm in results]
 
+        return trace_ids, total_count
         return trace_ids, total_count
 
     def query_spans_from_db(
@@ -86,6 +94,13 @@ class SpanQueryService:
             tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
         """
         base_query = self._build_spans_query(
+    ) -> tuple[list[Span], int]:
+        """Query individual spans with basic filtering and pagination.
+
+        Returns:
+            tuple[list[Span], int]: (spans, total_count) where total_count is all items matching filters
+        """
+        base_query = self._build_spans_query(
             trace_ids=trace_ids,
             task_ids=task_ids,
             span_types=span_types,
@@ -98,13 +113,21 @@ class SpanQueryService:
         count_query = select(func.count()).select_from(base_query.subquery())
         total_count = self.db_session.execute(count_query).scalar()
 
+        # Always get total count before pagination
+        count_query = select(func.count()).select_from(base_query.subquery())
+        total_count = self.db_session.execute(count_query).scalar()
+
         # Apply pagination if provided
+        query = base_query
         query = base_query
         if page is not None and page_size is not None:
             offset = page * page_size
             query = query.offset(offset).limit(page_size)
 
         results = self.db_session.execute(query).scalars().unique().all()
+        spans = [Span._from_database_model(span) for span in results]
+
+        return spans, total_count
         spans = [Span._from_database_model(span) for span in results]
 
         return spans, total_count

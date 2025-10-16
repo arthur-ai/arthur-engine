@@ -48,6 +48,7 @@ from arthur_common.models.response_schemas import (
     TaskResponse,
     TokenUsageResponse,
     TraceResponse,
+    TraceResponse,
     UserResponse,
     ValidationResult,
 )
@@ -55,6 +56,12 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
+from schemas.response_schemas import (
+    SessionListResponse,
+    SessionTracesResponse,
+    SpanListResponse,
+    TraceListResponse,
+)
 from schemas.response_schemas import (
     SessionListResponse,
     SessionTracesResponse,

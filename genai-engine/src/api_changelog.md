@@ -39,6 +39,16 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/traces  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/sessions/{session_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/sessions/{session_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans/{span_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/spans/{span_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  endpoint added
 - **CHANGE** for **URL**: /api/v1/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added
