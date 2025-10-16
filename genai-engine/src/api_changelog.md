@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/16/2025
+- **CHANGE** for **URL**: /api/v2/datasets  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/search  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
+
 # 10/15/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
