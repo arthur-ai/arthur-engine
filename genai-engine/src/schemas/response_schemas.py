@@ -82,13 +82,13 @@ class DatasetVersionMetadataResponse(BaseModel):
     created_at: int = Field(
         description="Timestamp representing the time of dataset version creation in unix milliseconds.",
     )
+    dataset_id: UUID = Field(description="ID of the dataset.")
 
 
 class DatasetVersionResponse(DatasetVersionMetadataResponse):
     rows: list[DatasetVersionRowResponse] = Field(
         description="list of rows in the dataset version.",
     )
-    dataset_id: UUID = Field(description="ID of the dataset.")
     page: int = Field(description="The current page number for the included rows.")
     page_size: int = Field(description="The number of rows per page.")
     total_pages: int = Field(description="The total number of pages.")

@@ -1890,6 +1890,7 @@ class DatasetVersionRow(BaseModel):
 class DatasetVersionMetadata(BaseModel):
     version_number: int
     created_at: datetime
+    dataset_id: uuid.UUID
 
     @staticmethod
     def _from_database_model(
@@ -1898,17 +1899,18 @@ class DatasetVersionMetadata(BaseModel):
         return DatasetVersionMetadata(
             version_number=db_dataset_version.version_number,
             created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
         )
 
     def to_response_model(self) -> DatasetVersionMetadataResponse:
         return DatasetVersionMetadataResponse(
             version_number=self.version_number,
             created_at=_serialize_datetime(self.created_at),
+            dataset_id=self.dataset_id,
         )
 
 
 class DatasetVersion(DatasetVersionMetadata):
-    dataset_id: uuid.UUID
     rows: List[DatasetVersionRow]
     page: int = Field(description="The current page number for the included rows.")
     page_size: int = Field(description="The number of rows per page.")

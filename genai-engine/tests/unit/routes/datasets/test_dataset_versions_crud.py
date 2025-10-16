@@ -197,6 +197,7 @@ def test_dataset_versions_basic_functionality(
     # default sort is latest version first
     last_version = versions_response.versions[0]
     assert last_version.version_number == 2
+    assert last_version.dataset_id == dataset_id
     assert versions_response.page_size == 10
     assert versions_response.page == 0
     assert versions_response.total_pages == 1

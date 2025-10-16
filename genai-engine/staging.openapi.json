@@ -5588,12 +5588,19 @@
                         "type": "integer",
                         "title": "Created At",
                         "description": "Timestamp representing the time of dataset version creation in unix milliseconds."
+                    },
+                    "dataset_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Dataset Id",
+                        "description": "ID of the dataset."
                     }
                 },
                 "type": "object",
                 "required": [
                     "version_number",
-                    "created_at"
+                    "created_at",
+                    "dataset_id"
                 ],
                 "title": "DatasetVersionMetadataResponse"
             },
@@ -5604,16 +5611,16 @@
                         "title": "Version Number",
                         "description": "Version number of the dataset version."
                     },
+                    "created_at": {
+                        "type": "integer",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of dataset version creation in unix milliseconds."
+                    },
                     "dataset_id": {
                         "type": "string",
                         "format": "uuid",
                         "title": "Dataset Id",
                         "description": "ID of the dataset."
-                    },
-                    "created_at": {
-                        "type": "integer",
-                        "title": "Created At",
-                        "description": "Timestamp representing the time of dataset version creation in unix milliseconds."
                     },
                     "rows": {
                         "items": {
@@ -5647,8 +5654,8 @@
                 "type": "object",
                 "required": [
                     "version_number",
-                    "dataset_id",
                     "created_at",
+                    "dataset_id",
                     "rows",
                     "page",
                     "page_size",
