@@ -1,3 +1,4 @@
+from typing import Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -57,27 +58,15 @@ def get_validated_agentic_task(
 
 
 async def execute_prompt_completion(
-    agentic_prompt_service: AgenticPromptRepository,
     prompt: AgenticPrompt,
     run_config: AgenticPromptRunConfig,
-):
+) -> Union[AgenticPromptRunResponse, StreamingResponse]:
     """Helper to execute prompt completion with or without streaming"""
     if run_config.stream is None or run_config.stream == False:
-        return agentic_prompt_service.run_prompt_completion(prompt, run_config)
-
-    async def generate_prompt_stream():
-        async for chunk in agentic_prompt_service.stream_prompt_completion(
-            prompt,
-            run_config,
-        ):
-            if isinstance(chunk, str):
-                yield chunk
-            elif isinstance(chunk, AgenticPromptRunResponse):
-                yield "[END_STREAMING]"
-                yield chunk.model_dump_json()
+        return prompt.run_chat_completion(run_config)
 
     return StreamingResponse(
-        generate_prompt_stream(),
+        prompt.stream_chat_completion(run_config),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
@@ -161,6 +150,55 @@ def get_all_agentic_prompt_versions(
     description="Runs or streams an unsaved agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
+    responses={
+        200: {
+            "description": """An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event""",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": (
+                            "# Chunk event\n"
+                            "event: chunk\n"
+                            "data: {\n"
+                            '  "id": "string",\n'
+                            '  "created": 1760636425,\n'
+                            '  "model": "string",\n'
+                            '  "object": "string",\n'
+                            '  "system_fingerprint": "string",\n'
+                            '  "choices": [\n'
+                            "    {\n"
+                            '      "finish_reason": null,\n'
+                            '      "index": 0,\n'
+                            '      "delta": {\n'
+                            '        "provider_specific_fields": null,\n'
+                            '        "refusal": null,\n'
+                            '        "content": "string",\n'
+                            '        "role": null,\n'
+                            '        "function_call": null,\n'
+                            '        "tool_calls": null,\n'
+                            '        "audio": null\n'
+                            "      },\n"
+                            '      "logprobs": null\n'
+                            "    }\n"
+                            "  ],\n"
+                            '  "provider_specific_fields": null\n'
+                            "}\n\n"
+                            "# Final response event\n"
+                            "event: final_response\n"
+                            "data: {\n"
+                            '  "content": "string",\n'
+                            '  "tool_calls": [\n'
+                            '    "string"\n'
+                            "  ],\n"
+                            '  "cost": "string"\n'
+                            "}\n\n"
+                        ),
+                    },
+                },
+            },
+        },
+    },
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -181,9 +219,8 @@ async def run_agentic_prompt(
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(None)
-        prompt, run_config = unsaved_prompt._to_prompt_and_config()
+        prompt, run_config = unsaved_prompt.to_prompt_and_config()
         return await execute_prompt_completion(
-            agentic_prompt_service,
             prompt,
             run_config,
         )
@@ -199,6 +236,55 @@ async def run_agentic_prompt(
     description="Run or stream a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
+    responses={
+        200: {
+            "description": """An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event""",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": (
+                            "# Chunk event\n"
+                            "event: chunk\n"
+                            "data: {\n"
+                            '  "id": "string",\n'
+                            '  "created": 1760636425,\n'
+                            '  "model": "string",\n'
+                            '  "object": "string",\n'
+                            '  "system_fingerprint": "string",\n'
+                            '  "choices": [\n'
+                            "    {\n"
+                            '      "finish_reason": null,\n'
+                            '      "index": 0,\n'
+                            '      "delta": {\n'
+                            '        "provider_specific_fields": null,\n'
+                            '        "refusal": null,\n'
+                            '        "content": "string",\n'
+                            '        "role": null,\n'
+                            '        "function_call": null,\n'
+                            '        "tool_calls": null,\n'
+                            '        "audio": null\n'
+                            "      },\n"
+                            '      "logprobs": null\n'
+                            "    }\n"
+                            "  ],\n"
+                            '  "provider_specific_fields": null\n'
+                            "}\n\n"
+                            "# Final response event\n"
+                            "event: final_response\n"
+                            "data: {\n"
+                            '  "content": "string",\n'
+                            '  "tool_calls": [\n'
+                            '    "string"\n'
+                            "  ],\n"
+                            '  "cost": "string"\n'
+                            "}\n\n"
+                        ),
+                    },
+                },
+            },
+        },
+    },
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -226,7 +312,6 @@ async def run_saved_agentic_prompt(
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
         return await execute_prompt_completion(
-            agentic_prompt_service,
             prompt,
             run_config,
         )

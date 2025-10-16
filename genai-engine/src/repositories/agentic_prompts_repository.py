@@ -6,10 +6,8 @@ from sqlalchemy.orm import Session
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
-    AgenticPromptRunConfig,
     AgenticPrompts,
 )
-from schemas.response_schemas import AgenticPromptRunResponse
 
 
 class AgenticPromptRepository:
@@ -18,21 +16,6 @@ class AgenticPromptRepository:
 
     def create_prompt(self, **kwargs) -> AgenticPrompt:
         return AgenticPrompt(**kwargs)
-
-    def run_prompt_completion(
-        self,
-        prompt: AgenticPrompt,
-        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
-    ) -> AgenticPromptRunResponse:
-        return prompt.run_chat_completion(run_config)
-
-    async def stream_prompt_completion(
-        self,
-        prompt: AgenticPrompt,
-        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
-    ):
-        async for chunk in prompt.stream_chat_completion(run_config):
-            yield chunk
 
     def get_prompt(self, task_id: str, prompt_name: str) -> AgenticPrompt:
         """Get a prompt by task_id and name, return as AgenticPrompt object"""

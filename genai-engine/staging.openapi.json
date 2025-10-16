@@ -4442,11 +4442,17 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "# Chunk event\nevent: chunk\ndata: {\n  \"id\": \"string\",\n  \"created\": 1760636425,\n  \"model\": \"string\",\n  \"object\": \"string\",\n  \"system_fingerprint\": \"string\",\n  \"choices\": [\n    {\n      \"finish_reason\": null,\n      \"index\": 0,\n      \"delta\": {\n        \"provider_specific_fields\": null,\n        \"refusal\": null,\n        \"content\": \"string\",\n        \"role\": null,\n        \"function_call\": null,\n        \"tool_calls\": null,\n        \"audio\": null\n      },\n      \"logprobs\": null\n    }\n  ],\n  \"provider_specific_fields\": null\n}\n\n# Final response event\nevent: final_response\ndata: {\n  \"content\": \"string\",\n  \"tool_calls\": [\n    \"string\"\n  ],\n  \"cost\": \"string\"\n}\n\n"
                                 }
                             }
                         }
@@ -4527,11 +4533,17 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "# Chunk event\nevent: chunk\ndata: {\n  \"id\": \"string\",\n  \"created\": 1760636425,\n  \"model\": \"string\",\n  \"object\": \"string\",\n  \"system_fingerprint\": \"string\",\n  \"choices\": [\n    {\n      \"finish_reason\": null,\n      \"index\": 0,\n      \"delta\": {\n        \"provider_specific_fields\": null,\n        \"refusal\": null,\n        \"content\": \"string\",\n        \"role\": null,\n        \"function_call\": null,\n        \"tool_calls\": null,\n        \"audio\": null\n      },\n      \"logprobs\": null\n    }\n  ],\n  \"provider_specific_fields\": null\n}\n\n# Final response event\nevent: final_response\ndata: {\n  \"content\": \"string\",\n  \"tool_calls\": [\n    \"string\"\n  ],\n  \"cost\": \"string\"\n}\n\n"
                                 }
                             }
                         }

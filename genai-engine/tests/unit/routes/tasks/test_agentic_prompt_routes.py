@@ -478,22 +478,20 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
 
 @pytest.mark.unit_tests
-@patch(
-    "repositories.agentic_prompts_repository.AgenticPromptRepository.stream_prompt_completion",
-)
-@patch("litellm.completion_cost")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
+@patch("schemas.agentic_prompt_schemas.AgenticPrompt.stream_chat_completion")
 def test_streaming_agentic_prompt(
+    mock_stream_chat_completion,
     mock_completion_cost,
-    mock_stream_prompt_completion,
     client: GenaiEngineTestClientBase,
 ):
     """Test streaming works for both unsaved and saved agentic prompts"""
 
     async def mock_stream(*args, **kwargs):
         for chunk in ["chunk1", "chunk2", "chunk3"]:
-            yield chunk
+            yield f"event: chunk\ndata: {chunk}\n\n"
 
-    mock_stream_prompt_completion.side_effect = mock_stream
+    mock_stream_chat_completion.side_effect = mock_stream
     mock_completion_cost.return_value = 0.001
 
     # Create an agentic task

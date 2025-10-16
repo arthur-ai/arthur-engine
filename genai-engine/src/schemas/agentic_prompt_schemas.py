@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import acompletion, completion, completion_cost, stream_chunk_builder
@@ -408,18 +408,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
     async def stream_chat_completion(
         self,
         run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
-    ):
+    ) -> AsyncGenerator[str, None]:
         model, completion_params = self._get_completion_params(run_config)
         response = await acompletion(model=model, **completion_params)
 
         collected_chunks = []
         async for chunk in response:
             collected_chunks.append(chunk)
-
-            if chunk.choices and chunk.choices[0].delta:
-                delta = chunk.choices[0].delta.get("content", "")
-                if delta:
-                    yield delta
+            yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
 
         # Build complete response from chunks
         complete_response = stream_chunk_builder(
@@ -430,11 +426,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         cost = completion_cost(complete_response)
         msg = complete_response.choices[0].message
 
-        yield AgenticPromptRunResponse(
-            content=msg.get("content"),
-            tool_calls=msg.get("tool_calls"),
-            cost=f"{cost:.6f}",
-        )
+        # yield the final response
+        yield f"event: final_response\ndata: {
+            AgenticPromptRunResponse(
+                content=msg.get("content"),
+                tool_calls=msg.get("tool_calls"),
+                cost=f"{cost:.6f}",
+            ).model_dump_json()
+        }\n\n"
 
     @model_serializer(mode="wrap")
     def serialize_model(self, serializer):
@@ -543,7 +542,7 @@ class AgenticPromptUnsavedRunConfig(AgenticPromptBaseConfig):
         description="Run configuration for the unsaved prompt",
     )
 
-    def _to_prompt_and_config(self) -> Tuple[AgenticPrompt, AgenticPromptRunConfig]:
+    def to_prompt_and_config(self) -> Tuple[AgenticPrompt, AgenticPromptRunConfig]:
         prompt = AgenticPrompt(
             name="test_unsaved_prompt",
             **self.model_dump(exclude={"run_config"}),
