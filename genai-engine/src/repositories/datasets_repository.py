@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from db_models import DatabaseDataset
 from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
-from schemas.internal_schemas import Dataset, DatasetVersion
+from schemas.internal_schemas import Dataset, DatasetVersion, ListDatasetVersions
 from schemas.request_schemas import DatasetUpdateRequest, NewDatasetVersionRequest
 
 logger = logging.getLogger(__name__)
@@ -203,3 +203,50 @@ class DatasetRepository:
         )
         self.db_session.add(dataset_version._to_database_model())
         self.db_session.commit()
+
+    def get_dataset_versions(
+        self,
+        dataset_id: UUID,
+        latest_version_only: bool,
+        pagination_params: PaginationParameters,
+    ) -> ListDatasetVersions:
+        base_query = self.db_session.query(DatabaseDatasetVersion).filter(
+            DatabaseDatasetVersion.dataset_id == dataset_id,
+        )
+
+        # get total count before applying additional filters
+        total_count = base_query.count()
+
+        # get first dataset in descending order if latest_version_only filter is set
+        applied_page_params = (
+            PaginationParameters(
+                sort=PaginationSortMethod.DESCENDING,
+                page_size=1,
+                page=0,
+            )
+            if latest_version_only
+            else pagination_params
+        )
+
+        total_count = 1 if latest_version_only and total_count != 0 else total_count
+
+        # apply pagination
+        if applied_page_params.sort == PaginationSortMethod.ASCENDING:
+            base_query = base_query.order_by(
+                DatabaseDatasetVersion.version_number.asc(),
+            )
+        else:
+            base_query = base_query.order_by(
+                DatabaseDatasetVersion.version_number.desc(),
+            )
+
+        offset = applied_page_params.page * applied_page_params.page_size
+        dataset_versions = (
+            base_query.offset(offset).limit(applied_page_params.page_size).all()
+        )
+
+        return ListDatasetVersions._from_database_model(
+            dataset_versions,
+            total_count,
+            pagination_params,
+        )

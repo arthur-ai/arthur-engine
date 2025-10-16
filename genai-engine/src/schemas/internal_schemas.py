@@ -109,10 +109,12 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
     DatasetResponse,
+    DatasetVersionMetadataResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
     DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
+    ListDatasetVersionsResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -1885,10 +1887,30 @@ class DatasetVersionRow(BaseModel):
         )
 
 
-class DatasetVersion(BaseModel):
+class DatasetVersionMetadata(BaseModel):
     version_number: int
     created_at: datetime
     dataset_id: uuid.UUID
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version: DatabaseDatasetVersion,
+    ) -> "DatasetVersionMetadata":
+        return DatasetVersionMetadata(
+            version_number=db_dataset_version.version_number,
+            created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
+        )
+
+    def to_response_model(self) -> DatasetVersionMetadataResponse:
+        return DatasetVersionMetadataResponse(
+            version_number=self.version_number,
+            created_at=_serialize_datetime(self.created_at),
+            dataset_id=self.dataset_id,
+        )
+
+
+class DatasetVersion(DatasetVersionMetadata):
     rows: List[DatasetVersionRow]
     page: int = Field(description="The current page number for the included rows.")
     page_size: int = Field(description="The number of rows per page.")
@@ -1910,7 +1932,6 @@ class DatasetVersion(BaseModel):
         """
         # assemble data rows
         ids_rows_to_update = set(row.id for row in new_version.rows_to_update)
-        existing_row_ids = set(db_row.id for db_row in latest_version.version_rows)
         if latest_version is not None:
             unchanged_rows = [
                 DatasetVersionRow._from_database_model(db_row)
@@ -1918,6 +1939,7 @@ class DatasetVersion(BaseModel):
                 if db_row.id not in new_version.rows_to_delete
                 and db_row.id not in ids_rows_to_update
             ]
+            existing_row_ids = set(db_row.id for db_row in latest_version.version_rows)
         elif latest_version is None and new_version.rows_to_update:
             raise HTTPException(
                 status_code=400,
@@ -1925,6 +1947,7 @@ class DatasetVersion(BaseModel):
             )
         else:
             unchanged_rows = []
+            existing_row_ids = set()
 
         # validate updated rows do exist in the last version while creating updated_rows object
         updated_rows = []
@@ -2037,4 +2060,44 @@ class DatasetVersion(BaseModel):
                 else 0
             ),
             total_count=total_count,
+        )
+
+
+class ListDatasetVersions(BaseModel):
+    versions: List[DatasetVersionMetadata]
+    page: int = Field(description="The current page number for the included versions.")
+    page_size: int = Field(description="The number of versions per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of versions for the dataset.",
+    )
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_versions: List[DatabaseDatasetVersion],
+        total_count: int,
+        pagination_params: PaginationParameters,
+    ) -> "ListDatasetVersions":
+        return ListDatasetVersions(
+            versions=[
+                DatasetVersionMetadata._from_database_model(db_dataset_version)
+                for db_dataset_version in db_dataset_versions
+            ],
+            page=pagination_params.page,
+            page_size=pagination_params.page_size,
+            total_pages=(
+                pagination_params.calculate_total_pages(total_count)
+                if total_count > 0
+                else 0
+            ),
+            total_count=total_count,
+        )
+
+    def to_response_model(self) -> ListDatasetVersionsResponse:
+        return ListDatasetVersionsResponse(
+            versions=[version.to_response_model() for version in self.versions],
+            page=self.page,
+            page_size=self.page_size,
+            total_pages=self.total_pages,
+            total_count=self.total_count,
         )
