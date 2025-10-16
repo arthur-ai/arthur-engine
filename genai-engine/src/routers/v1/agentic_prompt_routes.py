@@ -15,9 +15,9 @@ from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptBaseConfig,
-    AgenticPromptRunConfig,
     AgenticPrompts,
-    AgenticPromptUnsavedRunConfig,
+    CompletionRequest,
+    PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
@@ -59,14 +59,14 @@ def get_validated_agentic_task(
 
 async def execute_prompt_completion(
     prompt: AgenticPrompt,
-    run_config: AgenticPromptRunConfig,
+    completion_request: PromptCompletionRequest,
 ) -> Union[AgenticPromptRunResponse, StreamingResponse]:
     """Helper to execute prompt completion with or without streaming"""
-    if run_config.stream is None or run_config.stream == False:
-        return prompt.run_chat_completion(run_config)
+    if completion_request.stream is None or completion_request.stream == False:
+        return prompt.run_chat_completion(completion_request)
 
     return StreamingResponse(
-        prompt.stream_chat_completion(run_config),
+        prompt.stream_chat_completion(completion_request),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
@@ -203,7 +203,7 @@ def get_all_agentic_prompt_versions(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_agentic_prompt(
-    unsaved_prompt: AgenticPromptUnsavedRunConfig,
+    unsaved_prompt: CompletionRequest,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """
@@ -211,7 +211,7 @@ async def run_agentic_prompt(
     Note: For streaming, the response will be a StreamingResponse object.
 
     Args:
-        unsaved_prompt: AgenticPromptUnsavedRunConfig
+        unsaved_prompt: CompletionRequest
         current_user: User
 
     Returns:
@@ -219,10 +219,10 @@ async def run_agentic_prompt(
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(None)
-        prompt, run_config = unsaved_prompt.to_prompt_and_config()
+        prompt, completion_request = unsaved_prompt.to_prompt_and_request()
         return await execute_prompt_completion(
             prompt,
-            run_config,
+            completion_request,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -291,7 +291,7 @@ async def run_agentic_prompt(
 async def run_saved_agentic_prompt(
     prompt_name: str,
     prompt_version: str,
-    run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+    completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -301,8 +301,11 @@ async def run_saved_agentic_prompt(
     Note: For streaming, the response will be a StreamingResponse object.
 
     Args:
-        unsaved_prompt: AgenticPromptUnsavedRunConfig
+        prompt_name: str
+        prompt_version: str
+        completion_request: PromptCompletionRequest
         current_user: User
+        task: Task
 
     Returns:
         AgenticPromptRunResponse or StreamingResponse
@@ -313,7 +316,7 @@ async def run_saved_agentic_prompt(
         prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
         return await execute_prompt_completion(
             prompt,
-            run_config,
+            completion_request,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

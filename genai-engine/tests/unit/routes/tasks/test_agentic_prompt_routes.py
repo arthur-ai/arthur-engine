@@ -499,7 +499,7 @@ def test_streaming_agentic_prompt(
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
-    # Run a streaming prompt (with stream=True in run_config)
+    # Run a streaming prompt (with stream=True in completion_request)
     prompt_data = {
         "name": "streaming_prompt",
         "messages": [{"role": "user", "content": "Stream this"}],
@@ -508,9 +508,9 @@ def test_streaming_agentic_prompt(
         "temperature": 0.7,
     }
 
-    run_config = {"stream": True}
+    completion_request = {"stream": True}
     unsaved_run_data = prompt_data.copy()
-    unsaved_run_data["run_config"] = run_config
+    unsaved_run_data["completion_request"] = completion_request
 
     # Test streaming an unsaved prompt
     with client.base_client.stream(
@@ -537,7 +537,7 @@ def test_streaming_agentic_prompt(
     with client.base_client.stream(
         "POST",
         f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
-        json=run_config,
+        json=completion_request,
         headers=client.authorized_user_api_key_headers,
     ) as response:
         assert response.status_code == 200

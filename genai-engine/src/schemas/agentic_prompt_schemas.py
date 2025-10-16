@@ -1,5 +1,6 @@
+import warnings
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
+from typing import AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import acompletion, completion, completion_cost, stream_chunk_builder
@@ -8,9 +9,7 @@ from pydantic import (
     BaseModel,
     Field,
     PrivateAttr,
-    computed_field,
     field_validator,
-    model_serializer,
     model_validator,
 )
 
@@ -24,6 +23,12 @@ from schemas.enums import (
     ToolChoiceEnum,
 )
 from schemas.response_schemas import AgenticPromptRunResponse
+
+warnings.filterwarnings(
+    "ignore",
+    message='Field name "schema".*shadows an attribute in parent "BaseModel"',
+    category=UserWarning,
+)
 
 
 class StreamOptions(BaseModel):
@@ -48,7 +53,7 @@ class LogitBiasItem(BaseModel):
     )
 
 
-class AgenticPromptRunConfig(BaseModel):
+class PromptCompletionRequest(BaseModel):
     """Request schema for running an agentic prompt"""
 
     variables: Optional[List[VariableTemplateValue]] = Field(
@@ -95,13 +100,16 @@ class ToolCallFunction(BaseModel):
 
 
 class ToolCall(BaseModel):
+    type: str = Field(
+        default="function",
+        description="The type of tool call. Currently the only type supported is 'function'.",
+    )
     id: str = Field(..., description="Unique identifier for the tool call")
     function: ToolCallFunction = Field(..., description="Function details")
 
-    # The type of tool call. Currently the only type supported is 'function'. Type is still a required parameter to recognize a message as a tool call.
-    # This field is set here so users can still set what looks like valid Json on their end and we won't throw errors for misformatted types.
-    @computed_field(return_type=str)
-    def type(self) -> str:
+    @field_validator("type", mode="before")
+    @classmethod
+    def force_type(cls, v):
         return "function"
 
 
@@ -121,88 +129,52 @@ class AgenticPromptMessage(BaseModel):
         use_enum_values = True
 
 
-class LLMTool(BaseModel):
+class ToolFunction(BaseModel):
     name: str = Field(..., description="The name of the tool/function")
     description: Optional[str] = Field(
         default=None,
         description="Description of what the tool does",
     )
-    function_definition: Optional[JsonSchema] = Field(
+    parameters: Optional[JsonSchema] = Field(
         default=None,
         description="The function's parameter schema",
     )
+
+
+class LLMTool(BaseModel):
+    type: str = Field(
+        default="function",
+        description="The type of tool. Should always be 'function'",
+    )
+    function: ToolFunction = Field(..., description="The function definition")
     strict: Optional[bool] = Field(
         default=None,
         description="Whether the function definition should use OpenAI's strict mode",
     )
 
-    def to_dict(self) -> Dict[str, Any]:
-        result = {"type": "function", "function": {"name": self.name}}
-
-        if self.description:
-            result["function"]["description"] = self.description
-
-        if self.strict is not None:
-            result["strict"] = self.strict
-
-        if self.function_definition:
-            result["function"]["parameters"] = self.function_definition.to_dict()
-
-        return result
-
+    @field_validator("type", mode="before")
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMTool":
-        function_definition = None
-        if "parameters" in data["function"]:
-            function_definition = JsonSchema.from_dict(data["function"]["parameters"])
-
-        return cls(
-            name=data["function"]["name"],
-            description=data["function"].get("description"),
-            function_definition=function_definition,
-            strict=data.get("strict"),
-        )
+    def force_type(cls, v):
+        return "function"
 
 
 class LLMResponseSchema(BaseModel):
     name: str = Field(..., description="Name of the schema")
     description: Optional[str] = Field(None, description="Description of the schema")
-    json_schema: JsonSchema = Field(..., description="The JSON schema object")
+    schema: JsonSchema = Field(..., description="The JSON schema object")
     strict: Optional[bool] = Field(
         None,
         description="Whether to enforce strict schema adherence",
     )
-
-    def to_dict(self) -> Dict[str, Any]:
-        result = {
-            "name": self.name,
-            "schema": self.json_schema.to_dict(),
-        }
-
-        if self.description:
-            result["description"] = self.description
-
-        if self.strict is not None:
-            result["strict"] = self.strict
-
-        return result
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMResponseSchema":
-        return cls(
-            name=data["name"],
-            description=data.get("description"),
-            json_schema=JsonSchema.from_dict(data["schema"]),
-            strict=data.get("strict"),
-        )
 
 
 class LLMResponseFormat(BaseModel):
     type: LLMResponseFormatEnum = Field(
         ...,
         description="Response format type: 'text', 'json_object', or 'json_schema'",
+        example="json_schema",
     )
-    response_schema: Optional[LLMResponseSchema] = Field(
+    json_schema: Optional[LLMResponseSchema] = Field(
         None,
         description="JSON schema definition (required when type is 'json_schema')",
     )
@@ -210,23 +182,25 @@ class LLMResponseFormat(BaseModel):
     class Config:
         use_enum_values = True
 
-    def to_dict(self) -> Dict[str, Any]:
-        result = {"type": self.type}
 
-        if self.response_schema:
-            result["json_schema"] = self.response_schema.to_dict()
+class ToolChoiceFunction(BaseModel):
+    name: str = Field(..., description="The name of the function")
 
-        return result
 
+class ToolChoice(BaseModel):
+    type: str = Field(
+        default="function",
+        description="The type of tool choice. Should always be 'function'",
+    )
+    function: Optional[ToolChoiceFunction] = Field(
+        None,
+        description="The tool choice fucntion name",
+    )
+
+    @field_validator("type", mode="before")
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LLMResponseFormat":
-        if data.get("type") == "json_schema" and "json_schema" in data:
-            return cls(
-                type=data["type"],
-                response_schema=LLMResponseSchema.from_dict(data["json_schema"]),
-            )
-        else:
-            return cls(type=data["type"])
+    def force_type(cls, v):
+        return "function"
 
 
 class AgenticPromptBaseConfig(BaseModel):
@@ -243,7 +217,7 @@ class AgenticPromptBaseConfig(BaseModel):
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
     )
-    tool_choice: Optional[Union[ToolChoiceEnum, str]] = Field(
+    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
         None,
         description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
     )
@@ -312,62 +286,13 @@ class AgenticPromptBaseConfig(BaseModel):
     class Config:
         use_enum_values = True
 
-    @field_validator("tools", mode="before")
-    @classmethod
-    def convert_tools(cls, v):
-        if v is None:
-            return v
-
-        return [
-            LLMTool.from_dict(tool) if isinstance(tool, dict) else tool for tool in v
-        ]
-
-    @field_validator("response_format", mode="before")
-    @classmethod
-    def convert_response_format(cls, v):
-        if v is None:
-            return v
-        if isinstance(v, dict):
-            return LLMResponseFormat.from_dict(v)
-        return v
-
-    def model_dump(self, **kwargs):
-        """Override to auto-format tool_choice before dumping."""
-        data = super().model_dump(**kwargs)
-        tool_choice = data.get("tool_choice")
-
-        if data.get("messages"):
-            data["messages"] = [
-                message.model_dump(exclude_none=True) for message in self.messages
-            ]
-
-        if data.get("tools"):
-            data["tools"] = [tool.to_dict() for tool in self.tools]
-
-        if data.get("response_format") and self.response_format:
-            data["response_format"] = self.response_format.to_dict()
-
-        if isinstance(tool_choice, ToolChoiceEnum):
-            data["tool_choice"] = tool_choice.value
-        elif isinstance(tool_choice, str) and tool_choice not in {
-            "auto",
-            "none",
-            "required",
-        }:
-            data["tool_choice"] = {
-                "type": "function",
-                "function": {"name": tool_choice},
-            }
-
-        return data
-
 
 class AgenticPrompt(AgenticPromptBaseConfig):
     name: str = Field(description="Name of the agentic prompt")
 
     def _get_completion_params(
         self,
-        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+        completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
         model = self.model_provider + "/" + self.model_name
 
@@ -375,13 +300,13 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             exclude={"name", "model_name", "model_provider"},
         )
 
-        if run_config.variables:
-            completion_params["messages"] = run_config.replace_variables(
+        if completion_request.variables:
+            completion_params["messages"] = completion_request.replace_variables(
                 completion_params["messages"],
             )
 
-        if run_config.stream is not None:
-            completion_params["stream"] = run_config.stream
+        if completion_request.stream is not None:
+            completion_params["stream"] = completion_request.stream
 
         # not allowed to have tool_choice if no tools are provided
         if self.tools is None:
@@ -391,9 +316,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
     def run_chat_completion(
         self,
-        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+        completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
-        model, completion_params = self._get_completion_params(run_config)
+        model, completion_params = self._get_completion_params(completion_request)
         response = completion(model=model, **completion_params)
 
         cost = completion_cost(response)
@@ -407,9 +332,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
     async def stream_chat_completion(
         self,
-        run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+        completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AsyncGenerator[str, None]:
-        model, completion_params = self._get_completion_params(run_config)
+        model, completion_params = self._get_completion_params(completion_request)
         response = await acompletion(model=model, **completion_params)
 
         collected_chunks = []
@@ -435,25 +360,6 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             ).model_dump_json()
         }\n\n"
 
-    @model_serializer(mode="wrap")
-    def serialize_model(self, serializer):
-        data = serializer(self)
-
-        if data.get("tools"):
-            data["tools"] = [tool.to_dict() for tool in self.tools]
-
-        if data.get("response_format") and self.response_format:
-            data["response_format"] = self.response_format.to_dict()
-
-        tool_choice = data.get("tool_choice")
-        if tool_choice is not None and tool_choice not in ["auto", "none", "required"]:
-            data["tool_choice"] = {
-                "type": "function",
-                "function": {"name": tool_choice},
-            }
-
-        return data
-
     @classmethod
     def from_db_model(cls, db_prompt: DatabaseAgenticPrompt) -> "AgenticPrompt":
         # Base fields that map directly
@@ -465,30 +371,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "tools": db_prompt.tools,
         }
 
-        if db_prompt.tools:
-            base_fields["tools"] = [LLMTool.from_dict(tool) for tool in db_prompt.tools]
-
         # Merge in config JSON if present (LLM parameters)
         if db_prompt.config:
-            config = db_prompt.config.copy()
-
-            if "tool_choice" in config:
-                if isinstance(config["tool_choice"], dict):
-                    config["tool_choice"] = config["tool_choice"]["function"]["name"]
-                elif isinstance(config["tool_choice"], str) and config[
-                    "tool_choice"
-                ] in ["auto", "none", "required"]:
-                    config["tool_choice"] = ToolChoiceEnum(config["tool_choice"])
-
-            if "response_format" in config and isinstance(
-                config["response_format"],
-                dict,
-            ):
-                config["response_format"] = LLMResponseFormat.from_dict(
-                    config["response_format"],
-                )
-
-            base_fields.update(config)
+            base_fields.update(db_prompt.config)
 
         return cls(**base_fields)
 
@@ -530,24 +415,21 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             config=config or None,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
-        return self.model_dump()
 
-
-class AgenticPromptUnsavedRunConfig(AgenticPromptBaseConfig):
+class CompletionRequest(AgenticPromptBaseConfig):
     """Request schema for running an unsaved agentic prompt"""
 
-    run_config: AgenticPromptRunConfig = Field(
-        default=AgenticPromptRunConfig(),
+    completion_request: PromptCompletionRequest = Field(
+        default=PromptCompletionRequest(),
         description="Run configuration for the unsaved prompt",
     )
 
-    def to_prompt_and_config(self) -> Tuple[AgenticPrompt, AgenticPromptRunConfig]:
+    def to_prompt_and_request(self) -> Tuple[AgenticPrompt, PromptCompletionRequest]:
         prompt = AgenticPrompt(
             name="test_unsaved_prompt",
-            **self.model_dump(exclude={"run_config"}),
+            **self.model_dump(exclude={"completion_request"}),
         )
-        return prompt, self.run_config
+        return prompt, self.completion_request
 
 
 class AgenticPrompts(BaseModel):
