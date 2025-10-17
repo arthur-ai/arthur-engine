@@ -33,7 +33,7 @@ services:
       - GENAI_ENGINE_INGRESS_URI=http://localhost:3030
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
       # Key used for encrypting secrets, generate a random string if not using
-      # the setup-and-start scripts
+      # the setup-and-start scripts to populate one in the .env file
       # openssl rand -base64 32
       # - GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
     env_file:
