@@ -4662,14 +4662,14 @@
                 "tags": [
                     "AgenticPrompt"
                 ],
-                "summary": "Run an agentic prompt",
-                "description": "Run an agentic prompt",
+                "summary": "Run/Stream an unsaved agentic prompt",
+                "description": "Runs or streams an unsaved agentic prompt",
                 "operationId": "run_agentic_prompt_api_v1_completions_post",
                 "requestBody": {
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/AgenticPromptUnsavedRunConfig"
+                                "$ref": "#/components/schemas/CompletionRequest"
                             }
                         }
                     },
@@ -4677,11 +4677,17 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "# Chunk event\nevent: chunk\ndata: {\n  \"id\": \"string\",\n  \"created\": 1760636425,\n  \"model\": \"string\",\n  \"object\": \"string\",\n  \"system_fingerprint\": \"string\",\n  \"choices\": [\n    {\n      \"finish_reason\": null,\n      \"index\": 0,\n      \"delta\": {\n        \"provider_specific_fields\": null,\n        \"refusal\": null,\n        \"content\": \"string\",\n        \"role\": null,\n        \"function_call\": null,\n        \"tool_calls\": null,\n        \"audio\": null\n      },\n      \"logprobs\": null\n    }\n  ],\n  \"provider_specific_fields\": null\n}\n\n# Final response event\nevent: final_response\ndata: {\n  \"content\": \"string\",\n  \"tool_calls\": [\n    \"string\"\n  ],\n  \"cost\": \"string\"\n}\n\n"
                                 }
                             }
                         }
@@ -4709,8 +4715,8 @@
                 "tags": [
                     "AgenticPrompt"
                 ],
-                "summary": "Run a specific version of an agentic prompt",
-                "description": "Run a specific version of an existing agentic prompt",
+                "summary": "Run/Stream a specific version of an agentic prompt",
+                "description": "Run or stream a specific version of an existing agentic prompt",
                 "operationId": "run_saved_agentic_prompt_api_v1_task__task_id__prompt__prompt_name__versions__prompt_version__completions_post",
                 "security": [
                     {
@@ -4751,7 +4757,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                                "$ref": "#/components/schemas/PromptCompletionRequest",
                                 "default": {
                                     "variables": [],
                                     "stream": false
@@ -4762,11 +4768,17 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Successful Response",
+                        "description": "An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticPromptRunResponse"
+                                }
+                            },
+                            "text/event-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "# Chunk event\nevent: chunk\ndata: {\n  \"id\": \"string\",\n  \"created\": 1760636425,\n  \"model\": \"string\",\n  \"object\": \"string\",\n  \"system_fingerprint\": \"string\",\n  \"choices\": [\n    {\n      \"finish_reason\": null,\n      \"index\": 0,\n      \"delta\": {\n        \"provider_specific_fields\": null,\n        \"refusal\": null,\n        \"content\": \"string\",\n        \"role\": null,\n        \"function_call\": null,\n        \"tool_calls\": null,\n        \"audio\": null\n      },\n      \"logprobs\": null\n    }\n  ],\n  \"provider_specific_fields\": null\n}\n\n# Final response event\nevent: final_response\ndata: {\n  \"content\": \"string\",\n  \"tool_calls\": [\n    \"string\"\n  ],\n  \"cost\": \"string\"\n}\n\n"
                                 }
                             }
                         }
@@ -6178,7 +6190,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "$ref": "#/components/schemas/ProviderEnum",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6202,7 +6214,7 @@
                                 "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoice"
                             },
                             {
                                 "type": "null"
@@ -6433,7 +6445,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
+                        "$ref": "#/components/schemas/ProviderEnum",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6457,7 +6469,7 @@
                                 "$ref": "#/components/schemas/ToolChoiceEnum"
                             },
                             {
-                                "type": "string"
+                                "$ref": "#/components/schemas/ToolChoice"
                             },
                             {
                                 "type": "null"
@@ -6688,7 +6700,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/ToolCall-Input"
+                                    "$ref": "#/components/schemas/ToolCall"
                                 },
                                 "type": "array"
                             },
@@ -6740,7 +6752,7 @@
                         "anyOf": [
                             {
                                 "items": {
-                                    "$ref": "#/components/schemas/ToolCall-Output"
+                                    "$ref": "#/components/schemas/ToolCall"
                                 },
                                 "type": "array"
                             },
@@ -6769,42 +6781,6 @@
                     "role"
                 ],
                 "title": "AgenticPromptMessage"
-            },
-            "AgenticPromptRunConfig": {
-                "properties": {
-                    "variables": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/VariableTemplateValue"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Variables",
-                        "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
-                        "default": []
-                    },
-                    "stream": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stream",
-                        "description": "Whether to stream the response",
-                        "default": false
-                    }
-                },
-                "type": "object",
-                "title": "AgenticPromptRunConfig",
-                "description": "Request schema for running an agentic prompt"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -6843,264 +6819,6 @@
                     "cost"
                 ],
                 "title": "AgenticPromptRunResponse"
-            },
-            "AgenticPromptUnsavedRunConfig": {
-                "properties": {
-                    "messages": {
-                        "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
-                        },
-                        "type": "array",
-                        "title": "Messages",
-                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
-                    },
-                    "model_name": {
-                        "type": "string",
-                        "title": "Model Name",
-                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
-                    },
-                    "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
-                    },
-                    "tools": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LLMTool-Input"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tools",
-                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
-                    },
-                    "tool_choice": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ToolChoiceEnum"
-                            },
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
-                    },
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timeout",
-                        "description": "Request timeout in seconds"
-                    },
-                    "temperature": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Temperature",
-                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
-                    },
-                    "top_p": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top P",
-                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
-                    },
-                    "max_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Tokens",
-                        "description": "Maximum number of tokens to generate in the response"
-                    },
-                    "response_format": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
-                    },
-                    "stop": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stop",
-                        "description": "Stop sequence(s) where the model should stop generating"
-                    },
-                    "presence_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Presence Penalty",
-                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
-                    },
-                    "frequency_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Frequency Penalty",
-                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
-                    },
-                    "seed": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Seed",
-                        "description": "Random seed for reproducible outputs"
-                    },
-                    "logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logprobs",
-                        "description": "Whether to return log probabilities of output tokens"
-                    },
-                    "top_logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Logprobs",
-                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
-                    },
-                    "logit_bias": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LogitBiasItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logit Bias",
-                        "description": "Modify likelihood of specified tokens appearing in completion"
-                    },
-                    "max_completion_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Completion Tokens",
-                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
-                    },
-                    "reasoning_effort": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ReasoningEffortEnum"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
-                    },
-                    "thinking": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Anthropic-specific thinking parameter for Claude models"
-                    },
-                    "stream_options": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/StreamOptions"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Additional streaming configuration options"
-                    },
-                    "run_config": {
-                        "$ref": "#/components/schemas/AgenticPromptRunConfig",
-                        "description": "Run configuration for the unsaved prompt",
-                        "default": {
-                            "variables": [],
-                            "stream": false
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "messages",
-                    "model_name",
-                    "model_provider"
-                ],
-                "title": "AgenticPromptUnsavedRunConfig",
-                "description": "Request schema for running an unsaved agentic prompt"
             },
             "AgenticPrompts": {
                 "properties": {
@@ -7449,6 +7167,264 @@
                 ],
                 "title": "ChatResponse"
             },
+            "CompletionRequest": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ProviderEnum",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ToolChoice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    },
+                    "completion_request": {
+                        "$ref": "#/components/schemas/PromptCompletionRequest",
+                        "description": "Run configuration for the unsaved prompt",
+                        "default": {
+                            "variables": [],
+                            "stream": false
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider"
+                ],
+                "title": "CompletionRequest",
+                "description": "Request schema for running an unsaved agentic prompt"
+            },
             "ConversationBaseResponse": {
                 "properties": {
                     "id": {
@@ -7635,13 +7611,22 @@
                         "format": "uuid",
                         "title": "Dataset Id",
                         "description": "ID of the dataset."
+                    },
+                    "column_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Column Names",
+                        "description": "Names of all columns in the dataset version."
                     }
                 },
                 "type": "object",
                 "required": [
                     "version_number",
                     "created_at",
-                    "dataset_id"
+                    "dataset_id",
+                    "column_names"
                 ],
                 "title": "DatasetVersionMetadataResponse"
             },
@@ -7662,6 +7647,14 @@
                         "format": "uuid",
                         "title": "Dataset Id",
                         "description": "ID of the dataset."
+                    },
+                    "column_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Column Names",
+                        "description": "Names of all columns in the dataset version."
                     },
                     "rows": {
                         "items": {
@@ -7697,6 +7690,7 @@
                     "version_number",
                     "created_at",
                     "dataset_id",
+                    "column_names",
                     "rows",
                     "page",
                     "page_size",
@@ -8416,11 +8410,6 @@
             },
             "JsonPropertySchema": {
                 "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "The name of the argument"
-                    },
                     "type": {
                         "type": "string",
                         "title": "Type",
@@ -8466,9 +8455,6 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "name"
-                ],
                 "title": "JsonPropertySchema"
             },
             "JsonSchema": {
@@ -8479,12 +8465,12 @@
                         "default": "object"
                     },
                     "properties": {
-                        "items": {
+                        "additionalProperties": {
                             "$ref": "#/components/schemas/JsonPropertySchema"
                         },
-                        "type": "array",
+                        "type": "object",
                         "title": "Properties",
-                        "description": "The properties of the function"
+                        "description": "The name of the property and the property schema (e.g. {'topic': {'type': 'string', 'description': 'the topic to generate a joke for'})"
                     },
                     "required": {
                         "items": {
@@ -8494,7 +8480,7 @@
                         "title": "Required",
                         "description": "The required properties of the function"
                     },
-                    "additional_properties": {
+                    "additionalProperties": {
                         "anyOf": [
                             {
                                 "type": "boolean"
@@ -8503,7 +8489,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Additional Properties",
+                        "title": "Additionalproperties",
                         "description": "Whether the function definition should allow additional properties"
                     }
                 },
@@ -8592,9 +8578,10 @@
                 "properties": {
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
-                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'",
+                        "example": "json_schema"
                     },
-                    "response_schema": {
+                    "json_schema": {
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/LLMResponseSchema-Input"
@@ -8616,9 +8603,10 @@
                 "properties": {
                     "type": {
                         "$ref": "#/components/schemas/LLMResponseFormatEnum",
-                        "description": "Response format type: 'text', 'json_object', or 'json_schema'"
+                        "description": "Response format type: 'text', 'json_object', or 'json_schema'",
+                        "example": "json_schema"
                     },
-                    "response_schema": {
+                    "json_schema": {
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/LLMResponseSchema-Output"
@@ -8664,7 +8652,7 @@
                         "title": "Description",
                         "description": "Description of the schema"
                     },
-                    "json_schema": {
+                    "schema": {
                         "$ref": "#/components/schemas/JsonSchema",
                         "description": "The JSON schema object"
                     },
@@ -8684,7 +8672,7 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "json_schema"
+                    "schema"
                 ],
                 "title": "LLMResponseSchema"
             },
@@ -8707,7 +8695,7 @@
                         "title": "Description",
                         "description": "Description of the schema"
                     },
-                    "json_schema": {
+                    "schema": {
                         "$ref": "#/components/schemas/JsonSchema",
                         "description": "The JSON schema object"
                     },
@@ -8727,39 +8715,21 @@
                 "type": "object",
                 "required": [
                     "name",
-                    "json_schema"
+                    "schema"
                 ],
                 "title": "LLMResponseSchema"
             },
             "LLMTool-Input": {
                 "properties": {
-                    "name": {
+                    "type": {
                         "type": "string",
-                        "title": "Name",
-                        "description": "The name of the tool/function"
+                        "title": "Type",
+                        "description": "The type of tool. Should always be 'function'",
+                        "default": "function"
                     },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of what the tool does"
-                    },
-                    "function_definition": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/JsonSchema"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "The function's parameter schema"
+                    "function": {
+                        "$ref": "#/components/schemas/ToolFunction-Input",
+                        "description": "The function definition"
                     },
                     "strict": {
                         "anyOf": [
@@ -8776,39 +8746,21 @@
                 },
                 "type": "object",
                 "required": [
-                    "name"
+                    "function"
                 ],
                 "title": "LLMTool"
             },
             "LLMTool-Output": {
                 "properties": {
-                    "name": {
+                    "type": {
                         "type": "string",
-                        "title": "Name",
-                        "description": "The name of the tool/function"
+                        "title": "Type",
+                        "description": "The type of tool. Should always be 'function'",
+                        "default": "function"
                     },
-                    "description": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Description",
-                        "description": "Description of what the tool does"
-                    },
-                    "function_definition": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/JsonSchema"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "The function's parameter schema"
+                    "function": {
+                        "$ref": "#/components/schemas/ToolFunction-Output",
+                        "description": "The function definition"
                     },
                     "strict": {
                         "anyOf": [
@@ -8825,7 +8777,7 @@
                 },
                 "type": "object",
                 "required": [
-                    "name"
+                    "function"
                 ],
                 "title": "LLMTool"
             },
@@ -9054,19 +9006,6 @@
                     "ToolSelection"
                 ],
                 "title": "MetricType"
-            },
-            "ModelProvider": {
-                "type": "string",
-                "enum": [
-                    "anthropic",
-                    "openai",
-                    "gemini",
-                    "azure",
-                    "bedrock",
-                    "sagemaker",
-                    "vertex_ai"
-                ],
-                "title": "ModelProvider"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -9920,6 +9859,42 @@
                 ],
                 "title": "PasswordResetRequest"
             },
+            "PromptCompletionRequest": {
+                "properties": {
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/VariableTemplateValue"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
+                        "default": []
+                    },
+                    "stream": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stream",
+                        "description": "Whether to stream the response",
+                        "default": false
+                    }
+                },
+                "type": "object",
+                "title": "PromptCompletionRequest",
+                "description": "Request schema for running an agentic prompt"
+            },
             "PromptValidationRequest": {
                 "properties": {
                     "prompt": {
@@ -9969,6 +9944,41 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
+            },
+            "ProviderEnum": {
+                "type": "string",
+                "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "azure",
+                    "deepseek",
+                    "mistral",
+                    "meta_llama",
+                    "groq",
+                    "bedrock",
+                    "sagemaker",
+                    "vertex_ai",
+                    "huggingface",
+                    "cloudflare",
+                    "ai21",
+                    "baseten",
+                    "cohere",
+                    "empower",
+                    "featherless_ai",
+                    "friendliai",
+                    "galadriel",
+                    "nebius",
+                    "nlp_cloud",
+                    "novita",
+                    "openrouter",
+                    "petals",
+                    "replicate",
+                    "together_ai",
+                    "vllm",
+                    "watsonx"
+                ],
+                "title": "ProviderEnum"
             },
             "QueryFeedbackResponse": {
                 "properties": {
@@ -11285,8 +11295,14 @@
                 ],
                 "title": "TokenUsageScope"
             },
-            "ToolCall-Input": {
+            "ToolCall": {
                 "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "The type of tool call. Currently the only type supported is 'function'.",
+                        "default": "function"
+                    },
                     "id": {
                         "type": "string",
                         "title": "Id",
@@ -11301,31 +11317,6 @@
                 "required": [
                     "id",
                     "function"
-                ],
-                "title": "ToolCall"
-            },
-            "ToolCall-Output": {
-                "properties": {
-                    "id": {
-                        "type": "string",
-                        "title": "Id",
-                        "description": "Unique identifier for the tool call"
-                    },
-                    "function": {
-                        "$ref": "#/components/schemas/ToolCallFunction",
-                        "description": "Function details"
-                    },
-                    "type": {
-                        "type": "string",
-                        "title": "Type",
-                        "readOnly": true
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "id",
-                    "function",
-                    "type"
                 ],
                 "title": "ToolCall"
             },
@@ -11349,6 +11340,29 @@
                 ],
                 "title": "ToolCallFunction"
             },
+            "ToolChoice": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "title": "Type",
+                        "description": "The type of tool choice. Should always be 'function'",
+                        "default": "function"
+                    },
+                    "function": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceFunction"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The tool choice fucntion name"
+                    }
+                },
+                "type": "object",
+                "title": "ToolChoice"
+            },
             "ToolChoiceEnum": {
                 "type": "string",
                 "enum": [
@@ -11358,6 +11372,20 @@
                 ],
                 "title": "ToolChoiceEnum"
             },
+            "ToolChoiceFunction": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the function"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "ToolChoiceFunction"
+            },
             "ToolClassEnum": {
                 "type": "integer",
                 "enum": [
@@ -11366,6 +11394,80 @@
                     2
                 ],
                 "title": "ToolClassEnum"
+            },
+            "ToolFunction-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "ToolFunction"
+            },
+            "ToolFunction-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "The name of the tool/function"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of what the tool does"
+                    },
+                    "parameters": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/JsonSchema"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The function's parameter schema"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "ToolFunction"
             },
             "ToxicityConfig": {
                 "properties": {
