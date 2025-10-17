@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { useApi } from "@/hooks/useApi";
-import { useAuth } from "@/contexts/AuthContext";
-import { TaskResponse } from "@/lib/api";
+
 import { SidebarNavigation } from "@/components/SidebarNavigation";
-import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskErrorState } from "@/components/TaskErrorState";
+import { TaskLoadingState } from "@/components/TaskLoadingState";
 import { TaskNotFoundState } from "@/components/TaskNotFoundState";
+import { useAuth } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
+import { useApi } from "@/hooks/useApi";
+import { TaskResponse } from "@/lib/api";
 
 interface TaskLayoutProps {
   children: React.ReactNode;

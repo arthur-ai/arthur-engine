@@ -1,5 +1,6 @@
-import { Api } from "./api-client/api-client";
 import axios from "axios";
+
+import { Api } from "./api-client/api-client";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
