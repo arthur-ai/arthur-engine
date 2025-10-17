@@ -1,7 +1,7 @@
 """Add secret storage
 
 Revision ID: 897c39909e73
-Revises: 18b0dde1883b
+Revises: 7c330aebf8e7
 Create Date: 2025-10-17 20:42:40.528077
 
 """
@@ -13,7 +13,7 @@ from db_models.custom_types import EncryptedJSON
 
 # revision identifiers, used by Alembic.
 revision = "897c39909e73"
-down_revision = "18b0dde1883b"
+down_revision = "7c330aebf8e7"
 branch_labels = None
 depends_on = None
 
