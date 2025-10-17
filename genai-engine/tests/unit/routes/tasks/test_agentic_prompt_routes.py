@@ -2,6 +2,7 @@ import random
 from unittest.mock import MagicMock, patch
 
 import pytest
+from litellm.exceptions import BadRequestError
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
@@ -545,3 +546,46 @@ def test_streaming_agentic_prompt(
         content = b"".join(response.iter_bytes())
         for chunk in ["chunk1", "chunk2", "chunk3"]:
             assert chunk.encode() in content
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("schemas.agentic_prompt_schemas.acompletion")
+async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
+    mock_acompletion,
+    client: GenaiEngineTestClientBase,
+):
+    """Test that /api/v1/completions yields an error event when LiteLLM raises BadRequestError"""
+
+    model_name = "gpt-4o"
+    model_provider = "openai"
+
+    # Simulate LiteLLM failure during streaming
+    mock_acompletion.side_effect = BadRequestError(
+        "OpenAIException - Invalid schema for response_format 'joke_struct': "
+        "In context=(), 'additionalProperties' is required to be supplied and to be false.",
+        model=model_name,
+        llm_provider=model_provider,
+    )
+
+    prompt_data = {
+        "name": "stream_error_prompt",
+        "messages": [{"role": "user", "content": "tell me a joke"}],
+        "model_name": model_name,
+        "model_provider": model_provider,
+        "completion_request": {"stream": True},
+    }
+
+    # Call the route with streaming enabled
+    with client.base_client.stream(
+        "POST",
+        "/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+
+        content = b"".join(response.iter_bytes()).decode()
+        assert "event: error" in content
+        assert "Invalid schema for response_format" in content

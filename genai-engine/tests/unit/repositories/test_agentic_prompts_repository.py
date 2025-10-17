@@ -14,11 +14,14 @@ from schemas.agentic_prompt_schemas import (
     AgenticPromptMessage,
     AgenticPrompts,
     CompletionRequest,
+    LLMResponseFormat,
+    LLMResponseSchema,
     PromptCompletionRequest,
     ToolChoice,
     ToolChoiceFunction,
     VariableTemplateValue,
 )
+from schemas.common_schemas import JsonSchema
 from schemas.response_schemas import AgenticPromptRunResponse
 
 
@@ -78,6 +81,23 @@ def sample_db_prompt(sample_prompt_data):
 def expected_db_prompt_messages(sample_db_prompt):
     """Create expected DatabaseAgenticPrompt messages"""
     return to_agentic_prompt_messages(sample_db_prompt.messages)
+
+
+def mock_completion(*args, **kwargs):
+    response_format = kwargs.get("response_format")
+    json_schema = response_format.get("json_schema")
+    schema = json_schema.get("schema")
+
+    if json_schema.get("strict") and "additionalProperties" not in schema:
+        raise ValueError(
+            "Invalid schema for response_format 'joke_struct': "
+            "In context=(), 'additionalProperties' is required to be supplied and to be false.",
+        )
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {"content": "ok", "tool_calls": None}
+    return mock_response
 
 
 @pytest.mark.unit_tests
@@ -725,3 +745,49 @@ def test_agentic_prompt_tool_call_message_serialization(
     # Ensure the response object is still parsed properly
     assert isinstance(result.content, str)
     assert result.cost == "0.000123"
+
+
+@patch("schemas.agentic_prompt_schemas.completion_cost", return_value=0.0)
+@patch("schemas.agentic_prompt_schemas.completion", side_effect=mock_completion)
+@pytest.mark.parametrize("has_additional_props", [True, False])
+def test_run_chat_completion_strict_additional_properties_validation(
+    mock_completion,
+    mock_cost,
+    has_additional_props,
+):
+    schema_body = JsonSchema(
+        type="object",
+        properties={
+            "question": {"type": "string"},
+            "punchline": {"type": "string"},
+        },
+        required=["question", "punchline"],
+        additionalProperties=False if has_additional_props else None,
+    )
+
+    response_format = LLMResponseFormat(
+        type="json_schema",
+        json_schema=LLMResponseSchema(
+            name="joke_struct",
+            description="Schema to validate strict additionalProperties behavior",
+            schema=schema_body,
+            strict=True,
+        ),
+    )
+
+    prompt = AgenticPrompt(
+        name="strict_schema_test",
+        messages=[{"role": "user", "content": "tell me a joke"}],
+        model_name="gpt-4o",
+        model_provider="openai",
+        response_format=response_format,
+    )
+
+    completion_request = PromptCompletionRequest()
+
+    if has_additional_props:
+        result = prompt.run_chat_completion(completion_request)
+        assert result.content == "ok"
+    else:
+        with pytest.raises(ValueError, match="additionalProperties"):
+            prompt.run_chat_completion(completion_request)
