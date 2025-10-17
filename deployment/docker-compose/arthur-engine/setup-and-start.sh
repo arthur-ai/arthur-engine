@@ -219,20 +219,9 @@ fi
 
 # Prompt for secret store key if not already set
 if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
-    echo ""
-    echo "Enter the secret store encryption key for securing sensitive data:"
-    echo "This key is used to encrypt/decrypt secrets stored in the database."
-    echo "Keep this key secure and consistent across deployments."
-    echo "(Leave empty to auto-generate a secure random key)"
-    read -p "GENAI_ENGINE_SECRET_STORE_KEY: " genai_engine_secret_store_key
-
-    if [[ -z "$genai_engine_secret_store_key" ]]; then
-        # Generate a secure random key using /dev/urandom
-        genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
-        echo "Generated random secret key: $genai_engine_secret_store_key"
-        echo "This key is stored in the .env file and will be used to encrypt/decrypt secrets stored in the database."
-        echo "Please save this key securely for future deployments!"
-    fi
+    # Generate a secure random key using /dev/urandom
+    genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
+    echo "Generated random secret key since none was found"
 
     all_env_vars+="
 GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
