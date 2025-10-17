@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from db_models.base import Base
 from db_models.custom_types import EncryptedJSON
-from schemas.enums import ProviderEnum
+from schemas.enums import SecretType
 
 
 class DatabaseSecretStorage(Base):
@@ -18,6 +18,6 @@ class DatabaseSecretStorage(Base):
         ForeignKey("api_keys.id"),
         nullable=True,
     )
-    secret_type: Mapped[ProviderEnum] = mapped_column(String)
+    secret_type: Mapped[SecretType] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())

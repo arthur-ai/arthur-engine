@@ -18,7 +18,7 @@ from schemas.common_schemas import JsonSchema
 from schemas.enums import (
     LLMResponseFormatEnum,
     MessageRole,
-    ProviderEnum,
+    ModelProvider,
     ReasoningEffortEnum,
     ToolChoiceEnum,
 )
@@ -210,7 +210,7 @@ class AgenticPromptBaseConfig(BaseModel):
     model_name: str = Field(
         description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
     )
-    model_provider: ProviderEnum = Field(
+    model_provider: ModelProvider = Field(
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     tools: Optional[List[LLMTool]] = Field(
