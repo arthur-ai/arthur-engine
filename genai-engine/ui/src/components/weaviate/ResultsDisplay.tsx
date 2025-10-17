@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import { QueryResult } from "@/lib/weaviate-client";
 
 interface ResultsDisplayProps {

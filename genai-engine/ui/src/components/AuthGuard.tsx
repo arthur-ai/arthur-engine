@@ -1,8 +1,10 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+
 import { LoginPage } from './LoginPage';
+
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthGuardProps {
   children: ReactNode;

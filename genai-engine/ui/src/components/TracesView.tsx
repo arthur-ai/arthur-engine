@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+
+import { TraceDetailsPanel } from "./TraceDetailsPanel";
+
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { TraceResponse } from "@/lib/api";
-import { TraceDetailsPanel } from "./TraceDetailsPanel";
 
 export const TracesView: React.FC = () => {
   const api = useApi();
