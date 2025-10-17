@@ -1958,6 +1958,18 @@ class DatasetVersionMetadata(BaseModel):
     version_number: int
     created_at: datetime
     dataset_id: uuid.UUID
+    column_names: List[str]
+
+    @staticmethod
+    def _calculate_column_names(rows: List[DatasetVersionRow]) -> List[str]:
+        """Returns list of all column names in the dataset version.
+        :param:rows: list of all rows in the version
+        """
+        column_names = set()
+        for row in rows:
+            for col_item in row.data:
+                column_names.add(col_item.column_name)
+        return list(column_names)
 
     @staticmethod
     def _from_database_model(
@@ -1967,6 +1979,7 @@ class DatasetVersionMetadata(BaseModel):
             version_number=db_dataset_version.version_number,
             created_at=db_dataset_version.created_at,
             dataset_id=db_dataset_version.dataset_id,
+            column_names=db_dataset_version.column_names,
         )
 
     def to_response_model(self) -> DatasetVersionMetadataResponse:
@@ -1974,6 +1987,7 @@ class DatasetVersionMetadata(BaseModel):
             version_number=self.version_number,
             created_at=_serialize_datetime(self.created_at),
             dataset_id=self.dataset_id,
+            column_names=self.column_names,
         )
 
 
@@ -2055,6 +2069,7 @@ class DatasetVersion(DatasetVersionMetadata):
             page_size=len(all_rows),
             total_pages=1,
             total_count=len(all_rows),
+            column_names=DatasetVersionMetadata._calculate_column_names(all_rows),
         )
 
     def _to_database_model(self) -> DatabaseDatasetVersion:
@@ -2079,6 +2094,7 @@ class DatasetVersion(DatasetVersionMetadata):
                 )
                 for version_row in self.rows
             ],
+            column_names=self.column_names,
         )
 
     def to_response_model(self) -> DatasetVersionResponse:
@@ -2103,6 +2119,7 @@ class DatasetVersion(DatasetVersionMetadata):
             page_size=self.page_size,
             total_pages=self.total_pages,
             total_count=self.total_count,
+            column_names=self.column_names,
         )
 
     @staticmethod
@@ -2127,6 +2144,7 @@ class DatasetVersion(DatasetVersionMetadata):
                 else 0
             ),
             total_count=total_count,
+            column_names=db_dataset_version.column_names,
         )
 
 
