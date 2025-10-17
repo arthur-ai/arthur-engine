@@ -13,11 +13,6 @@ class DatabaseSecretStorage(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
     value: Mapped[dict] = mapped_column(EncryptedJSON)
-    owner_id: Mapped[str] = mapped_column(
-        String,
-        ForeignKey("api_keys.id"),
-        nullable=True,
-    )
     secret_type: Mapped[SecretType] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())

@@ -6190,7 +6190,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ProviderEnum",
+                        "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6445,7 +6445,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ProviderEnum",
+                        "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6819,6 +6819,264 @@
                     "cost"
                 ],
                 "title": "AgenticPromptRunResponse"
+            },
+            "AgenticPromptUnsavedRunConfig": {
+                "properties": {
+                    "messages": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                        },
+                        "type": "array",
+                        "title": "Messages",
+                        "description": "List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "tools": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LLMTool-Input"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tools",
+                        "description": "Available tools/functions for the model to call, in OpenAI function calling format"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    },
+                    "run_config": {
+                        "$ref": "#/components/schemas/AgenticPromptRunConfig",
+                        "description": "Run configuration for the unsaved prompt",
+                        "default": {
+                            "variables": [],
+                            "stream": false
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "messages",
+                    "model_name",
+                    "model_provider"
+                ],
+                "title": "AgenticPromptUnsavedRunConfig",
+                "description": "Request schema for running an unsaved agentic prompt"
             },
             "AgenticPrompts": {
                 "properties": {
@@ -9007,6 +9265,19 @@
                 ],
                 "title": "MetricType"
             },
+            "ModelProvider": {
+                "type": "string",
+                "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "azure",
+                    "bedrock",
+                    "sagemaker",
+                    "vertex_ai"
+                ],
+                "title": "ModelProvider"
+            },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
                     "id": {
@@ -9944,41 +10215,6 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
-            },
-            "ProviderEnum": {
-                "type": "string",
-                "enum": [
-                    "anthropic",
-                    "openai",
-                    "gemini",
-                    "azure",
-                    "deepseek",
-                    "mistral",
-                    "meta_llama",
-                    "groq",
-                    "bedrock",
-                    "sagemaker",
-                    "vertex_ai",
-                    "huggingface",
-                    "cloudflare",
-                    "ai21",
-                    "baseten",
-                    "cohere",
-                    "empower",
-                    "featherless_ai",
-                    "friendliai",
-                    "galadriel",
-                    "nebius",
-                    "nlp_cloud",
-                    "novita",
-                    "openrouter",
-                    "petals",
-                    "replicate",
-                    "together_ai",
-                    "vllm",
-                    "watsonx"
-                ],
-                "title": "ProviderEnum"
             },
             "QueryFeedbackResponse": {
                 "properties": {
