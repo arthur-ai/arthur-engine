@@ -1,3 +1,4 @@
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
   Button,
@@ -7,73 +8,54 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 
-import { fetchDatasetVersions } from "@/services/mockDatasetService";
-import { DatasetVersion } from "@/types/dataset";
+import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
+import { DatasetVersionMetadataResponse } from "@/lib/api-client/api-client";
 
 interface VersionDrawerProps {
   taskId: string;
   datasetId: string;
   datasetName: string;
+  currentVersionNumber?: number;
+  latestVersionNumber?: number;
   onClose: () => void;
-  onVersionSelect?: (version: DatasetVersion) => void;
+  onVersionSelect?: (versionNumber: number) => void;
 }
 
 export const VersionDrawer: React.FC<VersionDrawerProps> = ({
-  taskId,
   datasetId,
   datasetName,
+  currentVersionNumber,
+  latestVersionNumber,
   onClose,
   onVersionSelect,
 }) => {
-  const [versions, setVersions] = useState<DatasetVersion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null
-  );
+  const { versions, totalCount, isLoading, error } =
+    useDatasetVersionHistory(datasetId);
 
-  // Fetch versions on mount
-  useEffect(() => {
-    const loadVersions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const fetchedVersions = await fetchDatasetVersions(taskId, datasetId);
-        setVersions(fetchedVersions);
-
-        // Auto-select current version
-        const currentVersion = fetchedVersions.find((v) => v.isCurrent);
-        if (currentVersion) {
-          setSelectedVersionId(currentVersion.id);
-        }
-      } catch (err) {
-        console.error("Failed to fetch versions:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to load versions"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadVersions();
-  }, [taskId, datasetId]);
+  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
+    number | null
+  >(currentVersionNumber || null);
 
   const handleVersionClick = useCallback(
-    (version: DatasetVersion) => {
-      setSelectedVersionId(version.id);
+    (version: DatasetVersionMetadataResponse) => {
+      setSelectedVersionNumber(version.version_number);
+    },
+    []
+  );
+
+  const handleSwitchToVersion = useCallback(
+    (versionNumber: number) => {
       if (onVersionSelect) {
-        onVersionSelect(version);
+        onVersionSelect(versionNumber);
       }
     },
     [onVersionSelect]
   );
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
+  const formatDate = (timestamp: number): string => {
+    const date = new Date(timestamp);
     return date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
@@ -130,7 +112,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
 
       {/* Content - Scrollable */}
       <Box sx={{ flex: 1, overflow: "auto", p: 2 }}>
-        {loading && (
+        {isLoading && (
           <Box
             sx={{
               display: "flex",
@@ -146,27 +128,33 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
         {error && (
           <Box sx={{ py: 2 }}>
             <Typography variant="body2" color="error">
-              {error}
+              {error.message || "Failed to load versions"}
             </Typography>
           </Box>
         )}
 
-        {!loading && !error && versions.length === 0 && (
+        {!isLoading && !error && versions.length === 0 && (
           <Box sx={{ py: 4, textAlign: "center" }}>
             <Typography variant="body2" color="text.secondary">
-              No versions found
+              No versions yet
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              Versions are created when you save changes
             </Typography>
           </Box>
         )}
 
-        {!loading && !error && versions.length > 0 && (
+        {!isLoading && !error && versions.length > 0 && (
           <Stack spacing={1.5}>
             {versions.map((version) => {
-              const isSelected = selectedVersionId === version.id;
+              const isSelected =
+                selectedVersionNumber === version.version_number;
+              const isViewing = currentVersionNumber === version.version_number;
+              const isLatest = version.version_number === latestVersionNumber;
 
               return (
                 <Box
-                  key={version.id}
+                  key={version.version_number}
                   onClick={() => handleVersionClick(version)}
                   sx={{
                     p: 2,
@@ -185,11 +173,12 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                   }}
                 >
                   <Stack spacing={1.5}>
-                    {/* Version number and current badge */}
                     <Stack
                       direction="row"
                       justifyContent="space-between"
                       alignItems="center"
+                      flexWrap="wrap"
+                      gap={0.5}
                     >
                       <Typography
                         variant="subtitle2"
@@ -198,43 +187,44 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
                           color: isSelected ? "primary.main" : "text.primary",
                         }}
                       >
-                        Version {version.versionNumber}
+                        Version {version.version_number}
                       </Typography>
-                      {version.isCurrent && (
-                        <Chip
-                          label="Current"
-                          size="small"
-                          color="primary"
-                          sx={{ height: 20, fontSize: "0.7rem" }}
-                        />
-                      )}
+                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                        {isLatest && (
+                          <Chip
+                            label="Latest"
+                            size="small"
+                            color="primary"
+                            sx={{ height: 20, fontSize: "0.7rem" }}
+                          />
+                        )}
+                        {isViewing && (
+                          <Chip
+                            label="Viewing"
+                            size="small"
+                            color="success"
+                            sx={{ height: 20, fontSize: "0.7rem" }}
+                          />
+                        )}
+                      </Box>
                     </Stack>
 
-                    {/* Last updated time */}
                     <Typography variant="caption" color="text.secondary">
-                      {formatDate(version.createdAt)}
+                      {formatDate(version.created_at)}
                     </Typography>
 
-                    {/* Confirm button - show only for selected version */}
-                    {isSelected && !version.isCurrent && (
+                    {isSelected && !isViewing && (
                       <Button
                         variant="contained"
                         size="small"
                         fullWidth
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (onVersionSelect) {
-                            onVersionSelect(version);
-                          }
-                          // TODO: Implement actual version switch logic
-                          console.log(
-                            "Switching to version:",
-                            version.versionNumber
-                          );
+                          handleSwitchToVersion(version.version_number);
                         }}
                         sx={{ mt: 1 }}
                       >
-                        Switch to this version
+                        View this version
                       </Button>
                     )}
                   </Stack>
@@ -245,8 +235,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
         )}
       </Box>
 
-      {/* Footer info */}
-      {!loading && !error && versions.length > 0 && (
+      {!isLoading && !error && versions.length > 0 && (
         <Box
           sx={{
             p: 2,
@@ -257,7 +246,7 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
           }}
         >
           <Typography variant="caption" color="text.secondary">
-            {versions.length} version{versions.length !== 1 ? "s" : ""} total
+            {totalCount} version{totalCount !== 1 ? "s" : ""} total
           </Typography>
         </Box>
       )}

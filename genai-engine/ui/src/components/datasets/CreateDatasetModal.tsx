@@ -1,4 +1,3 @@
-import React, { useState, useCallback } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -8,6 +7,8 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material";
+import React, { useState, useCallback } from "react";
+
 import { DatasetFormData } from "@/types/dataset";
 
 interface CreateDatasetModalProps {
@@ -15,6 +16,7 @@ interface CreateDatasetModalProps {
   onClose: () => void;
   onSubmit: (data: DatasetFormData) => Promise<void>;
   isLoading?: boolean;
+  taskId: string;
 }
 
 export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({

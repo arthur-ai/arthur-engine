@@ -10,7 +10,12 @@
  */
 
 /** APIKeysRolesEnum */
-export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
+export type APIKeysRolesEnum =
+  | "DEFAULT-RULE-ADMIN"
+  | "TASK-ADMIN"
+  | "VALIDATION-USER"
+  | "ORG-AUDITOR"
+  | "ORG-ADMIN";
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
@@ -441,7 +446,8 @@ export interface ApiKeyResponse {
 
 export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData = any;
 
-export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError = HTTPValidationError;
+export type ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError =
+  HTTPValidationError;
 
 export type ArchiveTaskApiV2TasksTaskIdDeleteData = any;
 
@@ -449,11 +455,13 @@ export type ArchiveTaskApiV2TasksTaskIdDeleteError = HTTPValidationError;
 
 export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData = any;
 
-export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError = HTTPValidationError;
+export type ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError =
+  HTTPValidationError;
 
 export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData = any;
 
-export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError = HTTPValidationError;
+export type ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError =
+  HTTPValidationError;
 
 /** AuthUserRole */
 export interface AuthUserRole {
@@ -578,7 +586,8 @@ export interface ChatResponse {
 
 export type CheckUserPermissionUsersPermissionsCheckGetData = any;
 
-export type CheckUserPermissionUsersPermissionsCheckGetError = HTTPValidationError;
+export type CheckUserPermissionUsersPermissionsCheckGetError =
+  HTTPValidationError;
 
 export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   /** Action to check permissions of. */
@@ -705,9 +714,11 @@ export interface CompletionRequest {
   version?: number;
 }
 
-export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData =
+  SessionTracesResponse;
 
-export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError = HTTPValidationError;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError =
+  HTTPValidationError;
 
 export interface ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams {
   /**
@@ -731,17 +742,21 @@ export interface ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetPara
   sort?: PaginationSortMethod;
 }
 
-export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData = SpanWithMetricsResponse;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData =
+  SpanWithMetricsResponse;
 
-export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError = HTTPValidationError;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError =
+  HTTPValidationError;
 
-export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
+export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData =
+  SpanWithMetricsResponse;
 
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetError = HTTPValidationError;
 
 export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData = TraceResponse;
 
-export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError = HTTPValidationError;
+export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError =
+  HTTPValidationError;
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -762,9 +777,11 @@ export type CreateDatasetApiV2DatasetsPostData = DatasetResponse;
 
 export type CreateDatasetApiV2DatasetsPostError = HTTPValidationError;
 
-export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData = DatasetVersionResponse;
+export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData =
+  DatasetVersionResponse;
 
-export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError = HTTPValidationError;
+export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError =
+  HTTPValidationError;
 
 export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
 
@@ -776,7 +793,8 @@ export type CreateTaskApiV2TasksPostError = HTTPValidationError;
 
 export type CreateTaskMetricApiV2TasksTaskIdMetricsPostData = any;
 
-export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationError;
+export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError =
+  HTTPValidationError;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
@@ -973,30 +991,39 @@ export interface DatasetVersionRowResponse {
   id: string;
 }
 
-export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
+export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData =
+  ApiKeyResponse;
 
-export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError = HTTPValidationError;
+export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError =
+  HTTPValidationError;
 
 export type DefaultValidatePromptApiV2ValidatePromptPostData = ValidationResult;
 
-export type DefaultValidatePromptApiV2ValidatePromptPostError = HTTPValidationError;
+export type DefaultValidatePromptApiV2ValidatePromptPostError =
+  HTTPValidationError;
 
-export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = ValidationResult;
+export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData =
+  ValidationResult;
 
-export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
+export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError =
+  HTTPValidationError;
 
-export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData =
+  any;
 
-export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError =
+  HTTPValidationError;
 
-export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData =
+  any;
 
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError =
   HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
-export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError = HTTPValidationError;
+export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError =
+  HTTPValidationError;
 
 export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
@@ -1195,9 +1222,11 @@ export interface FileUploadResult {
   word_count: number;
 }
 
-export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData =
+  AgenticPrompt;
 
-export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError =
+  HTTPValidationError;
 
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
@@ -1205,7 +1234,8 @@ export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
 export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData =
   AgenticPromptVersionListResponse;
 
-export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError = HTTPValidationError;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError =
+  HTTPValidationError;
 
 export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams {
   /**
@@ -1273,9 +1303,11 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
   taskId: string;
 }
 
-export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData =
+  AgenticPromptMetadataListResponse;
 
-export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError =
+  HTTPValidationError;
 
 export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
   /**
@@ -1334,7 +1366,8 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
-export type GetConversationsApiChatConversationsGetData = PageListConversationBaseResponse;
+export type GetConversationsApiChatConversationsGetData =
+  PageListConversationBaseResponse;
 
 export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
 
@@ -1358,9 +1391,11 @@ export type GetDatasetApiV2DatasetsDatasetIdGetData = DatasetResponse;
 
 export type GetDatasetApiV2DatasetsDatasetIdGetError = HTTPValidationError;
 
-export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData = DatasetVersionResponse;
+export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData =
+  DatasetVersionResponse;
 
-export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetError = HTTPValidationError;
+export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetError =
+  HTTPValidationError;
 
 export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams {
   /**
@@ -1393,9 +1428,11 @@ export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
   versionNumber: number;
 }
 
-export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData = ListDatasetVersionsResponse;
+export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData =
+  ListDatasetVersionsResponse;
 
-export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError = HTTPValidationError;
+export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError =
+  HTTPValidationError;
 
 export interface GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams {
   /**
@@ -1472,19 +1509,25 @@ export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 export type GetFilesApiChatFilesGetData = ExternalDocument[];
 
 /** Response Get Inference Document Context Api Chat Context  Inference Id  Get */
-export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetData =
+  ChatDocumentContext[];
 
-export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
+export type GetInferenceDocumentContextApiChatContextInferenceIdGetError =
+  HTTPValidationError;
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
-export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData =
+  ModelProviderModelList;
 
-export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError =
+  HTTPValidationError;
 
-export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetData =
+  SessionTracesResponse;
 
-export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetError =
+  HTTPValidationError;
 
 export interface GetSessionTracesApiV1TracesSessionsSessionIdGetParams {
   /**
@@ -1546,7 +1589,8 @@ export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
-export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
+export type GetUserDetailsApiV1TracesUsersUserIdGetData =
+  TraceUserMetadataResponse;
 
 export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
 
@@ -1628,7 +1672,10 @@ export interface InferenceFeedbackResponse {
 }
 
 /** InferenceFeedbackTarget */
-export type InferenceFeedbackTarget = "context" | "response_results" | "prompt_results";
+export type InferenceFeedbackTarget =
+  | "context"
+  | "response_results"
+  | "prompt_results";
 
 /** JsonPropertySchema */
 export interface JsonPropertySchema {
@@ -1844,9 +1891,11 @@ export interface ListDatasetVersionsResponse {
   versions: DatasetVersionMetadataResponse[];
 }
 
-export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
+export type ListSessionsMetadataApiV1TracesSessionsGetData =
+  SessionListResponse;
 
-export type ListSessionsMetadataApiV1TracesSessionsGetError = HTTPValidationError;
+export type ListSessionsMetadataApiV1TracesSessionsGetError =
+  HTTPValidationError;
 
 export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
   /**
@@ -2260,6 +2309,399 @@ export interface ListUsersMetadataApiV1TracesUsersGetParams {
   task_ids: string[];
 }
 
+/** ListDatasetVersionsResponse */
+export interface ListDatasetVersionsResponse {
+  /**
+   * Page
+   * The current page number for the included rows.
+   */
+  page: number;
+  /**
+   * Page Size
+   * The number of rows per page.
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * The total number of rows in the dataset version.
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * The total number of pages.
+   */
+  total_pages: number;
+  /**
+   * Versions
+   * List of existing versions for the dataset.
+   */
+  versions: DatasetVersionMetadataResponse[];
+}
+
+export type ListSessionsMetadataApiV1SessionsGetData = SessionListResponse;
+
+export type ListSessionsMetadataApiV1SessionsGetError = HTTPValidationError;
+
+export interface ListSessionsMetadataApiV1SessionsGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+}
+
+export type ListSpansMetadataApiV1SpansGetData = SpanListResponse;
+
+export type ListSpansMetadataApiV1SpansGetError = HTTPValidationError;
+
+export interface ListSpansMetadataApiV1SpansGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+}
+
+export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
+
+export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
+
+export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+}
+
 /** LogitBiasItem */
 export interface LogitBiasItem {
   /**
@@ -2376,7 +2818,10 @@ export interface MetricResultResponse {
 }
 
 /** MetricType */
-export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
+export type MetricType =
+  | "QueryRelevance"
+  | "ResponseRelevance"
+  | "ToolSelection";
 
 /** ModelProvider */
 export type ModelProvider = "anthropic" | "openai" | "gemini";
@@ -2607,7 +3052,13 @@ export interface NewRuleRequest {
    * Config
    * Config of the rule
    */
-  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
+  config?:
+    | KeywordsConfig
+    | RegexConfig
+    | ExamplesConfig
+    | ToxicityConfig
+    | PIIConfig
+    | null;
   /**
    * Name
    * Name of the rule
@@ -2742,9 +3193,11 @@ export interface PasswordResetRequest {
 
 export type PostChatFeedbackApiChatFeedbackInferenceIdPostData = any;
 
-export type PostChatFeedbackApiChatFeedbackInferenceIdPostError = HTTPValidationError;
+export type PostChatFeedbackApiChatFeedbackInferenceIdPostError =
+  HTTPValidationError;
 
-export type PostFeedbackApiV2FeedbackInferenceIdPostData = InferenceFeedbackResponse;
+export type PostFeedbackApiV2FeedbackInferenceIdPostData =
+  InferenceFeedbackResponse;
 
 export type PostFeedbackApiV2FeedbackInferenceIdPostError = HTTPValidationError;
 
@@ -2907,7 +3360,8 @@ export interface QueryFeedbackResponse {
   total_pages: number;
 }
 
-export type QueryInferencesApiV2InferencesQueryGetData = QueryInferencesResponse;
+export type QueryInferencesApiV2InferencesQueryGetData =
+  QueryInferencesResponse;
 
 export type QueryInferencesApiV2InferencesQueryGetError = HTTPValidationError;
 
@@ -3238,7 +3692,8 @@ export interface QuerySpansV1TracesQueryGetParams {
   trace_ids?: string[];
 }
 
-export type QuerySpansWithMetricsV1TracesMetricsGetData = QueryTracesWithMetricsResponse;
+export type QuerySpansWithMetricsV1TracesMetricsGetData =
+  QueryTracesWithMetricsResponse;
 
 export type QuerySpansWithMetricsV1TracesMetricsGetError = HTTPValidationError;
 
@@ -3417,7 +3872,13 @@ export interface QueryTracesWithMetricsResponse {
 }
 
 /** ReasoningEffortEnum */
-export type ReasoningEffortEnum = "none" | "minimal" | "low" | "medium" | "high" | "default";
+export type ReasoningEffortEnum =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "default";
 
 export type ReceiveTracesApiV1TracesPostData = any;
 
@@ -3501,7 +3962,8 @@ export interface RelevanceMetricConfig {
 
 export type ResetUserPasswordUsersUserIdResetPasswordPostData = any;
 
-export type ResetUserPasswordUsersUserIdResetPasswordPostError = HTTPValidationError;
+export type ResetUserPasswordUsersUserIdResetPasswordPostError =
+  HTTPValidationError;
 
 /** ResponseValidationRequest */
 export interface ResponseValidationRequest {
@@ -3540,7 +4002,13 @@ export interface RuleResponse {
    * Config
    * Config of the rule
    */
-  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
+  config?:
+    | KeywordsConfig
+    | RegexConfig
+    | ExamplesConfig
+    | ToxicityConfig
+    | PIIConfig
+    | null;
   /**
    * Created At
    * Time the rule was created in unix milliseconds
@@ -3604,9 +4072,25 @@ export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPrompt
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError =
   HTTPValidationError;
 
-export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData =
+  AgenticPrompt;
 
-export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError =
+  HTTPValidationError;
+
+/** SearchDatasetsResponse */
+export interface SearchDatasetsResponse {
+  /**
+   * Count
+   * The total number of datasets matching the parameters.
+   */
+  count: number;
+  /**
+   * Datasets
+   * List of datasets matching the search filters. Length is less than or equal to page_size parameter
+   */
+  datasets: DatasetResponse[];
+}
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -3871,11 +4355,13 @@ export interface SessionTracesResponse {
 
 export type SetModelProviderApiV1ModelProvidersProviderDeleteData = any;
 
-export type SetModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+export type SetModelProviderApiV1ModelProvidersProviderDeleteError =
+  HTTPValidationError;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
-export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
+export type SetModelProviderApiV1ModelProvidersProviderPutError =
+  HTTPValidationError;
 
 /**
  * SpanListResponse
@@ -4253,7 +4739,12 @@ export interface ToxicityDetailsResponse {
 }
 
 /** ToxicityViolationType */
-export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
+export type ToxicityViolationType =
+  | "benign"
+  | "harmful_request"
+  | "toxic_content"
+  | "profanity"
+  | "unknown";
 
 /**
  * TraceListResponse
@@ -4438,7 +4929,8 @@ export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
 
-export type UpdateDefaultTaskApiChatDefaultTaskPutData = ChatDefaultTaskResponse;
+export type UpdateDefaultTaskApiChatDefaultTaskPutData =
+  ChatDefaultTaskResponse;
 
 export type UpdateDefaultTaskApiChatDefaultTaskPutError = HTTPValidationError;
 
@@ -4462,11 +4954,13 @@ export interface UpdateRuleRequest {
 
 export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData = any;
 
-export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError = HTTPValidationError;
+export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError =
+  HTTPValidationError;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
 
-export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
+export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError =
+  HTTPValidationError;
 
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
@@ -4484,7 +4978,11 @@ export interface UploadEmbeddingsFileApiChatFilesPostParams {
 export type UserPermissionAction = "create" | "read";
 
 /** UserPermissionResource */
-export type UserPermissionResource = "prompts" | "responses" | "rules" | "tasks";
+export type UserPermissionResource =
+  | "prompts"
+  | "responses"
+  | "rules"
+  | "tasks";
 
 /** UserResponse */
 export interface UserResponse {
@@ -4500,15 +4998,18 @@ export interface UserResponse {
   roles: AuthUserRole[];
 }
 
-export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData = ValidationResult;
+export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData =
+  ValidationResult;
 
-export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError = HTTPError | HTTPValidationError;
-
-export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData = ValidationResult;
-
-export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError =
+export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError =
   | HTTPError
   | HTTPValidationError;
+
+export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData =
+  ValidationResult;
+
+export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError =
+  HTTPError | HTTPValidationError;
 
 /** ValidationError */
 export interface ValidationError {
@@ -4561,12 +5062,19 @@ export interface VariableTemplateValue {
   value: string;
 }
 
-import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
+import type {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  HeadersDefaults,
+  ResponseType,
+} from "axios";
 import axios from "axios";
 
 export type QueryParamsType = Record<string | number, any>;
 
-export interface FullRequestParams extends Omit<AxiosRequestConfig, "data" | "params" | "url" | "responseType"> {
+export interface FullRequestParams
+  extends Omit<AxiosRequestConfig, "data" | "params" | "url" | "responseType"> {
   /** set parameter to `true` for call `securityWorker` for this request */
   secure?: boolean;
   /** request path */
@@ -4581,11 +5089,15 @@ export interface FullRequestParams extends Omit<AxiosRequestConfig, "data" | "pa
   body?: unknown;
 }
 
-export type RequestParams = Omit<FullRequestParams, "body" | "method" | "query" | "path">;
+export type RequestParams = Omit<
+  FullRequestParams,
+  "body" | "method" | "query" | "path"
+>;
 
-export interface ApiConfig<SecurityDataType = unknown> extends Omit<AxiosRequestConfig, "data" | "cancelToken"> {
+export interface ApiConfig<SecurityDataType = unknown>
+  extends Omit<AxiosRequestConfig, "data" | "cancelToken"> {
   securityWorker?: (
-    securityData: SecurityDataType | null,
+    securityData: SecurityDataType | null
   ) => Promise<AxiosRequestConfig | void> | AxiosRequestConfig | void;
   secure?: boolean;
   format?: ResponseType;
@@ -4605,8 +5117,16 @@ export class HttpClient<SecurityDataType = unknown> {
   private secure?: boolean;
   private format?: ResponseType;
 
-  constructor({ securityWorker, secure, format, ...axiosConfig }: ApiConfig<SecurityDataType> = {}) {
-    this.instance = axios.create({ ...axiosConfig, baseURL: axiosConfig.baseURL || "" });
+  constructor({
+    securityWorker,
+    secure,
+    format,
+    ...axiosConfig
+  }: ApiConfig<SecurityDataType> = {}) {
+    this.instance = axios.create({
+      ...axiosConfig,
+      baseURL: axiosConfig.baseURL || "",
+    });
     this.secure = secure;
     this.format = format;
     this.securityWorker = securityWorker;
@@ -4616,7 +5136,10 @@ export class HttpClient<SecurityDataType = unknown> {
     this.securityData = data;
   };
 
-  protected mergeRequestParams(params1: AxiosRequestConfig, params2?: AxiosRequestConfig): AxiosRequestConfig {
+  protected mergeRequestParams(
+    params1: AxiosRequestConfig,
+    params2?: AxiosRequestConfig
+  ): AxiosRequestConfig {
     const method = params1.method || (params2 && params2.method);
 
     return {
@@ -4624,7 +5147,11 @@ export class HttpClient<SecurityDataType = unknown> {
       ...params1,
       ...(params2 || {}),
       headers: {
-        ...((method && this.instance.defaults.headers[method.toLowerCase() as keyof HeadersDefaults]) || {}),
+        ...((method &&
+          this.instance.defaults.headers[
+            method.toLowerCase() as keyof HeadersDefaults
+          ]) ||
+          {}),
         ...(params1.headers || {}),
         ...((params2 && params2.headers) || {}),
       },
@@ -4645,11 +5172,15 @@ export class HttpClient<SecurityDataType = unknown> {
     }
     return Object.keys(input || {}).reduce((formData, key) => {
       const property = input[key];
-      const propertyContent: any[] = property instanceof Array ? property : [property];
+      const propertyContent: any[] =
+        property instanceof Array ? property : [property];
 
       for (const formItem of propertyContent) {
         const isFileType = formItem instanceof Blob || formItem instanceof File;
-        formData.append(key, isFileType ? formItem : this.stringifyFormItem(formItem));
+        formData.append(
+          key,
+          isFileType ? formItem : this.stringifyFormItem(formItem)
+        );
       }
 
       return formData;
@@ -4673,11 +5204,21 @@ export class HttpClient<SecurityDataType = unknown> {
     const requestParams = this.mergeRequestParams(params, secureParams);
     const responseFormat = format || this.format || undefined;
 
-    if (type === ContentType.FormData && body && body !== null && typeof body === "object") {
+    if (
+      type === ContentType.FormData &&
+      body &&
+      body !== null &&
+      typeof body === "object"
+    ) {
       body = this.createFormData(body as Record<string, unknown>);
     }
 
-    if (type === ContentType.Text && body && body !== null && typeof body !== "string") {
+    if (
+      type === ContentType.Text &&
+      body &&
+      body !== null &&
+      typeof body !== "string"
+    ) {
       body = JSON.stringify(body);
     }
 
@@ -4699,7 +5240,9 @@ export class HttpClient<SecurityDataType = unknown> {
  * @title Arthur GenAI Engine
  * @version 2.1.94
  */
-export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
+export class Api<
+  SecurityDataType extends unknown
+> extends HttpClient<SecurityDataType> {
   api = {
     /**
      * @description Archive existing default rule.
@@ -4710,7 +5253,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v2/default_rules/{rule_id}
      * @secure
      */
-    archiveDefaultRuleApiV2DefaultRulesRuleIdDelete: (ruleId: string, params: RequestParams = {}) =>
+    archiveDefaultRuleApiV2DefaultRulesRuleIdDelete: (
+      ruleId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData,
         ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError
@@ -4731,8 +5277,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v2/tasks/{task_id}
      * @secure
      */
-    archiveTaskApiV2TasksTaskIdDelete: (taskId: string, params: RequestParams = {}) =>
-      this.request<ArchiveTaskApiV2TasksTaskIdDeleteData, ArchiveTaskApiV2TasksTaskIdDeleteError>({
+    archiveTaskApiV2TasksTaskIdDelete: (
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ArchiveTaskApiV2TasksTaskIdDeleteData,
+        ArchiveTaskApiV2TasksTaskIdDeleteError
+      >({
         path: `/api/v2/tasks/${taskId}`,
         method: "DELETE",
         secure: true,
@@ -4752,7 +5304,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     archiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete: (
       taskId: string,
       metricId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData,
@@ -4774,7 +5326,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v2/tasks/{task_id}/rules/{rule_id}
      * @secure
      */
-    archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete: (taskId: string, ruleId: string, params: RequestParams = {}) =>
+    archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete: (
+      taskId: string,
+      ruleId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData,
         ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError
@@ -4814,8 +5370,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     computeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet: (
-      { sessionId, ...query }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
-      params: RequestParams = {},
+      {
+        sessionId,
+        ...query
+      }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData,
@@ -4838,7 +5397,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/spans/{span_id}/metrics
      * @secure
      */
-    computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+    computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (
+      spanId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData,
         ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError
@@ -4859,7 +5421,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/{trace_id}/metrics
      * @secure
      */
-    computeTraceMetricsApiV1TracesTraceIdMetricsGet: (traceId: string, params: RequestParams = {}) =>
+    computeTraceMetricsApiV1TracesTraceIdMetricsGet: (
+      traceId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData,
         ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError
@@ -4880,8 +5445,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/datasets
      * @secure
      */
-    createDatasetApiV2DatasetsPost: (data: NewDatasetRequest, params: RequestParams = {}) =>
-      this.request<CreateDatasetApiV2DatasetsPostData, CreateDatasetApiV2DatasetsPostError>({
+    createDatasetApiV2DatasetsPost: (
+      data: NewDatasetRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateDatasetApiV2DatasetsPostData,
+        CreateDatasetApiV2DatasetsPostError
+      >({
         path: `/api/v2/datasets`,
         method: "POST",
         body: data,
@@ -4903,7 +5474,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createDatasetVersionApiV2DatasetsDatasetIdVersionsPost: (
       datasetId: string,
       data: NewDatasetVersionRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData,
@@ -4927,8 +5498,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/default_rules
      * @secure
      */
-    createDefaultRuleApiV2DefaultRulesPost: (data: NewRuleRequest, params: RequestParams = {}) =>
-      this.request<CreateDefaultRuleApiV2DefaultRulesPostData, CreateDefaultRuleApiV2DefaultRulesPostError>({
+    createDefaultRuleApiV2DefaultRulesPost: (
+      data: NewRuleRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateDefaultRuleApiV2DefaultRulesPostData,
+        CreateDefaultRuleApiV2DefaultRulesPostError
+      >({
         path: `/api/v2/default_rules`,
         method: "POST",
         body: data,
@@ -4947,16 +5524,21 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/tasks
      * @secure
      */
-    createTaskApiV2TasksPost: (data: NewTaskRequest, params: RequestParams = {}) =>
-      this.request<CreateTaskApiV2TasksPostData, CreateTaskApiV2TasksPostError>({
-        path: `/api/v2/tasks`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
+    createTaskApiV2TasksPost: (
+      data: NewTaskRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<CreateTaskApiV2TasksPostData, CreateTaskApiV2TasksPostError>(
+        {
+          path: `/api/v2/tasks`,
+          method: "POST",
+          body: data,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        }
+      ),
 
     /**
      * @description Create metrics for a task. Only agentic tasks can have metrics.
@@ -4967,8 +5549,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/tasks/{task_id}/metrics
      * @secure
      */
-    createTaskMetricApiV2TasksTaskIdMetricsPost: (taskId: string, data: NewMetricRequest, params: RequestParams = {}) =>
-      this.request<CreateTaskMetricApiV2TasksTaskIdMetricsPostData, CreateTaskMetricApiV2TasksTaskIdMetricsPostError>({
+    createTaskMetricApiV2TasksTaskIdMetricsPost: (
+      taskId: string,
+      data: NewMetricRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateTaskMetricApiV2TasksTaskIdMetricsPostData,
+        CreateTaskMetricApiV2TasksTaskIdMetricsPostError
+      >({
         path: `/api/v2/tasks/${taskId}/metrics`,
         method: "POST",
         body: data,
@@ -4987,8 +5576,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/tasks/{task_id}/rules
      * @secure
      */
-    createTaskRuleApiV2TasksTaskIdRulesPost: (taskId: string, data: NewRuleRequest, params: RequestParams = {}) =>
-      this.request<CreateTaskRuleApiV2TasksTaskIdRulesPostData, CreateTaskRuleApiV2TasksTaskIdRulesPostError>({
+    createTaskRuleApiV2TasksTaskIdRulesPost: (
+      taskId: string,
+      data: NewRuleRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateTaskRuleApiV2TasksTaskIdRulesPostData,
+        CreateTaskRuleApiV2TasksTaskIdRulesPostError
+      >({
         path: `/api/v2/tasks/${taskId}/rules`,
         method: "POST",
         body: data,
@@ -5008,18 +5604,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    defaultValidatePromptApiV2ValidatePromptPost: (data: PromptValidationRequest, params: RequestParams = {}) =>
-      this.request<DefaultValidatePromptApiV2ValidatePromptPostData, DefaultValidatePromptApiV2ValidatePromptPostError>(
-        {
-          path: `/api/v2/validate_prompt`,
-          method: "POST",
-          body: data,
-          secure: true,
-          type: ContentType.Json,
-          format: "json",
-          ...params,
-        },
-      ),
+    defaultValidatePromptApiV2ValidatePromptPost: (
+      data: PromptValidationRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DefaultValidatePromptApiV2ValidatePromptPostData,
+        DefaultValidatePromptApiV2ValidatePromptPostError
+      >({
+        path: `/api/v2/validate_prompt`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description [Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.
@@ -5034,7 +5634,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     defaultValidateResponseApiV2ValidateResponseInferenceIdPost: (
       inferenceId: string,
       data: ResponseValidationRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData,
@@ -5061,7 +5661,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (
       promptName: string,
       taskId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData,
@@ -5082,17 +5682,41 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
      * @secure
      */
-    deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete: (
-      promptName: string,
-      promptVersion: string,
-      taskId: string,
-      params: RequestParams = {},
+    deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete:
+      (
+        promptName: string,
+        promptVersion: string,
+        taskId: string,
+        params: RequestParams = {}
+      ) =>
+        this.request<
+          DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
+          DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
+        >({
+          path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+          method: "DELETE",
+          secure: true,
+          ...params,
+        }),
+
+    /**
+     * @description Delete a dataset.
+     *
+     * @tags Datasets
+     * @name DeleteDatasetApiV2DatasetsDatasetIdDelete
+     * @summary Delete Dataset
+     * @request DELETE:/api/v2/datasets/{dataset_id}
+     * @secure
+     */
+    deleteDatasetApiV2DatasetsDatasetIdDelete: (
+      datasetId: string,
+      params: RequestParams = {}
     ) =>
       this.request<
-        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
-        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
+        DeleteDatasetApiV2DatasetsDatasetIdDeleteData,
+        DeleteDatasetApiV2DatasetsDatasetIdDeleteError
       >({
-        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        path: `/api/v2/datasets/${datasetId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -5107,8 +5731,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v2/datasets/{dataset_id}
      * @secure
      */
-    deleteDatasetApiV2DatasetsDatasetIdDelete: (datasetId: string, params: RequestParams = {}) =>
-      this.request<DeleteDatasetApiV2DatasetsDatasetIdDeleteData, DeleteDatasetApiV2DatasetsDatasetIdDeleteError>({
+    deleteDatasetApiV2DatasetsDatasetIdDelete: (
+      datasetId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteDatasetApiV2DatasetsDatasetIdDeleteData,
+        DeleteDatasetApiV2DatasetsDatasetIdDeleteError
+      >({
         path: `/api/v2/datasets/${datasetId}`,
         method: "DELETE",
         secure: true,
@@ -5123,8 +5753,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Delete File
      * @request DELETE:/api/chat/files/{file_id}
      */
-    deleteFileApiChatFilesFileIdDelete: (fileId: string, params: RequestParams = {}) =>
-      this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
+    deleteFileApiChatFilesFileIdDelete: (
+      fileId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        DeleteFileApiChatFilesFileIdDeleteData,
+        DeleteFileApiChatFilesFileIdDeleteError
+      >({
         path: `/api/chat/files/${fileId}`,
         method: "DELETE",
         format: "json",
@@ -5144,7 +5780,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptName: string,
       promptVersion: string,
       taskId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData,
@@ -5167,8 +5803,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getAllAgenticPromptsApiV1TasksTaskIdPromptsGet: (
-      { taskId, ...query }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
-      params: RequestParams = {},
+      {
+        taskId,
+        ...query
+      }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData,
@@ -5192,8 +5831,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet: (
-      { promptName, taskId, ...query }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
-      params: RequestParams = {},
+      {
+        promptName,
+        taskId,
+        ...query
+      }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData,
@@ -5236,9 +5879,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getConversationsApiChatConversationsGet: (
       query: GetConversationsApiChatConversationsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<GetConversationsApiChatConversationsGetData, GetConversationsApiChatConversationsGetError>({
+      this.request<
+        GetConversationsApiChatConversationsGetData,
+        GetConversationsApiChatConversationsGetError
+      >({
         path: `/api/chat/conversations`,
         method: "GET",
         query: query,
@@ -5255,8 +5901,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/datasets/{dataset_id}
      * @secure
      */
-    getDatasetApiV2DatasetsDatasetIdGet: (datasetId: string, params: RequestParams = {}) =>
-      this.request<GetDatasetApiV2DatasetsDatasetIdGetData, GetDatasetApiV2DatasetsDatasetIdGetError>({
+    getDatasetApiV2DatasetsDatasetIdGet: (
+      datasetId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDatasetApiV2DatasetsDatasetIdGetData,
+        GetDatasetApiV2DatasetsDatasetIdGetError
+      >({
         path: `/api/v2/datasets/${datasetId}`,
         method: "GET",
         secure: true,
@@ -5273,8 +5925,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/datasets/search
      * @secure
      */
-    getDatasetsApiV2DatasetsSearchGet: (query: GetDatasetsApiV2DatasetsSearchGetParams, params: RequestParams = {}) =>
-      this.request<GetDatasetsApiV2DatasetsSearchGetData, GetDatasetsApiV2DatasetsSearchGetError>({
+    getDatasetsApiV2DatasetsSearchGet: (
+      query: GetDatasetsApiV2DatasetsSearchGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetDatasetsApiV2DatasetsSearchGetData,
+        GetDatasetsApiV2DatasetsSearchGetError
+      >({
         path: `/api/v2/datasets/search`,
         method: "GET",
         query: query,
@@ -5293,8 +5951,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet: (
-      { datasetId, versionNumber, ...query }: GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams,
-      params: RequestParams = {},
+      {
+        datasetId,
+        versionNumber,
+        ...query
+      }: GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData,
@@ -5318,8 +5980,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getDatasetVersionsApiV2DatasetsDatasetIdVersionsGet: (
-      { datasetId, ...query }: GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams,
-      params: RequestParams = {},
+      {
+        datasetId,
+        ...query
+      }: GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData,
@@ -5391,7 +6056,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Get Inference Document Context
      * @request GET:/api/chat/context/{inference_id}
      */
-    getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
+    getInferenceDocumentContextApiChatContextInferenceIdGet: (
+      inferenceId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         GetInferenceDocumentContextApiChatContextInferenceIdGetData,
         GetInferenceDocumentContextApiChatContextInferenceIdGetError
@@ -5431,7 +6099,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (
       provider: ModelProvider,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
@@ -5454,8 +6122,11 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getSessionTracesApiV1TracesSessionsSessionIdGet: (
-      { sessionId, ...query }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
-      params: RequestParams = {},
+      {
+        sessionId,
+        ...query
+      }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
+      params: RequestParams = {}
     ) =>
       this.request<
         GetSessionTracesApiV1TracesSessionsSessionIdGetData,
@@ -5478,8 +6149,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/spans/{span_id}
      * @secure
      */
-    getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
+    getSpanByIdApiV1TracesSpansSpanIdGet: (
+      spanId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetSpanByIdApiV1TracesSpansSpanIdGetData,
+        GetSpanByIdApiV1TracesSpansSpanIdGetError
+      >({
         path: `/api/v1/traces/spans/${spanId}`,
         method: "GET",
         secure: true,
@@ -5497,7 +6174,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getTaskApiV2TasksTaskIdGet: (taskId: string, params: RequestParams = {}) =>
-      this.request<GetTaskApiV2TasksTaskIdGetData, GetTaskApiV2TasksTaskIdGetError>({
+      this.request<
+        GetTaskApiV2TasksTaskIdGetData,
+        GetTaskApiV2TasksTaskIdGetError
+      >({
         path: `/api/v2/tasks/${taskId}`,
         method: "GET",
         secure: true,
@@ -5514,8 +6194,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/usage/tokens
      * @secure
      */
-    getTokenUsageApiV2UsageTokensGet: (query: GetTokenUsageApiV2UsageTokensGetParams, params: RequestParams = {}) =>
-      this.request<GetTokenUsageApiV2UsageTokensGetData, GetTokenUsageApiV2UsageTokensGetError>({
+    getTokenUsageApiV2UsageTokensGet: (
+      query: GetTokenUsageApiV2UsageTokensGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTokenUsageApiV2UsageTokensGetData,
+        GetTokenUsageApiV2UsageTokensGetError
+      >({
         path: `/api/v2/usage/tokens`,
         method: "GET",
         query: query,
@@ -5533,8 +6219,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/{trace_id}
      * @secure
      */
-    getTraceByIdApiV1TracesTraceIdGet: (traceId: string, params: RequestParams = {}) =>
-      this.request<GetTraceByIdApiV1TracesTraceIdGetData, GetTraceByIdApiV1TracesTraceIdGetError>({
+    getTraceByIdApiV1TracesTraceIdGet: (
+      traceId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTraceByIdApiV1TracesTraceIdGetData,
+        GetTraceByIdApiV1TracesTraceIdGetError
+      >({
         path: `/api/v1/traces/${traceId}`,
         method: "GET",
         secure: true,
@@ -5553,9 +6245,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getUserDetailsApiV1TracesUsersUserIdGet: (
       { userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
+      this.request<
+        GetUserDetailsApiV1TracesUsersUserIdGetData,
+        GetUserDetailsApiV1TracesUsersUserIdGetError
+      >({
         path: `/api/v1/traces/users/${userId}`,
         method: "GET",
         query: query,
@@ -5575,9 +6270,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     listSessionsMetadataApiV1TracesSessionsGet: (
       query: ListSessionsMetadataApiV1TracesSessionsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<ListSessionsMetadataApiV1TracesSessionsGetData, ListSessionsMetadataApiV1TracesSessionsGetError>({
+      this.request<
+        ListSessionsMetadataApiV1TracesSessionsGetData,
+        ListSessionsMetadataApiV1TracesSessionsGetError
+      >({
         path: `/api/v1/traces/sessions`,
         method: "GET",
         query: query,
@@ -5597,9 +6295,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     listSpansMetadataApiV1TracesSpansGet: (
       query: ListSpansMetadataApiV1TracesSpansGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
+      this.request<
+        ListSpansMetadataApiV1TracesSpansGetData,
+        ListSpansMetadataApiV1TracesSpansGetError
+      >({
         path: `/api/v1/traces/spans`,
         method: "GET",
         query: query,
@@ -5617,8 +6318,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces
      * @secure
      */
-    listTracesMetadataApiV1TracesGet: (query: ListTracesMetadataApiV1TracesGetParams, params: RequestParams = {}) =>
-      this.request<ListTracesMetadataApiV1TracesGetData, ListTracesMetadataApiV1TracesGetError>({
+    listTracesMetadataApiV1TracesGet: (
+      query: ListTracesMetadataApiV1TracesGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ListTracesMetadataApiV1TracesGetData,
+        ListTracesMetadataApiV1TracesGetError
+      >({
         path: `/api/v1/traces`,
         method: "GET",
         query: query,
@@ -5638,9 +6345,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     listUsersMetadataApiV1TracesUsersGet: (
       query: ListUsersMetadataApiV1TracesUsersGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<ListUsersMetadataApiV1TracesUsersGetData, ListUsersMetadataApiV1TracesUsersGetError>({
+      this.request<
+        ListUsersMetadataApiV1TracesUsersGetData,
+        ListUsersMetadataApiV1TracesUsersGetError
+      >({
         path: `/api/v1/traces/users`,
         method: "GET",
         query: query,
@@ -5660,7 +6370,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     postChatFeedbackApiChatFeedbackInferenceIdPost: (
       inferenceId: string,
       data: FeedbackRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         PostChatFeedbackApiChatFeedbackInferenceIdPostData,
@@ -5686,9 +6396,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     postFeedbackApiV2FeedbackInferenceIdPost: (
       inferenceId: string,
       data: FeedbackRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<PostFeedbackApiV2FeedbackInferenceIdPostData, PostFeedbackApiV2FeedbackInferenceIdPostError>({
+      this.request<
+        PostFeedbackApiV2FeedbackInferenceIdPostData,
+        PostFeedbackApiV2FeedbackInferenceIdPostError
+      >({
         path: `/api/v2/feedback/${inferenceId}`,
         method: "POST",
         body: data,
@@ -5707,8 +6420,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/feedback/query
      * @secure
      */
-    queryFeedbackApiV2FeedbackQueryGet: (query: QueryFeedbackApiV2FeedbackQueryGetParams, params: RequestParams = {}) =>
-      this.request<QueryFeedbackApiV2FeedbackQueryGetData, QueryFeedbackApiV2FeedbackQueryGetError>({
+    queryFeedbackApiV2FeedbackQueryGet: (
+      query: QueryFeedbackApiV2FeedbackQueryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        QueryFeedbackApiV2FeedbackQueryGetData,
+        QueryFeedbackApiV2FeedbackQueryGetError
+      >({
         path: `/api/v2/feedback/query`,
         method: "GET",
         query: query,
@@ -5728,9 +6447,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     queryInferencesApiV2InferencesQueryGet: (
       query: QueryInferencesApiV2InferencesQueryGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<QueryInferencesApiV2InferencesQueryGetData, QueryInferencesApiV2InferencesQueryGetError>({
+      this.request<
+        QueryInferencesApiV2InferencesQueryGetData,
+        QueryInferencesApiV2InferencesQueryGetError
+      >({
         path: `/api/v2/inferences/query`,
         method: "GET",
         query: query,
@@ -5748,8 +6470,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v1/traces
      * @secure
      */
-    receiveTracesApiV1TracesPost: (data: ReceiveTracesApiV1TracesPostPayload, params: RequestParams = {}) =>
-      this.request<ReceiveTracesApiV1TracesPostData, ReceiveTracesApiV1TracesPostError>({
+    receiveTracesApiV1TracesPost: (
+      data: ReceiveTracesApiV1TracesPostPayload,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ReceiveTracesApiV1TracesPostData,
+        ReceiveTracesApiV1TracesPostError
+      >({
         path: `/api/v1/traces`,
         method: "POST",
         body: data,
@@ -5801,8 +6529,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v1/completions
      * @secure
      */
-    runAgenticPromptApiV1CompletionsPost: (data: CompletionRequest, params: RequestParams = {}) =>
-      this.request<RunAgenticPromptApiV1CompletionsPostData, RunAgenticPromptApiV1CompletionsPostError>({
+    runAgenticPromptApiV1CompletionsPost: (
+      data: CompletionRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RunAgenticPromptApiV1CompletionsPostData,
+        RunAgenticPromptApiV1CompletionsPostError
+      >({
         path: `/api/v1/completions`,
         method: "POST",
         body: data,
@@ -5821,25 +6555,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions
      * @secure
      */
-    runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost: (
-      promptName: string,
-      promptVersion: string,
-      taskId: string,
-      data: PromptCompletionRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
-        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError
-      >({
-        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/completions`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
+    runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost:
+      (
+        promptName: string,
+        promptVersion: string,
+        taskId: string,
+        data: PromptCompletionRequest,
+        params: RequestParams = {}
+      ) =>
+        this.request<
+          RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
+          RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError
+        >({
+          path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/completions`,
+          method: "POST",
+          body: data,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        }),
 
     /**
      * @description Save an agentic prompt to the database
@@ -5854,7 +6589,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptName: string,
       taskId: string,
       data: AgenticPromptBaseConfig,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData,
@@ -5881,9 +6616,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     searchRulesApiV2RulesSearchPost: (
       query: SearchRulesApiV2RulesSearchPostParams,
       data: SearchRulesRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<SearchRulesApiV2RulesSearchPostData, SearchRulesApiV2RulesSearchPostError>({
+      this.request<
+        SearchRulesApiV2RulesSearchPostData,
+        SearchRulesApiV2RulesSearchPostError
+      >({
         path: `/api/v2/rules/search`,
         method: "POST",
         query: query,
@@ -5906,9 +6644,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     searchTasksApiV2TasksSearchPost: (
       query: SearchTasksApiV2TasksSearchPostParams,
       data: SearchTasksRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<SearchTasksApiV2TasksSearchPostData, SearchTasksApiV2TasksSearchPostError>({
+      this.request<
+        SearchTasksApiV2TasksSearchPostData,
+        SearchTasksApiV2TasksSearchPostError
+      >({
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
@@ -5928,7 +6669,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v1/model_providers/{provider}
      * @secure
      */
-    setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
+    setModelProviderApiV1ModelProvidersProviderDelete: (
+      provider: ModelProvider,
+      params: RequestParams = {}
+    ) =>
       this.request<
         SetModelProviderApiV1ModelProvidersProviderDeleteData,
         SetModelProviderApiV1ModelProvidersProviderDeleteError
@@ -5951,7 +6695,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     setModelProviderApiV1ModelProvidersProviderPut: (
       provider: ModelProvider,
       data: PutModelProviderCredentials,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         SetModelProviderApiV1ModelProvidersProviderPutData,
@@ -5978,9 +6722,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateDatasetApiV2DatasetsDatasetIdPatch: (
       datasetId: string,
       data: DatasetUpdateRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<UpdateDatasetApiV2DatasetsDatasetIdPatchData, UpdateDatasetApiV2DatasetsDatasetIdPatchError>({
+      this.request<
+        UpdateDatasetApiV2DatasetsDatasetIdPatchData,
+        UpdateDatasetApiV2DatasetsDatasetIdPatchError
+      >({
         path: `/api/v2/datasets/${datasetId}`,
         method: "PATCH",
         body: data,
@@ -5998,8 +6745,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Update Default Task
      * @request PUT:/api/chat/default_task
      */
-    updateDefaultTaskApiChatDefaultTaskPut: (data: ChatDefaultTaskRequest, params: RequestParams = {}) =>
-      this.request<UpdateDefaultTaskApiChatDefaultTaskPutData, UpdateDefaultTaskApiChatDefaultTaskPutError>({
+    updateDefaultTaskApiChatDefaultTaskPut: (
+      data: ChatDefaultTaskRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        UpdateDefaultTaskApiChatDefaultTaskPutData,
+        UpdateDefaultTaskApiChatDefaultTaskPutError
+      >({
         path: `/api/chat/default_task`,
         method: "PUT",
         body: data,
@@ -6021,7 +6774,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       taskId: string,
       metricId: string,
       data: UpdateMetricRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData,
@@ -6049,7 +6802,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       taskId: string,
       ruleId: string,
       data: UpdateRuleRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData,
@@ -6075,9 +6828,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     uploadEmbeddingsFileApiChatFilesPost: (
       query: UploadEmbeddingsFileApiChatFilesPostParams,
       data: BodyUploadEmbeddingsFileApiChatFilesPost,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<UploadEmbeddingsFileApiChatFilesPostData, UploadEmbeddingsFileApiChatFilesPostError>({
+      this.request<
+        UploadEmbeddingsFileApiChatFilesPostData,
+        UploadEmbeddingsFileApiChatFilesPostError
+      >({
         path: `/api/chat/files`,
         method: "POST",
         query: query,
@@ -6099,7 +6855,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     validatePromptEndpointApiV2TasksTaskIdValidatePromptPost: (
       taskId: string,
       data: PromptValidationRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData,
@@ -6127,7 +6883,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       inferenceId: string,
       taskId: string,
       data: ResponseValidationRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData,
@@ -6152,8 +6908,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/auth/api_keys/
      * @secure
      */
-    createApiKeyAuthApiKeysPost: (data: NewApiKeyRequest, params: RequestParams = {}) =>
-      this.request<CreateApiKeyAuthApiKeysPostData, CreateApiKeyAuthApiKeysPostError>({
+    createApiKeyAuthApiKeysPost: (
+      data: NewApiKeyRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        CreateApiKeyAuthApiKeysPostData,
+        CreateApiKeyAuthApiKeysPostError
+      >({
         path: `/auth/api_keys/`,
         method: "POST",
         body: data,
@@ -6172,7 +6934,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/auth/api_keys/deactivate/{api_key_id}
      * @secure
      */
-    deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete: (apiKeyId: string, params: RequestParams = {}) =>
+    deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete: (
+      apiKeyId: string,
+      params: RequestParams = {}
+    ) =>
       this.request<
         DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData,
         DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError
@@ -6211,8 +6976,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/auth/api_keys/{api_key_id}
      * @secure
      */
-    getApiKeyAuthApiKeysApiKeyIdGet: (apiKeyId: string, params: RequestParams = {}) =>
-      this.request<GetApiKeyAuthApiKeysApiKeyIdGetData, GetApiKeyAuthApiKeysApiKeyIdGetError>({
+    getApiKeyAuthApiKeysApiKeyIdGet: (
+      apiKeyId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetApiKeyAuthApiKeysApiKeyIdGetData,
+        GetApiKeyAuthApiKeysApiKeyIdGetError
+      >({
         path: `/auth/api_keys/${apiKeyId}`,
         method: "GET",
         secure: true,
@@ -6231,8 +7002,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    computeSpanMetricsV1SpanSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<ComputeSpanMetricsV1SpanSpanIdMetricsGetData, ComputeSpanMetricsV1SpanSpanIdMetricsGetError>({
+    computeSpanMetricsV1SpanSpanIdMetricsGet: (
+      spanId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ComputeSpanMetricsV1SpanSpanIdMetricsGetData,
+        ComputeSpanMetricsV1SpanSpanIdMetricsGetError
+      >({
         path: `/v1/span/${spanId}/metrics`,
         method: "GET",
         secure: true,
@@ -6250,8 +7027,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    querySpansByTypeV1SpansQueryGet: (query: QuerySpansByTypeV1SpansQueryGetParams, params: RequestParams = {}) =>
-      this.request<QuerySpansByTypeV1SpansQueryGetData, QuerySpansByTypeV1SpansQueryGetError>({
+    querySpansByTypeV1SpansQueryGet: (
+      query: QuerySpansByTypeV1SpansQueryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        QuerySpansByTypeV1SpansQueryGetData,
+        QuerySpansByTypeV1SpansQueryGetError
+      >({
         path: `/v1/spans/query`,
         method: "GET",
         query: query,
@@ -6270,8 +7053,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    querySpansV1TracesQueryGet: (query: QuerySpansV1TracesQueryGetParams, params: RequestParams = {}) =>
-      this.request<QuerySpansV1TracesQueryGetData, QuerySpansV1TracesQueryGetError>({
+    querySpansV1TracesQueryGet: (
+      query: QuerySpansV1TracesQueryGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        QuerySpansV1TracesQueryGetData,
+        QuerySpansV1TracesQueryGetError
+      >({
         path: `/v1/traces/query`,
         method: "GET",
         query: query,
@@ -6292,9 +7081,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     querySpansWithMetricsV1TracesMetricsGet: (
       query: QuerySpansWithMetricsV1TracesMetricsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<QuerySpansWithMetricsV1TracesMetricsGetData, QuerySpansWithMetricsV1TracesMetricsGetError>({
+      this.request<
+        QuerySpansWithMetricsV1TracesMetricsGetData,
+        QuerySpansWithMetricsV1TracesMetricsGetError
+      >({
         path: `/v1/traces/metrics/`,
         method: "GET",
         query: query,
@@ -6313,8 +7105,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    receiveTracesV1TracesPost: (data: ReceiveTracesV1TracesPostPayload, params: RequestParams = {}) =>
-      this.request<ReceiveTracesV1TracesPostData, ReceiveTracesV1TracesPostError>({
+    receiveTracesV1TracesPost: (
+      data: ReceiveTracesV1TracesPostPayload,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ReceiveTracesV1TracesPostData,
+        ReceiveTracesV1TracesPostError
+      >({
         path: `/v1/traces`,
         method: "POST",
         body: data,
@@ -6336,9 +7134,12 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     checkUserPermissionUsersPermissionsCheckGet: (
       query: CheckUserPermissionUsersPermissionsCheckGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<CheckUserPermissionUsersPermissionsCheckGetData, CheckUserPermissionUsersPermissionsCheckGetError>({
+      this.request<
+        CheckUserPermissionUsersPermissionsCheckGetData,
+        CheckUserPermissionUsersPermissionsCheckGetError
+      >({
         path: `/users/permissions/check`,
         method: "GET",
         query: query,
@@ -6356,7 +7157,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/users
      * @secure
      */
-    createUserUsersPost: (data: CreateUserRequest, params: RequestParams = {}) =>
+    createUserUsersPost: (
+      data: CreateUserRequest,
+      params: RequestParams = {}
+    ) =>
       this.request<CreateUserUsersPostData, CreateUserUsersPostError>({
         path: `/users`,
         method: "POST",
@@ -6377,7 +7181,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteUserUsersUserIdDelete: (userId: string, params: RequestParams = {}) =>
-      this.request<DeleteUserUsersUserIdDeleteData, DeleteUserUsersUserIdDeleteError>({
+      this.request<
+        DeleteUserUsersUserIdDeleteData,
+        DeleteUserUsersUserIdDeleteError
+      >({
         path: `/users/${userId}`,
         method: "DELETE",
         secure: true,
@@ -6396,7 +7203,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     resetUserPasswordUsersUserIdResetPasswordPost: (
       userId: string,
       data: PasswordResetRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ResetUserPasswordUsersUserIdResetPasswordPostData,
@@ -6419,7 +7226,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/users
      * @secure
      */
-    searchUsersUsersGet: (query: SearchUsersUsersGetParams, params: RequestParams = {}) =>
+    searchUsersUsersGet: (
+      query: SearchUsersUsersGetParams,
+      params: RequestParams = {}
+    ) =>
       this.request<SearchUsersUsersGetData, SearchUsersUsersGetError>({
         path: `/users`,
         method: "GET",
