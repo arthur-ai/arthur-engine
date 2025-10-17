@@ -2,6 +2,7 @@ import random
 from unittest.mock import MagicMock, patch
 
 import pytest
+from litellm.exceptions import BadRequestError
 
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
@@ -475,3 +476,116 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.unit_tests
+@patch("schemas.agentic_prompt_schemas.completion_cost")
+@patch("schemas.agentic_prompt_schemas.AgenticPrompt.stream_chat_completion")
+def test_streaming_agentic_prompt(
+    mock_stream_chat_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test streaming works for both unsaved and saved agentic prompts"""
+
+    async def mock_stream(*args, **kwargs):
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            yield f"event: chunk\ndata: {chunk}\n\n"
+
+    mock_stream_chat_completion.side_effect = mock_stream
+    mock_completion_cost.return_value = 0.001
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Run a streaming prompt (with stream=True in completion_request)
+    prompt_data = {
+        "name": "streaming_prompt",
+        "messages": [{"role": "user", "content": "Stream this"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+    }
+
+    completion_request = {"stream": True}
+    unsaved_run_data = prompt_data.copy()
+    unsaved_run_data["completion_request"] = completion_request
+
+    # Test streaming an unsaved prompt
+    with client.base_client.stream(
+        "POST",
+        "/api/v1/completions",
+        json=unsaved_run_data,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        content = b"".join(response.iter_bytes())
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            assert chunk.encode() in content
+
+    # Save the prompt
+    response = client.base_client.put(
+        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # Test saved prompt streaming
+    with client.base_client.stream(
+        "POST",
+        f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        content = b"".join(response.iter_bytes())
+        for chunk in ["chunk1", "chunk2", "chunk3"]:
+            assert chunk.encode() in content
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+@patch("schemas.agentic_prompt_schemas.acompletion")
+async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
+    mock_acompletion,
+    client: GenaiEngineTestClientBase,
+):
+    """Test that /api/v1/completions yields an error event when LiteLLM raises BadRequestError"""
+
+    model_name = "gpt-4o"
+    model_provider = "openai"
+
+    # Simulate LiteLLM failure during streaming
+    mock_acompletion.side_effect = BadRequestError(
+        "OpenAIException - Invalid schema for response_format 'joke_struct': "
+        "In context=(), 'additionalProperties' is required to be supplied and to be false.",
+        model=model_name,
+        llm_provider=model_provider,
+    )
+
+    prompt_data = {
+        "name": "stream_error_prompt",
+        "messages": [{"role": "user", "content": "tell me a joke"}],
+        "model_name": model_name,
+        "model_provider": model_provider,
+        "completion_request": {"stream": True},
+    }
+
+    # Call the route with streaming enabled
+    with client.base_client.stream(
+        "POST",
+        "/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+
+        content = b"".join(response.iter_bytes()).decode()
+        assert "event: error" in content
+        assert "Invalid schema for response_format" in content

@@ -12,11 +12,16 @@ from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptMessage,
-    AgenticPromptRunConfig,
     AgenticPrompts,
-    AgenticPromptUnsavedRunConfig,
+    CompletionRequest,
+    LLMResponseFormat,
+    LLMResponseSchema,
+    PromptCompletionRequest,
+    ToolChoice,
+    ToolChoiceFunction,
     VariableTemplateValue,
 )
+from schemas.common_schemas import JsonSchema
 from schemas.response_schemas import AgenticPromptRunResponse
 
 
@@ -62,7 +67,7 @@ def sample_agentic_prompt(sample_prompt_data):
 @pytest.fixture
 def sample_unsaved_run_config(sample_prompt_data):
     """Create sample AgenticPrompt instance"""
-    return AgenticPromptUnsavedRunConfig(**sample_prompt_data)
+    return CompletionRequest(**sample_prompt_data)
 
 
 @pytest.fixture
@@ -76,6 +81,23 @@ def sample_db_prompt(sample_prompt_data):
 def expected_db_prompt_messages(sample_db_prompt):
     """Create expected DatabaseAgenticPrompt messages"""
     return to_agentic_prompt_messages(sample_db_prompt.messages)
+
+
+def mock_completion(*args, **kwargs):
+    response_format = kwargs.get("response_format")
+    json_schema = response_format.get("json_schema")
+    schema = json_schema.get("schema")
+
+    if json_schema.get("strict") and "additionalProperties" not in schema:
+        raise ValueError(
+            "Invalid schema for response_format 'joke_struct': "
+            "In context=(), 'additionalProperties' is required to be supplied and to be false.",
+        )
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {"content": "ok", "tool_calls": None}
+    return mock_response
 
 
 @pytest.mark.unit_tests
@@ -112,7 +134,8 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    result = agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
+    prompt, request = sample_unsaved_run_config.to_prompt_and_request()
+    result = prompt.run_chat_completion(request)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -374,7 +397,8 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    result = agentic_prompt_repo.run_saved_prompt(task_id, prompt_name)
+    prompt = agentic_prompt_repo.get_prompt(task_id, prompt_name)
+    result = prompt.run_chat_completion()
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"
@@ -394,9 +418,9 @@ def test_agentic_prompt_from_db_model(sample_db_prompt, expected_db_prompt_messa
 
 
 @pytest.mark.unit_tests
-def test_agentic_prompt_to_dict(sample_agentic_prompt):
+def test_agentic_prompt_model_dump(sample_agentic_prompt):
     """Test converting AgenticPrompt to dictionary"""
-    prompt_dict = sample_agentic_prompt.to_dict()
+    prompt_dict = sample_agentic_prompt.model_dump(exclude_none=True)
 
     expected_messages = [
         message.model_dump(exclude_none=True)
@@ -504,9 +528,9 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
     else:
         variables = []
 
-    prompt = AgenticPromptRunConfig(variables=variables)
+    completion_request = PromptCompletionRequest(variables=variables)
     message = [{"role": "user", "content": message}]
-    result = prompt.replace_variables(message)
+    result = completion_request.replace_variables(message)
     assert result[0]["content"] == expected_message
 
 
@@ -535,7 +559,10 @@ def test_agentic_prompt_tools_serialization():
                 "strict": True,
             },
         ],
-        "tool_choice": "get_weather",
+        "tool_choice": {
+            "type": "function",
+            "function": {"name": "get_weather"},
+        },
     }
 
     # Create prompt
@@ -566,14 +593,17 @@ def test_agentic_prompt_tools_serialization():
 
     # Verify tools are deserialized correctly
     assert len(reconstructed_prompt.tools) == 1
-    assert reconstructed_prompt.tools[0].name == "get_weather"
-    assert reconstructed_prompt.tools[0].description == "Get weather info"
+    assert reconstructed_prompt.tools[0].function.name == "get_weather"
+    assert reconstructed_prompt.tools[0].function.description == "Get weather info"
     assert reconstructed_prompt.tools[0].strict == True
-    assert len(reconstructed_prompt.tools[0].function_definition.properties) == 1
-    assert reconstructed_prompt.tools[0].function_definition.required == ["location"]
+    assert len(reconstructed_prompt.tools[0].function.parameters.properties) == 1
+    assert reconstructed_prompt.tools[0].function.parameters.required == ["location"]
 
     # Verify tool_choice is deserialized correctly (should be function name string)
-    assert reconstructed_prompt.tool_choice == "get_weather"
+    assert reconstructed_prompt.tool_choice == ToolChoice(
+        type="function",
+        function=ToolChoiceFunction(name="get_weather"),
+    )
 
 
 @pytest.mark.unit_tests
@@ -630,20 +660,14 @@ def test_agentic_prompt_response_format_serialization():
 
     # Verify response_format is deserialized correctly
     assert reconstructed_prompt.response_format.type == "json_schema"
-    assert reconstructed_prompt.response_format.response_schema.name == "user_schema"
+    assert reconstructed_prompt.response_format.json_schema.name == "user_schema"
     assert (
-        reconstructed_prompt.response_format.response_schema.description
+        reconstructed_prompt.response_format.json_schema.description
         == "User information"
     )
-    assert reconstructed_prompt.response_format.response_schema.strict == None
-    assert (
-        len(reconstructed_prompt.response_format.response_schema.json_schema.properties)
-        == 1
-    )
-    assert (
-        reconstructed_prompt.response_format.response_schema.json_schema.required
-        == ["name"]
-    )
+    assert reconstructed_prompt.response_format.json_schema.strict == None
+    assert len(reconstructed_prompt.response_format.json_schema.schema.properties) == 1
+    assert reconstructed_prompt.response_format.json_schema.schema.required == ["name"]
 
 
 @pytest.mark.unit_tests
@@ -652,7 +676,6 @@ def test_agentic_prompt_response_format_serialization():
 def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost,
     mock_completion,
-    agentic_prompt_repo,
 ):
     """Test that assistant tool_call messages are still serialized correctly when set with an invalid type"""
     # Construct an unsaved prompt that includes a tool_call assistant message
@@ -679,7 +702,7 @@ def test_agentic_prompt_tool_call_message_serialization(
         },
     ]
 
-    run_config = AgenticPromptUnsavedRunConfig(
+    completion_request = CompletionRequest(
         name="tool_call_prompt",
         messages=messages,
         model_name="gpt-4o",
@@ -697,7 +720,8 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost.return_value = 0.000123
 
     # Run the unsaved prompt
-    result = agentic_prompt_repo.run_unsaved_prompt(run_config)
+    prompt, request = completion_request.to_prompt_and_request()
+    result = prompt.run_chat_completion(request)
     call_args = mock_completion.call_args[1]
 
     # Extract messages sent to LiteLLM
@@ -721,3 +745,49 @@ def test_agentic_prompt_tool_call_message_serialization(
     # Ensure the response object is still parsed properly
     assert isinstance(result.content, str)
     assert result.cost == "0.000123"
+
+
+@patch("schemas.agentic_prompt_schemas.completion_cost", return_value=0.0)
+@patch("schemas.agentic_prompt_schemas.completion", side_effect=mock_completion)
+@pytest.mark.parametrize("has_additional_props", [True, False])
+def test_run_chat_completion_strict_additional_properties_validation(
+    mock_completion,
+    mock_cost,
+    has_additional_props,
+):
+    schema_body = JsonSchema(
+        type="object",
+        properties={
+            "question": {"type": "string"},
+            "punchline": {"type": "string"},
+        },
+        required=["question", "punchline"],
+        additionalProperties=False if has_additional_props else None,
+    )
+
+    response_format = LLMResponseFormat(
+        type="json_schema",
+        json_schema=LLMResponseSchema(
+            name="joke_struct",
+            description="Schema to validate strict additionalProperties behavior",
+            schema=schema_body,
+            strict=True,
+        ),
+    )
+
+    prompt = AgenticPrompt(
+        name="strict_schema_test",
+        messages=[{"role": "user", "content": "tell me a joke"}],
+        model_name="gpt-4o",
+        model_provider="openai",
+        response_format=response_format,
+    )
+
+    completion_request = PromptCompletionRequest()
+
+    if has_additional_props:
+        result = prompt.run_chat_completion(completion_request)
+        assert result.content == "ok"
+    else:
+        with pytest.raises(ValueError, match="additionalProperties"):
+            prompt.run_chat_completion(completion_request)
