@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from tests.routes.span.conftest import (
+from tests.routes.legacy_span.conftest import (
     _create_database_span,
     _get_trace_metadata,
 )
@@ -32,6 +32,7 @@ def test_initial_trace_metadata_creation_single_span(trace_metadata_setup):
     assert metadata is not None
     assert metadata.trace_id == trace_id
     assert metadata.task_id == task_id
+    assert metadata.session_id is None  # No session_id provided
     assert metadata.start_time == start_time
     assert metadata.end_time == end_time
     assert metadata.span_count == 1
@@ -62,6 +63,7 @@ def test_trace_metadata_update_with_additional_spans(trace_metadata_setup):
     # Verify initial metadata
     metadata = _get_trace_metadata(db_session, trace_id)
     assert metadata.span_count == 1
+    assert metadata.session_id is None  # No session_id provided
     assert metadata.start_time == initial_start
     assert metadata.end_time == initial_end
 
@@ -329,6 +331,158 @@ def test_trace_metadata_with_mixed_task_ids(trace_metadata_setup):
     metadata = _get_trace_metadata(db_session, trace_id)
     assert metadata is not None
     assert metadata.task_id == primary_task_id
+    assert metadata.session_id is None  # No session_id provided
     assert metadata.span_count == 2
     assert metadata.start_time == base_time
     assert metadata.end_time == base_time + timedelta(seconds=15)
+
+
+def test_trace_metadata_session_id_storage_and_conflict_resolution(
+    trace_metadata_setup,
+):
+    """Test session_id storage and conflict resolution when multiple spans have different session_ids."""
+    # Arrange
+    db_session, trace_ingestion_service, created_trace_ids = trace_metadata_setup
+    trace_id = "test_trace_session_001"
+    task_id = "test_task_session_001"
+    created_trace_ids.append(trace_id)
+
+    base_time = datetime(2024, 1, 1, 12, 0, 0)
+    first_session_id = "session_first_12345"
+    second_session_id = "session_second_67890"
+
+    # Test 1: Single span with session_id should be stored
+    single_span = _create_database_span(
+        trace_id=trace_id,
+        span_id="span_single",
+        task_id=task_id,
+        start_time=base_time,
+        end_time=base_time + timedelta(seconds=1),
+        session_id=first_session_id,
+    )
+    trace_ingestion_service._store_spans([single_span], commit=True)
+
+    metadata = _get_trace_metadata(db_session, trace_id)
+    assert metadata.session_id == first_session_id
+    assert metadata.span_count == 1
+
+    # Test 2: Add spans with conflicting session_ids - should use first non-null
+    conflicting_spans = [
+        _create_database_span(
+            trace_id=trace_id,
+            span_id="span_002",
+            task_id=task_id,
+            start_time=base_time + timedelta(seconds=2),
+            end_time=base_time + timedelta(seconds=7),
+            session_id=second_session_id,  # Different session_id
+        ),
+        _create_database_span(
+            trace_id=trace_id,
+            span_id="span_003",
+            task_id=task_id,
+            start_time=base_time + timedelta(seconds=4),
+            end_time=base_time + timedelta(seconds=9),
+            session_id=None,  # No session_id
+        ),
+    ]
+
+    # Act
+    trace_ingestion_service._store_spans(conflicting_spans, commit=True)
+
+    # Assert - Should preserve existing session_id (first_session_id)
+    final_metadata = _get_trace_metadata(db_session, trace_id)
+    assert final_metadata.session_id == first_session_id  # Should preserve existing
+    assert final_metadata.span_count == 3
+
+
+def test_trace_metadata_session_id_update_logic(trace_metadata_setup):
+    """Test session_id update logic: preservation of existing values and updating null values."""
+    # Arrange
+    db_session, trace_ingestion_service, created_trace_ids = trace_metadata_setup
+
+    # Test Case 1: Null session_id gets updated when new spans have session_id
+    trace_id_1 = "test_trace_session_null_update"
+    task_id_1 = "test_task_session_null_update"
+    created_trace_ids.extend([trace_id_1])
+    base_time_1 = datetime(2024, 1, 1, 14, 0, 0)
+    new_session_id = "new_session_12345"
+
+    # Create metadata with null session_id
+    null_batch = [
+        _create_database_span(
+            trace_id=trace_id_1,
+            span_id="null_span1",
+            task_id=task_id_1,
+            start_time=base_time_1,
+            end_time=base_time_1 + timedelta(seconds=5),
+            session_id=None,  # No session_id
+        ),
+    ]
+    trace_ingestion_service._store_spans(null_batch, commit=True)
+
+    metadata = _get_trace_metadata(db_session, trace_id_1)
+    assert metadata.session_id is None
+    assert metadata.span_count == 1
+
+    # Add spans with session_id - should update null to new session_id
+    update_batch = [
+        _create_database_span(
+            trace_id=trace_id_1,
+            span_id="update_span1",
+            task_id=task_id_1,
+            start_time=base_time_1 + timedelta(seconds=10),
+            end_time=base_time_1 + timedelta(seconds=15),
+            session_id=new_session_id,
+        ),
+    ]
+    trace_ingestion_service._store_spans(update_batch, commit=True)
+
+    final_metadata_1 = _get_trace_metadata(db_session, trace_id_1)
+    assert (
+        final_metadata_1.session_id == new_session_id
+    )  # Should update null to new session_id
+    assert final_metadata_1.span_count == 2
+
+    # Test Case 2: Existing session_id is preserved during updates
+    trace_id_2 = "test_trace_session_preserve"
+    task_id_2 = "test_task_session_preserve"
+    created_trace_ids.extend([trace_id_2])
+    base_time_2 = datetime(2024, 1, 1, 16, 0, 0)
+    existing_session_id = "existing_session_67890"
+    different_session_id = "different_session_99999"
+
+    # Establish metadata with existing session_id
+    existing_batch = [
+        _create_database_span(
+            trace_id=trace_id_2,
+            span_id="existing_span1",
+            task_id=task_id_2,
+            start_time=base_time_2,
+            end_time=base_time_2 + timedelta(seconds=5),
+            session_id=existing_session_id,
+        ),
+    ]
+    trace_ingestion_service._store_spans(existing_batch, commit=True)
+
+    metadata = _get_trace_metadata(db_session, trace_id_2)
+    assert metadata.session_id == existing_session_id
+    assert metadata.span_count == 1
+
+    # Add spans with different session_id - should preserve existing
+    preserve_batch = [
+        _create_database_span(
+            trace_id=trace_id_2,
+            span_id="preserve_span1",
+            task_id=task_id_2,
+            start_time=base_time_2 + timedelta(seconds=10),
+            end_time=base_time_2 + timedelta(seconds=15),
+            session_id=different_session_id,  # Different session_id
+        ),
+    ]
+    trace_ingestion_service._store_spans(preserve_batch, commit=True)
+
+    final_metadata_2 = _get_trace_metadata(db_session, trace_id_2)
+    assert (
+        final_metadata_2.session_id == existing_session_id
+    )  # Should preserve existing
+    assert final_metadata_2.span_count == 2

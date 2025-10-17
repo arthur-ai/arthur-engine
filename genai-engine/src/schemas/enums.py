@@ -141,6 +141,12 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
+    DATASET_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    DATASET_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
 
 
 class ProviderEnum(str, Enum):
@@ -173,3 +179,31 @@ class ProviderEnum(str, Enum):
     TOGETHER_AI = "together_ai"
     VLLM = "vllm"
     WATSONX = "watsonx"
+
+
+class MessageRole(Enum):
+    SYSTEM = "system"
+    USER = "user"
+    AI = "assistant"
+    TOOL = "tool"
+
+
+class ReasoningEffortEnum(str, Enum):
+    NONE = "none"
+    MINIMAL = "minimal"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    DEFAULT = "default"
+
+
+class ToolChoiceEnum(str, Enum):
+    AUTO = "auto"
+    NONE = "none"
+    REQUIRED = "required"
+
+
+class LLMResponseFormatEnum(str, Enum):
+    TEXT = "text"
+    JSON_OBJECT = "json_object"
+    JSON_SCHEMA = "json_schema"

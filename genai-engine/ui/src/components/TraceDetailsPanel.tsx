@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
 import {
   OpenInferenceSpanKind,
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
+import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect } from "react";
+
+import { TraceResponse, NestedSpanWithMetricsResponse } from "@/lib/api";
+
 
 interface TraceDetailsPanelProps {
   trace: TraceResponse | null;

@@ -249,9 +249,14 @@ class ODBCConnector(Connector):
                 "Arthur pagination is 1-indexed. Please provide a page number >= 1.",
             )
 
-        return stmt.offset(
-            (pagination_options.page - 1) * pagination_options.page_size,
-        ).limit(pagination_options.page_size)
+        offset = (pagination_options.page - 1) * pagination_options.page_size
+        driver_lower = self.driver.lower()
+
+        # Not using offset for MSSQL to avoid issues with pagination:
+        if ("mssql" in driver_lower or "sql server" in driver_lower) and offset == 0:
+            return stmt.limit(pagination_options.page_size)
+
+        return stmt.offset(offset).limit(pagination_options.page_size)
 
     def _get_filter_condition(self, col: Column[Any], op: str, val: Any) -> Any | None:
         """Apply a single filter operation to a column."""
@@ -406,6 +411,31 @@ class ODBCConnector(Connector):
 
             if filters:
                 stmt = self._apply_filters(table, stmt, filters)
+
+            driver_lower = self.driver.lower()
+            # Add stable ordering for MSSQL
+            if "mssql" in driver_lower or "sql server" in driver_lower:
+                try:
+                    already_ordered = bool(getattr(stmt, "_order_by_clauses", ()))
+                except Exception:
+                    already_ordered = False
+
+                if not already_ordered:
+                    insp = inspect(self.engine)
+                    pk_cols = (
+                        insp.get_pk_constraint(table.name, schema=table.schema).get(
+                            "constrained_columns",
+                        )
+                        or []
+                    )
+                    if pk_cols:
+                        order_col = table.c[pk_cols[0]]
+                    else:
+                        order_col = next(
+                            (c for c in table.c if not c.nullable),
+                            list(table.c)[0],
+                        )
+                    stmt = stmt.order_by(order_col.asc())
             stmt = self._paginate_query(stmt, pagination_options)
 
         df = pd.read_sql(stmt, self.engine)

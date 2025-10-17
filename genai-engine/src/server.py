@@ -42,8 +42,10 @@ from routers.chat_routes import app_chat_routes
 from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
-from routers.v1.span_routes import span_routes
+from routers.v1.legacy_span_routes import span_routes
+from routers.v1.trace_api_routes import trace_api_routes
 from routers.v2.routers import (
+    dataset_management_routes,
     feedback_routes,
     query_routes,
     rule_management_routes,
@@ -348,7 +350,9 @@ def get_app_with_routes() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
             agentic_prompt_routes,
+            dataset_management_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -372,7 +376,9 @@ def get_test_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
             agentic_prompt_routes,
+            dataset_management_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -406,7 +412,9 @@ def get_app() -> FastAPI:
             validate_routes,
             api_keys_routes,
             span_routes,
+            trace_api_routes,
             agentic_prompt_routes,
+            dataset_management_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

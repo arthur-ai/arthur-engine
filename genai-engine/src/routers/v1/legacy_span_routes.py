@@ -234,6 +234,7 @@ def trace_query_parameters(
     description="Receiver for OpenInference trace standard.",
     response_model=None,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Traces"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_WRITE.value)
@@ -263,6 +264,7 @@ def receive_traces(
     description="Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
@@ -307,6 +309,7 @@ def query_spans(
     description="Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics.",
     response_model=QueryTracesWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
@@ -352,6 +355,7 @@ def query_spans_with_metrics(
     response_model=QuerySpansResponse,
     response_model_exclude_none=True,
     tags=["Spans"],
+    deprecated=True,
     responses={
         400: {"description": "Invalid span types, parameters, or validation error"},
         404: {"description": "No spans found"},
@@ -393,20 +397,25 @@ def query_spans_by_type(
             end_time=end_time,
         )
 
-        span_repo = _get_span_repository(db_session)
-        spans = span_repo.query_spans(
+        # Create minimal TraceQueryRequest for legacy filtering
+        trace_query_filter = TraceQueryRequest(
             task_ids=query_request.task_ids,
             span_types=query_request.span_types,
             start_time=query_request.start_time,
             end_time=query_request.end_time,
+        )
+
+        span_repo = _get_span_repository(db_session)
+        spans, total_count = span_repo.query_spans(
             sort=pagination_parameters.sort,
             page=pagination_parameters.page,
             page_size=pagination_parameters.page_size,
             include_metrics=True,  # Include existing metrics
             compute_new_metrics=False,  # Don't compute new metrics
+            filters=trace_query_filter,  # Use comprehensive filtering with minimal filter
         )
         return QuerySpansResponse(
-            count=len(spans),
+            count=total_count,
             spans=[span._to_response_model() for span in spans],
         )
     except ValidationError as e:
@@ -430,6 +439,7 @@ def query_spans_by_type(
     description="Compute metrics for a single span. Validates that the span is an LLM span.",
     response_model=SpanWithMetricsResponse,
     response_model_exclude_none=True,
+    deprecated=True,
     tags=["Spans"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)

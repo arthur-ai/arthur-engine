@@ -570,8 +570,10 @@ class TestODBCConnectorDataReading:
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     @patch("ml_engine.connectors.odbc_connector.pd.read_sql")
     @patch("ml_engine.connectors.odbc_connector.primary_timestamp_col_name")
+    @patch("ml_engine.connectors.odbc_connector.inspect")
     def test_read_without_timestamp_column(
         self,
+        mock_inspect,
         mock_primary_timestamp,
         mock_read_sql,
         mock_create_engine,
@@ -581,6 +583,11 @@ class TestODBCConnectorDataReading:
 
         mock_engine = Mock()
         mock_create_engine.return_value = mock_engine
+
+        # Mock the inspector for MSSQL ordering logic
+        mock_inspector = Mock()
+        mock_inspector.get_pk_constraint.return_value = {"constrained_columns": ["id"]}
+        mock_inspect.return_value = mock_inspector
 
         mock_primary_timestamp.side_effect = ValueError("No timestamp column")
         mock_read_sql.return_value = pd.DataFrame({"id": [1, 2]})
