@@ -335,31 +335,32 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         self,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AsyncGenerator[str, None]:
-        model, completion_params = self._get_completion_params(completion_request)
-        response = await acompletion(model=model, **completion_params)
+        try:
+            model, completion_params = self._get_completion_params(completion_request)
+            response = await acompletion(model=model, **completion_params)
 
-        collected_chunks = []
-        async for chunk in response:
-            collected_chunks.append(chunk)
-            yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
+            collected_chunks = []
+            async for chunk in response:
+                collected_chunks.append(chunk)
+                yield f"event: chunk\ndata: {chunk.model_dump_json()}\n\n"
 
-        # Build complete response from chunks
-        complete_response = stream_chunk_builder(
-            collected_chunks,
-            messages=completion_params.get("messages", []),
-        )
+            complete_response = stream_chunk_builder(
+                collected_chunks,
+                messages=completion_params.get("messages", []),
+            )
 
-        cost = completion_cost(complete_response)
-        msg = complete_response.choices[0].message
+            cost = completion_cost(complete_response)
+            msg = complete_response.choices[0].message
 
-        # yield the final response
-        yield f"event: final_response\ndata: {
-            AgenticPromptRunResponse(
-                content=msg.get("content"),
-                tool_calls=msg.get("tool_calls"),
-                cost=f"{cost:.6f}",
-            ).model_dump_json()
-        }\n\n"
+            yield f"event: final_response\ndata: {
+                AgenticPromptRunResponse(
+                    content=msg.get("content"),
+                    tool_calls=msg.get("tool_calls"),
+                    cost=f"{cost:.6f}",
+                ).model_dump_json()
+            }\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {str(e)}\n\n"
 
     @classmethod
     def from_db_model(cls, db_prompt: DatabaseAgenticPrompt) -> "AgenticPrompt":
