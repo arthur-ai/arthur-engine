@@ -6178,7 +6178,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ProviderEnum",
+                        "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6433,7 +6433,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ProviderEnum",
+                        "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -6860,7 +6860,7 @@
                         "description": "Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')"
                     },
                     "model_provider": {
-                        "$ref": "#/components/schemas/ProviderEnum",
+                        "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
                     "tools": {
@@ -9055,6 +9055,19 @@
                 ],
                 "title": "MetricType"
             },
+            "ModelProvider": {
+                "type": "string",
+                "enum": [
+                    "anthropic",
+                    "openai",
+                    "gemini",
+                    "azure",
+                    "bedrock",
+                    "sagemaker",
+                    "vertex_ai"
+                ],
+                "title": "ModelProvider"
+            },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
                     "id": {
@@ -9956,41 +9969,6 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
-            },
-            "ProviderEnum": {
-                "type": "string",
-                "enum": [
-                    "anthropic",
-                    "openai",
-                    "gemini",
-                    "azure",
-                    "deepseek",
-                    "mistral",
-                    "meta_llama",
-                    "groq",
-                    "bedrock",
-                    "sagemaker",
-                    "vertex_ai",
-                    "huggingface",
-                    "cloudflare",
-                    "ai21",
-                    "baseten",
-                    "cohere",
-                    "empower",
-                    "featherless_ai",
-                    "friendliai",
-                    "galadriel",
-                    "nebius",
-                    "nlp_cloud",
-                    "novita",
-                    "openrouter",
-                    "petals",
-                    "replicate",
-                    "together_ai",
-                    "vllm",
-                    "watsonx"
-                ],
-                "title": "ProviderEnum"
             },
             "QueryFeedbackResponse": {
                 "properties": {

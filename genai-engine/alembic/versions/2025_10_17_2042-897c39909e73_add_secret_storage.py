@@ -1,8 +1,8 @@
 """Add secret storage
 
-Revision ID: 5f4ff84f6a62
+Revision ID: 897c39909e73
 Revises: 18b0dde1883b
-Create Date: 2025-10-10 09:53:28.965414
+Create Date: 2025-10-17 20:42:40.528077
 
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 from db_models.custom_types import EncryptedJSON
 
 # revision identifiers, used by Alembic.
-revision = "5f4ff84f6a62"
+revision = "897c39909e73"
 down_revision = "18b0dde1883b"
 branch_labels = None
 depends_on = None
@@ -25,14 +25,9 @@ def upgrade() -> None:
         sa.Column("id", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("value", EncryptedJSON(), nullable=False),
-        sa.Column("owner_id", sa.String(), nullable=True),
         sa.Column("secret_type", sa.String(), nullable=False),
         sa.Column("created_at", sa.TIMESTAMP(), nullable=False),
         sa.Column("updated_at", sa.TIMESTAMP(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["owner_id"],
-            ["api_keys.id"],
-        ),
         sa.PrimaryKeyConstraint("id"),
     )
     # ### end Alembic commands ###
