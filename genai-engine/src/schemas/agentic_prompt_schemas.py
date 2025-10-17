@@ -298,6 +298,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
         completion_params = self.model_dump(
             exclude={"name", "model_name", "model_provider"},
+            exclude_none=True,
         )
 
         if completion_request.variables:
