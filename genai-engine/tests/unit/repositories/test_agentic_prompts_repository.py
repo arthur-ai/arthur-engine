@@ -656,7 +656,6 @@ def test_agentic_prompt_response_format_serialization():
 def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost,
     mock_completion,
-    agentic_prompt_repo,
 ):
     """Test that assistant tool_call messages are still serialized correctly when set with an invalid type"""
     # Construct an unsaved prompt that includes a tool_call assistant message

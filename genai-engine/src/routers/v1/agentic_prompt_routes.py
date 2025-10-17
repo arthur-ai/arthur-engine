@@ -218,7 +218,6 @@ async def run_agentic_prompt(
         AgenticPromptRunResponse or StreamingResponse
     """
     try:
-        agentic_prompt_service = AgenticPromptRepository(None)
         prompt, completion_request = unsaved_prompt.to_prompt_and_request()
         return await execute_prompt_completion(
             prompt,

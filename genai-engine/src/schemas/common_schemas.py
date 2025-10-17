@@ -69,7 +69,7 @@ class JsonSchema(BaseModel):
         default_factory=list,
         description="The required properties of the function",
     )
-    additional_properties: Optional[bool] = Field(
+    additionalProperties: Optional[bool] = Field(
         default=None,
         description="Whether the function definition should allow additional properties",
     )

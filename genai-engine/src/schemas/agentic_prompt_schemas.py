@@ -1,6 +1,6 @@
 import warnings
 from datetime import datetime
-from typing import AsyncGenerator, Dict, List, Optional, Tuple, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import acompletion, completion, completion_cost, stream_chunk_builder
@@ -293,7 +293,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
     def _get_completion_params(
         self,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
-    ) -> AgenticPromptRunResponse:
+    ) -> Tuple[str, Dict[str, Any]]:
         model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(

@@ -8227,7 +8227,7 @@
                         "title": "Required",
                         "description": "The required properties of the function"
                     },
-                    "additional_properties": {
+                    "additionalProperties": {
                         "anyOf": [
                             {
                                 "type": "boolean"
@@ -8236,7 +8236,7 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "Additional Properties",
+                        "title": "Additionalproperties",
                         "description": "Whether the function definition should allow additional properties"
                     }
                 },
