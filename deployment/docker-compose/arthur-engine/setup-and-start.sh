@@ -227,9 +227,10 @@ if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
     read -p "GENAI_ENGINE_SECRET_STORE_KEY: " genai_engine_secret_store_key
 
     if [[ -z "$genai_engine_secret_store_key" ]]; then
-        # Generate a secure random key using openssl
-        genai_engine_secret_store_key=$(openssl rand -base64 32)
+        # Generate a secure random key using /dev/urandom
+        genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
         echo "Generated random secret key: $genai_engine_secret_store_key"
+        echo "This key is stored in the .env file and will be used to encrypt/decrypt secrets stored in the database."
         echo "Please save this key securely for future deployments!"
     fi
 
