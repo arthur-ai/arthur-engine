@@ -207,6 +207,7 @@ if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
         $rng.GetBytes($randomBytes)
         $secretKey = [Convert]::ToBase64String($randomBytes)
         Write-Host "Generated random secret key: $secretKey" -ForegroundColor Green
+        Write-Host "This key is stored in the .env file and will be used to encrypt/decrypt secrets stored in the database."
         Write-Host "Please save this key securely for future deployments!" -ForegroundColor Yellow
     }
 
