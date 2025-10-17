@@ -7635,13 +7635,22 @@
                         "format": "uuid",
                         "title": "Dataset Id",
                         "description": "ID of the dataset."
+                    },
+                    "column_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Column Names",
+                        "description": "Names of all columns in the dataset version."
                     }
                 },
                 "type": "object",
                 "required": [
                     "version_number",
                     "created_at",
-                    "dataset_id"
+                    "dataset_id",
+                    "column_names"
                 ],
                 "title": "DatasetVersionMetadataResponse"
             },
@@ -7662,6 +7671,14 @@
                         "format": "uuid",
                         "title": "Dataset Id",
                         "description": "ID of the dataset."
+                    },
+                    "column_names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Column Names",
+                        "description": "Names of all columns in the dataset version."
                     },
                     "rows": {
                         "items": {
@@ -7697,6 +7714,7 @@
                     "version_number",
                     "created_at",
                     "dataset_id",
+                    "column_names",
                     "rows",
                     "page",
                     "page_size",
