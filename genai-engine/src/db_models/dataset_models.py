@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List
 
 from sqlalchemy import (
+    JSON,
     TIMESTAMP,
     UUID,
     ForeignKey,
@@ -45,6 +46,7 @@ class DatabaseDatasetVersion(Base):
         cascade="all,delete",
         lazy="joined",
     )
+    column_names: Mapped[List[str]] = mapped_column(JSON)
 
 
 class DatabaseDatasetVersionRow(Base):

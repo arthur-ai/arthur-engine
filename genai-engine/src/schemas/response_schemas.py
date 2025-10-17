@@ -84,6 +84,9 @@ class DatasetVersionMetadataResponse(BaseModel):
         description="Timestamp representing the time of dataset version creation in unix milliseconds.",
     )
     dataset_id: UUID = Field(description="ID of the dataset.")
+    column_names: List[str] = Field(
+        description="Names of all columns in the dataset version.",
+    )
 
 
 class DatasetVersionResponse(DatasetVersionMetadataResponse):

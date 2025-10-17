@@ -25,6 +25,19 @@ def _extract_row_data(rows):
     return row_data
 
 
+def _get_id_by_row_name(rows, name):
+    """Helper function to get the ID of the row for some named person."""
+    for row in rows:
+        name_value = next(
+            (item.column_value for item in row.data if item.column_name == "name"),
+            None,
+        )
+        if name_value == name:
+            return row.id
+    else:
+        raise ValueError(f"Entry for name {name} not found in rows.")
+
+
 @pytest.mark.unit_tests
 def test_dataset_versions_basic_functionality(
     client: GenaiEngineTestClientBase,
@@ -80,6 +93,7 @@ def test_dataset_versions_basic_functionality(
     assert created_version.dataset_id == dataset_id
     assert created_version.total_count == 3
     assert len(created_version.rows) == 3
+    assert set(created_version.column_names) == {"name", "age"}
 
     # Test 2: Basic get of the dataset version
     status_code, retrieved_version = client.get_dataset_version(
@@ -93,6 +107,7 @@ def test_dataset_versions_basic_functionality(
     assert len(retrieved_version.rows) == 3
     assert retrieved_version.page == 0  # Default page
     assert retrieved_version.page_size == 10  # Default page size
+    assert set(retrieved_version.column_names) == {"name", "age"}
 
     # Test 3: Basic Get with pagination (page size less than total rows)
     status_code, paginated_version = client.get_dataset_version(
@@ -140,6 +155,10 @@ def test_dataset_versions_basic_functionality(
                 column_value="Alice Brown",
             ),
             NewDatasetVersionRowColumnItemRequest(column_name="age", column_value="28"),
+            NewDatasetVersionRowColumnItemRequest(
+                column_name="profession",
+                column_value="mechanical engineer",
+            ),
         ],
     )
 
@@ -153,6 +172,7 @@ def test_dataset_versions_basic_functionality(
     assert version_2.version_number == 2
     assert version_2.total_count == 3  # 3 - 1 (deleted) + 1 (added) = 3
     assert len(version_2.rows) == 3
+    assert set(version_2.column_names) == {"name", "age", "profession"}
 
     # verify the persisted values in version 2
     status_code, retrieved_version_2 = client.get_dataset_version(
@@ -163,6 +183,7 @@ def test_dataset_versions_basic_functionality(
     assert retrieved_version_2.version_number == 2
     assert retrieved_version_2.total_count == 3
     assert len(retrieved_version_2.rows) == 3
+    assert set(retrieved_version_2.column_names) == {"name", "age", "profession"}
 
     # Verify the rows in version 2 by checking their data content
     row_data = _extract_row_data(retrieved_version_2.rows)
@@ -182,6 +203,7 @@ def test_dataset_versions_basic_functionality(
     assert retrieved_version_1.version_number == 1
     assert retrieved_version_1.total_count == 3
     assert len(retrieved_version_1.rows) == 3
+    assert set(retrieved_version_1.column_names) == {"name", "age"}
 
     # Verify version 1 still has original data
     version_1_data = _extract_row_data(retrieved_version_1.rows)
@@ -229,6 +251,22 @@ def test_dataset_versions_basic_functionality(
     assert versions_response.page_size == 1
     assert versions_response.page == 1
     assert versions_response.total_pages == 2
+
+    # test deleting a column removes that column from column_names
+    # Get Alice Brown's row ID and delete her row to test column removal
+    alice_brown_row_id = _get_id_by_row_name(retrieved_version_2.rows, "Alice Brown")
+
+    # Create version 3 by deleting Alice Brown's row (which contains the 'profession' column)
+    status_code, version_3 = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[alice_brown_row_id],
+    )
+    assert status_code == 200
+    assert version_3.version_number == 3
+    assert version_3.total_count == 2  # 3 - 1 (deleted) = 2
+    assert len(version_3.rows) == 2
+    # The 'profession' column should be removed since Alice Brown was the only row with that column
+    assert set(version_3.column_names) == {"name", "age"}
 
     # Test 5: Verify deleting dataset with versions doesn't result in an error
     status_code = client.delete_dataset(dataset_id)
