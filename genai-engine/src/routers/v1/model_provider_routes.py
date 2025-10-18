@@ -11,7 +11,7 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum, ModelProvider
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
-from schemas.response_schemas import ModelProviderResponse
+from schemas.response_schemas import ModelProviderResponse, ModelProviderList
 from utils.users import permission_checker
 
 logger = logging.getLogger(__name__)
@@ -81,16 +81,16 @@ def set_model_provider(
     summary="List the model providers..",
     description="Shows all model providers and if they're enabled.",
     tags=["Model Providers"],
-    response_model=list[ModelProviderResponse],
+    response_model=ModelProviderList,
 )
 @permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
 def get_model_providers(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ModelProviderList:
     """Set the configuration for a model provider"""
     try:
         repo = ModelProviderRepository(db_session)
-        return repo.list_model_providers()
+        return ModelProviderList(providers=repo.list_model_providers())
     finally:
         db_session.close()

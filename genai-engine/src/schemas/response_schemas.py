@@ -204,3 +204,9 @@ class ModelProviderResponse(BaseModel):
     enabled: bool = Field(
         description="Whether the provider is enabled with credentials."
     )
+
+
+class ModelProviderList(BaseModel):
+    providers: list[ModelProviderResponse] = Field(
+        description="List of model providers"
+    )
