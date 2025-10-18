@@ -147,6 +147,15 @@ class PermissionLevelsEnum(Enum):
     DATASET_READ = frozenset(
         [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
     )
+    ROTATE_SECRETS = frozenset(
+        [constants.ORG_ADMIN],
+    )
+    MODEL_PROVIDER_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    MODEL_PROVIDER_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
 
 
 class SecretType(str, Enum):
@@ -158,12 +167,12 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
-    AZURE = "azure"
-    BEDROCK = "bedrock"
-    SAGEMAKER = "sagemaker"
-    VERTEX_AI = "vertex_ai"
 
     # note supporting for v0
+    # AZURE = "azure"
+    # BEDROCK = "bedrock"
+    # SAGEMAKER = "sagemaker"
+    # VERTEX_AI = "vertex_ai"
     # MISTRAL = "mistral"
     # META_LLAMA = "meta_llama"
     # GROQ = "groq"

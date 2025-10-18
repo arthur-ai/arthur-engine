@@ -6,6 +6,8 @@ from arthur_common.models.response_schemas import ExternalInference, TraceRespon
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 
+from schemas.enums import ModelProvider
+
 
 class DocumentStorageConfigurationResponse(BaseModel):
     storage_environment: Optional[str] = None
@@ -195,3 +197,10 @@ class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
     cost: str
+
+
+class ModelProviderResponse(BaseModel):
+    provider: ModelProvider = Field(description="The model provider.")
+    enabled: bool = Field(
+        description="Whether the provider is enabled with credentials."
+    )

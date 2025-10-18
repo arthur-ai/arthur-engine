@@ -3,7 +3,13 @@ from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
-from litellm import acompletion, completion, completion_cost, stream_chunk_builder
+from litellm import (
+    acompletion,
+    completion,
+    completion_cost,
+    stream_chunk_builder,
+    LiteLLM,
+)
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
     BaseModel,
@@ -13,6 +19,7 @@ from pydantic import (
     model_validator,
 )
 
+from clients.llm.llm_client import LLMClient
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.common_schemas import JsonSchema
 from schemas.enums import (
@@ -317,10 +324,11 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
     def run_chat_completion(
         self,
+        llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
         model, completion_params = self._get_completion_params(completion_request)
-        response = completion(model=model, **completion_params)
+        response = llm_client.completion(model=model, **completion_params)
 
         cost = completion_cost(response)
         msg = response.choices[0].message
@@ -333,11 +341,12 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
     async def stream_chat_completion(
         self,
+        llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AsyncGenerator[str, None]:
         try:
             model, completion_params = self._get_completion_params(completion_request)
-            response = await acompletion(model=model, **completion_params)
+            response = await llm_client.acompletion(model=model, **completion_params)
 
             collected_chunks = []
             async for chunk in response:

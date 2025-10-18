@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from schemas.enums import (
     DocumentStorageEnvironment,
+    ModelProvider,
 )
 
 
@@ -102,3 +103,7 @@ class NewDatasetVersionRequest(BaseModel):
         description="List of IDs of rows to be updated in the new dataset version with their new values. "
         "Should include the value in the row for every column in the dataset, not just the updated column values.",
     )
+
+
+class PutModelProviderCredentials(BaseModel):
+    api_key: str = Field(description="The API key for the provider.")

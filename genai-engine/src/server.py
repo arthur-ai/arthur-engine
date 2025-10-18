@@ -43,6 +43,8 @@ from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.legacy_span_routes import span_routes
+from routers.v1.model_provider_routes import model_provider_routes
+from routers.v1.secrets_routes import secrets_routes
 from routers.v1.trace_api_routes import trace_api_routes
 from routers.v2.routers import (
     dataset_management_routes,
@@ -118,6 +120,14 @@ tags_metadata = [
     {
         "name": "API Keys",
         "description": "Endpoints for API keys management",
+    },
+    {
+        "name": "Secrets",
+        "description": "Endpoints for secrets management",
+    },
+    {
+        "name": "Model Providers",
+        "description": "Endpoints for model provider management",
     },
 ]
 
@@ -353,6 +363,8 @@ def get_app_with_routes() -> FastAPI:
             trace_api_routes,
             agentic_prompt_routes,
             dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -379,6 +391,8 @@ def get_test_app() -> FastAPI:
             trace_api_routes,
             agentic_prompt_routes,
             dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -415,6 +429,8 @@ def get_app() -> FastAPI:
             trace_api_routes,
             agentic_prompt_routes,
             dataset_management_routes,
+            model_provider_routes,
+            secrets_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:
