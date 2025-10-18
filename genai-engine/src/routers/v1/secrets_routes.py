@@ -23,10 +23,10 @@ secrets_routes = APIRouter(
 @secrets_routes.post(
     "/secrets/rotation",
     summary="Rotates secrets",
-    description="This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows:\n"
-    "First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'\n"
-    "Second: call this endpoint - all secrets will be re-encrypted with 'new-key'\n"
-    "Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'\n"
+    description="This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: \n"
+    "First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. \n"
+    "Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. \n"
+    "Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. \n"
     "At this point all existing and new secrets will be managed by 'new-key'.",
     tags=["Secrets"],
     status_code=HTTP_204_NO_CONTENT,
