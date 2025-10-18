@@ -22,7 +22,7 @@ export OPENAI_API_VERSION=2023-07-01-preview
 export GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=model_name::https://my_service.openai.azure.com/::my_api_key
 export PYTHONPATH="src:$PYTHONPATH"
 
-export GENAI_ENGINE_SECRET_STORE_KEY=new_key::changeme_secret_store_key
+export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 
 poetry run alembic upgrade head
 

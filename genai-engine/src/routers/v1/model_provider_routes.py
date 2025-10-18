@@ -28,7 +28,7 @@ model_provider_routes = APIRouter(
     description="Set the configuration for a model provider",
     status_code=HTTP_201_CREATED,
     responses={
-        HTTP_201_CREATED: {"model": None},
+        HTTP_201_CREATED: {"description": "Configuration set"},
     },
     tags=["Model Providers"],
 )
