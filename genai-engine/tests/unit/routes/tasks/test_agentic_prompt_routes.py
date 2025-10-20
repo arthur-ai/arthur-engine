@@ -153,7 +153,7 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_agentic_prompt_success(
     mock_completion_cost,
@@ -174,6 +174,14 @@ def test_run_agentic_prompt_success(
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
+
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
 
     # Run a prompt
     prompt_data = {
@@ -197,7 +205,7 @@ def test_run_agentic_prompt_success(
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_agentic_prompt_success(
     mock_completion_cost,
@@ -218,6 +226,14 @@ def test_run_saved_agentic_prompt_success(
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
+
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
 
     # First save a prompt
     prompt_data = {
@@ -500,6 +516,14 @@ def test_streaming_agentic_prompt(
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
     # Run a streaming prompt (with stream=True in completion_request)
     prompt_data = {
         "name": "streaming_prompt",
@@ -550,7 +574,7 @@ def test_streaming_agentic_prompt(
 
 @pytest.mark.unit_tests
 @pytest.mark.asyncio
-@patch("schemas.agentic_prompt_schemas.acompletion")
+@patch("clients.llm.llm_client.litellm.acompletion")
 async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
     mock_acompletion,
     client: GenaiEngineTestClientBase,
@@ -567,6 +591,14 @@ async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
         model=model_name,
         llm_provider=model_provider,
     )
+
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
 
     prompt_data = {
         "name": "stream_error_prompt",
