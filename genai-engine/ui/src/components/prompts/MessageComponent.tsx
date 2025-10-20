@@ -17,7 +17,7 @@ import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
-// export interface AgenticPromptMessageInput {
+
 const Message: React.FC<MessageComponentProps> = ({
   id,
   parentId,
@@ -138,18 +138,6 @@ const Message: React.FC<MessageComponentProps> = ({
         </div>
       </div>
       <div className="mt-2">
-        {/* <TextField
-          id={`message-${id}-input`}
-          label="Content"
-          variant="outlined"
-          maxRows={4}
-          placeholder={role}
-          value={inputValue}
-          onChange={handleContentChange}
-          type="text"
-          fullWidth
-          multiline
-        /> */}
         <HighlightedInputComponent
           value={inputValue}
           onChange={handleContentChange}
