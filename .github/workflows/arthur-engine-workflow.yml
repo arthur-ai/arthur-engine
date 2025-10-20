@@ -33,11 +33,12 @@ jobs:
         with:
           working-directory: genai-engine
       - name: Run pre-commit
+        env:
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           poetry -C genai-engine run pre-commit install
           CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
           echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
-
 
   run-ml-engine-linter:
     if: |
@@ -74,7 +75,6 @@ jobs:
           poetry -C ml-engine run isort src/ml_engine --profile black
           poetry -C ml-engine run black src/ml_engine
 
-
   run-genai-engine-changelog-cop:
     if: |
       (
@@ -98,6 +98,8 @@ jobs:
           curl -L -o "oasdiff.deb" https://github.com/Tufin/oasdiff/releases/download/v1.11.7/oasdiff_1.11.7_linux_amd64.deb
           dpkg -i oasdiff.deb
       - name: Generate changelog
+        env:
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           export PYTHONPATH=src
           poetry -C genai-engine run generate_changelog
@@ -129,6 +131,8 @@ jobs:
           working-directory: genai-engine
       - name: Run unit tests
         shell: bash
+        env:
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
         run: |
           set -o pipefail
           poetry -C genai-engine run pytest --cov --cov=genai-engine/src \
@@ -183,9 +187,13 @@ jobs:
         run: |
           poetry -C ml-engine run pytest
 
-
   build-genai-engine-docker-images:
-    needs: [run-genai-engine-linter, run-genai-engine-changelog-cop, run-genai-engine-unit-tests]
+    needs:
+      [
+        run-genai-engine-linter,
+        run-genai-engine-changelog-cop,
+        run-genai-engine-unit-tests,
+      ]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
@@ -227,7 +235,6 @@ jobs:
             ${{ github.ref == 'refs/heads/dev' && format('arthurplatform/genai-engine-{0}:latest-dev', matrix.torch_device) || '' }}
           push: true
           platforms: linux/amd64
-
 
   build-ml-engine-docker-images:
     needs: [run-ml-engine-linter, run-ml-engine-unit-tests]
@@ -288,7 +295,6 @@ jobs:
             docker tag arthurplatform/ml-engine:${{ env.VERSION }} docker.arthur.ai/arthur/scope/ml-engine:latest-dev
             docker push docker.arthur.ai/arthur/scope/ml-engine:latest-dev
           fi
-
 
   push-all-cfts:
     needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]

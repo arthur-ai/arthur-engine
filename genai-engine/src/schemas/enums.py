@@ -149,36 +149,43 @@ class PermissionLevelsEnum(Enum):
     )
 
 
-class ProviderEnum(str, Enum):
+class SecretType(str, Enum):
+    MODEL_PROVIDER = "model_provider"
+    VECTOR_DB_PROVIDER = "vector_db_provider"
+
+
+class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
     AZURE = "azure"
-    DEEPSEEK = "deepseek"
-    MISTRAL = "mistral"
-    META_LLAMA = "meta_llama"
-    GROQ = "groq"
     BEDROCK = "bedrock"
     SAGEMAKER = "sagemaker"
     VERTEX_AI = "vertex_ai"
-    HUGGINGFACE = "huggingface"
-    CLOUDFLARE = "cloudflare"
-    AI21 = "ai21"
-    BASETEN = "baseten"
-    COHERE = "cohere"
-    EMPOWER = "empower"
-    FEATHERLESS_AI = "featherless_ai"
-    FRIENDLIAI = "friendliai"
-    GALADRIEL = "galadriel"
-    NEBIUS = "nebius"
-    NLP_CLOUD = "nlp_cloud"
-    NOVITA = "novita"
-    OPENROUTER = "openrouter"
-    PETALS = "petals"
-    REPLICATE = "replicate"
-    TOGETHER_AI = "together_ai"
-    VLLM = "vllm"
-    WATSONX = "watsonx"
+
+    # note supporting for v0
+    # MISTRAL = "mistral"
+    # META_LLAMA = "meta_llama"
+    # GROQ = "groq"
+    # HUGGINGFACE = "huggingface"
+    # CLOUDFLARE = "cloudflare"
+    # DEEPSEEK = "deepseek"
+    # AI21 = "ai21"
+    # BASETEN = "baseten"
+    # COHERE = "cohere"
+    # EMPOWER = "empower"
+    # FEATHERLESS_AI = "featherless_ai"
+    # FRIENDLIAI = "friendliai"
+    # GALADRIEL = "galadriel"
+    # NEBIUS = "nebius"
+    # NLP_CLOUD = "nlp_cloud"
+    # NOVITA = "novita"
+    # OPENROUTER = "openrouter"
+    # PETALS = "petals"
+    # REPLICATE = "replicate"
+    # TOGETHER_AI = "together_ai"
+    # VLLM = "vllm"
+    # WATSONX = "watsonx"
 
 
 class MessageRole(Enum):

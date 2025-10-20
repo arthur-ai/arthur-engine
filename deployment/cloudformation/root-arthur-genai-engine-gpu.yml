@@ -720,6 +720,7 @@ Resources:
         ContainerRepositoryCredentialsSecretARN: !GetAtt [ CoreSecretsStack, Outputs.ContainerRepositoryCredentialsSecretOutput ]
         GenaiEngineSecretAPIKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAPIKeySecretOutput ]
         GenaiEngineAppSecretKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineAppKeySecretOutput ]
+        GenaiEngineSecretStoreKeyARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineSecretStoreKeySecretOutput ]
         GenaiEngineSecretOpenAIGPTModelNamesEndpointsKeysARN: !GetAtt [ GenaiEngineSecretsStack, Outputs.GenaiEngineOpenAIGPTModelNamesEndpointsAndKeysSecretOutput ]
         GenaiEngineSecretPostgresARN: !GetAtt [ CoreSecretsStack, Outputs.PostgresCredentialsSecretOutput ]
         GenaiEngineSensitiveDataCheckMaxTokenLimit: !Ref GenaiEngineSensitiveDataCheckMaxTokenLimit

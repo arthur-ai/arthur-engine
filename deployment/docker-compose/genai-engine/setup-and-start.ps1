@@ -83,12 +83,26 @@ if ((Test-Path $envPath) -and (Get-Item $envPath -ErrorAction SilentlyContinue).
 $provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$model::$endpoint::$apiKey
 "@
-        Set-Content -Path $envPath -Value $envContent -Encoding UTF8
     } else {
         Write-Host ""
         Write-Host "Skipping OpenAI configuration..."
-        New-Item -ItemType File -Path $envPath -Force | Out-Null
+        $envContent = ""
     }
+
+    # Generate a secure random key using .NET
+    $randomBytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($randomBytes)
+    $secretKey = [Convert]::ToBase64String($randomBytes)
+    Write-Host "Generated random secret key since none was found"
+
+    if ([string]::IsNullOrWhiteSpace($envContent)) {
+        $envContent = "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+    } else {
+        $envContent += "`nGENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+    }
+
+    Set-Content -Path $envPath -Value $envContent -Encoding UTF8
 }
 
 Write-Host ""

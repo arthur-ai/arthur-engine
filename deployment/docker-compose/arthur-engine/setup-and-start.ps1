@@ -191,6 +191,22 @@ if ($DEFAULT_GENAI_CONFIG -eq "true") {
     }
 }
 
+# Prompt for secret store key if not already set
+if (-not $GENAI_ENGINE_SECRET_STORE_KEY) {
+    # Generate a secure random key using .NET
+    $randomBytes = New-Object byte[] 32
+    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $rng.GetBytes($randomBytes)
+    $secretKey = [Convert]::ToBase64String($randomBytes)
+    Write-Host "Generated random secret key since none was found"
+
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$secretKey"
+} else {
+    Write-Host ""
+    Write-Host "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    $envLines += "GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
+}
+
 $envLines | Set-Content -Path $envFilePath
 
 Write-Host ""
