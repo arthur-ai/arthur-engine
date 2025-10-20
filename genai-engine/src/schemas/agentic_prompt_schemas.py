@@ -206,7 +206,7 @@ class ToolChoice(BaseModel):
 class AgenticPromptBaseConfig(BaseModel):
     created_at: Optional[datetime] = Field(
         default=None,
-        description="Timestamp when the prompt was created. Used for versioning.",
+        description="Timestamp when the prompt was created.",
     )
     messages: List[AgenticPromptMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
@@ -301,7 +301,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(
-            exclude={"name", "model_name", "model_provider"},
+            exclude={"name", "model_name", "model_provider", "created_at"},
             exclude_none=True,
         )
 

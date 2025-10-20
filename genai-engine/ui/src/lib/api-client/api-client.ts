@@ -16,7 +16,7 @@ export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION
 export interface AgenticPrompt {
   /**
    * Created At
-   * Timestamp when the prompt was created. Used for versioning.
+   * Timestamp when the prompt was created.
    */
   created_at?: string | null;
   /**
@@ -118,6 +118,11 @@ export interface AgenticPrompt {
 
 /** AgenticPromptBaseConfig */
 export interface AgenticPromptBaseConfig {
+  /**
+   * Created At
+   * Timestamp when the prompt was created.
+   */
+  created_at?: string | null;
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -480,6 +485,11 @@ export interface CompletionRequest {
    * @default {"variables":[],"stream":false}
    */
   completion_request?: PromptCompletionRequest;
+  /**
+   * Created At
+   * Timestamp when the prompt was created.
+   */
+  created_at?: string | null;
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
