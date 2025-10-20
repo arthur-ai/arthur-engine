@@ -28,6 +28,32 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
 
+# 10/20/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'azure' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'bedrock' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'sagemaker' of the request property 'model_provider'
+- **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}  removed the enum value 'vertex_ai' of the request property 'model_provider'
+- **CHANGE** for **URL**: /api/v1/model_providers  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  endpoint added
+- **CHANGE** for **URL**: /api/v1/secrets/rotation  endpoint added
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'azure' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'bedrock' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'sagemaker' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions  removed the 'vertex_ai' enum value from the 'prompts/items/model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'azure' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'bedrock' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'sagemaker' enum value from the 'model_provider' response property for the response status '200'
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  removed the 'vertex_ai' enum value from the 'model_provider' response property for the response status '200'
+
 # 10/17/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'ai21' of the request property 'model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'baseten' of the request property 'model_provider'
