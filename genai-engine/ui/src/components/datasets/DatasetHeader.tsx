@@ -1,8 +1,8 @@
 import AddIcon from "@mui/icons-material/Add";
-import AddBoxIcon from "@mui/icons-material/AddBox";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import { Box, Button, IconButton, Typography } from "@mui/material";
 import React from "react";
 
@@ -17,7 +17,7 @@ interface DatasetHeaderProps {
   canAddRow: boolean;
   onBack: () => void;
   onSave: () => void;
-  onAddColumn: () => void;
+  onConfigureColumns: () => void;
   onAddRow: () => void;
   onOpenVersions: () => void;
   searchValue: string;
@@ -34,7 +34,7 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   canAddRow,
   onBack,
   onSave,
-  onAddColumn,
+  onConfigureColumns,
   onAddRow,
   onOpenVersions,
   searchValue,
@@ -115,10 +115,10 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
         <Button
           variant="outlined"
           size="small"
-          startIcon={<AddBoxIcon />}
-          onClick={onAddColumn}
+          startIcon={<ViewColumnIcon />}
+          onClick={onConfigureColumns}
         >
-          Add Column
+          Configure Columns
         </Button>
         <Button
           variant="contained"

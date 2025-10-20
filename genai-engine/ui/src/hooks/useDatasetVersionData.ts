@@ -14,7 +14,6 @@ export function useDatasetVersionData(
       versionNumber: versionNumber!,
       page,
       page_size: pageSize,
-      sort: "desc",
     };
 
   const { data, error, isLoading, refetch } =

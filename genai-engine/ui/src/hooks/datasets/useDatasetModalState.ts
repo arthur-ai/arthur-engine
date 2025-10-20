@@ -12,9 +12,9 @@ export interface UseDatasetModalStateReturn {
   openAddModal: () => void;
   closeAddModal: () => void;
 
-  isAddColumnDialogOpen: boolean;
-  openAddColumnDialog: () => void;
-  closeAddColumnDialog: () => void;
+  isConfigureColumnsOpen: boolean;
+  openConfigureColumns: () => void;
+  closeConfigureColumns: () => void;
 
   isVersionDrawerOpen: boolean;
   openVersionDrawer: () => void;
@@ -26,7 +26,7 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
   const [editingRow, setEditingRow] =
     useState<DatasetVersionRowResponse | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isAddColumnDialogOpen, setIsAddColumnDialogOpen] = useState(false);
+  const [isConfigureColumnsOpen, setIsConfigureColumnsOpen] = useState(false);
   const [isVersionDrawerOpen, setIsVersionDrawerOpen] = useState(false);
 
   const openEditModal = useCallback((row: DatasetVersionRowResponse) => {
@@ -42,8 +42,8 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
   const openAddModal = () => setIsAddModalOpen(true);
   const closeAddModal = () => setIsAddModalOpen(false);
 
-  const openAddColumnDialog = () => setIsAddColumnDialogOpen(true);
-  const closeAddColumnDialog = () => setIsAddColumnDialogOpen(false);
+  const openConfigureColumns = () => setIsConfigureColumnsOpen(true);
+  const closeConfigureColumns = () => setIsConfigureColumnsOpen(false);
 
   const openVersionDrawer = () => setIsVersionDrawerOpen(true);
   const closeVersionDrawer = () => setIsVersionDrawerOpen(false);
@@ -56,9 +56,9 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
     isAddModalOpen,
     openAddModal,
     closeAddModal,
-    isAddColumnDialogOpen,
-    openAddColumnDialog,
-    closeAddColumnDialog,
+    isConfigureColumnsOpen,
+    openConfigureColumns,
+    closeConfigureColumns,
     isVersionDrawerOpen,
     openVersionDrawer,
     closeVersionDrawer,

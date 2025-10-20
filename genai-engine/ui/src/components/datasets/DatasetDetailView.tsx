@@ -2,7 +2,7 @@ import { Alert, Box, Button, TablePagination } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import { AddColumnDialog } from "./AddColumnDialog";
+import { ConfigureColumnsModal } from "./ConfigureColumnsModal";
 import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
 import { DatasetTable } from "./DatasetTable";
@@ -106,12 +106,11 @@ export const DatasetDetailView: React.FC = () => {
     [localState, modals]
   );
 
-  const handleAddColumn = useCallback(
-    async (columnName: string) => {
-      localState.addColumn(columnName);
-      modals.closeAddColumnDialog();
+  const handleConfigureColumns = useCallback(
+    (columns: string[]) => {
+      localState.setColumns(columns);
     },
-    [localState, modals]
+    [localState]
   );
 
   const editRowData = useMemo(() => {
@@ -176,7 +175,7 @@ export const DatasetDetailView: React.FC = () => {
           canAddRow={localState.localColumns.length > 0}
           onBack={handleBack}
           onSave={save.saveChanges}
-          onAddColumn={modals.openAddColumnDialog}
+          onConfigureColumns={modals.openConfigureColumns}
           onAddRow={modals.openAddModal}
           onOpenVersions={modals.openVersionDrawer}
           searchValue={search.searchQuery}
@@ -207,7 +206,7 @@ export const DatasetDetailView: React.FC = () => {
               <Box sx={{ color: "text.secondary", mb: 2 }}>
                 Start by adding columns to define your dataset structure.
                 <br />
-                Click "Add Column" to get started.
+                Click "Configure Columns" to get started.
               </Box>
             </Box>
           </Box>
@@ -279,12 +278,11 @@ export const DatasetDetailView: React.FC = () => {
         isLoading={false}
       />
 
-      <AddColumnDialog
-        open={modals.isAddColumnDialogOpen}
-        onClose={modals.closeAddColumnDialog}
-        onSubmit={handleAddColumn}
-        existingColumns={localState.localColumns}
-        isLoading={false}
+      <ConfigureColumnsModal
+        open={modals.isConfigureColumnsOpen}
+        onClose={modals.closeConfigureColumns}
+        onSave={handleConfigureColumns}
+        currentColumns={localState.localColumns}
       />
     </Box>
   );
