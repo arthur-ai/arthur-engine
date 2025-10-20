@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import HTTPException
-from litellm import LiteLLM
+from pydantic import SecretStr
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -21,8 +21,8 @@ class ModelProviderRepository:
     def __init__(self, db_session: Session):
         self.db_session = db_session
 
-    def _format_creds_for_provider_secret(self, api_key: str) -> dict[str, str]:
-        return {self.API_KEY_SECRET_FIELD: api_key}
+    def _format_creds_for_provider_secret(self, api_key: SecretStr) -> dict[str, str]:
+        return {self.API_KEY_SECRET_FIELD: api_key.get_secret_value()}
 
     def _retrieve_api_key_from_secret(
         self, provider: ModelProvider, secret: dict
@@ -35,7 +35,7 @@ class ModelProviderRepository:
         return key
 
     def set_model_provider_credentials(
-        self, provider: ModelProvider, api_key: str
+        self, provider: ModelProvider, api_key: SecretStr
     ) -> None:
         # first check if this provider already exists
         existing_provider = (

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, SecretStr, field_serializer
 
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -106,4 +106,4 @@ class NewDatasetVersionRequest(BaseModel):
 
 
 class PutModelProviderCredentials(BaseModel):
-    api_key: str = Field(description="The API key for the provider.")
+    api_key: SecretStr = Field(description="The API key for the provider.")
