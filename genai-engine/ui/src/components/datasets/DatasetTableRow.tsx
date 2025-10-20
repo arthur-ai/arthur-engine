@@ -18,15 +18,6 @@ export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(
   ({ row, columns, onEdit, onDelete }) => {
     return (
       <TableRow hover>
-        <TableCell
-          sx={{
-            fontFamily: "monospace",
-            fontSize: "0.75rem",
-            color: "text.secondary",
-          }}
-        >
-          {row.id}
-        </TableCell>
         {columns.map((column) => {
           const columnData = row.data.find((col) => col.column_name === column);
           const value = columnData?.column_value;

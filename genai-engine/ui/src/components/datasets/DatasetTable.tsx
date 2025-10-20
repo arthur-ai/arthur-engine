@@ -64,15 +64,6 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
       <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
-            <TableCell
-              sx={{
-                fontWeight: 600,
-                minWidth: 100,
-                backgroundColor: "grey.100",
-              }}
-            >
-              Row ID
-            </TableCell>
             {columns.map((column) => (
               <TableCell
                 key={column}
@@ -106,14 +97,14 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={columns.length + 2} align="center">
+              <TableCell colSpan={columns.length + 1} align="center">
                 <CircularProgress size={24} sx={{ my: 2 }} />
               </TableCell>
             </TableRow>
           ) : rows.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={columns.length + 2}
+                colSpan={columns.length + 1}
                 align="center"
                 sx={{ py: 4 }}
               >

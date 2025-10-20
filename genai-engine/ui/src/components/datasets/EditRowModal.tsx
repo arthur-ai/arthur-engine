@@ -72,7 +72,7 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
       aria-labelledby="edit-row-dialog-title"
     >
       <DialogTitle id="edit-row-dialog-title">
-        {rowId === "new" ? "Add Row" : `Edit Row: ${rowId}`}
+        {rowId === "new" ? "Add Row" : "Edit Row"}
       </DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
