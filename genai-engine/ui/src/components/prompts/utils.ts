@@ -77,10 +77,10 @@ export const toBackendPromptBaseConfig = (
 };
 
 export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
-  id: `${backendPrompt.name}-${new Date(backendPrompt.created_at).getTime()}`,
+  id: `${backendPrompt.name}-${new Date(backendPrompt.created_at ?? Date.now()).getTime()}`,
   classification: "default",
   name: backendPrompt.name,
-  created_at: backendPrompt.created_at,
+  created_at: backendPrompt.created_at || undefined,
   modelName: backendPrompt.model_name,
   provider: backendPrompt.model_provider,
   messages: backendPrompt.messages.map((msg) => ({

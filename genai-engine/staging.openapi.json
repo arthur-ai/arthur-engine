@@ -6418,6 +6418,19 @@
                         "type": "string",
                         "title": "Name",
                         "description": "Name of the agentic prompt"
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created. Used for versioning."
                     }
                 },
                 "type": "object",

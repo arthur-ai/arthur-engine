@@ -15,6 +15,11 @@ export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION
 /** AgenticPrompt */
 export interface AgenticPrompt {
   /**
+   * Created At
+   * Timestamp when the prompt was created. Used for versioning.
+   */
+  created_at?: string | null;
+  /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
    */
