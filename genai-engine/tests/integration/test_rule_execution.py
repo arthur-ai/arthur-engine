@@ -352,6 +352,7 @@ def test_pii_results_with_model_name(
         inference_id=prompt.inference_id,
         response=text,
         task_id=task_id,
+        model_name="gpt-4o-mini",
     )
 
     assert prompt.rule_results[0].result == expected_result
@@ -368,6 +369,7 @@ def test_pii_results_with_model_name(
         assert (
             response.rule_results[0].details.pii_entities[0].entity in expected_entities
         )
+        assert response.model_name == "gpt-4o-mini"
         assert (
             response.rule_results[0].details.pii_entities[0].span
             == "2001:0000:130F:0000:0000:09C0:876A:130B"
