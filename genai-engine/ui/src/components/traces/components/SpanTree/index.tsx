@@ -1,5 +1,5 @@
 import { Accordion } from "@base-ui-components/react/accordion";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -21,7 +21,7 @@ export const SpanTree = ({
   ancestors = new Set(),
 }: Props) => {
   const [selectedSpanId, store] = useTracesStore(
-    (state) => state.context.selectedSpanId
+    (state) => state.context.selected.span
   );
 
   const values = spans.map((span) => span.span_id);
@@ -33,7 +33,7 @@ export const SpanTree = ({
           value={span.span_id}
           key={span.span_id}
           data-selected={span.span_id === selectedSpanId ? "" : undefined}
-          className="group"
+          className="group data-selected:*:bg-gray-200"
           onClick={(e) => {
             e.stopPropagation();
 
@@ -46,7 +46,7 @@ export const SpanTree = ({
           <SpanTreeItem span={span} level={level} />
           <Accordion.Panel
             render={
-              <Box className="h-[var(--accordion-panel-height)] overflow-hidden text-base text-gray-600 transition-[height] ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 data-open:rounded-b group-data-selected:bg-gray-200" />
+              <Box className="h-[var(--accordion-panel-height)] overflow-hidden text-base text-gray-600 transition-[height] ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 data-open:rounded-b" />
             }
           >
             <SpanTree
@@ -69,7 +69,7 @@ const SpanTreeItem = ({
   level: number;
 }) => {
   const [selectedSpanId] = useTracesStore(
-    (state) => state.context.selectedSpanId
+    (state) => state.context.selected.span
   );
 
   const isSelected = span.span_id === selectedSpanId;
@@ -94,7 +94,7 @@ const SpanTreeItem = ({
       }
     >
       <Accordion.Trigger className="group">
-        <KeyboardArrowDownIcon
+        <KeyboardArrowRightIcon
           color="inherit"
           sx={{
             outline: "none",
@@ -102,7 +102,7 @@ const SpanTreeItem = ({
               span.children && span.children.length > 0 ? "visible" : "hidden",
           }}
           fontSize="small"
-          className="group-data-[panel-open]:rotate-180"
+          className="group-data-[panel-open]:rotate-90"
         />
       </Accordion.Trigger>
       <Stack

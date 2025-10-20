@@ -8,28 +8,31 @@ import { useEffect, useMemo } from "react";
 import { useTracesStore } from "../store";
 import { flattenSpans } from "../utils/spans";
 
-import { SpanDetails } from "./SpanDetails";
+import {
+  SpanDetails,
+  SpanDetailsHeader,
+  SpanDetailsPanels,
+  SpanDetailsWidgets,
+} from "./SpanDetails";
 import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
-import { TaskResponse } from "@/lib/api";
 import { getTrace } from "@/services/tracing";
 
 type Props = {
-  task: TaskResponse;
+  id: string;
 };
 
-export const TraceDrawerContent = ({ task }: Props) => {
+export const TraceDrawerContent = ({ id }: Props) => {
   const api = useApi();
-  const [traceId] = useTracesStore((state) => state.context.selectedTraceId);
-  const [selectedSpanId, store] = useTracesStore(
-    (state) => state.context.selectedSpanId
-  );
+  const [selected, store] = useTracesStore((state) => state.context.selected);
+
+  const { span: spanId } = selected;
 
   const { data: trace } = useSuspenseQuery({
-    queryKey: ["trace", traceId, { traceId, api, taskId: task?.id }],
-    queryFn: () => getTrace(api!, { taskId: task!.id, traceId: traceId! }),
+    queryKey: ["trace", id, { id, api }],
+    queryFn: () => getTrace(api!, { traceId: id! }),
   });
 
   const name = trace?.root_spans?.[0]?.span_name;
@@ -43,19 +46,18 @@ export const TraceDrawerContent = ({ task }: Props) => {
   const rootSpan = trace?.root_spans?.[0];
 
   useEffect(() => {
-    if (rootSpan) {
-      store.send({
-        type: "selectSpan",
-        id: rootSpan.span_id,
-      });
-    }
-  }, [rootSpan, store]);
+    if (selected.span) return;
+    if (!rootSpan) return;
+
+    store.send({
+      type: "selectSpan",
+      id: rootSpan.span_id,
+    });
+  }, [rootSpan, store, selected.span]);
 
   if (!trace) return null;
 
-  const selectedSpan = flatSpans?.find(
-    (span) => span.span_id === selectedSpanId
-  );
+  const selectedSpan = flatSpans?.find((span) => span.span_id === spanId);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -82,7 +84,7 @@ export const TraceDrawerContent = ({ task }: Props) => {
         </Stack>
 
         <CopyableChip
-          label={traceId!}
+          label={id!}
           sx={{ fontFamily: "monospace", maxWidth: 200 }}
         />
       </Stack>
@@ -108,8 +110,14 @@ export const TraceDrawerContent = ({ task }: Props) => {
         >
           {rootSpan && <SpanTree spans={[rootSpan]} />}
         </Box>
-        <Box sx={{ overflow: "auto", maxHeight: "100%" }}>
-          {selectedSpan && <SpanDetails span={selectedSpan} />}
+        <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
+          {selectedSpan && (
+            <SpanDetails span={selectedSpan}>
+              <SpanDetailsHeader />
+              <SpanDetailsWidgets />
+              <SpanDetailsPanels />
+            </SpanDetails>
+          )}
         </Box>
       </Box>
     </Stack>

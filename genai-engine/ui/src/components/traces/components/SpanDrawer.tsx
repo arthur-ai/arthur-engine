@@ -4,14 +4,13 @@ import { Drawer } from "vaul";
 
 import { useTracesStore } from "../store";
 
-import { TraceContentSkeleton, TraceDrawerContent } from "./TraceDrawerContent";
+import { SpanDrawerContent } from "./SpanDrawerContent";
+import { TraceContentSkeleton } from "./TraceDrawerContent";
 
-type Props = {
-  id: string;
-};
-
-export const TraceDrawer = ({ id }: Props) => {
-  const [, store] = useTracesStore(() => null);
+export const SpanDrawer = () => {
+  const [spanId, store] = useTracesStore(
+    (state) => state.context.selected.span
+  );
 
   const handleClose = () => {
     store.send({
@@ -20,7 +19,7 @@ export const TraceDrawer = ({ id }: Props) => {
   };
 
   return (
-    <Drawer.Root open={!!id} onOpenChange={handleClose} direction="right">
+    <Drawer.Root open={!!spanId} onOpenChange={handleClose} direction="right">
       <Drawer.Portal>
         <Box
           component={Drawer.Overlay}
@@ -43,9 +42,9 @@ export const TraceDrawer = ({ id }: Props) => {
             width: "80%",
           }}
         >
-          {!!id && (
+          {!!spanId && (
             <Suspense fallback={<TraceContentSkeleton />}>
-              <TraceDrawerContent id={id} />
+              <SpanDrawerContent />
             </Suspense>
           )}
         </Box>
