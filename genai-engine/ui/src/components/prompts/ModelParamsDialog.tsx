@@ -9,7 +9,7 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 import { usePromptContext } from "./PromptContext";
 import { ModelParametersType } from "./types";
@@ -46,14 +46,12 @@ const ModelParamsDialog = ({
     >;
     setCopiedParams((state) => ({ ...state, ...formJson }));
     handleClose();
-  };
 
-  useEffect(() => {
     dispatch({
       type: "updateModelParameters",
       payload: { promptId, modelParameters: copiedParams },
     });
-  }, [copiedParams, dispatch, promptId]);
+  };
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth>

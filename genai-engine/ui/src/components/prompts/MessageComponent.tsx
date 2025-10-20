@@ -82,13 +82,14 @@ const Message: React.FC<MessageComponentProps> = ({
 
   // When the content changes, whether by user or hydration, update the keyword values
   useEffect(() => {
-    dispatch({
-      type: "updateKeywords",
-      payload: {
-        id,
-        messageKeywords: extractMustacheKeywords(content).keywords,
-      },
-    });
+    const extractedKeywords = extractMustacheKeywords(content).keywords;
+
+    if (extractedKeywords.length > 0) {
+      dispatch({
+        type: "updateKeywords",
+        payload: { id, messageKeywords: extractedKeywords },
+      });
+    }
 
     // Handle keyword tracking cleanup when message or prompt is deleted
     return () => {

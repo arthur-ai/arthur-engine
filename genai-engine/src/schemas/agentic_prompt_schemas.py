@@ -204,6 +204,10 @@ class ToolChoice(BaseModel):
 
 
 class AgenticPromptBaseConfig(BaseModel):
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the prompt was created.",
+    )
     messages: List[AgenticPromptMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -297,7 +301,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(
-            exclude={"name", "model_name", "model_provider"},
+            exclude={"name", "model_name", "model_provider", "created_at"},
             exclude_none=True,
         )
 
@@ -371,6 +375,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "model_name": db_prompt.model_name,
             "model_provider": db_prompt.model_provider,
             "tools": db_prompt.tools,
+            "created_at": db_prompt.created_at,
         }
 
         # Merge in config JSON if present (LLM parameters)
@@ -408,11 +413,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         config = {
             k: v for k, v in prompt_dict.items() if k in config_keys and v is not None
         }
-        base_fields = {k: v for k, v in prompt_dict.items() if k not in config_keys}
+        base_fields = {
+            k: v
+            for k, v in prompt_dict.items()
+            if k not in config_keys and k != "created_at"
+        }
 
         return DatabaseAgenticPrompt(
             task_id=task_id,
-            created_at=datetime.now(),
             **base_fields,
             config=config or None,
         )
