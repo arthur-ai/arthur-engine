@@ -116,25 +116,27 @@ export const AllTasks: React.FC = () => {
               <p className="text-black">All Tasks</p>
             </div>
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                <svg
-                  className="h-4 w-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              {tasks.length > 0 && (
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Create Task
-              </button>
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Create Task
+                </button>
+              )}
               <div className="relative">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
