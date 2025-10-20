@@ -139,3 +139,5 @@ genaiEngineSecretAdminKeyName: "genai-engine-secret-admin-key"
 # Name of the secret which stores the connection strings for Azure OpenAI GPT-3.5 model endpoints. Must be in form "DEPLOYMENT_NAME1::OPENAI_ENDPOINT1::SECRET_KEY1,DEPLOYMENT_NAME2::OPENAI_ENDPOINT2::SECRET_KEY2"). Many may be specified.
 # (expecting value for key 'keys')
 genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName: "genai-engine-secret-open-ai-gpt-model-names-endpoints-keys"
+# GenAI Engine secret store key name (expecting value for key 'key' - should be a base64-encoded 32-byte Fernet key)
+genaiEngineSecretStoreKeyName: "genai-engine-secret-store-key"
