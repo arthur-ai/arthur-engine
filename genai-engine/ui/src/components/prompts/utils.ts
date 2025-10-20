@@ -6,7 +6,7 @@ import {
   AgenticPrompt,
   AgenticPromptBaseConfig,
   ToolChoiceEnum,
-} from "@/lib/api-client/api-client.ts";
+} from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
   // TODO: Use for the draggable functionality
@@ -39,10 +39,13 @@ export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
     tool_calls: null,
   })),
   tools: prompt.tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    function_definition: tool.function_definition,
+    function: {
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: tool.function.parameters,
+    },
     strict: tool.strict,
+    type: tool.type,
   })),
   tool_choice: prompt.toolChoice,
   temperature: prompt.modelParameters.temperature,
@@ -87,11 +90,14 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     disabled: false,
   })),
   tools: (backendPrompt.tools || []).map((tool) => ({
-    id: `tool-${uuidv4()}`,
-    name: tool.name,
-    description: tool.description,
-    function_definition: tool.function_definition,
+    id: generateId("tool"),
+    function: {
+      name: tool.function.name,
+      description: tool.function.description,
+      parameters: tool.function.parameters,
+    },
     strict: tool.strict,
+    type: tool.type,
   })),
   toolChoice: (backendPrompt.tool_choice as ToolChoiceEnum) || "auto",
   modelParameters: {

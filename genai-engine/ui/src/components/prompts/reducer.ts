@@ -50,23 +50,25 @@ const createTool = (
   overrides: Partial<FrontendTool> = {}
 ): FrontendTool => ({
   id: generateId("tool"),
-  name: `tool_func_${counter}`,
-  description: "description",
-  function_definition: {
-    type: "object",
-    properties: [
-      {
-        name: "tool_arg",
-        type: "string",
-        description: null,
-        enum: null,
-        items: null,
+  function: {
+    name: `tool_func_${counter}`,
+    description: "description",
+    parameters: {
+      type: "object",
+      properties: {
+        tool_arg: {
+          type: "string",
+          description: null,
+          enum: null,
+          items: null,
+        },
       },
-    ],
-    required: [],
-    additional_properties: null,
+      required: [],
+      additionalProperties: null,
+    },
   },
-  strict: null,
+  strict: false,
+  type: "function",
   ...overrides,
 });
 

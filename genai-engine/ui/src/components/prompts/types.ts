@@ -8,6 +8,7 @@ import {
   AnthropicThinkingParam,
   ToolChoiceEnum,
   LLMToolInput,
+  ToolChoice,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -17,7 +18,6 @@ const promptClassificationEnum = {
   EVAL: "eval",
   DEFAULT: "default",
 };
-
 
 type PromptAction =
   | { type: "addPrompt" }
@@ -65,7 +65,11 @@ type PromptAction =
   | { type: "deleteTool"; payload: { promptId: string; toolId: string } }
   | {
       type: "updateTool";
-      payload: { parentId: string; toolId: string; tool: Partial<FrontendTool> };
+      payload: {
+        parentId: string;
+        toolId: string;
+        tool: Partial<FrontendTool>;
+      };
     }
   | { type: "expandTools"; payload: { parentId: string } }
   | {
@@ -109,9 +113,9 @@ type PromptType = {
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
-  responseFormat: string | undefined;//LLMResponseSchemaInput
-  tools: FrontendTool[];//LLMToolOutput
-  toolChoice?: ToolChoiceEnum;
+  responseFormat: string | undefined; //LLMResponseSchemaInput
+  tools: FrontendTool[]; //LLMToolOutput
+  toolChoice?: ToolChoiceEnum | ToolChoice;
   // tags: Array<string>; // TODO
 };
 
