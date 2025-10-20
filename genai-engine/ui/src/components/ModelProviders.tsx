@@ -14,6 +14,12 @@ export const ModelProviders: React.FC = () => {
     provider: ModelProviderResponse | null;
   }>({ isOpen: false, provider: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    provider: ModelProviderResponse | null;
+  }>({ isOpen: false, provider: null });
+  const [apiKey, setApiKey] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchModelProviders = async () => {
@@ -102,6 +108,43 @@ export const ModelProviders: React.FC = () => {
     setDeleteModal({ isOpen: false, provider: null });
   };
 
+  const handleEditClick = (provider: ModelProviderResponse) => {
+    setEditModal({ isOpen: true, provider });
+    setApiKey(""); // Clear the API key field when opening
+  };
+
+  const handleEditSave = async () => {
+    if (!editModal.provider || !api || !apiKey.trim()) return;
+
+    try {
+      setIsSaving(true);
+      await api.api.setModelProviderApiV1ModelProvidersProviderPut(
+        editModal.provider.provider,
+        { api_key: apiKey.trim() }
+      );
+
+      // Refresh the providers list
+      const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
+      setProviders(response.data.providers || []);
+
+      // Close modal and clear form
+      setEditModal({ isOpen: false, provider: null });
+      setApiKey("");
+    } catch (err) {
+      console.error("Failed to save model provider:", err);
+      setError(
+        "Failed to save model provider configuration. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditModal({ isOpen: false, provider: null });
+    setApiKey("");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -182,11 +225,8 @@ export const ModelProviders: React.FC = () => {
                         <div className="flex space-x-2">
                           <button
                             className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
-                            onClick={() => {
-                              // TODO: Implement edit/configure action
-                              console.log("Edit provider:", provider.provider);
-                            }}
-                            title="Edit provider"
+                            onClick={() => handleEditClick(provider)}
+                            title="Configure provider"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
@@ -270,6 +310,73 @@ export const ModelProviders: React.FC = () => {
                     </div>
                   ) : (
                     "Delete"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit/Configure Modal */}
+      {editModal.isOpen && editModal.provider && (
+        <div className="fixed inset-0 bg-gray-600/30 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full">
+                <Edit className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="mt-2 text-center">
+                <h3 className="text-lg font-medium text-black">
+                  Configure{" "}
+                  {getProviderDisplayName(editModal.provider.provider)}
+                </h3>
+                <div className="mt-4">
+                  <label
+                    htmlFor="apiKey"
+                    className="block text-sm font-medium text-black mb-2 text-left"
+                  >
+                    API Key
+                  </label>
+                  <input
+                    type="password"
+                    id="apiKey"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter your API key..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
+                    disabled={isSaving}
+                    autoFocus
+                  />
+                  <p className="text-xs text-black mt-2 text-left">
+                    Your API key will be securely stored and used to
+                    authenticate with{" "}
+                    {getProviderDisplayName(editModal.provider.provider)}.
+                  </p>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={handleEditCancel}
+                  disabled={isSaving}
+                  className="flex-1 bg-gray-300 text-black py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEditSave}
+                  disabled={isSaving || !apiKey.trim()}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {isSaving ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Saving...
+                    </div>
+                  ) : (
+                    "Save"
                   )}
                 </button>
               </div>
