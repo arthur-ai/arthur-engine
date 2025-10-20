@@ -1,10 +1,10 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
@@ -24,6 +24,7 @@ const Message: React.FC<MessageComponentProps> = ({
   role,
   defaultContent = "",
   content,
+  dragHandleProps,
 }) => {
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
@@ -38,7 +39,8 @@ const Message: React.FC<MessageComponentProps> = ({
         payload: { id, role: selectedRole, parentId },
       });
     },
-    [id, dispatch, role, parentId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [id, role, parentId]
   );
 
   const handleContentChange = useCallback(
@@ -53,14 +55,16 @@ const Message: React.FC<MessageComponentProps> = ({
       type: "duplicateMessage",
       payload: { parentId, id },
     });
-  }, [dispatch, parentId, id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId, id]);
 
   const handleDelete = useCallback(() => {
     dispatch({
       type: "deleteMessage",
       payload: { parentId, id },
     });
-  }, [dispatch, parentId, id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentId, id]);
 
   // Debounce the setMessage function to prevent excessive re-renders/API calls
   const debouncedSetMessage = useMemo(
@@ -73,7 +77,8 @@ const Message: React.FC<MessageComponentProps> = ({
           payload: { parentId, id, content: value },
         });
       }, DEBOUNCE_TIME),
-    [content, parentId, id, dispatch]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [content, parentId, id]
   );
 
   useEffect(() => {
@@ -98,10 +103,11 @@ const Message: React.FC<MessageComponentProps> = ({
         payload: { id, messageKeywords: [] },
       });
     };
-  }, [id, content, dispatch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, content]);
 
   return (
-    <Paper elevation={2} className="m-1 p-2">
+    <div className="p-2">
       <div className="grid grid-cols-2 gap-1">
         <div className="flex justify-start items-center">
           <FormControl sx={{ width: "50%" }} size="small">
@@ -122,6 +128,15 @@ const Message: React.FC<MessageComponentProps> = ({
           </FormControl>
         </div>
         <div className="flex justify-end items-center">
+          <Tooltip title="Drag to reorder" placement="top-start" arrow>
+            <IconButton
+              aria-label="drag handle"
+              sx={{ cursor: "grab" }}
+              {...dragHandleProps}
+            >
+              <DragIndicatorIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Duplicate Message" placement="top-start" arrow>
             <IconButton
               aria-label="duplicate message"
@@ -151,7 +166,7 @@ const Message: React.FC<MessageComponentProps> = ({
           multiline
         />
       </div>
-    </Paper>
+    </div>
   );
 };
 
