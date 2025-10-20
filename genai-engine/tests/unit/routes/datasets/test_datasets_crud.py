@@ -23,6 +23,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     assert created_dataset.id is not None
     assert created_dataset.created_at is not None
     assert created_dataset.updated_at is not None
+    assert created_dataset.latest_version_number is None
 
     # test dataset fetch
     status_code, retrieved_dataset = client.get_dataset(created_dataset.id)

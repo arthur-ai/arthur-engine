@@ -131,7 +131,7 @@ from schemas.scorer_schemas import (
 )
 from utils import constants
 from utils import trace as trace_utils
-from utils.constants import SPAN_KIND_LLM
+from utils.constants import MAX_DATASET_ROWS, SPAN_KIND_LLM
 from utils.utils import calculate_duration_ms
 
 tracer = trace.get_tracer(__name__)
@@ -1878,6 +1878,7 @@ class Dataset(BaseModel):
     name: str
     description: Optional[str]
     metadata: Optional[dict]
+    latest_version_number: Optional[int]
 
     def to_response_model(self) -> DatasetResponse:
         return DatasetResponse(
@@ -1887,6 +1888,7 @@ class Dataset(BaseModel):
             name=self.name,
             description=self.description,
             metadata=self.metadata,
+            latest_version_number=self.latest_version_number,
         )
 
     def _to_database_model(self) -> DatabaseDataset:
@@ -1897,6 +1899,7 @@ class Dataset(BaseModel):
             name=self.name,
             description=self.description,
             dataset_metadata=self.metadata,
+            latest_version_number=self.latest_version_number,
         )
 
     @staticmethod
@@ -1909,6 +1912,7 @@ class Dataset(BaseModel):
             name=request.name,
             description=request.description,
             metadata=request.metadata,
+            latest_version_number=None,
         )
 
     @staticmethod
@@ -1920,6 +1924,7 @@ class Dataset(BaseModel):
             name=db_dataset.name,
             description=db_dataset.description,
             metadata=db_dataset.dataset_metadata,
+            latest_version_number=db_dataset.latest_version_number,
         )
 
 
@@ -1940,6 +1945,7 @@ class DatasetVersionRowColumnItem(BaseModel):
 class DatasetVersionRow(BaseModel):
     id: uuid.UUID
     data: list[DatasetVersionRowColumnItem]
+    created_at: datetime
 
     @staticmethod
     def _from_database_model(
@@ -1951,6 +1957,7 @@ class DatasetVersionRow(BaseModel):
                 DatasetVersionRowColumnItem(column_name=key, column_value=value)
                 for key, value in db_dataset_version_row.data.items()
             ],
+            created_at=db_dataset_version_row.created_at,
         )
 
 
@@ -2020,7 +2027,9 @@ class DatasetVersion(DatasetVersionMetadata):
                 if db_row.id not in new_version.rows_to_delete
                 and db_row.id not in ids_rows_to_update
             ]
-            existing_row_ids = set(db_row.id for db_row in latest_version.version_rows)
+            existing_row_id_to_row = {
+                db_row.id: db_row for db_row in latest_version.version_rows
+            }
         elif latest_version is None and new_version.rows_to_update:
             raise HTTPException(
                 status_code=400,
@@ -2028,12 +2037,12 @@ class DatasetVersion(DatasetVersionMetadata):
             )
         else:
             unchanged_rows = []
-            existing_row_ids = set()
+            existing_row_id_to_row = {}
 
         # validate updated rows do exist in the last version while creating updated_rows object
         updated_rows = []
         for updated_row in new_version.rows_to_update:
-            if updated_row.id not in existing_row_ids:
+            if updated_row.id not in existing_row_id_to_row:
                 raise HTTPException(
                     status_code=404,
                     detail="At least one row specified to update does not exist.",
@@ -2046,8 +2055,10 @@ class DatasetVersion(DatasetVersionMetadata):
                             DatasetVersionRowColumnItem._from_request_model(row_item)
                             for row_item in updated_row.data
                         ],
+                        created_at=existing_row_id_to_row[updated_row.id].created_at,
                     ),
                 )
+        curr_time = datetime.now()
         new_rows = [
             DatasetVersionRow(
                 id=uuid.uuid4(),
@@ -2055,14 +2066,21 @@ class DatasetVersion(DatasetVersionMetadata):
                     DatasetVersionRowColumnItem._from_request_model(row_item)
                     for row_item in new_row.data
                 ],
+                created_at=curr_time,
             )
             for new_row in new_version.rows_to_add
         ]
         all_rows = unchanged_rows + new_rows + updated_rows
 
+        if len(all_rows) > MAX_DATASET_ROWS:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Total number of rows {len(all_rows)} exceeds max allowed length, {MAX_DATASET_ROWS}.",
+            )
+
         return DatasetVersion(
             version_number=latest_version.version_number + 1 if latest_version else 1,
-            created_at=datetime.now(),
+            created_at=curr_time,
             dataset_id=dataset_id,
             rows=all_rows,
             page=0,
@@ -2091,6 +2109,7 @@ class DatasetVersion(DatasetVersionMetadata):
                         row_item.column_name: row_item.column_value
                         for row_item in version_row.data
                     },
+                    created_at=version_row.created_at,
                 )
                 for version_row in self.rows
             ],
@@ -2112,6 +2131,7 @@ class DatasetVersion(DatasetVersionMetadata):
                         )
                         for row_item in row.data
                     ],
+                    created_at=_serialize_datetime(self.created_at),
                 )
                 for row in self.rows
             ],

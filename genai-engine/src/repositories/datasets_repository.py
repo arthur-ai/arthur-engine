@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import UUID
 
@@ -73,11 +74,11 @@ class DatasetRepository:
                 DatabaseDataset.name.ilike(f"%{dataset_name}%"),
             )
 
-        # apply roting
+        # apply sorting - sort by updated_at field
         if pagination_params.sort == PaginationSortMethod.DESCENDING:
-            base_query = base_query.order_by(desc(DatabaseDataset.created_at))
+            base_query = base_query.order_by(desc(DatabaseDataset.updated_at))
         elif pagination_params.sort == PaginationSortMethod.ASCENDING:
-            base_query = base_query.order_by(asc(DatabaseDataset.created_at))
+            base_query = base_query.order_by(asc(DatabaseDataset.updated_at))
 
         # calculate total count before offset to apply pagination
         count = base_query.count()
@@ -152,9 +153,11 @@ class DatasetRepository:
         total_count = base_query.count()
 
         if pagination_params.sort == PaginationSortMethod.ASCENDING:
-            base_query = base_query.order_by(DatabaseDatasetVersionRow.id.asc())
+            base_query = base_query.order_by(DatabaseDatasetVersionRow.created_at.asc())
         else:
-            base_query = base_query.order_by(DatabaseDatasetVersionRow.id.desc())
+            base_query = base_query.order_by(
+                DatabaseDatasetVersionRow.created_at.desc(),
+            )
 
         offset = pagination_params.page * pagination_params.page_size
         paginated_results = (
@@ -189,6 +192,7 @@ class DatasetRepository:
         dataset_id: UUID,
         dataset_version: NewDatasetVersionRequest,
     ) -> None:
+        db_dataset = self._get_db_dataset(dataset_id)
         try:
             latest_version = self._get_latest_db_dataset_version(dataset_id)
         except HTTPException:
@@ -201,6 +205,8 @@ class DatasetRepository:
             dataset_version,
         )
         self.db_session.add(dataset_version._to_database_model())
+        db_dataset.updated_at = datetime.now()
+        db_dataset.latest_version_number = dataset_version.version_number
         self.db_session.commit()
 
     def get_dataset_versions(

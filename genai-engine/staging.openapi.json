@@ -7532,6 +7532,18 @@
                         "type": "integer",
                         "title": "Updated At",
                         "description": "Timestamp representing the time of the last dataset update in unix milliseconds."
+                    },
+                    "latest_version_number": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Latest Version Number",
+                        "description": "Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet."
                     }
                 },
                 "type": "object",
@@ -7734,12 +7746,18 @@
                         "type": "array",
                         "title": "Data",
                         "description": "List of column names and values in the row."
+                    },
+                    "created_at": {
+                        "type": "integer",
+                        "title": "Created At",
+                        "description": "Timestamp representing the time of dataset row creation in unix milliseconds. May differ within a version if a row already existed in a past version of the dataset."
                     }
                 },
                 "type": "object",
                 "required": [
                     "id",
-                    "data"
+                    "data",
+                    "created_at"
                 ],
                 "title": "DatasetVersionRowResponse"
             },

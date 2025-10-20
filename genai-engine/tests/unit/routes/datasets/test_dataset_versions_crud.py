@@ -95,6 +95,13 @@ def test_dataset_versions_basic_functionality(
     assert len(created_version.rows) == 3
     assert set(created_version.column_names) == {"name", "age"}
 
+    # validate parent dataset updated_at and latest version number were set
+    status_code, retrieved_dataset = client.get_dataset(dataset_id)
+    assert status_code == 200
+    assert retrieved_dataset.updated_at > retrieved_dataset.created_at
+    first_version_updated_at = retrieved_dataset.updated_at
+    assert retrieved_dataset.latest_version_number == 1
+
     # Test 2: Basic get of the dataset version
     status_code, retrieved_version = client.get_dataset_version(
         dataset_id=dataset_id,
@@ -174,6 +181,12 @@ def test_dataset_versions_basic_functionality(
     assert len(version_2.rows) == 3
     assert set(version_2.column_names) == {"name", "age", "profession"}
 
+    # validate parent dataset updated_at and latest version number were set
+    status_code, retrieved_dataset = client.get_dataset(dataset_id)
+    assert status_code == 200
+    assert retrieved_dataset.updated_at > first_version_updated_at
+    assert retrieved_dataset.latest_version_number == 2
+
     # verify the persisted values in version 2
     status_code, retrieved_version_2 = client.get_dataset_version(
         dataset_id=dataset_id,
@@ -184,6 +197,11 @@ def test_dataset_versions_basic_functionality(
     assert retrieved_version_2.total_count == 3
     assert len(retrieved_version_2.rows) == 3
     assert set(retrieved_version_2.column_names) == {"name", "age", "profession"}
+
+    # verify the new row is default sorted to return first
+    final_row = retrieved_version_2.rows[0]
+    final_row_data = _extract_row_data([final_row])
+    assert "Alice Brown" in final_row_data
 
     # Verify the rows in version 2 by checking their data content
     row_data = _extract_row_data(retrieved_version_2.rows)
@@ -276,5 +294,26 @@ def test_dataset_versions_basic_functionality(
     status_code, _ = client.get_dataset_version(
         dataset_id=dataset_id,
         version_number=1,
+    )
+    assert status_code == 404
+
+    # test exceeding max value of allowed rows
+    new_rows = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Many Entries Person",
+                ),
+            ],
+        )
+        for i in range(248)
+    ]
+
+    status_code, _ = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[],
+        rows_to_update=[],
+        rows_to_add=new_rows,
     )
     assert status_code == 404
