@@ -1,13 +1,19 @@
+import { Edit, Delete } from "@mui/icons-material";
 import React, { useState, useEffect } from "react";
 
 import { useApi } from "@/hooks/useApi";
-import { ModelProviderResponse } from "@/lib/api";
+import { ModelProviderResponse } from "@/lib/api-client/api-client";
 
 export const ModelProviders: React.FC = () => {
   const api = useApi();
   const [providers, setProviders] = useState<ModelProviderResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    provider: ModelProviderResponse | null;
+  }>({ isOpen: false, provider: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchModelProviders = async () => {
@@ -53,30 +59,47 @@ export const ModelProviders: React.FC = () => {
     if (enabled) {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <svg
-            className="w-1.5 h-1.5 mr-1.5"
-            fill="currentColor"
-            viewBox="0 0 8 8"
-          >
-            <circle cx={4} cy={4} r={3} />
-          </svg>
           Enabled
         </span>
       );
     } else {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          <svg
-            className="w-1.5 h-1.5 mr-1.5"
-            fill="currentColor"
-            viewBox="0 0 8 8"
-          >
-            <circle cx={4} cy={4} r={3} />
-          </svg>
           Disabled
         </span>
       );
     }
+  };
+
+  const handleDeleteClick = (provider: ModelProviderResponse) => {
+    setDeleteModal({ isOpen: true, provider });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.provider || !api) return;
+
+    try {
+      setIsDeleting(true);
+      await api.api.setModelProviderApiV1ModelProvidersProviderDelete(
+        deleteModal.provider.provider
+      );
+
+      // Refresh the providers list
+      const response = await api.api.getModelProvidersApiV1ModelProvidersGet();
+      setProviders(response.data.providers || []);
+
+      // Close modal
+      setDeleteModal({ isOpen: false, provider: null });
+    } catch (err) {
+      console.error("Failed to delete model provider:", err);
+      setError("Failed to delete model provider. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, provider: null });
   };
 
   if (isLoading) {
@@ -156,18 +179,27 @@ export const ModelProviders: React.FC = () => {
                         {getStatusBadge(provider.enabled)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <button
-                          className="text-blue-600 hover:text-blue-900 font-medium"
-                          onClick={() => {
-                            // TODO: Implement configuration action
-                            console.log(
-                              "Configure provider:",
-                              provider.provider
-                            );
-                          }}
-                        >
-                          Configure
-                        </button>
+                        <div className="flex space-x-2">
+                          <button
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
+                            onClick={() => {
+                              // TODO: Implement edit/configure action
+                              console.log("Edit provider:", provider.provider);
+                            }}
+                            title="Edit provider"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          {provider.enabled && (
+                            <button
+                              className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors duration-200"
+                              onClick={() => handleDeleteClick(provider)}
+                              title="Delete provider"
+                            >
+                              <Delete className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -177,6 +209,74 @@ export const ModelProviders: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.isOpen && deleteModal.provider && (
+        <div className="fixed inset-0 bg-gray-600/30 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div className="mt-2 text-center">
+                <h3 className="text-lg font-medium text-black">
+                  Delete Model Provider
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-black">
+                    Are you sure you want to delete{" "}
+                    <span className="font-medium">
+                      {getProviderDisplayName(deleteModal.provider.provider)}
+                    </span>
+                    ?
+                  </p>
+                  <p className="text-sm text-red-600 mt-2 font-medium">
+                    ⚠️ Any agents or evals currently using this provider will no
+                    longer work.
+                  </p>
+                </div>
+              </div>
+              <div className="flex space-x-3 mt-4">
+                <button
+                  type="button"
+                  onClick={handleDeleteCancel}
+                  disabled={isDeleting}
+                  className="flex-1 bg-gray-300 text-black py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  {isDeleting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    "Delete"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
