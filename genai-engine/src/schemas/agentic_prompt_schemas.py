@@ -204,6 +204,10 @@ class ToolChoice(BaseModel):
 
 
 class AgenticPromptBaseConfig(BaseModel):
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the prompt was created. Used for versioning.",
+    )
     messages: List[AgenticPromptMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -289,10 +293,6 @@ class AgenticPromptBaseConfig(BaseModel):
 
 class AgenticPrompt(AgenticPromptBaseConfig):
     name: str = Field(description="Name of the agentic prompt")
-    created_at: Optional[datetime] = Field(
-        default=None,
-        description="Timestamp when the prompt was created. Used for versioning.",
-    )
 
     def _get_completion_params(
         self,
