@@ -118,7 +118,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
   );
 
   const handleToolChoiceChange = useCallback(
-    (event: SelectChangeEvent) => {
+    (event: SelectChangeEvent<string>) => {
       dispatch({
         type: "updateToolChoice",
         payload: { promptId: prompt.id, toolChoice: event.target.value },
@@ -175,7 +175,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={prompt.toolChoice}
+              value={typeof prompt.toolChoice === 'string' ? prompt.toolChoice : prompt.toolChoice?.function?.name || 'auto'}
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
@@ -188,7 +188,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                   return selectedTool
                     ? renderToolChoiceOption(
                         selected,
-                        selectedTool.name
+                        selectedTool.function.name
                       )
                     : selected;
                 }
@@ -208,7 +208,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
               {prompt.tools.length > 0 && [
                 ...prompt.tools.map((tool) => (
                   <MenuItem key={tool.id} value={tool.id}>
-                    {renderToolChoiceOption(tool.id, tool.name)}
+                    {renderToolChoiceOption(tool.id, tool.function.name)}
                   </MenuItem>
                 )),
               ]}
@@ -232,7 +232,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
               >
                 <div className="flex items-center justify-between w-full mr-4">
                   <span className="text-sm font-mono">
-                    📋 {tool.name}
+                    📋 {tool.function.name}
                   </span>
                   <div
                     onClick={(e) => {
@@ -254,10 +254,13 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                     theme="light"
                     value={JSON.stringify(
                       {
-                        name: tool.name,
-                        description: tool.description,
-                        function_definition: tool.function_definition,
+                        function: {
+                          name: tool.function.name,
+                          description: tool.function.description,
+                          parameters: tool.function.parameters,
+                        },
                         strict: tool.strict,
+                        type: tool.type,
                       },
                       null,
                       2

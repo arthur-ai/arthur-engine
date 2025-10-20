@@ -6316,6 +6316,19 @@
             },
             "AgenticPrompt": {
                 "properties": {
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Output"
@@ -6571,6 +6584,19 @@
             },
             "AgenticPromptBaseConfig": {
                 "properties": {
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Input"
@@ -7309,6 +7335,19 @@
             },
             "CompletionRequest": {
                 "properties": {
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Input"
@@ -10134,8 +10173,10 @@
                 "properties": {
                     "api_key": {
                         "type": "string",
+                        "format": "password",
                         "title": "Api Key",
-                        "description": "The API key for the provider."
+                        "description": "The API key for the provider.",
+                        "writeOnly": true
                     }
                 },
                 "type": "object",
