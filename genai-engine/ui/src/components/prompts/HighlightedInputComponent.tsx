@@ -1,5 +1,5 @@
 import { styled } from "@mui/material/styles";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -16,6 +16,9 @@ const SyntaxHighlighterWrapper = styled("div")({
     borderRadius: "4px",
     minHeight: "56px",
     background: "transparent !important",
+    whiteSpace: "pre-wrap",
+    wordWrap: "break-word",
+    overflowWrap: "break-word",
     "&:focus-within": {
       borderColor: "primary.main",
       borderWidth: "2px",
@@ -30,6 +33,31 @@ const SyntaxHighlighterWrapper = styled("div")({
     fontSize: "inherit",
     fontFamily: "inherit",
     lineHeight: "inherit",
+    whiteSpace: "pre-wrap",
+    wordWrap: "break-word",
+    overflowWrap: "break-word",
+  },
+});
+
+const FloatingLabel = styled("label")({
+  position: "absolute",
+  left: "14px",
+  top: "16.5px",
+  fontSize: "1rem",
+  fontFamily: "inherit",
+  lineHeight: "1.4375em",
+  color: "rgba(0, 0, 0, 0.6)",
+  pointerEvents: "none",
+  transition: "all 0.2s ease-in-out",
+  transformOrigin: "top left",
+  zIndex: 3,
+  "&.floating": {
+    top: "-8px",
+    left: "14px",
+    fontSize: "0.75rem",
+    backgroundColor: "white",
+    padding: "0 4px",
+    color: "primary.main",
   },
 });
 
@@ -55,6 +83,34 @@ const HiddenTextarea = styled("textarea")({
   caretColor: "black", // This makes the cursor visible
 });
 
+const customStyle = {
+  ...oneLight,
+  'token.template-punctuation': {
+    color: '#b1fa56', // Yellow-green for braces {{ }}
+  },
+  'token.template-string': {
+    color: '#ac37f6', // Purple for variable content
+  },
+  'token.variable': {
+    color: '#ac37f6', // Purple for variable content
+  },
+  'token.property': {
+    color: '#ac37f6', // Purple for property names
+  },
+  'token.punctuation': {
+    color: '#b1fa56', // Yellow-green for braces
+  },
+  'token.string': {
+    color: '#ac37f6', // Purple for string content
+  },
+  'token.tag': {
+    color: '#b1fa56', // Yellow-green for tags
+  },
+  'token.attr-name': {
+    color: '#ac37f6', // Purple for attribute names
+  },
+};
+
 export const HighlightedInputComponent = ({
   value,
   onChange,
@@ -68,9 +124,18 @@ export const HighlightedInputComponent = ({
   placeholder?: string;
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange({ target: { value: e.target.value } } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -90,13 +155,19 @@ export const HighlightedInputComponent = ({
     }
   };
 
+  const shouldFloatLabel = isFocused || value.length > 0;
+
   return (
     <div>
-      {label && <label style={{ display: "block", marginBottom: "8px", fontSize: "0.875rem" }}>{label}</label>}
       <SyntaxHighlighterWrapper>
+        {label && (
+          <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>
+            {label}
+          </FloatingLabel>
+        )}
         <SyntaxHighlighter
           language="handlebars"
-          style={oneLight}
+          style={customStyle}
           customStyle={{
             margin: 0,
             padding: "16.5px 14px",
@@ -107,6 +178,9 @@ export const HighlightedInputComponent = ({
             borderRadius: "4px",
             minHeight: "56px",
             background: "transparent",
+            whiteSpace: "pre-wrap",
+            wordWrap: "break-word",
+            overflowWrap: "break-word",
           }}
           codeTagProps={{
             style: {
@@ -115,9 +189,13 @@ export const HighlightedInputComponent = ({
               fontSize: "inherit",
               fontFamily: "inherit",
               lineHeight: "inherit",
+              whiteSpace: "pre-wrap",
+              wordWrap: "break-word",
+              overflowWrap: "break-word",
             }
           }}
           className="syntax-highlighter"
+          useInlineStyles={false}
         >
           {value || placeholder || ""}
         </SyntaxHighlighter>
@@ -125,6 +203,8 @@ export const HighlightedInputComponent = ({
           ref={textareaRef}
           value={value}
           onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           {...props}
