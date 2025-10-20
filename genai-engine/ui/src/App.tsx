@@ -5,16 +5,17 @@ import {
   Navigate,
   useParams,
 } from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { LoginPage } from "./components/LoginPage";
+
 import { AllTasks } from "./components/AllTasks";
-import { TaskDetailContent } from "./components/TaskDetailContent";
 import { ComingSoon } from "./components/ComingSoon";
-import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
-import { TracesView } from "./components/TracesView";
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { TaskLayout } from "./components/TaskLayout";
+import { LoginPage } from "./components/LoginPage";
 import PromptsPlayground from "./components/prompts/PromptsPlayground";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { TaskDetailContent } from "./components/TaskDetailContent";
+import { TaskLayout } from "./components/TaskLayout";
+import { TracesView } from "./components/TracesView";
+import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
+import { AuthProvider } from "./contexts/AuthContext";
 import "./App.css";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details

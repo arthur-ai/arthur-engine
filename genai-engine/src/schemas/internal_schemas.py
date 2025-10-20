@@ -9,6 +9,7 @@ from arthur_common.models.common_schemas import (
     ExampleConfig,
     ExamplesConfig,
     KeywordsConfig,
+    PaginationParameters,
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
@@ -64,6 +65,7 @@ from pydantic import BaseModel, Field
 from db_models import (
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
+    DatabaseDataset,
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
@@ -91,6 +93,7 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
+from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
@@ -98,9 +101,20 @@ from schemas.enums import (
     RuleScoringMethod,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import (
+    NewDatasetRequest,
+    NewDatasetVersionRequest,
+    NewDatasetVersionRowColumnItemRequest,
+)
 from schemas.response_schemas import (
     ApplicationConfigurationResponse,
+    DatasetResponse,
+    DatasetVersionMetadataResponse,
+    DatasetVersionResponse,
+    DatasetVersionRowColumnItemResponse,
+    DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
+    ListDatasetVersionsResponse,
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
@@ -1854,4 +1868,321 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+        )
+
+
+class Dataset(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    name: str
+    description: Optional[str]
+    metadata: Optional[dict]
+
+    def to_response_model(self) -> DatasetResponse:
+        return DatasetResponse(
+            id=self.id,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+            name=self.name,
+            description=self.description,
+            metadata=self.metadata,
+        )
+
+    def _to_database_model(self) -> DatabaseDataset:
+        return DatabaseDataset(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            name=self.name,
+            description=self.description,
+            dataset_metadata=self.metadata,
+        )
+
+    @staticmethod
+    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+        curr_time = datetime.now()
+        return Dataset(
+            id=uuid.uuid4(),
+            created_at=curr_time,
+            updated_at=curr_time,
+            name=request.name,
+            description=request.description,
+            metadata=request.metadata,
+        )
+
+    @staticmethod
+    def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
+        return Dataset(
+            id=db_dataset.id,
+            created_at=db_dataset.created_at,
+            updated_at=db_dataset.updated_at,
+            name=db_dataset.name,
+            description=db_dataset.description,
+            metadata=db_dataset.dataset_metadata,
+        )
+
+
+class DatasetVersionRowColumnItem(BaseModel):
+    column_name: str
+    column_value: str
+
+    @staticmethod
+    def _from_request_model(
+        request: NewDatasetVersionRowColumnItemRequest,
+    ) -> "DatasetVersionRowColumnItem":
+        return DatasetVersionRowColumnItem(
+            column_name=request.column_name,
+            column_value=request.column_value,
+        )
+
+
+class DatasetVersionRow(BaseModel):
+    id: uuid.UUID
+    data: list[DatasetVersionRowColumnItem]
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version_row: DatabaseDatasetVersionRow,
+    ) -> "DatasetVersionRow":
+        return DatasetVersionRow(
+            id=db_dataset_version_row.id,
+            data=[
+                DatasetVersionRowColumnItem(column_name=key, column_value=value)
+                for key, value in db_dataset_version_row.data.items()
+            ],
+        )
+
+
+class DatasetVersionMetadata(BaseModel):
+    version_number: int
+    created_at: datetime
+    dataset_id: uuid.UUID
+    column_names: List[str]
+
+    @staticmethod
+    def _calculate_column_names(rows: List[DatasetVersionRow]) -> List[str]:
+        """Returns list of all column names in the dataset version.
+        :param:rows: list of all rows in the version
+        """
+        column_names = set()
+        for row in rows:
+            for col_item in row.data:
+                column_names.add(col_item.column_name)
+        return list(column_names)
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version: DatabaseDatasetVersion,
+    ) -> "DatasetVersionMetadata":
+        return DatasetVersionMetadata(
+            version_number=db_dataset_version.version_number,
+            created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
+            column_names=db_dataset_version.column_names,
+        )
+
+    def to_response_model(self) -> DatasetVersionMetadataResponse:
+        return DatasetVersionMetadataResponse(
+            version_number=self.version_number,
+            created_at=_serialize_datetime(self.created_at),
+            dataset_id=self.dataset_id,
+            column_names=self.column_names,
+        )
+
+
+class DatasetVersion(DatasetVersionMetadata):
+    rows: List[DatasetVersionRow]
+    page: int = Field(description="The current page number for the included rows.")
+    page_size: int = Field(description="The number of rows per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of rows in the dataset version.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        dataset_id: uuid.UUID,
+        latest_version: Optional[DatabaseDatasetVersion],
+        new_version: NewDatasetVersionRequest,
+    ) -> "DatasetVersion":
+        """
+        :param: dataset_id: dataset the version belongs to.
+        :param: latest_version: DatabaseBDatasetVersion of the latest version of the dataset before the new one.
+        :param: new_version: NewDatasetVersionRequest with the diff changes for the new dataset version
+        """
+        # assemble data rows
+        ids_rows_to_update = set(row.id for row in new_version.rows_to_update)
+        if latest_version is not None:
+            unchanged_rows = [
+                DatasetVersionRow._from_database_model(db_row)
+                for db_row in latest_version.version_rows
+                if db_row.id not in new_version.rows_to_delete
+                and db_row.id not in ids_rows_to_update
+            ]
+            existing_row_ids = set(db_row.id for db_row in latest_version.version_rows)
+        elif latest_version is None and new_version.rows_to_update:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot specify rows to update if there is no previous version of the dataset.",
+            )
+        else:
+            unchanged_rows = []
+            existing_row_ids = set()
+
+        # validate updated rows do exist in the last version while creating updated_rows object
+        updated_rows = []
+        for updated_row in new_version.rows_to_update:
+            if updated_row.id not in existing_row_ids:
+                raise HTTPException(
+                    status_code=404,
+                    detail="At least one row specified to update does not exist.",
+                )
+            else:
+                updated_rows.append(
+                    DatasetVersionRow(
+                        id=updated_row.id,
+                        data=[
+                            DatasetVersionRowColumnItem._from_request_model(row_item)
+                            for row_item in updated_row.data
+                        ],
+                    ),
+                )
+        new_rows = [
+            DatasetVersionRow(
+                id=uuid.uuid4(),
+                data=[
+                    DatasetVersionRowColumnItem._from_request_model(row_item)
+                    for row_item in new_row.data
+                ],
+            )
+            for new_row in new_version.rows_to_add
+        ]
+        all_rows = unchanged_rows + new_rows + updated_rows
+
+        return DatasetVersion(
+            version_number=latest_version.version_number + 1 if latest_version else 1,
+            created_at=datetime.now(),
+            dataset_id=dataset_id,
+            rows=all_rows,
+            page=0,
+            page_size=len(all_rows),
+            total_pages=1,
+            total_count=len(all_rows),
+            column_names=DatasetVersionMetadata._calculate_column_names(all_rows),
+        )
+
+    def _to_database_model(self) -> DatabaseDatasetVersion:
+        if self.page_size != self.total_count:
+            raise ValueError(
+                "Should not be using the database model without all version rows present.",
+            )
+
+        return DatabaseDatasetVersion(
+            version_number=self.version_number,
+            dataset_id=self.dataset_id,
+            created_at=self.created_at,
+            version_rows=[
+                DatabaseDatasetVersionRow(
+                    version_number=self.version_number,
+                    dataset_id=self.dataset_id,
+                    id=version_row.id,
+                    data={
+                        row_item.column_name: row_item.column_value
+                        for row_item in version_row.data
+                    },
+                )
+                for version_row in self.rows
+            ],
+            column_names=self.column_names,
+        )
+
+    def to_response_model(self) -> DatasetVersionResponse:
+        return DatasetVersionResponse(
+            version_number=self.version_number,
+            dataset_id=self.dataset_id,
+            created_at=_serialize_datetime(self.created_at),
+            rows=[
+                DatasetVersionRowResponse(
+                    id=row.id,
+                    data=[
+                        DatasetVersionRowColumnItemResponse(
+                            column_name=row_item.column_name,
+                            column_value=row_item.column_value,
+                        )
+                        for row_item in row.data
+                    ],
+                )
+                for row in self.rows
+            ],
+            page=self.page,
+            page_size=self.page_size,
+            total_pages=self.total_pages,
+            total_count=self.total_count,
+            column_names=self.column_names,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version: DatabaseDatasetVersion,
+        total_count: int,
+        pagination_params: PaginationParameters,
+    ) -> "DatasetVersion":
+        return DatasetVersion(
+            version_number=db_dataset_version.version_number,
+            created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
+            rows=[
+                DatasetVersionRow._from_database_model(db_row)
+                for db_row in db_dataset_version.version_rows
+            ],
+            page=pagination_params.page,
+            page_size=pagination_params.page_size,
+            total_pages=(
+                pagination_params.calculate_total_pages(total_count)
+                if total_count > 0
+                else 0
+            ),
+            total_count=total_count,
+            column_names=db_dataset_version.column_names,
+        )
+
+
+class ListDatasetVersions(BaseModel):
+    versions: List[DatasetVersionMetadata]
+    page: int = Field(description="The current page number for the included versions.")
+    page_size: int = Field(description="The number of versions per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of versions for the dataset.",
+    )
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_versions: List[DatabaseDatasetVersion],
+        total_count: int,
+        pagination_params: PaginationParameters,
+    ) -> "ListDatasetVersions":
+        return ListDatasetVersions(
+            versions=[
+                DatasetVersionMetadata._from_database_model(db_dataset_version)
+                for db_dataset_version in db_dataset_versions
+            ],
+            page=pagination_params.page,
+            page_size=pagination_params.page_size,
+            total_pages=(
+                pagination_params.calculate_total_pages(total_count)
+                if total_count > 0
+                else 0
+            ),
+            total_count=total_count,
+        )
+
+    def to_response_model(self) -> ListDatasetVersionsResponse:
+        return ListDatasetVersionsResponse(
+            versions=[version.to_response_model() for version in self.versions],
+            page=self.page,
+            page_size=self.page_size,
+            total_pages=self.total_pages,
+            total_count=self.total_count,
         )

@@ -1,6 +1,8 @@
+from typing import Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from dependencies import get_application_config, get_db_session
@@ -13,9 +15,9 @@ from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptBaseConfig,
-    AgenticPromptRunConfig,
     AgenticPrompts,
-    AgenticPromptUnsavedRunConfig,
+    CompletionRequest,
+    PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
@@ -53,6 +55,21 @@ def get_validated_agentic_task(
         raise HTTPException(status_code=400, detail="Task is not agentic")
 
     return task
+
+
+async def execute_prompt_completion(
+    prompt: AgenticPrompt,
+    completion_request: PromptCompletionRequest,
+) -> Union[AgenticPromptRunResponse, StreamingResponse]:
+    """Helper to execute prompt completion with or without streaming"""
+    if completion_request.stream is None or completion_request.stream == False:
+        return prompt.run_chat_completion(completion_request)
+
+    return StreamingResponse(
+        prompt.stream_chat_completion(completion_request),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @agentic_prompt_routes.get(
@@ -129,20 +146,83 @@ def get_all_agentic_prompt_versions(
 
 @agentic_prompt_routes.post(
     "/completions",
-    summary="Run an agentic prompt",
-    description="Run an agentic prompt",
+    summary="Run/Stream an unsaved agentic prompt",
+    description="Runs or streams an unsaved agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
+    responses={
+        200: {
+            "description": """An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event""",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": (
+                            "# Chunk event\n"
+                            "event: chunk\n"
+                            "data: {\n"
+                            '  "id": "string",\n'
+                            '  "created": 1760636425,\n'
+                            '  "model": "string",\n'
+                            '  "object": "string",\n'
+                            '  "system_fingerprint": "string",\n'
+                            '  "choices": [\n'
+                            "    {\n"
+                            '      "finish_reason": null,\n'
+                            '      "index": 0,\n'
+                            '      "delta": {\n'
+                            '        "provider_specific_fields": null,\n'
+                            '        "refusal": null,\n'
+                            '        "content": "string",\n'
+                            '        "role": null,\n'
+                            '        "function_call": null,\n'
+                            '        "tool_calls": null,\n'
+                            '        "audio": null\n'
+                            "      },\n"
+                            '      "logprobs": null\n'
+                            "    }\n"
+                            "  ],\n"
+                            '  "provider_specific_fields": null\n'
+                            "}\n\n"
+                            "# Final response event\n"
+                            "event: final_response\n"
+                            "data: {\n"
+                            '  "content": "string",\n'
+                            '  "tool_calls": [\n'
+                            '    "string"\n'
+                            "  ],\n"
+                            '  "cost": "string"\n'
+                            "}\n\n"
+                        ),
+                    },
+                },
+            },
+        },
+    },
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_agentic_prompt(
-    run_config: AgenticPromptUnsavedRunConfig,
+async def run_agentic_prompt(
+    unsaved_prompt: CompletionRequest,
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
+    """
+    Run and/or stream an unsaved agentic prompt.
+    Note: For streaming, the response will be a StreamingResponse object.
+
+    Args:
+        unsaved_prompt: CompletionRequest
+        current_user: User
+
+    Returns:
+        AgenticPromptRunResponse or StreamingResponse
+    """
     try:
-        agentic_prompt_service = AgenticPromptRepository(None)
-        return agentic_prompt_service.run_unsaved_prompt(run_config)
+        prompt, completion_request = unsaved_prompt.to_prompt_and_request()
+        return await execute_prompt_completion(
+            prompt,
+            completion_request,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -151,25 +231,92 @@ def run_agentic_prompt(
 
 @agentic_prompt_routes.post(
     "/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions",
-    summary="Run a specific version of an agentic prompt",
-    description="Run a specific version of an existing agentic prompt",
+    summary="Run/Stream a specific version of an agentic prompt",
+    description="Run or stream a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
     response_model_exclude_none=True,
+    responses={
+        200: {
+            "description": """An AgenticPromptRunResponse object for non-streaming requests or a StreamingResponse which has two events, a chunk event or a final_response event""",
+            "content": {
+                "text/event-stream": {
+                    "schema": {
+                        "type": "string",
+                        "example": (
+                            "# Chunk event\n"
+                            "event: chunk\n"
+                            "data: {\n"
+                            '  "id": "string",\n'
+                            '  "created": 1760636425,\n'
+                            '  "model": "string",\n'
+                            '  "object": "string",\n'
+                            '  "system_fingerprint": "string",\n'
+                            '  "choices": [\n'
+                            "    {\n"
+                            '      "finish_reason": null,\n'
+                            '      "index": 0,\n'
+                            '      "delta": {\n'
+                            '        "provider_specific_fields": null,\n'
+                            '        "refusal": null,\n'
+                            '        "content": "string",\n'
+                            '        "role": null,\n'
+                            '        "function_call": null,\n'
+                            '        "tool_calls": null,\n'
+                            '        "audio": null\n'
+                            "      },\n"
+                            '      "logprobs": null\n'
+                            "    }\n"
+                            "  ],\n"
+                            '  "provider_specific_fields": null\n'
+                            "}\n\n"
+                            "# Final response event\n"
+                            "event: final_response\n"
+                            "data: {\n"
+                            '  "content": "string",\n'
+                            '  "tool_calls": [\n'
+                            '    "string"\n'
+                            "  ],\n"
+                            '  "cost": "string"\n'
+                            "}\n\n"
+                        ),
+                    },
+                },
+            },
+        },
+    },
     tags=["AgenticPrompt"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
-def run_saved_agentic_prompt(
+async def run_saved_agentic_prompt(
     prompt_name: str,
     prompt_version: str,
-    run_config: AgenticPromptRunConfig = AgenticPromptRunConfig(),
+    completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
+    """
+    Run and/or stream an unsaved agentic prompt.
+    Note: For streaming, the response will be a StreamingResponse object.
+
+    Args:
+        prompt_name: str
+        prompt_version: str
+        completion_request: PromptCompletionRequest
+        current_user: User
+        task: Task
+
+    Returns:
+        AgenticPromptRunResponse or StreamingResponse
+    """
     # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.run_saved_prompt(task.id, prompt_name, run_config)
+        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        return await execute_prompt_completion(
+            prompt,
+            completion_request,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

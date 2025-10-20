@@ -3,20 +3,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from arthur_common.models.enums import (
-    PaginationSortMethod,
     UserPermissionAction,
     UserPermissionResource,
 )
 from pydantic import BaseModel, Field
-
-
-class PaginationParameters(BaseModel):
-    sort: Optional[PaginationSortMethod] = PaginationSortMethod.DESCENDING
-    page_size: int = 10
-    page: int = 0
-
-    def calculate_total_pages(self, total_items_count: int) -> int:
-        return total_items_count // self.page_size + 1
 
 
 class LLMTokenConsumption(BaseModel):
@@ -51,7 +41,6 @@ class UserPermission(BaseModel):
 
 
 class JsonPropertySchema(BaseModel):
-    name: str = Field(..., description="The name of the argument")
     type: str = Field(
         default="string",
         description="The argument's type (e.g. string, boolean, etc.)",
@@ -69,73 +58,18 @@ class JsonPropertySchema(BaseModel):
         description="For array types, describes the items",
     )
 
-    def to_dict(self) -> Dict[str, Any]:
-        result = {self.name: {"type": self.type}}
-
-        if self.description:
-            result[self.name]["description"] = self.description
-
-        if self.enum:
-            result[self.name]["enum"] = self.enum
-
-        if self.items:
-            result[self.name]["items"] = self.items
-
-        return result
-
-    @classmethod
-    def from_dict(cls, name: str, data: Dict[str, Any]) -> "JsonPropertySchema":
-        return cls(
-            name=name,
-            type=data["type"],
-            description=data.get("description"),
-            enum=data.get("enum"),
-            items=data.get("items"),
-        )
-
 
 class JsonSchema(BaseModel):
     type: str = Field(default="object")
-    properties: List[JsonPropertySchema] = Field(
+    properties: Dict[str, JsonPropertySchema] = Field(
         ...,
-        description="The properties of the function",
+        description="The name of the property and the property schema (e.g. {'topic': {'type': 'string', 'description': 'the topic to generate a joke for'})",
     )
     required: List[str] = Field(
         default_factory=list,
         description="The required properties of the function",
     )
-    additional_properties: Optional[bool] = Field(
+    additionalProperties: Optional[bool] = Field(
         default=None,
         description="Whether the function definition should allow additional properties",
     )
-
-    def to_dict(self) -> Dict[str, Any]:
-        properties_dict = {}
-        for prop in self.properties:
-            properties_dict.update(prop.to_dict())
-
-        result = {
-            "type": self.type,
-            "properties": properties_dict,
-        }
-
-        if self.required:
-            result["required"] = self.required
-
-        if self.additional_properties is not None:
-            result["additionalProperties"] = self.additional_properties
-
-        return result
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "JsonSchema":
-        properties = []
-        for prop_name, prop_data in data["properties"].items():
-            properties.append(JsonPropertySchema.from_dict(prop_name, prop_data))
-
-        return cls(
-            type=data["type"],
-            properties=properties,
-            required=data.get("required", []),
-            additional_properties=data.get("additionalProperties"),
-        )
