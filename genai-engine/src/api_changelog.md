@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/22/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers  endpoint added
+
 # 10/21/2025
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
 

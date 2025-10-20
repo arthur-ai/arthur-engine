@@ -1,11 +1,13 @@
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator, SecretStr, field_serializer
+from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic_core import Url
 
 from schemas.enums import (
     DocumentStorageEnvironment,
-    ModelProvider,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
 )
 
 
@@ -107,3 +109,66 @@ class NewDatasetVersionRequest(BaseModel):
 
 class PutModelProviderCredentials(BaseModel):
     api_key: SecretStr = Field(description="The API key for the provider.")
+
+
+class ApiKeyRagAuthenticationConfigRequest(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: SecretStr = Field(description="API key to use for authentication.")
+    host_url: Url = Field(description="URL of host instance to authenticate with.")
+    rag_provider: RagAPIKeyAuthenticationProviderEnum = Field(
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigRequestTypes = Union[ApiKeyRagAuthenticationConfigRequest]
+
+
+class RagProviderConfigurationRequest(BaseModel):
+    authentication_config: RagAuthenticationConfigRequestTypes = Field(
+        description="Configuration of the authentication strategy.",
+    )
+    name: str = Field(description="Name of RAG provider configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )
+
+
+class ApiKeyRagAuthenticationConfigUpdateRequest(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="API key to use for authentication.",
+    )
+    host_url: Optional[Url] = Field(
+        default=None,
+        description="URL of host instance to authenticate with.",
+    )
+    rag_provider: Optional[RagAPIKeyAuthenticationProviderEnum] = Field(
+        default=None,
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigUpdateRequestTypes = Union[
+    ApiKeyRagAuthenticationConfigUpdateRequest
+]
+
+
+class RagProviderConfigurationUpdateRequest(BaseModel):
+    authentication_config: Optional[RagAuthenticationConfigUpdateRequestTypes] = Field(
+        default=None,
+        description="Configuration of the authentication strategy.",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of RAG provider configuration.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )

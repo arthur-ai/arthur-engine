@@ -1,12 +1,17 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.response_schemas import ExternalInference, TraceResponse
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
+from pydantic_core import Url
 
-from schemas.enums import ModelProvider
+from schemas.enums import (
+    ModelProvider,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+)
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -223,5 +228,46 @@ class ModelProviderList(BaseModel):
 class ModelProviderModelList(BaseModel):
     provider: ModelProvider = Field(description="Provider of the models")
     available_models: List[str] = Field(
-        description="Available models from the provider"
+        description="Available models from the provider",
+    )
+
+
+class ApiKeyRagAuthenticationConfigResponse(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    host_url: Url = Field(description="URL of host instance to authenticate with.")
+    rag_provider: RagAPIKeyAuthenticationProviderEnum = Field(
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigResponseTypes = Union[ApiKeyRagAuthenticationConfigResponse]
+
+
+class RagProviderConfigurationResponse(BaseModel):
+    id: UUID = Field(description="Unique identifier of the RAG provider configuration.")
+    task_id: str = Field(description="ID of parent task.")
+    authentication_config: RagAuthenticationConfigResponseTypes = Field(
+        description="Configuration of the authentication strategy.",
+    )
+    name: str = Field(description="Name of RAG provider configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )
+    created_at: int = Field(
+        description="Time the RAG provider configuration was created in unix milliseconds",
+    )
+    updated_at: int = Field(
+        description="Time the RAG provider configuration was updated in unix milliseconds",
+    )
+
+
+class SearchRagProviderConfigurationsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG provider configurations matching the parameters.",
+    )
+    rag_provider_configurations: list[RagProviderConfigurationResponse] = Field(
+        description="List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter",
     )

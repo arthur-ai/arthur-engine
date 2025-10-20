@@ -160,7 +160,7 @@ class PermissionLevelsEnum(Enum):
 
 class SecretType(str, Enum):
     MODEL_PROVIDER = "model_provider"
-    VECTOR_DB_PROVIDER = "vector_db_provider"
+    RAG_PROVIDER = "rag_provider"
 
 
 class ModelProvider(str, Enum):
@@ -223,3 +223,11 @@ class LLMResponseFormatEnum(str, Enum):
     TEXT = "text"
     JSON_OBJECT = "json_object"
     JSON_SCHEMA = "json_schema"
+
+
+class RagProviderAuthenticationMethodEnum(str, Enum):
+    API_KEY_AUTHENTICATION = "api_key"
+
+
+class RagAPIKeyAuthenticationProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
