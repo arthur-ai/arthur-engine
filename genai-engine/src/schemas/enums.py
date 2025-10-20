@@ -168,7 +168,7 @@ class ModelProvider(str, Enum):
     OPENAI = "openai"
     GEMINI = "gemini"
 
-    # note supporting for v0
+    # not supporting for v0
     # AZURE = "azure"
     # BEDROCK = "bedrock"
     # SAGEMAKER = "sagemaker"
