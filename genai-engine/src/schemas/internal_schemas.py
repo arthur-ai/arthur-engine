@@ -118,6 +118,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
+    UserMetadataResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -1560,6 +1561,7 @@ class Span(BaseModel):
     end_time: datetime
     task_id: Optional[str] = None
     session_id: Optional[str] = None
+    user_id: Optional[str] = None
     status_code: str = "Unset"
     raw_data: dict
     created_at: datetime
@@ -1636,6 +1638,7 @@ class Span(BaseModel):
             end_time=db_span.end_time,
             task_id=db_span.task_id,
             session_id=db_span.session_id,
+            user_id=db_span.user_id,
             status_code=db_span.status_code,
             raw_data=db_span.raw_data,
             created_at=db_span.created_at,
@@ -1658,6 +1661,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1676,6 +1680,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1704,6 +1709,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1733,13 +1739,14 @@ class Span(BaseModel):
             duration_ms=duration_ms,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
 
     @staticmethod
-    def from_span_data(span_data: dict, user_id: str) -> "Span":
+    def from_span_data(span_data: dict) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""
         return Span(
             id=str(uuid.uuid4()),
@@ -1752,6 +1759,7 @@ class Span(BaseModel):
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],
             session_id=span_data.get("session_id"),
+            user_id=span_data.get("user_id"),
             status_code=span_data.get("status_code", "Unset"),
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
@@ -1793,6 +1801,32 @@ class SessionMetadata(BaseModel):
             earliest_start_time=self.earliest_start_time,
             latest_end_time=self.latest_end_time,
             duration_ms=duration_ms,
+        )
+
+
+class UserMetadata(BaseModel):
+    """Internal user metadata representation"""
+
+    user_id: str
+    task_id: str
+    session_ids: list[str]
+    trace_ids: list[str]
+    span_count: int
+    earliest_start_time: datetime
+    latest_end_time: datetime
+
+    def _to_metadata_response_model(self) -> UserMetadataResponse:
+        """Convert to API response model"""
+        return UserMetadataResponse(
+            user_id=self.user_id,
+            task_id=self.task_id,
+            session_ids=self.session_ids,
+            session_count=len(self.session_ids),
+            trace_ids=self.trace_ids,
+            trace_count=len(self.trace_ids),
+            span_count=self.span_count,
+            earliest_start_time=self.earliest_start_time,
+            latest_end_time=self.latest_end_time,
         )
 
 

@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v1/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces  endpoint added
+
 # 10/17/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'ai21' of the request property 'model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'baseten' of the request property 'model_provider'

@@ -191,6 +191,45 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
+class UserMetadataResponse(BaseModel):
+    """User summary metadata"""
+
+    user_id: str = Field(description="User identifier")
+    task_id: str = Field(description="Task ID this user belongs to")
+    session_ids: list[str] = Field(description="List of session IDs for this user")
+    session_count: int = Field(description="Number of sessions for this user")
+    trace_ids: list[str] = Field(description="List of trace IDs for this user")
+    trace_count: int = Field(description="Number of traces for this user")
+    span_count: int = Field(description="Total number of spans for this user")
+    earliest_start_time: datetime = Field(description="Start time of earliest trace")
+    latest_end_time: datetime = Field(description="End time of latest trace")
+
+
+class UserListResponse(BaseModel):
+    """Response for user list endpoint"""
+
+    count: int = Field(description="Total number of users matching filters")
+    users: list[UserMetadataResponse] = Field(description="List of user metadata")
+
+
+class UserSessionsResponse(BaseModel):
+    """Response for user sessions endpoint"""
+
+    user_id: str = Field(description="User identifier")
+    count: int = Field(description="Number of sessions for this user")
+    sessions: list[SessionMetadataResponse] = Field(
+        description="List of session metadata",
+    )
+
+
+class UserTracesResponse(BaseModel):
+    """Response for user traces endpoint"""
+
+    user_id: str = Field(description="User identifier")
+    count: int = Field(description="Number of traces for this user")
+    traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
+
+
 class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
