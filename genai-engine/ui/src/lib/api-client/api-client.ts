@@ -55,7 +55,7 @@ export interface AgenticPrompt {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the agentic prompt
@@ -159,7 +159,7 @@ export interface AgenticPromptBaseConfig {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Presence Penalty
    * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
@@ -526,7 +526,7 @@ export interface CompletionRequest {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Presence Penalty
    * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
@@ -1225,6 +1225,8 @@ export type GetFilesApiChatFilesGetData = ExternalDocument[];
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
+
+export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
 export type GetSessionTracesApiV1SessionsSessionIdGetData = SessionTracesResponse;
 
@@ -2055,6 +2057,29 @@ export interface MetricResultResponse {
 /** MetricType */
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
+/** ModelProvider */
+export type ModelProvider = "anthropic" | "openai" | "gemini";
+
+/** ModelProviderList */
+export interface ModelProviderList {
+  /**
+   * Providers
+   * List of model providers
+   */
+  providers: ModelProviderResponse[];
+}
+
+/** ModelProviderResponse */
+export interface ModelProviderResponse {
+  /**
+   * Enabled
+   * Whether the provider is enabled with credentials.
+   */
+  enabled: boolean;
+  /** The model provider. */
+  provider: ModelProvider;
+}
+
 /**
  * NestedSpanWithMetricsResponse
  * Nested span response with children for building span trees
@@ -2434,37 +2459,15 @@ export interface PromptValidationRequest {
   user_id?: string | null;
 }
 
-/** ProviderEnum */
-export type ProviderEnum =
-  | "anthropic"
-  | "openai"
-  | "gemini"
-  | "azure"
-  | "deepseek"
-  | "mistral"
-  | "meta_llama"
-  | "groq"
-  | "bedrock"
-  | "sagemaker"
-  | "vertex_ai"
-  | "huggingface"
-  | "cloudflare"
-  | "ai21"
-  | "baseten"
-  | "cohere"
-  | "empower"
-  | "featherless_ai"
-  | "friendliai"
-  | "galadriel"
-  | "nebius"
-  | "nlp_cloud"
-  | "novita"
-  | "openrouter"
-  | "petals"
-  | "replicate"
-  | "together_ai"
-  | "vllm"
-  | "watsonx";
+/** PutModelProviderCredentials */
+export interface PutModelProviderCredentials {
+  /**
+   * Api Key
+   * The API key for the provider.
+   * @format password
+   */
+  api_key: string;
+}
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
 
@@ -3187,6 +3190,8 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
+export type RotateSecretsApiV1SecretsRotationPostData = any;
+
 /** RuleResponse */
 export interface RuleResponse {
   /**
@@ -3526,6 +3531,14 @@ export interface SessionTracesResponse {
    */
   traces: TraceResponse[];
 }
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
 /**
  * SpanListResponse
@@ -4969,6 +4982,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Shows all model providers and if they're enabled.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersGet
+     * @summary List the model providers..
+     * @request GET:/api/v1/model_providers
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersGet: (params: RequestParams = {}) =>
+      this.request<GetModelProvidersApiV1ModelProvidersGetData, any>({
+        path: `/api/v1/model_providers`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
      *
      * @tags Sessions
@@ -5250,6 +5281,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. At this point all existing and new secrets will be managed by 'new-key'.
+     *
+     * @tags Secrets
+     * @name RotateSecretsApiV1SecretsRotationPost
+     * @summary Rotates secrets
+     * @request POST:/api/v1/secrets/rotation
+     * @secure
+     */
+    rotateSecretsApiV1SecretsRotationPost: (params: RequestParams = {}) =>
+      this.request<RotateSecretsApiV1SecretsRotationPostData, any>({
+        path: `/api/v1/secrets/rotation`,
+        method: "POST",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Runs or streams an unsaved agentic prompt
      *
      * @tags AgenticPrompt
@@ -5369,6 +5417,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Disables the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderDelete
+     * @summary Disables the configuration for a model provider.
+     * @request DELETE:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderDeleteData,
+        SetModelProviderApiV1ModelProvidersProviderDeleteError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Set the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderPut
+     * @summary Set the configuration for a model provider.
+     * @request PUT:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderPut: (
+      provider: ModelProvider,
+      data: PutModelProviderCredentials,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderPutData,
+        SetModelProviderApiV1ModelProvidersProviderPutError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,

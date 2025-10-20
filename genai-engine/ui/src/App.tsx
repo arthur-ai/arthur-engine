@@ -9,6 +9,7 @@ import {
 import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
 import { LoginPage } from "./components/LoginPage";
+import { ModelProviders } from "./components/ModelProviders";
 import PromptsPlayground from "./components/prompts/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -52,6 +53,17 @@ function App() {
                 <ProtectedRoute>
                   <TaskLayout>
                     <TaskDetailContent />
+                  </TaskLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/tasks/:id/model-providers"
+              element={
+                <ProtectedRoute>
+                  <TaskLayout>
+                    <ModelProviders />
                   </TaskLayout>
                 </ProtectedRoute>
               }

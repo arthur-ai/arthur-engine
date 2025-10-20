@@ -1,5 +1,3 @@
-
-
 import React from "react";
 
 interface SidebarNavigationProps {
@@ -64,7 +62,10 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
     {
       id: "settings",
       label: "Settings",
-      items: [{ id: "task-details", label: "Task Details" }],
+      items: [
+        { id: "task-details", label: "Task Details" },
+        { id: "model-providers", label: "Model Providers" },
+      ],
     },
   ];
 
