@@ -317,3 +317,24 @@ def test_dataset_versions_basic_functionality(
         version_number=1,
     )
     assert status_code == 404
+
+    # test exceeding max value of allowed rows
+    new_rows = [
+        NewDatasetVersionRowRequest(
+            data=[
+                NewDatasetVersionRowColumnItemRequest(
+                    column_name="name",
+                    column_value="Many Entries Person",
+                ),
+            ],
+        )
+        for i in range(248)
+    ]
+
+    status_code, _ = client.create_dataset_version(
+        dataset_id=dataset_id,
+        rows_to_delete=[],
+        rows_to_update=[],
+        rows_to_add=new_rows,
+    )
+    assert status_code == 404
