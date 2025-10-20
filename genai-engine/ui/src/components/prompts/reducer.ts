@@ -13,7 +13,7 @@ import { generateId, arrayUtils } from "./utils";
 
 import {
   MessageRole,
-  ProviderEnum,
+  ModelProvider,
   ToolChoiceEnum,
 } from "@/lib/api-client/api-client";
 
@@ -113,7 +113,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
+const newPrompt = (provider: ModelProvider = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType => {

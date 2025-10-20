@@ -1,6 +1,6 @@
 import {
   ReasoningEffortEnum,
-  ProviderEnum,
+  ModelProvider,
   AgenticPromptMessageInput,
   MessageRole,
   LogitBiasItem,
@@ -109,7 +109,7 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: ProviderEnum;
+  provider: ModelProvider;
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
@@ -159,37 +159,7 @@ const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "tool",
 ];
 
-const PROVIDER_OPTIONS: ProviderEnum[] = [
-  "anthropic",
-  "openai",
-  "gemini",
-  "azure",
-  "deepseek",
-  "mistral",
-  "meta_llama",
-  "groq",
-  "bedrock",
-  "sagemaker",
-  "vertex_ai",
-  "huggingface",
-  "cloudflare",
-  "ai21",
-  "baseten",
-  "cohere",
-  "empower",
-  "featherless_ai",
-  "friendliai",
-  "galadriel",
-  "nebius",
-  "nlp_cloud",
-  "novita",
-  "openrouter",
-  "petals",
-  "replicate",
-  "together_ai",
-  "vllm",
-  "watsonx",
-];
+const PROVIDER_OPTIONS: ModelProvider[] = ["anthropic", "openai", "gemini"];
 
 export {
   MESSAGE_ROLE_OPTIONS,
