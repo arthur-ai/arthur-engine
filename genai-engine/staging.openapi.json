@@ -5483,6 +5483,146 @@
                 }
             }
         },
+        "/api/v1/model_providers/{provider}": {
+            "put": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Set the configuration for a model provider.",
+                "description": "Set the configuration for a model provider",
+                "operationId": "set_model_provider_api_v1_model_providers__provider__put",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PutModelProviderCredentials"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Configuration set",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "Disables the configuration for a model provider.",
+                "description": "Disables the configuration for a model provider",
+                "operationId": "set_model_provider_api_v1_model_providers__provider__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Provider deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/model_providers": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "List the model providers..",
+                "description": "Shows all model providers and if they're enabled.",
+                "operationId": "get_model_providers_api_v1_model_providers_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderList"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
+        "/api/v1/secrets/rotation": {
+            "post": {
+                "tags": [
+                    "Secrets"
+                ],
+                "summary": "Rotates secrets",
+                "description": "This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: \nFirst: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. \nSecond: call this endpoint - all secrets will be re-encrypted with 'new-key'. \nThird: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. \nAt this point all existing and new secrets will be managed by 'new-key'.",
+                "operationId": "rotate_secrets_api_v1_secrets_rotation_post",
+                "responses": {
+                    "204": {
+                        "description": "Secrets rotated."
+                    }
+                },
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ]
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -9051,13 +9191,45 @@
                 "enum": [
                     "anthropic",
                     "openai",
-                    "gemini",
-                    "azure",
-                    "bedrock",
-                    "sagemaker",
-                    "vertex_ai"
+                    "gemini"
                 ],
                 "title": "ModelProvider"
+            },
+            "ModelProviderList": {
+                "properties": {
+                    "providers": {
+                        "items": {
+                            "$ref": "#/components/schemas/ModelProviderResponse"
+                        },
+                        "type": "array",
+                        "title": "Providers",
+                        "description": "List of model providers"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "providers"
+                ],
+                "title": "ModelProviderList"
+            },
+            "ModelProviderResponse": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "The model provider."
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Whether the provider is enabled with credentials."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "enabled"
+                ],
+                "title": "ModelProviderResponse"
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
@@ -9996,6 +10168,22 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
+            },
+            "PutModelProviderCredentials": {
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Api Key",
+                        "description": "The API key for the provider.",
+                        "writeOnly": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "api_key"
+                ],
+                "title": "PutModelProviderCredentials"
             },
             "QueryFeedbackResponse": {
                 "properties": {
