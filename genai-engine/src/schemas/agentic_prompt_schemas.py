@@ -364,6 +364,10 @@ class AgenticPromptBaseConfig(BaseModel):
 
 class AgenticPrompt(AgenticPromptBaseConfig):
     name: str = Field(description="Name of the agentic prompt")
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the prompt was created. Used for versioning.",
+    )
 
     def run_chat_completion(
         self,
@@ -426,6 +430,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "model_name": db_prompt.model_name,
             "model_provider": db_prompt.model_provider,
             "tools": db_prompt.tools,
+            "created_at": db_prompt.created_at,
         }
 
         if db_prompt.tools:
@@ -484,11 +489,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         config = {
             k: v for k, v in prompt_dict.items() if k in config_keys and v is not None
         }
-        base_fields = {k: v for k, v in prompt_dict.items() if k not in config_keys}
+        base_fields = {
+            k: v
+            for k, v in prompt_dict.items()
+            if k not in config_keys and k != "created_at"
+        }
 
         return DatabaseAgenticPrompt(
             task_id=task_id,
-            created_at=datetime.now(),
             **base_fields,
             config=config or None,
         )

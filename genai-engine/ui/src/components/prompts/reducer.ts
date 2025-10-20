@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
@@ -11,39 +9,13 @@ import {
   PROVIDER_OPTIONS,
   FrontendTool,
 } from "./types";
-import { extractName } from "./utils";
+import { generateId, arrayUtils } from "./utils";
 
 import {
   MessageRole,
   ProviderEnum,
   ToolChoiceEnum,
 } from "@/lib/api-client/api-client";
-
-const arrayUtils = {
-  //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
-  //     ...array.slice(0, index),
-  //     item,
-  //     ...array.slice(index),
-  //   ],
-
-  // TODO
-  moveItem: <T>(array: T[], fromIndex: number, toIndex: number): T[] => {
-    const newArray = [...array];
-    const [item] = newArray.splice(fromIndex, 1);
-    newArray.splice(toIndex, 0, item);
-    return newArray;
-  },
-
-  duplicateAfter: <T>(array: T[], originalIndex: number, duplicate: T): T[] => [
-    ...array.slice(0, originalIndex + 1),
-    duplicate,
-    ...array.slice(originalIndex + 1),
-  ],
-};
-
-const generateId = (type: "msg" | "tool") => {
-  return type + "-" + uuidv4();
-};
 
 /****************************
  * Message factory functions *
@@ -124,9 +96,10 @@ const createModelParameters = (
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: "-" + Date.now(),
+  id: "-" + Date.now(), // New prompts get a default id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
+  created_at: undefined, // created on BE
   modelName: "",
   provider: PROVIDER_OPTIONS[0],
   messages: [newMessage()],
@@ -142,17 +115,13 @@ const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const [name, timestamp] = extractName(original.id);
-
-  let newId = "-" + Date.now();
-  if (timestamp !== "") {
-    newId = name + " (Copy)" + timestamp;
-  }
+  const newId = "-" + Date.now(); // TODO: overwrite on save
 
   return createPrompt({
     ...original,
     id: newId,
     name: `${original.name} (Copy)`,
+    created_at: undefined,
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
       ...tool,
@@ -174,7 +143,6 @@ const initialState: PromptPlaygroundState = {
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
-
   switch (action.type) {
     case "addPrompt":
       return { ...state, prompts: [...state.prompts, newPrompt()] };

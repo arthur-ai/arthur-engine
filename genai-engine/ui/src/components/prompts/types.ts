@@ -103,6 +103,7 @@ type PromptType = {
   id: string; // name + timestamp, probably
   classification: string;
   name: string;
+  created_at: string | undefined;
   modelName: string;
   provider: ProviderEnum;
   messages: MessageType[];

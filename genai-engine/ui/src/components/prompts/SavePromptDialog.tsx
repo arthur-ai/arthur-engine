@@ -59,9 +59,8 @@ const SavePromptDialog = ({
       return;
     }
 
-    // Create prompt with updated name
-    const promptWithName = { ...prompt, name: nameInputValue };
-    const backendPrompt = toBackendPromptBaseConfig(promptWithName);
+    // We remove the name because the endpoint signature expects it as a standalone parameter
+    const backendPrompt = toBackendPromptBaseConfig(prompt);
 
     apiClient.api
       .saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut(

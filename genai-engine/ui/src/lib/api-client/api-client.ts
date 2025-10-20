@@ -586,9 +586,43 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   resource?: UserPermissionResource;
 }
 
+export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData = SessionTracesResponse;
+
+export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError = HTTPValidationError;
+
+export interface ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Session Id */
+  sessionId: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData = SpanWithMetricsResponse;
+
+export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError = HTTPValidationError;
+
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
 
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetError = HTTPValidationError;
+
+export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData = TraceResponse;
+
+export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError = HTTPValidationError;
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -917,6 +951,36 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
+export type GetSessionTracesApiV1SessionsSessionIdGetData = SessionTracesResponse;
+
+export type GetSessionTracesApiV1SessionsSessionIdGetError = HTTPValidationError;
+
+export interface GetSessionTracesApiV1SessionsSessionIdGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Session Id */
+  sessionId: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetSpanByIdApiV1SpansSpanIdGetData = SpanWithMetricsResponse;
+
+export type GetSpanByIdApiV1SpansSpanIdGetError = HTTPValidationError;
+
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
@@ -946,6 +1010,10 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
    */
   start_time?: string;
 }
+
+export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
+
+export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
 /**
  * HTTPError
@@ -1206,6 +1274,256 @@ export interface LLMToolOutput {
    * Whether the function definition should use OpenAI's strict mode
    */
   strict?: boolean | null;
+}
+
+export type ListSessionsMetadataApiV1SessionsGetData = SessionListResponse;
+
+export type ListSessionsMetadataApiV1SessionsGetError = HTTPValidationError;
+
+export interface ListSessionsMetadataApiV1SessionsGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+}
+
+export type ListSpansMetadataApiV1SpansGetData = SpanListResponse;
+
+export type ListSpansMetadataApiV1SpansGetError = HTTPValidationError;
+
+export interface ListSpansMetadataApiV1SpansGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional.
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+}
+
+export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
+
+export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
+
+export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
 }
 
 /** LogitBiasItem */
@@ -2260,6 +2578,16 @@ export interface QueryTracesWithMetricsResponse {
 /** ReasoningEffortEnum */
 export type ReasoningEffortEnum = "none" | "minimal" | "low" | "medium" | "high" | "default";
 
+export type ReceiveTracesApiV1TracesPostData = any;
+
+export type ReceiveTracesApiV1TracesPostError = HTTPValidationError;
+
+/**
+ * Body
+ * @format binary
+ */
+export type ReceiveTracesApiV1TracesPostPayload = File;
+
 export type ReceiveTracesV1TracesPostData = any;
 
 export type ReceiveTracesV1TracesPostError = HTTPValidationError;
@@ -2591,6 +2919,192 @@ export interface SearchUsersUsersGetParams {
   sort?: PaginationSortMethod;
 }
 
+/**
+ * SessionListResponse
+ * Response for session list endpoint
+ */
+export interface SessionListResponse {
+  /**
+   * Count
+   * Total number of sessions matching filters
+   */
+  count: number;
+  /**
+   * Sessions
+   * List of session metadata
+   */
+  sessions: SessionMetadataResponse[];
+}
+
+/**
+ * SessionMetadataResponse
+ * Session summary metadata
+ */
+export interface SessionMetadataResponse {
+  /**
+   * Duration Ms
+   * Total session duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * Earliest Start Time
+   * Start time of earliest trace
+   * @format date-time
+   */
+  earliest_start_time: string;
+  /**
+   * Latest End Time
+   * End time of latest trace
+   * @format date-time
+   */
+  latest_end_time: string;
+  /**
+   * Session Id
+   * Session identifier
+   */
+  session_id: string;
+  /**
+   * Span Count
+   * Total number of spans in this session
+   */
+  span_count: number;
+  /**
+   * Task Id
+   * Task ID this session belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces in this session
+   */
+  trace_count: number;
+  /**
+   * Trace Ids
+   * List of trace IDs in this session
+   */
+  trace_ids: string[];
+}
+
+/**
+ * SessionTracesResponse
+ * Response for session traces endpoint
+ */
+export interface SessionTracesResponse {
+  /**
+   * Count
+   * Number of traces in this session
+   */
+  count: number;
+  /**
+   * Session Id
+   * Session identifier
+   */
+  session_id: string;
+  /**
+   * Traces
+   * List of full trace trees
+   */
+  traces: TraceResponse[];
+}
+
+/**
+ * SpanListResponse
+ * Response for span list endpoint
+ */
+export interface SpanListResponse {
+  /**
+   * Count
+   * Total number of spans matching filters
+   */
+  count: number;
+  /**
+   * Spans
+   * List of span metadata
+   */
+  spans: SpanMetadataResponse[];
+}
+
+/**
+ * SpanMetadataResponse
+ * Lightweight span metadata for list operations
+ */
+export interface SpanMetadataResponse {
+  /**
+   * Created At
+   * When the span was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Duration Ms
+   * Span duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * End Time
+   * Span end time
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Id
+   * Internal database ID
+   */
+  id: string;
+  /**
+   * Parent Span Id
+   * Parent span ID
+   */
+  parent_span_id?: string | null;
+  /**
+   * Session Id
+   * Session ID if available
+   */
+  session_id?: string | null;
+  /**
+   * Span Id
+   * OpenTelemetry span ID
+   */
+  span_id: string;
+  /**
+   * Span Kind
+   * Type of span (LLM, TOOL, etc.)
+   */
+  span_kind?: string | null;
+  /**
+   * Span Name
+   * Human-readable span name
+   */
+  span_name?: string | null;
+  /**
+   * Start Time
+   * Span start time
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Status Code
+   * Status code (Unset, Error, Ok)
+   */
+  status_code: string;
+  /**
+   * Task Id
+   * Task ID this span belongs to
+   */
+  task_id?: string | null;
+  /**
+   * Trace Id
+   * ID of the parent trace
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the span was updated
+   * @format date-time
+   */
+  updated_at: string;
+}
+
 /** SpanWithMetricsResponse */
 export interface SpanWithMetricsResponse {
   /** Context */
@@ -2819,6 +3333,79 @@ export interface ToxicityDetailsResponse {
 
 /** ToxicityViolationType */
 export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
+
+/**
+ * TraceListResponse
+ * Response for trace list endpoint
+ */
+export interface TraceListResponse {
+  /**
+   * Count
+   * Total number of traces matching filters
+   */
+  count: number;
+  /**
+   * Traces
+   * List of trace metadata
+   */
+  traces: TraceMetadataResponse[];
+}
+
+/**
+ * TraceMetadataResponse
+ * Lightweight trace metadata for list operations
+ */
+export interface TraceMetadataResponse {
+  /**
+   * Created At
+   * When the trace was first created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Duration Ms
+   * Total trace duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * End Time
+   * End time of the latest span
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Session Id
+   * Session ID if available
+   */
+  session_id?: string | null;
+  /**
+   * Span Count
+   * Number of spans in this trace
+   */
+  span_count: number;
+  /**
+   * Start Time
+   * Start time of the earliest span
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Id
+   * Task ID this trace belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Id
+   * ID of the trace
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the trace was last updated
+   * @format date-time
+   */
+  updated_at: string;
+}
 
 /**
  * TraceResponse
@@ -3217,6 +3804,72 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.
+     *
+     * @tags Sessions
+     * @name ComputeSessionMetricsApiV1SessionsSessionIdMetricsGet
+     * @summary Compute Missing Session Metrics
+     * @request GET:/api/v1/sessions/{session_id}/metrics
+     * @secure
+     */
+    computeSessionMetricsApiV1SessionsSessionIdMetricsGet: (
+      { sessionId, ...query }: ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData,
+        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError
+      >({
+        path: `/api/v1/sessions/${sessionId}/metrics`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Compute all missing metrics for a single span on-demand. Returns span with computed metrics.
+     *
+     * @tags Spans
+     * @name ComputeSpanMetricsApiV1SpansSpanIdMetricsGet
+     * @summary Compute Missing Span Metrics
+     * @request GET:/api/v1/spans/{span_id}/metrics
+     * @secure
+     */
+    computeSpanMetricsApiV1SpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData, ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError>(
+        {
+          path: `/api/v1/spans/${spanId}/metrics`,
+          method: "GET",
+          secure: true,
+          format: "json",
+          ...params,
+        },
+      ),
+
+    /**
+     * @description Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.
+     *
+     * @tags Traces
+     * @name ComputeTraceMetricsApiV1TracesTraceIdMetricsGet
+     * @summary Compute Missing Trace Metrics
+     * @request GET:/api/v1/traces/{trace_id}/metrics
+     * @secure
+     */
+    computeTraceMetricsApiV1TracesTraceIdMetricsGet: (traceId: string, params: RequestParams = {}) =>
+      this.request<
+        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData,
+        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError
+      >({
+        path: `/api/v1/traces/${traceId}/metrics`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.
      *
      * @tags Rules
@@ -3595,6 +4248,46 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
+     *
+     * @tags Sessions
+     * @name GetSessionTracesApiV1SessionsSessionIdGet
+     * @summary Get Session Traces
+     * @request GET:/api/v1/sessions/{session_id}
+     * @secure
+     */
+    getSessionTracesApiV1SessionsSessionIdGet: (
+      { sessionId, ...query }: GetSessionTracesApiV1SessionsSessionIdGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<GetSessionTracesApiV1SessionsSessionIdGetData, GetSessionTracesApiV1SessionsSessionIdGetError>({
+        path: `/api/v1/sessions/${sessionId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get single span with existing metrics (no computation). Returns full span object with any existing metrics.
+     *
+     * @tags Spans
+     * @name GetSpanByIdApiV1SpansSpanIdGet
+     * @summary Get Single Span
+     * @request GET:/api/v1/spans/{span_id}
+     * @secure
+     */
+    getSpanByIdApiV1SpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<GetSpanByIdApiV1SpansSpanIdGetData, GetSpanByIdApiV1SpansSpanIdGetError>({
+        path: `/api/v1/spans/${spanId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get tasks.
      *
      * @tags Tasks
@@ -3624,6 +4317,84 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTokenUsageApiV2UsageTokensGet: (query: GetTokenUsageApiV2UsageTokensGetParams, params: RequestParams = {}) =>
       this.request<GetTokenUsageApiV2UsageTokensGetData, GetTokenUsageApiV2UsageTokensGetError>({
         path: `/api/v2/usage/tokens`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.
+     *
+     * @tags Traces
+     * @name GetTraceByIdApiV1TracesTraceIdGet
+     * @summary Get Single Trace
+     * @request GET:/api/v1/traces/{trace_id}
+     * @secure
+     */
+    getTraceByIdApiV1TracesTraceIdGet: (traceId: string, params: RequestParams = {}) =>
+      this.request<GetTraceByIdApiV1TracesTraceIdGetData, GetTraceByIdApiV1TracesTraceIdGetError>({
+        path: `/api/v1/traces/${traceId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get session metadata with pagination and filtering. Returns aggregated session information.
+     *
+     * @tags Sessions
+     * @name ListSessionsMetadataApiV1SessionsGet
+     * @summary List Session Metadata
+     * @request GET:/api/v1/sessions
+     * @secure
+     */
+    listSessionsMetadataApiV1SessionsGet: (
+      query: ListSessionsMetadataApiV1SessionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListSessionsMetadataApiV1SessionsGetData, ListSessionsMetadataApiV1SessionsGetError>({
+        path: `/api/v1/sessions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get lightweight span metadata for browsing/filtering operations. Returns metadata only without raw data or metrics for fast performance.
+     *
+     * @tags Spans
+     * @name ListSpansMetadataApiV1SpansGet
+     * @summary List Span Metadata
+     * @request GET:/api/v1/spans
+     * @secure
+     */
+    listSpansMetadataApiV1SpansGet: (query: ListSpansMetadataApiV1SpansGetParams, params: RequestParams = {}) =>
+      this.request<ListSpansMetadataApiV1SpansGetData, ListSpansMetadataApiV1SpansGetError>({
+        path: `/api/v1/spans`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.
+     *
+     * @tags Traces
+     * @name ListTracesMetadataApiV1TracesGet
+     * @summary List Trace Metadata
+     * @request GET:/api/v1/traces
+     * @secure
+     */
+    listTracesMetadataApiV1TracesGet: (query: ListTracesMetadataApiV1TracesGetParams, params: RequestParams = {}) =>
+      this.request<ListTracesMetadataApiV1TracesGetData, ListTracesMetadataApiV1TracesGetError>({
+        path: `/api/v1/traces`,
         method: "GET",
         query: query,
         secure: true,
@@ -3717,6 +4488,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         method: "GET",
         query: query,
         secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Receiver for OpenInference trace standard.
+     *
+     * @tags Traces
+     * @name ReceiveTracesApiV1TracesPost
+     * @summary Receive Traces
+     * @request POST:/api/v1/traces
+     * @secure
+     */
+    receiveTracesApiV1TracesPost: (data: ReceiveTracesApiV1TracesPostPayload, params: RequestParams = {}) =>
+      this.request<ReceiveTracesApiV1TracesPostData, ReceiveTracesApiV1TracesPostError>({
+        path: `/api/v1/traces`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -4102,6 +4893,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name ComputeSpanMetricsV1SpanSpanIdMetricsGet
      * @summary Compute Metrics for Span
      * @request GET:/v1/span/{span_id}/metrics
+     * @deprecated
      * @secure
      */
     computeSpanMetricsV1SpanSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
@@ -4120,6 +4912,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansByTypeV1SpansQueryGet
      * @summary Query Spans By Type
      * @request GET:/v1/spans/query
+     * @deprecated
      * @secure
      */
     querySpansByTypeV1SpansQueryGet: (query: QuerySpansByTypeV1SpansQueryGetParams, params: RequestParams = {}) =>
@@ -4139,6 +4932,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansV1TracesQueryGet
      * @summary Query Traces
      * @request GET:/v1/traces/query
+     * @deprecated
      * @secure
      */
     querySpansV1TracesQueryGet: (query: QuerySpansV1TracesQueryGetParams, params: RequestParams = {}) =>
@@ -4158,6 +4952,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansWithMetricsV1TracesMetricsGet
      * @summary Compute Missing Metrics and Query Traces
      * @request GET:/v1/traces/metrics/
+     * @deprecated
      * @secure
      */
     querySpansWithMetricsV1TracesMetricsGet: (
@@ -4180,6 +4975,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name ReceiveTracesV1TracesPost
      * @summary Receive Traces
      * @request POST:/v1/traces
+     * @deprecated
      * @secure
      */
     receiveTracesV1TracesPost: (data: ReceiveTracesV1TracesPostPayload, params: RequestParams = {}) =>
