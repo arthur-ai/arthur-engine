@@ -4,11 +4,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
-    acompletion,
-    completion,
     completion_cost,
     stream_chunk_builder,
-    LiteLLM,
 )
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
@@ -224,6 +221,11 @@ class AgenticPromptBaseConfig(BaseModel):
     model_provider: ModelProvider = Field(
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
+    version: int = Field(default=1, description="Version of the agentic prompt")
+    deleted_at: Optional[datetime] = Field(
+        None,
+        description="Time that this prompt was deleted",
+    )
     tools: Optional[List[LLMTool]] = Field(
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
@@ -297,6 +299,9 @@ class AgenticPromptBaseConfig(BaseModel):
     class Config:
         use_enum_values = True
 
+    def has_been_deleted(self) -> bool:
+        return self.deleted_at is not None
+
 
 class AgenticPrompt(AgenticPromptBaseConfig):
     name: str = Field(description="Name of the agentic prompt")
@@ -308,7 +313,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(
-            exclude={"name", "model_name", "model_provider", "created_at"},
+            exclude={
+                "name",
+                "model_name",
+                "model_provider",
+                "created_at",
+                "version",
+                "deleted_at",
+            },
             exclude_none=True,
         )
 
@@ -331,6 +343,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
+        if self.has_been_deleted():
+            raise ValueError("This prompt has been deleted")
+
         model, completion_params = self._get_completion_params(completion_request)
         response = llm_client.completion(model=model, **completion_params)
 
@@ -349,6 +364,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AsyncGenerator[str, None]:
         try:
+            if self.has_been_deleted():
+                raise ValueError("This prompt has been deleted")
+
             model, completion_params = self._get_completion_params(completion_request)
             response = await llm_client.acompletion(model=model, **completion_params)
 
@@ -385,6 +403,8 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "model_provider": db_prompt.model_provider,
             "tools": db_prompt.tools,
             "created_at": db_prompt.created_at,
+            "version": db_prompt.version,
+            "deleted_at": db_prompt.deleted_at,
         }
 
         # Merge in config JSON if present (LLM parameters)

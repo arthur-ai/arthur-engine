@@ -29,12 +29,29 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
 
 # 10/20/2025
-- **CHANGE** for **URL**: /api/v2/datasets  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/search  added the optional property 'datasets/items/latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'rows/items/created_at' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the required property 'rows/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/model_providers  added the new '' enum value to the 'providers/items/provider' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts
+- **CHANGE**warning [response-property-enum-value-added] at /Users/talerez/Documents/arthur-engine/genai-engine/new.openapi.json
+- **CHANGE**  Adding new enum values to response could be unexpected for clients, use x-extensible-enum instead.
+- **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}  added the new '' enum value to the 'model_provider' response property for the response status '200'
+- **CHANGE** in API POST /api/v1/completions
+- **CHANGE** in API POST /api/v1/completions
+- **CHANGE** in API POST /api/v1/completions
+- **CHANGE** in API DELETE /api/v1/model_providers/{provider}
+- **CHANGE** in API PUT /api/v1/model_providers/{provider}
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/names
+- **CHANGE** in API PUT /api/v1/{task_id}/agentic_prompts/{prompt_name}
+- **CHANGE** in API PUT /api/v1/{task_id}/agentic_prompts/{prompt_name}
+- **CHANGE** in API PUT /api/v1/{task_id}/agentic_prompts/{prompt_name}
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE** in API GET /api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
 
 # 10/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'

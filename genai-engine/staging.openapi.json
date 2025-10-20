@@ -4665,6 +4665,18 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "returns all unique prompt names including soft-deleted prompts",
+                            "default": false,
+                            "title": "Include Deleted"
+                        },
+                        "description": "returns all unique prompt names including soft-deleted prompts"
                     }
                 ],
                 "responses": {
@@ -4760,8 +4772,69 @@
                     "AgenticPrompt"
                 ],
                 "summary": "Get all agentic prompts",
-                "description": "Get all agentic prompts for a given task",
+                "description": "Get all agentic prompts for a given task. If include_deleted is true, this will return all existing and soft-deleted prompts.",
                 "operationId": "get_all_agentic_prompts_api_v1__task_id__agentic_prompts_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "returns all unique prompt names including soft-deleted prompts",
+                            "default": false,
+                            "title": "Include Deleted"
+                        },
+                        "description": "returns all unique prompt names including soft-deleted prompts"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/{task_id}/agentic_prompts/names": {
+            "get": {
+                "tags": [
+                    "AgenticPrompt"
+                ],
+                "summary": "Get all unique agentic prompt names",
+                "description": "Get all unique agentic prompt names for a given task.",
+                "operationId": "get_unique_prompt_names_api_v1__task_id__agentic_prompts_names_get",
                 "security": [
                     {
                         "API Key": []
@@ -4785,7 +4858,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                    "$ref": "#/components/schemas/AgenticPromptNames"
                                 }
                             }
                         }
@@ -4835,6 +4908,18 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "include_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "returns all unique prompt names including soft-deleted prompts",
+                            "default": false,
+                            "title": "Include Deleted"
+                        },
+                        "description": "returns all unique prompt names including soft-deleted prompts"
                     }
                 ],
                 "responses": {
@@ -6597,6 +6682,25 @@
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the agentic prompt",
+                        "default": 1
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
+                    },
                     "tools": {
                         "anyOf": [
                             {
@@ -6864,6 +6968,25 @@
                     "model_provider": {
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the agentic prompt",
+                        "default": 1
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
                     },
                     "tools": {
                         "anyOf": [
@@ -7198,6 +7321,22 @@
                     "role"
                 ],
                 "title": "AgenticPromptMessage"
+            },
+            "AgenticPromptNames": {
+                "properties": {
+                    "names": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Names"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "names"
+                ],
+                "title": "AgenticPromptNames"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -7615,6 +7754,25 @@
                     "model_provider": {
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the agentic prompt",
+                        "default": 1
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
                     },
                     "tools": {
                         "anyOf": [
@@ -9460,7 +9618,8 @@
                 "enum": [
                     "anthropic",
                     "openai",
-                    "gemini"
+                    "gemini",
+                    ""
                 ],
                 "title": "ModelProvider"
             },

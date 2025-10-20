@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, ForeignKey, String, UniqueConstraint
+from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,11 +21,18 @@ class DatabaseAgenticPrompt(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String, primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         default=datetime.now,
         nullable=False,
+    )
+
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP,
+        nullable=True,
+        default=None,
     )
 
     # LLM Configuration
@@ -40,7 +47,9 @@ class DatabaseAgenticPrompt(Base):
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     # Ensure name is unique within each task
-    __table_args__ = (UniqueConstraint("task_id", "name", name="uq_task_prompt_name"),)
+    __table_args__ = (
+        UniqueConstraint("task_id", "name", "version", name="uq_task_prompt_version"),
+    )
 
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="agentic_prompts")

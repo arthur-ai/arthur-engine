@@ -4,7 +4,6 @@ from uuid import UUID
 import litellm
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from litellm import LiteLLM
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
@@ -25,7 +24,7 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
-from schemas.response_schemas import AgenticPromptRunResponse
+from schemas.response_schemas import AgenticPromptNames, AgenticPromptRunResponse
 from utils.users import permission_checker
 
 agentic_prompt_routes = APIRouter(
@@ -92,15 +91,28 @@ def get_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
+    include_deleted: bool = Query(
+        False,
+        description="returns all unique prompt names including soft-deleted prompts",
+    ),
 ):
-    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        prompt = agentic_prompt_service.get_prompt(
+            task.id,
+            prompt_name,
+            prompt_version,
+            include_deleted=include_deleted,
+        )
         return prompt
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
+        elif "attempting to retrieve a deleted prompt" in str(e).lower():
+            error_message = (
+                str(e) + " Please set include_deleted=True to retrieve this prompt."
+            )
+            raise HTTPException(status_code=400, detail=error_message)
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -110,7 +122,7 @@ def get_agentic_prompt(
 @agentic_prompt_routes.get(
     "/{task_id}/agentic_prompts",
     summary="Get all agentic prompts",
-    description="Get all agentic prompts for a given task",
+    description="Get all agentic prompts for a given task. If include_deleted is true, this will return all existing and soft-deleted prompts.",
     response_model=AgenticPrompts,
     response_model_exclude_none=True,
     tags=["AgenticPrompt"],
@@ -120,10 +132,40 @@ def get_all_agentic_prompts(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
+    include_deleted: bool = Query(
+        False,
+        description="returns all unique prompt names including soft-deleted prompts",
+    ),
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompts(task.id)
+        return agentic_prompt_service.get_all_prompts(
+            task.id,
+            include_deleted=include_deleted,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.get(
+    "/{task_id}/agentic_prompts/names",
+    summary="Get all unique agentic prompt names",
+    description="Get all unique agentic prompt names for a given task.",
+    response_model=AgenticPromptNames,
+    response_model_exclude_none=True,
+    tags=["AgenticPrompt"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_unique_prompt_names(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+):
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.get_unique_prompt_names(task.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -144,9 +186,22 @@ def get_all_agentic_prompt_versions(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
+    include_deleted: bool = Query(
+        False,
+        description="returns all unique prompt names including soft-deleted prompts",
+    ),
 ):
-    # TODO: Implement with versioning
-    return AgenticPrompts(prompts=[])
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.get_prompt_versions(
+            task.id,
+            prompt_name,
+            include_deleted=include_deleted,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @agentic_prompt_routes.post(
@@ -226,7 +281,7 @@ async def run_agentic_prompt(
     try:
         repo = ModelProviderRepository(db_session)
         llm_client = repo.get_model_provider_client(
-            provider=unsaved_prompt.model_provider
+            provider=unsaved_prompt.model_provider,
         )
         prompt, completion_request = unsaved_prompt.to_prompt_and_request()
         return await execute_prompt_completion(
@@ -325,10 +380,9 @@ async def run_saved_agentic_prompt(
     Returns:
         AgenticPromptRunResponse or StreamingResponse
     """
-    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name, prompt_version)
         repo = ModelProviderRepository(db_session)
         llm_client = repo.get_model_provider_client(provider=prompt.model_provider)
         return await execute_prompt_completion(
@@ -394,7 +448,7 @@ def delete_agentic_prompt(
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.delete_prompt(task.id, prompt_name)
 
-        return {"message": "Prompt deleted successfully"}
+        return {"message": f"All versions of {prompt_name} deleted successfully"}
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -420,12 +474,18 @@ def delete_agentic_prompt_version(
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
-    # TODO: Modify to actually delete a specific version of an agentic prompt
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.delete_prompt(task.id, prompt_name)
+        all_prompts_deleted = agentic_prompt_service.soft_delete_prompt(
+            task.id,
+            prompt_name,
+            prompt_version,
+        )
 
-        return {"message": "Prompt deleted successfully"}
+        if all_prompts_deleted:
+            return {"message": "All prompt versions deleted successfully"}
+        else:
+            return {"message": "Prompt version deleted successfully"}
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
