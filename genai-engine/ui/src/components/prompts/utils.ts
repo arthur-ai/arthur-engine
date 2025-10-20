@@ -9,7 +9,6 @@ import {
 } from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
-  // TODO: Use for the draggable functionality
   moveItem: <T>(array: T[], fromIndex: number, toIndex: number): T[] => {
     const newArray = [...array];
     const [item] = newArray.splice(fromIndex, 1);

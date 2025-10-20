@@ -24,12 +24,11 @@ import { usePromptContext } from "./PromptContext";
 import SortableMessage from "./SortableMessage";
 import { PromptType } from "./types";
 
-
 interface MessagesSectionProps {
   prompt: PromptType;
 }
 
-const MessagesSection: React.FC<MessagesSectionProps> = ({ prompt }) => {
+const MessagesSection = ({ prompt }: MessagesSectionProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const { dispatch } = usePromptContext();
 
