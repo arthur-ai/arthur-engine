@@ -13,7 +13,7 @@ export async function getFilteredTraces(
   const startTime = new Date();
   startTime.setDate(startTime.getDate() - 30);
 
-  const response = await api.v1.querySpansV1TracesQueryGet({
+  const response = await api.api.listTracesMetadataApiV1TracesGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
@@ -25,22 +25,57 @@ export async function getFilteredTraces(
 }
 
 type GetTraceParams = {
-  taskId: string;
   traceId: string;
 };
 
 export async function getTrace(
   api: Api<unknown>,
-  { taskId, traceId }: GetTraceParams
+  { traceId }: GetTraceParams
 ) {
-  const response = await api.v1.querySpansV1TracesQueryGet({
-    trace_ids: [traceId],
+  const response = await api.api.getTraceByIdApiV1TracesTraceIdGet(traceId);
+
+  return response.data;
+}
+
+type GetFilteredSpansParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+};
+
+export async function getFilteredSpans(
+  api: Api<unknown>,
+  { taskId, page, pageSize }: GetFilteredSpansParams
+) {
+  const response = await api.api.listSpansMetadataApiV1SpansGet({
     task_ids: [taskId],
+    page,
+    page_size: pageSize,
   });
 
-  if (response.data.traces.length === 0) {
-    return null;
-  }
+  return response.data;
+}
 
-  return response.data.traces[0];
+type GetSpanParams = {
+  spanId: string;
+};
+
+export async function getSpan(api: Api<unknown>, { spanId }: GetSpanParams) {
+  const response = await api.api.getSpanByIdApiV1SpansSpanIdGet(spanId);
+  return response.data;
+}
+
+
+type GetSessionsParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+};
+export async function getSessions(api: Api<unknown>, { taskId, page, pageSize }: GetSessionsParams) {
+  const response = await api.api.listSessionsMetadataApiV1SessionsGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+  });
+  return response.data;
 }

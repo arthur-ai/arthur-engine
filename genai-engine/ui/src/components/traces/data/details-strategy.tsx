@@ -173,6 +173,11 @@ const spanDetailsStrategy = [
     panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.RAW_DATA],
     widgets: [],
   },
+  {
+    kind: OpenInferenceSpanKind.RETRIEVER,
+    panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.RAW_DATA],
+    widgets: [],
+  },
 ] as const;
 
 export function getSpanDetailsStrategy(kind: OpenInferenceSpanKind) {
@@ -182,3 +187,5 @@ export function getSpanDetailsStrategy(kind: OpenInferenceSpanKind) {
 
   return strategy;
 }
+
+export type SpanDetailsStrategy = ReturnType<typeof getSpanDetailsStrategy>;
