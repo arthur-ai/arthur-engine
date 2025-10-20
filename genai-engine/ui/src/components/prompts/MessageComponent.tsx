@@ -6,11 +6,11 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
-import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import { debounce } from "@mui/material/utils";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
+import { HighlightedInputComponent } from "./HighlightedInputComponent";
 import extractMustacheKeywords from "./mustacheExtractor";
 import { usePromptContext } from "./PromptContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
@@ -138,7 +138,7 @@ const Message: React.FC<MessageComponentProps> = ({
         </div>
       </div>
       <div className="mt-2">
-        <TextField
+        {/* <TextField
           id={`message-${id}-input`}
           label="Content"
           variant="outlined"
@@ -149,6 +149,12 @@ const Message: React.FC<MessageComponentProps> = ({
           type="text"
           fullWidth
           multiline
+        /> */}
+        <HighlightedInputComponent
+          value={inputValue}
+          onChange={handleContentChange}
+          label="Content"
+          placeholder={role}
         />
       </div>
     </Paper>
