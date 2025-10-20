@@ -10134,8 +10134,10 @@
                 "properties": {
                     "api_key": {
                         "type": "string",
+                        "format": "password",
                         "title": "Api Key",
-                        "description": "The API key for the provider."
+                        "description": "The API key for the provider.",
+                        "writeOnly": true
                     }
                 },
                 "type": "object",

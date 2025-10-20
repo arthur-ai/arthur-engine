@@ -3,6 +3,10 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 10/20/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became write-only
+
+# 10/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'azure' of the request property 'model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'bedrock' of the request property 'model_provider'
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed the enum value 'sagemaker' of the request property 'model_provider'
