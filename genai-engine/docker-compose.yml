@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
     volumes:
-      - /var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -57,3 +57,5 @@ services:
       - ./src:/app/genai-engine/src
     profiles:
       - changelog
+volumes:
+  postgres_data:

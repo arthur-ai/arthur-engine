@@ -3,11 +3,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from litellm import LiteLLM
 from sqlalchemy.orm import Session
 
+from clients.llm.llm_client import LLMClient
 from dependencies import get_application_config, get_db_session
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.metrics_repository import MetricRepository
+from repositories.model_provider_repository import ModelProviderRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
@@ -58,15 +61,16 @@ def get_validated_agentic_task(
 
 
 async def execute_prompt_completion(
+    llm_client: LLMClient,
     prompt: AgenticPrompt,
     completion_request: PromptCompletionRequest,
 ) -> Union[AgenticPromptRunResponse, StreamingResponse]:
     """Helper to execute prompt completion with or without streaming"""
     if completion_request.stream is None or completion_request.stream == False:
-        return prompt.run_chat_completion(completion_request)
+        return prompt.run_chat_completion(llm_client, completion_request)
 
     return StreamingResponse(
-        prompt.stream_chat_completion(completion_request),
+        prompt.stream_chat_completion(llm_client, completion_request),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
@@ -204,6 +208,7 @@ def get_all_agentic_prompt_versions(
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_agentic_prompt(
     unsaved_prompt: CompletionRequest,
+    db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
     """
@@ -218,11 +223,19 @@ async def run_agentic_prompt(
         AgenticPromptRunResponse or StreamingResponse
     """
     try:
+        repo = ModelProviderRepository(db_session)
+        llm_client = repo.get_model_provider_client(
+            provider=unsaved_prompt.model_provider
+        )
         prompt, completion_request = unsaved_prompt.to_prompt_and_request()
         return await execute_prompt_completion(
+            llm_client,
             prompt,
             completion_request,
         )
+    except HTTPException:
+        # propagate HTTP exceptions
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -313,10 +326,16 @@ async def run_saved_agentic_prompt(
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        repo = ModelProviderRepository(db_session)
+        llm_client = repo.get_model_provider_client(provider=prompt.model_provider)
         return await execute_prompt_completion(
+            llm_client,
             prompt,
             completion_request,
         )
+    except HTTPException:
+        # propagate HTTP exceptions
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

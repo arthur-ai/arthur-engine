@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from sqlalchemy import TIMESTAMP, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSON
@@ -33,8 +33,8 @@ class DatabaseAgenticPrompt(Base):
     model_provider: Mapped[str] = mapped_column(String, nullable=False)
 
     # Prompt Content - stored as JSON for flexibility
-    messages: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
-    tools: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    tools: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True)
 
     # prompt configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)

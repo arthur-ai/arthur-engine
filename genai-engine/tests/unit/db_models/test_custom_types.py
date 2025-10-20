@@ -179,12 +179,10 @@ def test_encrypted_json_different_passphrases():
     assert decrypted1 == test_data
     assert decrypted2 == test_data
 
-    # Cross-decryption should fail
-    with pytest.raises(Exception):  # Fernet will raise InvalidToken
-        encrypted_json1.process_result_value(encrypted2, None)
-
-    with pytest.raises(Exception):  # Fernet will raise InvalidToken
-        encrypted_json2.process_result_value(encrypted1, None)
+    # Cross-decryption should fail, exception is caught to allow users to
+    # overwrite invalid values
+    assert "" == encrypted_json1.process_result_value(encrypted2, None)
+    assert "" == encrypted_json2.process_result_value(encrypted1, None)
 
 
 @pytest.mark.unit_tests
@@ -455,8 +453,8 @@ def test_encrypted_json_multifernet_key_rotation():
     ):
         encrypted_json_new = EncryptedJSON()
         # This should fail because we encrypted with old_key::new_key but only have new_key
-        with pytest.raises(Exception):  # Fernet will raise InvalidToken
-            encrypted_json_new.process_result_value(new_encrypted_value, None)
+        # exception is caught to allow users to overwrite values if they loose a key
+        assert "" == encrypted_json_new.process_result_value(new_encrypted_value, None)
 
 
 @pytest.mark.unit_tests
@@ -526,8 +524,9 @@ def test_encrypted_json_multifernet_invalid_keys():
         {"GENAI_ENGINE_SECRET_STORE_KEY": "wrong_key1::wrong_key2"},
     ):
         encrypted_json_wrong = EncryptedJSON()
-        with pytest.raises(Exception):  # Should fail with wrong keys
-            encrypted_json_wrong.process_result_value(encrypted_value, None)
+        # exception is caught to allow users to fetch invalid values from DB
+        # in case they lose a key
+        assert "" == encrypted_json_wrong.process_result_value(encrypted_value, None)
 
 
 @pytest.mark.unit_tests

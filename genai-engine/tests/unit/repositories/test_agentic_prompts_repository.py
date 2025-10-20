@@ -7,6 +7,7 @@ import pytest
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 from sqlalchemy.exc import IntegrityError
 
+from clients.llm.llm_client import LLMClient
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
@@ -22,6 +23,7 @@ from schemas.agentic_prompt_schemas import (
     VariableTemplateValue,
 )
 from schemas.common_schemas import JsonSchema
+from schemas.enums import ModelProvider
 from schemas.response_schemas import AgenticPromptRunResponse
 
 
@@ -115,7 +117,7 @@ def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_prompt(
     mock_completion_cost,
@@ -134,8 +136,13 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
+    llm_client = LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
+
     prompt, request = sample_unsaved_run_config.to_prompt_and_request()
-    result = prompt.run_chat_completion(request)
+    result = prompt.run_chat_completion(llm_client, request)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -314,7 +321,7 @@ def test_save_prompt_integrity_error(
     task_id = "test_task_id"
 
     # Mock IntegrityError on commit
-    mock_db_session.commit.side_effect = IntegrityError("", "", "")
+    mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
 
     with pytest.raises(
         ValueError,
@@ -367,7 +374,7 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_prompt(
     mock_completion_cost,
@@ -397,8 +404,13 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
+    llm_client = LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
+
     prompt = agentic_prompt_repo.get_prompt(task_id, prompt_name)
-    result = prompt.run_chat_completion()
+    result = prompt.run_chat_completion(llm_client)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"
@@ -435,7 +447,7 @@ def test_agentic_prompt_model_dump(sample_agentic_prompt):
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_agentic_prompt_run_chat_completion(
     mock_completion_cost,
@@ -453,7 +465,12 @@ def test_agentic_prompt_run_chat_completion(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.003456
 
-    result = sample_agentic_prompt.run_chat_completion()
+    llm_client = LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
+
+    result = sample_agentic_prompt.run_chat_completion(llm_client)
 
     assert result.content == "Direct completion response"
     assert result.tool_calls == [
@@ -671,7 +688,7 @@ def test_agentic_prompt_response_format_serialization():
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion")
+@patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost,
@@ -703,10 +720,9 @@ def test_agentic_prompt_tool_call_message_serialization(
     ]
 
     completion_request = CompletionRequest(
-        name="tool_call_prompt",
         messages=messages,
         model_name="gpt-4o",
-        model_provider="openai",
+        model_provider=ModelProvider.OPENAI,
     )
 
     # Mock LiteLLM completion response
@@ -719,9 +735,14 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.000123
 
+    llm_client = LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
+
     # Run the unsaved prompt
     prompt, request = completion_request.to_prompt_and_request()
-    result = prompt.run_chat_completion(request)
+    result = prompt.run_chat_completion(llm_client, request)
     call_args = mock_completion.call_args[1]
 
     # Extract messages sent to LiteLLM
@@ -748,7 +769,7 @@ def test_agentic_prompt_tool_call_message_serialization(
 
 
 @patch("schemas.agentic_prompt_schemas.completion_cost", return_value=0.0)
-@patch("schemas.agentic_prompt_schemas.completion", side_effect=mock_completion)
+@patch("clients.llm.llm_client.litellm.completion", side_effect=mock_completion)
 @pytest.mark.parametrize("has_additional_props", [True, False])
 def test_run_chat_completion_strict_additional_properties_validation(
     mock_completion,
@@ -785,9 +806,14 @@ def test_run_chat_completion_strict_additional_properties_validation(
 
     completion_request = PromptCompletionRequest()
 
+    llm_client = LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
+
     if has_additional_props:
-        result = prompt.run_chat_completion(completion_request)
+        result = prompt.run_chat_completion(llm_client, completion_request)
         assert result.content == "ok"
     else:
         with pytest.raises(ValueError, match="additionalProperties"):
-            prompt.run_chat_completion(completion_request)
+            prompt.run_chat_completion(llm_client, completion_request)

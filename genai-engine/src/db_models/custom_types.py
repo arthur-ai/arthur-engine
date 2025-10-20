@@ -5,7 +5,7 @@ import logging
 import os
 
 import sqlalchemy.types as types
-from cryptography.fernet import Fernet, MultiFernet
+from cryptography.fernet import Fernet, MultiFernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -71,5 +71,15 @@ class EncryptedJSON(types.TypeDecorator):
     def process_result_value(self, value: str, dialect):
         if value is None:
             return None
-        decrypted = self.cipher.decrypt(value.encode())
-        return json.loads(decrypted)
+        try:
+            decrypted = self.cipher.decrypt(value.encode())
+            return json.loads(decrypted)
+
+        except InvalidToken:
+            # catch this exception, otherwise if a secret key is lost, it's not possible
+            # to overwrite values in the database because we must first fetch the row to update
+            # and loading the row fails
+            logger.error(
+                "failed to decrypt secret from database, did a key get rotated or reset?"
+            )
+            return ""
