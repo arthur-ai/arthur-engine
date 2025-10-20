@@ -31,11 +31,16 @@ services:
       - ALLOW_ADMIN_KEY_GENERAL_ACCESS=enabled
       # The address you want to access the engine from (e.g. hostname, DNS)
       - GENAI_ENGINE_INGRESS_URI=http://localhost:3030
+      # Must match GENAI_ENGINE_INTERNAL_API_KEY in the ml-engine service
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
+      # Key used for encrypting secrets, generate a random string if not using
+      # the setup-and-start scripts to populate one in the .env file
+      # openssl rand -base64 32
+      # - GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
     env_file:
       - .env
     healthcheck:
-      test: [ "CMD", "lsof", "-i", ":3030" ]
+      test: ["CMD", "lsof", "-i", ":3030"]
       interval: 10s
       timeout: 10s
       retries: 10
