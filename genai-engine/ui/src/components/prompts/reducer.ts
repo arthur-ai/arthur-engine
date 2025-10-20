@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
@@ -11,6 +9,7 @@ import {
   PROVIDER_OPTIONS,
   FrontendTool,
 } from "./types";
+import { generateId, arrayUtils } from "./utils";
 
 import {
   MessageRole,
@@ -18,39 +17,11 @@ import {
   ToolChoiceEnum,
 } from "@/lib/api-client/api-client";
 
-const TEMP_ID = "user-defined-name-";
-
-const arrayUtils = {
-  //   insertAt: <T>(array: T[], index: number, item: T): T[] => [
-  //     ...array.slice(0, index),
-  //     item,
-  //     ...array.slice(index),
-  //   ],
-
-  // TODO
-  moveItem: <T>(array: T[], fromIndex: number, toIndex: number): T[] => {
-    const newArray = [...array];
-    const [item] = newArray.splice(fromIndex, 1);
-    newArray.splice(toIndex, 0, item);
-    return newArray;
-  },
-
-  duplicateAfter: <T>(array: T[], originalIndex: number, duplicate: T): T[] => [
-    ...array.slice(0, originalIndex + 1),
-    duplicate,
-    ...array.slice(originalIndex + 1),
-  ],
-};
-
-const generateId = () => {
-  return TEMP_ID + uuidv4();
-};
-
 /****************************
  * Message factory functions *
  ****************************/
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
-  id: generateId(),
+  id: generateId("msg"),
   role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
   content: "Change me",
   disabled: false,
@@ -65,7 +36,7 @@ const newMessage = (
 const duplicateMessage = (original: MessageType): MessageType =>
   createMessage({
     ...original,
-    id: generateId(),
+    id: generateId("msg"),
   });
 
 const hydrateMessage = (data: Partial<MessageType>): MessageType =>
@@ -78,24 +49,26 @@ const createTool = (
   counter: number = 1,
   overrides: Partial<FrontendTool> = {}
 ): FrontendTool => ({
-  id: generateId(),
-  name: `tool_func_${counter}`,
-  description: "description",
-  function_definition: {
-    type: "object",
-    properties: [
-      {
-        name: "tool_arg",
-        type: "string",
-        description: null,
-        enum: null,
-        items: null,
+  id: generateId("tool"),
+  function: {
+    name: `tool_func_${counter}`,
+    description: "description",
+    parameters: {
+      type: "object",
+      properties: {
+        tool_arg: {
+          type: "string",
+          description: null,
+          enum: null,
+          items: null,
+        },
       },
-    ],
-    required: [],
-    additional_properties: null,
+      required: [],
+      additionalProperties: null,
+    },
   },
-  strict: null,
+  strict: false,
+  type: "function",
   ...overrides,
 });
 
@@ -125,9 +98,10 @@ const createModelParameters = (
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: generateId(),
+  id: "-" + Date.now(), // New prompts get a default id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
+  created_at: undefined, // created on BE
   modelName: "",
   provider: PROVIDER_OPTIONS[0],
   messages: [newMessage()],
@@ -142,18 +116,21 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
-const duplicatePrompt = (original: PromptType): PromptType =>
-  createPrompt({
+const duplicatePrompt = (original: PromptType): PromptType => {
+  const newId = "-" + Date.now(); // TODO: overwrite on save
+
+  return createPrompt({
     ...original,
-    id: generateId(),
+    id: newId,
     name: `${original.name} (Copy)`,
+    created_at: undefined,
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
       ...tool,
-      id: generateId(),
+      id: generateId("tool"),
     })),
   });
-
+};
 const hydratePrompt = (data: Partial<PromptType>): PromptType =>
   createPrompt(data);
 
