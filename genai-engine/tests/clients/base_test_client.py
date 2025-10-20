@@ -71,6 +71,9 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    UserListResponse,
+    UserSessionsResponse,
+    UserTracesResponse,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -2203,6 +2206,149 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SessionTracesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_users_metadata(
+        self,
+        task_ids: list[str],
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ):
+        """List user metadata via Trace API.
+
+        Args:
+            task_ids: List of task IDs to filter on
+            start_time: Optional start time filter
+            end_time: Optional end time filter
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, UserListResponse | str]: Status code and response
+        """
+
+        params = {"task_ids": task_ids}
+        if start_time is not None:
+            params["start_time"] = start_time.isoformat()
+        if end_time is not None:
+            params["end_time"] = end_time.isoformat()
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/users{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                UserListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_user_sessions(
+        self,
+        user_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ):
+        """Get user sessions via Trace API.
+
+        Args:
+            user_id: The user ID to get sessions for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, UserSessionsResponse | str]: Status code and response
+        """
+
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/users/{user_id}/sessions{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                UserSessionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_user_traces(
+        self,
+        user_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ):
+        """Get user traces via Trace API.
+
+        Args:
+            user_id: The user ID to get traces for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, UserTracesResponse | str]: Status code and response
+        """
+
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/users/{user_id}/traces{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                UserTracesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

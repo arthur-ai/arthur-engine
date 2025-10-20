@@ -16,11 +16,12 @@ from schemas.internal_schemas import (
     Span,
     TraceMetadata,
     TraceQuerySchema,
+    UserMetadata,
 )
-from services.metrics_integration_service import MetricsIntegrationService
-from services.span_query_service import SpanQueryService
-from services.trace_ingestion_service import TraceIngestionService
-from services.tree_building_service import TreeBuildingService
+from services.trace.metrics_integration_service import MetricsIntegrationService
+from services.trace.span_query_service import SpanQueryService
+from services.trace.trace_ingestion_service import TraceIngestionService
+from services.trace.tree_building_service import TreeBuildingService
 from utils import trace as trace_utils
 
 logger = logging.getLogger(__name__)
@@ -299,6 +300,55 @@ class SpanRepository:
         )
 
         return count, traces
+
+    def get_users_metadata(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[UserMetadata]]:
+        """Return user aggregation data with pagination."""
+        if not task_ids:
+            raise ValueError("task_ids are required for user queries")
+
+        # Get user aggregation data from query service
+        count, user_metadata_list = self.span_query_service.get_users_aggregated(
+            task_ids=task_ids,
+            pagination_parameters=pagination_parameters,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return count, user_metadata_list
+
+    def get_user_sessions(
+        self,
+        user_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[SessionMetadata]]:
+        """Get sessions for a specific user."""
+        # Get session data for user from query service
+        count, session_metadata_list = self.span_query_service.get_sessions_for_user(
+            user_id=user_id,
+            pagination_parameters=pagination_parameters,
+        )
+
+        return count, session_metadata_list
+
+    def get_user_traces(
+        self,
+        user_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[TraceMetadata]]:
+        """Get traces for a specific user."""
+        # Get trace data for user from query service
+        count, trace_metadata_list = self.span_query_service.get_traces_for_user(
+            user_id=user_id,
+            pagination_parameters=pagination_parameters,
+        )
+
+        return count, trace_metadata_list
 
     # ============================================================================
     # Public API Methods - Used by Legacy Endpoints (ML Engine)

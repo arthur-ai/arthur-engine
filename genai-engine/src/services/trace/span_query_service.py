@@ -21,8 +21,9 @@ from schemas.internal_schemas import (
     Span,
     TraceMetadata,
     TraceQuerySchema,
+    UserMetadata,
 )
-from services.filter_service import FilterService
+from services.trace.filter_service import FilterService
 from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
@@ -326,6 +327,37 @@ class SpanQueryService:
         query = query.offset(offset).limit(pagination_parameters.page_size)
 
         return query
+
+    def _apply_sorting(
+        self,
+        query: select,
+        pagination_parameters: PaginationParameters,
+        sort_column_or_label,
+    ) -> select:
+        """Apply sorting to a query."""
+        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
+            return query.order_by(desc(sort_column_or_label))
+        else:
+            return query.order_by(asc(sort_column_or_label))
+
+    def _get_count_from_query(self, query: select) -> int:
+        """Get total count from a query using subquery approach."""
+        count_query = select(func.count()).select_from(query.subquery())
+        return self.db_session.execute(count_query).scalar()
+
+    def _get_count_with_where(self, count_column, where_clause) -> int:
+        """Get count with custom WHERE clause (for edge cases)."""
+        count_query = select(func.count(count_column)).where(where_clause)
+        return self.db_session.execute(count_query).scalar()
+
+    def _apply_pagination(
+        self,
+        query: select,
+        pagination_parameters: PaginationParameters,
+    ) -> select:
+        """Apply OFFSET and LIMIT to a query."""
+        offset = pagination_parameters.page * pagination_parameters.page_size
+        return query.offset(offset).limit(pagination_parameters.page_size)
 
     def _build_spans_query(
         self,
@@ -647,21 +679,10 @@ class SpanQueryService:
             DatabaseTraceMetadata.task_id,
         )
 
-        # Apply sorting
-        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc("earliest_start_time"))
-        else:
-            query = query.order_by(asc("earliest_start_time"))
-
-        # Get total count before pagination
-        count_query = select(func.count()).select_from(query.subquery())
-        total_count = self.db_session.execute(count_query).scalar()
-
-        # Apply pagination
-        offset = pagination_parameters.page * pagination_parameters.page_size
-        query = query.offset(offset).limit(pagination_parameters.page_size)
-
-        # Execute query
+        # Apply pagination with bite-sized functions
+        query = self._apply_sorting(query, pagination_parameters, "earliest_start_time")
+        total_count = self._get_count_from_query(query)
+        query = self._apply_pagination(query, pagination_parameters)
         results = self.db_session.execute(query).all()
 
         # Convert to SessionMetadata objects
@@ -697,24 +718,203 @@ class SpanQueryService:
             DatabaseTraceMetadata.session_id == session_id,
         )
 
-        # Apply sorting
-        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
-            query = query.order_by(desc(DatabaseTraceMetadata.start_time))
-        else:
-            query = query.order_by(asc(DatabaseTraceMetadata.start_time))
-
-        # Get total count before pagination
-        count_query = select(func.count(DatabaseTraceMetadata.trace_id)).where(
+        # Apply pagination with bite-sized functions
+        query = self._apply_sorting(
+            query,
+            pagination_parameters,
+            DatabaseTraceMetadata.start_time,
+        )
+        total_count = self._get_count_with_where(
+            DatabaseTraceMetadata.trace_id,
             DatabaseTraceMetadata.session_id == session_id,
         )
-        total_count = self.db_session.execute(count_query).scalar()
-
-        # Apply pagination
-        offset = pagination_parameters.page * pagination_parameters.page_size
-        query = query.offset(offset).limit(pagination_parameters.page_size)
-
-        # Execute query
+        query = self._apply_pagination(query, pagination_parameters)
         results = self.db_session.execute(query).scalars().all()
         trace_ids = [trace_id for trace_id in results]
 
         return total_count, trace_ids
+
+    def get_users_aggregated(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[UserMetadata]]:
+        """Perform user-level aggregations with filtering."""
+        if not task_ids:
+            return 0, []
+
+        # Use database-appropriate aggregation functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            session_ids_agg = (
+                func.array_agg(func.distinct(DatabaseTraceMetadata.session_id))
+                .filter(DatabaseTraceMetadata.session_id.is_not(None))
+                .label("session_ids")
+            )
+            trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+        else:  # SQLite
+            session_ids_agg = func.group_concat(
+                func.distinct(DatabaseTraceMetadata.session_id),
+            ).label("session_ids")
+            trace_ids_agg = func.group_concat(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+
+        query = select(
+            DatabaseTraceMetadata.user_id,
+            DatabaseTraceMetadata.task_id,
+            session_ids_agg,
+            trace_ids_agg,
+            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
+            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
+            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+        ).where(
+            and_(
+                DatabaseTraceMetadata.task_id.in_(task_ids),
+                DatabaseTraceMetadata.user_id.is_not(None),
+            ),
+        )
+
+        # Apply time range filters
+        if start_time:
+            query = query.where(DatabaseTraceMetadata.start_time >= start_time)
+        if end_time:
+            query = query.where(DatabaseTraceMetadata.end_time <= end_time)
+
+        # Group by both user_id and task_id to ensure proper boundaries
+        query = query.group_by(
+            DatabaseTraceMetadata.user_id,
+            DatabaseTraceMetadata.task_id,
+        )
+
+        # Apply pagination with bite-sized functions
+        query = self._apply_sorting(query, pagination_parameters, "earliest_start_time")
+        total_count = self._get_count_from_query(query)
+        query = self._apply_pagination(query, pagination_parameters)
+        results = self.db_session.execute(query).all()
+
+        # Convert to UserMetadata objects
+        users = []
+        for row in results:
+            # Handle aggregated IDs based on database type
+            if self.db_session.bind.dialect.name == "postgresql":
+                session_ids = [
+                    sid for sid in (row.session_ids or []) if sid
+                ]  # Filter nulls
+                trace_ids = row.trace_ids or []
+            else:  # SQLite
+                session_ids = [
+                    sid
+                    for sid in (row.session_ids.split(",") if row.session_ids else [])
+                    if sid
+                ]
+                trace_ids = row.trace_ids.split(",") if row.trace_ids else []
+
+            users.append(
+                UserMetadata(
+                    user_id=row.user_id,
+                    task_id=row.task_id,
+                    session_ids=session_ids,
+                    trace_ids=trace_ids,
+                    span_count=row.span_count or 0,
+                    earliest_start_time=row.earliest_start_time,
+                    latest_end_time=row.latest_end_time,
+                ),
+            )
+
+        return total_count, users
+
+    def get_sessions_for_user(
+        self,
+        user_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[SessionMetadata]]:
+        """Get paginated sessions for a specific user."""
+        # Use same aggregation logic as get_sessions_aggregated but filter by user_id
+
+        # Use database-appropriate aggregation function
+        if self.db_session.bind.dialect.name == "postgresql":
+            trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+        else:  # SQLite
+            trace_ids_agg = func.group_concat(DatabaseTraceMetadata.trace_id).label(
+                "trace_ids",
+            )
+
+        query = select(
+            DatabaseTraceMetadata.session_id,
+            DatabaseTraceMetadata.task_id,
+            trace_ids_agg,
+            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
+            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
+            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+        ).where(
+            and_(
+                DatabaseTraceMetadata.user_id == user_id,
+                DatabaseTraceMetadata.session_id.is_not(None),
+            ),
+        )
+
+        # Group by both session_id and task_id
+        query = query.group_by(
+            DatabaseTraceMetadata.session_id,
+            DatabaseTraceMetadata.task_id,
+        )
+
+        # Apply pagination with bite-sized functions
+        query = self._apply_sorting(query, pagination_parameters, "earliest_start_time")
+        total_count = self._get_count_from_query(query)
+        query = self._apply_pagination(query, pagination_parameters)
+        results = self.db_session.execute(query).all()
+
+        # Convert to SessionMetadata objects
+        sessions = []
+        for row in results:
+            # Handle trace_ids based on database type
+            if self.db_session.bind.dialect.name == "postgresql":
+                trace_ids = row.trace_ids or []
+            else:  # SQLite
+                trace_ids = row.trace_ids.split(",") if row.trace_ids else []
+
+            sessions.append(
+                SessionMetadata(
+                    session_id=row.session_id,
+                    task_id=row.task_id,
+                    trace_ids=trace_ids,
+                    span_count=row.span_count or 0,
+                    earliest_start_time=row.earliest_start_time,
+                    latest_end_time=row.latest_end_time,
+                ),
+            )
+
+        return total_count, sessions
+
+    def get_traces_for_user(
+        self,
+        user_id: str,
+        pagination_parameters: PaginationParameters,
+    ) -> tuple[int, list[TraceMetadata]]:
+        """Get paginated traces for a specific user."""
+        query = select(DatabaseTraceMetadata).where(
+            DatabaseTraceMetadata.user_id == user_id,
+        )
+
+        # Apply pagination with bite-sized functions
+        query = self._apply_sorting(
+            query,
+            pagination_parameters,
+            DatabaseTraceMetadata.start_time,
+        )
+        total_count = self._get_count_with_where(
+            DatabaseTraceMetadata.trace_id,
+            DatabaseTraceMetadata.user_id == user_id,
+        )
+        query = self._apply_pagination(query, pagination_parameters)
+        results = self.db_session.execute(query).scalars().all()
+        traces = [TraceMetadata._from_database_model(tm) for tm in results]
+
+        return total_count, traces

@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v1/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces  endpoint added
+
 # 10/21/2025
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
 
