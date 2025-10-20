@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
-import { Dataset } from "@/types/dataset";
+import { DatasetVersionResponse } from "@/lib/api-client/api-client";
+import type { DatasetVersionRowResponse } from "@/lib/api-client/api-client";
 import { generateTempRowId } from "@/utils/datasetRowUtils";
-import { getColumnNames } from "@/utils/datasetUtils";
 
 export interface PendingChanges {
   added: DatasetVersionRowResponse[];
@@ -25,8 +24,7 @@ export interface UseDatasetLocalStateReturn {
 }
 
 export function useDatasetLocalState(
-  dataset: Dataset | undefined,
-  versionRows: DatasetVersionRowResponse[] | undefined
+  versionData: DatasetVersionResponse | undefined
 ): UseDatasetLocalStateReturn {
   const [localColumns, setLocalColumns] = useState<string[]>([]);
   const [localRows, setLocalRows] = useState<DatasetVersionRowResponse[]>([]);
@@ -37,18 +35,12 @@ export function useDatasetLocalState(
   });
 
   useEffect(() => {
-    if (dataset) {
-      const metadataColumns = getColumnNames(dataset.metadata);
-      setLocalColumns(metadataColumns);
-    }
-  }, [dataset]);
-
-  useEffect(() => {
-    if (versionRows) {
-      setLocalRows(versionRows);
+    if (versionData) {
+      setLocalColumns(versionData.column_names);
+      setLocalRows(versionData.rows);
       setPendingChanges({ added: [], updated: [], deleted: [] });
     }
-  }, [versionRows]);
+  }, [versionData]);
 
   const hasUnsavedChanges = useMemo(() => {
     return (

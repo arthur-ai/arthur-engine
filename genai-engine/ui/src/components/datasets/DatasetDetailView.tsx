@@ -57,7 +57,7 @@ export const DatasetDetailView: React.FC = () => {
     pagination.rowsPerPage
   );
 
-  const localState = useDatasetLocalState(dataset, versionData?.rows);
+  const localState = useDatasetLocalState(versionData);
 
   const sorting = useDatasetSorting(localState.localRows);
   const search = useDatasetSearch(sorting.sortedRows);
@@ -65,8 +65,6 @@ export const DatasetDetailView: React.FC = () => {
 
   const save = useDatasetSaveMutation(
     datasetId,
-    dataset,
-    localState.localColumns,
     localState.pendingChanges,
     localState.hasUnsavedChanges,
     () => {
@@ -117,8 +115,13 @@ export const DatasetDetailView: React.FC = () => {
   );
 
   const editRowData = useMemo(() => {
-    return modals.editingRow ? convertFromApiFormat(modals.editingRow) : {};
-  }, [modals.editingRow]);
+    if (!modals.editingRow) return {};
+
+    const existingData = convertFromApiFormat(modals.editingRow);
+    const allColumnsData = createEmptyRow(localState.localColumns);
+
+    return { ...allColumnsData, ...existingData };
+  }, [modals.editingRow, localState.localColumns]);
 
   const addRowData = useMemo(() => {
     return createEmptyRow(localState.localColumns);
