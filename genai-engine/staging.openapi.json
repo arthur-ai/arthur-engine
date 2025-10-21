@@ -5581,7 +5581,7 @@
                 "tags": [
                     "Model Providers"
                 ],
-                "summary": "List the model providers..",
+                "summary": "List the model providers.",
                 "description": "Shows all model providers and if they're enabled.",
                 "operationId": "get_model_providers_api_v1_model_providers_get",
                 "responses": {
@@ -5601,6 +5601,53 @@
                         "API Key": []
                     }
                 ]
+            }
+        },
+        "/api/v1/model_providers/{provider}/available_models": {
+            "get": {
+                "tags": [
+                    "Model Providers"
+                ],
+                "summary": "List the models available from a provider.",
+                "description": "Returns a list of the names of all available models for a provider.",
+                "operationId": "get_model_providers_api_v1_model_providers__provider__available_models_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/ModelProvider"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelProviderModelList"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/secrets/rotation": {
@@ -9212,16 +9259,38 @@
                 ],
                 "title": "ModelProviderList"
             },
+            "ModelProviderModelList": {
+                "properties": {
+                    "provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Provider of the models"
+                    },
+                    "available_models": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Available Models",
+                        "description": "Available models from the provider"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "provider",
+                    "available_models"
+                ],
+                "title": "ModelProviderModelList"
+            },
             "ModelProviderResponse": {
                 "properties": {
                     "provider": {
                         "$ref": "#/components/schemas/ModelProvider",
-                        "description": "The model provider."
+                        "description": "The model provider"
                     },
                     "enabled": {
                         "type": "boolean",
                         "title": "Enabled",
-                        "description": "Whether the provider is enabled with credentials."
+                        "description": "Whether the provider is enabled with credentials"
                     }
                 },
                 "type": "object",

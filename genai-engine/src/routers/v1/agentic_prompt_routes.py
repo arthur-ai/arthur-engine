@@ -1,6 +1,7 @@
 from typing import Union
 from uuid import UUID
 
+import litellm
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from litellm import LiteLLM
@@ -236,6 +237,8 @@ async def run_agentic_prompt(
     except HTTPException:
         # propagate HTTP exceptions
         raise
+    except litellm.AuthenticationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -336,6 +339,8 @@ async def run_saved_agentic_prompt(
     except HTTPException:
         # propagate HTTP exceptions
         raise
+    except litellm.AuthenticationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -9,10 +9,12 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 @pytest.mark.unit_tests
 @patch("schemas.agentic_prompt_schemas.completion_cost")
+@patch("litellm.get_valid_models")
 def test_model_provider_lifecycle(
-    mock_completion_cost, client: GenaiEngineTestClientBase
+    mock_completion_cost, mock_get_valid_models, client: GenaiEngineTestClientBase
 ):
     mock_completion_cost.return_value = 0.001234
+    mock_get_valid_models.return_value = ["gpt-5", "gpt-4.1"]
 
     # first validate listing providers shows all disabled
     response = client.base_client.get(
@@ -47,6 +49,22 @@ def test_model_provider_lifecycle(
             if provider["provider"] == ModelProvider.OPENAI
             else not provider["enabled"]
         )
+
+    # validate we can list models for the provider
+    response = client.base_client.get(
+        f"/api/v1/model_providers/openai/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["provider"]) == "openai"
+    assert len(response.json()["available_models"]) == ["gpt-5", "gpt-4.1"]
+
+    # validate we can cannot list models for disabled provider
+    response = client.base_client.get(
+        f"/api/v1/model_providers/anthropic/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
 
     # enable the anthropic provider
     response = client.base_client.put(

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import litellm
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
@@ -21,3 +21,10 @@ class LLMClient:
     ) -> Union[ModelResponse, CustomStreamWrapper]:
         # Delegate to the top-level function
         return await litellm.acompletion(*args, api_key=self.api_key, **kwargs)
+
+    def get_available_models(self) -> List[str]:
+        return litellm.get_valid_models(
+            api_key=self.api_key,
+            check_provider_endpoint=True,
+            custom_llm_provider=self.provider,
+        )
