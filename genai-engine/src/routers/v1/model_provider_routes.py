@@ -11,7 +11,11 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum, ModelProvider
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
-from schemas.response_schemas import ModelProviderResponse, ModelProviderList
+from schemas.response_schemas import (
+    ModelProviderResponse,
+    ModelProviderList,
+    ModelProviderModelList,
+)
 from utils.users import permission_checker
 
 logger = logging.getLogger(__name__)
@@ -78,12 +82,12 @@ def set_model_provider(
 
 @model_provider_routes.get(
     "/model_providers",
-    summary="List the model providers..",
+    summary="List the model providers.",
     description="Shows all model providers and if they're enabled.",
     tags=["Model Providers"],
     response_model=ModelProviderList,
 )
-@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_WRITE.value)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
 def get_model_providers(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -92,5 +96,29 @@ def get_model_providers(
     try:
         repo = ModelProviderRepository(db_session)
         return ModelProviderList(providers=repo.list_model_providers())
+    finally:
+        db_session.close()
+
+
+@model_provider_routes.get(
+    "/model_providers/{provider}/available_models",
+    summary="List the models available from a provider.",
+    description="Returns a list of the names of all available models for a provider.",
+    tags=["Model Providers"],
+    response_model=ModelProviderModelList,
+)
+@permission_checker(permissions=PermissionLevelsEnum.MODEL_PROVIDER_READ.value)
+def get_model_providers(
+    provider: ModelProvider,
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ModelProviderModelList:
+    """Set the configuration for a model provider"""
+    try:
+        repo = ModelProviderRepository(db_session)
+        return ModelProviderModelList(
+            provider=provider,
+            available_models=repo.list_models_for_provider(provider=provider),
+        )
     finally:
         db_session.close()

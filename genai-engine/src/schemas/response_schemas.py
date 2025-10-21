@@ -200,13 +200,20 @@ class AgenticPromptRunResponse(BaseModel):
 
 
 class ModelProviderResponse(BaseModel):
-    provider: ModelProvider = Field(description="The model provider.")
+    provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials."
+        description="Whether the provider is enabled with credentials"
     )
 
 
 class ModelProviderList(BaseModel):
     providers: list[ModelProviderResponse] = Field(
         description="List of model providers"
+    )
+
+
+class ModelProviderModelList(BaseModel):
+    provider: ModelProvider = Field(description="Provider of the models")
+    available_models: List[str] = Field(
+        description="Available models from the provider"
     )
