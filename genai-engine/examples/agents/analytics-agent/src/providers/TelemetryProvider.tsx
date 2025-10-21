@@ -47,20 +47,10 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     }
     setTelemetryHeaders();
     
-    console.log('🔄 New session created:', {
-      userId,
-      newSessionId,
-      timestamp: new Date().toISOString()
-    });
   };
 
   const setTelemetryHeaders = () => {
     // Headers are set automatically via getTelemetryHeaders() when making requests
-    console.log('📡 Telemetry headers available:', {
-      userId,
-      sessionId,
-      headers: getTelemetryHeaders()
-    });
   };
 
   const getTelemetryHeaders = () => {
@@ -71,7 +61,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Log headers on mount with the initialized session ID
+    // Initialize headers on mount with the initialized session ID
     setTelemetryHeaders();
   }, []);
 
