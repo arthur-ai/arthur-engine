@@ -5,7 +5,6 @@ from logging import Logger
 from typing import Any
 from urllib.parse import urlparse
 
-import genai_client.exceptions
 import pandas as pd
 from arthur_client.api_bindings import (
     AvailableDataset,
@@ -30,6 +29,16 @@ from arthur_common.models.request_schemas import NewRuleRequest
 from arthur_common.models.response_schemas import RuleResponse, TaskResponse
 from config.config import Config
 from connectors.connector import Connector
+from pydantic import ValidationError
+from tools.agentic_filters import (
+    SHIELD_SORT_FILTER,
+    add_default_sort_filter,
+    build_and_validate_agentic_filter_params,
+    validate_filters,
+)
+from tools.api_client_type_converters import ShieldClientTypeConverter
+
+import genai_client.exceptions
 from genai_client import (
     ApiClient,
     APIKeysApi,
@@ -55,14 +64,6 @@ from genai_client.models import (
     SearchTasksRequest,
     UpdateRuleRequest,
 )
-from pydantic import ValidationError
-from tools.agentic_filters import (
-    SHIELD_SORT_FILTER,
-    add_default_sort_filter,
-    build_and_validate_agentic_filter_params,
-    validate_filters,
-)
-from tools.api_client_type_converters import ShieldClientTypeConverter
 
 SHIELD_MAX_PAGE_SIZE = 1500
 
