@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from schemas.enums import ModelProvider
+from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -47,6 +48,24 @@ def test_model_provider_lifecycle(
             if provider["provider"] == ModelProvider.OPENAI
             else not provider["enabled"]
         )
+
+    # validate we can list models for the provider
+    # mock returned list
+    SUPPORTED_TEXT_MODELS[ModelProvider.OPENAI] = ["gpt-5", "gpt-4.1"]
+    response = client.base_client.get(
+        f"/api/v1/model_providers/openai/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["provider"] == "openai"
+    assert response.json()["available_models"] == ["gpt-5", "gpt-4.1"]
+
+    # validate we can cannot list models for disabled provider
+    response = client.base_client.get(
+        f"/api/v1/model_providers/anthropic/available_models",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
 
     # enable the anthropic provider
     response = client.base_client.put(

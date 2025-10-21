@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/21/2025
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
 # 10/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}  the request required property 'api_key' became write-only
