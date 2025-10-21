@@ -1,6 +1,5 @@
 import {
   ReasoningEffortEnum,
-  ProviderEnum,
   AgenticPromptMessageInput,
   MessageRole,
   LogitBiasItem,
@@ -48,6 +47,10 @@ type PromptAction =
   | {
       type: "updateKeywords";
       payload: { id: string; messageKeywords: string[] };
+    }
+  | {
+      type: "updateProviders";
+      payload: { providers: string[] };
     }
   | {
       type: "updateKeywordValue";
@@ -113,7 +116,7 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: ProviderEnum;
+  provider: string;
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
@@ -128,6 +131,7 @@ interface PromptPlaygroundState {
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
   backendPrompts: PromptType[];
+  enabledProviders: string[];
 }
 
 interface MessageComponentProps {
@@ -164,7 +168,7 @@ const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "tool",
 ];
 
-const PROVIDER_OPTIONS: ProviderEnum[] = [
+const PROVIDER_OPTIONS: string[] = [
   "anthropic",
   "openai",
   "gemini",

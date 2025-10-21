@@ -11,11 +11,7 @@ import {
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
-import {
-  MessageRole,
-  ProviderEnum,
-  ToolChoiceEnum,
-} from "@/lib/api-client/api-client";
+import { MessageRole, ToolChoiceEnum } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -113,7 +109,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
+const newPrompt = (provider: string = PROVIDER_OPTIONS[0]): PromptType =>
   createPrompt({ provider });
 
 const duplicatePrompt = (original: PromptType): PromptType => {
@@ -142,6 +138,7 @@ const initialState: PromptPlaygroundState = {
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
   backendPrompts: new Array<PromptType>(),
+  enabledProviders: new Array<string>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -228,6 +225,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? { ...prompt, messages: [...prompt.messages, newMessage()] }
             : prompt
         ),
+      };
+    }
+    case "updateProviders": {
+      const { providers } = action.payload;
+      return {
+        ...state,
+        enabledProviders: providers,
       };
     }
     case "deleteMessage": {
@@ -444,7 +448,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           prompt.id === parentId
             ? {
                 ...prompt,
-                messages: arrayUtils.moveItem(prompt.messages, fromIndex, toIndex),
+                messages: arrayUtils.moveItem(
+                  prompt.messages,
+                  fromIndex,
+                  toIndex
+                ),
               }
             : prompt
         ),

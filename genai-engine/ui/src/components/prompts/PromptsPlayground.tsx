@@ -13,43 +13,70 @@ import { toFrontendPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
-  const hasFetchedRef = useRef(false);
+  const hasFetchedPrompts = useRef(false);
+  const hasFetchedProviders = useRef(false);
 
   const apiClient = useApi();
   const { task } = useTask();
   const taskId = task?.id;
 
-  useEffect(() => {
-    const fetchPrompts = async () => {
-      if (hasFetchedRef.current) {
-        return;
-      }
+  const fetchPrompts = useCallback(async () => {
+    if (hasFetchedPrompts.current) {
+      return;
+    }
 
-      if (!apiClient || !taskId) {
-        console.error("No api client or task id");
-        return;
-      }
+    if (!apiClient || !taskId) {
+      console.error("No api client or task id");
+      return;
+    }
 
-      hasFetchedRef.current = true;
-      const response =
-        await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
-          taskId
-        );
+    hasFetchedPrompts.current = true;
+    const response =
+      await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
+        taskId
+      );
 
-      const { data } = response;
-      const convertedPrompts = data.prompts.map(toFrontendPrompt);
+    const { data } = response;
+    const convertedPrompts = data.prompts.map(toFrontendPrompt);
 
-      dispatch({
-        type: "updateBackendPrompts",
-        payload: { prompts: convertedPrompts },
-      });
-    };
-
-    fetchPrompts();
+    dispatch({
+      type: "updateBackendPrompts",
+      payload: { prompts: convertedPrompts },
+    });
   }, [apiClient, taskId]);
+
+  const fetchProviders = useCallback(async () => {
+    if (hasFetchedProviders.current) {
+      return;
+    }
+
+    if (!apiClient) {
+      console.error("No api client");
+      return;
+    }
+
+    hasFetchedProviders.current = true;
+    const response =
+      await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
+
+    const { data } = response;
+    const providers = data.providers
+      .filter((provider: ModelProviderResponse) => provider.enabled)
+      .map((provider: ModelProviderResponse) => provider.provider);
+    dispatch({
+      type: "updateProviders",
+      payload: { providers },
+    });
+  }, [apiClient]);
+
+  useEffect(() => {
+    fetchPrompts();
+    fetchProviders();
+  }, [fetchPrompts, fetchProviders]);
 
   const handleAddPrompt = useCallback(() => {
     dispatch({ type: "addPrompt" });
