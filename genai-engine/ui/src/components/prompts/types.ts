@@ -75,6 +75,10 @@ type PromptAction =
   | {
       type: "updateToolChoice";
       payload: { promptId: string; toolChoice: string };
+    }
+  | {
+      type: "moveMessage";
+      payload: { parentId: string; fromIndex: number; toIndex: number };
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
@@ -132,6 +136,7 @@ interface MessageComponentProps {
   role?: string;
   defaultContent?: string;
   content: string | "";
+  dragHandleProps?: Record<string, unknown>;
 }
 
 interface PromptComponentProps {
