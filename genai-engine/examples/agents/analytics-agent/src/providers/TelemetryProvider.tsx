@@ -9,7 +9,7 @@ interface TelemetryContextType {
   sessionId: string;
   newSession: () => void;
   getTelemetryHeaders: () => Record<string, string>;
-  setTelemetryCookies: () => void;
+  setTelemetryHeaders: () => void;
 }
 
 const TelemetryContext = createContext<TelemetryContextType | null>(null);
@@ -45,7 +45,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('analytics-agent-session-id', newSessionId);
     }
-    setTelemetryCookies();
+    setTelemetryHeaders();
     
     console.log('🔄 New session created:', {
       userId,
@@ -54,18 +54,13 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const setTelemetryCookies = () => {
-    if (typeof window !== 'undefined') {
-      // Set cookies that will be sent with requests
-      document.cookie = `analytics-user-id=${userId}; path=/; max-age=31536000`; // 1 year
-      document.cookie = `analytics-session-id=${sessionId}; path=/; max-age=86400`; // 1 day
-      
-      console.log('🍪 Telemetry cookies set:', {
-        userId,
-        sessionId,
-        cookies: document.cookie
-      });
-    }
+  const setTelemetryHeaders = () => {
+    // Headers are set automatically via getTelemetryHeaders() when making requests
+    console.log('📡 Telemetry headers available:', {
+      userId,
+      sessionId,
+      headers: getTelemetryHeaders()
+    });
   };
 
   const getTelemetryHeaders = () => {
@@ -76,12 +71,12 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Set cookies on mount with the initialized session ID
-    setTelemetryCookies();
+    // Log headers on mount with the initialized session ID
+    setTelemetryHeaders();
   }, []);
 
   return (
-    <TelemetryContext.Provider value={{ userId, sessionId, newSession, getTelemetryHeaders, setTelemetryCookies }}>
+    <TelemetryContext.Provider value={{ userId, sessionId, newSession, getTelemetryHeaders, setTelemetryHeaders }}>
       {children}
     </TelemetryContext.Provider>
   );

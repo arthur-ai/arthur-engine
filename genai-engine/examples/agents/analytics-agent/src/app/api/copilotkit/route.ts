@@ -12,13 +12,16 @@ const serviceAdapter = new ExperimentalEmptyAdapter();
 
 // 2. Build a Next.js API route that handles the CopilotKit runtime requests.
 export const POST = async (req: NextRequest) => {
-  // Extract user and session IDs from cookies
-  const userId = req.cookies.get('analytics-user-id')?.value;
-  const sessionId = req.cookies.get('analytics-session-id')?.value;
+  // Extract user and session IDs from headers
+  const userId = req.headers.get('x-user-id');
+  const sessionId = req.headers.get('x-session-id');
 
   // Set request metadata on the Arthur exporter
   if (userId || sessionId) {
-    arthurExporter.setRequestMetadata({ userId, sessionId });
+    arthurExporter.setRequestMetadata({ 
+      userId: userId || undefined, 
+      sessionId: sessionId || undefined 
+    });
   }
 
   // 3. Create the CopilotRuntime instance and utilize the Mastra AG-UI
