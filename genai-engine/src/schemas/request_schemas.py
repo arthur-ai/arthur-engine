@@ -10,7 +10,6 @@ from sqlalchemy.orm import Query
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.enums import (
     DocumentStorageEnvironment,
-    ModelProvider,
 )
 
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import jwt
+
 from schemas.custom_exceptions import (
     BadCredentialsException,
     UnableCredentialsException,

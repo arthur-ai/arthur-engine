@@ -1,18 +1,17 @@
 import logging
 from typing import Optional, Tuple
 
-import torch
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers.json import JsonOutputParser
-from pydantic import BaseModel, Field
-
 from arthur_common.models.enums import MetricType
-from schemas.internal_schemas import MetricResult
 from arthur_common.models.metric_schemas import (
     MetricRequest,
     QueryRelevanceMetric,
     ResponseRelevanceMetric,
 )
+from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers.json import JsonOutputParser
+from pydantic import BaseModel, Field
+
+from schemas.internal_schemas import MetricResult
 from schemas.metric_schemas import MetricScoreDetails
 from scorer.llm_client import get_llm_executor
 from scorer.metrics.relevance.prompt_templates import (

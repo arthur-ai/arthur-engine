@@ -1,24 +1,25 @@
 import logging
 from typing import Annotated
 
+from arthur_common.models.common_schemas import PaginationParameters, UserPermission
+from arthur_common.models.enums import (
+    UserPermissionAction,
+    UserPermissionResource,
+)
+from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
+from arthur_common.models.response_schemas import UserResponse
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from starlette import status
+
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 from auth.oauth_validator import validate_token
 from clients.auth.abc_keycloak_client import ABCAuthClient
 from dependencies import get_keycloak_client
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 from routers.route_handler import GenaiEngineRoute
-from arthur_common.models.common_schemas import PaginationParameters, UserPermission
-from arthur_common.models.enums import (
-    UserPermissionAction,
-    UserPermissionResource,
-)
-from schemas.internal_schemas import User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.request_schemas import CreateUserRequest, PasswordResetRequest
-from arthur_common.models.response_schemas import UserResponse
-from starlette import status
+from schemas.internal_schemas import User
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, constants, public_endpoint
 

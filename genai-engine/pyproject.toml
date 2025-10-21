@@ -103,6 +103,8 @@ pytest-cov = "6.3.0"
 pre-commit = "4.3.0"
 black = "25.9.0"
 mypy = "^1.13.0"
+isort = "^7.0.0"
+autoflake = "^2.3.1"
 
 
 [tool.poetry.group.performance.dependencies]
@@ -129,6 +131,13 @@ markers = [
 serve = "src.server:start"
 generate_changelog = "changelog:main"
 routes_security_check = "routes_security_check:main"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+implicit_reexport = true
+explicit_package_bases = false
 
 [tool.black]
 target-version = ['py312']
