@@ -8,7 +8,8 @@ import {
   DialogTitle,
   TextField,
 } from "@mui/material";
-import React, { useState, useCallback, useEffect } from "react";
+import { useForm } from "@tanstack/react-form";
+import React, { useMemo } from "react";
 
 interface EditRowModalProps {
   open: boolean;
@@ -27,41 +28,28 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
   rowId,
   isLoading = false,
 }) => {
-  const [editedData, setEditedData] = useState<Record<string, string>>({});
+  const columns = Object.keys(rowData);
 
-  // Initialize edited data when modal opens or rowData changes
-  useEffect(() => {
-    if (open) {
-      const stringData: Record<string, string> = {};
-      Object.entries(rowData).forEach(([key, value]) => {
-        stringData[key] = String(value ?? "");
-      });
-      setEditedData(stringData);
-    }
-  }, [open, rowData]);
+  const stringData = useMemo(() => {
+    const data: Record<string, string> = {};
+    Object.entries(rowData).forEach(([key, value]) => {
+      data[key] = String(value ?? "");
+    });
+    return data;
+  }, [rowData]);
 
-  const handleClose = useCallback(() => {
+  const form = useForm({
+    defaultValues: stringData,
+    onSubmit: async ({ value }) => {
+      await onSubmit(value);
+    },
+  });
+
+  const handleClose = () => {
     if (!isLoading) {
       onClose();
     }
-  }, [isLoading, onClose]);
-
-  const handleFieldChange = useCallback((key: string, value: string) => {
-    setEditedData((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  }, []);
-
-  const handleSubmit = useCallback(async () => {
-    try {
-      await onSubmit(editedData);
-    } catch (err) {
-      console.error("Failed to submit row:", err);
-    }
-  }, [editedData, onSubmit]);
-
-  const columns = Object.keys(rowData);
+  };
 
   return (
     <Dialog
@@ -71,44 +59,54 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
       fullWidth
       aria-labelledby="edit-row-dialog-title"
     >
-      <DialogTitle id="edit-row-dialog-title">
-        {rowId === "new" ? "Add Row" : "Edit Row"}
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          {columns.map((column) => {
-            const value = editedData[column] ?? "";
-
-            return (
-              <TextField
-                key={column}
-                label={column}
-                value={value}
-                onChange={(e) => handleFieldChange(column, e.target.value)}
-                disabled={isLoading}
-                fullWidth
-                size="small"
-                multiline={value.length > 50}
-                rows={value.length > 50 ? 3 : 1}
-              />
-            );
-          })}
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose} disabled={isLoading} color="inherit">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          variant="contained"
-          color="primary"
-          startIcon={isLoading ? <CircularProgress size={16} /> : null}
-        >
-          {isLoading ? "Saving..." : "Save"}
-        </Button>
-      </DialogActions>
+      <form
+        key={rowId}
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+      >
+        <DialogTitle id="edit-row-dialog-title">
+          {rowId === "new" ? "Add Row" : "Edit Row"}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+            {columns.map((column) => (
+              <form.Field key={column} name={column}>
+                {(field) => {
+                  const value = field.state.value;
+                  return (
+                    <TextField
+                      label={column}
+                      value={value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      disabled={isLoading}
+                      fullWidth
+                      size="small"
+                      multiline={value.length > 50}
+                      rows={value.length > 50 ? 3 : 1}
+                    />
+                  );
+                }}
+              </form.Field>
+            ))}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleClose} disabled={isLoading} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            variant="contained"
+            color="primary"
+            startIcon={isLoading ? <CircularProgress size={16} /> : null}
+          >
+            {isLoading ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </form>
     </Dialog>
   );
 };

@@ -190,6 +190,7 @@ export const DatasetsView: React.FC = () => {
         onSubmit={handleUpdateDataset}
         isLoading={updateMutation.isPending}
         mode="edit"
+        datasetId={modals.editingDataset?.id}
         initialData={
           modals.editingDataset
             ? {

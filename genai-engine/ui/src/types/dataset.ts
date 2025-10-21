@@ -1,3 +1,5 @@
+import type { DatasetFormValues } from "@/schemas/datasetSchemas";
+
 export interface Dataset {
   id: string;
   name: string;
@@ -8,11 +10,9 @@ export interface Dataset {
   latest_version_number?: number | null;
 }
 
-export interface DatasetFormData {
-  name: string;
-  description?: string;
+export type DatasetFormData = DatasetFormValues & {
   metadata?: Record<string, unknown>;
-}
+};
 
 export type SortOrder = "asc" | "desc";
 
