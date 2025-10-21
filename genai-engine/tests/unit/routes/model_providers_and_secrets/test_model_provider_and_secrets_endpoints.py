@@ -64,7 +64,7 @@ def test_model_provider_lifecycle(
         f"/api/v1/model_providers/anthropic/available_models",
         headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
     # enable the anthropic provider
     response = client.base_client.put(
