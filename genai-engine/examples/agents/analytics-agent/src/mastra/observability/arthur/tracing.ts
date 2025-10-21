@@ -22,6 +22,7 @@ import {
   OISpan,
   TraceConfigOptions,
 } from "@arizeai/openinference-core";
+import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
 import { setSpanAttributes, setSpanErrorInfo } from "./attribute-utils";
 
 export interface ArthurExporterConfig {
@@ -44,6 +45,7 @@ export class ArthurExporter implements AITracingExporter {
   private taskId: string;
   private spanMap = new Map<string, OISpan>();
   private serviceName: string;
+  private requestMetadata: { userId?: string; sessionId?: string } = {};
 
   constructor(config: ArthurExporterConfig) {
     this.logger = new ConsoleLogger({ level: config.logLevel ?? "warn" });
@@ -80,6 +82,11 @@ export class ArthurExporter implements AITracingExporter {
       tracer: otelTracer,
       traceConfig: config.traceConfig,
     });
+  }
+
+  // New method to set request metadata
+  setRequestMetadata(metadata: { userId?: string; sessionId?: string }) {
+    this.requestMetadata = metadata;
   }
 
   async exportEvent(event: AITracingEvent): Promise<void> {
@@ -167,8 +174,21 @@ export class ArthurExporter implements AITracingExporter {
   }
 
   private updateOtelSpan(otelSpan: OISpan, span: AnyExportedAISpan): void {
+    // Set all attributes and error info first
     setSpanAttributes(otelSpan, span);
     setSpanErrorInfo(otelSpan, span.errorInfo);
+    
+    // Set user and session attributes directly on the span using semantic conventions
+    if (this.requestMetadata.userId) {
+      otelSpan.setAttributes({
+        [SemanticConventions.USER_ID]: this.requestMetadata.userId,
+      });
+    }
+    if (this.requestMetadata.sessionId) {
+      otelSpan.setAttributes({
+        [SemanticConventions.SESSION_ID]: this.requestMetadata.sessionId,
+      });
+    }
   }
 
   async shutdown(): Promise<void> {
