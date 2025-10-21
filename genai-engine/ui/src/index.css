@@ -28,3 +28,24 @@ body {
   margin: 0;
   min-height: 100vh;
 }
+
+/* Force custom colors for Mustache highlighting */
+.token.template-punctuation,
+.token.punctuation {
+  color: #b1fa56 !important;
+}
+
+.token.template-string,
+.token.variable,
+.token.property,
+.token.string {
+  color: #ac37f6 !important;
+}
+
+.token.tag {
+  color: #b1fa56 !important;
+}
+
+.token.attr-name {
+  color: #ac37f6 !important;
+}
