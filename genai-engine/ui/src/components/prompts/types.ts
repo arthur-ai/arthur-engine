@@ -25,10 +25,22 @@ type PromptAction =
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
+      type: "updatePromptProvider";
+      payload: { promptId: string; provider: string };
+    }
+  | {
+      type: "updatePromptModelName";
+      payload: { promptId: string; modelName: string };
+    }
+  | {
       type: "updatePrompt";
       payload: { promptId: string; prompt: Partial<PromptType> };
     }
   | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
+  | {
+      type: "updateProviders";
+      payload: { providers: string[] };
+    }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
   | { type: "duplicateMessage"; payload: { parentId: string; id: string } }
@@ -47,10 +59,6 @@ type PromptAction =
   | {
       type: "updateKeywords";
       payload: { id: string; messageKeywords: string[] };
-    }
-  | {
-      type: "updateProviders";
-      payload: { providers: string[] };
     }
   | {
       type: "updateKeywordValue";

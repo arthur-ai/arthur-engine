@@ -188,6 +188,24 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
+    case "updatePromptProvider": {
+      const { promptId, provider } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, provider } : prompt
+        ),
+      };
+    }
+    case "updatePromptModelName": {
+      const { promptId, modelName } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, modelName } : prompt
+        ),
+      };
+    }
     case "updatePrompt": {
       const { promptId, prompt } = action.payload;
       return {
@@ -214,6 +232,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         backendPrompts: prompts,
       };
     }
+    case "updateProviders": {
+      const { providers } = action.payload;
+      return {
+        ...state,
+        enabledProviders: providers,
+      };
+    }
     case "addMessage": {
       const { parentId } = action.payload;
       return {
@@ -223,13 +248,6 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? { ...prompt, messages: [...prompt.messages, newMessage()] }
             : prompt
         ),
-      };
-    }
-    case "updateProviders": {
-      const { providers } = action.payload;
-      return {
-        ...state,
-        enabledProviders: providers,
       };
     }
     case "deleteMessage": {

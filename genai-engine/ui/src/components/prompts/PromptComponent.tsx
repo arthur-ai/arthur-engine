@@ -24,12 +24,6 @@ const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
 const MODEL_TEXT = "Select Model";
 
-const MODEL_OPTIONS = [
-  { label: "Model 1", value: "model1" },
-  { label: "Model 2", value: "model2" },
-  { label: "Model 3", value: "model3" },
-];
-
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
@@ -38,7 +32,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [currentPromptName, setCurrentPromptName] = useState<string>(
     prompt.name || ""
   );
-  const [provider, setProvider] = useState<string>("");
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
@@ -64,7 +57,10 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   );
 
   const handleProviderChange = (event: SelectChangeEvent) => {
-    setProvider(event.target.value);
+    dispatch({
+      type: "updatePromptProvider",
+      payload: { promptId: prompt.id, provider: event.target.value },
+    });
   };
 
   const handleSavePromptOpen = () => {
@@ -95,12 +91,15 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
 
   useEffect(() => {
     if (state.enabledProviders.length > 0) {
-      setProvider(state.enabledProviders[0]);
+      dispatch({
+        type: "updatePromptProvider",
+        payload: { promptId: prompt.id, provider: state.enabledProviders[0] },
+      });
     }
-  }, [state.enabledProviders]);
+  }, [state.enabledProviders, dispatch, prompt.id]);
 
   const providerDisabled = state.enabledProviders.length === 0;
-  const modelDisabled = provider === "";
+  const modelDisabled = prompt.provider === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
@@ -164,7 +163,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                     labelId={`provider-${prompt.id}`}
                     id={`provider-${prompt.id}`}
                     label={PROVIDER_TEXT}
-                    value={provider}
+                    value={prompt.provider || ""}
                     onChange={handleProviderChange}
                     sx={{
                       backgroundColor: "white",
@@ -188,18 +187,14 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                   labelId={`model-${prompt.id}`}
                   id={`model-${prompt.id}`}
                   label={MODEL_TEXT}
-                  value={MODEL_OPTIONS[0].value}
+                  value={""}
                   onChange={() => {}}
                   sx={{
                     backgroundColor: "white",
                   }}
                   disabled={modelDisabled}
                 >
-                  {MODEL_OPTIONS.map((modelOption) => (
-                    <MenuItem key={modelOption.value} value={modelOption.value}>
-                      {modelOption.label}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="">Select Model</MenuItem>
                 </Select>
               </FormControl>
             </div>

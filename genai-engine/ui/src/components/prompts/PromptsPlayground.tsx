@@ -67,6 +67,7 @@ const PromptsPlayground = () => {
     const providers = data.providers
       .filter((provider: ModelProviderResponse) => provider.enabled)
       .map((provider: ModelProviderResponse) => provider.provider);
+
     dispatch({
       type: "updateProviders",
       payload: { providers },
