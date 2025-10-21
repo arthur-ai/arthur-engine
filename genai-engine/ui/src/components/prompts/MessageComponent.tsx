@@ -6,18 +6,18 @@ import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
-import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import { debounce } from "@mui/material/utils";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
+import { HighlightedInputComponent } from "./HighlightedInputComponent";
 import extractMustacheKeywords from "./mustacheExtractor";
 import { usePromptContext } from "./PromptContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
-// export interface AgenticPromptMessageInput {
+
 const Message: React.FC<MessageComponentProps> = ({
   id,
   parentId,
@@ -153,17 +153,11 @@ const Message: React.FC<MessageComponentProps> = ({
         </div>
       </div>
       <div className="mt-2">
-        <TextField
-          id={`message-${id}-input`}
-          label="Content"
-          variant="outlined"
-          maxRows={4}
-          placeholder={role}
+        <HighlightedInputComponent
           value={inputValue}
           onChange={handleContentChange}
-          type="text"
-          fullWidth
-          multiline
+          label="Content"
+          placeholder={role}
         />
       </div>
     </div>
