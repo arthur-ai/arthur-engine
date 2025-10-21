@@ -18,11 +18,11 @@ import OutputField from "./OutputField";
 import { usePromptContext } from "./PromptContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
-import { PromptComponentProps, PROVIDER_OPTIONS } from "./types";
+import { PromptComponentProps } from "./types";
 
-const PROVIDER_TEXT = "Provider";
+const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
-const MODEL_TEXT = "Model";
+const MODEL_TEXT = "Select Model";
 
 const MODEL_OPTIONS = [
   { label: "Model 1", value: "model1" },
@@ -38,7 +38,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [currentPromptName, setCurrentPromptName] = useState<string>(
     prompt.name || ""
   );
-  const [provider, setProvider] = useState<string>(PROVIDER_OPTIONS[0]);
+  const [provider, setProvider] = useState<string>("");
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
@@ -93,6 +93,14 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
 
+  useEffect(() => {
+    if (state.enabledProviders.length > 0) {
+      setProvider(state.enabledProviders[0]);
+    }
+  }, [state.enabledProviders]);
+
+  const providerDisabled = state.enabledProviders.length === 0;
+  const modelDisabled = provider === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
@@ -143,22 +151,34 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 <InputLabel id={`provider-${prompt.id}`}>
                   {PROVIDER_TEXT}
                 </InputLabel>
-                <Select
-                  labelId={`provider-${prompt.id}`}
-                  id={`provider-${prompt.id}`}
-                  label={PROVIDER_TEXT}
-                  value={provider}
-                  onChange={handleProviderChange}
-                  sx={{
-                    backgroundColor: "white",
-                  }}
+                <Tooltip
+                  title={
+                    providerDisabled
+                      ? "No providers available. Please configure at least one provider."
+                      : ""
+                  }
+                  placement="top-start"
+                  arrow
                 >
-                  {PROVIDER_OPTIONS.map((providerValue) => (
-                    <MenuItem key={providerValue} value={providerValue}>
-                      {providerValue}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  <Select
+                    labelId={`provider-${prompt.id}`}
+                    id={`provider-${prompt.id}`}
+                    label={PROVIDER_TEXT}
+                    value={provider}
+                    onChange={handleProviderChange}
+                    sx={{
+                      backgroundColor: "white",
+                    }}
+                    disabled={providerDisabled}
+                  >
+                    <MenuItem value="">Select Provider</MenuItem>
+                    {state.enabledProviders.map((provider) => (
+                      <MenuItem key={provider} value={provider}>
+                        {provider}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Tooltip>
               </FormControl>
             </div>
             <div className="w-1/3">
@@ -173,6 +193,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                   sx={{
                     backgroundColor: "white",
                   }}
+                  disabled={modelDisabled}
                 >
                   {MODEL_OPTIONS.map((modelOption) => (
                     <MenuItem key={modelOption.value} value={modelOption.value}>

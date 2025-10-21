@@ -6,7 +6,6 @@ import {
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  PROVIDER_OPTIONS,
   FrontendTool,
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
@@ -99,7 +98,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   name: "",
   created_at: undefined, // created on BE
   modelName: "",
-  provider: PROVIDER_OPTIONS[0],
+  provider: "",
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
@@ -109,8 +108,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: string = PROVIDER_OPTIONS[0]): PromptType =>
-  createPrompt({ provider });
+const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
   const newId = "-" + Date.now(); // TODO: overwrite on save

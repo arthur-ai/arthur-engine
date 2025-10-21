@@ -168,38 +168,6 @@ const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "tool",
 ];
 
-const PROVIDER_OPTIONS: string[] = [
-  "anthropic",
-  "openai",
-  "gemini",
-  "azure",
-  "deepseek",
-  "mistral",
-  "meta_llama",
-  "groq",
-  "bedrock",
-  "sagemaker",
-  "vertex_ai",
-  "huggingface",
-  "cloudflare",
-  "ai21",
-  "baseten",
-  "cohere",
-  "empower",
-  "featherless_ai",
-  "friendliai",
-  "galadriel",
-  "nebius",
-  "nlp_cloud",
-  "novita",
-  "openrouter",
-  "petals",
-  "replicate",
-  "together_ai",
-  "vllm",
-  "watsonx",
-];
-
 export {
   MESSAGE_ROLE_OPTIONS,
   MessageComponentProps,
@@ -212,6 +180,5 @@ export {
   promptClassificationEnum,
   OutputFieldProps,
   SavePromptDialogProps,
-  PROVIDER_OPTIONS,
   FrontendTool,
 };
