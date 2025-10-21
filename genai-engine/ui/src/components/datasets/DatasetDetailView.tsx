@@ -1,5 +1,5 @@
-import { Alert, Box, Button, TablePagination } from "@mui/material";
-import React, { useCallback, useMemo } from "react";
+import { Alert, Box, Button, Snackbar, TablePagination } from "@mui/material";
+import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { ConfigureColumnsModal } from "./ConfigureColumnsModal";
@@ -9,6 +9,7 @@ import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
 import { VersionDrawer } from "./VersionDrawer";
 
+import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
 import { useDatasetLocalState } from "@/hooks/datasets/useDatasetLocalState";
 import { useDatasetModalState } from "@/hooks/datasets/useDatasetModalState";
@@ -28,6 +29,7 @@ export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
   const { task } = useTask();
   const navigate = useNavigate();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const {
     dataset,
@@ -70,6 +72,11 @@ export const DatasetDetailView: React.FC = () => {
     () => {
       localState.clearChanges();
       versionSelection.resetToLatest();
+    },
+    (error) => {
+      setErrorMessage(
+        error.message || "Failed to save changes. Please try again."
+      );
     }
   );
 
@@ -100,8 +107,14 @@ export const DatasetDetailView: React.FC = () => {
 
   const handleAddRowSubmit = useCallback(
     async (rowData: Record<string, unknown>) => {
-      localState.addRow(rowData);
-      modals.closeAddModal();
+      try {
+        localState.addRow(rowData);
+        modals.closeAddModal();
+      } catch {
+        setErrorMessage(
+          `Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`
+        );
+      }
     },
     [localState, modals]
   );
@@ -173,6 +186,8 @@ export const DatasetDetailView: React.FC = () => {
           isSaving={save.isSaving}
           canSave={save.canSave}
           canAddRow={localState.localColumns.length > 0}
+          columnCount={localState.localColumns.length}
+          rowCount={localState.localRows.length}
           onBack={handleBack}
           onSave={save.saveChanges}
           onConfigureColumns={modals.openConfigureColumns}
@@ -284,6 +299,21 @@ export const DatasetDetailView: React.FC = () => {
         onSave={handleConfigureColumns}
         currentColumns={localState.localColumns}
       />
+
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setErrorMessage(null)}
+          severity="error"
+          sx={{ width: "100%" }}
+        >
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

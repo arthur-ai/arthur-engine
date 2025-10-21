@@ -8,6 +8,8 @@ import React from "react";
 
 import { DatasetSearchBar } from "./DatasetSearchBar";
 
+import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
+
 interface DatasetHeaderProps {
   datasetName: string;
   description?: string | null;
@@ -15,6 +17,8 @@ interface DatasetHeaderProps {
   isSaving: boolean;
   canSave: boolean;
   canAddRow: boolean;
+  columnCount: number;
+  rowCount: number;
   onBack: () => void;
   onSave: () => void;
   onConfigureColumns: () => void;
@@ -32,6 +36,8 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   isSaving,
   canSave,
   canAddRow,
+  columnCount,
+  rowCount,
   onBack,
   onSave,
   onConfigureColumns,
@@ -41,6 +47,13 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   onSearchChange,
   onSearchClear,
 }) => {
+  const isAtRowLimit = rowCount >= MAX_DATASET_ROWS;
+
+  const getAddRowTooltip = () => {
+    if (!canAddRow) return "Add at least one column first";
+    if (isAtRowLimit) return `Maximum row limit (${MAX_DATASET_ROWS}) reached`;
+    return "Add a new row";
+  };
   return (
     <Box
       sx={{
@@ -63,14 +76,20 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           >
             {datasetName}
           </Typography>
-          {hasUnsavedChanges && (
-            <Typography
-              variant="caption"
-              sx={{ color: "warning.main", fontWeight: 500 }}
-            >
-              • Unsaved changes
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {hasUnsavedChanges && (
+              <Typography
+                variant="caption"
+                sx={{ color: "warning.main", fontWeight: 500 }}
+              >
+                • Unsaved changes
+              </Typography>
+            )}
+            <Typography variant="body2" color="text.secondary">
+              {columnCount} column{columnCount !== 1 ? "s" : ""} •{" "}
+              {rowCount.toLocaleString()} / {MAX_DATASET_ROWS} rows
             </Typography>
-          )}
+          </Box>
         </Box>
         <Button
           variant="contained"
@@ -125,8 +144,8 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           size="small"
           startIcon={<AddIcon />}
           onClick={onAddRow}
-          disabled={!canAddRow}
-          title={!canAddRow ? "Add at least one column first" : "Add a new row"}
+          disabled={!canAddRow || isAtRowLimit}
+          title={getAddRowTooltip()}
         >
           Add Row
         </Button>

@@ -14,7 +14,8 @@ export function useDatasetSaveMutation(
   datasetId: string | undefined,
   pendingChanges: PendingChanges,
   hasUnsavedChanges: boolean,
-  onSuccess: () => void
+  onSuccess: () => void,
+  onError?: (error: Error) => void
 ): UseDatasetSaveMutationReturn {
   const api = useApi();
 
@@ -52,7 +53,11 @@ export function useDatasetSaveMutation(
     onSuccess,
     onError: (err) => {
       console.error("Failed to save changes:", err);
-      alert("Failed to save changes. Please try again.");
+      if (onError) {
+        onError(err as Error);
+      } else {
+        alert("Failed to save changes. Please try again.");
+      }
     },
   });
 

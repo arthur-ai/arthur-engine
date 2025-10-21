@@ -5,3 +5,5 @@ export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 export const CELL_TRUNCATION_LENGTH = 50;
 
 export const SEARCH_DEBOUNCE_MS = 500;
+
+export const MAX_DATASET_ROWS = 250;
