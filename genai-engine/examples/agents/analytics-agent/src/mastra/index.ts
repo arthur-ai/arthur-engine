@@ -11,6 +11,16 @@ import { ArthurExporter } from "./observability/arthur";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "info";
 
+// Create the exporter instance
+const arthurExporter = new ArthurExporter({
+  serviceName: "analytics-agent",
+  url: process.env.ARTHUR_BASE_URL!,
+  headers: {
+    Authorization: `Bearer ${process.env.ARTHUR_API_KEY!}`,
+  },
+  taskId: process.env.ARTHUR_TASK_ID!,
+});
+
 export const mastra = new Mastra({
   agents: {
     dataAnalystAgent,
@@ -28,17 +38,11 @@ export const mastra = new Mastra({
     configs: {
       arthur: {
         serviceName: "ai",
-        exporters: [
-          new ArthurExporter({
-            serviceName: "analytics-agent",
-            url: process.env.ARTHUR_BASE_URL!,
-            headers: {
-              Authorization: `Bearer ${process.env.ARTHUR_API_KEY!}`,
-            },
-            taskId: process.env.ARTHUR_TASK_ID!,
-          }),
-        ],
+        exporters: [arthurExporter],
       },
     },
   },
 });
+
+// Export the exporter for access in API routes
+export { arthurExporter };
