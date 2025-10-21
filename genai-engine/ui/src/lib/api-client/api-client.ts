@@ -2857,6 +2857,16 @@ export interface ModelProviderResponse {
   provider: ModelProvider;
 }
 
+/** ModelProvider */
+export type ModelProvider =
+  | "anthropic"
+  | "openai"
+  | "gemini"
+  | "azure"
+  | "bedrock"
+  | "sagemaker"
+  | "vertex_ai";
+
 /**
  * NestedSpanWithMetricsResponse
  * Nested span response with children for building span trees

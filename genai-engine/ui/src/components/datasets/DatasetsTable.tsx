@@ -17,6 +17,7 @@ import {
   DialogActions,
   Button,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import React, { useCallback, useState } from "react";
 
@@ -111,13 +112,13 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                   onClick={onSort}
                 >
                   <Box component="span" sx={{ fontWeight: 600 }}>
-                    Created At
+                    Last Modified
                   </Box>
                 </TableSortLabel>
               </TableCell>
               <TableCell>
                 <Box component="span" sx={{ fontWeight: 600 }}>
-                  Last Modified
+                  Created At
                 </Box>
               </TableCell>
               <TableCell align="center">
@@ -141,7 +142,20 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                 }}
               >
                 <TableCell component="th" scope="row">
-                  <Box sx={{ fontWeight: 500 }}>{dataset.name}</Box>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box sx={{ fontWeight: 500 }}>{dataset.name}</Box>
+                    {dataset.latest_version_number != null && (
+                      <Chip
+                        label={`v${dataset.latest_version_number}`}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.75rem",
+                          fontWeight: 500,
+                        }}
+                      />
+                    )}
+                  </Box>
                   {dataset.description && (
                     <Box
                       component="span"
@@ -151,8 +165,8 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                     </Box>
                   )}
                 </TableCell>
-                <TableCell>{formatDate(dataset.created_at)}</TableCell>
                 <TableCell>{formatDate(dataset.updated_at)}</TableCell>
+                <TableCell>{formatDate(dataset.created_at)}</TableCell>
                 <TableCell align="center">
                   <Box
                     sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}

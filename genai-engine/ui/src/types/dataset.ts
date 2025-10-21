@@ -5,6 +5,7 @@ export interface Dataset {
   metadata?: Record<string, unknown> | null;
   created_at: number;
   updated_at: number;
+  latest_version_number?: number | null;
 }
 
 export interface DatasetFormData {
