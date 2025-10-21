@@ -7,23 +7,26 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 import { DatasetFormData } from "@/types/dataset";
 
-interface CreateDatasetModalProps {
+interface DatasetFormModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: DatasetFormData) => Promise<void>;
   isLoading?: boolean;
-  taskId: string;
+  mode: "create" | "edit";
+  initialData?: DatasetFormData;
 }
 
-export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
+export const DatasetFormModal: React.FC<DatasetFormModalProps> = ({
   open,
   onClose,
   onSubmit,
   isLoading = false,
+  mode,
+  initialData,
 }) => {
   const [formData, setFormData] = useState<DatasetFormData>({
     name: "",
@@ -32,6 +35,17 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
   const [errors, setErrors] = useState<{ name?: string; description?: string }>(
     {}
   );
+
+  useEffect(() => {
+    if (open && initialData) {
+      setFormData({
+        name: initialData.name || "",
+        description: initialData.description || "",
+      });
+    } else if (open && !initialData) {
+      setFormData({ name: "", description: "" });
+    }
+  }, [open, initialData]);
 
   const validateForm = useCallback((): boolean => {
     const newErrors: { name?: string; description?: string } = {};
@@ -57,13 +71,12 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
 
     try {
       await onSubmit(formData);
-      // Reset form on success
       setFormData({ name: "", description: "" });
       setErrors({});
     } catch (error) {
-      console.error("Failed to create dataset:", error);
+      console.error(`Failed to ${mode} dataset:`, error);
     }
-  }, [formData, onSubmit, validateForm]);
+  }, [formData, onSubmit, validateForm, mode]);
 
   const handleClose = useCallback(() => {
     if (!isLoading) {
@@ -83,15 +96,19 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
     [handleSubmit]
   );
 
+  const title = mode === "create" ? "Create Dataset" : "Edit Dataset";
+  const submitText = mode === "create" ? "Create" : "Save";
+  const loadingText = mode === "create" ? "Creating..." : "Saving...";
+
   return (
     <Dialog
       open={open}
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      aria-labelledby="create-dataset-dialog-title"
+      aria-labelledby="dataset-form-dialog-title"
     >
-      <DialogTitle id="create-dataset-dialog-title">Create Dataset</DialogTitle>
+      <DialogTitle id="dataset-form-dialog-title">{title}</DialogTitle>
       <DialogContent>
         <TextField
           autoFocus
@@ -140,7 +157,7 @@ export const CreateDatasetModal: React.FC<CreateDatasetModalProps> = ({
           color="primary"
           startIcon={isLoading ? <CircularProgress size={16} /> : null}
         >
-          {isLoading ? "Creating..." : "Create"}
+          {isLoading ? loadingText : submitText}
         </Button>
       </DialogActions>
     </Dialog>

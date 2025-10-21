@@ -2,7 +2,7 @@ import { Alert, Box, TablePagination } from "@mui/material";
 import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { CreateDatasetModal } from "./CreateDatasetModal";
+import { DatasetFormModal } from "./DatasetFormModal";
 import { DatasetsEmptyState } from "./DatasetsEmptyState";
 import { DatasetsErrorState } from "./DatasetsErrorState";
 import { DatasetsLoadingState } from "./DatasetsLoadingState";
@@ -18,6 +18,7 @@ import { useDatasetsPaginationQuery } from "@/hooks/datasets/useDatasetsPaginati
 import { useDatasetsSearchQuery } from "@/hooks/datasets/useDatasetsSearchQuery";
 import { useDatasetsSortingQuery } from "@/hooks/datasets/useDatasetsSortingQuery";
 import { useDeleteDatasetMutation } from "@/hooks/datasets/useDeleteDatasetMutation";
+import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
 import { Dataset, DatasetFormData } from "@/types/dataset";
@@ -56,6 +57,10 @@ export const DatasetsView: React.FC = () => {
     navigate(`/tasks/${task?.id}/datasets/${newDataset.id}`);
   });
 
+  const updateMutation = useUpdateDatasetMutation(() => {
+    modals.closeEditModal();
+  });
+
   const deleteMutation = useDeleteDatasetMutation();
 
   const handleRowClick = useCallback(
@@ -70,6 +75,17 @@ export const DatasetsView: React.FC = () => {
       await createMutation.mutateAsync(formData);
     },
     [createMutation]
+  );
+
+  const handleUpdateDataset = useCallback(
+    async (formData: DatasetFormData) => {
+      if (!modals.editingDataset) return;
+      await updateMutation.mutateAsync({
+        ...formData,
+        id: modals.editingDataset.id,
+      });
+    },
+    [updateMutation, modals.editingDataset]
   );
 
   if (isLoading && datasets.length === 0) {
@@ -132,6 +148,7 @@ export const DatasetsView: React.FC = () => {
             sortOrder={sorting.sortOrder}
             onSort={sorting.handleSort}
             onRowClick={handleRowClick}
+            onEdit={modals.openEditModal}
             onDelete={deleteMutation.mutateAsync}
           />
         )}
@@ -159,12 +176,28 @@ export const DatasetsView: React.FC = () => {
         </Box>
       )}
 
-      <CreateDatasetModal
+      <DatasetFormModal
         open={modals.isCreateModalOpen}
         onClose={modals.closeCreateModal}
         onSubmit={handleCreateDataset}
         isLoading={createMutation.isPending}
-        taskId={task?.id || ""}
+        mode="create"
+      />
+
+      <DatasetFormModal
+        open={modals.isEditModalOpen}
+        onClose={modals.closeEditModal}
+        onSubmit={handleUpdateDataset}
+        isLoading={updateMutation.isPending}
+        mode="edit"
+        initialData={
+          modals.editingDataset
+            ? {
+                name: modals.editingDataset.name,
+                description: modals.editingDataset.description || "",
+              }
+            : undefined
+        }
       />
     </Box>
   );

@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   Table,
   TableBody,
@@ -28,6 +29,7 @@ interface DatasetsTableProps {
   sortOrder: SortOrder;
   onSort: () => void;
   onRowClick: (dataset: Dataset) => void;
+  onEdit?: (dataset: Dataset) => void;
   onDelete?: (datasetId: string) => Promise<void>;
 }
 
@@ -36,6 +38,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
   sortOrder,
   onSort,
   onRowClick,
+  onEdit,
   onDelete,
 }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -171,6 +174,19 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
                   <Box
                     sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}
                   >
+                    {onEdit && (
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(dataset);
+                        }}
+                        sx={{ color: "primary.main" }}
+                        aria-label="Edit dataset"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
                     <IconButton
                       size="small"
                       onClick={(e) => handleDeleteClick(e, dataset)}
