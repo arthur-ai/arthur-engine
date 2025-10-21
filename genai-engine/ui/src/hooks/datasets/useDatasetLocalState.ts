@@ -34,6 +34,7 @@ function createRowFromData(
 ): DatasetVersionRowResponse {
   return {
     id: rowId || generateTempRowId(),
+    created_at: Date.now(),
     data: columns.map((column_name) => ({
       column_name,
       column_value: String(rowData[column_name] ?? ""),
@@ -48,6 +49,7 @@ function transformRowsForNewColumns(
 ): DatasetVersionRowResponse[] {
   return rows.map((row) => ({
     id: row.id,
+    created_at: row.created_at,
     data: newColumns.map((newColName, idx) => {
       const oldColName = oldColumns[idx];
       let columnValue = "";

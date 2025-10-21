@@ -8,7 +8,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 
 import { useDatasetVersionHistory } from "@/hooks/useDatasetVersionHistory";
 import { DatasetVersionMetadataResponse } from "@/lib/api-client/api-client";
@@ -19,6 +19,8 @@ interface VersionDrawerProps {
   datasetName: string;
   currentVersionNumber?: number;
   latestVersionNumber?: number;
+  selectedVersionNumber: number | null;
+  onVersionClick: (versionNumber: number) => void;
   onClose: () => void;
   onVersionSelect?: (versionNumber: number) => void;
 }
@@ -28,21 +30,19 @@ export const VersionDrawer: React.FC<VersionDrawerProps> = ({
   datasetName,
   currentVersionNumber,
   latestVersionNumber,
+  selectedVersionNumber,
+  onVersionClick,
   onClose,
   onVersionSelect,
 }) => {
   const { versions, totalCount, isLoading, error } =
     useDatasetVersionHistory(datasetId);
 
-  const [selectedVersionNumber, setSelectedVersionNumber] = useState<
-    number | null
-  >(currentVersionNumber || null);
-
   const handleVersionClick = useCallback(
     (version: DatasetVersionMetadataResponse) => {
-      setSelectedVersionNumber(version.version_number);
+      onVersionClick(version.version_number);
     },
-    []
+    [onVersionClick]
   );
 
   const handleSwitchToVersion = useCallback(

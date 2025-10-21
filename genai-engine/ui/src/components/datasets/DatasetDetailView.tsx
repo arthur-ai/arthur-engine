@@ -2,6 +2,8 @@ import { Alert, Box, Button, Snackbar, TablePagination } from "@mui/material";
 import React, { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { ConfirmationModal } from "../common/ConfirmationModal";
+
 import { ConfigureColumnsModal } from "./ConfigureColumnsModal";
 import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
@@ -30,6 +32,10 @@ export const DatasetDetailView: React.FC = () => {
   const { task } = useTask();
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<
+    number | null
+  >(null);
 
   const {
     dataset,
@@ -85,16 +91,35 @@ export const DatasetDetailView: React.FC = () => {
   const totalRows = versionData?.total_count ?? localState.localRows.length;
 
   const handleBack = useCallback(() => {
+    if (localState.hasUnsavedChanges) {
+      setShowUnsavedChangesModal(true);
+    } else {
+      navigate(`/tasks/${task?.id}/datasets`);
+    }
+  }, [localState.hasUnsavedChanges, navigate, task?.id]);
+
+  const handleConfirmNavigation = useCallback(() => {
     navigate(`/tasks/${task?.id}/datasets`);
   }, [navigate, task?.id]);
 
   const handleVersionSwitch = useCallback(
     (versionNumber: number) => {
+      if (localState.hasUnsavedChanges) {
+        return;
+      }
       versionSelection.handleVersionSwitch(versionNumber);
-      localState.clearChanges();
+      setSelectedVersionForSwitch(null);
     },
-    [versionSelection, localState]
+    [localState.hasUnsavedChanges, versionSelection]
   );
+
+  const handleConfirmVersionSwitch = useCallback(() => {
+    if (selectedVersionForSwitch !== null) {
+      versionSelection.handleVersionSwitch(selectedVersionForSwitch);
+      localState.clearChanges();
+      setSelectedVersionForSwitch(null);
+    }
+  }, [selectedVersionForSwitch, versionSelection, localState]);
 
   const handleUpdateRow = useCallback(
     async (rowData: Record<string, unknown>) => {
@@ -268,6 +293,8 @@ export const DatasetDetailView: React.FC = () => {
           datasetName={dataset.name}
           currentVersionNumber={versionSelection.currentVersion}
           latestVersionNumber={latestVersion?.version_number}
+          selectedVersionNumber={selectedVersionForSwitch}
+          onVersionClick={setSelectedVersionForSwitch}
           onClose={modals.closeVersionDrawer}
           onVersionSelect={handleVersionSwitch}
         />
@@ -314,6 +341,26 @@ export const DatasetDetailView: React.FC = () => {
           {errorMessage}
         </Alert>
       </Snackbar>
+
+      <ConfirmationModal
+        open={showUnsavedChangesModal}
+        onClose={() => setShowUnsavedChangesModal(false)}
+        onConfirm={handleConfirmNavigation}
+        title="Unsaved Changes"
+        message="You have unsaved changes. If you leave now, your changes will be lost. Are you sure you want to continue?"
+        confirmText="Leave Without Saving"
+        cancelText="Stay"
+      />
+
+      <ConfirmationModal
+        open={selectedVersionForSwitch !== null && localState.hasUnsavedChanges}
+        onClose={() => setSelectedVersionForSwitch(null)}
+        onConfirm={handleConfirmVersionSwitch}
+        title="Unsaved Changes"
+        message="You have unsaved changes in the current version. If you switch versions now, your changes will be lost. Are you sure you want to continue?"
+        confirmText="Switch Version"
+        cancelText="Cancel"
+      />
     </Box>
   );
 };
