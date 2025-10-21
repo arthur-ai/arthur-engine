@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { CopilotKit } from "@copilotkit/react-core";
 import { TelemetryProvider } from "@/providers/TelemetryProvider";
+import { CopilotKitWithHeaders } from "@/components/CopilotKitWithHeaders";
 import "./globals.css";
 import "@copilotkit/react-ui/styles.css";
 
@@ -31,9 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TelemetryProvider>
-          <CopilotKit runtimeUrl="/api/copilotkit" agent="dataAnalystAgent">
+          <CopilotKitWithHeaders>
             {children}
-          </CopilotKit>
+          </CopilotKitWithHeaders>
         </TelemetryProvider>
       </body>
     </html>
