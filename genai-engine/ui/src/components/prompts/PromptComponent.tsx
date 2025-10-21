@@ -1,4 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
@@ -13,7 +12,7 @@ import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import MessageComponent from "./MessageComponent";
+import MessagesSection from "./MessagesSection";
 import ModelParamsDialog from "./ModelParamsDialog";
 import OutputField from "./OutputField";
 import { usePromptContext } from "./PromptContext";
@@ -83,13 +82,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     dispatch({
       type: "duplicatePrompt",
       payload: { id: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleAddMessage = useCallback(() => {
-    dispatch({
-      type: "addMessage",
-      payload: { parentId: prompt.id },
     });
   }, [dispatch, prompt.id]);
 
@@ -192,11 +184,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             </div>
           </div>
           <div className="flex justify-end items-center gap-1">
-            <Tooltip title="Add Message" placement="top-start" arrow>
-              <IconButton aria-label="add" onClick={handleAddMessage}>
-                <AddIcon />
-              </IconButton>
-            </Tooltip>
             <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
               <IconButton
                 aria-label="duplicate"
@@ -233,17 +220,10 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           </div>
         </div>
       </Container>
-      <div>
-        {prompt.messages.map((message) => (
-          <MessageComponent
-            key={message.id}
-            id={message.id}
-            parentId={prompt.id}
-            role={message.role}
-            defaultContent={message.content || ""}
-            content={message.content || ""}
-          />
-        ))}
+      <div className="m-1">
+        <Paper elevation={2} className="p-1">
+          <MessagesSection prompt={prompt} />
+        </Paper>
       </div>
       <div className="m-1">
         <Paper elevation={2} className="p-1">

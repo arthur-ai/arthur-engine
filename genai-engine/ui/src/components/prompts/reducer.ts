@@ -436,6 +436,20 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
+    case "moveMessage": {
+      const { parentId, fromIndex, toIndex } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: arrayUtils.moveItem(prompt.messages, fromIndex, toIndex),
+              }
+            : prompt
+        ),
+      };
+    }
     default:
       return state;
   }

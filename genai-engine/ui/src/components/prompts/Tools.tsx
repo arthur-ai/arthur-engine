@@ -157,7 +157,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
         className={`flex justify-between items-center ${pointerClass}`}
         onClick={handleToggleTools}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center">
           {toolsExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
           <span className="font-medium">Tools</span>
           {prompt.tools.length > 0 && (
