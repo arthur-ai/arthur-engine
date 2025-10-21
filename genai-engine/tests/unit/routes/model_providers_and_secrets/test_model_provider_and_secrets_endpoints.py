@@ -4,17 +4,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from schemas.enums import ModelProvider
+from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
 @pytest.mark.unit_tests
 @patch("schemas.agentic_prompt_schemas.completion_cost")
-@patch("litellm.get_valid_models")
 def test_model_provider_lifecycle(
-    mock_get_valid_models, mock_completion_cost, client: GenaiEngineTestClientBase
+    mock_completion_cost, client: GenaiEngineTestClientBase
 ):
     mock_completion_cost.return_value = 0.001234
-    mock_get_valid_models.return_value = ["gpt-5", "gpt-4.1"]
 
     # first validate listing providers shows all disabled
     response = client.base_client.get(
@@ -51,6 +50,8 @@ def test_model_provider_lifecycle(
         )
 
     # validate we can list models for the provider
+    # mock returned list
+    SUPPORTED_TEXT_MODELS[ModelProvider.OPENAI] = ["gpt-5", "gpt-4.1"]
     response = client.base_client.get(
         f"/api/v1/model_providers/openai/available_models",
         headers=client.authorized_user_api_key_headers,
