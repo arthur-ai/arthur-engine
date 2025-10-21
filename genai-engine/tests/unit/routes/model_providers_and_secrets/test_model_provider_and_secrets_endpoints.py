@@ -11,7 +11,7 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 @patch("litellm.get_valid_models")
 def test_model_provider_lifecycle(
-    mock_completion_cost, mock_get_valid_models, client: GenaiEngineTestClientBase
+    mock_get_valid_models, mock_completion_cost, client: GenaiEngineTestClientBase
 ):
     mock_completion_cost.return_value = 0.001234
     mock_get_valid_models.return_value = ["gpt-5", "gpt-4.1"]
@@ -56,8 +56,8 @@ def test_model_provider_lifecycle(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["provider"]) == "openai"
-    assert len(response.json()["available_models"]) == ["gpt-5", "gpt-4.1"]
+    assert response.json()["provider"] == "openai"
+    assert response.json()["available_models"] == ["gpt-5", "gpt-4.1"]
 
     # validate we can cannot list models for disabled provider
     response = client.base_client.get(
