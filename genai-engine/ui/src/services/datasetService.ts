@@ -1,5 +1,8 @@
-import { Api } from "@/lib/api-client/api-client";
-import { Dataset } from "@/types/dataset";
+import {
+  Api,
+  DatasetResponse,
+  NewDatasetRequest,
+} from "@/lib/api-client/api-client";
 
 export interface FetchDatasetsParams {
   dataset_name?: string;
@@ -8,21 +11,11 @@ export interface FetchDatasetsParams {
   sort: "asc" | "desc";
 }
 
-export interface CreateDatasetParams {
-  name: string;
-  description: string | null;
-  metadata: Record<string, unknown>;
-}
-
 export async function createDataset(
   api: Api<unknown>,
   taskId: string,
-  formData: {
-    name: string;
-    description?: string;
-    metadata?: Record<string, unknown>;
-  }
-): Promise<Dataset> {
+  formData: NewDatasetRequest
+): Promise<DatasetResponse> {
   const response = await api.api.createDatasetApiV2DatasetsPost({
     name: formData.name,
     description: formData.description ?? null,
@@ -32,7 +25,7 @@ export async function createDataset(
     },
   });
 
-  return response.data as Dataset;
+  return response.data;
 }
 
 export async function deleteDataset(

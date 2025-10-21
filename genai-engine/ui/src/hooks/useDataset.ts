@@ -1,6 +1,6 @@
 import { useApiQuery } from "./useApiQuery";
 
-import { Dataset } from "@/types/dataset";
+import type { DatasetResponse } from "@/lib/api-client/api-client";
 
 export function useDataset(datasetId: string | undefined) {
   const { data, error, isLoading, refetch } =
@@ -15,7 +15,7 @@ export function useDataset(datasetId: string | undefined) {
     });
 
   return {
-    dataset: data as Dataset | undefined,
+    dataset: data as DatasetResponse | undefined,
     error,
     isLoading,
     refetch,

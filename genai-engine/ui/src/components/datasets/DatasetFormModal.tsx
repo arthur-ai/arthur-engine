@@ -10,24 +10,24 @@ import {
 import { useForm } from "@tanstack/react-form";
 import React from "react";
 
-import { DatasetFormData } from "@/types/dataset";
+import type { NewDatasetRequest } from "@/lib/api-client/api-client";
 
 interface DatasetFormModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: DatasetFormData) => Promise<void>;
+  onSubmit: (data: NewDatasetRequest) => Promise<void>;
   isLoading?: boolean;
   mode: "create" | "edit";
-  initialData?: DatasetFormData;
+  initialData?: NewDatasetRequest;
   datasetId?: string;
 }
 
 interface DatasetFormContentProps {
   onClose: () => void;
-  onSubmit: (data: DatasetFormData) => Promise<void>;
+  onSubmit: (data: NewDatasetRequest) => Promise<void>;
   isLoading: boolean;
   mode: "create" | "edit";
-  initialData?: DatasetFormData;
+  initialData?: NewDatasetRequest;
 }
 
 const DatasetFormContent: React.FC<DatasetFormContentProps> = ({

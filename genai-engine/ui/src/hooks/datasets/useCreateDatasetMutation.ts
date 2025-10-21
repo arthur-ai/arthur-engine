@@ -1,17 +1,20 @@
 import { useApi } from "@/hooks/useApi";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import type {
+  DatasetResponse,
+  NewDatasetRequest,
+} from "@/lib/api-client/api-client";
 import { queryKeys } from "@/lib/queryKeys";
 import { createDataset } from "@/services/datasetService";
-import { Dataset, DatasetFormData } from "@/types/dataset";
 
 export const useCreateDatasetMutation = (
   taskId: string | undefined,
-  onSuccess: (dataset: Dataset) => void
+  onSuccess: (dataset: DatasetResponse) => void
 ) => {
   const api = useApi();
 
-  return useApiMutation<Dataset, DatasetFormData>({
-    mutationFn: async (formData: DatasetFormData) => {
+  return useApiMutation<DatasetResponse, NewDatasetRequest>({
+    mutationFn: async (formData: NewDatasetRequest) => {
       if (!api || !taskId) throw new Error("API or task not available");
       return createDataset(api, taskId, formData);
     },

@@ -21,7 +21,10 @@ import { useDeleteDatasetMutation } from "@/hooks/datasets/useDeleteDatasetMutat
 import { useUpdateDatasetMutation } from "@/hooks/datasets/useUpdateDatasetMutation";
 import { useDatasets } from "@/hooks/useDatasets";
 import { useTask } from "@/hooks/useTask";
-import { Dataset, DatasetFormData } from "@/types/dataset";
+import type {
+  DatasetResponse,
+  NewDatasetRequest,
+} from "@/lib/api-client/api-client";
 
 export const DatasetsView: React.FC = () => {
   const { task } = useTask();
@@ -64,21 +67,21 @@ export const DatasetsView: React.FC = () => {
   const deleteMutation = useDeleteDatasetMutation();
 
   const handleRowClick = useCallback(
-    (dataset: Dataset) => {
+    (dataset: DatasetResponse) => {
       navigate(`/tasks/${task?.id}/datasets/${dataset.id}`);
     },
     [navigate, task?.id]
   );
 
   const handleCreateDataset = useCallback(
-    async (formData: DatasetFormData) => {
+    async (formData: NewDatasetRequest) => {
       await createMutation.mutateAsync(formData);
     },
     [createMutation]
   );
 
   const handleUpdateDataset = useCallback(
-    async (formData: DatasetFormData) => {
+    async (formData: NewDatasetRequest) => {
       if (!modals.editingDataset) return;
       await updateMutation.mutateAsync({
         ...formData,

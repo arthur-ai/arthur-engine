@@ -2,8 +2,9 @@ import { useMemo } from "react";
 
 import { useApiQuery } from "./useApiQuery";
 
+import type { DatasetResponse } from "@/lib/api-client/api-client";
 import { buildFetchDatasetsParams } from "@/services/datasetService";
-import { DatasetFilters, Dataset } from "@/types/dataset";
+import type { DatasetFilters } from "@/types/dataset";
 
 export function useDatasets(
   taskId: string | undefined,
@@ -32,7 +33,7 @@ export function useDatasets(
   );
 
   return {
-    datasets: taskDatasets as Dataset[],
+    datasets: taskDatasets as DatasetResponse[],
     count: taskDatasets.length,
     error,
     isLoading,

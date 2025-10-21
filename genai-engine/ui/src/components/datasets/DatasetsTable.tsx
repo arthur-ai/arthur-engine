@@ -22,14 +22,15 @@ import {
 } from "@mui/material";
 import React, { useCallback, useState } from "react";
 
-import { Dataset, SortOrder } from "@/types/dataset";
+import type { DatasetResponse } from "@/lib/api-client/api-client";
+import type { SortOrder } from "@/types/dataset";
 
 interface DatasetsTableProps {
-  datasets: Dataset[];
+  datasets: DatasetResponse[];
   sortOrder: SortOrder;
   onSort: () => void;
-  onRowClick: (dataset: Dataset) => void;
-  onEdit?: (dataset: Dataset) => void;
+  onRowClick: (dataset: DatasetResponse) => void;
+  onEdit?: (dataset: DatasetResponse) => void;
   onDelete?: (datasetId: string) => Promise<void>;
 }
 
@@ -42,7 +43,8 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
   onDelete,
 }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [datasetToDelete, setDatasetToDelete] = useState<Dataset | null>(null);
+  const [datasetToDelete, setDatasetToDelete] =
+    useState<DatasetResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDate = useCallback((timestamp: number): string => {
@@ -62,7 +64,7 @@ export const DatasetsTable: React.FC<DatasetsTableProps> = ({
   }, []);
 
   const handleDeleteClick = useCallback(
-    (e: React.MouseEvent, dataset: Dataset) => {
+    (e: React.MouseEvent, dataset: DatasetResponse) => {
       e.stopPropagation();
       setDatasetToDelete(dataset);
       setDeleteDialogOpen(true);
