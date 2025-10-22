@@ -1,6 +1,7 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import { Chip } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
@@ -14,7 +15,6 @@ import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { Chip } from "@mui/material";
 
 const SpanDetailsContext = createContext<{
   span: NestedSpanWithMetricsResponse;
@@ -32,13 +32,9 @@ const useSpanDetails = () => {
 type Props = {
   span: NestedSpanWithMetricsResponse;
   children: React.ReactNode;
-  sticky?: boolean;
 };
 
-export const SpanDetails = ({ span, sticky = false, children }: Props) => {
-  const duration = getSpanDuration(span);
-  const start = dayjs(span.start_time);
-
+export const SpanDetails = ({ span, children }: Props) => {
   const strategy = getSpanDetailsStrategy(
     span.span_kind as OpenInferenceSpanKind
   );

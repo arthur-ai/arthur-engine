@@ -1,5 +1,4 @@
-import { FilterableField } from "./fields";
-import { Operator, Operators } from "./types";
+import { FilterableField, Operator, Operators } from "./types";
 
 export type IncomingFilter = {
   name: FilterableField;

@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { columns } from "../../data/columns";
 import { useTracesStore } from "../../store";
-import { FiltersRow } from "../filtering/filters-row";
+import { FiltersRow } from "../filtering/trace-fields";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";

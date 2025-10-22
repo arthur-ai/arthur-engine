@@ -1,7 +1,7 @@
-import Chip from "@mui/material/Chip";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { toast } from "sonner";
+import Chip from "@mui/material/Chip";
 import { SxProps, Theme } from "@mui/material/styles";
+import { toast } from "sonner";
 
 type Props = {
   label: string;
