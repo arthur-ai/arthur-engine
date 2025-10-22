@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,7 +13,7 @@ class DatabaseAgenticPrompt(Base):
 
     __tablename__ = "agentic_prompts"
 
-    # Composite primary key: task_id + name
+    # Composite primary key: task_id + name + version
     task_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("tasks.id"),
@@ -45,11 +45,6 @@ class DatabaseAgenticPrompt(Base):
 
     # prompt configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
-
-    # Ensure name is unique within each task
-    __table_args__ = (
-        UniqueConstraint("task_id", "name", "version", name="uq_task_prompt_version"),
-    )
 
     # Relationships
     task: Mapped["DatabaseTask"] = relationship(back_populates="agentic_prompts")

@@ -344,7 +344,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
         if self.has_been_deleted():
-            raise ValueError("This prompt has been deleted")
+            raise ValueError(
+                f"Cannot run chat completion for this prompt because it was deleted on: {self.deleted_at}",
+            )
 
         model, completion_params = self._get_completion_params(completion_request)
         response = llm_client.completion(model=model, **completion_params)
@@ -365,7 +367,9 @@ class AgenticPrompt(AgenticPromptBaseConfig):
     ) -> AsyncGenerator[str, None]:
         try:
             if self.has_been_deleted():
-                raise ValueError("This prompt has been deleted")
+                raise ValueError(
+                    f"Cannot stream chat completion for this prompt because it was deleted on: {self.deleted_at}",
+                )
 
             model, completion_params = self._get_completion_params(completion_request)
             response = await llm_client.acompletion(model=model, **completion_params)

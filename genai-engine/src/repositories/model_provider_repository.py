@@ -111,9 +111,6 @@ class ModelProviderRepository:
         # construct responses based on if a secret is configured for the provider
         providers = []
         for provider in ModelProvider:
-            if provider == ModelProvider.NONE:
-                continue
-
             providers.append(
                 ModelProviderResponse(
                     provider=provider,  # type:ignore

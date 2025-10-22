@@ -167,7 +167,6 @@ class ModelProvider(str, Enum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
     GEMINI = "gemini"
-    NONE = ""
 
     # not supporting for v0
     # AZURE = "azure"

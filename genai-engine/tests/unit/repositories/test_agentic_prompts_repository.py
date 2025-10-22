@@ -83,7 +83,7 @@ def sample_deleted_prompt(sample_db_prompt):
         name="deleted_prompt",
         messages=[],
         model_name="",
-        model_provider="",
+        model_provider="openai",
         version=1,
         deleted_at=datetime.now(),
     )
@@ -838,7 +838,10 @@ def test_run_chat_completion_strict_additional_properties_validation(
 @pytest.mark.unit_tests
 def test_run_deleted_prompt_spawns_error(sample_deleted_prompt, mock_llm_client):
     """Test run chat completion raises an error if the prompt has been deleted"""
-    with pytest.raises(ValueError, match="This prompt has been deleted"):
+    with pytest.raises(
+        ValueError,
+        match="Cannot run chat completion for this prompt because it was deleted on",
+    ):
         sample_deleted_prompt.run_chat_completion(mock_llm_client)
 
 
@@ -852,4 +855,7 @@ async def test_stream_deleted_prompt_spawns_error(
     stream = sample_deleted_prompt.stream_chat_completion(mock_llm_client)
     events = [event async for event in stream]
     assert len(events) == 1
-    assert events[0] == "event: error\ndata: This prompt has been deleted\n\n"
+    assert (
+        "event: error\ndata: Cannot stream chat completion for this prompt because it was deleted on"
+        in events[0]
+    )

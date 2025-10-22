@@ -4644,8 +4644,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to retrieve."
+                        },
+                        "description": "The name of the prompt to retrieve."
                     },
                     {
                         "name": "prompt_version",
@@ -4653,8 +4655,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Version"
-                        }
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
                     },
                     {
                         "name": "task_id",
@@ -4665,18 +4669,6 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "description": "returns all unique prompt names including soft-deleted prompts",
-                            "default": false,
-                            "title": "Include Deleted"
-                        },
-                        "description": "returns all unique prompt names including soft-deleted prompts"
                     }
                 ],
                 "responses": {
@@ -4721,8 +4713,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to delete."
+                        },
+                        "description": "The name of the prompt to delete."
                     },
                     {
                         "name": "prompt_version",
@@ -4730,8 +4724,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Version"
-                        }
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
                     },
                     {
                         "name": "task_id",
@@ -4772,7 +4768,7 @@
                     "AgenticPrompt"
                 ],
                 "summary": "Get all agentic prompts",
-                "description": "Get all agentic prompts for a given task. If include_deleted is true, this will return all existing and soft-deleted prompts.",
+                "description": "Get all agentic prompts for a given task.",
                 "operationId": "get_all_agentic_prompts_api_v1__task_id__agentic_prompts_get",
                 "security": [
                     {
@@ -4789,18 +4785,6 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "description": "returns all unique prompt names including soft-deleted prompts",
-                            "default": false,
-                            "title": "Include Deleted"
-                        },
-                        "description": "returns all unique prompt names including soft-deleted prompts"
                     }
                 ],
                 "responses": {
@@ -4810,55 +4794,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/AgenticPrompts"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/{task_id}/agentic_prompts/names": {
-            "get": {
-                "tags": [
-                    "AgenticPrompt"
-                ],
-                "summary": "Get all unique agentic prompt names",
-                "description": "Get all unique agentic prompt names for a given task.",
-                "operationId": "get_unique_prompt_names_api_v1__task_id__agentic_prompts_names_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AgenticPromptNames"
                                 }
                             }
                         }
@@ -4896,8 +4831,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to retrieve."
+                        },
+                        "description": "The name of the prompt to retrieve."
                     },
                     {
                         "name": "task_id",
@@ -4908,18 +4845,6 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
-                    },
-                    {
-                        "name": "include_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "description": "returns all unique prompt names including soft-deleted prompts",
-                            "default": false,
-                            "title": "Include Deleted"
-                        },
-                        "description": "returns all unique prompt names including soft-deleted prompts"
                     }
                 ],
                 "responses": {
@@ -5019,8 +4944,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to run."
+                        },
+                        "description": "The name of the prompt to run."
                     },
                     {
                         "name": "prompt_version",
@@ -5028,8 +4955,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Version"
-                        }
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
                     },
                     {
                         "name": "task_id",
@@ -5105,8 +5034,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to save."
+                        },
+                        "description": "The name of the prompt to save."
                     },
                     {
                         "name": "task_id",
@@ -5169,8 +5100,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "title": "Prompt Name"
-                        }
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt to delete."
+                        },
+                        "description": "The name of the prompt to delete."
                     },
                     {
                         "name": "task_id",
@@ -7321,22 +7254,6 @@
                     "role"
                 ],
                 "title": "AgenticPromptMessage"
-            },
-            "AgenticPromptNames": {
-                "properties": {
-                    "names": {
-                        "items": {
-                            "type": "string"
-                        },
-                        "type": "array",
-                        "title": "Names"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "names"
-                ],
-                "title": "AgenticPromptNames"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -9618,8 +9535,7 @@
                 "enum": [
                     "anthropic",
                     "openai",
-                    "gemini",
-                    ""
+                    "gemini"
                 ],
                 "title": "ModelProvider"
             },

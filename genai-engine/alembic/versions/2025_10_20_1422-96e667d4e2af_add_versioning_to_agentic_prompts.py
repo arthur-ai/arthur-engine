@@ -38,18 +38,12 @@ def upgrade() -> None:
         "agentic_prompts",
         ["task_id", "name", "version"],
     )
-    op.create_unique_constraint(
-        "uq_task_prompt_version",
-        "agentic_prompts",
-        ["task_id", "name", "version"],
-    )
 
     # Remove default so version becomes required for future inserts
     op.alter_column("agentic_prompts", "version", server_default=None)
 
 
 def downgrade() -> None:
-    op.drop_constraint("uq_task_prompt_version", "agentic_prompts", type_="unique")
     op.drop_constraint("agentic_prompts_pkey", "agentic_prompts", type_="primary")
     op.create_primary_key(
         "agentic_prompts_pkey",
