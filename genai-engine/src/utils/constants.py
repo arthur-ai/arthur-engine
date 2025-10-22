@@ -384,3 +384,8 @@ METADATA_KEY = SpanAttributes.METADATA
 SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
 
 ##################################################################
+
+# Dataset constants
+MAX_DATASET_ROWS = 250
+
+##################################################################
