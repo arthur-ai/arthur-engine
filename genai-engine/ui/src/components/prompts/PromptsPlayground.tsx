@@ -5,28 +5,35 @@ import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptContext";
 import { promptsReducer, initialState } from "./reducer";
-import { toFrontendPrompt } from "./utils";
+import { promptClassificationEnum } from "./types";
+import { toFrontendPrompt, generateId } from "./utils";
+import { sampleSpans } from "./sampleSpans";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import {
   ModelProvider,
   ModelProviderResponse,
+  MessageRole,
 } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
+  const [searchParams] = useSearchParams();
   const hasFetchedPrompts = useRef(false);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
+  const hasFetchedSpan = useRef(false);
 
   const apiClient = useApi();
   const { task } = useTask();
   const taskId = task?.id;
+  const spanId = searchParams.get("spanId");
 
   const fetchPrompts = useCallback(async () => {
     if (hasFetchedPrompts.current) {
@@ -120,10 +127,69 @@ const PromptsPlayground = () => {
     });
   }, [apiClient, state.enabledProviders]);
 
+  const fetchSpanData = useCallback(async () => {
+    if (hasFetchedSpan.current || !spanId || !apiClient) {
+      return;
+    }
+
+    hasFetchedSpan.current = true;
+
+    try {
+      // const response = await apiClient.api.getSpanByIdApiV1SpansSpanIdGet(spanId);
+      const spanData = sampleSpans[1]; //response.data;
+
+      // Create a prompt from span data
+      const spanPrompt = {
+        id: `span-prompt-${Date.now()}`,
+        classification: promptClassificationEnum.DEFAULT,
+        name: `Span: ${spanData.span_name || spanData.span_id}`,
+        created_at: spanData.created_at,
+        modelName: "gpt-4", // Default model
+        provider: "openai", // Default provider
+        messages:
+          spanData.context?.map((msg: Record<string, any>) => ({
+            id: generateId("msg"),
+            role: msg.role as MessageRole,
+            content: msg.content || "",
+            disabled: false,
+            tool_calls: msg.tool_calls,
+            tool_call_id: msg.tool_call_id,
+          })) || [],
+        modelParameters: {
+          temperature: 0.7,
+          top_p: 1,
+          max_tokens: 1000,
+        },
+        outputField: spanData.response || "",
+        responseFormat: undefined,
+        tools: [],
+        toolChoice: undefined,
+      };
+
+      // Update the first empty prompt instead of adding a new one
+      if (state.prompts.length > 0) {
+        dispatch({
+          type: "updatePrompt",
+          payload: { promptId: state.prompts[0].id, prompt: spanPrompt },
+        });
+      } else {
+        dispatch({
+          type: "hydratePrompt",
+          payload: { promptData: spanPrompt },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch span data:", error);
+    }
+  }, [spanId, apiClient, state.prompts]);
+
   useEffect(() => {
     fetchPrompts();
     fetchProviders();
-  }, [fetchPrompts, fetchProviders]);
+    if (spanId || true) {
+      fetchSpanData();
+    }
+  }, [fetchPrompts, fetchProviders, fetchSpanData, spanId]);
 
   useEffect(() => {
     if (state.enabledProviders.length > 0) {

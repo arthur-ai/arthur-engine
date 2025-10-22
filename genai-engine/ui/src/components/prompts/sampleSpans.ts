@@ -1,0 +1,486 @@
+import { SpanWithMetricsResponse } from "@/lib/api-client/api-client";
+
+// Sample spans representing real-world usage patterns
+export const sampleSpans: SpanWithMetricsResponse[] = [
+  // Sample 1: Simple LLM conversation without tools
+  {
+    id: "span-001",
+    trace_id: "trace-weather-001",
+    span_id: "span-llm-001",
+    parent_span_id: null,
+    span_kind: "LLM",
+    span_name: "ChatOpenAI",
+    start_time: "2024-01-15T10:30:00Z",
+    end_time: "2024-01-15T10:30:02Z",
+    created_at: "2024-01-15T10:30:02Z",
+    updated_at: "2024-01-15T10:30:02Z",
+    status_code: "Ok",
+    task_id: "task-weather-assistant",
+    session_id: "session-user-123",
+    system_prompt: "You are a helpful weather assistant. Provide accurate and friendly weather information.",
+    user_query: "What's the weather like in San Francisco today?",
+    response: "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
+    context: [
+      {
+        role: "system",
+        content: "You are a helpful weather assistant. Provide accurate and friendly weather information."
+      },
+      {
+        role: "user", 
+        content: "What's the weather like in San Francisco today?"
+      },
+      {
+        role: "assistant",
+        content: "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco."
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "ChatOpenAI",
+      spanId: "span-llm-001",
+      traceId: "trace-weather-001",
+      attributes: {
+        "openinference.span.kind": "LLM",
+        "llm.model_name": "gpt-4",
+        "llm.token_count.prompt": 45,
+        "llm.token_count.completion": 67,
+        "llm.token_count.total": 112,
+        "llm.input_messages.0.message.role": "system",
+        "llm.input_messages.0.message.content": "You are a helpful weather assistant. Provide accurate and friendly weather information.",
+        "llm.input_messages.1.message.role": "user",
+        "llm.input_messages.1.message.content": "What's the weather like in San Francisco today?",
+        "llm.output_messages.0.message.role": "assistant",
+        "llm.output_messages.0.message.content": "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
+        "session.id": "session-user-123",
+        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-001",
+        metric_id: "query-relevance-metric",
+        metric_type: "QueryRelevance",
+        span_id: "span-001",
+        prompt_tokens: 45,
+        completion_tokens: 67,
+        latency_ms: 1850,
+        details: '{"query_relevance": {"llm_relevance_score": 0.89}, "reason": "Query is highly relevant to weather assistance task"}',
+        created_at: "2024-01-15T10:30:02Z",
+        updated_at: "2024-01-15T10:30:02Z"
+      }
+    ]
+  },
+
+  // Sample 2: LLM with tool calls for weather API
+  {
+    id: "span-002",
+    trace_id: "trace-weather-002",
+    span_id: "span-llm-002",
+    parent_span_id: null,
+    span_kind: "LLM",
+    span_name: "ChatOpenAI",
+    start_time: "2024-01-15T11:15:00Z",
+    end_time: "2024-01-15T11:15:04Z",
+    created_at: "2024-01-15T11:15:04Z",
+    updated_at: "2024-01-15T11:15:04Z",
+    status_code: "Ok",
+    task_id: "task-weather-assistant",
+    session_id: "session-user-456",
+    system_prompt: "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions.",
+    user_query: "What's the current temperature in New York?",
+    response: "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity.",
+    context: [
+      {
+        role: "system",
+        content: "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions."
+      },
+      {
+        role: "user",
+        content: "What's the current temperature in New York?"
+      },
+      {
+        role: "assistant",
+        content: "I'll check the current weather in New York for you.",
+        tool_calls: [
+          {
+            id: "call_weather_nyc_001",
+            type: "function",
+            function: {
+              name: "get_weather",
+              arguments: '{"location": "New York", "units": "celsius"}'
+            }
+          }
+        ]
+      },
+      {
+        role: "tool",
+        name: "get_weather",
+        content: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
+        tool_call_id: "call_weather_nyc_001"
+      },
+      {
+        role: "assistant",
+        content: "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity."
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "ChatOpenAI",
+      spanId: "span-llm-002",
+      traceId: "trace-weather-002",
+      attributes: {
+        "openinference.span.kind": "LLM",
+        "llm.model_name": "gpt-4",
+        "llm.token_count.prompt": 89,
+        "llm.token_count.completion": 52,
+        "llm.token_count.total": 141,
+        "llm.input_messages.0.message.role": "system",
+        "llm.input_messages.0.message.content": "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions.",
+        "llm.input_messages.1.message.role": "user",
+        "llm.input_messages.1.message.content": "What's the current temperature in New York?",
+        "llm.input_messages.2.message.role": "assistant",
+        "llm.input_messages.2.message.content": "I'll check the current weather in New York for you.",
+        "llm.input_messages.2.message.tool_calls.0.tool_call.function.name": "get_weather",
+        "llm.input_messages.2.message.tool_calls.0.tool_call.function.arguments": '{"location": "New York", "units": "celsius"}',
+        "llm.input_messages.2.message.tool_calls.0.tool_call.id": "call_weather_nyc_001",
+        "llm.input_messages.3.message.role": "tool",
+        "llm.input_messages.3.message.name": "get_weather",
+        "llm.input_messages.3.message.content": '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
+        "llm.input_messages.3.message.tool_call_id": "call_weather_nyc_001",
+        "llm.input_messages.4.message.role": "assistant",
+        "llm.input_messages.4.message.content": "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity.",
+        "session.id": "session-user-456",
+        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-002",
+        metric_id: "query-relevance-metric",
+        metric_type: "QueryRelevance",
+        span_id: "span-002",
+        prompt_tokens: 89,
+        completion_tokens: 52,
+        latency_ms: 3200,
+        details: '{"query_relevance": {"llm_relevance_score": 0.95}, "reason": "Query is highly relevant and tool was used correctly"}',
+        created_at: "2024-01-15T11:15:04Z",
+        updated_at: "2024-01-15T11:15:04Z"
+      },
+      {
+        id: "metric-003",
+        metric_id: "tool-selection-metric",
+        metric_type: "ToolSelection",
+        span_id: "span-002",
+        prompt_tokens: 89,
+        completion_tokens: 52,
+        latency_ms: 3200,
+        details: '{"tool_selection": {"tool_selection": 1, "tool_usage": 1, "tool_selection_reason": "Correct weather tool was selected", "tool_usage_reason": "Tool was used correctly with proper parameters"}}',
+        created_at: "2024-01-15T11:15:04Z",
+        updated_at: "2024-01-15T11:15:04Z"
+      }
+    ]
+  },
+
+  // Sample 3: Tool execution span
+  {
+    id: "span-003",
+    trace_id: "trace-weather-002",
+    span_id: "span-tool-001",
+    parent_span_id: "span-llm-002",
+    span_kind: "TOOL",
+    span_name: "get_weather",
+    start_time: "2024-01-15T11:15:01Z",
+    end_time: "2024-01-15T11:15:02Z",
+    created_at: "2024-01-15T11:15:02Z",
+    updated_at: "2024-01-15T11:15:02Z",
+    status_code: "Ok",
+    task_id: "task-weather-assistant",
+    session_id: "session-user-456",
+    system_prompt: null,
+    user_query: null,
+    response: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
+    context: [
+      {
+        role: "tool",
+        name: "get_weather",
+        content: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}'
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "get_weather",
+      spanId: "span-tool-001",
+      traceId: "trace-weather-002",
+      attributes: {
+        "openinference.span.kind": "TOOL",
+        "tool.name": "get_weather",
+        "tool.description": "Get current weather information for a location",
+        "tool.success": true,
+        "session.id": "session-user-456",
+        "metadata": '{"ls_provider": "custom", "ls_model_name": "weather_api", "ls_model_type": "tool"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: []
+  },
+
+  // Sample 4: Agent span with multiple tool calls
+  {
+    id: "span-004",
+    trace_id: "trace-agent-001",
+    span_id: "span-agent-001",
+    parent_span_id: null,
+    span_kind: "AGENT",
+    span_name: "WeatherAgent",
+    start_time: "2024-01-15T14:20:00Z",
+    end_time: "2024-01-15T14:20:08Z",
+    created_at: "2024-01-15T14:20:08Z",
+    updated_at: "2024-01-15T14:20:08Z",
+    status_code: "Ok",
+    task_id: "task-travel-planner",
+    session_id: "session-user-789",
+    system_prompt: "You are a travel planning agent. Help users plan trips by checking weather, finding flights, and booking hotels.",
+    user_query: "I want to plan a trip to Paris next week. Can you help me with weather and flight information?",
+    response: "I'll help you plan your trip to Paris! Let me check the weather forecast and find some flight options for you.",
+    context: [
+      {
+        role: "system",
+        content: "You are a travel planning agent. Help users plan trips by checking weather, finding flights, and booking hotels."
+      },
+      {
+        role: "user",
+        content: "I want to plan a trip to Paris next week. Can you help me with weather and flight information?"
+      },
+      {
+        role: "assistant",
+        content: "I'll help you plan your trip to Paris! Let me check the weather forecast and find some flight options for you.",
+        tool_calls: [
+          {
+            id: "call_weather_paris_001",
+            type: "function",
+            function: {
+              name: "get_weather_forecast",
+              arguments: '{"location": "Paris", "days": 7}'
+            }
+          },
+          {
+            id: "call_flights_001",
+            type: "function", 
+            function: {
+              name: "search_flights",
+              arguments: '{"destination": "Paris", "departure_date": "2024-01-22", "return_date": "2024-01-29"}'
+            }
+          }
+        ]
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "WeatherAgent",
+      spanId: "span-agent-001",
+      traceId: "trace-agent-001",
+      attributes: {
+        "openinference.span.kind": "AGENT",
+        "agent.name": "WeatherAgent",
+        "agent.version": "1.0.0",
+        "session.id": "session-user-789",
+        "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-004",
+        metric_id: "agent-effectiveness-metric",
+        metric_type: "ResponseRelevance",
+        span_id: "span-004",
+        prompt_tokens: 156,
+        completion_tokens: 78,
+        latency_ms: 7500,
+        details: '{"agent_effectiveness": {"task_completion": 0.85, "tool_usage_efficiency": 0.92}, "reason": "Agent successfully initiated multiple tool calls for comprehensive trip planning"}',
+        created_at: "2024-01-15T14:20:08Z",
+        updated_at: "2024-01-15T14:20:08Z"
+      }
+    ]
+  },
+
+  // Sample 5: RAG retrieval span
+  {
+    id: "span-005",
+    trace_id: "trace-rag-001",
+    span_id: "span-retriever-001",
+    parent_span_id: "span-agent-001",
+    span_kind: "RETRIEVER",
+    span_name: "DocumentRetriever",
+    start_time: "2024-01-15T14:20:02Z",
+    end_time: "2024-01-15T14:20:03Z",
+    created_at: "2024-01-15T14:20:03Z",
+    updated_at: "2024-01-15T14:20:03Z",
+    status_code: "Ok",
+    task_id: "task-travel-planner",
+    session_id: "session-user-789",
+    system_prompt: null,
+    user_query: "Paris travel guide recommendations",
+    response: '{"documents": [{"title": "Paris Travel Guide", "content": "Paris is known for its art, culture, and cuisine...", "score": 0.95}], "total_results": 5}',
+    context: [
+      {
+        role: "retriever",
+        content: "Retrieved 5 relevant documents about Paris travel"
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "DocumentRetriever",
+      spanId: "span-retriever-001",
+      traceId: "trace-rag-001",
+      attributes: {
+        "openinference.span.kind": "RETRIEVER",
+        "retrieval.query": "Paris travel guide recommendations",
+        "retrieval.documents": 5,
+        "retrieval.top_k": 5,
+        "session.id": "session-user-789",
+        "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-005",
+        metric_id: "retrieval-relevance-metric",
+        metric_type: "QueryRelevance",
+        span_id: "span-005",
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        latency_ms: 1200,
+        details: '{"retrieval_relevance": {"average_score": 0.89, "top_score": 0.95}, "reason": "Retrieved documents are highly relevant to Paris travel query"}',
+        created_at: "2024-01-15T14:20:03Z",
+        updated_at: "2024-01-15T14:20:03Z"
+      }
+    ]
+  },
+
+  // Sample 6: Error span
+  {
+    id: "span-006",
+    trace_id: "trace-error-001",
+    span_id: "span-error-001",
+    parent_span_id: null,
+    span_kind: "LLM",
+    span_name: "ChatOpenAI",
+    start_time: "2024-01-15T16:45:00Z",
+    end_time: "2024-01-15T16:45:01Z",
+    created_at: "2024-01-15T16:45:01Z",
+    updated_at: "2024-01-15T16:45:01Z",
+    status_code: "Error",
+    task_id: "task-error-handling",
+    session_id: "session-user-error",
+    system_prompt: "You are a helpful assistant.",
+    user_query: "Generate a very long response that exceeds token limits",
+    response: null,
+    context: [
+      {
+        role: "system",
+        content: "You are a helpful assistant."
+      },
+      {
+        role: "user",
+        content: "Generate a very long response that exceeds token limits"
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "ChatOpenAI",
+      spanId: "span-error-001",
+      traceId: "trace-error-001",
+      attributes: {
+        "openinference.span.kind": "LLM",
+        "llm.model_name": "gpt-4",
+        "error.message": "Token limit exceeded",
+        "error.type": "TokenLimitExceeded",
+        "session.id": "session-user-error",
+        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-006",
+        metric_id: "error-rate-metric",
+        metric_type: "ResponseRelevance",
+        span_id: "span-006",
+        prompt_tokens: 25,
+        completion_tokens: 0,
+        latency_ms: 500,
+        details: '{"error_rate": {"has_error": true, "error_type": "TokenLimitExceeded"}, "reason": "Request failed due to token limit exceeded"}',
+        created_at: "2024-01-15T16:45:01Z",
+        updated_at: "2024-01-15T16:45:01Z"
+      }
+    ]
+  },
+
+  // Sample 7: Chain span (LangChain workflow)
+  {
+    id: "span-007",
+    trace_id: "trace-chain-001",
+    span_id: "span-chain-001",
+    parent_span_id: null,
+    span_kind: "CHAIN",
+    span_name: "WeatherChain",
+    start_time: "2024-01-15T18:30:00Z",
+    end_time: "2024-01-15T18:30:05Z",
+    created_at: "2024-01-15T18:30:05Z",
+    updated_at: "2024-01-15T18:30:05Z",
+    status_code: "Ok",
+    task_id: "task-weather-chain",
+    session_id: "session-user-chain",
+    system_prompt: null,
+    user_query: "Get weather for multiple cities: London, Tokyo, Sydney",
+    response: "Weather data retrieved for London, Tokyo, and Sydney",
+    context: [
+      {
+        role: "chain",
+        content: "Executed weather retrieval chain for multiple cities"
+      }
+    ],
+    raw_data: {
+      kind: "SPAN_KIND_INTERNAL",
+      name: "WeatherChain",
+      spanId: "span-chain-001",
+      traceId: "trace-chain-001",
+      attributes: {
+        "openinference.span.kind": "CHAIN",
+        "chain.name": "WeatherChain",
+        "chain.input": "Get weather for multiple cities: London, Tokyo, Sydney",
+        "chain.output": "Weather data retrieved for London, Tokyo, and Sydney",
+        "session.id": "session-user-chain",
+        "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}'
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: [
+      {
+        id: "metric-007",
+        metric_id: "chain-efficiency-metric",
+        metric_type: "QueryRelevance",
+        span_id: "span-007",
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        latency_ms: 4800,
+        details: '{"chain_efficiency": {"execution_time": 4800, "success_rate": 1.0}, "reason": "Chain executed successfully for all cities"}',
+        created_at: "2024-01-15T18:30:05Z",
+        updated_at: "2024-01-15T18:30:05Z"
+      }
+    ]
+  }
+];
+
+// Export individual spans for easy access
+export const simpleLLMSpan = sampleSpans[0];
+export const toolCallSpan = sampleSpans[1];
+export const toolExecutionSpan = sampleSpans[2];
+export const agentSpan = sampleSpans[3];
+export const ragRetrievalSpan = sampleSpans[4];
+export const errorSpan = sampleSpans[5];
+export const chainSpan = sampleSpans[6];
