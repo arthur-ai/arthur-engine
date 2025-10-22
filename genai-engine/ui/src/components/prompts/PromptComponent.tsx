@@ -2,6 +2,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
+import Autocomplete from "@mui/material/Autocomplete";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -9,8 +10,9 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import MessagesSection from "./MessagesSection";
 import ModelParamsDialog from "./ModelParamsDialog";
@@ -63,12 +65,17 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     });
   };
 
-  const handlePromptModelChange = (event: SelectChangeEvent) => {
-    dispatch({
-      type: "updatePromptModelName",
-      payload: { promptId: prompt.id, modelName: event.target.value },
-    });
-  };
+  const handleModelChange = useCallback(
+    (event: React.SyntheticEvent<Element, Event>, newValue: string | null) => {
+      if (newValue === prompt.modelName) return;
+      console.log("handleModelChange", newValue);
+      dispatch({
+        type: "updatePromptModelName",
+        payload: { promptId: prompt.id, modelName: newValue || "" },
+      });
+    },
+    [dispatch, prompt.id, prompt.modelName]
+  );
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
@@ -107,7 +114,10 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
 
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.provider === "";
-  const availableModels = state.availableModels.get(prompt.provider) || [];
+  const availableModels = useMemo(
+    () => state.availableModels.get(prompt.provider) || [],
+    [state.availableModels, prompt.provider]
+  );
 
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
@@ -190,27 +200,24 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
               </FormControl>
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth variant="filled" size="small">
-                <InputLabel id={`model-${prompt.id}`}>{MODEL_TEXT}</InputLabel>
-                <Select
-                  labelId={`model-${prompt.id}`}
-                  id={`model-${prompt.id}`}
-                  label={MODEL_TEXT}
-                  value={prompt.modelName || ""}
-                  onChange={handlePromptModelChange}
-                  sx={{
-                    backgroundColor: "white",
-                  }}
-                  disabled={modelDisabled}
-                >
-                  <MenuItem value="">Select Model</MenuItem>
-                  {availableModels.map((model) => (
-                    <MenuItem key={model} value={model}>
-                      {model}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                id={`model-${prompt.id}`}
+                options={availableModels}
+                value={prompt.modelName || ""}
+                onChange={handleModelChange}
+                disabled={modelDisabled}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={MODEL_TEXT}
+                    variant="filled"
+                    size="small"
+                    sx={{
+                      backgroundColor: "white",
+                    }}
+                  />
+                )}
+              />
             </div>
           </div>
           <div className="flex justify-end items-center gap-1">
