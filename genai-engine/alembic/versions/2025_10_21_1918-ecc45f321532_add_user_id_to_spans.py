@@ -1,7 +1,7 @@
 """add_user_id_to_spans
 
 Revision ID: ecc45f321532
-Revises: 897c39909e73
+Revises: 7fb45748e807
 Create Date: 2025-10-21 19:18:37.077936
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "ecc45f321532"
-down_revision = "897c39909e73"
+down_revision = "7fb45748e807"
 branch_labels = None
 depends_on = None
 
