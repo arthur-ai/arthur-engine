@@ -36,20 +36,6 @@ export const TracesView: React.FC = () => {
           <Tab value="span" label="Span Level" />
           <Tab value="session" label="Session Level" />
         </Tabs>
-        <Paper
-          component={Stack}
-          elevation={0}
-          direction="row"
-          spacing={2}
-          justifyContent="flex-end"
-          sx={{
-            py: 1,
-            px: 2,
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        ></Paper>
 
         <Activity mode={level === "trace" ? "visible" : "hidden"}>
           <TraceLevel />
