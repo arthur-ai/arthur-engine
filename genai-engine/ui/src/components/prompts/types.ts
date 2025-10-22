@@ -1,6 +1,5 @@
 import {
   ReasoningEffortEnum,
-  ModelProvider,
   AgenticPromptMessageInput,
   MessageRole,
   LogitBiasItem,
@@ -9,6 +8,7 @@ import {
   ToolChoiceEnum,
   LLMToolInput,
   ToolChoice,
+  ModelProvider,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -26,10 +26,26 @@ type PromptAction =
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
+      type: "updatePromptProvider";
+      payload: { promptId: string; provider: string };
+    }
+  | {
+      type: "updatePromptModelName";
+      payload: { promptId: string; modelName: string };
+    }
+  | {
       type: "updatePrompt";
       payload: { promptId: string; prompt: Partial<PromptType> };
     }
   | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
+  | {
+      type: "updateProviders";
+      payload: { providers: ModelProvider[] };
+    }
+  | {
+      type: "updateAvailableModels";
+      payload: { availableModels: Map<ModelProvider, string[]> };
+    }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
   | { type: "duplicateMessage"; payload: { parentId: string; id: string } }
@@ -113,7 +129,7 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: ModelProvider;
+  provider: string;
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
@@ -128,6 +144,8 @@ interface PromptPlaygroundState {
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
   backendPrompts: PromptType[];
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>; // provider -> models
 }
 
 interface MessageComponentProps {
@@ -164,8 +182,6 @@ const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "tool",
 ];
 
-const PROVIDER_OPTIONS: ModelProvider[] = ["anthropic", "openai", "gemini"];
-
 export {
   MESSAGE_ROLE_OPTIONS,
   MessageComponentProps,
@@ -178,6 +194,5 @@ export {
   promptClassificationEnum,
   OutputFieldProps,
   SavePromptDialogProps,
-  PROVIDER_OPTIONS,
   FrontendTool,
 };

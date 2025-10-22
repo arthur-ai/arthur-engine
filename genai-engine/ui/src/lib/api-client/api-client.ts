@@ -1228,6 +1228,10 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPV
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
+
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+
 export type GetSessionTracesApiV1SessionsSessionIdGetData = SessionTracesResponse;
 
 export type GetSessionTracesApiV1SessionsSessionIdGetError = HTTPValidationError;
@@ -2069,14 +2073,25 @@ export interface ModelProviderList {
   providers: ModelProviderResponse[];
 }
 
+/** ModelProviderModelList */
+export interface ModelProviderModelList {
+  /**
+   * Available Models
+   * Available models from the provider
+   */
+  available_models: string[];
+  /** Provider of the models */
+  provider: ModelProvider;
+}
+
 /** ModelProviderResponse */
 export interface ModelProviderResponse {
   /**
    * Enabled
-   * Whether the provider is enabled with credentials.
+   * Whether the provider is enabled with credentials
    */
   enabled: boolean;
-  /** The model provider. */
+  /** The model provider */
   provider: ModelProvider;
 }
 
@@ -4986,13 +5001,37 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      *
      * @tags Model Providers
      * @name GetModelProvidersApiV1ModelProvidersGet
-     * @summary List the model providers..
+     * @summary List the model providers.
      * @request GET:/api/v1/model_providers
      * @secure
      */
     getModelProvidersApiV1ModelProvidersGet: (params: RequestParams = {}) =>
       this.request<GetModelProvidersApiV1ModelProvidersGetData, any>({
         path: `/api/v1/model_providers`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of the names of all available models for a provider.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGet
+     * @summary List the models available from a provider.
+     * @request GET:/api/v1/model_providers/{provider}/available_models
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (
+      provider: ModelProvider,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/available_models`,
         method: "GET",
         secure: true,
         format: "json",

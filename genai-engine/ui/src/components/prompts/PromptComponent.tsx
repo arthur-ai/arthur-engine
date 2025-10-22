@@ -2,6 +2,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import SettingsIcon from "@mui/icons-material/Settings";
+import Autocomplete from "@mui/material/Autocomplete";
 import Container from "@mui/material/Container";
 import FormControl from "@mui/material/FormControl";
 import IconButton from "@mui/material/IconButton";
@@ -9,8 +10,9 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
+import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import MessagesSection from "./MessagesSection";
 import ModelParamsDialog from "./ModelParamsDialog";
@@ -18,17 +20,13 @@ import OutputField from "./OutputField";
 import { usePromptContext } from "./PromptContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
-import { PromptComponentProps, PROVIDER_OPTIONS } from "./types";
+import { PromptComponentProps } from "./types";
 
-const PROVIDER_TEXT = "Provider";
+import { ModelProvider } from "@/lib/api-client/api-client";
+
+const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
-const MODEL_TEXT = "Model";
-
-const MODEL_OPTIONS = [
-  { label: "Model 1", value: "model1" },
-  { label: "Model 2", value: "model2" },
-  { label: "Model 3", value: "model3" },
-];
+const MODEL_TEXT = "Select Model";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
@@ -38,7 +36,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [currentPromptName, setCurrentPromptName] = useState<string>(
     prompt.name || ""
   );
-  const [provider, setProvider] = useState<string>(PROVIDER_OPTIONS[0]);
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
@@ -64,8 +61,23 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   );
 
   const handleProviderChange = (event: SelectChangeEvent) => {
-    setProvider(event.target.value);
+    dispatch({
+      type: "updatePromptProvider",
+      payload: { promptId: prompt.id, provider: event.target.value },
+    });
   };
+
+  const handleModelChange = useCallback(
+    (event: React.SyntheticEvent<Element, Event>, newValue: string | null) => {
+      if (newValue === prompt.modelName) return;
+
+      dispatch({
+        type: "updatePromptModelName",
+        payload: { promptId: prompt.id, modelName: newValue || "" },
+      });
+    },
+    [dispatch, prompt.id, prompt.modelName]
+  );
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
@@ -92,6 +104,22 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   useEffect(() => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
+
+  useEffect(() => {
+    if (state.enabledProviders.length > 0) {
+      dispatch({
+        type: "updatePromptProvider",
+        payload: { promptId: prompt.id, provider: state.enabledProviders[0] },
+      });
+    }
+  }, [state.enabledProviders, dispatch, prompt.id]);
+
+  const providerDisabled = state.enabledProviders.length === 0;
+  const modelDisabled = prompt.provider === "";
+  const availableModels = useMemo(
+    () => state.availableModels.get(prompt.provider as ModelProvider) || [],
+    [state.availableModels, prompt.provider]
+  );
 
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
@@ -143,44 +171,55 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 <InputLabel id={`provider-${prompt.id}`}>
                   {PROVIDER_TEXT}
                 </InputLabel>
-                <Select
-                  labelId={`provider-${prompt.id}`}
-                  id={`provider-${prompt.id}`}
-                  label={PROVIDER_TEXT}
-                  value={provider}
-                  onChange={handleProviderChange}
-                  sx={{
-                    backgroundColor: "white",
-                  }}
+                <Tooltip
+                  title={
+                    providerDisabled
+                      ? "No providers available. Please configure at least one provider."
+                      : ""
+                  }
+                  placement="top-start"
+                  arrow
                 >
-                  {PROVIDER_OPTIONS.map((providerValue) => (
-                    <MenuItem key={providerValue} value={providerValue}>
-                      {providerValue}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  <Select
+                    labelId={`provider-${prompt.id}`}
+                    id={`provider-${prompt.id}`}
+                    label={PROVIDER_TEXT}
+                    value={prompt.provider || ""}
+                    onChange={handleProviderChange}
+                    sx={{
+                      backgroundColor: "white",
+                    }}
+                    disabled={providerDisabled}
+                  >
+                    <MenuItem value="">Select Provider</MenuItem>
+                    {state.enabledProviders.map((provider) => (
+                      <MenuItem key={provider} value={provider}>
+                        {provider}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Tooltip>
               </FormControl>
             </div>
             <div className="w-1/3">
-              <FormControl fullWidth variant="filled" size="small">
-                <InputLabel id={`model-${prompt.id}`}>{MODEL_TEXT}</InputLabel>
-                <Select
-                  labelId={`model-${prompt.id}`}
-                  id={`model-${prompt.id}`}
-                  label={MODEL_TEXT}
-                  value={MODEL_OPTIONS[0].value}
-                  onChange={() => {}}
-                  sx={{
-                    backgroundColor: "white",
-                  }}
-                >
-                  {MODEL_OPTIONS.map((modelOption) => (
-                    <MenuItem key={modelOption.value} value={modelOption.value}>
-                      {modelOption.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                id={`model-${prompt.id}`}
+                options={availableModels}
+                value={prompt.modelName || ""}
+                onChange={handleModelChange}
+                disabled={modelDisabled}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={MODEL_TEXT}
+                    variant="filled"
+                    size="small"
+                    sx={{
+                      backgroundColor: "white",
+                    }}
+                  />
+                )}
+              />
             </div>
           </div>
           <div className="flex justify-end items-center gap-1">
