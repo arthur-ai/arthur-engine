@@ -4763,7 +4763,7 @@
                     "Prompts"
                 ],
                 "summary": "Get all agentic prompts",
-                "description": "Get all agentic prompts for a given task.",
+                "description": "Get all agentic prompts for a given task with optional filtering.",
                 "operationId": "get_all_agentic_prompts_api_v1_tasks__task_id__prompts_get",
                 "security": [
                     {
@@ -4780,6 +4780,184 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "prompt_names",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Prompt names to filter on. If provided, only prompts with these names will be returned.",
+                            "title": "Prompt Names"
+                        },
+                        "description": "Prompt names to filter on. If provided, only prompts with these names will be returned."
+                    },
+                    {
+                        "name": "model_provider",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "title": "Model Provider"
+                        },
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "title": "Model Name"
+                        },
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "exclude_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Whether to exclude deleted prompt versions from the results. Default is False.",
+                            "default": false,
+                            "title": "Exclude Deleted"
+                        },
+                        "description": "Whether to exclude deleted prompt versions from the results. Default is False."
+                    },
+                    {
+                        "name": "min_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Minimum version number to filter on (inclusive).",
+                            "title": "Min Version"
+                        },
+                        "description": "Minimum version number to filter on (inclusive)."
+                    },
+                    {
+                        "name": "max_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Maximum version number to filter on (inclusive).",
+                            "title": "Max Version"
+                        },
+                        "description": "Maximum version number to filter on (inclusive)."
                     }
                 ],
                 "responses": {
@@ -4812,7 +4990,7 @@
                     "Prompts"
                 ],
                 "summary": "List all versions of an agentic prompt",
-                "description": "List all versions of an agentic prompt",
+                "description": "List all versions of an agentic prompt with optional filtering.",
                 "operationId": "get_all_agentic_prompt_versions_api_v1_tasks__task_id__prompts__prompt_name__versions_get",
                 "security": [
                     {
@@ -4840,6 +5018,184 @@
                             "format": "uuid",
                             "title": "Task Id"
                         }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "prompt_names",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Prompt names to filter on. If provided, only prompts with these names will be returned.",
+                            "title": "Prompt Names"
+                        },
+                        "description": "Prompt names to filter on. If provided, only prompts with these names will be returned."
+                    },
+                    {
+                        "name": "model_provider",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "title": "Model Provider"
+                        },
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "title": "Model Name"
+                        },
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Start Time"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "End Time"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "exclude_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Whether to exclude deleted prompt versions from the results. Default is False.",
+                            "default": false,
+                            "title": "Exclude Deleted"
+                        },
+                        "description": "Whether to exclude deleted prompt versions from the results. Default is False."
+                    },
+                    {
+                        "name": "min_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Minimum version number to filter on (inclusive).",
+                            "title": "Min Version"
+                        },
+                        "description": "Minimum version number to filter on (inclusive)."
+                    },
+                    {
+                        "name": "max_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Maximum version number to filter on (inclusive).",
+                            "title": "Max Version"
+                        },
+                        "description": "Maximum version number to filter on (inclusive)."
                     }
                 ],
                 "responses": {
@@ -4848,7 +5204,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                    "$ref": "#/components/schemas/AgenticPromptVersionListResponse"
                                 }
                             }
                         }
@@ -7256,11 +7612,17 @@
                         "type": "array",
                         "title": "Prompt Metadata",
                         "description": "List of prompt metadata"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of prompts matching filters"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "prompt_metadata"
+                    "prompt_metadata",
+                    "count"
                 ],
                 "title": "AgenticPromptMetadataListResponse"
             },
@@ -7345,21 +7707,86 @@
                 ],
                 "title": "AgenticPromptRunResponse"
             },
-            "AgenticPrompts": {
+            "AgenticPromptVersionListResponse": {
                 "properties": {
-                    "prompts": {
+                    "versions": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPrompt"
+                            "$ref": "#/components/schemas/AgenticPromptVersionResponse"
                         },
                         "type": "array",
-                        "title": "Prompts"
+                        "title": "Versions",
+                        "description": "List of prompt version metadata"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of prompts matching filters"
                     }
                 },
                 "type": "object",
                 "required": [
-                    "prompts"
+                    "versions",
+                    "count"
                 ],
-                "title": "AgenticPrompts"
+                "title": "AgenticPromptVersionListResponse"
+            },
+            "AgenticPromptVersionResponse": {
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version number of the prompt"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt version was created"
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Timestamp when the prompt version was deleted"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Model provider of the prompt"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model name of the prompt"
+                    },
+                    "num_messages": {
+                        "type": "integer",
+                        "title": "Num Messages",
+                        "description": "Number of messages in the prompt"
+                    },
+                    "num_tools": {
+                        "type": "integer",
+                        "title": "Num Tools",
+                        "description": "Number of tools in the prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "created_at",
+                    "deleted_at",
+                    "model_provider",
+                    "model_name",
+                    "num_messages",
+                    "num_tools"
+                ],
+                "title": "AgenticPromptVersionResponse"
             },
             "AnthropicThinkingParam": {
                 "properties": {

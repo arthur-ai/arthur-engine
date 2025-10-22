@@ -1,10 +1,12 @@
 from datetime import datetime
-from typing import Any, Dict, List
 from types import SimpleNamespace
+from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 from sqlalchemy.exc import IntegrityError
 
@@ -14,7 +16,6 @@ from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptMessage,
-    AgenticPrompts,
     CompletionRequest,
     LLMResponseFormat,
     LLMResponseSchema,
@@ -25,7 +26,11 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.common_schemas import JsonSchema
 from schemas.enums import ModelProvider
-from schemas.response_schemas import AgenticPromptRunResponse, AgenticPromptMetadataListResponse, AgenticPromptMetadataResponse
+from schemas.response_schemas import (
+    AgenticPromptMetadataListResponse,
+    AgenticPromptMetadataResponse,
+    AgenticPromptRunResponse,
+)
 
 
 def to_agentic_prompt_messages(
@@ -287,11 +292,25 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
     mock_deleted.all.return_value = []
     mock_db_session.query.side_effect = [mock_query, mock_deleted, mock_deleted]
 
-    result = agentic_prompt_repo.get_all_prompt_metadata(task_id)
+    # Mock count query
+    mock_filter.count.return_value = 2
+    mock_filter.offset.return_value = mock_filter
+    mock_filter.limit.return_value = mock_filter
+
+    # Use default pagination parameters
+    pagination_parameters = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.DESCENDING,
+    )
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
 
     assert isinstance(result, AgenticPromptMetadataListResponse)
     assert len(result.prompt_metadata) == 2
-    assert all(isinstance(prompt, AgenticPromptMetadataResponse) for prompt in result.prompt_metadata)
+    assert all(
+        isinstance(prompt, AgenticPromptMetadataResponse)
+        for prompt in result.prompt_metadata
+    )
     assert result.prompt_metadata[0].name == sample_db_prompt.name
     assert result.prompt_metadata[1].name == prompt2.name
 
@@ -306,9 +325,20 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
+    mock_filter.group_by.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
+    mock_filter.count.return_value = 0
+    mock_filter.offset.return_value = mock_filter
+    mock_filter.limit.return_value = mock_filter
     mock_filter.all.return_value = []
 
-    result = agentic_prompt_repo.get_all_prompt_metadata(task_id)
+    # Use default pagination parameters
+    pagination_parameters = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.DESCENDING,
+    )
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
 
     assert isinstance(result, AgenticPromptMetadataListResponse)
     assert len(result.prompt_metadata) == 0
@@ -351,7 +381,7 @@ def test_save_prompt_with_dict(
     task_id = "test_task_id"
 
     mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
-    
+
     agentic_prompt_repo.save_prompt(task_id, sample_prompt_data)
 
     # Verify database operations

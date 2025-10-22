@@ -127,6 +127,7 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
     response = client.base_client.get(
         f"/api/v1/tasks/{task.id}/prompts",
         headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc"},
     )
     assert response.status_code == 200
 
@@ -150,6 +151,7 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
             assert abs((created - latest).total_seconds()) < 1
         else:
             assert created != latest
+
 
 @pytest.mark.unit_tests
 def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
@@ -833,7 +835,15 @@ def test_get_prompt_versions(client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompts"]) == 2
+    assert len(response.json()["versions"]) == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert "deleted_at" not in version
+        assert version["model_provider"] == "openai"
+        assert version["model_name"] == "gpt-4"
+        assert version["num_messages"] == 1
+        assert version["num_tools"] == 0
 
     # soft-delete version 2 of the prompt
     response = client.base_client.delete(
@@ -847,7 +857,19 @@ def test_get_prompt_versions(client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompts"]) == 2
+    assert len(response.json()["versions"]) == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert version["model_provider"] == "openai"
+        assert version["num_tools"] == 0
+
+        if "deleted_at" in version:
+            assert version["num_messages"] == 0
+            assert version["model_name"] == ""
+        else:
+            assert version["num_messages"] == 1
+            assert version["model_name"] == "gpt-4"
 
 
 @pytest.mark.unit_tests
@@ -892,7 +914,7 @@ def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompts"]) == 2
+    assert len(response.json()["versions"]) == 2
 
     # delete version 2 of the prompt
     response = client.base_client.delete(
@@ -906,14 +928,14 @@ def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompts"]) == 2
+    assert len(response.json()["versions"]) == 2
 
     response = client.base_client.get(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompts"]) == 2
+    assert len(response.json()["versions"]) == 2
 
 
 @pytest.mark.unit_tests
@@ -999,3 +1021,142 @@ def test_run_deleted_prompt_spawns_error(
     assert response.status_code == 200
     assert response.json()["content"] == "Test LLM response"
     assert response.json()["cost"] == "0.001234"
+
+
+@pytest.mark.unit_tests
+def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientBase):
+    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Create prompts with different providers
+    for i, name in enumerate(["alpha", "beta", "gamma"]):
+        provider = "openai" if i < 2 else "anthropic"
+        model = "gpt-4" if provider == "openai" else "claude-3-5-sonnet"
+        prompt_data = {
+            "name": name,
+            "messages": [{"role": "user", "content": f"Prompt {name}"}],
+            "model_name": model,
+            "model_provider": provider,
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{name}",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test pagination on get_all_prompts
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "asc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["prompt_metadata"]) == 2
+    assert result["count"] == 3
+    assert result["prompt_metadata"][0]["name"] == "alpha"
+
+    # Test sorting descending
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["prompt_metadata"][0]["name"] == "gamma"
+    assert result["prompt_metadata"][2]["name"] == "alpha"
+
+    # Test filtering by provider
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"model_provider": "openai"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["prompt_metadata"]) == 2
+    assert result["count"] == 2
+
+
+@pytest.mark.unit_tests
+def test_get_prompt_versions_pagination_and_filtering(
+    client: GenaiEngineTestClientBase,
+):
+    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Create prompts with different versions
+    for i in range(4):
+        prompt_data = {
+            "name": "alpha",
+            "messages": [{"role": "user", "content": f"Version {i+1}"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/alpha",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test version pagination
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 4
+    assert result["versions"][0]["version"] == 4
+
+    # Test version range filter
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"min_version": 2, "max_version": 3},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 2
+
+    # Delete a version and test include_deleted filter
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # Test include deleted (default behavior, exclude_deleted=False)
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 4  # Includes deleted version by default
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 in versions
+
+    # Test exclude deleted
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"exclude_deleted": True},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 3  # One version excluded
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 not in versions

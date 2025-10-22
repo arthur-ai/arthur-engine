@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator, SecretStr, field_serializer
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -107,3 +108,43 @@ class NewDatasetVersionRequest(BaseModel):
 
 class PutModelProviderCredentials(BaseModel):
     api_key: SecretStr = Field(description="The API key for the provider.")
+
+
+class AgenticPromptFilterRequest(BaseModel):
+    """Request schema for filtering agentic prompts with comprehensive filtering options."""
+
+    # Optional filters
+    prompt_names: Optional[list[str]] = Field(
+        None,
+        description="Prompt names to filter on. If provided, only prompts with these names will be returned.",
+    )
+    model_provider: Optional[ModelProvider] = Field(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    )
+    model_name: Optional[str] = Field(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    )
+    start_time: Optional[datetime] = Field(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    end_time: Optional[datetime] = Field(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    )
+    exclude_deleted: Optional[bool] = Field(
+        False,
+        description="Whether to exclude deleted prompt versions from the results. Default is False.",
+    )
+    min_version: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Minimum version number to filter on (inclusive).",
+    )
+    max_version: Optional[int] = Field(
+        None,
+        ge=1,
+        description="Maximum version number to filter on (inclusive).",
+    )

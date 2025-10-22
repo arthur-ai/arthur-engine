@@ -1,8 +1,8 @@
 """add versioning to agentic prompts
 
-Revision ID: 96e667d4e2af
-Revises: 897c39909e73
-Create Date: 2025-10-20 14:22:19.855260
+Revision ID: 5b5d630418ba
+Revises: ecc45f321532
+Create Date: 2025-10-22 16:46:40.462930
 
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "96e667d4e2af"
-down_revision = "897c39909e73"
+revision = "5b5d630418ba"
+down_revision = "ecc45f321532"
 branch_labels = None
 depends_on = None
 

@@ -1,16 +1,22 @@
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple
 
 import sqlalchemy as sa
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
+from sqlalchemy import asc, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
-from schemas.agentic_prompt_schemas import (
-    AgenticPrompt,
-    AgenticPrompts,
+from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.request_schemas import AgenticPromptFilterRequest
+from schemas.response_schemas import (
+    AgenticPromptMetadataListResponse,
+    AgenticPromptMetadataResponse,
+    AgenticPromptVersionListResponse,
+    AgenticPromptVersionResponse,
 )
-from schemas.response_schemas import AgenticPromptMetadataResponse, AgenticPromptMetadataListResponse
 
 
 class AgenticPromptRepository:
@@ -83,6 +89,106 @@ class AgenticPromptRepository:
 
         return db_prompt
 
+    def _apply_filters(
+        self,
+        query: Query,
+        filter_request: Optional[AgenticPromptFilterRequest],
+    ) -> Query:
+        """
+        Apply filters to a query based on the filter request.
+
+        Parameters:
+            query: Query - the SQLAlchemy query to filter
+            filter_request: Optional[AgenticPromptFilterRequest] - filter parameters
+
+        Returns:
+            Query - the query with filters applied
+        """
+        if not filter_request:
+            return query
+
+        # Filter by prompt names
+        if filter_request.prompt_names:
+            query = query.filter(
+                DatabaseAgenticPrompt.name.in_(filter_request.prompt_names),
+            )
+
+        # Filter by model provider
+        if filter_request.model_provider:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_provider == filter_request.model_provider,
+            )
+
+        # Filter by model name
+        if filter_request.model_name:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_name == filter_request.model_name,
+            )
+
+        # Filter by start time (inclusive)
+        if filter_request.start_time:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at >= filter_request.start_time,
+            )
+
+        # Filter by end time (exclusive)
+        if filter_request.end_time:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at < filter_request.end_time,
+            )
+
+        # Filter by deleted status
+        if filter_request.exclude_deleted == True:
+            query = query.filter(DatabaseAgenticPrompt.deleted_at.is_(None))
+
+        # Filter by min version
+        if filter_request.min_version is not None:
+            query = query.filter(
+                DatabaseAgenticPrompt.version >= filter_request.min_version,
+            )
+
+        # Filter by max version
+        if filter_request.max_version is not None:
+            query = query.filter(
+                DatabaseAgenticPrompt.version <= filter_request.max_version,
+            )
+
+        return query
+
+    def _apply_sorting_pagination_and_count(
+        self,
+        query: Query,
+        pagination_parameters: PaginationParameters,
+        sort_column,
+    ) -> Tuple[Query, int]:
+        """
+        Apply sorting and pagination to a query and return the total count.
+
+        Parameters:
+            query: Query - the SQLAlchemy query to sort and paginate
+            pagination_parameters: PaginationParameters - pagination and sorting params
+            sort_column - the column or label to sort by
+
+        Returns:
+            Tuple[Query, int] - the sorted and paginated query, and total count
+        """
+        # Apply sorting
+        if pagination_parameters.sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(desc(sort_column))
+        else:  # ASCENDING or default
+            query = query.order_by(asc(sort_column))
+
+        # Get total count BEFORE applying pagination
+        total_count = query.count()
+
+        # Apply pagination
+        query = query.offset(
+            pagination_parameters.page * pagination_parameters.page_size,
+        )
+        query = query.limit(pagination_parameters.page_size)
+
+        return query, total_count
+
     def get_prompt(
         self,
         task_id: str,
@@ -123,6 +229,8 @@ class AgenticPromptRepository:
     def get_all_prompt_metadata(
         self,
         task_id: str,
+        pagination_parameters: PaginationParameters,
+        filter_request: Optional[AgenticPromptFilterRequest] = None,
     ) -> AgenticPromptMetadataListResponse:
         """
         Get metadata for all prompts by task_id, including:
@@ -133,26 +241,41 @@ class AgenticPromptRepository:
 
         Parameters:
             task_id: str - the id of the task
+            pagination_parameters: PaginationParameters - pagination and sorting params
 
         Returns:
-            AgenticPromptMetadataListResponse - list of prompt metadata objects
+            AgenticPromptMetadataListResponse - list of prompt metadata objects with total count
         """
-        # Group by prompt name, count versions, and get min/max created_at
-        results = (
-            self.db_session.query(
-                DatabaseAgenticPrompt.name.label("name"),
-                sa.func.count(DatabaseAgenticPrompt.version).label("versions"),
-                sa.func.min(DatabaseAgenticPrompt.created_at).label("created_at"),
-                sa.func.max(DatabaseAgenticPrompt.created_at).label("latest_version_created_at"),
-            )
-            .filter(DatabaseAgenticPrompt.task_id == task_id)
-            .group_by(DatabaseAgenticPrompt.name)
-            .order_by(DatabaseAgenticPrompt.name.asc())
-            .all()
+        # Start with aggregated query
+        base_query = self.db_session.query(
+            DatabaseAgenticPrompt.name.label("name"),
+            sa.func.count(DatabaseAgenticPrompt.version).label("versions"),
+            sa.func.min(DatabaseAgenticPrompt.created_at).label("created_at"),
+            sa.func.max(DatabaseAgenticPrompt.created_at).label(
+                "latest_version_created_at",
+            ),
+        ).filter(DatabaseAgenticPrompt.task_id == task_id)
+
+        # Apply filters BEFORE grouping
+        base_query = self._apply_filters(base_query, filter_request)
+
+        # Apply grouping
+        base_query = base_query.group_by(DatabaseAgenticPrompt.name)
+
+        # Apply sorting, pagination, and get count
+        base_query, total_count = self._apply_sorting_pagination_and_count(
+            base_query,
+            pagination_parameters,
+            DatabaseAgenticPrompt.name,
         )
 
+        results = base_query.all()
+
         if not results:
-            return AgenticPromptMetadataListResponse(prompt_metadata=[])
+            return AgenticPromptMetadataListResponse(
+                prompt_metadata=[],
+                count=total_count,
+            )
 
         prompt_metadata = []
         for row in results:
@@ -177,40 +300,87 @@ class AgenticPromptRepository:
                     created_at=row.created_at,
                     latest_version_created_at=row.latest_version_created_at,
                     deleted_versions=deleted_versions,
-                )
+                ),
             )
 
-        return AgenticPromptMetadataListResponse(prompt_metadata=prompt_metadata)
+        return AgenticPromptMetadataListResponse(
+            prompt_metadata=prompt_metadata,
+            count=total_count,
+        )
 
     def get_prompt_versions(
         self,
         task_id: str,
         prompt_name: str,
-    ) -> AgenticPrompts:
+        pagination_parameters: PaginationParameters,
+        filter_request: Optional[AgenticPromptFilterRequest] = None,
+    ) -> AgenticPromptVersionListResponse:
         """
-        Get all versions of a prompt by task_id and name, sorted by version descending.
+        Get all versions of a prompt by task_id and name, including metadata:
+            - version number
+            - created_at and deleted_at timestamps
+            - model provider and name
+            - number of messages
+            - number of tools
 
         Parameters:
             task_id: str - the id of the task
             prompt_name: str - the name of the prompt
+            pagination_parameters: PaginationParameters - pagination and sorting params
 
         Returns:
-            AgenticPrompts - the list of prompt objects
+            AgenticPromptVersionListResponse - the list of version metadata objects with total count
         """
+        # Build base query
         base_query = self.db_session.query(DatabaseAgenticPrompt).filter(
             DatabaseAgenticPrompt.task_id == task_id,
             DatabaseAgenticPrompt.name == prompt_name,
         )
 
-        db_prompts = base_query.order_by(DatabaseAgenticPrompt.version.desc()).all()
+        # Apply filters
+        base_query = self._apply_filters(base_query, filter_request)
 
-        if not db_prompts:
+        # Apply sorting, pagination, and get count
+        base_query, total_count = self._apply_sorting_pagination_and_count(
+            base_query,
+            pagination_parameters,
+            DatabaseAgenticPrompt.version,
+        )
+
+        db_prompts = base_query.all()
+
+        # Check if prompt exists at all
+        if total_count == 0:
             raise ValueError(f"Prompt '{prompt_name}' not found for task '{task_id}'")
 
-        prompts = [AgenticPrompt.from_db_model(db_prompt) for db_prompt in db_prompts]
-        return AgenticPrompts(prompts=prompts)
+        # If we're past the last page, return empty list
+        if not db_prompts:
+            return AgenticPromptVersionListResponse(versions=[], count=total_count)
 
-    def save_prompt(self, task_id: str, prompt: AgenticPrompt | Dict[str, Any]) -> AgenticPrompt:
+        versions = []
+        for db_prompt in db_prompts:
+            num_messages = len(db_prompt.messages or [])
+            num_tools = len(db_prompt.tools or [])
+
+            versions.append(
+                AgenticPromptVersionResponse(
+                    version=db_prompt.version,
+                    created_at=db_prompt.created_at,
+                    deleted_at=db_prompt.deleted_at,
+                    model_provider=db_prompt.model_provider,
+                    model_name=db_prompt.model_name,
+                    num_messages=num_messages,
+                    num_tools=num_tools,
+                ),
+            )
+
+        return AgenticPromptVersionListResponse(versions=versions, count=total_count)
+
+    def save_prompt(
+        self,
+        task_id: str,
+        prompt: AgenticPrompt | Dict[str, Any],
+    ) -> AgenticPrompt:
         """
         Save an AgenticPrompt to the database.
         If a prompt with the same name exists, increment version.

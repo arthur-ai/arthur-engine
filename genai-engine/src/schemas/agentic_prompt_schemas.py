@@ -473,7 +473,3 @@ class CompletionRequest(AgenticPromptBaseConfig):
             **self.model_dump(exclude={"completion_request"}),
         )
         return prompt, self.completion_request
-
-
-class AgenticPrompts(BaseModel):
-    prompts: List[AgenticPrompt]

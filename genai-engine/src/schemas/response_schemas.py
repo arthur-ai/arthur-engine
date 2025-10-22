@@ -234,20 +234,20 @@ class AgenticPromptRunResponse(BaseModel):
 class ModelProviderResponse(BaseModel):
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials"
+        description="Whether the provider is enabled with credentials",
     )
 
 
 class ModelProviderList(BaseModel):
     providers: list[ModelProviderResponse] = Field(
-        description="List of model providers"
+        description="List of model providers",
     )
 
 
 class ModelProviderModelList(BaseModel):
     provider: ModelProvider = Field(description="Provider of the models")
     available_models: List[str] = Field(
-        description="Available models from the provider"
+        description="Available models from the provider",
     )
 
 
@@ -255,9 +255,37 @@ class AgenticPromptMetadataResponse(BaseModel):
     name: str = Field(description="Name of the prompt")
     versions: int = Field(description="Number of versions of the prompt")
     created_at: datetime = Field(description="Timestamp when the prompt was created")
-    latest_version_created_at: datetime = Field(description="Timestamp when the last version of the prompt was created")
-    deleted_versions: List[int] = Field(description="List of deleted versions of the prompt")
+    latest_version_created_at: datetime = Field(
+        description="Timestamp when the last version of the prompt was created",
+    )
+    deleted_versions: List[int] = Field(
+        description="List of deleted versions of the prompt",
+    )
 
 
 class AgenticPromptMetadataListResponse(BaseModel):
-    prompt_metadata: list[AgenticPromptMetadataResponse] = Field(description="List of prompt metadata")
+    prompt_metadata: list[AgenticPromptMetadataResponse] = Field(
+        description="List of prompt metadata",
+    )
+    count: int = Field(description="Total number of prompts matching filters")
+
+
+class AgenticPromptVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the prompt")
+    created_at: datetime = Field(
+        description="Timestamp when the prompt version was created",
+    )
+    deleted_at: Optional[datetime] = Field(
+        description="Timestamp when the prompt version was deleted",
+    )
+    model_provider: ModelProvider = Field(description="Model provider of the prompt")
+    model_name: str = Field(description="Model name of the prompt")
+    num_messages: int = Field(description="Number of messages in the prompt")
+    num_tools: int = Field(description="Number of tools in the prompt")
+
+
+class AgenticPromptVersionListResponse(BaseModel):
+    versions: list[AgenticPromptVersionResponse] = Field(
+        description="List of prompt version metadata",
+    )
+    count: int = Field(description="Total number of prompts matching filters")
