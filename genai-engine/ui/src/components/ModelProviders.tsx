@@ -2,9 +2,7 @@ import {
   Edit,
   Delete,
   Warning,
-  Psychology,
   SmartToy,
-  AutoAwesome,
 } from "@mui/icons-material";
 import {
   Box,
