@@ -385,7 +385,7 @@ def test_metrics_computation_error_handling(
     """Test error handling during metrics computation."""
 
     with patch(
-        "services.metrics_integration_service.get_metrics_engine",
+        "services.trace.metrics_integration_service.get_metrics_engine",
         side_effect=Exception("Metrics engine error"),
     ):
         # This should not fail the entire request, just skip metrics computation
