@@ -108,7 +108,7 @@ const PromptsPlayground = () => {
 
     const results = await Promise.all(modelPromises);
 
-    const newAvailableModels = new Map<string, string[]>();
+    const newAvailableModels = new Map<ModelProvider, string[]>();
     results.forEach(({ provider, models }) => {
       newAvailableModels.set(provider, models);
     });
