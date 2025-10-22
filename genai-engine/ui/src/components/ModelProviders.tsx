@@ -1,4 +1,11 @@
-import { Edit, Delete, Warning } from "@mui/icons-material";
+import {
+  Edit,
+  Delete,
+  Warning,
+  Psychology,
+  SmartToy,
+  AutoAwesome,
+} from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -82,6 +89,33 @@ export const ModelProviders: React.FC = () => {
       displayNames[provider] ||
       provider.charAt(0).toUpperCase() + provider.slice(1)
     );
+  };
+
+  const getProviderIcon = (provider: string) => {
+    const iconMap: Record<string, React.ReactElement> = {
+      anthropic: (
+        <img
+          src="/logos/model_providers/anthropic-logo.svg"
+          alt="Anthropic"
+          style={{ width: 20, height: 20 }}
+        />
+      ),
+      openai: (
+        <img
+          src="/logos/model_providers/openai-logo.svg"
+          alt="OpenAI"
+          style={{ width: 20, height: 20 }}
+        />
+      ),
+      gemini: (
+        <img
+          src="/logos/model_providers/gemini-logo.svg"
+          alt="Google Gemini"
+          style={{ width: 20, height: 20 }}
+        />
+      ),
+    };
+    return iconMap[provider] || <SmartToy sx={{ color: "primary.main" }} />;
   };
 
   const getStatusBadge = (enabled: boolean) => {
@@ -275,9 +309,14 @@ export const ModelProviders: React.FC = () => {
                   providers.map((provider) => (
                     <TableRow key={provider.provider} hover>
                       <TableCell>
-                        <Typography variant="body2" fontWeight="medium">
-                          {getProviderDisplayName(provider.provider)}
-                        </Typography>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          {getProviderIcon(provider.provider)}
+                          <Typography variant="body2" fontWeight="medium">
+                            {getProviderDisplayName(provider.provider)}
+                          </Typography>
+                        </Box>
                       </TableCell>
                       <TableCell align="center">
                         {getStatusBadge(provider.enabled)}
