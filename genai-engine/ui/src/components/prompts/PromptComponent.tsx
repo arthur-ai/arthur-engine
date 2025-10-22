@@ -22,6 +22,8 @@ import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 
+import { ModelProvider } from "@/lib/api-client/api-client";
+
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
 const MODEL_TEXT = "Select Model";
@@ -115,7 +117,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.provider === "";
   const availableModels = useMemo(
-    () => state.availableModels.get(prompt.provider) || [],
+    () => state.availableModels.get(prompt.provider as ModelProvider) || [],
     [state.availableModels, prompt.provider]
   );
 

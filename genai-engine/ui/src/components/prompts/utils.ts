@@ -6,6 +6,7 @@ import {
   AgenticPrompt,
   AgenticPromptBaseConfig,
   ToolChoiceEnum,
+  ModelProvider,
 } from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
@@ -30,7 +31,7 @@ export const generateId = (type: "msg" | "tool") => {
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
   model_name: prompt.modelName,
-  model_provider: prompt.provider,
+  model_provider: prompt.provider as ModelProvider,
   messages: prompt.messages.map((msg) => ({
     role: msg.role,
     content: msg.content,

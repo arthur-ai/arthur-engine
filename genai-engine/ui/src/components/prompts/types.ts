@@ -8,6 +8,7 @@ import {
   ToolChoiceEnum,
   LLMToolInput,
   ToolChoice,
+  ModelProvider,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -39,11 +40,11 @@ type PromptAction =
   | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
   | {
       type: "updateProviders";
-      payload: { providers: string[] };
+      payload: { providers: ModelProvider[] };
     }
   | {
       type: "updateAvailableModels";
-      payload: { availableModels: Map<string, string[]> };
+      payload: { availableModels: Map<ModelProvider, string[]> };
     }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
@@ -143,8 +144,8 @@ interface PromptPlaygroundState {
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
   backendPrompts: PromptType[];
-  enabledProviders: string[];
-  availableModels: Map<string, string[]>; // provider -> models
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>; // provider -> models
 }
 
 interface MessageComponentProps {

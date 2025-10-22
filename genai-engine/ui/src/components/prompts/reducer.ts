@@ -10,7 +10,11 @@ import {
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
-import { MessageRole, ToolChoiceEnum } from "@/lib/api-client/api-client";
+import {
+  MessageRole,
+  ModelProvider,
+  ToolChoiceEnum,
+} from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -136,8 +140,8 @@ const initialState: PromptPlaygroundState = {
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
   backendPrompts: new Array<PromptType>(),
-  enabledProviders: new Array<string>(),
-  availableModels: new Map<string, string[]>(),
+  enabledProviders: new Array<ModelProvider>(),
+  availableModels: new Map<ModelProvider, string[]>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -237,7 +241,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { providers } = action.payload;
       return {
         ...state,
-        enabledProviders: providers,
+        enabledProviders: providers as ModelProvider[],
       };
     }
     case "updateAvailableModels": {
