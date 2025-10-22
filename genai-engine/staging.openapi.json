@@ -4832,10 +4832,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Prompt names to filter on. If provided, only prompts with these names will be returned.",
+                            "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
                             "title": "Prompt Names"
                         },
-                        "description": "Prompt names to filter on. If provided, only prompts with these names will be returned."
+                        "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards."
                     },
                     {
                         "name": "model_provider",
@@ -4868,13 +4868,13 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.",
                             "title": "Model Name"
                         },
-                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards."
                     },
                     {
-                        "name": "start_time",
+                        "name": "created_after",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -4887,12 +4887,12 @@
                                 }
                             ],
                             "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "Start Time"
+                            "title": "Created After"
                         },
                         "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
-                        "name": "end_time",
+                        "name": "created_before",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -4905,59 +4905,9 @@
                                 }
                             ],
                             "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "End Time"
+                            "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
-                    },
-                    {
-                        "name": "exclude_deleted",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "boolean",
-                            "description": "Whether to exclude deleted prompt versions from the results. Default is False.",
-                            "default": false,
-                            "title": "Exclude Deleted"
-                        },
-                        "description": "Whether to exclude deleted prompt versions from the results. Default is False."
-                    },
-                    {
-                        "name": "min_version",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Minimum version number to filter on (inclusive).",
-                            "title": "Min Version"
-                        },
-                        "description": "Minimum version number to filter on (inclusive)."
-                    },
-                    {
-                        "name": "max_version",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": 1
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Maximum version number to filter on (inclusive).",
-                            "title": "Max Version"
-                        },
-                        "description": "Maximum version number to filter on (inclusive)."
                     }
                 ],
                 "responses": {
@@ -5055,27 +5005,6 @@
                         "description": "Page number"
                     },
                     {
-                        "name": "prompt_names",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Prompt names to filter on. If provided, only prompts with these names will be returned.",
-                            "title": "Prompt Names"
-                        },
-                        "description": "Prompt names to filter on. If provided, only prompts with these names will be returned."
-                    },
-                    {
                         "name": "model_provider",
                         "in": "query",
                         "required": false,
@@ -5106,13 +5035,13 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.",
                             "title": "Model Name"
                         },
-                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards."
                     },
                     {
-                        "name": "start_time",
+                        "name": "created_after",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -5125,12 +5054,12 @@
                                 }
                             ],
                             "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "Start Time"
+                            "title": "Created After"
                         },
                         "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
-                        "name": "end_time",
+                        "name": "created_before",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -5143,7 +5072,7 @@
                                 }
                             ],
                             "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-                            "title": "End Time"
+                            "title": "Created Before"
                         },
                         "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
                     },

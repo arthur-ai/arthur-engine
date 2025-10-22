@@ -25,7 +25,10 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
-from schemas.request_schemas import AgenticPromptFilterRequest
+from schemas.request_schemas import (
+    PromptsGetAllFilterRequest,
+    PromptsGetVersionsFilterRequest,
+)
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptRunResponse,
@@ -67,10 +70,10 @@ def get_validated_agentic_task(
     return task
 
 
-def agentic_prompt_filter_parameters(
+def prompts_get_all_filter_parameters(
     prompt_names: Optional[list[str]] = Query(
         None,
-        description="Prompt names to filter on. If provided, only prompts with these names will be returned.",
+        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
     ),
     model_provider: Optional[str] = Query(
         None,
@@ -78,13 +81,43 @@ def agentic_prompt_filter_parameters(
     ),
     model_name: Optional[str] = Query(
         None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.",
     ),
-    start_time: Optional[str] = Query(
+    created_after: Optional[str] = Query(
         None,
         description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     ),
-    end_time: Optional[str] = Query(
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> PromptsGetAllFilterRequest:
+    """Create a PromptsGetAllFilterRequest from query parameters."""
+    return PromptsGetAllFilterRequest(
+        prompt_names=prompt_names,
+        model_provider=model_provider,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def prompts_get_versions_filter_parameters(
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     ),
@@ -102,14 +135,15 @@ def agentic_prompt_filter_parameters(
         ge=1,
         description="Maximum version number to filter on (inclusive).",
     ),
-) -> AgenticPromptFilterRequest:
-    """Create an AgenticPromptFilterRequest from query parameters."""
-    return AgenticPromptFilterRequest(
-        prompt_names=prompt_names,
+) -> PromptsGetVersionsFilterRequest:
+    """Create a PromptsGetVersionsFilterRequest from query parameters."""
+    return PromptsGetVersionsFilterRequest(
         model_provider=model_provider,
         model_name=model_name,
-        start_time=datetime.fromisoformat(start_time) if start_time else None,
-        end_time=datetime.fromisoformat(end_time) if end_time else None,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
         exclude_deleted=exclude_deleted,
         min_version=min_version,
         max_version=max_version,
@@ -190,8 +224,8 @@ def get_all_agentic_prompts(
         Depends(common_pagination_parameters),
     ],
     filter_request: Annotated[
-        AgenticPromptFilterRequest,
-        Depends(agentic_prompt_filter_parameters),
+        PromptsGetAllFilterRequest,
+        Depends(prompts_get_all_filter_parameters),
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -225,8 +259,8 @@ def get_all_agentic_prompt_versions(
         Depends(common_pagination_parameters),
     ],
     filter_request: Annotated[
-        AgenticPromptFilterRequest,
-        Depends(agentic_prompt_filter_parameters),
+        PromptsGetVersionsFilterRequest,
+        Depends(prompts_get_versions_filter_parameters),
     ],
     prompt_name: str = Path(
         ...,

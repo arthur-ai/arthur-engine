@@ -10,7 +10,10 @@ from sqlalchemy.orm import Query, Session
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.request_schemas import AgenticPromptFilterRequest
+from schemas.request_schemas import (
+    PromptsGetAllFilterRequest,
+    PromptsGetVersionsFilterRequest,
+)
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptMetadataResponse,
@@ -89,72 +92,6 @@ class AgenticPromptRepository:
 
         return db_prompt
 
-    def _apply_filters(
-        self,
-        query: Query,
-        filter_request: Optional[AgenticPromptFilterRequest],
-    ) -> Query:
-        """
-        Apply filters to a query based on the filter request.
-
-        Parameters:
-            query: Query - the SQLAlchemy query to filter
-            filter_request: Optional[AgenticPromptFilterRequest] - filter parameters
-
-        Returns:
-            Query - the query with filters applied
-        """
-        if not filter_request:
-            return query
-
-        # Filter by prompt names
-        if filter_request.prompt_names:
-            query = query.filter(
-                DatabaseAgenticPrompt.name.in_(filter_request.prompt_names),
-            )
-
-        # Filter by model provider
-        if filter_request.model_provider:
-            query = query.filter(
-                DatabaseAgenticPrompt.model_provider == filter_request.model_provider,
-            )
-
-        # Filter by model name
-        if filter_request.model_name:
-            query = query.filter(
-                DatabaseAgenticPrompt.model_name == filter_request.model_name,
-            )
-
-        # Filter by start time (inclusive)
-        if filter_request.start_time:
-            query = query.filter(
-                DatabaseAgenticPrompt.created_at >= filter_request.start_time,
-            )
-
-        # Filter by end time (exclusive)
-        if filter_request.end_time:
-            query = query.filter(
-                DatabaseAgenticPrompt.created_at < filter_request.end_time,
-            )
-
-        # Filter by deleted status
-        if filter_request.exclude_deleted == True:
-            query = query.filter(DatabaseAgenticPrompt.deleted_at.is_(None))
-
-        # Filter by min version
-        if filter_request.min_version is not None:
-            query = query.filter(
-                DatabaseAgenticPrompt.version >= filter_request.min_version,
-            )
-
-        # Filter by max version
-        if filter_request.max_version is not None:
-            query = query.filter(
-                DatabaseAgenticPrompt.version <= filter_request.max_version,
-            )
-
-        return query
-
     def _apply_sorting_pagination_and_count(
         self,
         query: Query,
@@ -230,7 +167,7 @@ class AgenticPromptRepository:
         self,
         task_id: str,
         pagination_parameters: PaginationParameters,
-        filter_request: Optional[AgenticPromptFilterRequest] = None,
+        filter_request: Optional[PromptsGetAllFilterRequest] = None,
     ) -> AgenticPromptMetadataListResponse:
         """
         Get metadata for all prompts by task_id, including:
@@ -257,7 +194,8 @@ class AgenticPromptRepository:
         ).filter(DatabaseAgenticPrompt.task_id == task_id)
 
         # Apply filters BEFORE grouping
-        base_query = self._apply_filters(base_query, filter_request)
+        if filter_request is not None:
+            base_query = filter_request.apply_filters_to_query(base_query)
 
         # Apply grouping
         base_query = base_query.group_by(DatabaseAgenticPrompt.name)
@@ -313,7 +251,7 @@ class AgenticPromptRepository:
         task_id: str,
         prompt_name: str,
         pagination_parameters: PaginationParameters,
-        filter_request: Optional[AgenticPromptFilterRequest] = None,
+        filter_request: Optional[PromptsGetVersionsFilterRequest] = None,
     ) -> AgenticPromptVersionListResponse:
         """
         Get all versions of a prompt by task_id and name, including metadata:
@@ -338,7 +276,8 @@ class AgenticPromptRepository:
         )
 
         # Apply filters
-        base_query = self._apply_filters(base_query, filter_request)
+        if filter_request is not None:
+            base_query = filter_request.apply_filters_to_query(base_query)
 
         # Apply sorting, pagination, and get count
         base_query, total_count = self._apply_sorting_pagination_and_count(
