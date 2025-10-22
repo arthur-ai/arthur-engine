@@ -1,4 +1,27 @@
-import { Edit, Delete } from "@mui/icons-material";
+import { Edit, Delete, Warning } from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  Alert,
+} from "@mui/material";
 import React, { useState, useEffect } from "react";
 
 import { useApi } from "@/hooks/useApi";
@@ -64,15 +87,11 @@ export const ModelProviders: React.FC = () => {
   const getStatusBadge = (enabled: boolean) => {
     if (enabled) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          Enabled
-        </span>
+        <Chip label="Enabled" color="success" size="small" variant="filled" />
       );
     } else {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          Disabled
-        </span>
+        <Chip label="Disabled" color="error" size="small" variant="filled" />
       );
     }
   };
@@ -147,243 +166,252 @@ export const ModelProviders: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: 256,
+        }}
+      >
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <div className="flex">
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-900">
-              Error loading model providers
-            </h3>
-            <div className="mt-2 text-sm text-red-800">
-              <p>{error}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Alert severity="error" sx={{ m: 2 }}>
+        <Typography variant="h6">Error loading model providers</Typography>
+        <Typography>{error}</Typography>
+      </Alert>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h2 className="text-lg font-medium text-black">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          variant="h5"
+          component="h2"
+          gutterBottom
+          color="text.primary"
+          fontWeight="bold"
+        >
           Model Providers Configuration
-        </h2>
-        <p className="text-sm text-black">
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
           Manage and configure model providers to use LLM features.
-        </p>
-      </div>
+        </Typography>
+      </Box>
 
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+      <Card>
+        <CardContent sx={{ p: 0, "&:last-child": { pb: 0 } }}>
+          <TableContainer
+            sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}
+          >
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell
+                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                  >
                     Provider
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                  </TableCell>
+                  <TableCell
+                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                  >
                     Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                  </TableCell>
+                  <TableCell
+                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                  >
                     Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {providers.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={3}
-                      className="px-6 py-4 text-center text-sm text-black"
-                    >
-                      No model providers found
-                    </td>
-                  </tr>
+                  <TableRow>
+                    <TableCell colSpan={3} align="center">
+                      <Typography variant="body2" color="text.secondary">
+                        No model providers found
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   providers.map((provider) => (
-                    <tr key={provider.provider} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="text-sm font-medium text-black">
-                            {getProviderDisplayName(provider.provider)}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(provider.enabled)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        <div className="flex space-x-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-900 p-1 rounded-md hover:bg-blue-50 transition-colors duration-200"
+                    <TableRow key={provider.provider} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {getProviderDisplayName(provider.provider)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(provider.enabled)}</TableCell>
+                      <TableCell>
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <IconButton
+                            size="small"
+                            color="primary"
                             onClick={() => handleEditClick(provider)}
                             title="Configure provider"
                           >
-                            <Edit className="h-4 w-4" />
-                          </button>
+                            <Edit />
+                          </IconButton>
                           {provider.enabled && (
-                            <button
-                              className="text-red-600 hover:text-red-900 p-1 rounded-md hover:bg-red-50 transition-colors duration-200"
+                            <IconButton
+                              size="small"
+                              color="error"
                               onClick={() => handleDeleteClick(provider)}
                               title="Delete provider"
                             >
-                              <Delete className="h-4 w-4" />
-                            </button>
+                              <Delete />
+                            </IconButton>
                           )}
-                        </div>
-                      </td>
-                    </tr>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </CardContent>
+      </Card>
 
       {/* Delete Confirmation Modal */}
-      {deleteModal.isOpen && deleteModal.provider && (
-        <div className="fixed inset-0 bg-gray-600/30 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full">
-                <svg
-                  className="w-6 h-6 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-              </div>
-              <div className="mt-2 text-center">
-                <h3 className="text-lg font-medium text-black">
-                  Delete Model Provider
-                </h3>
-                <div className="mt-2">
-                  <p className="text-sm text-black">
-                    Are you sure you want to delete{" "}
-                    <span className="font-medium">
-                      {getProviderDisplayName(deleteModal.provider.provider)}
-                    </span>
-                    ?
-                  </p>
-                  <p className="text-sm text-red-600 mt-2 font-medium">
-                    ⚠️ Any agents or evals currently using this provider will no
-                    longer work.
-                  </p>
-                </div>
-              </div>
-              <div className="flex space-x-3 mt-4">
-                <button
-                  type="button"
-                  onClick={handleDeleteCancel}
-                  disabled={isDeleting}
-                  className="flex-1 bg-gray-300 text-black py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteConfirm}
-                  disabled={isDeleting}
-                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  {isDeleting ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Deleting...
-                    </div>
-                  ) : (
-                    "Delete"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              mb: 2,
+            }}
+          >
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                bgcolor: "error.light",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Warning sx={{ color: "error.main", fontSize: 24 }} />
+            </Box>
+          </Box>
+          Delete Model Provider
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: "center" }}>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            Are you sure you want to delete{" "}
+            <Typography component="span" fontWeight="bold">
+              {getProviderDisplayName(deleteModal.provider?.provider || "")}
+            </Typography>
+            ?
+          </Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            <Typography variant="body2">
+              Any agents or evals currently using this provider will no longer
+              work.
+            </Typography>
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={handleDeleteCancel}
+            disabled={isDeleting}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            disabled={isDeleting}
+            color="error"
+            variant="contained"
+            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit/Configure Modal */}
-      {editModal.isOpen && editModal.provider && (
-        <div className="fixed inset-0 bg-gray-600/30 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full">
-                <Edit className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="mt-2 text-center">
-                <h3 className="text-lg font-medium text-black">
-                  Configure{" "}
-                  {getProviderDisplayName(editModal.provider.provider)}
-                </h3>
-                <div className="mt-4">
-                  <label
-                    htmlFor="apiKey"
-                    className="block text-sm font-medium text-black mb-2 text-left"
-                  >
-                    API Key
-                  </label>
-                  <input
-                    type="password"
-                    id="apiKey"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your API key..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
-                    disabled={isSaving}
-                    autoFocus
-                  />
-                  <p className="text-xs text-black mt-2 text-left">
-                    Your API key will be securely stored and used to
-                    authenticate with{" "}
-                    {getProviderDisplayName(editModal.provider.provider)}.
-                  </p>
-                </div>
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={handleEditCancel}
-                  disabled={isSaving}
-                  className="flex-1 bg-gray-300 text-black py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleEditSave}
-                  disabled={isSaving || !apiKey.trim()}
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                >
-                  {isSaving ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Saving...
-                    </div>
-                  ) : (
-                    "Save"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <Dialog
+        open={editModal.isOpen}
+        onClose={handleEditCancel}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              mb: 2,
+            }}
+          >
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: "50%",
+                bgcolor: "primary.light",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Edit sx={{ color: "primary.main", fontSize: 24 }} />
+            </Box>
+          </Box>
+          Configure {getProviderDisplayName(editModal.provider?.provider || "")}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="apiKey"
+            label="API Key"
+            type="password"
+            fullWidth
+            variant="outlined"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="Enter your API key..."
+            disabled={isSaving}
+            helperText={`Your API key will be securely stored and used to authenticate with ${getProviderDisplayName(
+              editModal.provider?.provider || ""
+            )}.`}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={handleEditCancel}
+            disabled={isSaving}
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleEditSave}
+            disabled={isSaving || !apiKey.trim()}
+            variant="contained"
+            startIcon={isSaving ? <CircularProgress size={16} /> : null}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
