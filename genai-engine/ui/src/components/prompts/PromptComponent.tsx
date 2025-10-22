@@ -63,6 +63,13 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     });
   };
 
+  const handlePromptModelChange = (event: SelectChangeEvent) => {
+    dispatch({
+      type: "updatePromptModelName",
+      payload: { promptId: prompt.id, modelName: event.target.value },
+    });
+  };
+
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
   };
@@ -100,6 +107,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
 
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.provider === "";
+  const availableModels = state.availableModels.get(prompt.provider) || [];
+
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
@@ -187,14 +196,19 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                   labelId={`model-${prompt.id}`}
                   id={`model-${prompt.id}`}
                   label={MODEL_TEXT}
-                  value={""}
-                  onChange={() => {}}
+                  value={prompt.modelName || ""}
+                  onChange={handlePromptModelChange}
                   sx={{
                     backgroundColor: "white",
                   }}
                   disabled={modelDisabled}
                 >
                   <MenuItem value="">Select Model</MenuItem>
+                  {availableModels.map((model) => (
+                    <MenuItem key={model} value={model}>
+                      {model}
+                    </MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </div>
