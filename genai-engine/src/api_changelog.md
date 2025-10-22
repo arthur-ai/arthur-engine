@@ -2,8 +2,39 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/22/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/spans/{span_id}/metrics  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/traces/users/{user_id}  endpoint added
+
 # 10/21/2025
 - **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v1/users  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/sessions  endpoint added
+- **CHANGE** for **URL**: /api/v1/users/{user_id}/traces  endpoint added
+
+# 10/21/2025
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  endpoint added
+
+# 10/20/2025
+- **CHANGE** for **URL**: /api/v2/datasets  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/search  added the optional property 'datasets/items/latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}  added the optional property 'latest_version_number' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  added the required property 'rows/items/created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  added the required property 'rows/items/created_at' to the response with the '200' status
 
 # 10/20/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/model_providers/{provider}  the 'api_key' request property type/format changed from 'string'/'' to 'string'/'password'
@@ -420,43 +451,8 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions  endpoint added
 - **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/versions/{version_number}  endpoint added
 
-# 10/15/2025
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'query_relevance_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'response_relevance_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_name'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_selection'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'tool_usage'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_eq'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_gte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lt'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_duration_lte'
-- **CHANGE** for **URL**: /api/v1/spans  added the new optional 'query' request parameter 'trace_ids'
-
-# 10/15/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/sessions  removed the required property 'sessions/items/task_ids' from the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/task_id' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/sessions  added the required property 'sessions/items/trace_ids' to the response with the '200' status
 
 # 10/14/2025
-- **CHANGE** for **URL**: /api/v1/sessions  endpoint added
-- **CHANGE** for **URL**: /api/v1/sessions/{session_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/sessions/{session_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans/{span_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/spans/{span_id}/metrics  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/traces/{trace_id}/metrics  endpoint added
 - **CHANGE** for **URL**: /api/v1/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  endpoint added
 - **CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  endpoint added

@@ -23,6 +23,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     assert created_dataset.id is not None
     assert created_dataset.created_at is not None
     assert created_dataset.updated_at is not None
+    assert created_dataset.latest_version_number is None
 
     # test dataset fetch
     status_code, retrieved_dataset = client.get_dataset(created_dataset.id)
@@ -48,6 +49,7 @@ def test_user_story_datasets_crud(client: GenaiEngineTestClientBase) -> None:
     assert updated_dataset.name == updated_name
     assert updated_dataset.description == updated_description
     assert updated_dataset.metadata == updated_metadata
+    assert updated_dataset.updated_at > updated_dataset.created_at
 
     # validate updates persisted on fetch
     status_code, final_dataset = client.get_dataset(created_dataset.id)

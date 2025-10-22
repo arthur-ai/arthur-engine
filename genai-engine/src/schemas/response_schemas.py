@@ -57,6 +57,10 @@ class DatasetResponse(BaseModel):
     updated_at: int = Field(
         description="Timestamp representing the time of the last dataset update in unix milliseconds.",
     )
+    latest_version_number: Optional[int] = Field(
+        default=None,
+        description="Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet.",
+    )
 
 
 class SearchDatasetsResponse(BaseModel):
@@ -77,6 +81,10 @@ class DatasetVersionRowResponse(BaseModel):
     id: UUID = Field(description="ID of the version field.")
     data: List[DatasetVersionRowColumnItemResponse] = Field(
         description="List of column names and values in the row.",
+    )
+    created_at: int = Field(
+        description="Timestamp representing the time of dataset row creation in unix milliseconds. May differ within "
+        "a version if a row already existed in a past version of the dataset.",
     )
 
 
@@ -120,6 +128,7 @@ class TraceMetadataResponse(BaseModel):
 
     trace_id: str = Field(description="ID of the trace")
     task_id: str = Field(description="Task ID this trace belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
@@ -142,6 +151,7 @@ class SpanMetadataResponse(BaseModel):
     end_time: datetime = Field(description="Span end time")
     duration_ms: float = Field(description="Span duration in milliseconds")
     task_id: Optional[str] = Field(None, description="Task ID this span belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     status_code: str = Field(description="Status code (Unset, Error, Ok)")
     created_at: datetime = Field(description="When the span was created")
@@ -154,6 +164,7 @@ class SessionMetadataResponse(BaseModel):
 
     session_id: str = Field(description="Session identifier")
     task_id: str = Field(description="Task ID this session belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     trace_ids: list[str] = Field(description="List of trace IDs in this session")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
@@ -193,6 +204,27 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
+class TraceUserMetadataResponse(BaseModel):
+    """User summary metadata in trace context"""
+
+    user_id: str = Field(description="User identifier")
+    task_id: str = Field(description="Task ID this user belongs to")
+    session_ids: list[str] = Field(description="List of session IDs for this user")
+    session_count: int = Field(description="Number of sessions for this user")
+    trace_ids: list[str] = Field(description="List of trace IDs for this user")
+    trace_count: int = Field(description="Number of traces for this user")
+    span_count: int = Field(description="Total number of spans for this user")
+    earliest_start_time: datetime = Field(description="Start time of earliest trace")
+    latest_end_time: datetime = Field(description="End time of latest trace")
+
+
+class TraceUserListResponse(BaseModel):
+    """Response for trace user list endpoint"""
+
+    count: int = Field(description="Total number of users matching filters")
+    users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
+
+
 class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
@@ -202,18 +234,18 @@ class AgenticPromptRunResponse(BaseModel):
 class ModelProviderResponse(BaseModel):
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials"
+        description="Whether the provider is enabled with credentials.",
     )
 
 
 class ModelProviderList(BaseModel):
     providers: list[ModelProviderResponse] = Field(
-        description="List of model providers"
+        description="List of model providers",
     )
 
 
 class ModelProviderModelList(BaseModel):
     provider: ModelProvider = Field(description="Provider of the models")
     available_models: List[str] = Field(
-        description="Available models from the provider"
+        description="Available models from the provider",
     )

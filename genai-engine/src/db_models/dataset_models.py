@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import (
     JSON,
@@ -31,6 +31,7 @@ class DatabaseDataset(Base):
     versions: Mapped[List["DatabaseDatasetVersion"]] = relationship(
         cascade="all,delete",
     )
+    latest_version_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
 
 class DatabaseDatasetVersion(Base):
@@ -45,6 +46,7 @@ class DatabaseDatasetVersion(Base):
     version_rows: Mapped[List["DatabaseDatasetVersionRow"]] = relationship(
         cascade="all,delete",
         lazy="joined",
+        order_by="DatabaseDatasetVersionRow.created_at.desc()",
     )
     column_names: Mapped[List[str]] = mapped_column(JSON)
 
@@ -63,6 +65,7 @@ class DatabaseDatasetVersionRow(Base):
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
     data: Mapped[dict] = mapped_column(postgresql.JSON)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
 
     # Add composite index for efficient row lookups by version since dataset_id is not in the primary key
     # also add composite foreign key constraint (cannot be added on the columns:
