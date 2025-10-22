@@ -86,7 +86,7 @@ class ModelProviderRepository:
         if not secret:
             raise HTTPException(
                 status_code=400,
-                detail=f"model provider {provider} is not configured",
+                detail=f"model provider {provider.value} is not configured",
             )
 
         api_key = self._retrieve_api_key_from_secret(
@@ -114,3 +114,7 @@ class ModelProviderRepository:
             )
 
         return providers
+
+    def list_models_for_provider(self, provider: ModelProvider) -> List[str]:
+        client = self.get_model_provider_client(provider)
+        return client.get_available_models()
