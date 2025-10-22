@@ -87,11 +87,29 @@ export const ModelProviders: React.FC = () => {
   const getStatusBadge = (enabled: boolean) => {
     if (enabled) {
       return (
-        <Chip label="Enabled" color="success" size="small" variant="filled" />
+        <Chip
+          label="Enabled"
+          size="small"
+          variant="filled"
+          sx={{
+            backgroundColor: "primary.main",
+            color: "white",
+            "& .MuiChip-label": { fontWeight: "medium" },
+          }}
+        />
       );
     } else {
       return (
-        <Chip label="Disabled" color="error" size="small" variant="filled" />
+        <Chip
+          label="Disabled"
+          size="small"
+          variant="outlined"
+          sx={{
+            borderColor: "grey.400",
+            color: "grey.600",
+            "& .MuiChip-label": { fontWeight: "medium" },
+          }}
+        />
       );
     }
   };
@@ -280,16 +298,19 @@ export const ModelProviders: React.FC = () => {
                           >
                             <Edit />
                           </IconButton>
-                          {provider.enabled && (
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteClick(provider)}
-                              title="Delete provider"
-                            >
-                              <Delete />
-                            </IconButton>
-                          )}
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteClick(provider)}
+                            disabled={!provider.enabled}
+                            title={
+                              provider.enabled
+                                ? "Delete provider"
+                                : "Delete provider (disabled - provider not enabled)"
+                            }
+                          >
+                            <Delete />
+                          </IconButton>
                         </Box>
                       </TableCell>
                     </TableRow>
