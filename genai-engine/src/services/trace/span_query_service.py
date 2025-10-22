@@ -640,13 +640,27 @@ class SpanQueryService:
         if not task_ids:
             return None
 
+        # Use database-appropriate aggregation functions
+        if self.db_session.bind.dialect.name == "postgresql":
+            session_ids_agg = (
+                func.array_agg(func.distinct(DatabaseSpan.session_id))
+                .filter(DatabaseSpan.session_id.is_not(None))
+                .label("session_ids")
+            )
+            trace_ids_agg = func.array_agg(DatabaseSpan.trace_id).label("trace_ids")
+        else:  # SQLite and others
+            session_ids_agg = func.group_concat(
+                func.distinct(DatabaseSpan.session_id),
+            ).label("session_ids")
+            trace_ids_agg = func.group_concat(DatabaseSpan.trace_id).label("trace_ids")
+
         # Build query to get user metadata
         query = (
             select(
                 DatabaseSpan.user_id,
                 DatabaseSpan.task_id,
-                func.array_agg(DatabaseSpan.session_id).label("session_ids"),
-                func.array_agg(DatabaseSpan.trace_id).label("trace_ids"),
+                session_ids_agg,
+                trace_ids_agg,
                 func.count(DatabaseSpan.id).label("span_count"),
                 func.min(DatabaseSpan.start_time).label("earliest_start_time"),
                 func.max(DatabaseSpan.end_time).label("latest_end_time"),
