@@ -210,21 +210,35 @@ export const ModelProviders: React.FC = () => {
           <TableContainer
             sx={{ maxHeight: "calc(100vh - 200px)", overflow: "auto" }}
           >
-            <Table stickyHeader size="small">
+            <Table stickyHeader size="small" sx={{ width: "100%" }}>
               <TableHead>
                 <TableRow>
                   <TableCell
-                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                    sx={{
+                      fontWeight: "bold",
+                      backgroundColor: "grey.100",
+                      width: "33.33%",
+                    }}
                   >
                     Provider
                   </TableCell>
                   <TableCell
-                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                    sx={{
+                      fontWeight: "bold",
+                      backgroundColor: "grey.100",
+                      width: "33.33%",
+                    }}
+                    align="center"
                   >
                     Status
                   </TableCell>
                   <TableCell
-                    sx={{ fontWeight: "bold", backgroundColor: "grey.100" }}
+                    sx={{
+                      fontWeight: "bold",
+                      backgroundColor: "grey.100",
+                      width: "33.33%",
+                    }}
+                    align="right"
                   >
                     Actions
                   </TableCell>
@@ -247,9 +261,17 @@ export const ModelProviders: React.FC = () => {
                           {getProviderDisplayName(provider.provider)}
                         </Typography>
                       </TableCell>
-                      <TableCell>{getStatusBadge(provider.enabled)}</TableCell>
-                      <TableCell>
-                        <Box sx={{ display: "flex", gap: 1 }}>
+                      <TableCell align="center">
+                        {getStatusBadge(provider.enabled)}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box
+                          sx={{
+                            display: "flex",
+                            gap: 1,
+                            justifyContent: "flex-end",
+                          }}
+                        >
                           <IconButton
                             size="small"
                             color="primary"
