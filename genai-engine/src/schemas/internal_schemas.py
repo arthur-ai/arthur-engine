@@ -538,6 +538,7 @@ class Task(BaseModel):
 class TraceMetadata(BaseModel):
     trace_id: str
     task_id: str
+    user_id: Optional[str] = None
     session_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
@@ -550,6 +551,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
+            user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
             end_time=x.end_time,
@@ -562,6 +564,7 @@ class TraceMetadata(BaseModel):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
@@ -576,6 +579,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadataResponse(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
@@ -1781,6 +1785,7 @@ class SessionMetadata(BaseModel):
 
     session_id: str
     task_id: str
+    user_id: Optional[str] = None
     trace_ids: list[str]
     span_count: int
     earliest_start_time: datetime
@@ -1795,6 +1800,7 @@ class SessionMetadata(BaseModel):
         return SessionMetadataResponse(
             session_id=self.session_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             trace_ids=self.trace_ids,
             trace_count=len(self.trace_ids),
             span_count=self.span_count,
@@ -1874,6 +1880,10 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    user_ids: Optional[list[str]] = Field(
+        None,
+        description="User IDs to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":

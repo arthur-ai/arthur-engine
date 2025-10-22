@@ -2,9 +2,12 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
-# 10/21/2025
-- Added user_ids as a query parameter to /api/v1/traces/sessions and /api/v1/traces/traces
-- Added user_ids as a response parameter to all /traces endpoints
+# 10/22/2025
+- **CHANGE** for **URL**: /api/v1/traces  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces  added the optional property 'traces/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the new optional 'query' request parameter 'user_ids'
+- **CHANGE** for **URL**: /api/v1/traces/sessions  added the optional property 'sessions/items/user_id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/traces/spans  added the optional property 'spans/items/user_id' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/traces/sessions  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/traces/sessions/{session_id}/metrics  endpoint added

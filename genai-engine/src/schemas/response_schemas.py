@@ -120,6 +120,7 @@ class TraceMetadataResponse(BaseModel):
 
     trace_id: str = Field(description="ID of the trace")
     task_id: str = Field(description="Task ID this trace belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
@@ -142,6 +143,7 @@ class SpanMetadataResponse(BaseModel):
     end_time: datetime = Field(description="Span end time")
     duration_ms: float = Field(description="Span duration in milliseconds")
     task_id: Optional[str] = Field(None, description="Task ID this span belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     status_code: str = Field(description="Status code (Unset, Error, Ok)")
     created_at: datetime = Field(description="When the span was created")
@@ -154,6 +156,7 @@ class SessionMetadataResponse(BaseModel):
 
     session_id: str = Field(description="Session identifier")
     task_id: str = Field(description="Task ID this session belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     trace_ids: list[str] = Field(description="List of trace IDs in this session")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
@@ -212,24 +215,6 @@ class TraceUserListResponse(BaseModel):
 
     count: int = Field(description="Total number of users matching filters")
     users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
-
-
-class TraceUserSessionsResponse(BaseModel):
-    """Response for trace user sessions endpoint"""
-
-    user_id: str = Field(description="User identifier")
-    count: int = Field(description="Number of sessions for this user")
-    sessions: list[SessionMetadataResponse] = Field(
-        description="List of session metadata",
-    )
-
-
-class TraceUserTracesResponse(BaseModel):
-    """Response for trace user traces endpoint"""
-
-    user_id: str = Field(description="User identifier")
-    count: int = Field(description="Number of traces for this user")
-    traces: list[TraceMetadataResponse] = Field(description="List of trace metadata")
 
 
 class AgenticPromptRunResponse(BaseModel):

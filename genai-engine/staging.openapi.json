@@ -3240,6 +3240,20 @@
                 ],
                 "parameters": [
                     {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -4099,6 +4113,20 @@
                         "description": "Exclusive end date in ISO8601 string format. Use local time (not UTC)."
                     },
                     {
+                        "name": "user_ids",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "User IDs to filter on. Optional.",
+                            "title": "User Ids"
+                        },
+                        "description": "User IDs to filter on. Optional."
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,
@@ -4437,14 +4465,14 @@
                 }
             }
         },
-        "/api/v1/traces/users/{user_id}/sessions": {
+        "/api/v1/traces/users/{user_id}": {
             "get": {
                 "tags": [
                     "Users"
                 ],
-                "summary": "Get User Sessions",
-                "description": "Get all sessions for a user. Returns list of session metadata for the specified user.",
-                "operationId": "get_user_sessions_api_v1_traces_users__user_id__sessions_get",
+                "summary": "Get User Details",
+                "description": "Get detailed information for a single user including session and trace metadata.",
+                "operationId": "get_user_details_api_v1_traces_users__user_id__get",
                 "security": [
                     {
                         "API Key": []
@@ -4461,122 +4489,19 @@
                         }
                     },
                     {
-                        "name": "sort",
+                        "name": "task_ids",
                         "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
-                        },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceUserSessionsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/users/{user_id}/traces": {
-            "get": {
-                "tags": [
-                    "Users"
-                ],
-                "summary": "Get User Traces",
-                "description": "Get all traces for a user. Returns list of trace metadata for the specified user, including traces not associated with sessions.",
-                "operationId": "get_user_traces_api_v1_traces_users__user_id__traces_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "user_id",
-                        "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string",
-                            "title": "User Id"
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "$ref": "#/components/schemas/PaginationSortMethod",
-                            "description": "Sort the results (asc/desc)",
-                            "default": "desc"
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1,
+                            "description": "Task IDs to filter on. At least one is required.",
+                            "title": "Task Ids"
                         },
-                        "description": "Sort the results (asc/desc)"
-                    },
-                    {
-                        "name": "page_size",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
-                            "default": 10,
-                            "title": "Page Size"
-                        },
-                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
-                    },
-                    {
-                        "name": "page",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer",
-                            "description": "Page number",
-                            "default": 0,
-                            "title": "Page"
-                        },
-                        "description": "Page number"
+                        "description": "Task IDs to filter on. At least one is required."
                     }
                 ],
                 "responses": {
@@ -4585,7 +4510,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/TraceUserTracesResponse"
+                                    "$ref": "#/components/schemas/TraceUserMetadataResponse"
                                 }
                             }
                         }
@@ -11271,6 +11196,18 @@
                         "title": "Task Id",
                         "description": "Task ID this session belongs to"
                     },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id",
+                        "description": "User ID if available"
+                    },
                     "trace_ids": {
                         "items": {
                             "type": "string"
@@ -11456,6 +11393,18 @@
                         ],
                         "title": "Task Id",
                         "description": "Task ID this span belongs to"
+                    },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id",
+                        "description": "User ID if available"
                     },
                     "session_id": {
                         "anyOf": [
@@ -12131,6 +12080,18 @@
                         "title": "Task Id",
                         "description": "Task ID this trace belongs to"
                     },
+                    "user_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "User Id",
+                        "description": "User ID if available"
+                    },
                     "session_id": {
                         "anyOf": [
                             {
@@ -12324,66 +12285,6 @@
                 ],
                 "title": "TraceUserMetadataResponse",
                 "description": "User summary metadata in trace context"
-            },
-            "TraceUserSessionsResponse": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "title": "User Id",
-                        "description": "User identifier"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Number of sessions for this user"
-                    },
-                    "sessions": {
-                        "items": {
-                            "$ref": "#/components/schemas/SessionMetadataResponse"
-                        },
-                        "type": "array",
-                        "title": "Sessions",
-                        "description": "List of session metadata"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "count",
-                    "sessions"
-                ],
-                "title": "TraceUserSessionsResponse",
-                "description": "Response for trace user sessions endpoint"
-            },
-            "TraceUserTracesResponse": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "title": "User Id",
-                        "description": "User identifier"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Number of traces for this user"
-                    },
-                    "traces": {
-                        "items": {
-                            "$ref": "#/components/schemas/TraceMetadataResponse"
-                        },
-                        "type": "array",
-                        "title": "Traces",
-                        "description": "List of trace metadata"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "count",
-                    "traces"
-                ],
-                "title": "TraceUserTracesResponse",
-                "description": "Response for trace user traces endpoint"
             },
             "UpdateMetricRequest": {
                 "properties": {

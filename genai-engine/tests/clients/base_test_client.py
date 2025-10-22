@@ -72,8 +72,7 @@ from schemas.response_schemas import (
     SpanListResponse,
     TraceListResponse,
     TraceUserListResponse,
-    TraceUserSessionsResponse,
-    TraceUserTracesResponse,
+    TraceUserMetadataResponse,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -1729,6 +1728,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         sort: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
+        user_ids: list[str] | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1773,6 +1773,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if user_ids is not None:
+            params["user_ids"] = user_ids
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq
@@ -2082,6 +2084,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        user_ids: list[str] | None = None,
     ) -> tuple[int, SessionListResponse | str]:
         """Get session metadata with pagination and filtering.
 
@@ -2107,6 +2110,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if user_ids is not None:
+            params["user_ids"] = user_ids
 
         resp = self.base_client.get(
             f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",
@@ -2118,6 +2123,37 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SessionListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_user_details(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> tuple[int, TraceUserMetadataResponse | str]:
+        """Get detailed information for a single user.
+
+        Args:
+            user_id: User ID to get details for
+            task_ids: Task IDs to filter on (required)
+
+        Returns:
+            tuple[int, TraceUserMetadataResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+
+        resp = self.base_client.get(
+            f"/api/v1/traces/users/{user_id}?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceUserMetadataResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -2259,96 +2295,6 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 TraceUserListResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else resp.text
-            ),
-        )
-
-    def trace_api_get_user_sessions(
-        self,
-        user_id: str,
-        page: int | None = None,
-        page_size: int | None = None,
-        sort: str | None = None,
-    ):
-        """Get user sessions via Trace API.
-
-        Args:
-            user_id: The user ID to get sessions for
-            page: Page number for pagination
-            page_size: Number of items per page
-            sort: Sort order ("asc" or "desc")
-
-        Returns:
-            tuple[int, TraceUserSessionsResponse | str]: Status code and response
-        """
-
-        params = {}
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        if sort is not None:
-            params["sort"] = sort
-
-        query_string = (
-            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
-        )
-        resp = self.base_client.get(
-            f"/api/v1/traces/users/{user_id}/sessions{query_string}",
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                TraceUserSessionsResponse.model_validate(resp.json())
-                if resp.status_code == 200
-                else resp.text
-            ),
-        )
-
-    def trace_api_get_user_traces(
-        self,
-        user_id: str,
-        page: int | None = None,
-        page_size: int | None = None,
-        sort: str | None = None,
-    ):
-        """Get user traces via Trace API.
-
-        Args:
-            user_id: The user ID to get traces for
-            page: Page number for pagination
-            page_size: Number of items per page
-            sort: Sort order ("asc" or "desc")
-
-        Returns:
-            tuple[int, TraceUserTracesResponse | str]: Status code and response
-        """
-
-        params = {}
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        if sort is not None:
-            params["sort"] = sort
-
-        query_string = (
-            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
-        )
-        resp = self.base_client.get(
-            f"/api/v1/traces/users/{user_id}/traces{query_string}",
-            headers=self.authorized_user_api_key_headers,
-        )
-        log_response(resp)
-
-        return (
-            resp.status_code,
-            (
-                TraceUserTracesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

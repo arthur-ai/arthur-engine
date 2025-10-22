@@ -28,8 +28,7 @@ from schemas.response_schemas import (
     SpanListResponse,
     TraceListResponse,
     TraceUserListResponse,
-    TraceUserSessionsResponse,
-    TraceUserTracesResponse,
+    TraceUserMetadataResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -99,6 +98,10 @@ def list_traces_metadata(
         TraceQueryRequest,
         Depends(trace_query_parameters),
     ],
+    user_ids: list[str] = Query(
+        None,
+        description="User IDs to filter on. Optional.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
@@ -108,6 +111,7 @@ def list_traces_metadata(
         count, trace_metadata_list = span_repo.get_traces_metadata(
             filters=trace_query,
             pagination_parameters=pagination_parameters,
+            user_ids=user_ids,
         )
 
         traces = [
@@ -283,6 +287,10 @@ def list_sessions_metadata(
         None,
         description="Exclusive end date in ISO8601 string format. Use local time (not UTC).",
     ),
+    user_ids: list[str] = Query(
+        None,
+        description="User IDs to filter on. Optional.",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
@@ -293,6 +301,7 @@ def list_sessions_metadata(
             task_ids=task_ids,
             start_time=start_time,
             end_time=end_time,
+            user_ids=user_ids,
             pagination_parameters=pagination_parameters,
         )
 
@@ -468,86 +477,43 @@ def list_users_metadata(
 
 
 @trace_api_routes.get(
-    "/traces/users/{user_id}/sessions",
-    summary="Get User Sessions",
-    description="Get all sessions for a user. Returns list of session metadata for the specified user.",
-    response_model=TraceUserSessionsResponse,
+    "/traces/users/{user_id}",
+    summary="Get User Details",
+    description="Get detailed information for a single user including session and trace metadata.",
+    response_model=TraceUserMetadataResponse,
     response_model_exclude_none=True,
     tags=["Users"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
-def get_user_sessions(
+def get_user_details(
     user_id: str,
-    pagination_parameters: Annotated[
-        PaginationParameters,
-        Depends(common_pagination_parameters),
-    ],
+    task_ids: list[str] = Query(
+        ...,
+        description="Task IDs to filter on. At least one is required.",
+        min_length=1,
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ):
-    """Get all sessions for a user."""
+    """Get detailed information for a single user."""
     try:
         span_repo = _get_span_repository(db_session)
-        count, user_sessions = span_repo.get_user_sessions(
+        user_details = span_repo.get_user_details(
             user_id=user_id,
-            pagination_parameters=pagination_parameters,
+            task_ids=task_ids,
         )
 
-        session_responses = [
-            session._to_metadata_response_model() for session in user_sessions
-        ]
+        if not user_details:
+            raise HTTPException(
+                status_code=404,
+                detail=f"User {user_id} not found or has no data",
+            )
 
-        return TraceUserSessionsResponse(
-            user_id=user_id,
-            count=count,
-            sessions=session_responses,
-        )
+        return user_details._to_metadata_response_model()
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting user sessions: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db_session.close()
-
-
-@trace_api_routes.get(
-    "/traces/users/{user_id}/traces",
-    summary="Get User Traces",
-    description="Get all traces for a user. Returns list of trace metadata for the specified user, including traces not associated with sessions.",
-    response_model=TraceUserTracesResponse,
-    response_model_exclude_none=True,
-    tags=["Users"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.INFERENCE_READ.value)
-def get_user_traces(
-    user_id: str,
-    pagination_parameters: Annotated[
-        PaginationParameters,
-        Depends(common_pagination_parameters),
-    ],
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    """Get all traces for a user."""
-    try:
-        span_repo = _get_span_repository(db_session)
-        count, user_traces = span_repo.get_user_traces(
-            user_id=user_id,
-            pagination_parameters=pagination_parameters,
-        )
-
-        trace_responses = [trace._to_metadata_response_model() for trace in user_traces]
-
-        return TraceUserTracesResponse(
-            user_id=user_id,
-            count=count,
-            traces=trace_responses,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting user traces: {e}")
+        logger.error(f"Error getting user details: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db_session.close()

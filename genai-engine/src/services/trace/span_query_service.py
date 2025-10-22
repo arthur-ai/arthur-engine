@@ -185,6 +185,8 @@ class SpanQueryService:
             conditions.append(DatabaseTraceMetadata.start_time >= filters.start_time)
         if filters.end_time:
             conditions.append(DatabaseTraceMetadata.end_time <= filters.end_time)
+        if filters.user_ids:
+            conditions.append(DatabaseTraceMetadata.user_id.in_(filters.user_ids))
 
         # Duration filters with optimized calculation
         if filters.trace_duration_filters:
@@ -629,12 +631,69 @@ class SpanQueryService:
 
         return trace_metadata_list
 
+    def get_user_metadata_by_id(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> Optional[TraceUserMetadata]:
+        """Get user metadata for a specific user."""
+        if not task_ids:
+            return None
+
+        # Build query to get user metadata
+        query = (
+            select(
+                DatabaseSpan.user_id,
+                DatabaseSpan.task_id,
+                func.array_agg(DatabaseSpan.session_id).label("session_ids"),
+                func.array_agg(DatabaseSpan.trace_id).label("trace_ids"),
+                func.count(DatabaseSpan.id).label("span_count"),
+                func.min(DatabaseSpan.start_time).label("earliest_start_time"),
+                func.max(DatabaseSpan.end_time).label("latest_end_time"),
+            )
+            .where(
+                and_(
+                    DatabaseSpan.user_id == user_id,
+                    DatabaseSpan.task_id.in_(task_ids),
+                ),
+            )
+            .group_by(
+                DatabaseSpan.user_id,
+                DatabaseSpan.task_id,
+            )
+        )
+
+        result = self.db_session.execute(query).first()
+        if not result:
+            return None
+
+        # Handle session_ids and trace_ids based on database type
+        if self.db_session.bind.dialect.name == "postgresql":
+            session_ids = [sid for sid in result.session_ids if sid is not None]
+            trace_ids = list(set(result.trace_ids))  # Remove duplicates
+        else:  # SQLite and others
+            session_ids = [
+                sid for sid in result.session_ids.split(",") if sid and sid != "None"
+            ]
+            trace_ids = list(set(result.trace_ids.split(",")))  # Remove duplicates
+
+        return TraceUserMetadata(
+            user_id=result.user_id,
+            task_id=result.task_id,
+            session_ids=session_ids,
+            trace_ids=trace_ids,
+            span_count=result.span_count,
+            earliest_start_time=result.earliest_start_time,
+            latest_end_time=result.latest_end_time,
+        )
+
     def get_sessions_aggregated(
         self,
         task_ids: list[str],
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        user_ids: Optional[list[str]] = None,
     ) -> tuple[int, list[SessionMetadata]]:
         """Perform session-level aggregations with filtering."""
         if not task_ids:
@@ -656,6 +715,7 @@ class SpanQueryService:
         query = select(
             DatabaseTraceMetadata.session_id,
             DatabaseTraceMetadata.task_id,
+            DatabaseTraceMetadata.user_id,
             trace_ids_agg,
             func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
             func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
@@ -673,10 +733,15 @@ class SpanQueryService:
         if end_time:
             query = query.where(DatabaseTraceMetadata.end_time <= end_time)
 
-        # Group by both session_id and task_id to ensure proper session boundaries
+        # Apply user filtering
+        if user_ids:
+            query = query.where(DatabaseTraceMetadata.user_id.in_(user_ids))
+
+        # Group by session_id, task_id, and user_id to ensure proper session boundaries
         query = query.group_by(
             DatabaseTraceMetadata.session_id,
             DatabaseTraceMetadata.task_id,
+            DatabaseTraceMetadata.user_id,
         )
 
         # Apply pagination with bite-sized functions
@@ -698,6 +763,7 @@ class SpanQueryService:
                 SessionMetadata(
                     session_id=row.session_id,
                     task_id=row.task_id,
+                    user_id=row.user_id,
                     trace_ids=trace_ids,
                     span_count=row.span_count,
                     earliest_start_time=row.earliest_start_time,
@@ -826,95 +892,3 @@ class SpanQueryService:
             )
 
         return total_count, users
-
-    def get_sessions_for_user(
-        self,
-        user_id: str,
-        pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list[SessionMetadata]]:
-        """Get paginated sessions for a specific user."""
-        # Use same aggregation logic as get_sessions_aggregated but filter by user_id
-
-        # Use database-appropriate aggregation function
-        if self.db_session.bind.dialect.name == "postgresql":
-            trace_ids_agg = func.array_agg(DatabaseTraceMetadata.trace_id).label(
-                "trace_ids",
-            )
-        else:  # SQLite
-            trace_ids_agg = func.group_concat(DatabaseTraceMetadata.trace_id).label(
-                "trace_ids",
-            )
-
-        query = select(
-            DatabaseTraceMetadata.session_id,
-            DatabaseTraceMetadata.task_id,
-            trace_ids_agg,
-            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
-            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
-            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
-        ).where(
-            and_(
-                DatabaseTraceMetadata.user_id == user_id,
-                DatabaseTraceMetadata.session_id.is_not(None),
-            ),
-        )
-
-        # Group by both session_id and task_id
-        query = query.group_by(
-            DatabaseTraceMetadata.session_id,
-            DatabaseTraceMetadata.task_id,
-        )
-
-        # Apply pagination with bite-sized functions
-        query = self._apply_sorting(query, pagination_parameters, "earliest_start_time")
-        total_count = self._get_count_from_query(query)
-        query = self._apply_pagination(query, pagination_parameters)
-        results = self.db_session.execute(query).all()
-
-        # Convert to SessionMetadata objects
-        sessions = []
-        for row in results:
-            # Handle trace_ids based on database type
-            if self.db_session.bind.dialect.name == "postgresql":
-                trace_ids = row.trace_ids or []
-            else:  # SQLite
-                trace_ids = row.trace_ids.split(",") if row.trace_ids else []
-
-            sessions.append(
-                SessionMetadata(
-                    session_id=row.session_id,
-                    task_id=row.task_id,
-                    trace_ids=trace_ids,
-                    span_count=row.span_count or 0,
-                    earliest_start_time=row.earliest_start_time,
-                    latest_end_time=row.latest_end_time,
-                ),
-            )
-
-        return total_count, sessions
-
-    def get_traces_for_user(
-        self,
-        user_id: str,
-        pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list[TraceMetadata]]:
-        """Get paginated traces for a specific user."""
-        query = select(DatabaseTraceMetadata).where(
-            DatabaseTraceMetadata.user_id == user_id,
-        )
-
-        # Apply pagination with bite-sized functions
-        query = self._apply_sorting(
-            query,
-            pagination_parameters,
-            DatabaseTraceMetadata.start_time,
-        )
-        total_count = self._get_count_with_where(
-            DatabaseTraceMetadata.trace_id,
-            DatabaseTraceMetadata.user_id == user_id,
-        )
-        query = self._apply_pagination(query, pagination_parameters)
-        results = self.db_session.execute(query).scalars().all()
-        traces = [TraceMetadata._from_database_model(tm) for tm in results]
-
-        return total_count, traces
