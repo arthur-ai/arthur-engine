@@ -286,17 +286,6 @@ def test_dataset_versions_basic_functionality(
     # The 'profession' column should be removed since Alice Brown was the only row with that column
     assert set(version_3.column_names) == {"name", "age"}
 
-    # Test 5: Verify deleting dataset with versions doesn't result in an error
-    status_code = client.delete_dataset(dataset_id)
-    assert status_code == 204
-
-    # Test 6: Verify getting dataset version for deleted dataset returns error code
-    status_code, _ = client.get_dataset_version(
-        dataset_id=dataset_id,
-        version_number=1,
-    )
-    assert status_code == 404
-
     # test exceeding max value of allowed rows
     new_rows = [
         NewDatasetVersionRowRequest(
@@ -307,7 +296,7 @@ def test_dataset_versions_basic_functionality(
                 ),
             ],
         )
-        for i in range(248)
+        for i in range(249)
     ]
 
     status_code, _ = client.create_dataset_version(
@@ -315,5 +304,16 @@ def test_dataset_versions_basic_functionality(
         rows_to_delete=[],
         rows_to_update=[],
         rows_to_add=new_rows,
+    )
+    assert status_code == 400
+
+    # Test 5: Verify deleting dataset with versions doesn't result in an error
+    status_code = client.delete_dataset(dataset_id)
+    assert status_code == 204
+
+    # Test 6: Verify getting dataset version for deleted dataset returns error code
+    status_code, _ = client.get_dataset_version(
+        dataset_id=dataset_id,
+        version_number=1,
     )
     assert status_code == 404
