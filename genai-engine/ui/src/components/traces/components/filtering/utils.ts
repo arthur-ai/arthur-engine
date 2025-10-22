@@ -34,27 +34,6 @@ const ENUM_OPTION_TO_LABEL = {
   ["2"]: "N/A",
 } as const;
 
-enum DataResultFilterOp {
-  LessThan,
-  LessThanOrEqual,
-  GreaterThan,
-  GreaterThanOrEqual,
-  Equals,
-  In,
-  NotIn,
-}
-
-const OPERATOR_TO_DATA_RESULT_FILTER_OP: Record<Operator, DataResultFilterOp> =
-  {
-    [Operators.LESS_THAN]: DataResultFilterOp.LessThan,
-    [Operators.LESS_THAN_OR_EQUAL]: DataResultFilterOp.LessThanOrEqual,
-    [Operators.GREATER_THAN]: DataResultFilterOp.GreaterThan,
-    [Operators.GREATER_THAN_OR_EQUAL]: DataResultFilterOp.GreaterThanOrEqual,
-    [Operators.EQUALS]: DataResultFilterOp.Equals,
-    [Operators.IN]: DataResultFilterOp.In,
-    [Operators.NOT_IN]: DataResultFilterOp.NotIn,
-  };
-
 export const getEnumOptionLabel = (option: string) => {
   return (
     ENUM_OPTION_TO_LABEL[option as keyof typeof ENUM_OPTION_TO_LABEL] ?? option

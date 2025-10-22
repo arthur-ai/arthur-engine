@@ -1,4 +1,3 @@
-
 import Box from "@mui/material/Box";
 import LinearProgress from "@mui/material/LinearProgress";
 import Paper from "@mui/material/Paper";
@@ -10,7 +9,11 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import { useQuery } from "@tanstack/react-query";
-import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
@@ -80,12 +83,7 @@ export const SessionLevel = () => {
           </TableHead>
           <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                hover
-                onClick={() => {
-                }}
-              >
+              <TableRow key={row.id} hover onClick={() => {}}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}

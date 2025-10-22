@@ -1,16 +1,32 @@
-import { type ExtendedOpenInferenceSpanKind, type TraceSpan } from "../tracesTypes";
-import { parseMetricDetails } from "../utils";
-import { type FilterableField } from "./fields";
-import { type ComparisonOperator, EnumOperators, type MetricFilterSchema, type Operator, Operators } from "./types";
+import {
+  type ComparisonOperator,
+  EnumOperators,
+  type MetricFilterSchema,
+  type Operator,
+  Operators,
+  type FilterableField,
+} from "./types";
 
 /**
  * Available combinations of comparison operators for a numeric metric
  */
 export const ComparisonOperatorCombinations = new Map<Operator, Set<Operator>>([
-  [Operators.LESS_THAN, new Set([Operators.GREATER_THAN, Operators.GREATER_THAN_OR_EQUAL])],
-  [Operators.LESS_THAN_OR_EQUAL, new Set([Operators.GREATER_THAN, Operators.GREATER_THAN_OR_EQUAL])],
-  [Operators.GREATER_THAN, new Set([Operators.LESS_THAN, Operators.LESS_THAN_OR_EQUAL])],
-  [Operators.GREATER_THAN_OR_EQUAL, new Set([Operators.LESS_THAN, Operators.LESS_THAN_OR_EQUAL])],
+  [
+    Operators.LESS_THAN,
+    new Set([Operators.GREATER_THAN, Operators.GREATER_THAN_OR_EQUAL]),
+  ],
+  [
+    Operators.LESS_THAN_OR_EQUAL,
+    new Set([Operators.GREATER_THAN, Operators.GREATER_THAN_OR_EQUAL]),
+  ],
+  [
+    Operators.GREATER_THAN,
+    new Set([Operators.LESS_THAN, Operators.LESS_THAN_OR_EQUAL]),
+  ],
+  [
+    Operators.GREATER_THAN_OR_EQUAL,
+    new Set([Operators.LESS_THAN, Operators.LESS_THAN_OR_EQUAL]),
+  ],
   [Operators.EQUALS, new Set()],
 ]);
 
@@ -20,9 +36,14 @@ export const EnumOperatorCombinations = new Map<Operator, Set<Operator>>([
   [Operators.EQUALS, new Set()],
 ]);
 
-export const canBeCombinedWith = (operator: Operator, withOperator: Operator): boolean => {
+export const canBeCombinedWith = (
+  operator: Operator,
+  withOperator: Operator
+): boolean => {
   if (ComparisonOperatorCombinations.has(operator)) {
-    return ComparisonOperatorCombinations.get(operator)?.has(withOperator) ?? false;
+    return (
+      ComparisonOperatorCombinations.get(operator)?.has(withOperator) ?? false
+    );
   }
 
   if (EnumOperatorCombinations.has(operator)) {
@@ -32,9 +53,20 @@ export const canBeCombinedWith = (operator: Operator, withOperator: Operator): b
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SpanFilterStrategy<T = any> = (_: { span: TraceSpan; filter: Omit<MetricFilterSchema, "value"> & { value: T } }) => boolean;
+export type SpanFilterStrategy<T = any> = (_: {
+  span: TraceSpan;
+  filter: Omit<MetricFilterSchema, "value"> & { value: T };
+}) => boolean;
 
-const numericComparisonHelper = ({ left, operator, right }: { left: number; right: number; operator: ComparisonOperator }) => {
+const numericComparisonHelper = ({
+  left,
+  operator,
+  right,
+}: {
+  left: number;
+  right: number;
+  operator: ComparisonOperator;
+}) => {
   switch (operator) {
     case Operators.GREATER_THAN:
       return left > right;
@@ -51,7 +83,10 @@ const numericComparisonHelper = ({ left, operator, right }: { left: number; righ
   }
 };
 
-const spanTypesStrategy: SpanFilterStrategy<ExtendedOpenInferenceSpanKind> = ({ span, filter }) => {
+const spanTypesStrategy: SpanFilterStrategy<ExtendedOpenInferenceSpanKind> = ({
+  span,
+  filter,
+}) => {
   if (filter.operator === EnumOperators.EQUALS) {
     return span.span_kind === filter.value;
   }
@@ -63,8 +98,13 @@ const spanTypesStrategy: SpanFilterStrategy<ExtendedOpenInferenceSpanKind> = ({ 
   return false;
 };
 
-const queryRelevanceStrategy: SpanFilterStrategy<number> = ({ span, filter }) => {
-  const metric = span.metric_results.find((m) => m.metric_type === "QueryRelevance");
+const queryRelevanceStrategy: SpanFilterStrategy<number> = ({
+  span,
+  filter,
+}) => {
+  const metric = span.metric_results.find(
+    (m) => m.metric_type === "QueryRelevance"
+  );
 
   if (!metric || !filter.operator) return false;
 
@@ -73,13 +113,25 @@ const queryRelevanceStrategy: SpanFilterStrategy<number> = ({ span, filter }) =>
   if (!details || !details.query_relevance) return false;
 
   const score =
-    details.query_relevance.reranker_relevance_score || details.query_relevance.bert_f_score || details.query_relevance.llm_relevance_score || 0;
+    details.query_relevance.reranker_relevance_score ||
+    details.query_relevance.bert_f_score ||
+    details.query_relevance.llm_relevance_score ||
+    0;
 
-  return numericComparisonHelper({ left: score, operator: filter.operator as ComparisonOperator, right: filter.value });
+  return numericComparisonHelper({
+    left: score,
+    operator: filter.operator as ComparisonOperator,
+    right: filter.value,
+  });
 };
 
-const responseRelevanceStrategy: SpanFilterStrategy<number> = ({ span, filter }) => {
-  const metric = span.metric_results.find((m) => m.metric_type === "ResponseRelevance");
+const responseRelevanceStrategy: SpanFilterStrategy<number> = ({
+  span,
+  filter,
+}) => {
+  const metric = span.metric_results.find(
+    (m) => m.metric_type === "ResponseRelevance"
+  );
 
   if (!metric || !filter.operator) return false;
 
@@ -93,7 +145,11 @@ const responseRelevanceStrategy: SpanFilterStrategy<number> = ({ span, filter })
     details.response_relevance.llm_relevance_score ||
     0;
 
-  return numericComparisonHelper({ left: score, operator: filter.operator as ComparisonOperator, right: filter.value });
+  return numericComparisonHelper({
+    left: score,
+    operator: filter.operator as ComparisonOperator,
+    right: filter.value,
+  });
 };
 
 export const SPAN_FILTERS_STRATEGIES = {

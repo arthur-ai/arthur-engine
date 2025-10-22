@@ -18,6 +18,7 @@ import { useMemo } from "react";
 
 import { spanLevelColumns } from "../../data/span-level-columns";
 import { useTracesStore } from "../../store";
+import { FiltersRow } from "../filtering/span-fields";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -61,6 +62,7 @@ export const SpanLevel = () => {
 
   return (
     <>
+      <FiltersRow />
       <TableContainer component={Paper} sx={{ flexGrow: 1 }}>
         {isFetching && <LinearProgress />}
         <Table stickyHeader size="small">

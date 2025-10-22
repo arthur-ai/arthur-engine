@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-
 import { useEventListener } from "usehooks-ts";
 
 type EventType =
