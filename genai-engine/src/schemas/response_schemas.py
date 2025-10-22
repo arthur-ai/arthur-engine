@@ -57,6 +57,10 @@ class DatasetResponse(BaseModel):
     updated_at: int = Field(
         description="Timestamp representing the time of the last dataset update in unix milliseconds.",
     )
+    latest_version_number: Optional[int] = Field(
+        default=None,
+        description="Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet.",
+    )
 
 
 class SearchDatasetsResponse(BaseModel):
@@ -77,6 +81,10 @@ class DatasetVersionRowResponse(BaseModel):
     id: UUID = Field(description="ID of the version field.")
     data: List[DatasetVersionRowColumnItemResponse] = Field(
         description="List of column names and values in the row.",
+    )
+    created_at: int = Field(
+        description="Timestamp representing the time of dataset row creation in unix milliseconds. May differ within "
+        "a version if a row already existed in a past version of the dataset.",
     )
 
 
@@ -202,13 +210,13 @@ class AgenticPromptRunResponse(BaseModel):
 class ModelProviderResponse(BaseModel):
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials"
+        description="Whether the provider is enabled with credentials.",
     )
 
 
 class ModelProviderList(BaseModel):
     providers: list[ModelProviderResponse] = Field(
-        description="List of model providers"
+        description="List of model providers",
     )
 
 
