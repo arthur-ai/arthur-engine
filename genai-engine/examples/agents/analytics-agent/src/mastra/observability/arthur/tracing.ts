@@ -15,7 +15,7 @@ import { ConsoleLogger } from "@mastra/core/logger";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { trace, Context, SpanKind, ROOT_CONTEXT } from "@opentelemetry/api";
+import { trace, Context, SpanKind, ROOT_CONTEXT, context } from "@opentelemetry/api";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import {
   OITracer,
@@ -45,7 +45,6 @@ export class ArthurExporter implements AITracingExporter {
   private taskId: string;
   private spanMap = new Map<string, OISpan>();
   private serviceName: string;
-  private requestMetadata: { userId?: string; sessionId?: string } = {};
 
   constructor(config: ArthurExporterConfig) {
     this.logger = new ConsoleLogger({ level: config.logLevel ?? "warn" });
@@ -84,10 +83,6 @@ export class ArthurExporter implements AITracingExporter {
     });
   }
 
-  // New method to set request metadata
-  setRequestMetadata(metadata: { userId?: string; sessionId?: string }) {
-    this.requestMetadata = metadata;
-  }
 
   async exportEvent(event: AITracingEvent): Promise<void> {
     try {
@@ -157,6 +152,11 @@ export class ArthurExporter implements AITracingExporter {
       }
     }
 
+    // Use the current active context to preserve user/session attributes
+    // This ensures that context set by the API route is preserved
+    const activeContext = context.active();
+    const spanContext = parentCtx !== ROOT_CONTEXT ? parentCtx : activeContext;
+
     // Create span with proper timing
     const otelSpan = this.tracer.startSpan(
       span.name,
@@ -164,7 +164,7 @@ export class ArthurExporter implements AITracingExporter {
         startTime: span.startTime,
         kind: SpanKind.INTERNAL,
       },
-      parentCtx
+      spanContext
     );
 
     // Set all attributes and error info
@@ -174,21 +174,8 @@ export class ArthurExporter implements AITracingExporter {
   }
 
   private updateOtelSpan(otelSpan: OISpan, span: AnyExportedAISpan): void {
-    // Set all attributes and error info first
     setSpanAttributes(otelSpan, span);
     setSpanErrorInfo(otelSpan, span.errorInfo);
-    
-    // Set user and session attributes directly on the span using semantic conventions
-    if (this.requestMetadata.userId) {
-      otelSpan.setAttributes({
-        [SemanticConventions.USER_ID]: this.requestMetadata.userId,
-      });
-    }
-    if (this.requestMetadata.sessionId) {
-      otelSpan.setAttributes({
-        [SemanticConventions.SESSION_ID]: this.requestMetadata.sessionId,
-      });
-    }
   }
 
   async shutdown(): Promise<void> {

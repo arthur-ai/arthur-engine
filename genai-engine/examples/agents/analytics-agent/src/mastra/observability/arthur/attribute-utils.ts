@@ -19,13 +19,38 @@ import type {
   WorkflowWaitEventAttributes,
 } from "@mastra/core/ai-tracing";
 import { AISpanType } from "@mastra/core/ai-tracing";
-import { AttributeValue, SpanStatusCode } from "@opentelemetry/api";
+import { AttributeValue, SpanStatusCode, context as otelContext } from "@opentelemetry/api";
 import {
   MimeType,
   OpenInferenceSpanKind,
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
 import { OISpan } from "@arizeai/openinference-core";
+
+/**
+ * Extracts user and session attributes from OpenTelemetry context
+ */
+function getContextAttributes(otelContext: any): { userId?: string; sessionId?: string } {
+  const attributes: { userId?: string; sessionId?: string } = {};
+  
+  try {
+    // Check for user.id attribute in context
+    const userId = otelContext.getValue?.("user.id");
+    if (userId) {
+      attributes.userId = userId;
+    }
+    
+    // Check for session.id attribute in context
+    const sessionId = otelContext.getValue?.("session.id");
+    if (sessionId) {
+      attributes.sessionId = sessionId;
+    }
+  } catch (error) {
+    // Context access might fail in some cases, ignore silently
+  }
+  
+  return attributes;
+}
 
 export function setSpanErrorInfo(
   otelSpan: OISpan,
@@ -195,23 +220,29 @@ function setMetadataAttributes(
   otelSpan: OISpan,
   metadata: AnyExportedAISpan["metadata"]
 ): void {
-  // set metadata based attributes
-  const { userId, sessionId, ...remainingMetadata } = metadata ?? {};
-
-  // set sessionId
+  // Check OpenTelemetry context first for user/session attributes
+  const activeContext = otelContext.active();
+  const contextAttributes = getContextAttributes(activeContext);
+  
+  // set sessionId from context or metadata
+  const sessionId = contextAttributes.sessionId || metadata?.sessionId;
   if (sessionId) {
     otelSpan.setAttributes({
       [SemanticConventions.SESSION_ID]: sessionId,
     });
   }
-  // set userId
+  
+  // set userId from context or metadata
+  const userId = contextAttributes.userId || metadata?.userId;
   if (userId) {
     otelSpan.setAttributes({
       [SemanticConventions.USER_ID]: userId,
     });
   }
-  // set metadata
-  if (remainingMetadata) {
+  
+  // set remaining metadata (excluding userId/sessionId to avoid duplication)
+  const { userId: _, sessionId: __, ...remainingMetadata } = metadata ?? {};
+  if (remainingMetadata && Object.keys(remainingMetadata).length > 0) {
     otelSpan.setAttributes({
       [SemanticConventions.METADATA]: JSON.stringify(remainingMetadata),
     });

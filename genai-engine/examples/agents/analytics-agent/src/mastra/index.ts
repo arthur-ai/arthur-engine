@@ -8,6 +8,7 @@ import {
 } from "./agents";
 import { ConsoleLogger, LogLevel } from "@mastra/core/logger";
 import { ArthurExporter } from "./observability/arthur";
+import { ContextAwareMastraAgent } from "./agents/context-aware-agent";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || "info";
 
@@ -45,4 +46,4 @@ export const mastra = new Mastra({
 });
 
 // Export the exporter for access in API routes
-export { arthurExporter };
+export { arthurExporter, ContextAwareMastraAgent };
