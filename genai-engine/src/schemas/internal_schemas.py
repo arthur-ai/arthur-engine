@@ -1062,6 +1062,7 @@ class InferenceResponse(BaseModel):
                 for r in x.response_rule_results
             ],
             tokens=x.tokens,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1096,6 +1097,7 @@ class InferenceResponse(BaseModel):
                 r._to_database_model() for r in self.response_rule_results
             ],
             tokens=self.tokens,
+            model_name=self.model_name,
         )
 
 
