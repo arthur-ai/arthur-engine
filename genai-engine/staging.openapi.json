@@ -4624,14 +4624,14 @@
                 }
             }
         },
-        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}": {
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}": {
             "get": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Get an agentic prompt",
                 "description": "Get an agentic prompt by name and version",
-                "operationId": "get_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__get",
+                "operationId": "get_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__get",
                 "security": [
                     {
                         "API Key": []
@@ -4696,11 +4696,11 @@
             },
             "delete": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
-                "summary": "Delete an agentic prompt",
+                "summary": "Delete an agentic prompt version",
                 "description": "Deletes a specific version of an agentic prompt",
-                "operationId": "delete_agentic_prompt_version_api_v1__task_id__agentic_prompts__prompt_name__versions__prompt_version__delete",
+                "operationId": "delete_agentic_prompt_version_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__delete",
                 "security": [
                     {
                         "API Key": []
@@ -4741,13 +4741,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
+                    "204": {
+                        "description": "Prompt version deleted."
                     },
                     "422": {
                         "description": "Validation Error",
@@ -4762,14 +4757,14 @@
                 }
             }
         },
-        "/api/v1/{task_id}/agentic_prompts": {
+        "/api/v1/tasks/{task_id}/prompts": {
             "get": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Get all agentic prompts",
                 "description": "Get all agentic prompts for a given task.",
-                "operationId": "get_all_agentic_prompts_api_v1__task_id__agentic_prompts_get",
+                "operationId": "get_all_agentic_prompts_api_v1_tasks__task_id__prompts_get",
                 "security": [
                     {
                         "API Key": []
@@ -4793,7 +4788,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticPrompts"
+                                    "$ref": "#/components/schemas/AgenticPromptMetadataListResponse"
                                 }
                             }
                         }
@@ -4811,14 +4806,14 @@
                 }
             }
         },
-        "/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions": {
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions": {
             "get": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "List all versions of an agentic prompt",
                 "description": "List all versions of an agentic prompt",
-                "operationId": "get_all_agentic_prompt_versions_api_v1__task_id__agentic_prompts__prompt_name__versions_get",
+                "operationId": "get_all_agentic_prompt_versions_api_v1_tasks__task_id__prompts__prompt_name__versions_get",
                 "security": [
                     {
                         "API Key": []
@@ -4874,7 +4869,7 @@
         "/api/v1/completions": {
             "post": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Run/Stream an unsaved agentic prompt",
                 "description": "Runs or streams an unsaved agentic prompt",
@@ -4924,14 +4919,14 @@
                 ]
             }
         },
-        "/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions": {
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions": {
             "post": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Run/Stream a specific version of an agentic prompt",
                 "description": "Run or stream a specific version of an existing agentic prompt",
-                "operationId": "run_saved_agentic_prompt_api_v1_task__task_id__prompt__prompt_name__versions__prompt_version__completions_post",
+                "operationId": "run_saved_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__versions__prompt_version__completions_post",
                 "security": [
                     {
                         "API Key": []
@@ -5014,14 +5009,14 @@
                 }
             }
         },
-        "/api/v1/{task_id}/agentic_prompts/{prompt_name}": {
-            "put": {
+        "/api/v1/tasks/{task_id}/prompts/{prompt_name}": {
+            "post": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Save an agentic prompt",
                 "description": "Save an agentic prompt to the database",
-                "operationId": "save_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__put",
+                "operationId": "save_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__post",
                 "security": [
                     {
                         "API Key": []
@@ -5065,7 +5060,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/AgenticPrompt"
+                                }
                             }
                         }
                     },
@@ -5083,11 +5080,11 @@
             },
             "delete": {
                 "tags": [
-                    "AgenticPrompt"
+                    "Prompts"
                 ],
                 "summary": "Delete an agentic prompt",
                 "description": "Deletes an entire agentic prompt",
-                "operationId": "delete_agentic_prompt_api_v1__task_id__agentic_prompts__prompt_name__delete",
+                "operationId": "delete_agentic_prompt_api_v1_tasks__task_id__prompts__prompt_name__delete",
                 "security": [
                     {
                         "API Key": []
@@ -5117,13 +5114,8 @@
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {}
-                            }
-                        }
+                    "204": {
+                        "description": "Prompt deleted."
                     },
                     "422": {
                         "description": "Validation Error",
@@ -6585,19 +6577,6 @@
             },
             "AgenticPrompt": {
                 "properties": {
-                    "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
-                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Output"
@@ -6620,19 +6599,6 @@
                         "title": "Version",
                         "description": "Version of the agentic prompt",
                         "default": 1
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
                     },
                     "tools": {
                         "anyOf": [
@@ -6855,6 +6821,32 @@
                         ],
                         "description": "Additional streaming configuration options"
                     },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
+                    },
                     "name": {
                         "type": "string",
                         "title": "Name",
@@ -6872,19 +6864,6 @@
             },
             "AgenticPromptBaseConfig": {
                 "properties": {
-                    "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
-                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Input"
@@ -6907,19 +6886,6 @@
                         "title": "Version",
                         "description": "Version of the agentic prompt",
                         "default": 1
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
                     },
                     "tools": {
                         "anyOf": [
@@ -7141,6 +7107,32 @@
                             }
                         ],
                         "description": "Additional streaming configuration options"
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
                     }
                 },
                 "type": "object",
@@ -7254,6 +7246,66 @@
                     "role"
                 ],
                 "title": "AgenticPromptMessage"
+            },
+            "AgenticPromptMetadataListResponse": {
+                "properties": {
+                    "prompt_metadata": {
+                        "items": {
+                            "$ref": "#/components/schemas/AgenticPromptMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Prompt Metadata",
+                        "description": "List of prompt metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "prompt_metadata"
+                ],
+                "title": "AgenticPromptMetadataListResponse"
+            },
+            "AgenticPromptMetadataResponse": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "versions": {
+                        "type": "integer",
+                        "title": "Versions",
+                        "description": "Number of versions of the prompt"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created"
+                    },
+                    "latest_version_created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Latest Version Created At",
+                        "description": "Timestamp when the last version of the prompt was created"
+                    },
+                    "deleted_versions": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Deleted Versions",
+                        "description": "List of deleted versions of the prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "versions",
+                    "created_at",
+                    "latest_version_created_at",
+                    "deleted_versions"
+                ],
+                "title": "AgenticPromptMetadataResponse"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -7642,19 +7694,6 @@
             },
             "CompletionRequest": {
                 "properties": {
-                    "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
-                    },
                     "messages": {
                         "items": {
                             "$ref": "#/components/schemas/AgenticPromptMessage-Input"
@@ -7677,19 +7716,6 @@
                         "title": "Version",
                         "description": "Version of the agentic prompt",
                         "default": 1
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
                     },
                     "tools": {
                         "anyOf": [
@@ -7911,6 +7937,32 @@
                             }
                         ],
                         "description": "Additional streaming configuration options"
+                    },
+                    "created_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Created At",
+                        "description": "Timestamp when the prompt was created."
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time that this prompt was deleted"
                     },
                     "completion_request": {
                         "$ref": "#/components/schemas/PromptCompletionRequest",

@@ -208,10 +208,6 @@ class ToolChoice(BaseModel):
 
 
 class AgenticPromptBaseConfig(BaseModel):
-    created_at: Optional[datetime] = Field(
-        default=None,
-        description="Timestamp when the prompt was created.",
-    )
     messages: List[AgenticPromptMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -222,10 +218,6 @@ class AgenticPromptBaseConfig(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     version: int = Field(default=1, description="Version of the agentic prompt")
-    deleted_at: Optional[datetime] = Field(
-        None,
-        description="Time that this prompt was deleted",
-    )
     tools: Optional[List[LLMTool]] = Field(
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
@@ -294,6 +286,14 @@ class AgenticPromptBaseConfig(BaseModel):
     stream_options: Optional[StreamOptions] = Field(
         None,
         description="Additional streaming configuration options",
+    )
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the prompt was created.",
+    )
+    deleted_at: Optional[datetime] = Field(
+        None,
+        description="Time that this prompt was deleted",
     )
 
     class Config:

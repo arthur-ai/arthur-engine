@@ -10,7 +10,7 @@ from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPrompts,
 )
-from schemas.response_schemas import AgenticPromptNames
+from schemas.response_schemas import AgenticPromptMetadataResponse, AgenticPromptMetadataListResponse
 
 
 class AgenticPromptRepository:
@@ -120,26 +120,67 @@ class AgenticPromptRepository:
 
         return AgenticPrompt.from_db_model(db_prompt)
 
-    def get_all_prompts(
+    def get_all_prompt_metadata(
         self,
         task_id: str,
-    ) -> AgenticPrompts:
+    ) -> AgenticPromptMetadataListResponse:
         """
-        Get all prompts by task_id, return as list of AgenticPrompt objects
+        Get metadata for all prompts by task_id, including:
+            - name
+            - number of versions
+            - creation timestamps for first and latest versions
+            - list of deleted version numbers
 
         Parameters:
             task_id: str - the id of the task
 
         Returns:
-            AgenticPrompts - the list of prompt objects
+            AgenticPromptMetadataListResponse - list of prompt metadata objects
         """
-        base_query = self.db_session.query(DatabaseAgenticPrompt).filter(
-            DatabaseAgenticPrompt.task_id == task_id,
+        # Group by prompt name, count versions, and get min/max created_at
+        results = (
+            self.db_session.query(
+                DatabaseAgenticPrompt.name.label("name"),
+                sa.func.count(DatabaseAgenticPrompt.version).label("versions"),
+                sa.func.min(DatabaseAgenticPrompt.created_at).label("created_at"),
+                sa.func.max(DatabaseAgenticPrompt.created_at).label("latest_version_created_at"),
+            )
+            .filter(DatabaseAgenticPrompt.task_id == task_id)
+            .group_by(DatabaseAgenticPrompt.name)
+            .order_by(DatabaseAgenticPrompt.name.asc())
+            .all()
         )
 
-        db_prompts = base_query.all()
-        prompts = [AgenticPrompt.from_db_model(db_prompt) for db_prompt in db_prompts]
-        return AgenticPrompts(prompts=prompts)
+        if not results:
+            return AgenticPromptMetadataListResponse(prompt_metadata=[])
+
+        prompt_metadata = []
+        for row in results:
+            # get the deleted versions
+            deleted_versions = (
+                self.db_session.query(DatabaseAgenticPrompt.version)
+                .filter(
+                    DatabaseAgenticPrompt.task_id == task_id,
+                    DatabaseAgenticPrompt.name == row.name,
+                    DatabaseAgenticPrompt.deleted_at.isnot(None),
+                )
+                .order_by(DatabaseAgenticPrompt.version.asc())
+                .all()
+            )
+            deleted_versions = [v for (v,) in deleted_versions]
+
+            # set the metadata
+            prompt_metadata.append(
+                AgenticPromptMetadataResponse(
+                    name=row.name,
+                    versions=row.versions,
+                    created_at=row.created_at,
+                    latest_version_created_at=row.latest_version_created_at,
+                    deleted_versions=deleted_versions,
+                )
+            )
+
+        return AgenticPromptMetadataListResponse(prompt_metadata=prompt_metadata)
 
     def get_prompt_versions(
         self,
@@ -169,26 +210,7 @@ class AgenticPromptRepository:
         prompts = [AgenticPrompt.from_db_model(db_prompt) for db_prompt in db_prompts]
         return AgenticPrompts(prompts=prompts)
 
-    def get_unique_prompt_names(
-        self,
-        task_id: str,
-    ) -> AgenticPromptNames:
-        """Get all unique prompt names for a given task_id."""
-        base_query = self.db_session.query(DatabaseAgenticPrompt.name).filter(
-            DatabaseAgenticPrompt.task_id == task_id,
-        )
-
-        prompt_names = (
-            base_query.distinct().order_by(DatabaseAgenticPrompt.name.asc()).all()
-        )
-
-        if not prompt_names:
-            raise ValueError(f"No prompts found for task '{task_id}'")
-
-        names = [name for (name,) in prompt_names]
-        return AgenticPromptNames(names=names)
-
-    def save_prompt(self, task_id: str, prompt: AgenticPrompt | Dict[str, Any]) -> None:
+    def save_prompt(self, task_id: str, prompt: AgenticPrompt | Dict[str, Any]) -> AgenticPrompt:
         """
         Save an AgenticPrompt to the database.
         If a prompt with the same name exists, increment version.
@@ -215,6 +237,8 @@ class AgenticPromptRepository:
         try:
             self.db_session.add(db_prompt)
             self.db_session.commit()
+            self.db_session.refresh(db_prompt)
+            return AgenticPrompt.from_db_model(db_prompt)
         except IntegrityError:
             self.db_session.rollback()
             raise ValueError(

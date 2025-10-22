@@ -250,5 +250,14 @@ class ModelProviderModelList(BaseModel):
         description="Available models from the provider"
     )
 
-class AgenticPromptNames(BaseModel):
-    names: List[str]
+
+class AgenticPromptMetadataResponse(BaseModel):
+    name: str = Field(description="Name of the prompt")
+    versions: int = Field(description="Number of versions of the prompt")
+    created_at: datetime = Field(description="Timestamp when the prompt was created")
+    latest_version_created_at: datetime = Field(description="Timestamp when the last version of the prompt was created")
+    deleted_versions: List[int] = Field(description="List of deleted versions of the prompt")
+
+
+class AgenticPromptMetadataListResponse(BaseModel):
+    prompt_metadata: list[AgenticPromptMetadataResponse] = Field(description="List of prompt metadata")

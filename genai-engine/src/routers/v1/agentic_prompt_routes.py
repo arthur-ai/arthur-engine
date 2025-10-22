@@ -2,7 +2,7 @@ from typing import Union
 from uuid import UUID
 
 import litellm
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Path, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
-from schemas.response_schemas import AgenticPromptRunResponse
+from schemas.response_schemas import AgenticPromptRunResponse, AgenticPromptMetadataListResponse
 from utils.users import permission_checker
 
 agentic_prompt_routes = APIRouter(
@@ -77,12 +77,12 @@ async def execute_prompt_completion(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}",
     summary="Get an agentic prompt",
     description="Get an agentic prompt by name and version",
     response_model=AgenticPrompt,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agentic_prompt(
@@ -120,12 +120,12 @@ def get_agentic_prompt(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts",
+    "/tasks/{task_id}/prompts",
     summary="Get all agentic prompts",
     description="Get all agentic prompts for a given task.",
-    response_model=AgenticPrompts,
+    response_model=AgenticPromptMetadataListResponse,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_all_agentic_prompts(
@@ -135,7 +135,10 @@ def get_all_agentic_prompts(
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompts(task.id)
+        return agentic_prompt_service.get_all_prompts(
+            task.id,
+            include_deleted=include_deleted,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -143,12 +146,35 @@ def get_all_agentic_prompts(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions",
+    "/{task_id}/agentic_prompts/names",
+    summary="Get all unique agentic prompt names",
+    description="Get all unique agentic prompt names for a given task.",
+    response_model=AgenticPromptNames,
+    response_model_exclude_none=True,
+    tags=["AgenticPrompt"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_unique_prompt_names(
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    task: Task = Depends(get_validated_agentic_task),
+):
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.get_all_prompt_metadata(task.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@agentic_prompt_routes.get(
+    "/tasks/{task_id}/prompts/{prompt_name}/versions",
     summary="List all versions of an agentic prompt",
     description="List all versions of an agentic prompt",
     response_model=AgenticPrompts,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_all_agentic_prompt_versions(
@@ -228,7 +254,7 @@ def get_all_agentic_prompt_versions(
             },
         },
     },
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_agentic_prompt(
@@ -270,7 +296,7 @@ async def run_agentic_prompt(
 
 
 @agentic_prompt_routes.post(
-    "/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions",
     summary="Run/Stream a specific version of an agentic prompt",
     description="Run or stream a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
@@ -324,7 +350,7 @@ async def run_agentic_prompt(
             },
         },
     },
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_saved_agentic_prompt(
@@ -378,13 +404,13 @@ async def run_saved_agentic_prompt(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@agentic_prompt_routes.put(
-    "/{task_id}/agentic_prompts/{prompt_name}",
+@agentic_prompt_routes.post(
+    "/tasks/{task_id}/prompts/{prompt_name}",
     summary="Save an agentic prompt",
     description="Save an agentic prompt to the database",
-    response_model=None,
+    response_model=AgenticPrompt,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
@@ -401,9 +427,7 @@ def save_agentic_prompt(
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())
-        agentic_prompt_service.save_prompt(task.id, full_prompt)
-
-        return {"message": "Prompt saved successfully"}
+        return agentic_prompt_service.save_prompt(task.id, full_prompt)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -411,12 +435,12 @@ def save_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
-    "/{task_id}/agentic_prompts/{prompt_name}",
+    "/tasks/{task_id}/prompts/{prompt_name}",
     summary="Delete an agentic prompt",
     description="Deletes an entire agentic prompt",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Prompt deleted."}},
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt(
@@ -428,12 +452,11 @@ def delete_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.delete_prompt(task.id, prompt_name)
-
-        return {"message": f"All versions of {prompt_name} deleted successfully"}
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -444,12 +467,12 @@ def delete_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
-    summary="Delete an agentic prompt",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}",
+    summary="Delete an agentic prompt version",
     description="Deletes a specific version of an agentic prompt",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Prompt version deleted."}},
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt_version(
@@ -466,7 +489,7 @@ def delete_agentic_prompt_version(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.soft_delete_prompt_version(
@@ -475,7 +498,7 @@ def delete_agentic_prompt_version(
             prompt_version,
         )
 
-        return {"message": "Prompt version deleted successfully"}
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))

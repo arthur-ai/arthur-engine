@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, Dict, List
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -24,7 +25,7 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.common_schemas import JsonSchema
 from schemas.enums import ModelProvider
-from schemas.response_schemas import AgenticPromptRunResponse
+from schemas.response_schemas import AgenticPromptRunResponse, AgenticPromptMetadataListResponse, AgenticPromptMetadataResponse
 
 
 def to_agentic_prompt_messages(
@@ -262,16 +263,37 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.all.return_value = [sample_db_prompt, prompt2]
+    mock_filter.group_by.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
+    mock_filter.all.return_value = [
+        SimpleNamespace(
+            name=sample_db_prompt.name,
+            versions=1,
+            created_at=sample_db_prompt.created_at or datetime.now(),
+            latest_version_created_at=sample_db_prompt.created_at or datetime.now(),
+        ),
+        SimpleNamespace(
+            name=prompt2.name,
+            versions=1,
+            created_at=prompt2.created_at or datetime.now(),
+            latest_version_created_at=prompt2.created_at or datetime.now(),
+        ),
+    ]
 
-    result = agentic_prompt_repo.get_all_prompts(task_id)
+    # Mock deleted_versions query
+    mock_deleted = MagicMock()
+    mock_deleted.filter.return_value = mock_deleted
+    mock_deleted.order_by.return_value = mock_deleted
+    mock_deleted.all.return_value = []
+    mock_db_session.query.side_effect = [mock_query, mock_deleted, mock_deleted]
 
-    assert isinstance(result, AgenticPrompts)
-    assert len(result.prompts) == 2
-    assert all(isinstance(prompt, AgenticPrompt) for prompt in result.prompts)
-    assert result.prompts[0].name == sample_db_prompt.name
-    assert result.prompts[1].name == prompt2.name
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id)
+
+    assert isinstance(result, AgenticPromptMetadataListResponse)
+    assert len(result.prompt_metadata) == 2
+    assert all(isinstance(prompt, AgenticPromptMetadataResponse) for prompt in result.prompt_metadata)
+    assert result.prompt_metadata[0].name == sample_db_prompt.name
+    assert result.prompt_metadata[1].name == prompt2.name
 
 
 @pytest.mark.unit_tests
@@ -286,10 +308,10 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
     mock_query.filter.return_value = mock_filter
     mock_filter.all.return_value = []
 
-    result = agentic_prompt_repo.get_all_prompts(task_id)
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id)
 
-    assert isinstance(result, AgenticPrompts)
-    assert len(result.prompts) == 0
+    assert isinstance(result, AgenticPromptMetadataListResponse)
+    assert len(result.prompt_metadata) == 0
 
 
 @pytest.mark.unit_tests
@@ -300,6 +322,8 @@ def test_save_prompt_with_agentic_prompt_object(
 ):
     """Test saving an AgenticPrompt object to database"""
     task_id = "test_task_id"
+
+    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
 
     agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
 
@@ -326,6 +350,8 @@ def test_save_prompt_with_dict(
     """Test saving a prompt from dictionary data"""
     task_id = "test_task_id"
 
+    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
+    
     agentic_prompt_repo.save_prompt(task_id, sample_prompt_data)
 
     # Verify database operations
