@@ -582,11 +582,11 @@ export interface CompletionRequest {
   top_p?: number | null;
 }
 
-export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData = SessionTracesResponse;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
 
-export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError = HTTPValidationError;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError = HTTPValidationError;
 
-export interface ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams {
+export interface ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams {
   /**
    * Page
    * Page number
@@ -608,9 +608,9 @@ export interface ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData = SpanWithMetricsResponse;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData = SpanWithMetricsResponse;
 
-export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError = HTTPValidationError;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError = HTTPValidationError;
 
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
 
@@ -700,6 +700,11 @@ export interface DatasetResponse {
    * @format uuid
    */
   id: string;
+  /**
+   * Latest Version Number
+   * Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet.
+   */
+  latest_version_number?: number | null;
   /**
    * Metadata
    * Any metadata to include that describes additional information about the dataset.
@@ -827,6 +832,11 @@ export interface DatasetVersionRowColumnItemResponse {
 
 /** DatasetVersionRowResponse */
 export interface DatasetVersionRowResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of dataset row creation in unix milliseconds. May differ within a version if a row already existed in a past version of the dataset.
+   */
+  created_at: number;
   /**
    * Data
    * List of column names and values in the row.
@@ -1232,11 +1242,11 @@ export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData =
 
 export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
-export type GetSessionTracesApiV1SessionsSessionIdGetData = SessionTracesResponse;
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
 
-export type GetSessionTracesApiV1SessionsSessionIdGetError = HTTPValidationError;
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
 
-export interface GetSessionTracesApiV1SessionsSessionIdGetParams {
+export interface GetSessionTracesApiV1TracesSessionsSessionIdGetParams {
   /**
    * Page
    * Page number
@@ -1258,9 +1268,9 @@ export interface GetSessionTracesApiV1SessionsSessionIdGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type GetSpanByIdApiV1SpansSpanIdGetData = SpanWithMetricsResponse;
+export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
-export type GetSpanByIdApiV1SpansSpanIdGetError = HTTPValidationError;
+export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
@@ -1295,6 +1305,21 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
 export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
+
+export interface GetUserDetailsApiV1TracesUsersUserIdGetParams {
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /** User Id */
+  userId: string;
+}
 
 /**
  * HTTPError
@@ -1579,11 +1604,11 @@ export interface ListDatasetVersionsResponse {
   versions: DatasetVersionMetadataResponse[];
 }
 
-export type ListSessionsMetadataApiV1SessionsGetData = SessionListResponse;
+export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
 
-export type ListSessionsMetadataApiV1SessionsGetError = HTTPValidationError;
+export type ListSessionsMetadataApiV1TracesSessionsGetError = HTTPValidationError;
 
-export interface ListSessionsMetadataApiV1SessionsGetParams {
+export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -1619,13 +1644,18 @@ export interface ListSessionsMetadataApiV1SessionsGetParams {
    * @minItems 1
    */
   task_ids: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
-export type ListSpansMetadataApiV1SpansGetData = SpanListResponse;
+export type ListSpansMetadataApiV1TracesSpansGetData = SpanListResponse;
 
-export type ListSpansMetadataApiV1SpansGetError = HTTPValidationError;
+export type ListSpansMetadataApiV1TracesSpansGetError = HTTPValidationError;
 
-export interface ListSpansMetadataApiV1SpansGetParams {
+export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -1941,6 +1971,53 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
+}
+
+export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
+
+export type ListUsersMetadataApiV1TracesUsersGetError = HTTPValidationError;
+
+export interface ListUsersMetadataApiV1TracesUsersGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
 }
 
 /** LogitBiasItem */
@@ -3523,6 +3600,11 @@ export interface SessionMetadataResponse {
    * List of trace IDs in this session
    */
   trace_ids: string[];
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /**
@@ -3651,6 +3733,11 @@ export interface SpanMetadataResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /** SpanWithMetricsResponse */
@@ -3999,6 +4086,11 @@ export interface TraceMetadataResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /**
@@ -4029,6 +4121,77 @@ export interface TraceResponse {
    * ID of the trace
    */
   trace_id: string;
+}
+
+/**
+ * TraceUserListResponse
+ * Response for trace user list endpoint
+ */
+export interface TraceUserListResponse {
+  /**
+   * Count
+   * Total number of users matching filters
+   */
+  count: number;
+  /**
+   * Users
+   * List of user metadata
+   */
+  users: TraceUserMetadataResponse[];
+}
+
+/**
+ * TraceUserMetadataResponse
+ * User summary metadata in trace context
+ */
+export interface TraceUserMetadataResponse {
+  /**
+   * Earliest Start Time
+   * Start time of earliest trace
+   * @format date-time
+   */
+  earliest_start_time: string;
+  /**
+   * Latest End Time
+   * End time of latest trace
+   * @format date-time
+   */
+  latest_end_time: string;
+  /**
+   * Session Count
+   * Number of sessions for this user
+   */
+  session_count: number;
+  /**
+   * Session Ids
+   * List of session IDs for this user
+   */
+  session_ids: string[];
+  /**
+   * Span Count
+   * Total number of spans for this user
+   */
+  span_count: number;
+  /**
+   * Task Id
+   * Task ID this user belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces for this user
+   */
+  trace_count: number;
+  /**
+   * Trace Ids
+   * List of trace IDs for this user
+   */
+  trace_ids: string[];
+  /**
+   * User Id
+   * User identifier
+   */
+  user_id: string;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -4405,20 +4568,20 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.
      *
      * @tags Sessions
-     * @name ComputeSessionMetricsApiV1SessionsSessionIdMetricsGet
+     * @name ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet
      * @summary Compute Missing Session Metrics
-     * @request GET:/api/v1/sessions/{session_id}/metrics
+     * @request GET:/api/v1/traces/sessions/{session_id}/metrics
      * @secure
      */
-    computeSessionMetricsApiV1SessionsSessionIdMetricsGet: (
-      { sessionId, ...query }: ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams,
+    computeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet: (
+      { sessionId, ...query }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
       params: RequestParams = {},
     ) =>
       this.request<
-        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData,
-        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData,
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError
       >({
-        path: `/api/v1/sessions/${sessionId}/metrics`,
+        path: `/api/v1/traces/sessions/${sessionId}/metrics`,
         method: "GET",
         query: query,
         secure: true,
@@ -4430,21 +4593,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Compute all missing metrics for a single span on-demand. Returns span with computed metrics.
      *
      * @tags Spans
-     * @name ComputeSpanMetricsApiV1SpansSpanIdMetricsGet
+     * @name ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGet
      * @summary Compute Missing Span Metrics
-     * @request GET:/api/v1/spans/{span_id}/metrics
+     * @request GET:/api/v1/traces/spans/{span_id}/metrics
      * @secure
      */
-    computeSpanMetricsApiV1SpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData, ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError>(
-        {
-          path: `/api/v1/spans/${spanId}/metrics`,
-          method: "GET",
-          secure: true,
-          format: "json",
-          ...params,
-        },
-      ),
+    computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData,
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError
+      >({
+        path: `/api/v1/traces/spans/${spanId}/metrics`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.
@@ -5042,17 +5206,20 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
      *
      * @tags Sessions
-     * @name GetSessionTracesApiV1SessionsSessionIdGet
+     * @name GetSessionTracesApiV1TracesSessionsSessionIdGet
      * @summary Get Session Traces
-     * @request GET:/api/v1/sessions/{session_id}
+     * @request GET:/api/v1/traces/sessions/{session_id}
      * @secure
      */
-    getSessionTracesApiV1SessionsSessionIdGet: (
-      { sessionId, ...query }: GetSessionTracesApiV1SessionsSessionIdGetParams,
+    getSessionTracesApiV1TracesSessionsSessionIdGet: (
+      { sessionId, ...query }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<GetSessionTracesApiV1SessionsSessionIdGetData, GetSessionTracesApiV1SessionsSessionIdGetError>({
-        path: `/api/v1/sessions/${sessionId}`,
+      this.request<
+        GetSessionTracesApiV1TracesSessionsSessionIdGetData,
+        GetSessionTracesApiV1TracesSessionsSessionIdGetError
+      >({
+        path: `/api/v1/traces/sessions/${sessionId}`,
         method: "GET",
         query: query,
         secure: true,
@@ -5064,14 +5231,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get single span with existing metrics (no computation). Returns full span object with any existing metrics.
      *
      * @tags Spans
-     * @name GetSpanByIdApiV1SpansSpanIdGet
+     * @name GetSpanByIdApiV1TracesSpansSpanIdGet
      * @summary Get Single Span
-     * @request GET:/api/v1/spans/{span_id}
+     * @request GET:/api/v1/traces/spans/{span_id}
      * @secure
      */
-    getSpanByIdApiV1SpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<GetSpanByIdApiV1SpansSpanIdGetData, GetSpanByIdApiV1SpansSpanIdGetError>({
-        path: `/api/v1/spans/${spanId}`,
+    getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
+        path: `/api/v1/traces/spans/${spanId}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -5134,20 +5301,42 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get detailed information for a single user including session and trace metadata.
+     *
+     * @tags Users
+     * @name GetUserDetailsApiV1TracesUsersUserIdGet
+     * @summary Get User Details
+     * @request GET:/api/v1/traces/users/{user_id}
+     * @secure
+     */
+    getUserDetailsApiV1TracesUsersUserIdGet: (
+      { userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
+        path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get session metadata with pagination and filtering. Returns aggregated session information.
      *
      * @tags Sessions
-     * @name ListSessionsMetadataApiV1SessionsGet
+     * @name ListSessionsMetadataApiV1TracesSessionsGet
      * @summary List Session Metadata
-     * @request GET:/api/v1/sessions
+     * @request GET:/api/v1/traces/sessions
      * @secure
      */
-    listSessionsMetadataApiV1SessionsGet: (
-      query: ListSessionsMetadataApiV1SessionsGetParams,
+    listSessionsMetadataApiV1TracesSessionsGet: (
+      query: ListSessionsMetadataApiV1TracesSessionsGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<ListSessionsMetadataApiV1SessionsGetData, ListSessionsMetadataApiV1SessionsGetError>({
-        path: `/api/v1/sessions`,
+      this.request<ListSessionsMetadataApiV1TracesSessionsGetData, ListSessionsMetadataApiV1TracesSessionsGetError>({
+        path: `/api/v1/traces/sessions`,
         method: "GET",
         query: query,
         secure: true,
@@ -5159,14 +5348,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.
      *
      * @tags Spans
-     * @name ListSpansMetadataApiV1SpansGet
+     * @name ListSpansMetadataApiV1TracesSpansGet
      * @summary List Span Metadata with Filtering
-     * @request GET:/api/v1/spans
+     * @request GET:/api/v1/traces/spans
      * @secure
      */
-    listSpansMetadataApiV1SpansGet: (query: ListSpansMetadataApiV1SpansGetParams, params: RequestParams = {}) =>
-      this.request<ListSpansMetadataApiV1SpansGetData, ListSpansMetadataApiV1SpansGetError>({
-        path: `/api/v1/spans`,
+    listSpansMetadataApiV1TracesSpansGet: (
+      query: ListSpansMetadataApiV1TracesSpansGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
+        path: `/api/v1/traces/spans`,
         method: "GET",
         query: query,
         secure: true,
@@ -5186,6 +5378,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     listTracesMetadataApiV1TracesGet: (query: ListTracesMetadataApiV1TracesGetParams, params: RequestParams = {}) =>
       this.request<ListTracesMetadataApiV1TracesGetData, ListTracesMetadataApiV1TracesGetError>({
         path: `/api/v1/traces`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get user metadata with pagination and filtering. Returns aggregated user information across sessions and traces.
+     *
+     * @tags Users
+     * @name ListUsersMetadataApiV1TracesUsersGet
+     * @summary List User Metadata
+     * @request GET:/api/v1/traces/users
+     * @secure
+     */
+    listUsersMetadataApiV1TracesUsersGet: (
+      query: ListUsersMetadataApiV1TracesUsersGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListUsersMetadataApiV1TracesUsersGetData, ListUsersMetadataApiV1TracesUsersGetError>({
+        path: `/api/v1/traces/users`,
         method: "GET",
         query: query,
         secure: true,
