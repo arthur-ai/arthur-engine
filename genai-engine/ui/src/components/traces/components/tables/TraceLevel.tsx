@@ -11,7 +11,7 @@ import {
   TableCell,
 } from "@mui/material";
 import { useThrottler } from "@tanstack/react-pacer";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
@@ -23,37 +23,26 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { columns } from "../../data/columns";
 import { useTracesStore } from "../../store";
+import { FiltersRow } from "../filtering/filters-row";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { TraceResponse } from "@/lib/api-client/api-client";
-import { getFilteredTraces } from "@/services/tracing";
+import { getTracesInfiniteQueryOptions } from "@/query-options/traces";
 
 const DEFAULT_DATA: TraceResponse[] = [];
 const FETCH_SIZE = 20;
 
 export function TraceLevel() {
   const { task } = useTask();
+  const [filters] = useTracesStore((state) => state.context.filters);
   const tableContainerRef = useRef(null);
 
-  const api = useApi();
+  const api = useApi()!;
   const [, store] = useTracesStore(() => null);
 
   const { data, fetchNextPage, isFetching } = useInfiniteQuery({
-    queryKey: ["traces", { api, taskId: task?.id }],
-    queryFn: ({ pageParam = 0 }) => {
-      return getFilteredTraces(api!, {
-        taskId: task?.id ?? "",
-        page: pageParam as number,
-        pageSize: FETCH_SIZE,
-      });
-    },
-    initialPageParam: 0,
-    getNextPageParam: (_, __, lastPageParam = 0) => {
-      return lastPageParam + 1;
-    },
-    refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
+    ...getTracesInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
   });
 
   const flatData = useMemo(
@@ -104,6 +93,7 @@ export function TraceLevel() {
 
   return (
     <>
+      <FiltersRow />
       <TableContainer
         component={Paper}
         sx={{ flexGrow: 1 }}
