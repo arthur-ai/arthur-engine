@@ -16,7 +16,7 @@ from schemas.internal_schemas import (
     Span,
     TraceMetadata,
     TraceQuerySchema,
-    UserMetadata,
+    TraceUserMetadata,
 )
 from services.trace.metrics_integration_service import MetricsIntegrationService
 from services.trace.span_query_service import SpanQueryService
@@ -307,7 +307,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-    ) -> tuple[int, list[UserMetadata]]:
+    ) -> tuple[int, list[TraceUserMetadata]]:
         """Return user aggregation data with pagination."""
         if not task_ids:
             raise ValueError("task_ids are required for user queries")

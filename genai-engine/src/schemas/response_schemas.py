@@ -193,8 +193,8 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
-class UserMetadataResponse(BaseModel):
-    """User summary metadata"""
+class TraceUserMetadataResponse(BaseModel):
+    """User summary metadata in trace context"""
 
     user_id: str = Field(description="User identifier")
     task_id: str = Field(description="Task ID this user belongs to")
@@ -207,15 +207,15 @@ class UserMetadataResponse(BaseModel):
     latest_end_time: datetime = Field(description="End time of latest trace")
 
 
-class UserListResponse(BaseModel):
-    """Response for user list endpoint"""
+class TraceUserListResponse(BaseModel):
+    """Response for trace user list endpoint"""
 
     count: int = Field(description="Total number of users matching filters")
-    users: list[UserMetadataResponse] = Field(description="List of user metadata")
+    users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
 
 
-class UserSessionsResponse(BaseModel):
-    """Response for user sessions endpoint"""
+class TraceUserSessionsResponse(BaseModel):
+    """Response for trace user sessions endpoint"""
 
     user_id: str = Field(description="User identifier")
     count: int = Field(description="Number of sessions for this user")
@@ -224,8 +224,8 @@ class UserSessionsResponse(BaseModel):
     )
 
 
-class UserTracesResponse(BaseModel):
-    """Response for user traces endpoint"""
+class TraceUserTracesResponse(BaseModel):
+    """Response for trace user traces endpoint"""
 
     user_id: str = Field(description="User identifier")
     count: int = Field(description="Number of traces for this user")
@@ -241,18 +241,18 @@ class AgenticPromptRunResponse(BaseModel):
 class ModelProviderResponse(BaseModel):
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials"
+        description="Whether the provider is enabled with credentials",
     )
 
 
 class ModelProviderList(BaseModel):
     providers: list[ModelProviderResponse] = Field(
-        description="List of model providers"
+        description="List of model providers",
     )
 
 
 class ModelProviderModelList(BaseModel):
     provider: ModelProvider = Field(description="Provider of the models")
     available_models: List[str] = Field(
-        description="Available models from the provider"
+        description="Available models from the provider",
     )

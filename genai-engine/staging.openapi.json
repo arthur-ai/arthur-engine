@@ -3587,110 +3587,14 @@
                 }
             }
         },
-        "/api/v1/traces/{trace_id}": {
-            "get": {
-                "tags": [
-                    "Traces"
-                ],
-                "summary": "Get Single Trace",
-                "description": "Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.",
-                "operationId": "get_trace_by_id_api_v1_traces__trace_id__get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "trace_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Trace Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/traces/{trace_id}/metrics": {
-            "get": {
-                "tags": [
-                    "Traces"
-                ],
-                "summary": "Compute Missing Trace Metrics",
-                "description": "Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.",
-                "operationId": "compute_trace_metrics_api_v1_traces__trace_id__metrics_get",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "trace_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "Trace Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/TraceResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/spans": {
+        "/api/v1/traces/spans": {
             "get": {
                 "tags": [
                     "Spans"
                 ],
                 "summary": "List Span Metadata with Filtering",
                 "description": "Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.",
-                "operationId": "list_spans_metadata_api_v1_spans_get",
+                "operationId": "list_spans_metadata_api_v1_traces_spans_get",
                 "security": [
                     {
                         "API Key": []
@@ -4045,14 +3949,14 @@
                 }
             }
         },
-        "/api/v1/spans/{span_id}": {
+        "/api/v1/traces/spans/{span_id}": {
             "get": {
                 "tags": [
                     "Spans"
                 ],
                 "summary": "Get Single Span",
                 "description": "Get single span with existing metrics (no computation). Returns full span object with any existing metrics.",
-                "operationId": "get_span_by_id_api_v1_spans__span_id__get",
+                "operationId": "get_span_by_id_api_v1_traces_spans__span_id__get",
                 "security": [
                     {
                         "API Key": []
@@ -4093,14 +3997,14 @@
                 }
             }
         },
-        "/api/v1/spans/{span_id}/metrics": {
+        "/api/v1/traces/spans/{span_id}/metrics": {
             "get": {
                 "tags": [
                     "Spans"
                 ],
                 "summary": "Compute Missing Span Metrics",
                 "description": "Compute all missing metrics for a single span on-demand. Returns span with computed metrics.",
-                "operationId": "compute_span_metrics_api_v1_spans__span_id__metrics_get",
+                "operationId": "compute_span_metrics_api_v1_traces_spans__span_id__metrics_get",
                 "security": [
                     {
                         "API Key": []
@@ -4141,14 +4045,14 @@
                 }
             }
         },
-        "/api/v1/sessions": {
+        "/api/v1/traces/sessions": {
             "get": {
                 "tags": [
                     "Sessions"
                 ],
                 "summary": "List Session Metadata",
                 "description": "Get session metadata with pagination and filtering. Returns aggregated session information.",
-                "operationId": "list_sessions_metadata_api_v1_sessions_get",
+                "operationId": "list_sessions_metadata_api_v1_traces_sessions_get",
                 "security": [
                     {
                         "API Key": []
@@ -4254,14 +4158,14 @@
                 }
             }
         },
-        "/api/v1/sessions/{session_id}": {
+        "/api/v1/traces/sessions/{session_id}": {
             "get": {
                 "tags": [
                     "Sessions"
                 ],
                 "summary": "Get Session Traces",
                 "description": "Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).",
-                "operationId": "get_session_traces_api_v1_sessions__session_id__get",
+                "operationId": "get_session_traces_api_v1_traces_sessions__session_id__get",
                 "security": [
                     {
                         "API Key": []
@@ -4337,14 +4241,14 @@
                 }
             }
         },
-        "/api/v1/sessions/{session_id}/metrics": {
+        "/api/v1/traces/sessions/{session_id}/metrics": {
             "get": {
                 "tags": [
                     "Sessions"
                 ],
                 "summary": "Compute Missing Session Metrics",
                 "description": "Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.",
-                "operationId": "compute_session_metrics_api_v1_sessions__session_id__metrics_get",
+                "operationId": "compute_session_metrics_api_v1_traces_sessions__session_id__metrics_get",
                 "security": [
                     {
                         "API Key": []
@@ -4420,14 +4324,14 @@
                 }
             }
         },
-        "/api/v1/users": {
+        "/api/v1/traces/users": {
             "get": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "List User Metadata",
                 "description": "Get user metadata with pagination and filtering. Returns aggregated user information across sessions and traces.",
-                "operationId": "list_users_metadata_api_v1_users_get",
+                "operationId": "list_users_metadata_api_v1_traces_users_get",
                 "security": [
                     {
                         "API Key": []
@@ -4515,7 +4419,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/UserListResponse"
+                                    "$ref": "#/components/schemas/TraceUserListResponse"
                                 }
                             }
                         }
@@ -4533,14 +4437,14 @@
                 }
             }
         },
-        "/api/v1/users/{user_id}/sessions": {
+        "/api/v1/traces/users/{user_id}/sessions": {
             "get": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Get User Sessions",
                 "description": "Get all sessions for a user. Returns list of session metadata for the specified user.",
-                "operationId": "get_user_sessions_api_v1_users__user_id__sessions_get",
+                "operationId": "get_user_sessions_api_v1_traces_users__user_id__sessions_get",
                 "security": [
                     {
                         "API Key": []
@@ -4598,7 +4502,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/UserSessionsResponse"
+                                    "$ref": "#/components/schemas/TraceUserSessionsResponse"
                                 }
                             }
                         }
@@ -4616,14 +4520,14 @@
                 }
             }
         },
-        "/api/v1/users/{user_id}/traces": {
+        "/api/v1/traces/users/{user_id}/traces": {
             "get": {
                 "tags": [
                     "Users"
                 ],
                 "summary": "Get User Traces",
                 "description": "Get all traces for a user. Returns list of trace metadata for the specified user, including traces not associated with sessions.",
-                "operationId": "get_user_traces_api_v1_users__user_id__traces_get",
+                "operationId": "get_user_traces_api_v1_traces_users__user_id__traces_get",
                 "security": [
                     {
                         "API Key": []
@@ -4681,7 +4585,103 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/UserTracesResponse"
+                                    "$ref": "#/components/schemas/TraceUserTracesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Get Single Trace",
+                "description": "Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.",
+                "operationId": "get_trace_by_id_api_v1_traces__trace_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/traces/{trace_id}/metrics": {
+            "get": {
+                "tags": [
+                    "Traces"
+                ],
+                "summary": "Compute Missing Trace Metrics",
+                "description": "Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.",
+                "operationId": "compute_trace_metrics_api_v1_traces__trace_id__metrics_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "trace_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Trace Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TraceResponse"
                                 }
                             }
                         }
@@ -12230,35 +12230,7 @@
                 "title": "TraceResponse",
                 "description": "Response model for a single trace containing nested spans"
             },
-            "UpdateMetricRequest": {
-                "properties": {
-                    "enabled": {
-                        "type": "boolean",
-                        "title": "Enabled",
-                        "description": "Boolean value to enable or disable the metric. "
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "enabled"
-                ],
-                "title": "UpdateMetricRequest"
-            },
-            "UpdateRuleRequest": {
-                "properties": {
-                    "enabled": {
-                        "type": "boolean",
-                        "title": "Enabled",
-                        "description": "Boolean value to enable or disable the rule. "
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "enabled"
-                ],
-                "title": "UpdateRuleRequest"
-            },
-            "UserListResponse": {
+            "TraceUserListResponse": {
                 "properties": {
                     "count": {
                         "type": "integer",
@@ -12267,7 +12239,7 @@
                     },
                     "users": {
                         "items": {
-                            "$ref": "#/components/schemas/UserMetadataResponse"
+                            "$ref": "#/components/schemas/TraceUserMetadataResponse"
                         },
                         "type": "array",
                         "title": "Users",
@@ -12279,10 +12251,10 @@
                     "count",
                     "users"
                 ],
-                "title": "UserListResponse",
-                "description": "Response for user list endpoint"
+                "title": "TraceUserListResponse",
+                "description": "Response for trace user list endpoint"
             },
-            "UserMetadataResponse": {
+            "TraceUserMetadataResponse": {
                 "properties": {
                     "user_id": {
                         "type": "string",
@@ -12350,8 +12322,96 @@
                     "earliest_start_time",
                     "latest_end_time"
                 ],
-                "title": "UserMetadataResponse",
-                "description": "User summary metadata"
+                "title": "TraceUserMetadataResponse",
+                "description": "User summary metadata in trace context"
+            },
+            "TraceUserSessionsResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id",
+                        "description": "User identifier"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of sessions for this user"
+                    },
+                    "sessions": {
+                        "items": {
+                            "$ref": "#/components/schemas/SessionMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Sessions",
+                        "description": "List of session metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "count",
+                    "sessions"
+                ],
+                "title": "TraceUserSessionsResponse",
+                "description": "Response for trace user sessions endpoint"
+            },
+            "TraceUserTracesResponse": {
+                "properties": {
+                    "user_id": {
+                        "type": "string",
+                        "title": "User Id",
+                        "description": "User identifier"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Number of traces for this user"
+                    },
+                    "traces": {
+                        "items": {
+                            "$ref": "#/components/schemas/TraceMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Traces",
+                        "description": "List of trace metadata"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "user_id",
+                    "count",
+                    "traces"
+                ],
+                "title": "TraceUserTracesResponse",
+                "description": "Response for trace user traces endpoint"
+            },
+            "UpdateMetricRequest": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Boolean value to enable or disable the metric. "
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "title": "UpdateMetricRequest"
+            },
+            "UpdateRuleRequest": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "Boolean value to enable or disable the rule. "
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "enabled"
+                ],
+                "title": "UpdateRuleRequest"
             },
             "UserPermissionAction": {
                 "type": "string",
@@ -12418,66 +12478,6 @@
                     "roles"
                 ],
                 "title": "UserResponse"
-            },
-            "UserSessionsResponse": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "title": "User Id",
-                        "description": "User identifier"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Number of sessions for this user"
-                    },
-                    "sessions": {
-                        "items": {
-                            "$ref": "#/components/schemas/SessionMetadataResponse"
-                        },
-                        "type": "array",
-                        "title": "Sessions",
-                        "description": "List of session metadata"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "count",
-                    "sessions"
-                ],
-                "title": "UserSessionsResponse",
-                "description": "Response for user sessions endpoint"
-            },
-            "UserTracesResponse": {
-                "properties": {
-                    "user_id": {
-                        "type": "string",
-                        "title": "User Id",
-                        "description": "User identifier"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Number of traces for this user"
-                    },
-                    "traces": {
-                        "items": {
-                            "$ref": "#/components/schemas/TraceMetadataResponse"
-                        },
-                        "type": "array",
-                        "title": "Traces",
-                        "description": "List of trace metadata"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "user_id",
-                    "count",
-                    "traces"
-                ],
-                "title": "UserTracesResponse",
-                "description": "Response for user traces endpoint"
             },
             "ValidationError": {
                 "properties": {

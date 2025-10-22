@@ -71,9 +71,9 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
-    UserListResponse,
-    UserSessionsResponse,
-    UserTracesResponse,
+    TraceUserListResponse,
+    TraceUserSessionsResponse,
+    TraceUserTracesResponse,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -2006,7 +2006,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lte"] = trace_duration_lte
 
         resp = self.base_client.get(
-            f"/api/v1/spans?{urllib.parse.urlencode(params, doseq=True)}",
+            f"/api/v1/traces/spans?{urllib.parse.urlencode(params, doseq=True)}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2033,7 +2033,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             tuple[int, SpanWithMetricsResponse | str]: Status code and response
         """
         resp = self.base_client.get(
-            f"/api/v1/spans/{span_id}",
+            f"/api/v1/traces/spans/{span_id}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2060,7 +2060,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             tuple[int, SpanWithMetricsResponse | str]: Status code and response
         """
         resp = self.base_client.get(
-            f"/api/v1/spans/{span_id}/metrics",
+            f"/api/v1/traces/spans/{span_id}/metrics",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2109,7 +2109,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["sort"] = sort
 
         resp = self.base_client.get(
-            f"/api/v1/sessions?{urllib.parse.urlencode(params, doseq=True)}",
+            f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2153,7 +2153,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/sessions/{session_id}{query_string}",
+            f"/api/v1/traces/sessions/{session_id}{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2197,7 +2197,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/sessions/{session_id}/metrics{query_string}",
+            f"/api/v1/traces/sessions/{session_id}/metrics{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2231,7 +2231,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, UserListResponse | str]: Status code and response
+            tuple[int, TraceUserListResponse | str]: Status code and response
         """
 
         params = {"task_ids": task_ids}
@@ -2250,7 +2250,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/users{query_string}",
+            f"/api/v1/traces/users{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2258,7 +2258,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                UserListResponse.model_validate(resp.json())
+                TraceUserListResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -2280,7 +2280,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, UserSessionsResponse | str]: Status code and response
+            tuple[int, TraceUserSessionsResponse | str]: Status code and response
         """
 
         params = {}
@@ -2295,7 +2295,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/users/{user_id}/sessions{query_string}",
+            f"/api/v1/traces/users/{user_id}/sessions{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2303,7 +2303,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                UserSessionsResponse.model_validate(resp.json())
+                TraceUserSessionsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -2325,7 +2325,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             sort: Sort order ("asc" or "desc")
 
         Returns:
-            tuple[int, UserTracesResponse | str]: Status code and response
+            tuple[int, TraceUserTracesResponse | str]: Status code and response
         """
 
         params = {}
@@ -2340,7 +2340,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/users/{user_id}/traces{query_string}",
+            f"/api/v1/traces/users/{user_id}/traces{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2348,7 +2348,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                UserTracesResponse.model_validate(resp.json())
+                TraceUserTracesResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

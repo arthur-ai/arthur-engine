@@ -21,7 +21,7 @@ from schemas.internal_schemas import (
     Span,
     TraceMetadata,
     TraceQuerySchema,
-    UserMetadata,
+    TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
 from utils import trace as trace_utils
@@ -740,7 +740,7 @@ class SpanQueryService:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-    ) -> tuple[int, list[UserMetadata]]:
+    ) -> tuple[int, list[TraceUserMetadata]]:
         """Perform user-level aggregations with filtering."""
         if not task_ids:
             return 0, []
@@ -796,7 +796,7 @@ class SpanQueryService:
         query = self._apply_pagination(query, pagination_parameters)
         results = self.db_session.execute(query).all()
 
-        # Convert to UserMetadata objects
+        # Convert to TraceUserMetadata objects
         users = []
         for row in results:
             # Handle aggregated IDs based on database type
@@ -814,7 +814,7 @@ class SpanQueryService:
                 trace_ids = row.trace_ids.split(",") if row.trace_ids else []
 
             users.append(
-                UserMetadata(
+                TraceUserMetadata(
                     user_id=row.user_id,
                     task_id=row.task_id,
                     session_ids=session_ids,

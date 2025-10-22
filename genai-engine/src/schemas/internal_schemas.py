@@ -118,7 +118,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
-    UserMetadataResponse,
+    TraceUserMetadataResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -1804,8 +1804,8 @@ class SessionMetadata(BaseModel):
         )
 
 
-class UserMetadata(BaseModel):
-    """Internal user metadata representation"""
+class TraceUserMetadata(BaseModel):
+    """Internal trace user metadata representation"""
 
     user_id: str
     task_id: str
@@ -1815,9 +1815,9 @@ class UserMetadata(BaseModel):
     earliest_start_time: datetime
     latest_end_time: datetime
 
-    def _to_metadata_response_model(self) -> UserMetadataResponse:
+    def _to_metadata_response_model(self) -> TraceUserMetadataResponse:
         """Convert to API response model"""
-        return UserMetadataResponse(
+        return TraceUserMetadataResponse(
             user_id=self.user_id,
             task_id=self.task_id,
             session_ids=self.session_ids,

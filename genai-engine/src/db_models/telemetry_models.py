@@ -60,6 +60,14 @@ class DatabaseTraceMetadata(Base):
                 "session_id",
             ],
         ),
+        Index(
+            "idx_traces_task_session_time",
+            "task_id",
+            "session_id",
+            "start_time",
+            postgresql_where=text("session_id IS NOT NULL"),
+        ),
+        Index("idx_traces_session_time", "session_id", "start_time"),
     )
 
 
