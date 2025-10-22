@@ -135,10 +135,7 @@ def get_all_agentic_prompts(
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompts(
-            task.id,
-            include_deleted=include_deleted,
-        )
+        return agentic_prompt_service.get_all_prompt_metadata(task.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
