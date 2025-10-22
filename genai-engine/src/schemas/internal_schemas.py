@@ -2074,7 +2074,7 @@ class DatasetVersion(DatasetVersionMetadata):
 
         if len(all_rows) > MAX_DATASET_ROWS:
             raise HTTPException(
-                status_code=404,
+                status_code=400,
                 detail=f"Total number of rows {len(all_rows)} exceeds max allowed length, {MAX_DATASET_ROWS}.",
             )
 

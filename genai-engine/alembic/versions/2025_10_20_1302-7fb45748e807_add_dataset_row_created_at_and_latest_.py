@@ -43,10 +43,6 @@ def upgrade() -> None:
             FROM dataset_versions
             WHERE dataset_versions.dataset_id = datasets.id
         )
-        WHERE EXISTS (
-            SELECT 1 FROM dataset_versions
-            WHERE dataset_versions.dataset_id = datasets.id
-        )
         """,
     )
     # ### end Alembic commands ###

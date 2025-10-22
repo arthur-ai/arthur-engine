@@ -57,6 +57,8 @@ class DatasetRepository:
         if update_dataset_request.metadata is not None:
             db_dataset.dataset_metadata = update_dataset_request.metadata
 
+        db_dataset.updated_at = datetime.now()
+
         self.db_session.commit()
 
     def query_datasets(
