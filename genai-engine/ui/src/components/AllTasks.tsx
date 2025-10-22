@@ -206,7 +206,11 @@ export const AllTasks: React.FC = () => {
               <p className="text-gray-400 mb-8">
                 Get started by creating your first agent task.
               </p>
-              <CreateTaskForm onTaskCreated={handleTaskCreated} />
+              <CreateTaskForm
+                embedded={true}
+                onTaskCreated={handleTaskCreated}
+                onCancel={() => {}}
+              />
             </div>
           ) : (
             <>
@@ -253,21 +257,14 @@ export const AllTasks: React.FC = () => {
       </main>
 
       {/* Create Task Modal */}
-      {showCreateForm && (
-        <div className="fixed inset-0 bg-gray-600/75 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <CreateTaskForm
-                onTaskCreated={(taskId) => {
-                  setShowCreateForm(false);
-                  handleTaskCreated(taskId);
-                }}
-                onCancel={() => setShowCreateForm(false)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateTaskForm
+        open={showCreateForm}
+        onTaskCreated={(taskId) => {
+          setShowCreateForm(false);
+          handleTaskCreated(taskId);
+        }}
+        onCancel={() => setShowCreateForm(false)}
+      />
     </div>
   );
 };
