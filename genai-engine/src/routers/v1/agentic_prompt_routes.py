@@ -146,29 +146,6 @@ def get_all_agentic_prompts(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts/names",
-    summary="Get all unique agentic prompt names",
-    description="Get all unique agentic prompt names for a given task.",
-    response_model=AgenticPromptNames,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
-)
-@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
-def get_unique_prompt_names(
-    db_session: Session = Depends(get_db_session),
-    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
-):
-    try:
-        agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompt_metadata(task.id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@agentic_prompt_routes.get(
     "/tasks/{task_id}/prompts/{prompt_name}/versions",
     summary="List all versions of an agentic prompt",
     description="List all versions of an agentic prompt",
