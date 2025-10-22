@@ -29,7 +29,6 @@ from arthur_common.models.request_schemas import NewRuleRequest as ApiNewRuleReq
 from arthur_common.models.response_schemas import MetricResponse as ApiMetricResponse
 from arthur_common.models.response_schemas import RuleResponse as ApiRuleResponse
 from arthur_common.models.response_schemas import TaskResponse as ApiTaskResponse
-
 from genai_client import Config
 from genai_client.models import ExampleConfig as ShieldExampleConfig
 from genai_client.models import ExamplesConfig as ShieldExamplesConfig

@@ -19,6 +19,7 @@ from arthur_common.models.metrics import (
     ReportedCustomAggregation,
     SketchMetric,
 )
+
 from metric_calculators.metric_calculator import MetricCalculator
 
 
