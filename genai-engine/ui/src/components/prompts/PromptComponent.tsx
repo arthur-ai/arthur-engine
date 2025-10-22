@@ -68,7 +68,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const handleModelChange = useCallback(
     (event: React.SyntheticEvent<Element, Event>, newValue: string | null) => {
       if (newValue === prompt.modelName) return;
-      console.log("handleModelChange", newValue);
+
       dispatch({
         type: "updatePromptModelName",
         payload: { promptId: prompt.id, modelName: newValue || "" },
