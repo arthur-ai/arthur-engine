@@ -29,7 +29,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span as InternalSpan
-from services.trace_ingestion_service import TraceIngestionService
+from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -259,6 +259,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time - timedelta(days=2),
         end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
         session_id="session1",
+        user_id="user1",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
@@ -273,6 +274,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "session.id": "session1",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -293,6 +296,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time - timedelta(days=1),
         end_time=base_time - timedelta(days=1) + timedelta(seconds=1),
         session_id="session1",
+        user_id="user1",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Chain",
@@ -300,6 +304,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             "traceId": "api_trace1",
             "attributes": {
                 "openinference.span.kind": "CHAIN",
+                "session.id": "session1",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -320,6 +326,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time - timedelta(hours=12),
         end_time=base_time - timedelta(hours=12) + timedelta(seconds=2),
         session_id="session1",
+        user_id="user1",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
@@ -332,6 +339,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.0.message.content": "Follow-up question",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "Follow-up response",
+                "session.id": "session1",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -352,6 +361,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time,
         end_time=base_time + timedelta(seconds=1),
         session_id="session2",
+        user_id="user2",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Agent",
@@ -359,6 +369,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             "traceId": "api_trace3",
             "attributes": {
                 "openinference.span.kind": "AGENT",
+                "session.id": "session2",
+                "user.id": "user2",
                 "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -379,6 +391,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time + timedelta(seconds=30),
         end_time=base_time + timedelta(seconds=31),
         session_id="session2",
+        user_id="user2",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Retriever",
@@ -386,6 +399,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             "traceId": "api_trace3",
             "attributes": {
                 "openinference.span.kind": "RETRIEVER",
+                "session.id": "session2",
+                "user.id": "user2",
                 "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -406,6 +421,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         start_time=base_time + timedelta(hours=1),
         end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
         session_id=None,
+        user_id="user1",
         raw_data={
             "kind": "SPAN_KIND_INTERNAL",
             "name": "test_tool",
@@ -414,6 +430,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             "attributes": {
                 "openinference.span.kind": "TOOL",
                 "tool.name": "test_tool",
+                "user.id": "user1",
                 "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
             },
             "arthur_span_version": "arthur_span_v1",
@@ -437,6 +454,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             end_time=span.end_time,
             task_id=span.task_id,
             session_id=span.session_id,
+            user_id=span.user_id,
             raw_data=span.raw_data,
             created_at=span.created_at,
             updated_at=span.updated_at,
@@ -458,6 +476,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
             session_id=trace_spans[0].session_id,
+            user_id=trace_spans[0].user_id,
             span_count=len(trace_spans),
             start_time=trace_start_time,
             end_time=trace_end_time,

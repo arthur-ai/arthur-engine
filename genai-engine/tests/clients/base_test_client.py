@@ -71,6 +71,8 @@ from schemas.response_schemas import (
     SessionTracesResponse,
     SpanListResponse,
     TraceListResponse,
+    TraceUserListResponse,
+    TraceUserMetadataResponse,
 )
 from tests.constants import (
     DEFAULT_EXAMPLES,
@@ -1726,6 +1728,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         sort: str | None = None,
         tool_name: str | None = None,
         span_types: list | None = None,
+        user_ids: list[str] | None = None,
         # Query relevance filters
         query_relevance_eq: float | None = None,
         query_relevance_gt: float | None = None,
@@ -1770,6 +1773,8 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["tool_name"] = tool_name
         if span_types is not None:
             params["span_types"] = span_types
+        if user_ids is not None:
+            params["user_ids"] = user_ids
         # Query relevance filters
         if query_relevance_eq is not None:
             params["query_relevance_eq"] = query_relevance_eq
@@ -2003,7 +2008,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["trace_duration_lte"] = trace_duration_lte
 
         resp = self.base_client.get(
-            f"/api/v1/spans?{urllib.parse.urlencode(params, doseq=True)}",
+            f"/api/v1/traces/spans?{urllib.parse.urlencode(params, doseq=True)}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2030,7 +2035,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             tuple[int, SpanWithMetricsResponse | str]: Status code and response
         """
         resp = self.base_client.get(
-            f"/api/v1/spans/{span_id}",
+            f"/api/v1/traces/spans/{span_id}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2057,7 +2062,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             tuple[int, SpanWithMetricsResponse | str]: Status code and response
         """
         resp = self.base_client.get(
-            f"/api/v1/spans/{span_id}/metrics",
+            f"/api/v1/traces/spans/{span_id}/metrics",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2079,6 +2084,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page: int | None = None,
         page_size: int | None = None,
         sort: str | None = None,
+        user_ids: list[str] | None = None,
     ) -> tuple[int, SessionListResponse | str]:
         """Get session metadata with pagination and filtering.
 
@@ -2104,9 +2110,11 @@ class GenaiEngineTestClientBase(httpx.Client):
             params["page_size"] = page_size
         if sort is not None:
             params["sort"] = sort
+        if user_ids is not None:
+            params["user_ids"] = user_ids
 
         resp = self.base_client.get(
-            f"/api/v1/sessions?{urllib.parse.urlencode(params, doseq=True)}",
+            f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2115,6 +2123,37 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SessionListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_user_details(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> tuple[int, TraceUserMetadataResponse | str]:
+        """Get detailed information for a single user.
+
+        Args:
+            user_id: User ID to get details for
+            task_ids: Task IDs to filter on (required)
+
+        Returns:
+            tuple[int, TraceUserMetadataResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+
+        resp = self.base_client.get(
+            f"/api/v1/traces/users/{user_id}?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceUserMetadataResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),
@@ -2150,7 +2189,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/sessions/{session_id}{query_string}",
+            f"/api/v1/traces/sessions/{session_id}{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2194,7 +2233,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
         )
         resp = self.base_client.get(
-            f"/api/v1/sessions/{session_id}/metrics{query_string}",
+            f"/api/v1/traces/sessions/{session_id}/metrics{query_string}",
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -2203,6 +2242,59 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SessionTracesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_users_metadata(
+        self,
+        task_ids: list[str],
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ):
+        """List user metadata via Trace API.
+
+        Args:
+            task_ids: List of task IDs to filter on
+            start_time: Optional start time filter
+            end_time: Optional end time filter
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, TraceUserListResponse | str]: Status code and response
+        """
+
+        params = {"task_ids": task_ids}
+        if start_time is not None:
+            params["start_time"] = start_time.isoformat()
+        if end_time is not None:
+            params["end_time"] = end_time.isoformat()
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/traces/users{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceUserListResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
             ),

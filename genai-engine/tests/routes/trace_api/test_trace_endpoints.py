@@ -42,11 +42,11 @@ def find_span_by_kind(spans, span_kind):
 
 
 @pytest.mark.unit_tests
-def test_list_traces_metadata_basic_functionality(
+def test_list_traces_metadata_functionality(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test basic trace metadata listing functionality."""
+    """Test trace metadata listing functionality for single and multiple tasks."""
 
     # Test single task
     status_code, data = client.trace_api_list_traces_metadata(task_ids=["api_task1"])
@@ -58,6 +58,7 @@ def test_list_traces_metadata_basic_functionality(
     for trace_metadata in data.traces:
         assert trace_metadata.trace_id and isinstance(trace_metadata.trace_id, str)
         assert trace_metadata.task_id and isinstance(trace_metadata.task_id, str)
+        assert trace_metadata.user_id is not None  # Should have user_id
         assert trace_metadata.start_time is not None
         assert trace_metadata.end_time is not None
         assert (
@@ -66,14 +67,7 @@ def test_list_traces_metadata_basic_functionality(
             and trace_metadata.span_count >= 0
         )
 
-
-@pytest.mark.unit_tests
-def test_list_traces_metadata_multiple_tasks(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test listing traces for multiple tasks."""
-
+    # Test multiple tasks
     status_code, data = client.trace_api_list_traces_metadata(
         task_ids=["api_task1", "api_task2"],
     )
@@ -87,52 +81,70 @@ def test_list_traces_metadata_multiple_tasks(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize(
-    "task_ids,expected_status",
-    [
-        ([], 400),  # Empty task_ids should return 400
-        (
-            ["non_existent_task"],
-            200,
-        ),  # Non-existent task should return 200 with 0 results
-    ],
-)
-def test_list_traces_metadata_validation_errors(
-    client: GenaiEngineTestClientBase,
-    task_ids,
-    expected_status,
-):
-    """Test validation errors for trace metadata listing."""
-
-    status_code, response = client.trace_api_list_traces_metadata(task_ids=task_ids)
-    assert status_code == expected_status
-
-    if expected_status == 200:
-        # Should have valid response structure even with no results
-        assert (
-            response.count is not None
-            and isinstance(response.count, int)
-            and response.count >= 0
-        )
-        assert isinstance(response.traces, list)
-        if task_ids == ["non_existent_task"]:
-            assert response.count == 0
-    # For 400 status, response will be error text
-
-
-# ============================================================================
-# INDIVIDUAL TRACE RETRIEVAL TESTS
-# ============================================================================
-
-
-@pytest.mark.unit_tests
-def test_get_trace_by_id_basic_functionality(
+def test_list_traces_metadata_filtering_by_user_ids(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test retrieving individual trace by ID."""
+    """Test filtering traces by user IDs."""
 
-    # First get a trace ID from the metadata list
+    # Filter traces by user1
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        user_ids=["user1"],
+    )
+    assert status_code == 200
+    assert data.count == 3  # user1 has 3 traces in api_task1
+    assert len(data.traces) == 3
+
+    # Verify all traces belong to user1
+    for trace in data.traces:
+        assert trace.user_id == "user1"
+        assert trace.task_id == "api_task1"
+
+    # Filter by multiple users
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1", "api_task2"],
+        user_ids=["user1", "user2"],
+    )
+    assert status_code == 200
+    assert data.count == 4  # user1 has 3 traces, user2 has 1 trace
+    assert len(data.traces) == 4
+
+    # Verify we have traces from both users
+    user_ids = {trace.user_id for trace in data.traces}
+    assert user_ids == {"user1", "user2"}
+
+    # Filter by non-existent user
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["api_task1"],
+        user_ids=["non_existent_user"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.traces) == 0
+
+
+@pytest.mark.unit_tests
+def test_trace_metadata_validation_and_individual_retrieval(
+    client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
+):
+    """Test validation errors and individual trace retrieval."""
+
+    # Test validation errors
+    # Empty task_ids (should return 400)
+    status_code, response = client.trace_api_list_traces_metadata(task_ids=[])
+    assert status_code == 400
+
+    # Non-existent task (should return 200 with 0 results)
+    status_code, data = client.trace_api_list_traces_metadata(
+        task_ids=["non_existent_task"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.traces) == 0
+
+    # Test individual trace retrieval
     status_code, traces_response = client.trace_api_list_traces_metadata(
         task_ids=["api_task1"],
     )

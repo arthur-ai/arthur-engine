@@ -16,11 +16,12 @@ from schemas.internal_schemas import (
     Span,
     TraceMetadata,
     TraceQuerySchema,
+    TraceUserMetadata,
 )
-from services.metrics_integration_service import MetricsIntegrationService
-from services.span_query_service import SpanQueryService
-from services.trace_ingestion_service import TraceIngestionService
-from services.tree_building_service import TreeBuildingService
+from services.trace.metrics_integration_service import MetricsIntegrationService
+from services.trace.span_query_service import SpanQueryService
+from services.trace.trace_ingestion_service import TraceIngestionService
+from services.trace.tree_building_service import TreeBuildingService
 from utils import trace as trace_utils
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class SpanRepository:
         self,
         filters: TraceQueryRequest,
         pagination_parameters: PaginationParameters,
+        user_ids: Optional[list[str]] = None,
     ) -> tuple[int, list[TraceMetadata]]:
         """Get lightweight trace metadata for browsing/filtering operations.
 
@@ -66,6 +68,10 @@ class SpanRepository:
         """
         # Convert to internal schema format
         filters = TraceQuerySchema._from_request_model(filters)
+
+        # Add user_ids to filters if provided
+        if user_ids:
+            filters.user_ids = user_ids
 
         if not filters.task_ids:
             raise ValueError("task_ids are required for trace queries")
@@ -88,6 +94,23 @@ class SpanRepository:
         )
 
         return total_count, trace_metadata_list
+
+    def get_user_details(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> Optional[TraceUserMetadata]:
+        """Get detailed information for a single user."""
+        if not task_ids:
+            raise ValueError("task_ids are required for user queries")
+
+        # Get user metadata
+        user_metadata = self.span_query_service.get_user_metadata_by_id(
+            user_id=user_id,
+            task_ids=task_ids,
+        )
+
+        return user_metadata
 
     def get_trace_by_id(
         self,
@@ -202,6 +225,7 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        user_ids: Optional[list[str]] = None,
     ) -> tuple[int, list[SessionMetadata]]:
         """Return session aggregation data.
 
@@ -216,6 +240,7 @@ class SpanRepository:
             pagination_parameters=pagination_parameters,
             start_time=start_time,
             end_time=end_time,
+            user_ids=user_ids,
         )
 
         return count, session_metadata_list
@@ -299,6 +324,27 @@ class SpanRepository:
         )
 
         return count, traces
+
+    def get_users_metadata(
+        self,
+        task_ids: list[str],
+        pagination_parameters: PaginationParameters,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
+    ) -> tuple[int, list[TraceUserMetadata]]:
+        """Return user aggregation data with pagination."""
+        if not task_ids:
+            raise ValueError("task_ids are required for user queries")
+
+        # Get user aggregation data from query service
+        count, user_metadata_list = self.span_query_service.get_users_aggregated(
+            task_ids=task_ids,
+            pagination_parameters=pagination_parameters,
+            start_time=start_time,
+            end_time=end_time,
+        )
+
+        return count, user_metadata_list
 
     # ============================================================================
     # Public API Methods - Used by Legacy Endpoints (ML Engine)

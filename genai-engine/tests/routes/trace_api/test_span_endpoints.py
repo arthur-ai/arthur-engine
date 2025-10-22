@@ -16,6 +16,7 @@ def assert_valid_span_metadata_response(spans):
         assert span.trace_id and isinstance(span.trace_id, str)
         assert span.span_kind and isinstance(span.span_kind, str)
         assert span.task_id and isinstance(span.task_id, str)
+        assert span.user_id is not None  # Should have user_id
         assert span.start_time is not None
         assert span.end_time is not None
 
@@ -118,12 +119,13 @@ def test_list_spans_metadata_with_span_type_filtering(
 
 
 @pytest.mark.unit_tests
-def test_list_spans_metadata_pagination(
+def test_list_spans_metadata_pagination_sorting_and_validation(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span metadata pagination functionality."""
+    """Test span metadata pagination, sorting, and validation."""
 
+    # Test pagination
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["api_task1", "api_task2"],
         page=0,
@@ -133,14 +135,7 @@ def test_list_spans_metadata_pagination(
     assert data.count == 6  # Total count
     assert len(data.spans) <= 2  # Page size (might be less if last page)
 
-
-@pytest.mark.unit_tests
-def test_list_spans_metadata_sorting(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test span metadata sorting functionality."""
-
+    # Test sorting
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["api_task1", "api_task2"],
         sort="desc",
@@ -153,35 +148,18 @@ def test_list_spans_metadata_sorting(
             next_time = data.spans[i + 1].start_time
             assert current_time >= next_time
 
+    # Test validation errors
+    # Empty task_ids (should return 400)
+    status_code, response = client.trace_api_list_spans_metadata(task_ids=[])
+    assert status_code == 400
 
-@pytest.mark.unit_tests
-@pytest.mark.parametrize(
-    "task_ids,expected_status",
-    [
-        ([], 400),  # Empty task_ids should return 400
-        (
-            ["non_existent_task"],
-            200,
-        ),  # Non-existent task should return 200 with 0 results
-    ],
-)
-def test_list_spans_metadata_validation_errors(
-    client: GenaiEngineTestClientBase,
-    task_ids,
-    expected_status,
-):
-    """Test validation errors for span metadata listing."""
-
-    status_code, response = client.trace_api_list_spans_metadata(task_ids=task_ids)
-    assert status_code == expected_status
-
-    if expected_status == 200:
-        # Should have valid response structure even with no results
-        assert hasattr(response, "count")
-        assert hasattr(response, "spans")
-        if task_ids == ["non_existent_task"]:
-            assert response.count == 0
-    # For 400 status, response will be error text
+    # Non-existent task (should return 200 with 0 results)
+    status_code, data = client.trace_api_list_spans_metadata(
+        task_ids=["non_existent_task"],
+    )
+    assert status_code == 200
+    assert data.count == 0
+    assert len(data.spans) == 0
 
 
 # ============================================================================
@@ -213,13 +191,13 @@ def test_get_span_by_id_basic_functionality(
 
 
 @pytest.mark.unit_tests
-def test_get_span_by_id_with_existing_metrics(
+def test_get_span_by_id_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span retrieval includes existing metrics but doesn't compute new ones."""
+    """Test span retrieval with metrics, features, and error handling."""
 
-    # Get an LLM span which should have existing metrics (api_span1)
+    # Test successful span retrieval with metrics and features
     status_code, span_data = client.trace_api_get_span_by_id("api_span1")
     assert status_code == 200
     assert span_data.span_id == "api_span1"
@@ -234,34 +212,15 @@ def test_get_span_by_id_with_existing_metrics(
             assert hasattr(metric, "completion_tokens")
             assert hasattr(metric, "latency_ms")
 
-
-@pytest.mark.unit_tests
-def test_get_span_by_id_not_found(
-    client: GenaiEngineTestClientBase,
-):
-    """Test retrieving non-existent span returns 404."""
-
-    status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
-    assert status_code == 404
-    assert "not found" in response_data.lower()
-
-
-@pytest.mark.unit_tests
-def test_get_span_by_id_llm_features(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test span retrieval includes proper LLM span features."""
-
-    # Get LLM span with features
-    status_code, span_data = client.trace_api_get_span_by_id("api_span1")
-    assert status_code == 200
-
     # Verify LLM span features are extracted
     assert span_data.system_prompt == "You are a helpful assistant."
     assert span_data.user_query == "What is the weather like today?"
     assert span_data.response == "I don't have access to real-time weather information."
-    assert span_data.span_kind == "LLM"
+
+    # Test non-existent span
+    status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
+    assert status_code == 404
+    assert "not found" in response_data.lower()
 
     # Get non-LLM span
     status_code, span_data = client.trace_api_get_span_by_id("api_span2")
@@ -279,13 +238,13 @@ def test_get_span_by_id_llm_features(
 
 
 @pytest.mark.unit_tests
-def test_compute_span_metrics_basic_functionality(
+def test_compute_span_metrics_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test computing missing metrics for a span."""
+    """Test computing span metrics with success and error cases."""
 
-    # Get an LLM span and compute metrics
+    # Test successful metrics computation
     status_code, span_data = client.trace_api_compute_span_metrics("api_span1")
     assert status_code == 200
     assert span_data.span_id == "api_span1"
@@ -294,13 +253,7 @@ def test_compute_span_metrics_basic_functionality(
     # Should have the same structure as regular span response
     assert_valid_span_full_response(span_data)
 
-
-@pytest.mark.unit_tests
-def test_compute_span_metrics_not_found(
-    client: GenaiEngineTestClientBase,
-):
-    """Test computing metrics for non-existent span returns 404."""
-
+    # Test non-existent span
     status_code, response_data = client.trace_api_compute_span_metrics(
         "non_existent_span",
     )
@@ -327,25 +280,19 @@ def test_compute_span_metrics_non_llm_span(
 
 
 @pytest.mark.unit_tests
-def test_list_spans_metadata_empty_results(
+def test_span_api_error_handling_and_edge_cases(
     client: GenaiEngineTestClientBase,
+    comprehensive_test_data,
 ):
-    """Test listing spans with no results."""
+    """Test error handling and edge cases in span API."""
 
+    # Test empty results
     status_code, data = client.trace_api_list_spans_metadata(
         task_ids=["non_existent_task"],
     )
     assert status_code == 200
     assert data.count == 0
     assert len(data.spans) == 0
-
-
-@pytest.mark.unit_tests
-def test_span_api_error_handling(
-    client: GenaiEngineTestClientBase,
-    comprehensive_test_data,
-):
-    """Test various error conditions in span API."""
 
     # Test server error in span metadata listing
     with patch(
