@@ -5,7 +5,7 @@ import {
 } from "@copilotkit/runtime";
 import { MastraAgent } from "@ag-ui/mastra"
 import { NextRequest } from "next/server";
-import { mastra, arthurExporter } from "@/mastra";
+import { mastra, ContextAwareMastraAgent } from "@/mastra";
  
 // 1. You can use any service adapter here for multi-agent support.
 const serviceAdapter = new ExperimentalEmptyAdapter();
@@ -16,18 +16,23 @@ export const POST = async (req: NextRequest) => {
   const userId = req.headers.get('x-user-id');
   const sessionId = req.headers.get('x-session-id');
 
-  // Set request metadata on the Arthur exporter
-  if (userId || sessionId) {
-    arthurExporter.setRequestMetadata({ 
-      userId: userId || undefined, 
-      sessionId: sessionId || undefined 
-    });
-  }
+  // Create context-aware agents that will automatically set OpenTelemetry context
+  const contextAwareAgents = Object.fromEntries(
+    Object.entries(MastraAgent.getLocalAgents({ mastra })).map(([key, agent]) => [
+      key,
+      new ContextAwareMastraAgent({
+        agent: (agent as any).agent, // Extract the underlying Mastra agent
+        resourceId: (agent as any).resourceId,
+        runtimeContext: (agent as any).runtimeContext,
+        userId: userId || undefined,
+        sessionId: sessionId || undefined,
+      })
+    ])
+  );
 
-  // 3. Create the CopilotRuntime instance and utilize the Mastra AG-UI
-  //    integration to get the remote agents. Cache this for performance.
+  // 3. Create the CopilotRuntime instance with context-aware agents
   const runtime = new CopilotRuntime({
-    agents: MastraAgent.getLocalAgents({ mastra }),
+    agents: contextAwareAgents,
   });
 
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
