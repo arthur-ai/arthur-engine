@@ -41,6 +41,10 @@ type PromptAction =
       type: "updateProviders";
       payload: { providers: string[] };
     }
+  | {
+      type: "updateAvailableModels";
+      payload: { availableModels: Map<string, string[]> };
+    }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
   | { type: "duplicateMessage"; payload: { parentId: string; id: string } }
@@ -140,6 +144,7 @@ interface PromptPlaygroundState {
   prompts: PromptType[];
   backendPrompts: PromptType[];
   enabledProviders: string[];
+  availableModels: Map<string, string[]>; // provider -> models
 }
 
 interface MessageComponentProps {

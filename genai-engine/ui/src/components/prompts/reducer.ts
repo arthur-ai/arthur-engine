@@ -137,6 +137,7 @@ const initialState: PromptPlaygroundState = {
   prompts: [newPrompt()],
   backendPrompts: new Array<PromptType>(),
   enabledProviders: new Array<string>(),
+  availableModels: new Map<string, string[]>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -237,6 +238,13 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         enabledProviders: providers,
+      };
+    }
+    case "updateAvailableModels": {
+      const { availableModels } = action.payload;
+      return {
+        ...state,
+        availableModels,
       };
     }
     case "addMessage": {

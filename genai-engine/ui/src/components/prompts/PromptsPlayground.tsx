@@ -13,12 +13,16 @@ import { toFrontendPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { ModelProviderResponse } from "@/lib/api-client/api-client";
+import {
+  ModelProvider,
+  ModelProviderResponse,
+} from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
   const hasFetchedPrompts = useRef(false);
   const hasFetchedProviders = useRef(false);
+  const hasFetchedAvailableModels = useRef(false);
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -74,10 +78,58 @@ const PromptsPlayground = () => {
     });
   }, [apiClient]);
 
+  const fetchAvailableModels = useCallback(async () => {
+    if (
+      hasFetchedAvailableModels.current ||
+      !apiClient ||
+      state.enabledProviders.length === 0
+    ) {
+      return;
+    }
+
+    hasFetchedAvailableModels.current = true;
+
+    // Fetch models for all enabled providers in parallel
+    const modelPromises = state.enabledProviders.map(async (provider) => {
+      try {
+        const response =
+          await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(
+            provider as ModelProvider
+          );
+        return { provider, models: response.data.available_models };
+      } catch (error) {
+        console.error(
+          `Failed to fetch models for provider ${provider}:`,
+          error
+        );
+        return { provider, models: [] };
+      }
+    });
+
+    const results = await Promise.all(modelPromises);
+
+    const newAvailableModels = new Map<string, string[]>();
+    results.forEach(({ provider, models }) => {
+      newAvailableModels.set(provider, models);
+    });
+
+    // Single dispatch with the complete Map
+    dispatch({
+      type: "updateAvailableModels",
+      payload: { availableModels: newAvailableModels },
+    });
+  }, [apiClient, state.enabledProviders]);
+
   useEffect(() => {
     fetchPrompts();
     fetchProviders();
   }, [fetchPrompts, fetchProviders]);
+
+  useEffect(() => {
+    if (state.enabledProviders.length > 0) {
+      fetchAvailableModels();
+    }
+  }, [state.enabledProviders, fetchAvailableModels]);
 
   const handleAddPrompt = useCallback(() => {
     dispatch({ type: "addPrompt" });
