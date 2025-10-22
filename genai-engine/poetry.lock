@@ -604,18 +604,18 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.59"
+version = "1.40.57"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.40.59-py3-none-any.whl", hash = "sha256:75752e7dc445131700a58926a50ca705794232f0f47d0e21edb59fbf1898db95"},
-    {file = "boto3-1.40.59.tar.gz", hash = "sha256:b1a5a203511e594872b39a129365f02eb5846eea990629e8daf47a3c01e7fd49"},
+    {file = "boto3-1.40.57-py3-none-any.whl", hash = "sha256:4ceeac741b04cd5d9193c85d1707597a30f7482682733437454408ea755ee151"},
+    {file = "boto3-1.40.57.tar.gz", hash = "sha256:717605170cb167e07462b7f033b26bc9c0fee34b78b5eac52edcd6149915e23f"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.59,<1.41.0"
+botocore = ">=1.40.57,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -624,14 +624,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.59"
+version = "1.40.57"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.59-py3-none-any.whl", hash = "sha256:042dd844ca82155ca1ab9608b9bef36d517515c775d075f57b89257108ae843b"},
-    {file = "botocore-1.40.59.tar.gz", hash = "sha256:842a466d8735272a30fe5b7f97df559d9e211a18e412f62a17ed249fd62f85fe"},
+    {file = "botocore-1.40.57-py3-none-any.whl", hash = "sha256:95dfd35e0863c3e33d458b0e74eb5a82d73521347c25651e1a0e18cf921ee010"},
+    {file = "botocore-1.40.57.tar.gz", hash = "sha256:39bb0570e10eb7a5d518974865aeebafe275498c8f132b23e3021b957babaf8a"},
 ]
 
 [package.dependencies]
@@ -3259,14 +3259,14 @@ test = ["pytest", "pytest-cov"]
 
 [[package]]
 name = "litellm"
-version = "1.79.0"
+version = "1.78.7"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 groups = ["main"]
 files = [
-    {file = "litellm-1.79.0-py3-none-any.whl", hash = "sha256:93414b6ed55fa9e3268e8cb3100faab960c9ecd18173129ccd85471cf3db4f1a"},
-    {file = "litellm-1.79.0.tar.gz", hash = "sha256:f58bb751222ee0e1ffecb2d44987999f9fa94130a6d1a478e19a3e5e8b9a7414"},
+    {file = "litellm-1.78.7-py3-none-any.whl", hash = "sha256:aa93ae1fefe02fb00b2a78eba3c95002f9ef478bade3e22e63508830182e2dfe"},
+    {file = "litellm-1.78.7.tar.gz", hash = "sha256:6b10f5c7dc217bde3481fa4f70b5c37edbfa617bec7149276833d311f76a6783"},
 ]
 
 [package.dependencies]
@@ -3287,7 +3287,7 @@ tokenizers = "*"
 caching = ["diskcache (>=5.6.1,<6.0.0)"]
 extra-proxy = ["azure-identity (>=1.15.0,<2.0.0)", "azure-keyvault-secrets (>=4.8.0,<5.0.0)", "google-cloud-iam (>=2.19.1,<3.0.0)", "google-cloud-kms (>=2.21.3,<3.0.0)", "prisma (==0.11.0)", "redisvl (>=0.4.1,<0.5.0) ; python_version >= \"3.9\" and python_version < \"3.14\"", "resend (>=0.8.0,<0.9.0)"]
 mlflow = ["mlflow (>3.1.4) ; python_version >= \"3.10\""]
-proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "azure-identity (>=1.15.0,<2.0.0)", "azure-storage-blob (>=12.25.1,<13.0.0)", "backoff", "boto3 (==1.36.0)", "cryptography", "fastapi (>=0.115.5,<0.116.0)", "fastapi-sso (>=0.16.0,<0.17.0)", "gunicorn (>=23.0.0,<24.0.0)", "litellm-enterprise (==0.1.20)", "litellm-proxy-extras (==0.2.29)", "mcp (>=1.10.0,<2.0.0) ; python_version >= \"3.10\"", "orjson (>=3.9.7,<4.0.0)", "polars (>=1.31.0,<2.0.0) ; python_version >= \"3.10\"", "pynacl (>=1.5.0,<2.0.0)", "python-multipart (>=0.0.18,<0.0.19)", "pyyaml (>=6.0.1,<7.0.0)", "rich (==13.7.1)", "rq", "uvicorn (>=0.29.0,<0.30.0)", "uvloop (>=0.21.0,<0.22.0) ; sys_platform != \"win32\"", "websockets (>=13.1.0,<14.0.0)"]
+proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "azure-identity (>=1.15.0,<2.0.0)", "azure-storage-blob (>=12.25.1,<13.0.0)", "backoff", "boto3 (==1.36.0)", "cryptography", "fastapi (>=0.115.5,<0.116.0)", "fastapi-sso (>=0.16.0,<0.17.0)", "gunicorn (>=23.0.0,<24.0.0)", "litellm-enterprise (==0.1.20)", "litellm-proxy-extras (==0.2.27)", "mcp (>=1.10.0,<2.0.0) ; python_version >= \"3.10\"", "orjson (>=3.9.7,<4.0.0)", "polars (>=1.31.0,<2.0.0) ; python_version >= \"3.10\"", "pynacl (>=1.5.0,<2.0.0)", "python-multipart (>=0.0.18,<0.0.19)", "pyyaml (>=6.0.1,<7.0.0)", "rich (==13.7.1)", "rq", "uvicorn (>=0.29.0,<0.30.0)", "uvloop (>=0.21.0,<0.22.0) ; sys_platform != \"win32\"", "websockets (>=13.1.0,<14.0.0)"]
 semantic-router = ["semantic-router ; python_version >= \"3.9\""]
 utils = ["numpydoc"]
 
@@ -5940,14 +5940,14 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pypdf"
-version = "6.0.0"
+version = "6.1.3"
 description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "pypdf-6.0.0-py3-none-any.whl", hash = "sha256:56ea60100ce9f11fc3eec4f359da15e9aec3821b036c1f06d2b660d35683abb8"},
-    {file = "pypdf-6.0.0.tar.gz", hash = "sha256:282a99d2cc94a84a3a3159f0d9358c0af53f85b4d28d76ea38b96e9e5ac2a08d"},
+    {file = "pypdf-6.1.3-py3-none-any.whl", hash = "sha256:eb049195e46f014fc155f566fa20e09d70d4646a9891164ac25fa0cbcfcdbcb5"},
+    {file = "pypdf-6.1.3.tar.gz", hash = "sha256:8d420d1e79dc1743f31a57707cabb6dcd5b17e8b9a302af64b30202c5700ab9d"},
 ]
 
 [package.extras]
@@ -6953,14 +6953,14 @@ test = ["Cython", "array-api-strict (>=2.3.1)", "asv", "gmpy2", "hypothesis (>=6
 
 [[package]]
 name = "sentence-transformers"
-version = "5.1.2"
+version = "5.1.1"
 description = "Embeddings, Retrieval, and Reranking"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "sentence_transformers-5.1.2-py3-none-any.whl", hash = "sha256:724ce0ea62200f413f1a5059712aff66495bc4e815a1493f7f9bca242414c333"},
-    {file = "sentence_transformers-5.1.2.tar.gz", hash = "sha256:0f6c8bd916a78dc65b366feb8d22fd885efdb37432e7630020d113233af2b856"},
+    {file = "sentence_transformers-5.1.1-py3-none-any.whl", hash = "sha256:5ed544629eafe89ca668a8910ebff96cf0a9c5254ec14b05c66c086226c892fd"},
+    {file = "sentence_transformers-5.1.1.tar.gz", hash = "sha256:8af3f844b2ecf9a6c2dfeafc2c02938a87f61202b54329d70dfd7dfd7d17a84e"},
 ]
 
 [package.dependencies]
@@ -8754,4 +8754,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "5ae36cd72122ce8cd2d7d24bfa242160b3f0fb294cc195ba79c2807377381adc"
+content-hash = "6e7f59a261693c3528b1dfbd17b461841912485bc300c1ef0ee5049a970c9351"
