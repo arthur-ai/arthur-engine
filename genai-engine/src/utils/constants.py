@@ -385,3 +385,8 @@ SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
 USER_ID_KEY = SpanAttributes.USER_ID
 
 ##################################################################
+
+# Dataset constants
+MAX_DATASET_ROWS = 250
+
+##################################################################

@@ -53,6 +53,9 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
     assert dataset2.id in dataset_ids
     assert dataset3.id in dataset_ids
 
+    # default sort is descending sort on created_at
+    assert response.datasets[0].id == dataset3.id
+
     # Test Case 2: Name-based filtering
     # Test case insensitive search
     status_code, response = client.search_datasets(dataset_name="test dataset")
@@ -111,9 +114,9 @@ def test_datasets_query(client: GenaiEngineTestClientBase) -> None:
     assert status_code == 200
     assert len(response_desc.datasets) >= 3
 
-    # Verify that the order is descending (newest first) based on created_at
+    # Verify that the order is descending (newest first) based on updated_at
     for i in range(len(response_desc.datasets) - 1):
         assert (
-            response_desc.datasets[i].created_at
-            >= response_desc.datasets[i + 1].created_at
+            response_desc.datasets[i].updated_at
+            >= response_desc.datasets[i + 1].updated_at
         )
