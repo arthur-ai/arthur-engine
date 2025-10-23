@@ -18,6 +18,7 @@ import {
   ModelProvider,
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
+import { sampleSpans } from "./sampleSpans";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -43,18 +44,22 @@ const PromptsPlayground = () => {
     }
 
     hasFetchedPrompts.current = true;
-    const response =
-      await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet(
-        taskId
-      );
+    try {
+      const response =
+        await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
+          taskId,
+        });
 
-    const { data } = response;
-    const convertedPrompts = data.prompts.map(toFrontendPrompt);
+      const { data } = response;
+      const convertedPrompts = data.prompts.map(toFrontendPrompt);
 
-    dispatch({
-      type: "updateBackendPrompts",
-      payload: { prompts: convertedPrompts },
-    });
+      dispatch({
+        type: "updateBackendPrompts",
+        payload: { prompts: convertedPrompts },
+      });
+    } catch (error) {
+      console.error("Failed to fetch prompts:", error);
+    }
   }, [apiClient, taskId]);
 
   const fetchProviders = useCallback(async () => {
@@ -132,11 +137,11 @@ const PromptsPlayground = () => {
     hasFetchedSpan.current = true;
 
     try {
-      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
-        spanId
-      );
-      const spanData = response.data;
-      const spanPrompt = spanToPrompt(spanData);
+      // const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
+      //   spanId
+      // );
+      // const spanData = response.data;
+      const spanPrompt = spanToPrompt(sampleSpans[1]); //spanToPrompt(spanData);
 
       // Update the first empty prompt instead of adding a new one
       if (state.prompts.length > 0) {
