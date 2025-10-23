@@ -22,6 +22,7 @@ const NAME_TO_LABEL = {
   trace_duration: "Trace Duration",
   tool_usage: "Tool Usage",
   trace_ids: "Trace IDs",
+  user_ids: "User IDs",
 } as const;
 
 export const getFieldLabel = (name: string) => {

@@ -7,12 +7,12 @@ import { Api } from "@/lib/api";
 import { getUsersQueryOptions } from "@/query-options/users";
 
 export const SESSION_FIELDS = [
-  createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "users">({
+  createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "user_ids">({
     type: "dynamic_enum",
-    name: "users",
+    name: "user_ids",
     getTriggerClassName: () => "w-full",
     renderValue: (value) => [value].flat().join(", "),
-    operators: [EnumOperators.IN],
+    operators: [EnumOperators.EQUALS, EnumOperators.IN],
     itemToStringLabel: undefined,
     promise: function usePromise({ taskId, api }) {
       return useQuery({
