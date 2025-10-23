@@ -1,3 +1,7 @@
+import AddIcon from "@mui/icons-material/Add";
+import MenuIcon from "@mui/icons-material/Menu";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -117,47 +121,30 @@ export const AllTasks: React.FC = () => {
             </div>
             <div className="flex items-center space-x-4">
               {tasks.length > 0 && (
-                <button
+                <Button
+                  variant="contained"
                   onClick={() => setShowCreateForm(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  startIcon={<AddIcon />}
                 >
-                  <svg
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
                   Create Task
-                </button>
+                </Button>
               )}
+              &nbsp;
               <div className="relative">
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-black bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                <IconButton
+                  aria-label="menu"
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  sx={{
+                    backgroundColor: "white",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
                 >
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                </button>
-
+                  <MenuIcon />
+                </IconButton>
                 {/* Dropdown menu */}
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
