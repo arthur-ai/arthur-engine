@@ -4,11 +4,8 @@ from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
 
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
-    acompletion,
-    completion,
     completion_cost,
     stream_chunk_builder,
-    LiteLLM,
 )
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import (
@@ -211,10 +208,6 @@ class ToolChoice(BaseModel):
 
 
 class AgenticPromptBaseConfig(BaseModel):
-    created_at: Optional[datetime] = Field(
-        default=None,
-        description="Timestamp when the prompt was created.",
-    )
     messages: List[AgenticPromptMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
@@ -224,6 +217,7 @@ class AgenticPromptBaseConfig(BaseModel):
     model_provider: ModelProvider = Field(
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
+    version: int = Field(default=1, description="Version of the agentic prompt")
     tools: Optional[List[LLMTool]] = Field(
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
@@ -293,9 +287,20 @@ class AgenticPromptBaseConfig(BaseModel):
         None,
         description="Additional streaming configuration options",
     )
+    created_at: Optional[datetime] = Field(
+        default=None,
+        description="Timestamp when the prompt was created.",
+    )
+    deleted_at: Optional[datetime] = Field(
+        None,
+        description="Time that this prompt was deleted",
+    )
 
     class Config:
         use_enum_values = True
+
+    def has_been_deleted(self) -> bool:
+        return self.deleted_at is not None
 
 
 class AgenticPrompt(AgenticPromptBaseConfig):
@@ -308,7 +313,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         model = self.model_provider + "/" + self.model_name
 
         completion_params = self.model_dump(
-            exclude={"name", "model_name", "model_provider", "created_at"},
+            exclude={
+                "name",
+                "model_name",
+                "model_provider",
+                "created_at",
+                "version",
+                "deleted_at",
+            },
             exclude_none=True,
         )
 
@@ -331,6 +343,11 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         llm_client: LLMClient,
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AgenticPromptRunResponse:
+        if self.has_been_deleted():
+            raise ValueError(
+                f"Cannot run chat completion for this prompt because it was deleted on: {self.deleted_at}",
+            )
+
         model, completion_params = self._get_completion_params(completion_request)
         response = llm_client.completion(model=model, **completion_params)
 
@@ -349,6 +366,11 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     ) -> AsyncGenerator[str, None]:
         try:
+            if self.has_been_deleted():
+                raise ValueError(
+                    f"Cannot stream chat completion for this prompt because it was deleted on: {self.deleted_at}",
+                )
+
             model, completion_params = self._get_completion_params(completion_request)
             response = await llm_client.acompletion(model=model, **completion_params)
 
@@ -385,6 +407,8 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             "model_provider": db_prompt.model_provider,
             "tools": db_prompt.tools,
             "created_at": db_prompt.created_at,
+            "version": db_prompt.version,
+            "deleted_at": db_prompt.deleted_at,
         }
 
         # Merge in config JSON if present (LLM parameters)
@@ -449,7 +473,3 @@ class CompletionRequest(AgenticPromptBaseConfig):
             **self.model_dump(exclude={"completion_request"}),
         )
         return prompt, self.completion_request
-
-
-class AgenticPrompts(BaseModel):
-    prompts: List[AgenticPrompt]

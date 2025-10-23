@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,8 +27,8 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
         "max_tokens": 100,
     }
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -35,7 +36,7 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Now get the prompt
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -59,7 +60,7 @@ def test_get_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
     # Try to get a non-existent prompt
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/nonexistent_prompt/versions/1",
+        f"/api/v1/tasks/{task.id}/prompts/nonexistent_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 404
@@ -77,7 +78,7 @@ def test_get_agentic_prompt_non_agentic_task(client: GenaiEngineTestClientBase):
 
     # Try to get a prompt from non-agentic task
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1",
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -102,6 +103,12 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
         },
         {
             "name": "prompt2",
+            "messages": [{"role": "user", "content": "First prompt"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        },
+        {
+            "name": "prompt2",
             "messages": [{"role": "user", "content": "Second prompt"}],
             "model_name": "gpt-3.5-turbo",
             "model_provider": "openai",
@@ -109,8 +116,8 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
     ]
 
     for prompt_data in prompts_data:
-        response = client.base_client.put(
-            f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
             json=prompt_data,
             headers=client.authorized_user_api_key_headers,
         )
@@ -118,18 +125,32 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
 
     # Get all prompts
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts",
+        f"/api/v1/tasks/{task.id}/prompts",
         headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc"},
     )
     assert response.status_code == 200
 
     prompts_response = response.json()
-    assert "prompts" in prompts_response
-    assert len(prompts_response["prompts"]) == 2
+    assert "prompt_metadata" in prompts_response
+    assert len(prompts_response["prompt_metadata"]) == 2
 
-    prompt_names = [p["name"] for p in prompts_response["prompts"]]
-    assert "prompt1" in prompt_names
-    assert "prompt2" in prompt_names
+    metadata = prompts_response["prompt_metadata"]
+
+    for i, prompt_metadata in enumerate(metadata):
+        assert prompt_metadata["name"] == prompts_data[i]["name"]
+        assert prompt_metadata["versions"] == i + 1
+        assert prompt_metadata["created_at"] is not None
+        assert prompt_metadata["latest_version_created_at"] is not None
+        assert prompt_metadata["deleted_versions"] == []
+
+        created = datetime.fromisoformat(prompt_metadata["created_at"])
+        latest = datetime.fromisoformat(prompt_metadata["latest_version_created_at"])
+
+        if i == 0:
+            assert abs((created - latest).total_seconds()) < 1
+        else:
+            assert created != latest
 
 
 @pytest.mark.unit_tests
@@ -142,14 +163,14 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
     # Get all prompts (should be empty)
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts",
+        f"/api/v1/tasks/{task.id}/prompts",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
 
     prompts_response = response.json()
-    assert "prompts" in prompts_response
-    assert len(prompts_response["prompts"]) == 0
+    assert "prompt_metadata" in prompts_response
+    assert len(prompts_response["prompt_metadata"]) == 0
 
 
 @pytest.mark.unit_tests
@@ -244,8 +265,8 @@ def test_run_saved_agentic_prompt_success(
         "temperature": 0.8,
     }
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -253,7 +274,7 @@ def test_run_saved_agentic_prompt_success(
 
     # Now run the saved prompt
     response = client.base_client.post(
-        f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/1/completions",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -280,7 +301,7 @@ def test_run_saved_agentic_prompt_not_found(client: GenaiEngineTestClientBase):
 
     # Try to run a non-existent saved prompt
     response = client.base_client.post(
-        f"/api/v1/task/{task.id}/prompt/nonexistent_prompt/versions/1/completions",
+        f"/api/v1/tasks/{task.id}/prompts/nonexistent_prompt/versions/1/completions",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -308,17 +329,19 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     prompt_name = "new_prompt"
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert response.json()["message"] == "Prompt saved successfully"
+    assert response.json()["name"] == prompt_name
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
 
     # Verify the prompt was saved by retrieving it
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -334,7 +357,7 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
 @pytest.mark.unit_tests
 def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
-    """Test saving a prompt with duplicate name should fail"""
+    """Test saving a prompt with duplicate name should be a new version of the prompt"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -348,8 +371,8 @@ def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
         "model_provider": "openai",
     }
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -363,13 +386,25 @@ def test_save_agentic_prompt_duplicate(client: GenaiEngineTestClientBase):
         "model_provider": "openai",
     }
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{duplicate_prompt_data['name']}",
+    # test saving a prompt with a duplicate name should be a new version of the prompt
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{duplicate_prompt_data['name']}",
         json=duplicate_prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 400
-    assert "already exists" in response.json()["detail"].lower()
+    assert response.status_code == 200
+    assert response.json()["name"] == duplicate_prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == duplicate_prompt_data["messages"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{duplicate_prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "duplicate_prompt"
+    assert response.json()["version"] == 2
 
 
 @pytest.mark.unit_tests
@@ -389,8 +424,8 @@ def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     prompt_name = "delete_prompt"
 
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -398,26 +433,10 @@ def test_delete_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     # Verify the prompt exists
     response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-
-    # Delete the prompt
-    response = client.base_client.delete(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 200
-    assert response.json()["message"] == "Prompt deleted successfully"
-
-    # Verify the prompt no longer exists
-    response = client.base_client.get(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_name}/versions/1",
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
 
 
 @pytest.mark.unit_tests
@@ -432,11 +451,11 @@ def test_agentic_prompt_routes_require_authentication(
 
     # Test all routes without authentication headers
     routes_and_methods = [
-        ("GET", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
-        ("GET", f"/api/v1/{task.id}/agentic_prompts"),
-        ("POST", f"/api/v1/task/{task.id}/prompt/test_prompt/versions/1/completions"),
-        ("PUT", f"/api/v1/{task.id}/agentic_prompts/test_prompt"),
-        ("DELETE", f"/api/v1/{task.id}/agentic_prompts/test_prompt/versions/1"),
+        ("GET", f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1"),
+        ("GET", f"/api/v1/tasks/{task.id}/prompts"),
+        ("POST", f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1/completions"),
+        ("POST", f"/api/v1/tasks/{task.id}/prompts/test_prompt"),
+        ("DELETE", f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1"),
     ]
 
     for method, url in routes_and_methods:
@@ -444,8 +463,6 @@ def test_agentic_prompt_routes_require_authentication(
             response = client.base_client.get(url)
         elif method == "POST":
             response = client.base_client.post(url, json={})
-        elif method == "PUT":
-            response = client.base_client.put(url, json={})
         elif method == "DELETE":
             response = client.base_client.delete(url)
 
@@ -461,7 +478,7 @@ def test_agentic_prompt_invalid_task_id(client: GenaiEngineTestClientBase):
     invalid_task_id = "00000000-0000-0000-0000-000000000000"
 
     response = client.base_client.get(
-        f"/api/v1/{invalid_task_id}/agentic_prompts/test_prompt/versions/1",
+        f"/api/v1/tasks/{invalid_task_id}/prompts/test_prompt/versions/1",
         headers=client.authorized_user_api_key_headers,
     )
     # Should return 404 for non-existent task
@@ -478,8 +495,8 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
     # Test save prompt with missing required fields
     # Missing messages, model_name, model_provider
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/incomplete_prompt",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/incomplete_prompt",
         json={"model_name": "incomplete_prompt"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -487,7 +504,7 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
     # Test run prompt with invalid data
     response = client.base_client.post(
-        f"/api/v1/task/{task.id}/prompt/incomplete_prompt/versions/1/completions",
+        f"/api/v1/tasks/{task.id}/prompts/incomplete_prompt/versions/1/completions",
         json={"invalid": "data"},
         headers=client.authorized_user_api_key_headers,
     )
@@ -551,8 +568,8 @@ def test_streaming_agentic_prompt(
             assert chunk.encode() in content
 
     # Save the prompt
-    response = client.base_client.put(
-        f"/api/v1/{task.id}/agentic_prompts/{prompt_data['name']}",
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
         json=prompt_data,
         headers=client.authorized_user_api_key_headers,
     )
@@ -561,7 +578,7 @@ def test_streaming_agentic_prompt(
     # Test saved prompt streaming
     with client.base_client.stream(
         "POST",
-        f"/api/v1/task/{task.id}/prompt/{prompt_data['name']}/versions/1/completions",
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/1/completions",
         json=completion_request,
         headers=client.authorized_user_api_key_headers,
     ) as response:
@@ -621,3 +638,525 @@ async def test_run_agentic_prompt_stream_badrequest_returns_error_event(
         content = b"".join(response.iter_bytes()).decode()
         assert "event: error" in content
         assert "Invalid schema for response_format" in content
+
+
+@pytest.mark.unit_tests
+def test_get_prompt_does_not_raise_err_for_deleted_prompt(
+    client: GenaiEngineTestClientBase,
+):
+    """
+    Test retrieving a deleted prompt does not raise an error
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": [{"role": "user", "content": "First prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # should not spawn an error
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "test_prompt"
+    assert response.json()["version"] == 2
+
+    # delete version 2 of the prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # should spawn an error
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "test_prompt"
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == []
+    assert response.json()["model_name"] == ""
+    assert response.json()["model_provider"] == "openai"
+
+
+@pytest.mark.unit_tests
+def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientBase):
+    """
+    Test retrieving all prompts includes deleted prompts
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": [{"role": "user", "content": "First prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    metadata = response.json()["prompt_metadata"]
+    created = datetime.fromisoformat(metadata[0]["created_at"])
+    latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
+
+    assert response.status_code == 200
+    assert len(metadata) == 1
+    assert metadata[0]["name"] == prompt_data["name"]
+    assert metadata[0]["versions"] == 2
+    assert metadata[0]["created_at"] is not None
+    assert metadata[0]["latest_version_created_at"] is not None
+    assert abs((created - latest).total_seconds()) < 1
+    assert metadata[0]["deleted_versions"] == []
+
+    # delete version 2 of the prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["prompt_metadata"]) == 1
+
+    metadata = response.json()["prompt_metadata"]
+    created = datetime.fromisoformat(metadata[0]["created_at"])
+    latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
+
+    assert metadata[0]["name"] == prompt_data["name"]
+    assert metadata[0]["versions"] == 2
+    assert metadata[0]["created_at"] is not None
+    assert metadata[0]["latest_version_created_at"] is not None
+    assert created != latest
+    assert metadata[0]["deleted_versions"] == [2]
+
+
+@pytest.mark.unit_tests
+def test_get_prompt_versions(client: GenaiEngineTestClientBase):
+    """Test retrieving all versions of a prompt"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": [{"role": "user", "content": "First prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # save a prompt with a different name
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert "deleted_at" not in version
+        assert version["model_provider"] == "openai"
+        assert version["model_name"] == "gpt-4"
+        assert version["num_messages"] == 1
+        assert version["num_tools"] == 0
+
+    # soft-delete version 2 of the prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert version["model_provider"] == "openai"
+        assert version["num_tools"] == 0
+
+        if "deleted_at" in version:
+            assert version["num_messages"] == 0
+            assert version["model_name"] == ""
+        else:
+            assert version["num_messages"] == 1
+            assert version["model_name"] == "gpt-4"
+
+
+@pytest.mark.unit_tests
+def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
+    """Test retrieving all unique prompt names"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": [{"role": "user", "content": "First prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+    # delete version 2 of the prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.litellm.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
+def test_run_deleted_prompt_spawns_error(
+    mock_completion_cost,
+    mock_completion,
+    client: GenaiEngineTestClientBase,
+):
+    """Test running a deleted version of a saved prompt spawns an error"""
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": "Test LLM response",
+        "tool_calls": None,
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001234
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": [{"role": "user", "content": "First prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    completion_request = {
+        "stream": False,
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 1
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == prompt_data["name"]
+    assert response.json()["version"] == 2
+    assert response.json()["messages"] == prompt_data["messages"]
+
+    # soft delete version 2 of the prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/2/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        "cannot run chat completion for this prompt because it was deleted on"
+        in response.json()["detail"].lower()
+    )
+
+    # running latest should run the latest non-deleted version of a prompt
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/latest/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["content"] == "Test LLM response"
+    assert response.json()["cost"] == "0.001234"
+
+
+@pytest.mark.unit_tests
+def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientBase):
+    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Create prompts with different providers
+    for i, name in enumerate(["alpha", "beta", "gamma"]):
+        provider = "openai" if i < 2 else "anthropic"
+        model = "gpt-4" if provider == "openai" else "claude-3-5-sonnet"
+        prompt_data = {
+            "name": name,
+            "messages": [{"role": "user", "content": f"Prompt {name}"}],
+            "model_name": model,
+            "model_provider": provider,
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/{name}",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test pagination on get_all_prompts
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "asc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["prompt_metadata"]) == 2
+    assert result["count"] == 3
+    assert result["prompt_metadata"][0]["name"] == "alpha"
+
+    # Test sorting descending
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["prompt_metadata"][0]["name"] == "gamma"
+    assert result["prompt_metadata"][2]["name"] == "alpha"
+
+    # Test filtering by provider
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts",
+        headers=client.authorized_user_api_key_headers,
+        params={"model_provider": "openai"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["prompt_metadata"]) == 2
+    assert result["count"] == 2
+
+
+@pytest.mark.unit_tests
+def test_get_prompt_versions_pagination_and_filtering(
+    client: GenaiEngineTestClientBase,
+):
+    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Create prompts with different versions
+    for i in range(4):
+        prompt_data = {
+            "name": "alpha",
+            "messages": [{"role": "user", "content": f"Version {i+1}"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/prompts/alpha",
+            json=prompt_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test version pagination
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 4
+    assert result["versions"][0]["version"] == 4
+
+    # Test version range filter
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"min_version": 2, "max_version": 3},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 2
+
+    # Delete a version and test include_deleted filter
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # Test include deleted (default behavior, exclude_deleted=False)
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 4  # Includes deleted version by default
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 in versions
+
+    # Test exclude deleted
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/alpha/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"exclude_deleted": True},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 3  # One version excluded
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 not in versions

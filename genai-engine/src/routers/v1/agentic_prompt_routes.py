@@ -1,10 +1,11 @@
-from typing import Union
+from datetime import datetime
+from typing import Annotated, Optional, Union
 from uuid import UUID
 
 import litellm
-from fastapi import APIRouter, Depends, HTTPException
+from arthur_common.models.common_schemas import PaginationParameters
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from fastapi.responses import StreamingResponse
-from litellm import LiteLLM
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
@@ -19,14 +20,22 @@ from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptBaseConfig,
-    AgenticPrompts,
     CompletionRequest,
     PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import ApplicationConfiguration, Task, User
-from schemas.response_schemas import AgenticPromptRunResponse
+from schemas.request_schemas import (
+    PromptsGetAllFilterRequest,
+    PromptsGetVersionsFilterRequest,
+)
+from schemas.response_schemas import (
+    AgenticPromptMetadataListResponse,
+    AgenticPromptRunResponse,
+    AgenticPromptVersionListResponse,
+)
 from utils.users import permission_checker
+from utils.utils import common_pagination_parameters
 
 agentic_prompt_routes = APIRouter(
     prefix="/api/v1",
@@ -61,6 +70,86 @@ def get_validated_agentic_task(
     return task
 
 
+def prompts_get_all_filter_parameters(
+    prompt_names: Optional[list[str]] = Query(
+        None,
+        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
+    ),
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> PromptsGetAllFilterRequest:
+    """Create a PromptsGetAllFilterRequest from query parameters."""
+    return PromptsGetAllFilterRequest(
+        prompt_names=prompt_names,
+        model_provider=model_provider,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )
+
+
+def prompts_get_versions_filter_parameters(
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    exclude_deleted: bool = Query(
+        False,
+        description="Whether to exclude deleted prompt versions from the results. Default is False.",
+    ),
+    min_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Minimum version number to filter on (inclusive).",
+    ),
+    max_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Maximum version number to filter on (inclusive).",
+    ),
+) -> PromptsGetVersionsFilterRequest:
+    """Create a PromptsGetVersionsFilterRequest from query parameters."""
+    return PromptsGetVersionsFilterRequest(
+        model_provider=model_provider,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+        exclude_deleted=exclude_deleted,
+        min_version=min_version,
+        max_version=max_version,
+    )
+
+
 async def execute_prompt_completion(
     llm_client: LLMClient,
     prompt: AgenticPrompt,
@@ -78,29 +167,42 @@ async def execute_prompt_completion(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}",
     summary="Get an agentic prompt",
     description="Get an agentic prompt by name and version",
     response_model=AgenticPrompt,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_agentic_prompt(
-    prompt_name: str,
-    prompt_version: str,
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to retrieve.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
-    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        prompt = agentic_prompt_service.get_prompt(
+            task.id,
+            prompt_name,
+            prompt_version,
+        )
         return prompt
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
+        elif "attempting to retrieve a deleted prompt" in str(e).lower():
+            raise HTTPException(status_code=400, detail=error_message)
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -108,22 +210,34 @@ def get_agentic_prompt(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts",
+    "/tasks/{task_id}/prompts",
     summary="Get all agentic prompts",
-    description="Get all agentic prompts for a given task",
-    response_model=AgenticPrompts,
+    description="Get all agentic prompts for a given task with optional filtering.",
+    response_model=AgenticPromptMetadataListResponse,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_all_agentic_prompts(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    filter_request: Annotated[
+        PromptsGetAllFilterRequest,
+        Depends(prompts_get_all_filter_parameters),
+    ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompts(task.id)
+        return agentic_prompt_service.get_all_prompt_metadata(
+            task.id,
+            pagination_parameters,
+            filter_request,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -131,22 +245,44 @@ def get_all_agentic_prompts(
 
 
 @agentic_prompt_routes.get(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions",
     summary="List all versions of an agentic prompt",
-    description="List all versions of an agentic prompt",
-    response_model=AgenticPrompts,
+    description="List all versions of an agentic prompt with optional filtering.",
+    response_model=AgenticPromptVersionListResponse,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
 def get_all_agentic_prompt_versions(
-    prompt_name: str,
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    filter_request: Annotated[
+        PromptsGetVersionsFilterRequest,
+        Depends(prompts_get_versions_filter_parameters),
+    ],
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to retrieve.",
+        title="Prompt Name",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
 ):
-    # TODO: Implement with versioning
-    return AgenticPrompts(prompts=[])
+    try:
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return agentic_prompt_service.get_prompt_versions(
+            task.id,
+            prompt_name,
+            pagination_parameters,
+            filter_request,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @agentic_prompt_routes.post(
@@ -204,7 +340,7 @@ def get_all_agentic_prompt_versions(
             },
         },
     },
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_agentic_prompt(
@@ -226,7 +362,7 @@ async def run_agentic_prompt(
     try:
         repo = ModelProviderRepository(db_session)
         llm_client = repo.get_model_provider_client(
-            provider=unsaved_prompt.model_provider
+            provider=unsaved_prompt.model_provider,
         )
         prompt, completion_request = unsaved_prompt.to_prompt_and_request()
         return await execute_prompt_completion(
@@ -246,7 +382,7 @@ async def run_agentic_prompt(
 
 
 @agentic_prompt_routes.post(
-    "/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions",
     summary="Run/Stream a specific version of an agentic prompt",
     description="Run or stream a specific version of an existing agentic prompt",
     response_model=AgenticPromptRunResponse,
@@ -300,12 +436,20 @@ async def run_agentic_prompt(
             },
         },
     },
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 async def run_saved_agentic_prompt(
-    prompt_name: str,
-    prompt_version: str,
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to run.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
     completion_request: PromptCompletionRequest = PromptCompletionRequest(),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -325,10 +469,9 @@ async def run_saved_agentic_prompt(
     Returns:
         AgenticPromptRunResponse or StreamingResponse
     """
-    # TODO: Implement with versioning
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name)
+        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name, prompt_version)
         repo = ModelProviderRepository(db_session)
         llm_client = repo.get_model_provider_client(provider=prompt.model_provider)
         return await execute_prompt_completion(
@@ -347,18 +490,22 @@ async def run_saved_agentic_prompt(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@agentic_prompt_routes.put(
-    "/{task_id}/agentic_prompts/{prompt_name}",
+@agentic_prompt_routes.post(
+    "/tasks/{task_id}/prompts/{prompt_name}",
     summary="Save an agentic prompt",
     description="Save an agentic prompt to the database",
-    response_model=None,
+    response_model=AgenticPrompt,
     response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
-    prompt_name: str,
     prompt_config: AgenticPromptBaseConfig,
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to save.",
+        title="Prompt Name",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -366,9 +513,7 @@ def save_agentic_prompt(
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())
-        agentic_prompt_service.save_prompt(task.id, full_prompt)
-
-        return {"message": "Prompt saved successfully"}
+        return agentic_prompt_service.save_prompt(task.id, full_prompt)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -376,25 +521,28 @@ def save_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
-    "/{task_id}/agentic_prompts/{prompt_name}",
+    "/tasks/{task_id}/prompts/{prompt_name}",
     summary="Delete an agentic prompt",
     description="Deletes an entire agentic prompt",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Prompt deleted."}},
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt(
-    prompt_name: str,
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to delete.",
+        title="Prompt Name",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         agentic_prompt_service.delete_prompt(task.id, prompt_name)
-
-        return {"message": "Prompt deleted successfully"}
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -405,27 +553,38 @@ def delete_agentic_prompt(
 
 
 @agentic_prompt_routes.delete(
-    "/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}",
-    summary="Delete an agentic prompt",
+    "/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}",
+    summary="Delete an agentic prompt version",
     description="Deletes a specific version of an agentic prompt",
-    response_model=None,
-    response_model_exclude_none=True,
-    tags=["AgenticPrompt"],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_204_NO_CONTENT: {"description": "Prompt version deleted."}},
+    tags=["Prompts"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def delete_agentic_prompt_version(
-    prompt_name: str,
-    prompt_version: str,
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt to delete.",
+        title="Prompt Name",
+    ),
+    prompt_version: str = Path(
+        ...,
+        description="The version of the prompt to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
+        title="Prompt Version",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
-    # TODO: Modify to actually delete a specific version of an agentic prompt
+) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.delete_prompt(task.id, prompt_name)
+        agentic_prompt_service.soft_delete_prompt_version(
+            task.id,
+            prompt_name,
+            prompt_version,
+        )
 
-        return {"message": "Prompt deleted successfully"}
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
