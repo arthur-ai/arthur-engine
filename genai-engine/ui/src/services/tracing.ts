@@ -50,7 +50,7 @@ export async function getFilteredSpans(
   api: Api<unknown>,
   { taskId, page, pageSize }: GetFilteredSpansParams
 ) {
-  const response = await api.api.listSpansMetadataApiV1SpansGet({
+  const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
@@ -64,7 +64,7 @@ type GetSpanParams = {
 };
 
 export async function getSpan(api: Api<unknown>, { spanId }: GetSpanParams) {
-  const response = await api.api.getSpanByIdApiV1SpansSpanIdGet(spanId);
+  const response = await api.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
   return response.data;
 }
 
@@ -78,7 +78,7 @@ export async function getSessions(
   api: Api<unknown>,
   { taskId, page, pageSize }: GetSessionsParams
 ) {
-  const response = await api.api.listSessionsMetadataApiV1SessionsGet({
+  const response = await api.api.listSessionsMetadataApiV1TracesSessionsGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
