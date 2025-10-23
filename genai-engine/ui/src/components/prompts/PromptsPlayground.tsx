@@ -44,7 +44,7 @@ const PromptsPlayground = () => {
 
     hasFetchedPrompts.current = true;
     const response =
-      await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
+      await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet(
         taskId
       );
 
@@ -132,7 +132,7 @@ const PromptsPlayground = () => {
     hasFetchedSpan.current = true;
 
     try {
-      const response = await apiClient.api.getSpanByIdApiV1SpansSpanIdGet(
+      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
         spanId
       );
       const spanData = response.data;

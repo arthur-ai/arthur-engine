@@ -63,7 +63,7 @@ const SavePromptDialog = ({
     const backendPrompt = toBackendPromptBaseConfig(prompt);
 
     apiClient.api
-      .saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut(
+      .saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(
         nameInputValue,
         taskId,
         backendPrompt
