@@ -12,6 +12,7 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
@@ -72,7 +73,7 @@ const OutputField = ({
     setIsExpanded((prev) => !prev);
   };
 
-  const handleOpen = (e: React.MouseEvent<SVGSVGElement>) => {
+  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     // Store the current value before opening
     setCopiedFormat(getFormatValue(responseFormat));
@@ -120,10 +121,9 @@ const OutputField = ({
         </div>
         <div className="flex items-center">
           <Tooltip title="Format Output">
-            <DataObjectIcon
-              aria-label="open"
-              onClick={(e) => handleOpen(e)}
-            ></DataObjectIcon>
+            <IconButton aria-label="format_output" onClick={handleOpen}>
+              <DataObjectIcon color="primary" />
+            </IconButton>
           </Tooltip>
         </div>
       </div>

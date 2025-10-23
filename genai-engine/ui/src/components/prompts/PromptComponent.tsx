@@ -228,7 +228,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 aria-label="duplicate"
                 onClick={handleDuplicatePrompt}
               >
-                <ContentCopyIcon />
+                <ContentCopyIcon color="secondary" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Model Parameters" placement="top-start" arrow>
@@ -236,7 +236,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 aria-label="model parameters"
                 onClick={handleParamsModelOpen}
               >
-                <SettingsIcon />
+                <SettingsIcon color="info" />
               </IconButton>
             </Tooltip>
             <ModelParamsDialog
@@ -248,7 +248,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             />
             <Tooltip title="Save Prompt" placement="top-start" arrow>
               <IconButton aria-label="save" onClick={handleSavePromptOpen}>
-                <SaveIcon />
+                <SaveIcon color="primary" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete Prompt" placement="top-start" arrow>
