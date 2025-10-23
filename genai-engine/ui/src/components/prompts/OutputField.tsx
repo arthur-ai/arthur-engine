@@ -52,6 +52,10 @@ const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   2
 );
 
+const getFormatValue = (format: string | undefined) => {
+  return format !== undefined ? format : DEFAULT_RESPONSE_FORMAT;
+};
+
 const OutputField = ({
   promptId,
   outputField,
@@ -61,7 +65,7 @@ const OutputField = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(
-    responseFormat || DEFAULT_RESPONSE_FORMAT
+    getFormatValue(responseFormat)
   );
 
   const handleExpand = () => {
@@ -70,6 +74,8 @@ const OutputField = ({
 
   const handleOpen = (e: React.MouseEvent<SVGSVGElement>) => {
     e.stopPropagation();
+    // Store the current value before opening
+    setCopiedFormat(getFormatValue(responseFormat));
     setIsOpen(true);
   };
 
@@ -79,7 +85,7 @@ const OutputField = ({
 
   const handleCancel = () => {
     handleClose();
-    setCopiedFormat(responseFormat);
+    setCopiedFormat(getFormatValue(responseFormat));
   };
 
   const handleChange = (value: string) => {
@@ -89,6 +95,10 @@ const OutputField = ({
   useEffect(() => {
     setIsExpanded(outputField.length > 0);
   }, [outputField]);
+
+  useEffect(() => {
+    setCopiedFormat(getFormatValue(responseFormat));
+  }, [responseFormat]);
 
   const handleSave = () => {
     handleClose();
@@ -157,9 +167,7 @@ const OutputField = ({
               theme="light"
               value={copiedFormat}
               onChange={(value) => {
-                if (value) {
-                  handleChange(value);
-                }
+                handleChange(value || "");
               }}
               options={{
                 minimap: { enabled: false },
