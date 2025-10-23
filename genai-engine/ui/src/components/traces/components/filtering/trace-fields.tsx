@@ -2,12 +2,10 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { useQuery } from "@tanstack/react-query";
 
 import { createDynamicEnumField, createPrimitiveField, Field } from "./fields";
-import { createFilterRow } from "./filters-row";
 import { ComparisonOperators, EnumOperators } from "./types";
 import { getEnumOptionLabel } from "./utils";
 
-import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
+import { Api } from "@/lib/api";
 import { getTracesQueryOptions } from "@/query-options/traces";
 
 export const TRACE_FIELDS = [
@@ -53,21 +51,16 @@ export const TRACE_FIELDS = [
     options: [0, 1, 2].map(String),
     itemToStringLabel: getEnumOptionLabel,
   }),
-  createDynamicEnumField<void, "trace_ids">({
+  createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "trace_ids">({
     name: "trace_ids",
     type: "dynamic_enum",
     operators: [EnumOperators.IN, EnumOperators.EQUALS],
     itemToStringLabel: undefined,
-    promise: function usePromise() {
-      const api = useApi()!;
-      const { task } = useTask();
-
-      const query = useQuery({
-        ...getTracesQueryOptions({ api, taskId: task?.id ?? "", filters: [] }),
+    promise: function usePromise({ taskId, api }) {
+      return useQuery({
+        ...getTracesQueryOptions({ api, taskId, filters: [] }),
         select: (data) => data.traces.map((trace) => trace.trace_id),
-      });
-
-      return query.promise;
+      }).promise;
     },
     getTriggerClassName: () => "font-mono",
     renderValue: (value) => {
@@ -81,7 +74,3 @@ export const TRACE_FIELDS = [
     },
   }),
 ] as const satisfies Field[];
-
-export const { FiltersRow } = createFilterRow(TRACE_FIELDS, {
-  trace_ids: undefined,
-});

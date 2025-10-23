@@ -4,12 +4,11 @@ import { IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { Suspense, use, useRef } from "react";
 
-import { useTracesStore } from "../../store";
-
 import { DynamicEnumField, Field } from "./fields";
 import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { sharedFormOptions } from "./shared";
+import { useFilterStore } from "./stores/filter.store";
 import { EnumOperators } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
@@ -17,17 +16,22 @@ import { NumberField } from "@/components/common/form/NumberField";
 import { SelectField } from "@/components/common/form/SelectField";
 import { cn } from "@/utils/cn";
 
-type InferDynamicEnumArg<T extends DynamicEnumField<unknown>> =
-  T extends DynamicEnumField<infer Arg> ? Arg : never;
+type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> =
+  Field extends DynamicEnumField<infer Arg> ? Arg : never;
+
+type ExtractFieldsByType<
+  Fields extends Field[],
+  Type extends Field["type"]
+> = Extract<Fields[number], { type: Type }>;
 
 type DynamicEnumArgMap<
-  T extends Field[],
-  TDynamic extends Extract<T[number], { type: "dynamic_enum" }> = Extract<
-    T[number],
-    { type: "dynamic_enum" }
-  >
+  Fields extends Field[],
+  Dynamic extends ExtractFieldsByType<
+    Fields,
+    "dynamic_enum"
+  > = ExtractFieldsByType<Fields, "dynamic_enum">
 > = {
-  [K in TDynamic["name"]]: InferDynamicEnumArg<TDynamic>;
+  [K in Dynamic["name"]]: InferDynamicEnumArg<Dynamic>;
 };
 
 export function createFilterRow<TFields extends Field[]>(
@@ -36,12 +40,12 @@ export function createFilterRow<TFields extends Field[]>(
 ) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
-    const [, store] = useTracesStore(() => null);
+    const filterStore = useFilterStore();
 
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        store.send({
+        filterStore.send({
           type: "setFilters",
           filters: value.config as IncomingFilter[],
         });
@@ -217,7 +221,7 @@ export function createFilterRow<TFields extends Field[]>(
                             <SelectField.Item
                               key={value}
                               value={value}
-                              className="min-w-[var(--anchor-width)]"
+                              className="min-w-(--anchor-width)"
                             >
                               <SelectField.ItemText>
                                 <Typography variant="body2">

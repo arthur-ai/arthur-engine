@@ -8,41 +8,82 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useSelector } from "@xstate/store/react";
 import { useMemo } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
+import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
+import { createFilterRow } from "../filtering/filters-row";
+import { SESSION_FIELDS } from "../filtering/sessions-fields";
+import { useFilterStore } from "../filtering/stores/filter.store";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { getSessions } from "@/services/tracing";
+import { FETCH_SIZE } from "@/lib/constants";
+import { getSessionsInfiniteQueryOptions } from "@/query-options/sessions";
 
 export const SessionLevel = () => {
+  const api = useApi()!;
   const { task } = useTask();
-  const api = useApi();
+  const filters = useSelector(
+    useFilterStore(),
+    (state) => state.context.filters
+  );
 
-  const { data, isFetching } = useQuery({
-    queryKey: ["sessions", { api, taskId: task?.id }],
-    queryFn: () =>
-      getSessions(api!, { taskId: task?.id ?? "", page: 0, pageSize: 20 }),
+  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
+    ...getSessionsInfiniteQueryOptions({
+      api,
+      taskId: task?.id ?? "",
+      filters,
+    }),
   });
 
-  const flatData = useMemo(() => data?.sessions ?? [], [data]);
+  const flatData = useMemo(
+    () => data?.pages?.flatMap((page) => page.sessions) ?? [],
+    [data]
+  );
+
+  const totalDBRowCount = data?.pages?.[0]?.count ?? 0;
 
   const table = useReactTable({
     data: flatData,
     columns: sessionLevelColumns,
     getCoreRowModel: getCoreRowModel(),
+    debugTable: true,
+    debugHeaders: true,
+    debugColumns: true,
   });
+
+  const { execute, ref } = useTableScrollThrottler({
+    onOffsetReached: fetchNextPage,
+    enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
+  });
+
+  const { FiltersRow } = useMemo(
+    () =>
+      createFilterRow(SESSION_FIELDS, {
+        trace_ids: { taskId: task?.id ?? "", api },
+      }),
+    [task?.id, api]
+  );
 
   return (
     <>
-      <TableContainer component={Paper} sx={{ flexGrow: 1 }}>
+      <FiltersRow />
+      <TableContainer
+        component={Paper}
+        sx={{ flexGrow: 1 }}
+        ref={ref}
+        onScroll={(e) => {
+          execute(e.currentTarget);
+        }}
+      >
         {isFetching && <LinearProgress />}
         <Table stickyHeader size="small">
           <TableHead>

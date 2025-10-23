@@ -1,7 +1,5 @@
 import { createStoreHook } from "@xstate/store/react";
 
-import { IncomingFilter } from "./components/filtering/mapper";
-
 export type Level = "trace" | "span" | "session";
 
 export const useTracesStore = createStoreHook({
@@ -10,7 +8,6 @@ export const useTracesStore = createStoreHook({
     selected: {
       span: "",
     },
-    filters: [] as IncomingFilter[],
   },
   on: {
     openDrawer: (context, event: { for: Level; id: string }) => {
@@ -51,12 +48,6 @@ export const useTracesStore = createStoreHook({
           ...context.selected,
           span: event.id,
         },
-      };
-    },
-    setFilters: (context, event: { filters: IncomingFilter[] }) => {
-      return {
-        ...context,
-        filters: event.filters,
       };
     },
   },

@@ -7,9 +7,9 @@ import {
 import { IncomingFilter } from "@/components/traces/components/filtering/mapper";
 import { Api } from "@/lib/api";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getFilteredTraces } from "@/services/tracing";
+import { getFitleredSessions } from "@/services/tracing";
 
-export const getTracesQueryOptions = ({
+export const getSessionsQueryOptions = ({
   api,
   taskId,
   filters,
@@ -20,9 +20,9 @@ export const getTracesQueryOptions = ({
 }) =>
   queryOptions({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: ["traces", taskId, filters] as const,
+    queryKey: ["sessions", taskId, filters] as const,
     queryFn: () => {
-      return getFilteredTraces(api!, {
+      return getFitleredSessions(api!, {
         taskId: taskId ?? "",
         page: 0,
         pageSize: FETCH_SIZE,
@@ -31,7 +31,7 @@ export const getTracesQueryOptions = ({
     },
   });
 
-export const getTracesInfiniteQueryOptions = ({
+export const getSessionsInfiniteQueryOptions = ({
   api,
   taskId,
   filters,
@@ -42,9 +42,9 @@ export const getTracesInfiniteQueryOptions = ({
 }) =>
   infiniteQueryOptions({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: ["traces", taskId, filters, "infinite"] as const,
+    queryKey: ["sessions", taskId, filters, "infinite"] as const,
     queryFn: ({ pageParam = 0 }) => {
-      return getFilteredTraces(api!, {
+      return getFitleredSessions(api!, {
         taskId: taskId ?? "",
         page: pageParam as number,
         pageSize: FETCH_SIZE,
