@@ -18,7 +18,7 @@ import {
   ModelProvider,
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
-import { sampleSpans } from "./sampleSpans";
+
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -137,11 +137,11 @@ const PromptsPlayground = () => {
     hasFetchedSpan.current = true;
 
     try {
-      // const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
-      //   spanId
-      // );
-      // const spanData = response.data;
-      const spanPrompt = spanToPrompt(sampleSpans[1]); //spanToPrompt(spanData);
+      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
+        spanId
+      );
+      const spanData = response.data;
+      const spanPrompt = spanToPrompt(spanData);
 
       // Update the first empty prompt instead of adding a new one
       if (state.prompts.length > 0) {
