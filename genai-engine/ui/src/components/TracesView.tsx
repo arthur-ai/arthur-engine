@@ -8,6 +8,7 @@ import { FilterStoreProvider } from "./traces/components/filtering/stores/filter
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
+import { UserLevel } from "./traces/components/tables/UserLevel";
 
 type Level = "trace" | "span" | "session" | "user";
 
@@ -50,6 +51,11 @@ export const TracesView: React.FC = () => {
         <Activity mode={level === "session" ? "visible" : "hidden"}>
           <FilterStoreProvider>
             <SessionLevel />
+          </FilterStoreProvider>
+        </Activity>
+        <Activity mode={level === "user" ? "visible" : "hidden"}>
+          <FilterStoreProvider>
+            <UserLevel />
           </FilterStoreProvider>
         </Activity>
       </Box>

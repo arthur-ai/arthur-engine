@@ -78,7 +78,7 @@ export function createFilterRow<TFields extends Field[]>(
         >
           <ScrollArea.Viewport
             ref={scrollableRef}
-            className="p-1 bg-gray-50 border border-gray-200 rounded h-full has-[input:hover]:bg-gray-100 transition-colors duration-100"
+            className="px-2 py-1 bg-gray-50 border border-gray-200 rounded h-full has-[input:hover]:bg-gray-100 transition-colors duration-100"
           >
             <ScrollArea.Content className="flex flex-row gap-2 h-full text-xs">
               <form.Field mode="array" name="config">
@@ -397,11 +397,17 @@ export function createFilterRow<TFields extends Field[]>(
 
       return (
         <SelectField.List>
-          {data.map((item) => (
-            <SelectField.Item key={item} value={item}>
-              <SelectField.ItemText>{item}</SelectField.ItemText>
+          {data.length > 0 ? (
+            data.map((item) => (
+              <SelectField.Item key={item} value={item}>
+                <SelectField.ItemText>{item}</SelectField.ItemText>
+              </SelectField.Item>
+            ))
+          ) : (
+            <SelectField.Item key="no-data" value="no-data" disabled>
+              <SelectField.ItemText>No data</SelectField.ItemText>
             </SelectField.Item>
-          ))}
+          )}
         </SelectField.List>
       );
     },

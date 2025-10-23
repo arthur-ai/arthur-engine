@@ -91,3 +91,26 @@ export async function getFitleredSessions(
   });
   return response.data;
 }
+
+// Users
+
+type GetUsersParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+  filters: IncomingFilter[];
+};
+
+export async function getUsers(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters }: GetUsersParams
+) {
+  const response = await api.api.listUsersMetadataApiV1TracesUsersGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+    ...mapFiltersToRequest(filters),
+  });
+
+  return response.data;
+}

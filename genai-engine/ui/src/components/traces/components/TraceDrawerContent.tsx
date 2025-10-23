@@ -3,7 +3,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { useTracesStore } from "../store";
 import { flattenSpans } from "../utils/spans";
@@ -45,7 +45,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   const rootSpan = trace?.root_spans?.[0];
 
-  useEffect(() => {
+  const onOpenDrawer = useEffectEvent(() => {
     if (selected.span) return;
     if (!rootSpan) return;
 
@@ -53,7 +53,11 @@ export const TraceDrawerContent = ({ id }: Props) => {
       type: "selectSpan",
       id: rootSpan.span_id,
     });
-  }, [rootSpan, store, selected.span]);
+  });
+
+  useEffect(() => {
+    onOpenDrawer();
+  }, []);
 
   if (!trace) return null;
 
