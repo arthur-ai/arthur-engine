@@ -73,7 +73,7 @@ def get_validated_agentic_task(
 def prompts_get_all_filter_parameters(
     prompt_names: Optional[list[str]] = Query(
         None,
-        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
+        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
     ),
     model_provider: Optional[str] = Query(
         None,
@@ -81,7 +81,7 @@ def prompts_get_all_filter_parameters(
     ),
     model_name: Optional[str] = Query(
         None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.",
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
     ),
     created_after: Optional[str] = Query(
         None,
@@ -111,7 +111,7 @@ def prompts_get_versions_filter_parameters(
     ),
     model_name: Optional[str] = Query(
         None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.",
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
     ),
     created_after: Optional[str] = Query(
         None,
