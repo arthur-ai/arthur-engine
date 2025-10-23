@@ -408,22 +408,18 @@ jobs:
           git push origin "${{ env.VERSION }}"
 
   deploy-genai-engine-cloudformation:
-    # needs: [push-all-cfts]
-    # if: |
-    #   contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
-    #   (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
-    if: github.event_name == 'workflow_dispatch'
+    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
-    container: python:3.12.9-bullseye
+    container: node:20-alpine
+    environment: shared-protected-branch-secrets
     steps:
-      - uses: actions/checkout@v5
-      - uses: ./.github/workflows/composite-actions/setup-git
+      - name: Trigger GitLab Pipeline
+        uses: fjogeleit/http-request-action@v1.16.5
         with:
-          safe-directory: ${{ runner.workspace }}
-      - uses: actions/digital-blueprint/gitlab-pipeline-trigger-action@v1.3.0
-        with:
-          host: "gitlab.com"
-          trigger_token: ${{ secrets.DEPLOY_TRIGGER_TOKEN }}
-          id: ${{ secrets.GITLAB_PROJECT_ID }}
-          ref: "main"
-          variables: '{"TRIGGER_JOB":"deploy_arthur_engine","ARTHUR_ENGINE_COMMIT_SHA":"${{ inputs.commit_sha || github.sha }}"}'
+          url: "https://gitlab.com/api/v4/projects/${{ secrets.GITLAB_PROJECT_ID }}/trigger/pipeline"
+          method: POST
+          contentType: application/x-www-form-urlencoded
+          data: "token=${{ secrets.GITLAB_TRIGGER_TOKEN }}&ref=main&variables[TRIGGER_JOB]=deploy_arthur_engine&variables[ARTHUR_ENGINE_COMMIT_SHA]=${{ inputs.commit_sha || github.sha }}"
