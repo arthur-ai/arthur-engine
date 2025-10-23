@@ -1,5 +1,6 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
+import { Link } from "@mui/icons-material";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Chip } from "@mui/material";
 import Stack from "@mui/material/Stack";
@@ -11,6 +12,7 @@ import {
   getSpanDetailsStrategy,
   SpanDetailsStrategy,
 } from "../data/details-strategy";
+import { useTracesStore } from "../store";
 import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
@@ -53,10 +55,19 @@ export const SpanDetails = ({ span, children }: Props) => {
 };
 
 export const SpanDetailsHeader = () => {
+  const [, store] = useTracesStore(() => null);
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
   const start = dayjs(span.start_time);
+
+  const onOpenSpanDrawer = () => {
+    store.send({
+      type: "openDrawer",
+      for: "span",
+      id: span.span_id,
+    });
+  };
 
   return (
     <Stack direction="column" spacing={1} justifyContent="center">
@@ -66,9 +77,24 @@ export const SpanDetailsHeader = () => {
         justifyContent="space-between"
         alignItems="center"
       >
-        <Typography variant="h6" color="text.primary" fontWeight={700}>
-          {span.span_name}
-        </Typography>
+        <Stack
+          component="button"
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          color="primary.main"
+          className="group cursor-pointer"
+          onClick={onOpenSpanDrawer}
+        >
+          <Typography
+            variant="h6"
+            fontWeight={700}
+            className="group-hover:underline"
+          >
+            {span.span_name}
+          </Typography>
+          <Link />
+        </Stack>
         <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
       </Stack>
       <Stack direction="row" spacing={1}>

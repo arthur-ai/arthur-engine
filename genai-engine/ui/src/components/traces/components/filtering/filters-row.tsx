@@ -2,14 +2,15 @@ import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, FilterList } from "@mui/icons-material";
 import { IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
-import { Suspense, use, useRef } from "react";
+import { Suspense, use, useMemo, useRef } from "react";
 
 import { DynamicEnumField, Field } from "./fields";
 import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
+import { canBeCombinedWith } from "./rules";
 import { sharedFormOptions } from "./shared";
 import { useFilterStore } from "./stores/filter.store";
-import { EnumOperators } from "./types";
+import { EnumOperators, Operator } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
 import { NumberField } from "@/components/common/form/NumberField";
@@ -128,17 +129,21 @@ export function createFilterRow<TFields extends Field[]>(
       onClose: () => void;
     },
     render: function Render({ form, index, onRemove, onClose }) {
+      const allMetrics = useStore(form.store, (state) =>
+        state.values.config.slice(0, index)
+      );
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
 
-      const { operators } =
-        fields.find((field) => field.name === config.name) ?? {};
-
-      const operatorItems = operators?.map((operator) => ({
-        label: getOperatorLabel(operator),
-        value: operator,
-      }));
+      const operatorItems = useMemo(
+        () =>
+          getAvailableOperators(allMetrics, config.name)?.map((operator) => ({
+            label: getOperatorLabel(operator),
+            value: operator,
+          })),
+        [allMetrics, config.name]
+      );
 
       const stage = (() => {
         switch (true) {
@@ -412,6 +417,28 @@ export function createFilterRow<TFields extends Field[]>(
       );
     },
   });
+
+  const getAvailableOperators = (
+    metrics: { name: string; operator: string }[],
+    key: string
+  ): Operator[] => {
+    if (!key || key === "") return [];
+
+    const field = fields.find((field) => field.name === key);
+    if (!field) return [];
+
+    const used = metrics.filter((m) => m.name === key && m.operator !== "");
+    if (!used.length) return field.operators;
+
+    return field.operators
+      .filter((operator) => !used.some((m) => m.operator === operator))
+      .filter((operator) =>
+        used.every(
+          (m) =>
+            m.operator && canBeCombinedWith(operator, m.operator as Operator)
+        )
+      );
+  };
 
   return { FiltersRow, FilterItem, ValueInput, DynamicEnumInputList };
 }

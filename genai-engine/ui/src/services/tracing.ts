@@ -4,6 +4,8 @@ import {
 } from "@/components/traces/components/filtering/mapper";
 import { Api } from "@/lib/api";
 
+// Traces
+
 type GetFilteredTracesParams = {
   taskId: string;
   page: number;
@@ -46,6 +48,17 @@ type GetFilteredSpansParams = {
   pageSize: number;
   filters: IncomingFilter[];
 };
+
+export async function computeTraceMetrics(
+  api: Api<unknown>,
+  { traceId }: GetTraceParams
+) {
+  const response =
+    await api.api.computeTraceMetricsApiV1TracesTraceIdMetricsGet(traceId);
+  return response.data;
+}
+
+// Spans
 
 export async function getFilteredSpans(
   api: Api<unknown>,

@@ -2,7 +2,11 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { useTracesStore } from "../store";
@@ -18,21 +22,31 @@ import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
 import { useApi } from "@/hooks/useApi";
-import { getTrace } from "@/services/tracing";
+import { computeTraceMetrics, getTrace } from "@/services/tracing";
 
 type Props = {
   id: string;
 };
 
 export const TraceDrawerContent = ({ id }: Props) => {
+  const queryClient = useQueryClient();
+
   const api = useApi();
   const [selected, store] = useTracesStore((state) => state.context.selected);
 
   const { span: spanId } = selected;
 
   const { data: trace } = useSuspenseQuery({
-    queryKey: ["trace", id, { id, api }],
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
+    queryKey: ["trace", id],
     queryFn: () => getTrace(api!, { traceId: id! }),
+  });
+
+  const refreshMetrics = useMutation({
+    mutationFn: () => computeTraceMetrics(api!, { traceId: id! }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["trace", id], data);
+    },
   });
 
   const name = trace?.root_spans?.[0]?.span_name;
@@ -57,6 +71,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   useEffect(() => {
     onOpenDrawer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!trace) return null;
@@ -87,10 +102,25 @@ export const TraceDrawerContent = ({ id }: Props) => {
           </Typography>
         </Stack>
 
-        <CopyableChip
-          label={id!}
-          sx={{ fontFamily: "monospace", maxWidth: 200 }}
-        />
+        <Stack direction="row" spacing={0} sx={{ marginLeft: "auto" }}>
+          <CopyableChip
+            label={id!}
+            sx={{
+              fontFamily: "monospace",
+              borderTopRightRadius: 0,
+              borderBottomRightRadius: 0,
+            }}
+          />
+          <button
+            className="bg-gray-300 text-black px-4 rounded-r-full text-nowrap"
+            onClick={() => refreshMetrics.mutate()}
+            disabled={refreshMetrics.isPending}
+          >
+            <Typography variant="caption">
+              {refreshMetrics.isPending ? "Refreshing..." : "Refresh Metrics"}
+            </Typography>
+          </button>
+        </Stack>
       </Stack>
 
       <Box
