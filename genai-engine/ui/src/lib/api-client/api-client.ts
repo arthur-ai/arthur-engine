@@ -20,6 +20,11 @@ export interface AgenticPrompt {
    */
   created_at?: string | null;
   /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
    */
@@ -114,6 +119,12 @@ export interface AgenticPrompt {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
 /** AgenticPromptBaseConfig */
@@ -123,6 +134,11 @@ export interface AgenticPromptBaseConfig {
    * Timestamp when the prompt was created.
    */
   created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -213,6 +229,12 @@ export interface AgenticPromptBaseConfig {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
 /** AgenticPromptMessage */
@@ -257,6 +279,51 @@ export interface AgenticPromptMessageOutput {
   tool_calls?: ToolCall[] | null;
 }
 
+/** AgenticPromptMetadataListResponse */
+export interface AgenticPromptMetadataListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Prompt Metadata
+   * List of prompt metadata
+   */
+  prompt_metadata: AgenticPromptMetadataResponse[];
+}
+
+/** AgenticPromptMetadataResponse */
+export interface AgenticPromptMetadataResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted Versions
+   * List of deleted versions of the prompt
+   */
+  deleted_versions: number[];
+  /**
+   * Latest Version Created At
+   * Timestamp when the last version of the prompt was created
+   * @format date-time
+   */
+  latest_version_created_at: string;
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /**
+   * Versions
+   * Number of versions of the prompt
+   */
+  versions: number;
+}
+
 /** AgenticPromptRunResponse */
 export interface AgenticPromptRunResponse {
   /** Content */
@@ -267,10 +334,55 @@ export interface AgenticPromptRunResponse {
   tool_calls?: ChatCompletionMessageToolCall[] | null;
 }
 
-/** AgenticPrompts */
-export interface AgenticPrompts {
-  /** Prompts */
-  prompts: AgenticPrompt[];
+/** AgenticPromptVersionListResponse */
+export interface AgenticPromptVersionListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Versions
+   * List of prompt version metadata
+   */
+  versions: AgenticPromptVersionResponse[];
+}
+
+/** AgenticPromptVersionResponse */
+export interface AgenticPromptVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the prompt version was deleted
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name of the prompt
+   */
+  model_name: string;
+  /** Model provider of the prompt */
+  model_provider: ModelProvider;
+  /**
+   * Num Messages
+   * Number of messages in the prompt
+   */
+  num_messages: number;
+  /**
+   * Num Tools
+   * Number of tools in the prompt
+   */
+  num_tools: number;
+  /**
+   * Version
+   * Version number of the prompt
+   */
+  version: number;
 }
 
 /** AnthropicThinkingParam */
@@ -491,6 +603,11 @@ export interface CompletionRequest {
    */
   created_at?: string | null;
   /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
    */
@@ -580,6 +697,12 @@ export interface CompletionRequest {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
 export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
@@ -862,13 +985,13 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
-export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData = any;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
 
-export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError = HTTPValidationError;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
 
-export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData = any;
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
 
-export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError =
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError =
   HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
@@ -1072,20 +1195,137 @@ export interface FileUploadResult {
   word_count: number;
 }
 
-export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
 
-export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
 
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
 
-export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData = AgenticPrompts;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData =
+  AgenticPromptVersionListResponse;
 
-export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError = HTTPValidationError;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError = HTTPValidationError;
 
-export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData = AgenticPrompts;
+export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Exclude Deleted
+   * Whether to exclude deleted prompt versions from the results. Default is False.
+   * @default false
+   */
+  exclude_deleted?: boolean;
+  /**
+   * Max Version
+   * Maximum version number to filter on (inclusive).
+   */
+  max_version?: number | null;
+  /**
+   * Min Version
+   * Minimum version number to filter on (inclusive).
+   */
+  min_version?: number | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Name
+   * The name of the prompt to retrieve.
+   */
+  promptName: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
-export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError = HTTPValidationError;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
+
+export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Names
+   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.
+   */
+  prompt_names?: string[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
@@ -3358,15 +3598,15 @@ export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
 export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
 
-export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData =
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData =
   AgenticPromptRunResponse;
 
-export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError =
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError =
   HTTPValidationError;
 
-export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData = any;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
-export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError = HTTPValidationError;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -4812,51 +5052,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Deletes an entire agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete
+     * @tags Prompts
+     * @name DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete
      * @summary Delete an agentic prompt
-     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}
      * @secure
      */
-    deleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete: (
+    deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (
       promptName: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData,
-        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData,
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
         method: "DELETE",
         secure: true,
-        format: "json",
         ...params,
       }),
 
     /**
      * @description Deletes a specific version of an agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete
-     * @summary Delete an agentic prompt
-     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @tags Prompts
+     * @name DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete
+     * @summary Delete an agentic prompt version
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
      * @secure
      */
-    deleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete: (
+    deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete: (
       promptName: string,
       promptVersion: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData,
-        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
         method: "DELETE",
         secure: true,
-        format: "json",
         ...params,
       }),
 
@@ -4896,23 +5134,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Get an agentic prompt by name and version
      *
-     * @tags AgenticPrompt
-     * @name GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet
+     * @tags Prompts
+     * @name GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet
      * @summary Get an agentic prompt
-     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
      * @secure
      */
-    getAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet: (
+    getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet: (
       promptName: string,
       promptVersion: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData,
-        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData,
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -4920,46 +5158,50 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get all agentic prompts for a given task
+     * @description Get all agentic prompts for a given task with optional filtering.
      *
-     * @tags AgenticPrompt
-     * @name GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGet
+     * @tags Prompts
+     * @name GetAllAgenticPromptsApiV1TasksTaskIdPromptsGet
      * @summary Get all agentic prompts
-     * @request GET:/api/v1/{task_id}/agentic_prompts
+     * @request GET:/api/v1/tasks/{task_id}/prompts
      * @secure
      */
-    getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet: (taskId: string, params: RequestParams = {}) =>
-      this.request<
-        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData,
-        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError
-      >({
-        path: `/api/v1/${taskId}/agentic_prompts`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description List all versions of an agentic prompt
-     *
-     * @tags AgenticPrompt
-     * @name GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet
-     * @summary List all versions of an agentic prompt
-     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
-     * @secure
-     */
-    getAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet: (
-      promptName: string,
-      taskId: string,
+    getAllAgenticPromptsApiV1TasksTaskIdPromptsGet: (
+      { taskId, ...query }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
       params: RequestParams = {},
     ) =>
       this.request<
-        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData,
-        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData,
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions`,
+        path: `/api/v1/tasks/${taskId}/prompts`,
         method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an agentic prompt with optional filtering.
+     *
+     * @tags Prompts
+     * @name GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet
+     * @summary List all versions of an agentic prompt
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+     * @secure
+     */
+    getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet: (
+      { promptName, taskId, ...query }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData,
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -5553,7 +5795,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Runs or streams an unsaved agentic prompt
      *
-     * @tags AgenticPrompt
+     * @tags Prompts
      * @name RunAgenticPromptApiV1CompletionsPost
      * @summary Run/Stream an unsaved agentic prompt
      * @request POST:/api/v1/completions
@@ -5573,13 +5815,13 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Run or stream a specific version of an existing agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost
+     * @tags Prompts
+     * @name RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost
      * @summary Run/Stream a specific version of an agentic prompt
-     * @request POST:/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions
      * @secure
      */
-    runSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost: (
+    runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost: (
       promptName: string,
       promptVersion: string,
       taskId: string,
@@ -5587,10 +5829,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       params: RequestParams = {},
     ) =>
       this.request<
-        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData,
-        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError
       >({
-        path: `/api/v1/task/${taskId}/prompt/${promptName}/versions/${promptVersion}/completions`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/completions`,
         method: "POST",
         body: data,
         secure: true,
@@ -5602,24 +5844,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Save an agentic prompt to the database
      *
-     * @tags AgenticPrompt
-     * @name SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut
+     * @tags Prompts
+     * @name SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost
      * @summary Save an agentic prompt
-     * @request PUT:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}
      * @secure
      */
-    saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut: (
+    saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost: (
       promptName: string,
       taskId: string,
       data: AgenticPromptBaseConfig,
       params: RequestParams = {},
     ) =>
       this.request<
-        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData,
-        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData,
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
-        method: "PUT",
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,
