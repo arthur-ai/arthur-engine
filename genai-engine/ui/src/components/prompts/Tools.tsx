@@ -1,4 +1,5 @@
 import Editor from "@monaco-editor/react";
+import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -7,6 +8,7 @@ import {
   AccordionSummary,
   Collapse,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
@@ -14,8 +16,8 @@ import {
 } from "@mui/material";
 import { AccordionDetails } from "@mui/material";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { usePromptContext } from "./PromptContext";
@@ -166,16 +168,22 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
             </span>
           )}
         </div>
-        <Button variant="contained" size="small" onClick={handleAddTool}>
-          Add Tools
-        </Button>
+        <Tooltip title="Add Tool">
+          <IconButton aria-label="add_tool" onClick={handleAddTool}>
+            <AddIcon color="primary" />
+          </IconButton>
+        </Tooltip>
       </div>
       <Collapse in={toolsExpanded}>
         <div className="mt-2 mb-3 px-2">
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={typeof prompt.toolChoice === 'string' ? prompt.toolChoice : prompt.toolChoice?.function?.name || 'auto'}
+              value={
+                typeof prompt.toolChoice === "string"
+                  ? prompt.toolChoice
+                  : prompt.toolChoice?.function?.name || "auto"
+              }
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
@@ -228,6 +236,13 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                   backgroundColor: "#d1d5db",
                   color: "#374151",
                   minHeight: "32px",
+                  flexDirection: "row-reverse",
+                  "& .MuiAccordionSummary-expandIconWrapper": {
+                    transform: "rotate(-90deg)",
+                  },
+                  "& .MuiAccordionSummary-expandIconWrapper.Mui-expanded": {
+                    transform: "rotate(0deg)",
+                  },
                 }}
               >
                 <div className="flex items-center justify-between w-full mr-4">
@@ -242,7 +257,9 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                     className="p-1 rounded hover:bg-gray-300 cursor-pointer flex items-center justify-center"
                     style={{ color: "#374151", width: "24px", height: "24px" }}
                   >
-                    <DeleteIcon fontSize="small" />
+                    <Tooltip title="Delete Tool" placement="top-start" arrow>
+                      <DeleteIcon fontSize="small" color="error" />
+                    </Tooltip>
                   </div>
                 </div>
               </AccordionSummary>

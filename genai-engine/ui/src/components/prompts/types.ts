@@ -163,6 +163,7 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
+  outputField: string;
   responseFormat: string | undefined;
 }
 

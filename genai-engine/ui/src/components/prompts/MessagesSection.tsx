@@ -47,7 +47,8 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
     setIsExpanded((prev) => !prev);
   };
 
-  const handleAddMessage = () => {
+  const handleAddMessage = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     dispatch({
       type: "addMessage",
       payload: { parentId: prompt.id },
@@ -87,15 +88,9 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
           <span>Messages</span>
         </div>
         <div className="flex items-center">
-          <Tooltip title="Add Message" placement="top-start" arrow>
-            <IconButton
-              aria-label="add message"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAddMessage();
-              }}
-            >
-              <AddIcon />
+          <Tooltip title="Add Message">
+            <IconButton aria-label="add_message" onClick={handleAddMessage}>
+              <AddIcon color="primary" />
             </IconButton>
           </Tooltip>
         </div>

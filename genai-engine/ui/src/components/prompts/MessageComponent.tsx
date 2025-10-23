@@ -142,12 +142,12 @@ const Message: React.FC<MessageComponentProps> = ({
               aria-label="duplicate message"
               onClick={handleDuplicate}
             >
-              <ContentCopyIcon />
+              <ContentCopyIcon color="secondary" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete Message" placement="top-start" arrow>
             <IconButton aria-label="delete message" onClick={handleDelete}>
-              <DeleteIcon />
+              <DeleteIcon color="error" />
             </IconButton>
           </Tooltip>
         </div>

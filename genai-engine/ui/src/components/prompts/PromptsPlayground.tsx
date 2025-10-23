@@ -5,28 +5,36 @@ import Paper from "@mui/material/Paper";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptContext";
 import { promptsReducer, initialState } from "./reducer";
-import { toFrontendPrompt } from "./utils";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { toFrontendPrompt, spanToPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  AgenticPromptMetadataResponse,
   ModelProvider,
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
 
+
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
+  const [searchParams] = useSearchParams();
   const hasFetchedPrompts = useRef(false);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
+  const hasFetchedSpan = useRef(false);
 
   const apiClient = useApi();
   const { task } = useTask();
   const taskId = task?.id;
+  const spanId = searchParams.get("spanId");
 
   const fetchPrompts = useCallback(async () => {
     if (hasFetchedPrompts.current) {
@@ -39,18 +47,25 @@ const PromptsPlayground = () => {
     }
 
     hasFetchedPrompts.current = true;
-    const response =
-      await apiClient.api.getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet(
-        taskId
-      );
+    try {
+      const response =
+        await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
+          taskId,
+        });
 
-    const { data } = response;
-    const convertedPrompts = data.prompts.map(toFrontendPrompt);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { prompt_metadata } = response.data;
+      // Restructure this in the prompt version branch
+      return
+      // const convertedPrompts = prompt_metadata.map((prompt: AgenticPromptMetadataResponse) => toFrontendPrompt(prompt));
 
-    dispatch({
-      type: "updateBackendPrompts",
-      payload: { prompts: convertedPrompts },
-    });
+      // dispatch({
+      //   type: "updateBackendPrompts",
+      //   payload: { prompts: convertedPrompts },
+      // });
+    } catch (error) {
+      console.error("Failed to fetch prompts:", error);
+    }
   }, [apiClient, taskId]);
 
   const fetchProviders = useCallback(async () => {
@@ -120,10 +135,44 @@ const PromptsPlayground = () => {
     });
   }, [apiClient, state.enabledProviders]);
 
+  const fetchSpanData = useCallback(async () => {
+    if (hasFetchedSpan.current || !spanId || !apiClient) {
+      return;
+    }
+
+    hasFetchedSpan.current = true;
+
+    try {
+      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
+        spanId
+      );
+      const spanData = response.data;
+      const spanPrompt = spanToPrompt(spanData);
+
+      // Update the first empty prompt instead of adding a new one
+      if (state.prompts.length > 0) {
+        dispatch({
+          type: "updatePrompt",
+          payload: { promptId: state.prompts[0].id, prompt: spanPrompt },
+        });
+      } else {
+        dispatch({
+          type: "hydratePrompt",
+          payload: { promptData: spanPrompt },
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch span data:", error);
+    }
+  }, [spanId, apiClient, state.prompts]);
+
   useEffect(() => {
     fetchPrompts();
     fetchProviders();
-  }, [fetchPrompts, fetchProviders]);
+    if (spanId) {
+      fetchSpanData();
+    }
+  }, [fetchPrompts, fetchProviders, fetchSpanData, spanId]);
 
   useEffect(() => {
     if (state.enabledProviders.length > 0) {
@@ -146,7 +195,7 @@ const PromptsPlayground = () => {
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
-      <div className="h-screen bg-gray-200">
+      <div className="h-dvh bg-gray-200 overflow-y-auto">
         <div className={`h-full w-full p-1 flex flex-col gap-1`}>
           <div className={`bg-gray-300 flex-shrink-0 p-1`}>
             <Container
