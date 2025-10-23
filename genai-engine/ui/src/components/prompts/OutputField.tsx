@@ -14,12 +14,11 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { usePromptContext } from "./PromptContext";
 import { OutputFieldProps } from "./types";
 
-const OUTPUT_TEXT = "I'm an llm response";
 const SAMPLE_RESPONSE_OBJECT = {
   data: {
     span: {
@@ -53,7 +52,11 @@ const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   2
 );
 
-const OutputField = ({ promptId, responseFormat }: OutputFieldProps) => {
+const OutputField = ({
+  promptId,
+  outputField,
+  responseFormat,
+}: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -83,6 +86,10 @@ const OutputField = ({ promptId, responseFormat }: OutputFieldProps) => {
     setCopiedFormat(value);
   };
 
+  useEffect(() => {
+    setIsExpanded(outputField.length > 0);
+  }, [outputField]);
+
   const handleSave = () => {
     handleClose();
     dispatch({
@@ -111,7 +118,7 @@ const OutputField = ({ promptId, responseFormat }: OutputFieldProps) => {
         </div>
       </div>
       <Collapse in={isExpanded}>
-        <div>{OUTPUT_TEXT}</div>
+        <div>{outputField}</div>
         <Divider />
         <div className="flex gap-3">
           <div className="flex items-center">

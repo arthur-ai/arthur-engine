@@ -273,6 +273,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         <Paper elevation={2} className="p-1">
           <OutputField
             promptId={prompt.id}
+            outputField={prompt.outputField}
             responseFormat={prompt.responseFormat}
           />
         </Paper>
