@@ -10,11 +10,14 @@ import { useSearchParams } from "react-router-dom";
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptContext";
 import { promptsReducer, initialState } from "./reducer";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { toFrontendPrompt, spanToPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  AgenticPromptMetadataResponse,
   ModelProvider,
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
@@ -50,13 +53,16 @@ const PromptsPlayground = () => {
           taskId,
         });
 
-      const { data } = response;
-      const convertedPrompts = data.prompts.map(toFrontendPrompt);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { prompt_metadata } = response.data;
+      // Restructure this in the prompt version branch
+      return
+      // const convertedPrompts = prompt_metadata.map((prompt: AgenticPromptMetadataResponse) => toFrontendPrompt(prompt));
 
-      dispatch({
-        type: "updateBackendPrompts",
-        payload: { prompts: convertedPrompts },
-      });
+      // dispatch({
+      //   type: "updateBackendPrompts",
+      //   payload: { prompts: convertedPrompts },
+      // });
     } catch (error) {
       console.error("Failed to fetch prompts:", error);
     }
