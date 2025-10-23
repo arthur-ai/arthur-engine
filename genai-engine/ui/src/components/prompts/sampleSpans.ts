@@ -2,14 +2,14 @@ import { SpanWithMetricsResponse } from "@/lib/api-client/api-client";
 
 // Sample spans representing real-world usage patterns
 export const sampleSpans: SpanWithMetricsResponse[] = [
-  // Sample 1: Simple LLM conversation without tools
+  // Sample 1: Simple LLM conversation without tools (LiteLLM format)
   {
     id: "span-001",
     trace_id: "trace-weather-001",
     span_id: "span-llm-001",
     parent_span_id: null,
     span_kind: "LLM",
-    span_name: "ChatOpenAI",
+    span_name: "litellm-acompletion",
     start_time: "2024-01-15T10:30:00Z",
     end_time: "2024-01-15T10:30:02Z",
     created_at: "2024-01-15T10:30:02Z",
@@ -35,10 +35,19 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "ChatOpenAI",
-      spanId: "span-llm-001",
-      traceId: "trace-weather-001",
+      name: "litellm-acompletion",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a3",
+        span_id: "0xd8d3476a2eb12724",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: null,
+      start_time: "2024-01-15T10:30:00Z",
+      end_time: "2024-01-15T10:30:02Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "LLM",
         "llm.model_name": "gpt-4",
@@ -52,7 +61,22 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.output_messages.0.message.role": "assistant",
         "llm.output_messages.0.message.content": "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
         "session.id": "session-user-123",
-        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+        "litellm.model": "gpt-4",
+        "litellm.provider": "openai",
+        "litellm.api_base": "https://api.openai.com/v1",
+        "litellm.stream": false,
+        "litellm.max_tokens": 1000,
+        "litellm.temperature": 0.7,
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
@@ -72,14 +96,14 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     ]
   },
 
-  // Sample 2: LLM with tool calls for weather API
+  // Sample 2: LLM with tool calls for weather API (LiteLLM format)
   {
     id: "span-002",
     trace_id: "trace-weather-002",
     span_id: "span-llm-002",
     parent_span_id: null,
     span_kind: "LLM",
-    span_name: "ChatOpenAI",
+    span_name: "litellm-acompletion",
     start_time: "2024-01-15T11:15:00Z",
     end_time: "2024-01-15T11:15:04Z",
     created_at: "2024-01-15T11:15:04Z",
@@ -125,10 +149,19 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "ChatOpenAI",
-      spanId: "span-llm-002",
-      traceId: "trace-weather-002",
+      name: "litellm-acompletion",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a4",
+        span_id: "0xd8d3476a2eb12725",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: null,
+      start_time: "2024-01-15T11:15:00Z",
+      end_time: "2024-01-15T11:15:04Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "LLM",
         "llm.model_name": "gpt-4",
@@ -151,7 +184,23 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.input_messages.4.message.role": "assistant",
         "llm.input_messages.4.message.content": "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity.",
         "session.id": "session-user-456",
-        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+        "litellm.model": "gpt-4",
+        "litellm.provider": "openai",
+        "litellm.api_base": "https://api.openai.com/v1",
+        "litellm.stream": false,
+        "litellm.max_tokens": 1000,
+        "litellm.temperature": 0.7,
+        "litellm.tools": '[{"type": "function", "function": {"name": "get_weather", "description": "Get current weather information for a location", "parameters": {"type": "object", "properties": {"location": {"type": "string"}, "units": {"type": "string"}}, "required": ["location"]}}]',
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
@@ -183,14 +232,14 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     ]
   },
 
-  // Sample 3: Tool execution span
+  // Sample 3: Tool execution span (LiteLLM format)
   {
     id: "span-003",
     trace_id: "trace-weather-002",
     span_id: "span-tool-001",
     parent_span_id: "span-llm-002",
     span_kind: "TOOL",
-    span_name: "get_weather",
+    span_name: "litellm-tool-call",
     start_time: "2024-01-15T11:15:01Z",
     end_time: "2024-01-15T11:15:02Z",
     created_at: "2024-01-15T11:15:02Z",
@@ -209,31 +258,53 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "get_weather",
-      spanId: "span-tool-001",
-      traceId: "trace-weather-002",
+      name: "litellm-tool-call",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a4",
+        span_id: "0xd8d3476a2eb12726",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: "0xd8d3476a2eb12725",
+      start_time: "2024-01-15T11:15:01Z",
+      end_time: "2024-01-15T11:15:02Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "TOOL",
         "tool.name": "get_weather",
         "tool.description": "Get current weather information for a location",
         "tool.success": true,
+        "tool.input": '{"location": "New York", "units": "celsius"}',
+        "tool.output": '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
         "session.id": "session-user-456",
-        "metadata": '{"ls_provider": "custom", "ls_model_name": "weather_api", "ls_model_type": "tool"}'
+        "litellm.tool_name": "get_weather",
+        "litellm.tool_call_id": "call_weather_nyc_001",
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "weather_api", "ls_model_type": "tool", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
     metric_results: []
   },
 
-  // Sample 4: Agent span with multiple tool calls
+  // Sample 4: Agent span with multiple tool calls (LiteLLM format)
   {
     id: "span-004",
     trace_id: "trace-agent-001",
     span_id: "span-agent-001",
     parent_span_id: null,
     span_kind: "AGENT",
-    span_name: "WeatherAgent",
+    span_name: "litellm-agent",
     start_time: "2024-01-15T14:20:00Z",
     end_time: "2024-01-15T14:20:08Z",
     created_at: "2024-01-15T14:20:08Z",
@@ -277,16 +348,39 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "WeatherAgent",
-      spanId: "span-agent-001",
-      traceId: "trace-agent-001",
+      name: "litellm-agent",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a5",
+        span_id: "0xd8d3476a2eb12727",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: null,
+      start_time: "2024-01-15T14:20:00Z",
+      end_time: "2024-01-15T14:20:08Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "AGENT",
         "agent.name": "WeatherAgent",
         "agent.version": "1.0.0",
+        "agent.tools": '["get_weather_forecast", "search_flights"]',
         "session.id": "session-user-789",
-        "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}'
+        "litellm.agent_name": "WeatherAgent",
+        "litellm.agent_type": "travel_planner",
+        "litellm.model": "gpt-4",
+        "litellm.provider": "openai",
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "agent_model", "ls_model_type": "agent", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
@@ -306,14 +400,14 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     ]
   },
 
-  // Sample 5: RAG retrieval span
+  // Sample 5: RAG retrieval span (LiteLLM format)
   {
     id: "span-005",
     trace_id: "trace-rag-001",
     span_id: "span-retriever-001",
     parent_span_id: "span-agent-001",
     span_kind: "RETRIEVER",
-    span_name: "DocumentRetriever",
+    span_name: "litellm-retriever",
     start_time: "2024-01-15T14:20:02Z",
     end_time: "2024-01-15T14:20:03Z",
     created_at: "2024-01-15T14:20:03Z",
@@ -331,17 +425,39 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "DocumentRetriever",
-      spanId: "span-retriever-001",
-      traceId: "trace-rag-001",
+      name: "litellm-retriever",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a6",
+        span_id: "0xd8d3476a2eb12728",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: "0xd8d3476a2eb12727",
+      start_time: "2024-01-15T14:20:02Z",
+      end_time: "2024-01-15T14:20:03Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "RETRIEVER",
         "retrieval.query": "Paris travel guide recommendations",
         "retrieval.documents": 5,
         "retrieval.top_k": 5,
+        "retrieval.scores": '[0.95, 0.89, 0.87, 0.85, 0.82]',
         "session.id": "session-user-789",
-        "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}'
+        "litellm.retriever_type": "vector_search",
+        "litellm.embedding_model": "text-embedding-ada-002",
+        "litellm.vector_store": "pinecone",
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "retriever_model", "ls_model_type": "retriever", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
@@ -361,14 +477,14 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     ]
   },
 
-  // Sample 6: Error span
+  // Sample 6: Error span (LiteLLM format)
   {
     id: "span-006",
     trace_id: "trace-error-001",
     span_id: "span-error-001",
     parent_span_id: null,
     span_kind: "LLM",
-    span_name: "ChatOpenAI",
+    span_name: "litellm-acompletion",
     start_time: "2024-01-15T16:45:00Z",
     end_time: "2024-01-15T16:45:01Z",
     created_at: "2024-01-15T16:45:01Z",
@@ -390,17 +506,40 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "ChatOpenAI",
-      spanId: "span-error-001",
-      traceId: "trace-error-001",
+      name: "litellm-acompletion",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a7",
+        span_id: "0xd8d3476a2eb12729",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: null,
+      start_time: "2024-01-15T16:45:00Z",
+      end_time: "2024-01-15T16:45:01Z",
+      status: {
+        status_code: "ERROR"
+      },
       attributes: {
         "openinference.span.kind": "LLM",
         "llm.model_name": "gpt-4",
         "error.message": "Token limit exceeded",
         "error.type": "TokenLimitExceeded",
+        "error.code": "context_length_exceeded",
         "session.id": "session-user-error",
-        "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}'
+        "litellm.model": "gpt-4",
+        "litellm.provider": "openai",
+        "litellm.error": "Token limit exceeded",
+        "litellm.error_type": "TokenLimitExceeded",
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },
@@ -420,14 +559,14 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     ]
   },
 
-  // Sample 7: Chain span (LangChain workflow)
+  // Sample 7: Chain span (LiteLLM format)
   {
     id: "span-007",
     trace_id: "trace-chain-001",
     span_id: "span-chain-001",
     parent_span_id: null,
     span_kind: "CHAIN",
-    span_name: "WeatherChain",
+    span_name: "litellm-chain",
     start_time: "2024-01-15T18:30:00Z",
     end_time: "2024-01-15T18:30:05Z",
     created_at: "2024-01-15T18:30:05Z",
@@ -445,17 +584,40 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       }
     ],
     raw_data: {
-      kind: "SPAN_KIND_INTERNAL",
-      name: "WeatherChain",
-      spanId: "span-chain-001",
-      traceId: "trace-chain-001",
+      name: "litellm-chain",
+      context: {
+        trace_id: "0x8d354e2346060032703637a0843b20a8",
+        span_id: "0xd8d3476a2eb12730",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: null,
+      start_time: "2024-01-15T18:30:00Z",
+      end_time: "2024-01-15T18:30:05Z",
+      status: {
+        status_code: "OK"
+      },
       attributes: {
         "openinference.span.kind": "CHAIN",
         "chain.name": "WeatherChain",
         "chain.input": "Get weather for multiple cities: London, Tokyo, Sydney",
         "chain.output": "Weather data retrieved for London, Tokyo, and Sydney",
+        "chain.steps": 3,
         "session.id": "session-user-chain",
-        "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}'
+        "litellm.chain_name": "WeatherChain",
+        "litellm.chain_type": "parallel_execution",
+        "litellm.models": '["gpt-4", "gpt-4", "gpt-4"]',
+        "litellm.providers": '["openai", "openai", "openai"]',
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "chain_model", "ls_model_type": "chain", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
       },
       arthur_span_version: "arthur_span_v1"
     },

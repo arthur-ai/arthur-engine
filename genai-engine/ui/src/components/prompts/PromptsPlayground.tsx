@@ -10,16 +10,14 @@ import { useSearchParams } from "react-router-dom";
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptContext";
 import { promptsReducer, initialState } from "./reducer";
-import { promptClassificationEnum } from "./types";
-import { toFrontendPrompt, generateId } from "./utils";
 import { sampleSpans } from "./sampleSpans";
+import { toFrontendPrompt, spanToPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import {
   ModelProvider,
   ModelProviderResponse,
-  MessageRole,
 } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
@@ -136,35 +134,10 @@ const PromptsPlayground = () => {
 
     try {
       // const response = await apiClient.api.getSpanByIdApiV1SpansSpanIdGet(spanId);
-      const spanData = sampleSpans[1]; //response.data;
+      const spanData = sampleSpans[0]; //response.data;
 
-      // Create a prompt from span data
-      const spanPrompt = {
-        id: `span-prompt-${Date.now()}`,
-        classification: promptClassificationEnum.DEFAULT,
-        name: `Span: ${spanData.span_name || spanData.span_id}`,
-        created_at: spanData.created_at,
-        modelName: "gpt-4", // Default model
-        provider: "openai", // Default provider
-        messages:
-          spanData.context?.map((msg: Record<string, any>) => ({
-            id: generateId("msg"),
-            role: msg.role as MessageRole,
-            content: msg.content || "",
-            disabled: false,
-            tool_calls: msg.tool_calls,
-            tool_call_id: msg.tool_call_id,
-          })) || [],
-        modelParameters: {
-          temperature: 0.7,
-          top_p: 1,
-          max_tokens: 1000,
-        },
-        outputField: spanData.response || "",
-        responseFormat: undefined,
-        tools: [],
-        toolChoice: undefined,
-      };
+      // Create a prompt from span data using the utility function
+      const spanPrompt = spanToPrompt(spanData);
 
       // Update the first empty prompt instead of adding a new one
       if (state.prompts.length > 0) {
@@ -186,7 +159,7 @@ const PromptsPlayground = () => {
   useEffect(() => {
     fetchPrompts();
     fetchProviders();
-    if (spanId || true) {
+    if (spanId) {
       fetchSpanData();
     }
   }, [fetchPrompts, fetchProviders, fetchSpanData, spanId]);
