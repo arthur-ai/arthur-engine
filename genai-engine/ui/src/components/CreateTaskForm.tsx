@@ -1,10 +1,11 @@
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-} from "@mui/material";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormLabel from "@mui/material/FormLabel";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 
 import { useApi } from "@/hooks/useApi";
@@ -78,21 +79,19 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
   const formContent = (
     <div className="space-y-4">
       <div>
-        <label
-          htmlFor="taskName"
-          className="block text-sm font-medium text-black mb-2"
-        >
-          Task Name
-        </label>
-        <input
-          type="text"
+        <FormLabel htmlFor="taskName">
+          <Typography variant="body1" color="black">
+            Task Name
+          </Typography>
+        </FormLabel>
+        <TextField
           id="taskName"
           value={taskName}
           onChange={(e) => setTaskName(e.target.value)}
           placeholder="Enter task name..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black placeholder-gray-500"
           disabled={isSubmitting}
           autoFocus
+          fullWidth
         />
       </div>
 
@@ -121,29 +120,18 @@ export const CreateTaskForm: React.FC<CreateTaskFormProps> = ({
           {formContent}
           <div className="flex space-x-3 mt-4">
             {onCancel && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={isSubmitting}
-                className="flex-1 bg-gray-300 text-black py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
+              <Button onClick={handleCancel} disabled={isSubmitting} fullWidth>
                 Cancel
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="submit"
+              variant="contained"
               disabled={isSubmitting || !taskName.trim()}
-              className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              fullWidth
             >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating...
-                </div>
-              ) : (
-                "Create Task"
-              )}
-            </button>
+              {isSubmitting ? "Creating..." : "Create Task"}
+            </Button>
           </div>
         </form>
       </div>
