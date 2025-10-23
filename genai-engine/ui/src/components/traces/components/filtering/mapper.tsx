@@ -1,7 +1,7 @@
-import { FilterableField, Operator, Operators } from "./types";
+import { Operator, Operators } from "./types";
 
 export type IncomingFilter = {
-  name: FilterableField;
+  name: string;
   operator: Operator;
   value: string | string[];
 };

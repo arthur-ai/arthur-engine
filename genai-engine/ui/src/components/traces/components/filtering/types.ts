@@ -21,7 +21,8 @@ export const Operators = {
 
 export type Operator = (typeof Operators)[keyof typeof Operators];
 
-export type ComparisonOperator = (typeof ComparisonOperators)[keyof typeof ComparisonOperators];
+export type ComparisonOperator =
+  (typeof ComparisonOperators)[keyof typeof ComparisonOperators];
 export type EnumOperator = (typeof EnumOperators)[keyof typeof EnumOperators];
 
 export const MetricFilterSchema = z.object({
