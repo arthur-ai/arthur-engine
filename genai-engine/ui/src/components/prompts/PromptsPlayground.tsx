@@ -22,7 +22,6 @@ import {
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
 
-
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
   const [searchParams] = useSearchParams();
@@ -53,18 +52,12 @@ const PromptsPlayground = () => {
           taskId,
         });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { prompt_metadata } = response.data;
-      // Restructure this in the prompt version branch
-      return
-      // const convertedPrompts = prompt_metadata.map((prompt: AgenticPromptMetadataResponse) => toFrontendPrompt(prompt));
-
-      // dispatch({
-      //   type: "updateBackendPrompts",
-      //   payload: { prompts: convertedPrompts },
-      // });
+      dispatch({
+        type: "updateBackendPrompts",
+        payload: { prompts: response.data.prompt_metadata },
+      });
     } catch (error) {
-      console.error("Failed to fetch prompts:", error);
+      console.error("Failed to fetch prompt metadata:", error);
     }
   }, [apiClient, taskId]);
 
@@ -135,6 +128,10 @@ const PromptsPlayground = () => {
     });
   }, [apiClient, state.enabledProviders]);
 
+  /**
+   * Fetch span data and update the first empty prompt
+   * Triggered if URL has a spanId parameter
+   */
   const fetchSpanData = useCallback(async () => {
     if (hasFetchedSpan.current || !spanId || !apiClient) {
       return;
