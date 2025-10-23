@@ -12,10 +12,12 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from "@tanstack/react-table";
 import { useSelector } from "@xstate/store/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { spanLevelColumns } from "../../data/span-level-columns";
 import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
@@ -43,6 +45,10 @@ export const SpanLevel = () => {
     ...getSpansInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
   });
 
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "start_time", desc: true },
+  ]);
+
   const flatData = useMemo(
     () => data?.pages?.flatMap((page) => page.spans) ?? [],
     [data]
@@ -54,6 +60,11 @@ export const SpanLevel = () => {
     data: flatData,
     columns: spanLevelColumns,
     getCoreRowModel: getCoreRowModel(),
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
     debugTable: true,
     debugHeaders: true,
     debugColumns: true,

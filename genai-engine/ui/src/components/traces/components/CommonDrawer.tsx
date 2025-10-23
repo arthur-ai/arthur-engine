@@ -20,6 +20,7 @@ const CONTENT_MAP = {
     }))
   ),
   session: null,
+  user: null,
 };
 
 export const CommonDrawer = () => {

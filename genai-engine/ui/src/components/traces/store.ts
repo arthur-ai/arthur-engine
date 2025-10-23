@@ -22,6 +22,9 @@ export const useTracesStore = createStoreHook({
       return {
         ...context,
         history: [],
+        selected: {
+          span: "",
+        },
       };
     },
     popUntil: (context, event: { for: Level; id: string }) => {

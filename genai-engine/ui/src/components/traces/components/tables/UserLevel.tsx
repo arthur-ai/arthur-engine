@@ -16,42 +16,33 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useSelector } from "@xstate/store/react";
 import { useMemo, useState } from "react";
 
-import { sessionLevelColumns } from "../../data/session-level-columns";
+import { userLevelColumns } from "../../data/user-level-columns";
 import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
-import { createFilterRow } from "../filtering/filters-row";
-import { SESSION_FIELDS } from "../filtering/sessions-fields";
-import { useFilterStore } from "../filtering/stores/filter.store";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getSessionsInfiniteQueryOptions } from "@/query-options/sessions";
+import { getUsersInfiniteQueryOptions } from "@/query-options/users";
 
-export const SessionLevel = () => {
+export const UserLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const filters = useSelector(
-    useFilterStore(),
-    (state) => state.context.filters
-  );
 
   const { data, isFetching, fetchNextPage } = useInfiniteQuery({
-    ...getSessionsInfiniteQueryOptions({
+    ...getUsersInfiniteQueryOptions({
       api,
       taskId: task?.id ?? "",
-      filters,
     }),
   });
 
   const [sorting, setSorting] = useState<SortingState>([
-    { id: "start_time", desc: true },
+    { id: "user_id", desc: true },
   ]);
 
   const flatData = useMemo(
-    () => data?.pages?.flatMap((page) => page.sessions) ?? [],
+    () => data?.pages?.flatMap((page) => page.users) ?? [],
     [data]
   );
 
@@ -59,7 +50,7 @@ export const SessionLevel = () => {
 
   const table = useReactTable({
     data: flatData,
-    columns: sessionLevelColumns,
+    columns: userLevelColumns,
     getCoreRowModel: getCoreRowModel(),
     state: {
       sorting,
@@ -76,17 +67,8 @@ export const SessionLevel = () => {
     enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
   });
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow(SESSION_FIELDS, {
-        users: { taskId: task?.id ?? "", api },
-      }),
-    [task?.id, api]
-  );
-
   return (
     <>
-      <FiltersRow />
       <TableContainer
         component={Paper}
         sx={{ flexGrow: 1 }}
