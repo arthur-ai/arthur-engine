@@ -4832,10 +4832,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
+                            "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
                             "title": "Prompt Names"
                         },
-                        "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards."
+                        "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned."
                     },
                     {
                         "name": "model_provider",
@@ -4868,10 +4868,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.",
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
                             "title": "Model Name"
                         },
-                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards."
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
                     },
                     {
                         "name": "created_after",
@@ -5035,10 +5035,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.",
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
                             "title": "Model Name"
                         },
-                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards."
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
                     },
                     {
                         "name": "created_after",
@@ -5258,7 +5258,8 @@
                                 "$ref": "#/components/schemas/PromptCompletionRequest",
                                 "default": {
                                     "variables": [],
-                                    "stream": false
+                                    "stream": false,
+                                    "strict": false
                                 }
                             }
                         }
@@ -8325,7 +8326,8 @@
                         "description": "Run configuration for the unsaved prompt",
                         "default": {
                             "variables": [],
-                            "stream": false
+                            "stream": false,
+                            "strict": false
                         }
                     }
                 },
@@ -10886,6 +10888,19 @@
                         ],
                         "title": "Stream",
                         "description": "Whether to stream the response",
+                        "default": false
+                    },
+                    "strict": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Strict",
+                        "description": "Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
                         "default": false
                     }
                 },
