@@ -8,7 +8,7 @@ import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import PromptComponent from "./PromptComponent";
-import { PromptProvider } from "./PromptContext";
+import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { toFrontendPrompt, spanToPrompt } from "./utils";
