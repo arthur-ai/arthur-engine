@@ -253,7 +253,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             </Tooltip>
             <Tooltip title="Delete Prompt" placement="top-start" arrow>
               <IconButton aria-label="delete" onClick={handleDeletePrompt}>
-                <DeleteIcon />
+                <DeleteIcon color="error" />
               </IconButton>
             </Tooltip>
           </div>

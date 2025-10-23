@@ -175,7 +175,11 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={typeof prompt.toolChoice === 'string' ? prompt.toolChoice : prompt.toolChoice?.function?.name || 'auto'}
+              value={
+                typeof prompt.toolChoice === "string"
+                  ? prompt.toolChoice
+                  : prompt.toolChoice?.function?.name || "auto"
+              }
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
@@ -242,7 +246,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                     className="p-1 rounded hover:bg-gray-300 cursor-pointer flex items-center justify-center"
                     style={{ color: "#374151", width: "24px", height: "24px" }}
                   >
-                    <DeleteIcon fontSize="small" />
+                    <DeleteIcon fontSize="small" color="error" />
                   </div>
                 </div>
               </AccordionSummary>

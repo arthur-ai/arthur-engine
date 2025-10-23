@@ -635,6 +635,162 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         updated_at: "2024-01-15T18:30:05Z"
       }
     ]
+  },
+
+  // Sample 8: LangChain span (LiteLLM format)
+  {
+    id: "span-008",
+    trace_id: "trace-langchain-001",
+    span_id: "F5KXVrOz6Uw=",
+    parent_span_id: "vpS65wIybfY=",
+    span_kind: "LLM",
+    span_name: "litellm-acompletion",
+    start_time: "2024-01-15T20:00:00Z",
+    end_time: "2024-01-15T20:00:01Z",
+    created_at: "2024-01-15T20:00:01Z",
+    updated_at: "2024-01-15T20:00:01Z",
+    status_code: "Ok",
+    task_id: "task-sql-generator",
+    session_id: "session-sql-user",
+    system_prompt: "You are an expert SQL developer specializing in PostgreSQL.",
+    user_query: "How many presidents has the US had",
+    response: '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
+    context: [
+      {
+        role: "system",
+        content: "You are an expert SQL developer specializing in PostgreSQL. \nYour task is to convert natural language queries into valid PostgreSQL SQL statements.\n\nDo not ask the user for clarifications or schema definitions. When in doubt, assume a \nschema that would make sense for the user's query. It's more important to return plausible SQL\nthan to be completely accurate.\n\nGuidelines:\n- Always generate valid PostgreSQL syntax\n- Use appropriate data types and functions\n- Include proper WHERE clauses, JOINs, and aggregations as needed\n- Be conservative with assumptions about table/column names\n- If the query is ambiguous, make reasonable assumptions and note them\n- Always return a valid SQL statement that can be executed\n\nReturn your response in the following JSON format:\n{\n  \"sqlQuery\": \"SELECT * FROM table_name WHERE condition;\",\n  \"explanation\": \"Brief explanation of what this query does\"\n}"
+      },
+      {
+        role: "user",
+        content: "How many presidents has the US had"
+      },
+      {
+        role: "assistant",
+        content: '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}'
+      }
+    ],
+    raw_data: {
+      name: "litellm-acompletion",
+      context: {
+        trace_id: "TXekqoIXAK2WcIiyx5Utpw==",
+        span_id: "F5KXVrOz6Uw=",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: "vpS65wIybfY=",
+      start_time: "2024-01-15T20:00:00Z",
+      end_time: "2024-01-15T20:00:01Z",
+      status: {
+        status_code: "OK"
+      },
+      attributes: {
+        "openinference.span.kind": "LLM",
+        "llm.model_name": "gpt-4.1",
+        "llm.provider": "openai.responses",
+        "llm.token_count.total": 342,
+        "llm.invocation_parameters": '{"temperature":0}',
+        "llm.input_messages.0.message.role": "system",
+        "llm.input_messages.1.message.role": "user",
+        "llm.output_messages.0.message.role": "assistant",
+        "llm.input_messages.0.message.content": "You are an expert SQL developer specializing in PostgreSQL.",
+        "llm.input_messages.1.message.content": "How many presidents has the US had",
+        "llm.output_messages.0.message.content": '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
+        "session.id": "session-sql-user",
+        "litellm.model": "gpt-4.1",
+        "litellm.provider": "openai",
+        "litellm.temperature": 0,
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: []
+  },
+
+  // Sample 9: Mastra span (LiteLLM format)
+  {
+    id: "span-009",
+    trace_id: "trace-mastra-001",
+    span_id: "8cH1wGHOQck=",
+    parent_span_id: "ZV0ZgnT+B4w=",
+    span_kind: "LLM",
+    span_name: "litellm-acompletion",
+    start_time: "2024-01-15T20:30:00Z",
+    end_time: "2024-01-15T20:30:01Z",
+    created_at: "2024-01-15T20:30:01Z",
+    updated_at: "2024-01-15T20:30:01Z",
+    status_code: "Ok",
+    task_id: "task-db-simulator",
+    session_id: "session-db-user",
+    system_prompt: "You are a database execution simulator for PostgreSQL queries.",
+    user_query: "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';",
+    response: '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
+    context: [
+      {
+        role: "system",
+        content: "You are a database execution simulator for PostgreSQL queries.\nYour task is to analyze the provided SQL query and return realistic mock data that would be returned by executing that query.\n\nGuidelines:\n- Analyze the SQL query to understand what data it would return\n- Generate realistic mock data that matches the expected structure and data types\n- For SELECT queries, return an array of objects with appropriate column names and values\n- For INSERT/UPDATE/DELETE queries, return appropriate affected row counts\n- Make the data realistic and contextually appropriate\n- Do not ask for clarifications or additional information\n- Always return data in the specified JSON format\n\nReturn your response in the following JSON format:\n{\n  \"data\": [{\"column1\": \"value1\", \"column2\": \"value2\"}, ...],\n  \"rowCount\": 5,\n  \"executionTime\": 150,\n  \"query\": \"SELECT * FROM table_name WHERE condition;\"\n}"
+      },
+      {
+        role: "user",
+        content: "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';"
+      },
+      {
+        role: "assistant",
+        content: '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}'
+      }
+    ],
+    raw_data: {
+      name: "litellm-acompletion",
+      context: {
+        trace_id: "TXekqoIXAK2WcIiyx5Utpw==",
+        span_id: "8cH1wGHOQck=",
+        trace_state: "[]"
+      },
+      kind: "SpanKind.INTERNAL",
+      parent_id: "ZV0ZgnT+B4w=",
+      start_time: "2024-01-15T20:30:00Z",
+      end_time: "2024-01-15T20:30:01Z",
+      status: {
+        status_code: "OK"
+      },
+      attributes: {
+        "openinference.span.kind": "LLM",
+        "llm.model_name": "gpt-4.1",
+        "llm.provider": "openai.responses",
+        "llm.token_count.total": 412,
+        "llm.invocation_parameters": '{"temperature":0}',
+        "llm.input_messages.0.message.role": "system",
+        "llm.input_messages.1.message.role": "user",
+        "llm.output_messages.0.message.role": "assistant",
+        "llm.input_messages.0.message.content": "You are a database execution simulator for PostgreSQL queries.",
+        "llm.input_messages.1.message.content": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';",
+        "llm.output_messages.0.message.content": '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
+        "session.id": "session-db-user",
+        "litellm.model": "gpt-4.1",
+        "litellm.provider": "openai",
+        "litellm.temperature": 0,
+        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+      },
+      events: [],
+      links: [],
+      resource: {
+        attributes: {
+          "service.name": "litellm",
+          "service.version": "1.0.0"
+        },
+        schema_url: ""
+      },
+      arthur_span_version: "arthur_span_v1"
+    },
+    metric_results: []
   }
 ];
 
@@ -646,3 +802,5 @@ export const agentSpan = sampleSpans[3];
 export const ragRetrievalSpan = sampleSpans[4];
 export const errorSpan = sampleSpans[5];
 export const chainSpan = sampleSpans[6];
+export const langchainSpan = sampleSpans[7];
+export const mastraSpan = sampleSpans[8];

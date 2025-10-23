@@ -134,7 +134,7 @@ const PromptsPlayground = () => {
 
     try {
       // const response = await apiClient.api.getSpanByIdApiV1SpansSpanIdGet(spanId);
-      const spanData = sampleSpans[0]; //response.data;
+      const spanData = sampleSpans[1]; //response.data;
 
       // Create a prompt from span data using the utility function
       const spanPrompt = spanToPrompt(spanData);
@@ -185,7 +185,7 @@ const PromptsPlayground = () => {
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
-      <div className="h-screen bg-gray-200">
+      <div className="h-dvh bg-gray-200 overflow-y-auto">
         <div className={`h-full w-full p-1 flex flex-col gap-1`}>
           <div className={`bg-gray-300 flex-shrink-0 p-1`}>
             <Container

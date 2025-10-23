@@ -147,7 +147,7 @@ const Message: React.FC<MessageComponentProps> = ({
           </Tooltip>
           <Tooltip title="Delete Message" placement="top-start" arrow>
             <IconButton aria-label="delete message" onClick={handleDelete}>
-              <DeleteIcon />
+              <DeleteIcon color="error" />
             </IconButton>
           </Tooltip>
         </div>
