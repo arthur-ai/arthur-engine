@@ -13,6 +13,7 @@ import { toBackendPromptBaseConfig } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { AgenticPrompt } from "@/lib/api-client/api-client";
 
 const SNACKBAR_AUTO_HIDE_DURATION = 6000;
 
@@ -63,14 +64,14 @@ const SavePromptDialog = ({
     const backendPrompt = toBackendPromptBaseConfig(prompt);
 
     apiClient.api
-      .saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut(
+      .saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(
         nameInputValue,
         taskId,
         backendPrompt
       )
-      .then((response: { data: { message: string } }) => {
+      .then((response: { data: AgenticPrompt }) => {
         const { data } = response;
-        setSnackbarMessage(data.message);
+        setSnackbarMessage(data.name); // TODO: This was message before. Change into something more descriptive.
         setSnackbarSeverity("success");
         setOpenSnackbar(true);
         onSaveSuccess?.();
