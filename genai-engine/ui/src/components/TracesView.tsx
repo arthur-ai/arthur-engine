@@ -4,11 +4,12 @@ import Tabs from "@mui/material/Tabs";
 import React, { Activity, useState } from "react";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
+import { FilterStoreProvider } from "./traces/components/filtering/stores/filter.store";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 
-type Level = "trace" | "span" | "session";
+type Level = "trace" | "span" | "session" | "user";
 
 export const TracesView: React.FC = () => {
   const [level, setLevel] = useState<Level>("trace");
@@ -30,19 +31,26 @@ export const TracesView: React.FC = () => {
         }}
       >
         <Tabs value={level} onChange={handleLevelChange}>
-          <Tab value="trace" label="Trace Level" />
-          <Tab value="span" label="Span Level" />
-          <Tab value="session" label="Session Level" />
+          <Tab value="trace" label="Traces" />
+          <Tab value="span" label="Spans" />
+          <Tab value="session" label="Sessions" />
+          <Tab value="user" label="Users" />
         </Tabs>
 
         <Activity mode={level === "trace" ? "visible" : "hidden"}>
-          <TraceLevel />
+          <FilterStoreProvider>
+            <TraceLevel />
+          </FilterStoreProvider>
         </Activity>
         <Activity mode={level === "span" ? "visible" : "hidden"}>
-          <SpanLevel />
+          <FilterStoreProvider>
+            <SpanLevel />
+          </FilterStoreProvider>
         </Activity>
         <Activity mode={level === "session" ? "visible" : "hidden"}>
-          <SessionLevel />
+          <FilterStoreProvider>
+            <SessionLevel />
+          </FilterStoreProvider>
         </Activity>
       </Box>
 

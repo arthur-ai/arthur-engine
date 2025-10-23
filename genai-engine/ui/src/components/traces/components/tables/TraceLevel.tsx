@@ -10,7 +10,6 @@ import {
   TableSortLabel,
   TableCell,
 } from "@mui/material";
-import { useThrottler } from "@tanstack/react-pacer";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
@@ -19,27 +18,33 @@ import {
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useSelector } from "@xstate/store/react";
+import { useMemo, useState } from "react";
 
 import { columns } from "../../data/columns";
+import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
 import { useTracesStore } from "../../store";
-import { FiltersRow } from "../filtering/trace-fields";
+import { createFilterRow } from "../filtering/filters-row";
+import { useFilterStore } from "../filtering/stores/filter.store";
+import { TRACE_FIELDS } from "../filtering/trace-fields";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { TraceResponse } from "@/lib/api-client/api-client";
+import { FETCH_SIZE } from "@/lib/constants";
 import { getTracesInfiniteQueryOptions } from "@/query-options/traces";
 
 const DEFAULT_DATA: TraceResponse[] = [];
-const FETCH_SIZE = 20;
 
 export function TraceLevel() {
   const { task } = useTask();
-  const [filters] = useTracesStore((state) => state.context.filters);
-  const tableContainerRef = useRef(null);
+
+  const [, store] = useTracesStore(() => null);
+
+  const filterStore = useFilterStore();
+  const filters = useSelector(filterStore, (state) => state.context.filters);
 
   const api = useApi()!;
-  const [, store] = useTracesStore(() => null);
 
   const { data, fetchNextPage, isFetching } = useInfiniteQuery({
     ...getTracesInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
@@ -70,26 +75,18 @@ export function TraceLevel() {
     debugColumns: true,
   });
 
-  const scrollThrottler = useThrottler(
-    (containerRef?: HTMLDivElement | null) => {
-      if (containerRef) {
-        const { scrollHeight, scrollTop, clientHeight } = containerRef;
-        const offset = scrollHeight - scrollTop - clientHeight;
+  const { execute, ref } = useTableScrollThrottler({
+    onOffsetReached: fetchNextPage,
+    enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
+  });
 
-        if (offset < 50 && !isFetching && totalDBRowCount >= FETCH_SIZE)
-          fetchNextPage();
-      }
-    },
-    {
-      wait: 100,
-    }
+  const { FiltersRow } = useMemo(
+    () =>
+      createFilterRow(TRACE_FIELDS, {
+        trace_ids: { taskId: task?.id ?? "", api },
+      }),
+    [task?.id, api]
   );
-
-  useEffect(() => {
-    scrollThrottler.flush();
-    scrollThrottler.maybeExecute(tableContainerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <>
@@ -97,9 +94,9 @@ export function TraceLevel() {
       <TableContainer
         component={Paper}
         sx={{ flexGrow: 1 }}
-        ref={tableContainerRef}
+        ref={ref}
         onScroll={(e) => {
-          scrollThrottler.maybeExecute(e.currentTarget);
+          execute(e.currentTarget);
         }}
       >
         {isFetching && <LinearProgress />}

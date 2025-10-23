@@ -8,48 +8,47 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { useSelector } from "@xstate/store/react";
 import { useMemo } from "react";
 
 import { spanLevelColumns } from "../../data/span-level-columns";
+import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
 import { useTracesStore } from "../../store";
-import { FiltersRow } from "../filtering/span-fields";
+import { createFilterRow } from "../filtering/filters-row";
+import { SPAN_FIELDS } from "../filtering/span-fields";
+import { useFilterStore } from "../filtering/stores/filter.store";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { getFilteredSpans } from "@/services/tracing";
+import { FETCH_SIZE } from "@/lib/constants";
+import { getSpansInfiniteQueryOptions } from "@/query-options/spans";
 
 export const SpanLevel = () => {
-  const api = useApi();
+  const api = useApi()!;
   const { task } = useTask();
   const [, store] = useTracesStore(() => null);
 
-  const { data, isFetching } = useInfiniteQuery({
-    queryKey: ["spans", { api, taskId: task?.id }],
-    queryFn: ({ pageParam = 0 }) => {
-      return getFilteredSpans(api!, {
-        taskId: task?.id ?? "",
-        page: pageParam as number,
-        pageSize: 20,
-      });
-    },
-    initialPageParam: 0,
-    getNextPageParam: (_, __, lastPageParam = 0) => {
-      return lastPageParam + 1;
-    },
-    refetchOnWindowFocus: false,
-    placeholderData: keepPreviousData,
+  const filters = useSelector(
+    useFilterStore(),
+    (state) => state.context.filters
+  );
+
+  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
+    ...getSpansInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
   });
 
   const flatData = useMemo(
     () => data?.pages?.flatMap((page) => page.spans) ?? [],
     [data]
   );
+
+  const totalDBRowCount = data?.pages?.[0]?.count ?? 0;
 
   const table = useReactTable({
     data: flatData,
@@ -60,10 +59,30 @@ export const SpanLevel = () => {
     debugColumns: true,
   });
 
+  const { execute, ref } = useTableScrollThrottler({
+    onOffsetReached: fetchNextPage,
+    enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
+  });
+
+  const { FiltersRow } = useMemo(
+    () =>
+      createFilterRow(SPAN_FIELDS, {
+        trace_ids: { taskId: task?.id ?? "", api },
+      }),
+    [task?.id, api]
+  );
+
   return (
     <>
       <FiltersRow />
-      <TableContainer component={Paper} sx={{ flexGrow: 1 }}>
+      <TableContainer
+        component={Paper}
+        sx={{ flexGrow: 1 }}
+        ref={ref}
+        onScroll={(e) => {
+          execute(e.currentTarget);
+        }}
+      >
         {isFetching && <LinearProgress />}
         <Table stickyHeader size="small">
           <TableHead>
