@@ -1,4 +1,4 @@
-import Alert, { AlertColor } from "@mui/material/Alert";
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -12,10 +12,9 @@ import { SavePromptDialogProps } from "./types";
 import { toBackendPromptBaseConfig } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
+import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
-
-const SNACKBAR_AUTO_HIDE_DURATION = 6000;
 
 const SavePromptDialog = ({
   open,
@@ -26,10 +25,7 @@ const SavePromptDialog = ({
   onSaveError,
 }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
-  const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
-  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
-  const [snackbarSeverity, setSnackbarSeverity] =
-    useState<AlertColor>("success");
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -46,17 +42,13 @@ const SavePromptDialog = ({
 
   const handleSavePrompt = useCallback(() => {
     if (nameInputValue === "") {
-      setSnackbarMessage("Prompt name is required");
-      setSnackbarSeverity("error");
-      setOpenSnackbar(true);
+      showSnackbar("Prompt name is required", "error");
       return;
     }
 
     if (!apiClient || !taskId) {
       console.error("No api client or task");
-      setSnackbarMessage("API Error");
-      setSnackbarSeverity("error");
-      setOpenSnackbar(true);
+      showSnackbar("API Error", "error");
       return;
     }
 
@@ -71,17 +63,13 @@ const SavePromptDialog = ({
       )
       .then((response: { data: AgenticPrompt }) => {
         const { data } = response;
-        setSnackbarMessage(data.name); // TODO: This was message before. Change into something more descriptive.
-        setSnackbarSeverity("success");
-        setOpenSnackbar(true);
+        showSnackbar(`Saved prompt: ${data.name}`, "success");
         onSaveSuccess?.();
         handleClose();
       })
       .catch((error: { response: { data: { detail: string } } }) => {
         const { data } = error.response;
-        setSnackbarMessage(data.detail);
-        setSnackbarSeverity("error");
-        setOpenSnackbar(true);
+        showSnackbar(data.detail, "error");
         onSaveError?.(data.detail);
       });
   }, [
@@ -89,15 +77,11 @@ const SavePromptDialog = ({
     prompt,
     apiClient,
     taskId,
+    showSnackbar,
     onSaveSuccess,
     onSaveError,
     handleClose,
   ]);
-
-  const handleCloseSnackbar = useCallback(() => {
-    setOpenSnackbar(false);
-    setSnackbarMessage("");
-  }, []);
 
   return (
     <>
@@ -121,14 +105,8 @@ const SavePromptDialog = ({
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={openSnackbar}
-        autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert severity={snackbarSeverity}>{snackbarMessage}</Alert>
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
       </Snackbar>
     </>
   );
