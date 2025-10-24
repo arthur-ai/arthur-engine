@@ -79,7 +79,7 @@ export const SessionLevel = () => {
   const { FiltersRow } = useMemo(
     () =>
       createFilterRow(SESSION_FIELDS, {
-        users: { taskId: task?.id ?? "", api },
+        user_ids: { taskId: task?.id ?? "", api },
       }),
     [task?.id, api]
   );
