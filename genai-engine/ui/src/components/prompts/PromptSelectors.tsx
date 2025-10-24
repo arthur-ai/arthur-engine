@@ -209,7 +209,7 @@ const PromptSelectors = ({
           options={backendPromptOptions}
           value={currentPromptName}
           onChange={handleSelectPrompt}
-          disabled={state.backendPrompts.length === 0}
+          disabled={backendPromptOptions.length === 0}
           renderInput={(params) => (
             <TextField
               {...params}

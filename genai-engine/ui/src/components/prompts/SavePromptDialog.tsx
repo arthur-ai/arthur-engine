@@ -3,6 +3,7 @@ import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
@@ -88,6 +89,10 @@ const SavePromptDialog = ({
       <Dialog open={open} onClose={handleClose} fullWidth>
         <DialogTitle>Save Prompt</DialogTitle>
         <DialogContent>
+          <DialogContentText className="text-center">
+            Saving a prompt with an existing name will create a new version of
+            the prompt.
+          </DialogContentText>
           <div className="p-2">
             <TextField
               label="Prompt Name"

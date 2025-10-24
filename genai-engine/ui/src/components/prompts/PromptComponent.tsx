@@ -66,7 +66,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         maxWidth="xl"
         disableGutters
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-1">
+        <div className="grid grid-cols-[3fr_2fr] gap-1">
           <div className="flex justify-start items-center gap-1">
             <PromptSelectors
               prompt={prompt}
@@ -110,26 +110,26 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             </Tooltip>
           </div>
         </div>
+        <div className="mt-1">
+          <Paper elevation={2} className="p-1">
+            <MessagesSection prompt={prompt} />
+          </Paper>
+        </div>
+        <div className="mt-1">
+          <Paper elevation={2} className="p-1">
+            <Tools prompt={prompt} />
+          </Paper>
+        </div>
+        <div className="mt-1">
+          <Paper elevation={2} className="p-1">
+            <OutputField
+              promptId={prompt.id}
+              outputField={prompt.outputField}
+              responseFormat={prompt.responseFormat}
+            />
+          </Paper>
+        </div>
       </Container>
-      <div className="m-1">
-        <Paper elevation={2} className="p-1">
-          <MessagesSection prompt={prompt} />
-        </Paper>
-      </div>
-      <div className="m-1">
-        <Paper elevation={2} className="p-1">
-          <Tools prompt={prompt} />
-        </Paper>
-      </div>
-      <div className="m-1">
-        <Paper elevation={2} className="p-1">
-          <OutputField
-            promptId={prompt.id}
-            outputField={prompt.outputField}
-            responseFormat={prompt.responseFormat}
-          />
-        </Paper>
-      </div>
       <SavePromptDialog
         open={savePromptOpen}
         setOpen={setSavePromptOpen}
