@@ -3,12 +3,16 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import { SyntheticEvent, useEffect, useMemo } from "react";
+import { SyntheticEvent, useEffect, useMemo, useState } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { PromptType } from "./types";
+import { toFrontendPrompt } from "./utils";
+import VersionSelectionModal from "./VersionSelectionModal";
 
+import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
+import { useTask } from "@/hooks/useTask";
 import { ModelProvider } from "@/lib/api-client/api-client";
 
 const PROVIDER_TEXT = "Select Provider";
@@ -24,11 +28,16 @@ const PromptSelectors = ({
   currentPromptName: string;
   onPromptNameChange: (name: string) => void;
 }) => {
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
+  const [selectedPromptForVersions, setSelectedPromptForVersions] = useState<
+    string | null
+  >(null);
+  const apiClient = useApi();
+  const { task } = useTask();
+  const { state, dispatch } = usePromptContext();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { state, dispatch } = usePromptContext();
-
-  const handleSelectPrompt = (
+  const handleSelectPrompt = async (
     _event: SyntheticEvent<Element, Event>,
     newValue: string | null
   ) => {
@@ -47,10 +56,81 @@ const PromptSelectors = ({
       return;
     }
 
-    // dispatch({
-    //   type: "updatePrompt",
-    //   payload: { promptId: prompt.id, prompt: backendPromptData },
-    // });
+    if (!apiClient || !task?.id) {
+      showSnackbar("API client or task not available", "error");
+      return;
+    }
+
+    try {
+      if (backendPromptData.versions === 1) {
+        // Single version - fetch directly
+        await fetchAndLoadPromptVersion(selection, task.id, 1);
+      } else {
+        // Multiple versions - open modal
+        setSelectedPromptForVersions(selection);
+        setVersionModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error handling prompt selection:", error);
+      showSnackbar("Failed to load prompt", "error");
+      onPromptNameChange(""); // Reset on error
+    }
+  };
+
+  const fetchAndLoadPromptVersion = async (
+    promptName: string,
+    taskId: string,
+    version: number
+  ) => {
+    if (!apiClient) {
+      throw new Error("API client not available");
+    }
+
+    try {
+      // Fetch the specific version's full data
+      const response =
+        await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+          promptName,
+          version.toString(),
+          taskId
+        );
+
+      // Convert to frontend format and update prompt
+      const frontendPrompt = toFrontendPrompt(response.data);
+      dispatch({
+        type: "updatePrompt",
+        payload: { promptId: prompt.id, prompt: frontendPrompt },
+      });
+    } catch (error) {
+      console.error("Failed to fetch prompt version:", error);
+      throw error;
+    }
+  };
+
+  const handleVersionSelect = async (version: number) => {
+    if (!selectedPromptForVersions || !task?.id) {
+      showSnackbar("Prompt or task not available", "error");
+      return;
+    }
+
+    try {
+      await fetchAndLoadPromptVersion(
+        selectedPromptForVersions,
+        task.id,
+        version
+      );
+      setVersionModalOpen(false);
+      setSelectedPromptForVersions(null);
+    } catch (error) {
+      console.error("Failed to load selected version:", error);
+      showSnackbar("Failed to load prompt version", "error");
+    }
+  };
+
+  const handleModalClose = () => {
+    setVersionModalOpen(false);
+    setSelectedPromptForVersions(null);
+    onPromptNameChange(""); // Reset prompt selector to empty string
   };
 
   const handleProviderChange = (
@@ -85,6 +165,9 @@ const PromptSelectors = ({
 
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.provider === "";
+  const tooltipTitle = providerDisabled
+    ? "No providers available. Please configure at least one provider."
+    : "";
   const backendPromptOptions = state.backendPrompts.map(
     (backendPrompt) => backendPrompt.name
   );
@@ -115,15 +198,7 @@ const PromptSelectors = ({
         />
       </div>
       <div className="w-1/3">
-        <Tooltip
-          title={
-            providerDisabled
-              ? "No providers available. Please configure at least one provider."
-              : ""
-          }
-          placement="top-start"
-          arrow
-        >
+        <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete
             id={`provider-${prompt.id}`}
             options={state.enabledProviders}
@@ -162,6 +237,16 @@ const PromptSelectors = ({
           )}
         />
       </div>
+
+      <VersionSelectionModal
+        open={versionModalOpen}
+        onClose={handleModalClose}
+        onSelectVersion={handleVersionSelect}
+        promptName={selectedPromptForVersions || ""}
+        taskId={task?.id || ""}
+        apiClient={apiClient!}
+      />
+
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />
       </Snackbar>

@@ -10,14 +10,11 @@ import { useSearchParams } from "react-router-dom";
 import PromptComponent from "./PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { toFrontendPrompt, spanToPrompt } from "./utils";
+import { spanToPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  AgenticPromptMetadataResponse,
   ModelProvider,
   ModelProviderResponse,
 } from "@/lib/api-client/api-client";
@@ -220,11 +217,14 @@ const PromptsPlayground = () => {
                     <Typography variant="h5">Keyword Templates</Typography>
                   </div>
                   <div className="flex justify-center items-center">
-                    <Typography variant="body2">
-                      Keywords are identified by mustache braces
-                      &#123;&#123;keyword&#125;&#125; and are used to replace
-                      values in the messages. You can use the same keyword in
-                      multiple prompts/messages.
+                    <Typography variant="body2" className="text-center">
+                      Keywords allow you to create reusable templates by using
+                      double curly (mustache) braces like{" "}
+                      <code>{`{{keyword}}`}</code>. When you define a keyword
+                      below, it will automatically replace all instances of{" "}
+                      <code>{`{{keyword}}`}</code> in your prompt messages. This
+                      lets you quickly test different values without editing
+                      each message individually.
                     </Typography>
                   </div>
                 </div>

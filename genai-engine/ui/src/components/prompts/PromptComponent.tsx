@@ -1,7 +1,8 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
-import SettingsIcon from "@mui/icons-material/Settings";
+// import SettingsIcon from "@mui/icons-material/Settings"; Use for permanent delete option
+import TuneIcon from "@mui/icons-material/Tune";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
@@ -87,7 +88,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 aria-label="model parameters"
                 onClick={handleParamsModelOpen}
               >
-                <SettingsIcon color="info" />
+                <TuneIcon color="info" />
               </IconButton>
             </Tooltip>
             <ModelParamsDialog
