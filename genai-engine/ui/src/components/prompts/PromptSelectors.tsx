@@ -3,12 +3,12 @@ import Autocomplete from "@mui/material/Autocomplete";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import { SyntheticEvent, useEffect, useMemo, useState } from "react";
+import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { PromptType } from "./types";
 import { toFrontendPrompt } from "./utils";
-import VersionSelectionModal from "./VersionSelectionModal";
+import VersionSubmenu from "./VersionSubmenu";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
@@ -28,7 +28,8 @@ const PromptSelectors = ({
   currentPromptName: string;
   onPromptNameChange: (name: string) => void;
 }) => {
-  const [versionModalOpen, setVersionModalOpen] = useState(false);
+  const promptSelectorRef = useRef<HTMLDivElement>(null);
+  const [versionSubmenuOpen, setVersionSubmenuOpen] = useState(false);
   const [selectedPromptForVersions, setSelectedPromptForVersions] = useState<
     string | null
   >(null);
@@ -65,10 +66,11 @@ const PromptSelectors = ({
       if (backendPromptData.versions === 1) {
         // Single version - fetch directly
         await fetchAndLoadPromptVersion(selection, task.id, 1);
+        setVersionSubmenuOpen(false);
       } else {
         // Multiple versions - open modal
         setSelectedPromptForVersions(selection);
-        setVersionModalOpen(true);
+        setVersionSubmenuOpen(true);
       }
     } catch (error) {
       console.error("Error handling prompt selection:", error);
@@ -109,6 +111,7 @@ const PromptSelectors = ({
 
   const handleVersionSelect = async (version: number) => {
     if (!selectedPromptForVersions || !task?.id) {
+      console.log("asdf2");
       showSnackbar("Prompt or task not available", "error");
       return;
     }
@@ -119,7 +122,7 @@ const PromptSelectors = ({
         task.id,
         version
       );
-      setVersionModalOpen(false);
+      setVersionSubmenuOpen(false);
       setSelectedPromptForVersions(null);
     } catch (error) {
       console.error("Failed to load selected version:", error);
@@ -127,11 +130,29 @@ const PromptSelectors = ({
     }
   };
 
-  const handleModalClose = () => {
-    setVersionModalOpen(false);
+  const handleSubmenuClose = () => {
+    setVersionSubmenuOpen(false);
     setSelectedPromptForVersions(null);
-    onPromptNameChange(""); // Reset prompt selector to empty string
+    onPromptNameChange(""); // Reset prompt selector
   };
+
+  // Close submenu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        promptSelectorRef.current &&
+        !promptSelectorRef.current.contains(event.target as Node)
+      ) {
+        setVersionSubmenuOpen(false);
+      }
+    };
+
+    if (versionSubmenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [versionSubmenuOpen]);
 
   const handleProviderChange = (
     _event: SyntheticEvent<Element, Event>,
@@ -178,7 +199,11 @@ const PromptSelectors = ({
 
   return (
     <>
-      <div className="w-1/3">
+      <div
+        className="w-1/3"
+        ref={promptSelectorRef}
+        style={{ position: "relative" }}
+      >
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
           options={backendPromptOptions}
@@ -195,6 +220,15 @@ const PromptSelectors = ({
               }}
             />
           )}
+        />
+        <VersionSubmenu
+          promptName={selectedPromptForVersions || ""}
+          taskId={task?.id || ""}
+          apiClient={apiClient!}
+          onVersionSelect={handleVersionSelect}
+          onClose={handleSubmenuClose}
+          open={versionSubmenuOpen}
+          anchorEl={promptSelectorRef.current}
         />
       </div>
       <div className="w-1/3">
@@ -237,16 +271,6 @@ const PromptSelectors = ({
           )}
         />
       </div>
-
-      <VersionSelectionModal
-        open={versionModalOpen}
-        onClose={handleModalClose}
-        onSelectVersion={handleVersionSelect}
-        promptName={selectedPromptForVersions || ""}
-        taskId={task?.id || ""}
-        apiClient={apiClient!}
-      />
-
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />
       </Snackbar>
