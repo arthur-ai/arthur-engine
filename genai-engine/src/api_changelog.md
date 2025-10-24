@@ -2,6 +2,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/23/2025
+- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'completion_request/strict'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional request property 'strict'
+
 # 10/22/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions  api path removed without deprecation
 - **BREAKING CHANGE** for **URL**: /api/v1/{task_id}/agentic_prompts  api path removed without deprecation

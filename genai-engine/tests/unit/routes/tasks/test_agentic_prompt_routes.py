@@ -1160,3 +1160,138 @@ def test_get_prompt_versions_pagination_and_filtering(
     assert result["count"] == 3  # One version excluded
     versions = [v["version"] for v in result["versions"]]
     assert 2 not in versions
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.litellm.completion")
+@patch("schemas.agentic_prompt_schemas.completion_cost")
+@pytest.mark.parametrize(
+    "messages,variables,expected_error",
+    [
+        ([{"role": "user", "content": "Hello, {{name}}!"}], {"name": "John"}, None),
+        ([{"role": "user", "content": "Hello, {{name}}!"}], {"name": ""}, None),
+        (
+            [{"role": "user", "content": "Hello, {{name}}!"}],
+            None,
+            "Missing values for the following variables: name",
+        ),
+        ([{"role": "user", "content": "Hello, name!"}], {"name": "John"}, None),
+        ([{"role": "user", "content": "Hello, name!"}], {"first_name": "John"}, None),
+        (
+            [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
+            {"first_name": "John", "last_name": "Doe"},
+            None,
+        ),
+        (
+            [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
+            {"first_name": "John", "name": "Doe"},
+            "Missing values for the following variables: last_name",
+        ),
+        (
+            [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
+            {"name1": "John", "name2": "Doe"},
+            "Missing values for the following variables: first_name, last_name",
+        ),
+        (
+            [{"role": "user", "content": "Hello, {{ first_name }} {last_name}!"}],
+            {"first_name": "John", "name": "Doe"},
+            None,
+        ),
+        (
+            [{"role": "user", "content": "Hello, {{ first_name }} {{ last_name }}!"}],
+            {"first_name": "", "last_name": ""},
+            None,
+        ),
+    ],
+)
+def test_run_agentic_prompt_strict_mode(
+    mock_completion_cost,
+    mock_completion,
+    client: GenaiEngineTestClientBase,
+    messages,
+    variables,
+    expected_error,
+):
+    """Test running an agentic prompt with strict mode"""
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": "Test LLM response",
+        "tool_calls": None,
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001234
+
+    prompt_data = {
+        "name": "test_prompt",
+        "messages": messages,
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    completion_request = {
+        "strict": True,
+    }
+
+    if variables:
+        completion_request["variables"] = [
+            {"name": name, "value": value} for name, value in variables.items()
+        ]
+
+    prompt_data["completion_request"] = completion_request
+
+    # Save prompt
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # run unsaved prompt with strict=True
+    response = client.base_client.post(
+        f"/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    if expected_error:
+        assert response.status_code == 400
+        assert response.json()["detail"] == expected_error
+    else:
+        assert response.status_code == 200
+
+    # run saved prompt with strict=True
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/latest/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    if expected_error:
+        assert response.status_code == 400
+        assert response.json()["detail"] == expected_error
+    else:
+        assert response.status_code == 200
+
+    # set strict=False
+    completion_request["strict"] = False
+    prompt_data["completion_request"] = completion_request
+
+    # run unsaved prompt with strict=False (should never raise an err for missing variables)
+    response = client.base_client.post(
+        f"/api/v1/completions",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # run saved prompt with strict=False
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_data['name']}/versions/latest/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200

@@ -1,7 +1,8 @@
 import warnings
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Union
 
+from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
     completion_cost,
@@ -68,6 +69,10 @@ class PromptCompletionRequest(BaseModel):
         description="Whether to stream the response",
         default=False,
     )
+    strict: Optional[bool] = Field(
+        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+        default=False,
+    )
 
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
 
@@ -85,6 +90,16 @@ class PromptCompletionRequest(BaseModel):
         if self.variables:
             self._variable_map = {v.name: v.value for v in self.variables}
         return self
+
+    def find_missing_variables(self, messages: List[Dict]) -> Set[str]:
+        missing_vars = set()
+        for message in messages:
+            template_ast = self._jinja_env.parse(message["content"])
+            undeclared_vars = meta.find_undeclared_variables(template_ast)
+            missing = [v for v in undeclared_vars if v not in self._variable_map]
+            missing_vars.update(missing)
+
+        return missing_vars
 
     def replace_variables(self, messages: List[Dict]) -> List[Dict]:
         updated_messages = []
@@ -324,6 +339,17 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             exclude_none=True,
         )
 
+        # validate all variables are passed in to the prompt if strict mode is enabled
+        if completion_request.strict == True:
+            missing_vars = completion_request.find_missing_variables(
+                completion_params["messages"],
+            )
+            if missing_vars:
+                raise ValueError(
+                    f"Missing values for the following variables: {', '.join(sorted(missing_vars))}",
+                )
+
+        # replace variables in messages
         if completion_request.variables:
             completion_params["messages"] = completion_request.replace_variables(
                 completion_params["messages"],
