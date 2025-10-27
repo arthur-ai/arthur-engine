@@ -1,7 +1,7 @@
 """add versioning to agentic prompts
 
 Revision ID: 5b5d630418ba
-Revises: 16d81eaac5c2
+Revises: ecc45f321532
 Create Date: 2025-10-22 16:46:40.462930
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5b5d630418ba"
-down_revision = "16d81eaac5c2"
+down_revision = "ecc45f321532"
 branch_labels = None
 depends_on = None
 

@@ -1,7 +1,7 @@
 """Adding model_name
 
 Revision ID: 1e4ff2a22cbb
-Revises: ecc45f321532
+Revises: 5b5d630418ba
 Create Date: 2025-10-14 09:05:42.220289
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "1e4ff2a22cbb"
-down_revision = "ecc45f321532"
+down_revision = "5b5d630418ba"
 branch_labels = None
 depends_on = None
 
