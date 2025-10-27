@@ -1166,7 +1166,6 @@ class InferenceFeedback(BaseModel):
     score: int
     reason: Optional[str] = None
     user_id: str | None = None
-    model_name: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -1179,7 +1178,6 @@ class InferenceFeedback(BaseModel):
             score=dif.score,
             reason=dif.reason,
             user_id=dif.user_id,
-            model_name=dif.model_name,
             created_at=dif.created_at,
             updated_at=dif.updated_at,
         )
@@ -1192,7 +1190,6 @@ class InferenceFeedback(BaseModel):
             score=self.score,
             reason=self.reason,
             user_id=self.user_id,
-            model_name=self.model_name,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )

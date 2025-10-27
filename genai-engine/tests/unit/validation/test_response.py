@@ -1,6 +1,7 @@
 import pytest
 from arthur_common.models.request_schemas import ResponseValidationRequest
 
+from repositories.inference_repository import InferenceRepository
 from schemas.internal_schemas import InferencePrompt, Rule, Task
 from tests.clients.base_test_client import (
     override_get_db_session,
@@ -89,3 +90,16 @@ def test_validate_response_with_model_name(
     # Verify model_name is returned in the validation result
     assert validated_response.model_name == model_name
     assert len(validated_response.rule_results) == 5
+
+    # Verify model_name is stored in the database objects
+    inference_repository = InferenceRepository(db_session=db_session)
+    stored_inference = inference_repository.get_inference(
+        inference_id=inference_prompt.inference_id,
+    )
+
+    # Check model_name in Inference object
+    assert stored_inference.model_name == model_name
+
+    # Check model_name in InferenceResponse object
+    assert stored_inference.inference_response is not None
+    assert stored_inference.inference_response.model_name == model_name
