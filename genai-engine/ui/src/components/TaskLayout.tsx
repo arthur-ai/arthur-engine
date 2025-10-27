@@ -45,6 +45,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
   const getPageTitle = (section: string): string => {
     const titleMap: Record<string, string> = {
       "task-details": "Task Details",
+      "model-providers": "Model Providers",
       traces: "Traces",
       retrievals: "Retrievals",
       evaluators: "Evaluators",
