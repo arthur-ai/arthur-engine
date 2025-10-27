@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 from unittest.mock import MagicMock
 
 from fastapi import HTTPException, UploadFile
@@ -9,7 +10,6 @@ from clients.s3.S3Client import S3Client
 from db_models import DatabaseDocument, DatabaseEmbeddingReference
 from schemas.enums import DocumentType
 from schemas.internal_schemas import Document
-from typing import Optional
 
 
 class DocumentRepository:

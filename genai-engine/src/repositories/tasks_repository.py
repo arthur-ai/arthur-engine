@@ -1,3 +1,5 @@
+from typing import Optional
+
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from fastapi import HTTPException
 from opentelemetry import trace
@@ -14,7 +16,6 @@ from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
-from typing import Optional
 
 tracer = trace.get_tracer(__name__)
 

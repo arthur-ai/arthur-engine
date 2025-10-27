@@ -871,8 +871,8 @@ class RuleDetails(BaseModel):
 
     def _to_database_model(
         self,
-        parent_prompt_rule_result_id: str = None,
-        parent_response_rule_result_id: str = None,
+        parent_prompt_rule_result_id: Optional[str] = None,
+        parent_response_rule_result_id: Optional[str] = None,
     ):
         if not (parent_prompt_rule_result_id or parent_response_rule_result_id):
             raise ValueError("One of prompt or response result id must be supplied")

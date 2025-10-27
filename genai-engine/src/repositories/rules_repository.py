@@ -1,3 +1,5 @@
+from typing import Optional
+
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
@@ -6,7 +8,6 @@ from sqlalchemy.orm import Session
 from db_models import DatabaseRule
 from schemas.internal_schemas import Rule
 from utils import constants
-from typing import Optional
 
 
 class RuleRepository:

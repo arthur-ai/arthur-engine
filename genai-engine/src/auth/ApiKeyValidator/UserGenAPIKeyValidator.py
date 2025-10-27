@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class UserGenAPIKeyValidator(APIKeyValidator):
     def __init__(
         self,
-        api_key_cache: TTLCache[str, dict],
+        api_key_cache: TTLCache[str, User],
         api_key_repo: ApiKeyRepository,
     ):
         self.api_key_cache = api_key_cache
@@ -32,7 +32,7 @@ class UserGenAPIKeyValidator(APIKeyValidator):
         except AttributeError:
             db_api_keys = self.api_key_repo.get_all_active_api_keys()
             for db_api_key in db_api_keys:
-                if bcrypt.checkpw(
+                if db_api_key.key_hash and bcrypt.checkpw(
                     api_key.encode("utf-8"),
                     db_api_key.key_hash.encode("utf-8"),
                 ):
