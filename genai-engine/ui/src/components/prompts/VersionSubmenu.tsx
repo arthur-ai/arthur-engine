@@ -6,17 +6,9 @@ import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import { useState, useEffect, useMemo, useCallback } from "react";
 
-import { Api, AgenticPromptVersionResponse } from "@/lib/api-client/api-client";
+import { VersionSubmenuProps } from "./types";
 
-interface VersionSubmenuProps {
-  open: boolean;
-  promptName: string;
-  taskId: string;
-  apiClient: Api<unknown>;
-  onVersionSelect: (version: number) => void;
-  onClose: () => void;
-  anchorEl: HTMLElement | null;
-}
+import { AgenticPromptVersionResponse } from "@/lib/api-client/api-client";
 
 const VersionSubmenu = ({
   open,

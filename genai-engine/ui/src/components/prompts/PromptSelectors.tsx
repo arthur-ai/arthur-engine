@@ -262,6 +262,7 @@ const PromptSelectors = ({
           getOptionLabel={(option) => option.name}
           isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}
+          noOptionsText="No saved prompts"
           sx={{ flex: 1 }}
           renderOption={(props, option) => {
             const { key, ...optionProps } = props;

@@ -181,13 +181,14 @@ interface SavePromptDialogProps {
   onSaveError?: (error: string) => void;
 }
 
-interface VersionSelectionModalProps {
+interface VersionSubmenuProps {
   open: boolean;
-  onClose: () => void;
-  onSelectVersion: (version: number) => void;
   promptName: string;
   taskId: string;
   apiClient: Api<unknown>;
+  onVersionSelect: (version: number) => void;
+  onClose: () => void;
+  anchorEl: HTMLElement | null;
 }
 
 const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
@@ -210,5 +211,5 @@ export {
   OutputFieldProps,
   SavePromptDialogProps,
   FrontendTool,
-  VersionSelectionModalProps,
+  VersionSubmenuProps,
 };
