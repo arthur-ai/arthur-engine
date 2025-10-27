@@ -63,11 +63,10 @@ export async function POST(req: NextRequest) {
 
     // Generate a run ID for this agent invocation
     const runId = crypto.randomUUID();
-    const metadata = {
+    agentSpan.setAttribute(SemanticConventions.METADATA, JSON.stringify({
       runId,
-      "agent.instructions": "You are a helpful image analysis assistant with vision capabilities. You can analyze images, photos, screenshots, charts, graphs, and data visualizations.",
-    };
-    agentSpan.setAttribute(SemanticConventions.METADATA, JSON.stringify(metadata));
+      "agent.instructions": "You are a helpful image analysis assistant with vision capabilities."
+    }));
 
     // Set agent input/output at top level
     agentSpan.setAttribute(SemanticConventions.INPUT_VALUE, JSON.stringify(messages));
@@ -90,19 +89,17 @@ export async function POST(req: NextRequest) {
 
       // Set input messages
       messages.forEach((msg: Message, idx: number) => {
-        llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.role`, msg.role);
+        llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_ROLE}`, msg.role);
         if (typeof msg.content === "string") {
-          // Text-only message uses message.content (singular)
-          llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.content`, msg.content);
-        } else if (Array.isArray(msg.content)) {
-          // Multimodal message uses message.contents (plural) - flatten the array
+          llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_CONTENT}`, msg.content);
+        } else {
           msg.content.forEach((part: MessageContent, partIdx: number) => {
-            if (part.type === "text" && part.text !== undefined) {
-              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.type`, "text");
-              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.text`, part.text);
-            } else if (part.type === "image_url" && part.image_url?.url !== undefined) {
-              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.type`, "image");
-              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.image.image.url`, part.image_url.url);
+            if (part.type === "text" && part.text) {
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_CONTENTS}.${partIdx}.${SemanticConventions.MESSAGE_CONTENT_TYPE}`, "text");
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_CONTENTS}.${partIdx}.${SemanticConventions.MESSAGE_CONTENT_TEXT}`, part.text);
+            } else if (part.type === "image_url" && part.image_url?.url) {
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_CONTENTS}.${partIdx}.${SemanticConventions.MESSAGE_CONTENT_TYPE}`, "image");
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.${SemanticConventions.MESSAGE_CONTENTS}.${partIdx}.${SemanticConventions.MESSAGE_CONTENT_IMAGE}.${SemanticConventions.IMAGE_URL}`, part.image_url.url);
             }
           });
         }
@@ -120,8 +117,8 @@ export async function POST(req: NextRequest) {
       llmSpan.setAttribute(SemanticConventions.OUTPUT_MIME_TYPE, "application/json");
 
       // Set output message
-      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.message.role`, "assistant");
-      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.message.content`, response);
+      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`, "assistant");
+      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`, response);
 
       // Set token counts
       if (completion.usage) {
