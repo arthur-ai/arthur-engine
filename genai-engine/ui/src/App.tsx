@@ -63,16 +63,16 @@ function App() {
                 }
               />
 
-                <Route
-                  path="/tasks/:id/model-providers"
-                  element={
-                    <ProtectedRoute>
-                      <TaskLayout>
-                        <ModelProviders />
-                      </TaskLayout>
-                    </ProtectedRoute>
-                  }
-                />
+              <Route
+                path="/tasks/:id/model-providers"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <ModelProviders />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
 
               <Route
                 path="/tasks/:id/agent-experiments"
