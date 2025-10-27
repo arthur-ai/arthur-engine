@@ -1,6 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
-import { Link } from "@mui/icons-material";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Chip } from "@mui/material";
 import Stack from "@mui/material/Stack";
@@ -93,7 +92,6 @@ export const SpanDetailsHeader = () => {
           >
             {span.span_name}
           </Typography>
-          <Link />
         </Stack>
         <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
       </Stack>
@@ -149,7 +147,7 @@ export const SpanDetailsWidgets = () => {
   const { span, strategy } = useSpanDetails();
 
   return (
-    <Stack direction="row" spacing={1}>
+    <Stack direction="row" gap={1} flexWrap="wrap">
       {strategy.widgets.map((widget, index) => (
         <Chip
           key={index}

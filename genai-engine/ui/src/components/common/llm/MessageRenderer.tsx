@@ -7,7 +7,7 @@ import { Highlight } from "../Highlight";
 import { TextMessageRenderer } from "./TextMessageRenderer";
 
 import { type Message } from "@/schemas/llm";
-import { getRoleAccentColor } from "@/utils/llm";
+import { getRoleAccentColor, tryFormatJson } from "@/utils/llm";
 
 export const MessageRenderer = ({ message }: { message: Message }) => {
   const { role, content } = message;
@@ -19,9 +19,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
         case "text":
           return <TextMessageRenderer text={item.text} />;
         default:
-          return (
-            <Highlight code={JSON.stringify(item, null, 2)} language="json" />
-          );
+          return <Highlight code={tryFormatJson(item)} language="json" />;
       }
     });
   }

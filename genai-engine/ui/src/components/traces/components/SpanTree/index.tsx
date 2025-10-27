@@ -3,11 +3,13 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { cloneElement } from "react";
 
 import { useTracesStore } from "../../store";
-import { getSpanDuration } from "../../utils/spans";
+import { getSpanDuration, getSpanIcon } from "../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { cn } from "@/utils/cn";
 
 type Props = {
   level?: number;
@@ -46,7 +48,7 @@ export const SpanTree = ({
           <SpanTreeItem span={span} level={level} />
           <Accordion.Panel
             render={
-              <Box className="h-[var(--accordion-panel-height)] overflow-hidden text-base text-gray-600 transition-[height] ease-out data-[ending-style]:h-0 data-[starting-style]:h-0 data-open:rounded-b" />
+              <Box className="h-(--accordion-panel-height) overflow-hidden text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b" />
             }
           >
             <SpanTree
@@ -75,6 +77,12 @@ const SpanTreeItem = ({
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;
 
+  const icon = cloneElement(getSpanIcon(span), {
+    sx: {
+      fontSize: 16,
+    },
+  });
+
   return (
     <Accordion.Header
       render={
@@ -102,7 +110,7 @@ const SpanTreeItem = ({
               span.children && span.children.length > 0 ? "visible" : "hidden",
           }}
           fontSize="small"
-          className="group-data-[panel-open]:rotate-90"
+          className="group-data-panel-open:rotate-90"
         />
       </Accordion.Trigger>
       <Stack
@@ -111,9 +119,20 @@ const SpanTreeItem = ({
         spacing={0}
         sx={{
           position: "relative",
+          width: "100%",
+          pr: 1,
         }}
       >
-        <Stack direction="column" alignItems="flex-start" spacing={-0.5}>
+        {icon && (
+          <div
+            className={cn(
+              "flex items-center justify-center p-1 border border-gray-300 rounded-full "
+            )}
+          >
+            {icon}
+          </div>
+        )}
+        <Stack direction="column" alignItems="flex-start" spacing={-0.5} ml={1}>
           <Typography variant="body2" fontWeight={500} fontSize={12}>
             {span.span_name}
           </Typography>

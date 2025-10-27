@@ -83,6 +83,15 @@ export async function getSpan(api: Api<unknown>, { spanId }: GetSpanParams) {
   return response.data;
 }
 
+export async function computeSpanMetrics(
+  api: Api<unknown>,
+  { spanId }: GetSpanParams
+) {
+  const response =
+    await api.api.computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet(spanId);
+  return response.data;
+}
+
 // Sessions
 
 type GetSessionsParams = {

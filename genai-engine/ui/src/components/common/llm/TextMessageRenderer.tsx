@@ -22,7 +22,7 @@ export const TextMessageRenderer = ({ text }: { text: string }) => {
         components={{
           table: ({ children }) => (
             <TableContainer component={Paper} variant="outlined" sx={{ my: 2 }}>
-              <Table>{children}</Table>
+              <Table size="small">{children}</Table>
             </TableContainer>
           ),
           thead: ({ children }) => (

@@ -9,8 +9,15 @@ import { getSpanCost, getSpanModel } from "../utils/spans";
 
 import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
+import { OutputMessageRenderer } from "@/components/common/llm/OutputMessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { getMessages, getOutputMessages, getTotalTokens } from "@/utils/llm";
+import {
+  getInputTokens,
+  getMessages,
+  getOutputMessages,
+  getOutputTokens,
+  getTotalTokens,
+} from "@/utils/llm";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime: string =
@@ -63,12 +70,24 @@ const PANELS = {
     },
     defaultOpen: false,
   },
+  METRICS_RAW: {
+    label: "Metrics Report",
+    render: (span: NestedSpanWithMetricsResponse) => {
+      return (
+        <Highlight
+          code={JSON.stringify(span.metric_results, null, 2)}
+          language="json"
+        />
+      );
+    },
+    defaultOpen: false,
+  },
 } as const;
 
 const spanDetailsStrategy = [
   {
     kind: OpenInferenceSpanKind.AGENT,
-    panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.RAW_DATA],
+    panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.METRICS_RAW, PANELS.RAW_DATA],
     widgets: [],
   },
   {
@@ -120,16 +139,44 @@ const spanDetailsStrategy = [
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
           const messages = getOutputMessages(span);
+          const model = getSpanModel(span);
 
           return (
-            <Highlight
-              code={JSON.stringify(JSON.parse(messages), null, 2)}
-              language="json"
-            />
+            <Paper
+              variant="outlined"
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                fontSize: "12px",
+              }}
+            >
+              <Box
+                p={1}
+                sx={{ borderBottom: "1px solid", borderColor: "divider" }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.primary"
+                  fontWeight={700}
+                  fontSize={12}
+                >
+                  {model}
+                </Typography>
+              </Box>
+              <Box
+                p={1}
+                sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+              >
+                {messages.map((message, index) => (
+                  <OutputMessageRenderer message={message} key={index} />
+                ))}
+              </Box>
+            </Paper>
           );
         },
         defaultOpen: true,
       },
+      PANELS.METRICS_RAW,
       PANELS.RAW_DATA,
     ],
     widgets: [
@@ -157,11 +204,15 @@ const spanDetailsStrategy = [
       },
       {
         render: (span: NestedSpanWithMetricsResponse) => {
+          const inputTokens = getInputTokens(span) || "N/A";
+          const outputTokens = getOutputTokens(span) || "N/A";
+
           const totalTokens = getTotalTokens(span);
 
           return (
             <Typography variant="body2" color="text.secondary">
-              total tokens: {totalTokens}
+              {inputTokens} prompt → {outputTokens} output = {totalTokens}{" "}
+              tokens
             </Typography>
           );
         },
