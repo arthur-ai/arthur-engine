@@ -279,9 +279,12 @@ class MetricsCalculationExecutor:
         for agg_spec in model.metric_config.aggregation_specs:
             try:
                 calculator = self._pick_metric_calculator(agg_spec, duckdb_conn)
-                self.logger.info(
-                    f"Calculating aggregation with name {calculator.agg_schema.name}",
-                )
+                # Get schema name if available (agg_schema exists in subclasses)
+                schema_name: AggregationSpec = getattr(calculator, "agg_schema", None)
+                if schema_name:
+                    self.logger.info(
+                        f"Calculating aggregation with name {schema_name.name}",
+                    )
                 init_args, aggregate_args = calculator.process_agg_args(
                     datasets,
                 )
@@ -311,8 +314,8 @@ class MetricsCalculationExecutor:
                         f"Failed to process aggregation {agg_spec.aggregation_id}"
                     )
 
-                if calculator:
-                    error_msg += f" - {calculator.agg_schema.name}"
+                if calculator and schema_name:
+                    error_msg += f" - {schema_name.name}"
                 self.logger.error(
                     error_msg,
                     exc_info=exc,

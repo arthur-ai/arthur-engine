@@ -51,7 +51,10 @@ class CustomMetricSQLCalculator(MetricCalculator):
     def aggregate_args_schemas(
         self,
     ) -> List[CustomAggregationVersionSpecSchemaAggregateArgsInner]:
-        return self.agg_schema_config.aggregate_args
+        result: List[CustomAggregationVersionSpecSchemaAggregateArgsInner] = (
+            self.agg_schema_config.aggregate_args
+        )
+        return result
 
     @staticmethod
     def _calculate_time_series(

@@ -104,7 +104,7 @@ class ShieldClientTypeConverter:
             )
         elif isinstance(api, ApiToxicityConfig):
             return ShieldToxicityConfig(
-                threshold=api.threshold,
+                threshold=api.threshold,  # type: ignore
             )
         elif isinstance(api, ApiPIIConfig):
             return ShieldPIIConfig(
