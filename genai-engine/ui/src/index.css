@@ -30,7 +30,7 @@ body {
 }
 
 /* Force custom colors for Mustache highlighting */
-.token.template-punctuation,
+/* .token.template-punctuation,
 .token.punctuation {
   color: #b1fa56 !important;
 }
@@ -51,7 +51,7 @@ body {
 }
 
 /* Force custom colors for Mustache highlighting */
-.token.template-punctuation,
+/*.token.template-punctuation,
 .token.punctuation {
   color: #b1fa56 !important;
 }
@@ -69,7 +69,7 @@ body {
 
 .token.attr-name {
   color: #ac37f6 !important;
-}
+} */
 
 .root {
   isolation: isolate;

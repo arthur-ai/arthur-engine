@@ -2,23 +2,48 @@ import { SemanticConventions } from "@arizeai/openinference-semantic-conventions
 import { z } from "zod";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { Message } from "@/schemas/llm";
+import { LLMOutputMessage, Message } from "@/schemas/llm";
 
 const Messages = z.array(Message);
 
 export function getMessages(span: NestedSpanWithMetricsResponse) {
   try {
-    return Messages.parse([...getMessagesGenerator(span)]);
+    const messages = span.context?.map((message) => ({
+      ...message,
+      content: tryParseContent(message.content),
+    }));
+
+    return Messages.parse(messages);
   } catch {
     return [];
   }
 }
 
-export function getOutputMessages(span: NestedSpanWithMetricsResponse) {
-  const rawMessages =
-    span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE];
+const OutputMessages = z.array(LLMOutputMessage);
 
-  return rawMessages;
+export function getOutputMessages(span: NestedSpanWithMetricsResponse) {
+  const messages = span.response ? [tryParseContent(span.response)].flat() : [];
+  try {
+    return OutputMessages.parse(messages);
+  } catch {
+    return [];
+  }
+}
+
+export function getInputTokens(span: NestedSpanWithMetricsResponse) {
+  return (
+    Number(
+      span.raw_data.attributes[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]
+    ) || 0
+  );
+}
+
+export function getOutputTokens(span: NestedSpanWithMetricsResponse) {
+  return (
+    Number(
+      span.raw_data.attributes[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]
+    ) || 0
+  );
 }
 
 export function getTotalTokens(span: NestedSpanWithMetricsResponse) {
@@ -53,31 +78,11 @@ function tryParseContent(content: string) {
   }
 }
 
-export function* getMessagesGenerator(span: NestedSpanWithMetricsResponse) {
-  let index = 0;
-  const raw = span.raw_data.attributes;
-
-  while (true) {
-    const key = `${SemanticConventions.LLM_INPUT_MESSAGES}.${index}`;
-    const keys = Object.keys(raw).filter((k) => k.startsWith(key));
-
-    if (keys.length === 0) {
-      break;
-    }
-
-    const rawObject = Object.fromEntries(
-      keys.map((k) => [k.substring(key.length + 1), raw[k]])
-    );
-
-    const content = tryParseContent(
-      rawObject[SemanticConventions.MESSAGE_CONTENT]
-    );
-
-    yield {
-      role: rawObject[SemanticConventions.MESSAGE_ROLE],
-      content,
-    };
-
-    index++;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function tryFormatJson(content: any) {
+  try {
+    return JSON.stringify(JSON.parse(content), null, 2);
+  } catch {
+    return JSON.stringify(content, null, 2);
   }
 }

@@ -1,3 +1,4 @@
+import RefreshIcon from "@mui/icons-material/Refresh";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
@@ -21,8 +22,10 @@ import {
 import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
+import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useApi } from "@/hooks/useApi";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
+import { wait } from "@/utils";
 
 type Props = {
   id: string;
@@ -43,7 +46,14 @@ export const TraceDrawerContent = ({ id }: Props) => {
   });
 
   const refreshMetrics = useMutation({
-    mutationFn: () => computeTraceMetrics(api!, { traceId: id! }),
+    mutationFn: async () => {
+      const [, data] = await Promise.all([
+        wait(1000),
+        computeTraceMetrics(api!, { traceId: id! }),
+      ]);
+
+      return data;
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(["trace", id], data);
     },
@@ -111,15 +121,25 @@ export const TraceDrawerContent = ({ id }: Props) => {
               borderBottomRightRadius: 0,
             }}
           />
-          <button
-            className="bg-gray-300 text-black px-4 rounded-r-full text-nowrap"
+          <LoadingButton
+            className="px-4 rounded-r-full text-nowrap shrink-0"
+            loading={refreshMetrics.isPending}
             onClick={() => refreshMetrics.mutate()}
-            disabled={refreshMetrics.isPending}
           >
-            <Typography variant="caption">
-              {refreshMetrics.isPending ? "Refreshing..." : "Refresh Metrics"}
-            </Typography>
-          </button>
+            <span className="flex items-center gap-1">
+              <RefreshIcon
+                sx={{
+                  fontSize: 16,
+                  width: 16,
+                  height: "1lh",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography variant="caption" lineHeight={1}>
+                Refresh Metrics
+              </Typography>
+            </span>
+          </LoadingButton>
         </Stack>
       </Stack>
 

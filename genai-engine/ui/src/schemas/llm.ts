@@ -19,6 +19,14 @@ export const ToolResultContent = z.object({
   output: z.any(),
 });
 
+export const LLMOutputMessage = z.object({
+  files: z.array(z.any()),
+  text: z.string(),
+  sources: z.array(z.any()),
+  reasoning: z.array(z.any()),
+  object: z.any(),
+});
+
 export const MessageContent = z
   .discriminatedUnion("type", [TextContent, ToolCallContent, ToolResultContent])
   .catch({ type: "text", text: "-" });
@@ -49,3 +57,5 @@ export type MessageContent = z.infer<typeof MessageContent>;
 export type TextContent = z.infer<typeof TextContent>;
 export type ToolCallContent = z.infer<typeof ToolCallContent>;
 export type ToolResultContent = z.infer<typeof ToolResultContent>;
+
+export type LLMOutputMessage = z.infer<typeof LLMOutputMessage>;

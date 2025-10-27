@@ -41,6 +41,7 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.2",
     "react-syntax-highlighter": "^15.6.6",
+    "react-use-measure": "^2.1.7",
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "swagger-typescript-api": "^13.2.13",
