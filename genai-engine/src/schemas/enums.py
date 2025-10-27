@@ -231,3 +231,12 @@ class RagProviderAuthenticationMethodEnum(str, Enum):
 
 class RagAPIKeyAuthenticationProviderEnum(str, Enum):
     WEAVIATE = "weaviate"
+
+
+class ConnectionCheckOutcome(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+
+
+class RagProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"

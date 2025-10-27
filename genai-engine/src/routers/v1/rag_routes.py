@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
+from clients.rag_providers.rag_client_constructor import RagClientConstructor
 from dependencies import get_db_session
 from repositories.rag_providers_repository import RagProvidersRepository
 from routers.route_handler import GenaiEngineRoute
@@ -20,9 +21,12 @@ from schemas.internal_schemas import RagProviderConfiguration, User
 from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
+    ConnectionCheckResult,
     RagProviderConfigurationResponse,
+    RagProviderSimilarityTextSearchResponse,
     SearchRagProviderConfigurationsResponse,
 )
 from utils.users import permission_checker
@@ -180,5 +184,57 @@ def delete_rag_provider(
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_providers_repo.delete_rag_provider_configuration(provider_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/tasks/{task_id}/rag_providers/test_connection",
+    description="Test a new RAG provider connection configuration.",
+    response_model=ConnectionCheckResult,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def test_rag_provider_connection(
+    request: RagProviderConfigurationRequest,
+    task_id: str = Path(
+        description="ID of the task to test the new provider connection for. Should be formatted as a UUID.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ConnectionCheckResult:
+    try:
+        rag_provider_config = RagProviderConfiguration._from_request_model(
+            task_id,
+            request,
+        )
+        rag_client_constructor = RagClientConstructor(rag_provider_config)
+        return rag_client_constructor.execute_test_connection()
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/rag_providers/{provider_id}/similarity_text_search",
+    description="Execute a RAG Provider Similarity Text Search.",
+    response_model=RagProviderSimilarityTextSearchResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def execute_similarity_text_search(
+    request: RagVectorSimilarityTextSearchSettingRequest,
+    provider_id: UUID = Path(
+        description="ID of the RAG provider configuration to use for the vector database connection.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagProviderSimilarityTextSearchResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id,
+        )
+        rag_client_constructor = RagClientConstructor(rag_provider_config)
+        return rag_client_constructor.execute_similarity_text_search(request)
     finally:
         db_session.close()

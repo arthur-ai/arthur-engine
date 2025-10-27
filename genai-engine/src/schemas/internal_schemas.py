@@ -60,7 +60,7 @@ from arthur_common.models.response_schemas import (
 )
 from fastapi import HTTPException
 from opentelemetry import trace
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, field_serializer
 from pydantic_core import Url
 
 from db_models import (
@@ -2223,6 +2223,10 @@ class ListDatasetVersions(BaseModel):
 
 class ApiKeyRagProviderSecretValue(BaseModel):
     api_key: SecretStr
+
+    @field_serializer("api_key")
+    def reveal_api_key(self, v: SecretStr) -> str:
+        return v.get_secret_value() if v else None
 
 
 class ApiKeyRagProviderSecret(BaseModel):
