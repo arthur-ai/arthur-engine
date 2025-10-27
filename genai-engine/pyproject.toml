@@ -114,6 +114,19 @@ autoflake = "^2.3.1"
 [tool.poetry.group.performance.dependencies]
 locust = "2.41.6"
 
+
+[tool.poetry.group.linters.dependencies]
+types-cachetools = "^6.2.0.20251022"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+implicit_reexport = true
+explicit_package_bases = true
+mypy_path = "src"
+namespace_packages = true
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-vv"
