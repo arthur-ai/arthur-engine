@@ -28,6 +28,7 @@ The GenAI Engine (formerly known as Arthur Shield) is **a tool for evaluating an
   - [Integration Tests](#integration-tests)
   - [Performance Tests](#performance-tests)
   - [Generate Changelog](#generate-changelog)
+  - [Generate a new Alembic Migration](#generate-a-new-alembic-migration)
 
 ## Getting Started
 
@@ -131,6 +132,7 @@ export POSTGRES_PORT=5432
 export POSTGRES_DB=arthur_genai_engine
 export POSTGRES_USE_SSL=false
 export PYTHONPATH="src:$PYTHONPATH"
+export GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
 ```
 
 #### Populate the Database Schema with Alembic

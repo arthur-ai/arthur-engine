@@ -8917,18 +8917,6 @@
                             }
                         ],
                         "title": "Tokens"
-                    },
-                    "model_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Model Name",
-                        "description": "The model name and version used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",
@@ -10938,18 +10926,6 @@
                         ],
                         "title": "User Id",
                         "description": "The user ID this prompt belongs to"
-                    },
-                    "model_name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Model Name",
-                        "description": "The model name and version being used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro')."
                     }
                 },
                 "type": "object",

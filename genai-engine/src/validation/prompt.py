@@ -1,10 +1,11 @@
+from arthur_common.models.request_schemas import PromptValidationRequest
+from arthur_common.models.response_schemas import ValidationResult
+from sqlalchemy.orm import Session
+
 from repositories.inference_repository import InferenceRepository
 from rules_engine import RuleEngine
 from schemas.internal_schemas import Rule, ValidationRequest
-from arthur_common.models.request_schemas import PromptValidationRequest
-from arthur_common.models.response_schemas import ValidationResult
 from scorer.score import ScorerClient
-from sqlalchemy.orm import Session
 
 
 def validate_prompt(
