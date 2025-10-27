@@ -1,8 +1,10 @@
 import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
 import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
@@ -13,11 +15,56 @@ import VersionSubmenu from "./VersionSubmenu";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider } from "@/lib/api-client/api-client";
+import { ModelProvider, AgenticPromptMetadataResponse } from "@/lib/api-client/api-client";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
 const MODEL_TEXT = "Select Model";
+
+const TruncatedText = ({ text }: { text: string }) => {
+  const textRef = useRef<HTMLDivElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  useEffect(() => {
+    const checkTruncation = () => {
+      if (textRef.current) {
+        const isTextTruncated =
+          textRef.current.scrollWidth > textRef.current.clientWidth;
+        setIsTruncated(isTextTruncated);
+      }
+    };
+
+    checkTruncation();
+    // Recheck on window resize
+    window.addEventListener("resize", checkTruncation);
+    return () => window.removeEventListener("resize", checkTruncation);
+  }, [text]);
+
+  const content = (
+    <Typography
+      variant="body1"
+      color="text.primary"
+      sx={{
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+      ref={textRef}
+    >
+      {text}
+    </Typography>
+  );
+
+  if (isTruncated) {
+    return (
+      <Tooltip title={text} placement="top">
+        {content}
+      </Tooltip>
+    );
+  }
+
+  return content;
+};
 
 const PromptSelectors = ({
   prompt,
@@ -40,9 +87,9 @@ const PromptSelectors = ({
 
   const handleSelectPrompt = async (
     _event: SyntheticEvent<Element, Event>,
-    newValue: string | null
+    newValue: AgenticPromptMetadataResponse | null
   ) => {
-    const selection = newValue || "";
+    const selection = newValue?.name || "";
     if (selection === "") {
       return;
     }
@@ -111,7 +158,6 @@ const PromptSelectors = ({
 
   const handleVersionSelect = async (version: number) => {
     if (!selectedPromptForVersions || !task?.id) {
-      console.log("asdf2");
       showSnackbar("Prompt or task not available", "error");
       return;
     }
@@ -202,14 +248,51 @@ const PromptSelectors = ({
       <div
         className="w-1/3"
         ref={promptSelectorRef}
-        style={{ position: "relative" }}
+        style={{ position: "relative", display: "flex", alignItems: "center" }}
       >
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
-          options={backendPromptOptions}
-          value={currentPromptName}
-          onChange={handleSelectPrompt}
+          options={state.backendPrompts}
+          value={state.backendPrompts.find(
+            (bp) => bp.name === currentPromptName
+          ) || null}
+          onChange={(_event, newValue) =>
+            handleSelectPrompt(_event, newValue)
+          }
+          getOptionLabel={(option) => option.name}
+          isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}
+          sx={{ flex: 1 }}
+          renderOption={(props, option) => {
+            const { key, ...optionProps } = props;
+            return (
+              <Box
+                key={key}
+                component="li"
+                sx={{ "& > img": { mr: 2, flexShrink: 0 } }}
+                {...optionProps}
+              >
+                <Box
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <TruncatedText text={option.name} />
+                </Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ ml: 1, flexShrink: 0 }}
+                >
+                  ({option.versions})
+                </Typography>
+              </Box>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
