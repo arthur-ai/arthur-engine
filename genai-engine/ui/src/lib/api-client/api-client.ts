@@ -594,7 +594,7 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
 export interface CompletionRequest {
   /**
    * Run configuration for the unsaved prompt
-   * @default {"variables":[],"stream":false}
+   * @default {"variables":[],"stream":false,"strict":false}
    */
   completion_request?: PromptCompletionRequest;
   /**
@@ -1236,7 +1236,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
   min_version?: number | null;
   /**
    * Model Name
-   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet') Supports SQL LIKE pattern matching with % wildcards.
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
    */
   model_name?: string | null;
   /**
@@ -1290,7 +1290,7 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
   created_before?: string | null;
   /**
    * Model Name
-   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet'). Supports SQL LIKE pattern matching with % wildcards.
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
    */
   model_name?: string | null;
   /**
@@ -1312,7 +1312,7 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
   page_size?: number;
   /**
    * Prompt Names
-   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.
+   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.
    */
   prompt_names?: string[] | null;
   /**
@@ -2759,6 +2759,12 @@ export interface PromptCompletionRequest {
    * @default false
    */
   stream?: boolean | null;
+  /**
+   * Strict
+   * Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.
+   * @default false
+   */
+  strict?: boolean | null;
   /**
    * Variables
    * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt

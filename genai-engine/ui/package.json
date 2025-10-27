@@ -24,6 +24,8 @@
     "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.3",
+    "@tanstack/react-form": "^1.23.7",
+    "@tanstack/react-query": "^5.90.5",
     "axios": "^1.12.2",
     "framer-motion": "^12.23.21",
     "monaco-editor": "^0.54.0",
@@ -34,11 +36,13 @@
     "swagger-typescript-api": "^13.2.13",
     "tailwindcss": "^4.1.13",
     "uuid": "^13.0.0",
-    "weaviate-client": "^3.8.1"
+    "weaviate-client": "^3.8.1",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@tailwindcss/vite": "^4.1.13",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
     "@types/node": "^24.5.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",

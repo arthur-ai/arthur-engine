@@ -1,5 +1,4 @@
-
-
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
   useContext,
@@ -38,6 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
   });
 
+  const queryClient = useQueryClient();
   const authService = AuthService.getInstance();
 
   useEffect(() => {
@@ -118,6 +118,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = () => {
     authService.logout();
+
+    queryClient.clear();
+
     setAuthState({
       isAuthenticated: false,
       token: null,
@@ -130,6 +133,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const isValid = await authService.validateToken();
       if (!isValid) {
+        queryClient.clear();
+
         setAuthState((prev) => ({
           ...prev,
           isAuthenticated: false,
@@ -139,6 +144,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       return isValid;
     } catch {
+      queryClient.clear();
+
       setAuthState((prev) => ({
         ...prev,
         isAuthenticated: false,
