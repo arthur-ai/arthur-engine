@@ -32,8 +32,8 @@ class UsageRepository:
 
     def get_tokens_usage(
         self,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         group_by: list[TokenUsageScope] = [TokenUsageScope.RULE_TYPE],
     ) -> list[TokenUsageResponse]:
         rows = self.run_tokens_query(start_time, end_time)

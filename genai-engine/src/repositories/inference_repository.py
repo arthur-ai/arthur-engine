@@ -74,8 +74,8 @@ class InferenceRepository:
         user_id: str | None = None,
         model_name: str | None = None,
         page_size: int = 10,
-        start_time: datetime = None,
-        end_time: datetime = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         rule_types: list[RuleType] = [],
         rule_results: list[RuleResultEnum] = [],
         prompt_statuses: list[RuleResultEnum] = [],
@@ -455,7 +455,7 @@ class InferenceRepository:
         self.db_session.commit()
 
 
-def get_new_inference(task_id: str = None, conversation_id: str = None) -> Inference:
+def get_new_inference(task_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Inference:
     inference = Inference(
         id=str(uuid.uuid4()),
         result=RuleResultEnum.PASS,
@@ -474,7 +474,7 @@ def get_inference_prompt(
     inference_id: str,
     prompt: str,
     rule_engine_results: List[RuleEngineResult],
-    user_id: str = None,
+    user_id: Optional[str] = None,
     tokens: Optional[int] = None,
 ) -> InferencePrompt:
     prompt_rule_results = [

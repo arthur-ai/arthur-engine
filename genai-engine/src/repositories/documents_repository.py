@@ -9,6 +9,7 @@ from clients.s3.S3Client import S3Client
 from db_models import DatabaseDocument, DatabaseEmbeddingReference
 from schemas.enums import DocumentType
 from schemas.internal_schemas import Document
+from typing import Optional
 
 
 class DocumentRepository:
@@ -34,7 +35,7 @@ class DocumentRepository:
 
     def get_documents(
         self,
-        user_id: str = None,
+        user_id: Optional[str] = None,
     ):
         query = self.db_session.query(DatabaseDocument)
 

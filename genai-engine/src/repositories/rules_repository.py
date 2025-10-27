@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from db_models import DatabaseRule
 from schemas.internal_schemas import Rule
 from utils import constants
+from typing import Optional
 
 
 class RuleRepository:
@@ -23,14 +24,14 @@ class RuleRepository:
 
     def query_rules(
         self,
-        rule_ids: list[str] = None,
-        prompt_enabled: bool = None,
-        response_enabled: bool = None,
+        rule_ids: Optional[list[str]] = None,
+        prompt_enabled: Optional[bool] = None,
+        response_enabled: Optional[bool] = None,
         include_archived: bool = False,
-        rule_scopes: list[RuleScope] = None,
-        rule_types: list[RuleType] = None,
+        rule_scopes: Optional[list[RuleScope]] = None,
+        rule_types: Optional[list[RuleType]] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page_size: int = None,
+        page_size: Optional[int] = None,
         page: int = 0,
     ):
         query = self.db_session.query(DatabaseRule)

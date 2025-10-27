@@ -14,6 +14,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from schemas.internal_schemas import ApplicationConfiguration, Rule, Task
 from utils import constants
+from typing import Optional
 
 tracer = trace.get_tracer(__name__)
 
@@ -41,9 +42,9 @@ class TaskRepository:
     @tracer.start_as_current_span("query_tasks")
     def query_tasks(
         self,
-        ids: list[str] = None,
-        task_name: str = None,
-        is_agentic: bool = None,
+        ids: Optional[list[str]] = None,
+        task_name: Optional[str] = None,
+        is_agentic: Optional[bool] = None,
         include_archived: bool = False,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
