@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 import sqlalchemy.types as types
 from sqlalchemy import TIMESTAMP, Boolean, Column
@@ -11,12 +11,12 @@ from utils.utils import get_env_var
 OUTPUT_DIMENSION_SIZE_ADA_002 = 1536
 
 
-class CustomerDataString(types.TypeDecorator):
+class CustomerDataString(types.TypeDecorator[str]):
     """Some customers don't want us storing any of their input data, use this type instead of string to overwrite any content on SQL insert generation"""
 
     impl = types.String
 
-    def process_bind_param(self, value, _):
+    def process_bind_param(self, value, _) -> str | Any:  # type: ignore[no-untyped-def]
         persistence = get_env_var(constants.GENAI_ENGINE_ENABLE_PERSISTENCE_ENV_VAR)
         if persistence == "disabled":
             return ""

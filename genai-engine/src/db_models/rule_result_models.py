@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
-    Column,
     Float,
     ForeignKey,
     Index,
@@ -17,11 +18,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, CustomerDataString
 
+if TYPE_CHECKING:
+    from db_models.rule_models import DatabaseRule
+
 
 class DatabasePromptRuleResult(Base):
     __tablename__ = "prompt_rule_results"
     __table_args__ = (UniqueConstraint("inference_prompt_id", "rule_id"),)
-    id: Mapped[str] = Column(String, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     inference_prompt_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("inference_prompts.id"),
@@ -42,7 +46,7 @@ class DatabasePromptRuleResult(Base):
 class DatabaseResponseRuleResult(Base):
     __tablename__ = "response_rule_results"
     __table_args__ = (UniqueConstraint("inference_response_id", "rule_id"),)
-    id: Mapped[str] = Column(String, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     inference_response_id: Mapped[str] = mapped_column(
         String,
         ForeignKey("inference_responses.id"),

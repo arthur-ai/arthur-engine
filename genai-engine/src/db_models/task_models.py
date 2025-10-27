@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
+
+if TYPE_CHECKING:
+    from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+    from db_models.rule_models import DatabaseRule
+    from db_models.telemetry_models import DatabaseTaskToMetrics
 
 
 class DatabaseTask(Base, IsArchivable):

@@ -1,11 +1,16 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, SoftDeletedModel
+
+if TYPE_CHECKING:
+    from db_models.task_models import DatabaseTask
 
 
 class DatabaseAgenticPrompt(SoftDeletedModel, Base):

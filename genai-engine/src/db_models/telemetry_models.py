@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from sqlalchemy import (
     JSON,
@@ -16,6 +18,9 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, IsArchivable
+
+if TYPE_CHECKING:
+    from db_models.task_models import DatabaseTask
 
 
 class DatabaseTraceMetadata(Base):
@@ -114,7 +119,7 @@ class DatabaseSpan(Base):
         nullable=False,
         server_default=text("'Unset'"),
     )
-    raw_data: Mapped[dict] = mapped_column(
+    raw_data: Mapped[Any] = mapped_column(
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=False,
     )
@@ -204,7 +209,7 @@ class DatabaseMetricResult(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     metric_type: Mapped[str] = mapped_column(String, nullable=False)
-    details: Mapped[Optional[dict]] = mapped_column(
+    details: Mapped[Optional[Any]] = mapped_column(
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=True,
     )  # Native JSON column for MetricScoreDetails

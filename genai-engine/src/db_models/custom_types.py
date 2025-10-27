@@ -3,20 +3,21 @@ import hashlib
 import json
 import logging
 import os
+from typing import Any
 
-import sqlalchemy.types as types
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+from sqlalchemy.types import LargeBinary, Text, TypeDecorator
 
 logger = logging.getLogger(__name__)
 
 
-class JsonType(types.TypeDecorator):
-    impl = types.LargeBinary
+class JsonType(TypeDecorator[Any]):
+    impl = LargeBinary
 
-    def process_bind_param(self, value, engine):
+    def process_bind_param(self, value, engine) -> bytes:  # type: ignore[no-untyped-def]
         return json.dumps(value).encode("utf-8")
 
-    def process_result_value(self, value, engine):
+    def process_result_value(self, value, engine) -> Any:  # type: ignore[no-untyped-def]
         if value:
             return json.loads(value)
         else:
@@ -24,7 +25,7 @@ class JsonType(types.TypeDecorator):
 
 
 class RoleType(JsonType):
-    def process_result_value(self, value, engine):
+    def process_result_value(self, value, engine) -> list[str]:  # type: ignore[no-untyped-def]
         if value:
             roles = json.loads(value)
             if not isinstance(roles, list):
@@ -35,10 +36,10 @@ class RoleType(JsonType):
             return []
 
 
-class EncryptedJSON(types.TypeDecorator):
-    impl = types.Text
+class EncryptedJSON(TypeDecorator[Any]):
+    impl = Text
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         encryption_keys: list[Fernet] = []
         raw_keys_str = os.getenv("GENAI_ENGINE_SECRET_STORE_KEY")
@@ -61,14 +62,14 @@ class EncryptedJSON(types.TypeDecorator):
 
         self.cipher = MultiFernet(encryption_keys)
 
-    def process_bind_param(self, value: dict, dialect):
+    def process_bind_param(self, value, dialect) -> str | None:  # type: ignore[no-untyped-def]
         if value is None:
             return None
         json_str = json.dumps(value)
         encrypted = self.cipher.encrypt(json_str.encode())
         return encrypted.decode()
 
-    def process_result_value(self, value: str, dialect):
+    def process_result_value(self, value, dialect) -> Any:  # type: ignore[no-untyped-def]
         if value is None:
             return None
         try:
@@ -80,6 +81,6 @@ class EncryptedJSON(types.TypeDecorator):
             # to overwrite values in the database because we must first fetch the row to update
             # and loading the row fails
             logger.error(
-                "failed to decrypt secret from database, did a key get rotated or reset?"
+                "failed to decrypt secret from database, did a key get rotated or reset?",
             )
-            return ""
+            return None
