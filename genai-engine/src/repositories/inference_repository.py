@@ -334,6 +334,7 @@ class InferenceRepository:
             response_context,
             response_rule_results,
             tokens=self.token_counter.count(response),
+            model_name=model_name,
         )
 
         db_inference_response = inference_response._to_database_model()
