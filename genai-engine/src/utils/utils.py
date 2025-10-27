@@ -165,7 +165,7 @@ def get_env_var(env_var: str, none_on_missing=False, default=None):
     return value
 
 
-def get_genai_engine_version():
+def get_genai_engine_version() -> str:
     global _genai_engine_version
     if _genai_engine_version is not None:
         return _genai_engine_version

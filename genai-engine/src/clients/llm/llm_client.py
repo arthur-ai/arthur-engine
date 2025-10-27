@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import List, Union
+from typing import Any, List, Union
 
 import litellm
 from litellm import get_model_cost_map, model_cost_map_url
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def supported_models() -> dict[str, list[str]]:
-    models = dict()
+    models: dict[str, list[str]] = {}
     for model_name, cost_config in get_model_cost_map(url=model_cost_map_url).items():
         # only support chat based models for now
         if cost_config.get("mode") != "chat":
@@ -36,7 +36,7 @@ def supported_models() -> dict[str, list[str]]:
 SUPPORTED_TEXT_MODELS = supported_models()
 
 
-def refresh_models_periodically():
+def refresh_models_periodically() -> None:
     global SUPPORTED_TEXT_MODELS
     while True:
         try:
@@ -57,17 +57,31 @@ class LLMClient:
         self.provider = provider
         self.api_key = api_key
 
-    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]:
+    def completion(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
-        return litellm.completion(*args, api_key=self.api_key, **kwargs)
+        response: ModelResponse | CustomStreamWrapper = litellm.completion(
+            *args,
+            api_key=self.api_key,
+            **kwargs,
+        )
+        return response
 
     async def acompletion(
         self,
-        *args,
-        **kwargs,
-    ) -> Union[ModelResponse, CustomStreamWrapper]:
+        *args: Any,
+        **kwargs: Any,
+    ) -> ModelResponse | CustomStreamWrapper:
         # Delegate to the top-level function
-        return await litellm.acompletion(*args, api_key=self.api_key, **kwargs)
+        response: ModelResponse | CustomStreamWrapper = await litellm.acompletion(
+            *args,
+            api_key=self.api_key,
+            **kwargs,
+        )
+        return response
 
     def get_available_models(self) -> List[str]:
         if self.provider in SUPPORTED_TEXT_MODELS:
