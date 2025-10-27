@@ -5,6 +5,7 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { trace, context } from "@opentelemetry/api";
+import { SemanticConventions, OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 
 interface Message {
   role: string;
@@ -57,8 +58,8 @@ export async function POST(req: NextRequest) {
     const agentSpan = tracer.startSpan("imageAnalysisAgent");
 
     // Set OpenInference span kind as AGENT
-    agentSpan.setAttribute("openinference.span.kind", "AGENT");
-    agentSpan.setAttribute("agent.name", "imageAnalysisAgent");
+    agentSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKind.AGENT);
+    agentSpan.setAttribute(SemanticConventions.AGENT_NAME, "imageAnalysisAgent");
 
     // Generate a run ID for this agent invocation
     const runId = crypto.randomUUID();
@@ -66,11 +67,11 @@ export async function POST(req: NextRequest) {
       runId,
       "agent.instructions": "You are a helpful image analysis assistant with vision capabilities. You can analyze images, photos, screenshots, charts, graphs, and data visualizations.",
     };
-    agentSpan.setAttribute("metadata", JSON.stringify(metadata));
+    agentSpan.setAttribute(SemanticConventions.METADATA, JSON.stringify(metadata));
 
     // Set agent input/output at top level
-    agentSpan.setAttribute("input.value", JSON.stringify(messages));
-    agentSpan.setAttribute("input.mime_type", "application/json");
+    agentSpan.setAttribute(SemanticConventions.INPUT_VALUE, JSON.stringify(messages));
+    agentSpan.setAttribute(SemanticConventions.INPUT_MIME_TYPE, "application/json");
 
     try {
       // Create child LLM span with the agent span as parent
@@ -79,27 +80,29 @@ export async function POST(req: NextRequest) {
       const llmSpan = tracer.startSpan("gpt-4o", undefined, ctx);
 
       // Set OpenInference span kind as LLM
-      llmSpan.setAttribute("openinference.span.kind", "LLM");
-      llmSpan.setAttribute("llm.model_name", "gpt-4o");
-      llmSpan.setAttribute("llm.provider", "openai");
+      llmSpan.setAttribute(SemanticConventions.OPENINFERENCE_SPAN_KIND, OpenInferenceSpanKind.LLM);
+      llmSpan.setAttribute(SemanticConventions.LLM_MODEL_NAME, "gpt-4o");
+      llmSpan.setAttribute(SemanticConventions.LLM_PROVIDER, "openai");
 
       // Set LLM input.value and input.mime_type
-      llmSpan.setAttribute("input.value", JSON.stringify({ messages }));
-      llmSpan.setAttribute("input.mime_type", "application/json");
+      llmSpan.setAttribute(SemanticConventions.INPUT_VALUE, JSON.stringify({ messages }));
+      llmSpan.setAttribute(SemanticConventions.INPUT_MIME_TYPE, "application/json");
 
       // Set input messages
       messages.forEach((msg: Message, idx: number) => {
-        llmSpan.setAttribute(`llm.input_messages.${idx}.message.role`, msg.role);
+        llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.role`, msg.role);
         if (typeof msg.content === "string") {
           // Text-only message uses message.content (singular)
-          llmSpan.setAttribute(`llm.input_messages.${idx}.message.content`, msg.content);
+          llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.content`, msg.content);
         } else if (Array.isArray(msg.content)) {
           // Multimodal message uses message.contents (plural) - flatten the array
           msg.content.forEach((part: MessageContent, partIdx: number) => {
-            if (part.type === "text") {
-              llmSpan.setAttribute(`llm.input_messages.${idx}.message.contents.${partIdx}.text.text`, part.text);
-            } else if (part.type === "image_url") {
-              llmSpan.setAttribute(`llm.input_messages.${idx}.message.contents.${partIdx}.image.image.url`, part.image_url.url);
+            if (part.type === "text" && part.text !== undefined) {
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.type`, "text");
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.text`, part.text);
+            } else if (part.type === "image_url" && part.image_url?.url !== undefined) {
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.type`, "image");
+              llmSpan.setAttribute(`${SemanticConventions.LLM_INPUT_MESSAGES}.${idx}.message.contents.${partIdx}.message_content.image.image.url`, part.image_url.url);
             }
           });
         }
@@ -113,25 +116,25 @@ export async function POST(req: NextRequest) {
       const response = completion.choices[0]?.message?.content || "";
 
       // Set LLM output.value and output.mime_type
-      llmSpan.setAttribute("output.value", JSON.stringify({ text: response }));
-      llmSpan.setAttribute("output.mime_type", "application/json");
+      llmSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, JSON.stringify({ text: response }));
+      llmSpan.setAttribute(SemanticConventions.OUTPUT_MIME_TYPE, "application/json");
 
       // Set output message
-      llmSpan.setAttribute("llm.output_messages.0.message.role", "assistant");
-      llmSpan.setAttribute("llm.output_messages.0.message.content", response);
+      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.message.role`, "assistant");
+      llmSpan.setAttribute(`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.message.content`, response);
 
       // Set token counts
       if (completion.usage) {
-        llmSpan.setAttribute("llm.token_count.prompt", completion.usage.prompt_tokens);
-        llmSpan.setAttribute("llm.token_count.completion", completion.usage.completion_tokens);
-        llmSpan.setAttribute("llm.token_count.total", completion.usage.total_tokens);
+        llmSpan.setAttribute(SemanticConventions.LLM_TOKEN_COUNT_PROMPT, completion.usage.prompt_tokens);
+        llmSpan.setAttribute(SemanticConventions.LLM_TOKEN_COUNT_COMPLETION, completion.usage.completion_tokens);
+        llmSpan.setAttribute(SemanticConventions.LLM_TOKEN_COUNT_TOTAL, completion.usage.total_tokens);
       }
 
       llmSpan.end();
 
       // Set agent output
-      agentSpan.setAttribute("output.value", JSON.stringify({ text: response, files: [] }));
-      agentSpan.setAttribute("output.mime_type", "application/json");
+      agentSpan.setAttribute(SemanticConventions.OUTPUT_VALUE, JSON.stringify({ text: response, files: [] }));
+      agentSpan.setAttribute(SemanticConventions.OUTPUT_MIME_TYPE, "application/json");
 
       agentSpan.end();
 
