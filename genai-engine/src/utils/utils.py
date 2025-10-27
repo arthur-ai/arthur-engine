@@ -94,7 +94,10 @@ class TracedThreadPoolExecutor(ThreadPoolExecutor):
             return super().submit(lambda: fn(*args, **kwargs))
 
 
-def get_postgres_connection_string(use_ssl=False, ssl_key_path=None):
+def get_postgres_connection_string(
+    use_ssl: bool = False,
+    ssl_key_path: str | None = None,
+) -> str:
     postgres_user = os.environ["POSTGRES_USER"]
     postgres_pass = os.environ["POSTGRES_PASSWORD"]
     postgres_url = os.environ["POSTGRES_URL"]

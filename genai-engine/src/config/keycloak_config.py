@@ -84,7 +84,7 @@ class KeyCloakSettings(BaseSettings):
         )
 
     @model_validator(mode="after")
-    def validate_parameters(self):
+    def validate_parameters(self) -> "KeyCloakSettings":
         if self.ENABLED:
             if not all(
                 [
