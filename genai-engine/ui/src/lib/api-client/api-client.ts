@@ -1090,11 +1090,6 @@ export interface ExternalInferencePrompt {
   inference_id: string;
   /** Message */
   message: string;
-  /**
-   * Model Name
-   * The model name and version used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
-   */
-  model_name?: string | null;
   /** Prompt Rule Results */
   prompt_rule_results: ExternalRuleResult[];
   result: RuleResultEnum;
@@ -2780,11 +2775,6 @@ export interface PromptValidationRequest {
    * The unique conversation ID this prompt belongs to. All prompts and responses from this         conversation can later be reconstructed with this ID.
    */
   conversation_id?: string | null;
-  /**
-   * Model Name
-   * The model name and version being used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
-   */
-  model_name?: string | null;
   /**
    * Prompt
    * Prompt to be validated by GenAI Engine

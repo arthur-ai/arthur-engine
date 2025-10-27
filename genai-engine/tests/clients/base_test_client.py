@@ -694,13 +694,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             uri = f"/api/v2/tasks/{task_id}/validate_prompt"
         if prompt is None:
             prompt = random.choice(EXAMPLE_PROMPTS)
+
+        request_body = {
+            "prompt": prompt,
+            "conversation_id": conversation_id,
+            "user_id": user_id,
+        }
+
         resp = self.base_client.post(
             url=uri,
-            json={
-                "prompt": prompt,
-                "conversation_id": conversation_id,
-                "user_id": user_id,
-            },
+            json=request_body,
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -720,6 +723,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         response: str = None,
         task_id: str = None,
         context: str = None,
+        model_name: str = None,
     ) -> tuple[int, ValidationResult]:
         uri = "/api/v2/validate_response/"
         if task_id != None:
@@ -728,6 +732,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
             body["context"] = context
+        if model_name:
+            body["model_name"] = model_name
         resp = self.base_client.post(
             uri + inference_id,
             json=body,

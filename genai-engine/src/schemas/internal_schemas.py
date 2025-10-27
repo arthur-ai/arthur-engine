@@ -1045,6 +1045,7 @@ class InferenceResponse(BaseModel):
     context: Optional[str] = None
     response_rule_results: List[ResponseRuleResult] = []
     tokens: int | None = None
+    model_name: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseInferenceResponse):
@@ -1061,6 +1062,7 @@ class InferenceResponse(BaseModel):
                 for r in x.response_rule_results
             ],
             tokens=x.tokens,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1095,6 +1097,7 @@ class InferenceResponse(BaseModel):
                 r._to_database_model() for r in self.response_rule_results
             ],
             tokens=self.tokens,
+            model_name=self.model_name,
         )
 
 
@@ -1204,6 +1207,7 @@ class Inference(BaseModel):
     inference_response: Optional[InferenceResponse] = None
     inference_feedback: List[InferenceFeedback]
     user_id: Optional[str] = None
+    model_name: Optional[str] = None
 
     def has_prompt(self):
         return self.inference_prompt != None
@@ -1238,6 +1242,7 @@ class Inference(BaseModel):
                 InferenceFeedback.from_database_model(i) for i in x.inference_feedback
             ],
             user_id=x.user_id,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1257,6 +1262,7 @@ class Inference(BaseModel):
             ),
             inference_feedback=[i.to_response_model() for i in self.inference_feedback],
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
     def _to_database_model(self):
@@ -1274,6 +1280,7 @@ class Inference(BaseModel):
                 else None
             ),
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
 
@@ -1288,6 +1295,10 @@ class ValidationRequest(BaseModel):
     )
     context: Optional[str] = Field(
         description="Optional data provided as context for the validation.",
+        default=None,
+    )
+    model_name: Optional[str] = Field(
+        description="Model name to be used for the validation.",
         default=None,
     )
     tokens: Optional[List[str]] = Field(
