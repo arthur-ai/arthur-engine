@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
+import { replaceKeywords } from "./mustacheExtractor";
 import { PromptType, promptClassificationEnum } from "./types";
 
 import {
@@ -11,6 +12,7 @@ import {
   SpanWithMetricsResponse,
   JsonSchema,
   ToolCall,
+  CompletionRequest,
 } from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
@@ -308,4 +310,54 @@ export const spanToPrompt = (
   };
 
   return prompt;
+};
+
+export const toCompletionRequest = (
+  prompt: PromptType,
+  keywords: Map<string, string>
+): CompletionRequest => {
+  // Replace keywords in all message content
+  const messages = prompt.messages.map((msg) => ({
+    role: msg.role,
+    content: replaceKeywords(msg.content, keywords),
+    tool_call_id: msg.tool_call_id || null,
+    tool_calls: msg.tool_calls || null,
+  }));
+
+  return {
+    model_name: prompt.modelName,
+    model_provider: prompt.provider as ModelProvider,
+    messages,
+    tools:
+      prompt.tools.length > 0
+        ? prompt.tools.map((tool) => ({
+            function: {
+              name: tool.function.name,
+              description: tool.function.description,
+              parameters: tool.function.parameters,
+            },
+            strict: tool.strict,
+            type: tool.type,
+          }))
+        : undefined,
+    tool_choice: prompt.toolChoice,
+    temperature: prompt.modelParameters.temperature,
+    top_p: prompt.modelParameters.top_p,
+    max_tokens: prompt.modelParameters.max_tokens,
+    max_completion_tokens: prompt.modelParameters.max_completion_tokens,
+    frequency_penalty: prompt.modelParameters.frequency_penalty,
+    presence_penalty: prompt.modelParameters.presence_penalty,
+    stop: prompt.modelParameters.stop,
+    seed: prompt.modelParameters.seed,
+    reasoning_effort: prompt.modelParameters.reasoning_effort,
+    response_format: prompt.responseFormat
+      ? JSON.parse(prompt.responseFormat)
+      : null,
+    timeout: prompt.modelParameters.timeout,
+    stream_options: prompt.modelParameters.stream_options,
+    logprobs: prompt.modelParameters.logprobs,
+    top_logprobs: prompt.modelParameters.top_logprobs,
+    logit_bias: prompt.modelParameters.logit_bias,
+    thinking: prompt.modelParameters.thinking,
+  };
 };
