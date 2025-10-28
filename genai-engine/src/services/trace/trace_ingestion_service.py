@@ -109,9 +109,11 @@ class TraceIngestionService:
                         accepted_spans += 1
                     except Exception as e:
                         rejected_spans += 1
-                        rejected_reasons.append("Invalid span data format.")
-                        logger.debug(
-                            f"Rejected span due to invalid format: \n{str(e)}",
+                        error_msg = f"Invalid span data format: {str(e)}"
+                        rejected_reasons.append(error_msg)
+                        logger.error(
+                            f"Rejected span due to error: {str(e)}\nSpan data keys: {list(span_data.keys()) if isinstance(span_data, dict) else 'not a dict'}",
+                            exc_info=True,
                         )
 
         return spans_data, (
@@ -153,8 +155,25 @@ class TraceIngestionService:
         span_data[SPAN_VERSION_KEY] = EXPECTED_SPAN_VERSION
         start_time, end_time = self._extract_timestamps(span_data)
 
-        # Extract and normalize status code
-        span_status_code = span_data.get("status", {}).get("code", "Unset")
+        # Extract and normalize status code (handle nested structure after normalization)
+        status = span_data.get("status")
+        if isinstance(status, dict):
+            span_status_code = status.get("code", "Unset")
+        elif isinstance(status, list) and len(status) > 0:
+            # If status was converted to list (shouldn't happen but handle it)
+            span_status_code = (
+                status[0]
+                if isinstance(status[0], (str, int))
+                else (
+                    status[0].get("code", "Unset")
+                    if isinstance(status[0], dict)
+                    else "Unset"
+                )
+            )
+        else:
+            span_status_code = (
+                trace_utils.get_nested_value(span_data, "status.code") or "Unset"
+            )
         span_status_code = trace_utils.clean_status_code(span_status_code)
 
         return DatabaseSpan(
@@ -206,28 +225,21 @@ class TraceIngestionService:
         return isinstance(task_id, str) and bool(task_id.strip())
 
     def _normalize_span_attributes(self, span_data: dict) -> dict:
-        """Normalize span attributes from OpenTelemetry format to flat key-value pairs."""
-        normalized_span = span_data.copy()
-
-        if "attributes" in normalized_span:
-            normalized_attributes = trace_utils.extract_attributes_from_raw_data(
-                normalized_span,
-            )
-            normalized_span["attributes"] = normalized_attributes
-
-        return normalized_span
+        """Normalize span to nested dictionary structure with selective JSON deserialization."""
+        return trace_utils.normalize_span_to_nested_dict(span_data)
 
     def _get_attribute_value(
         self,
         span_data: dict,
         attribute_key: str,
     ) -> Optional[str]:
-        """Extract a specific attribute value from span data."""
+        """Extract a specific attribute value from nested span data."""
         attributes = span_data.get("attributes", {})
 
-        # Attributes should already be normalized (flat dict)
+        # Navigate nested structure using dot notation
         if isinstance(attributes, dict):
-            return attributes.get(attribute_key)
+            value = trace_utils.get_nested_value(attributes, attribute_key)
+            return str(value) if value is not None else None
 
         # Fallback for backward compatibility with OpenTelemetry format
         if isinstance(attributes, list):

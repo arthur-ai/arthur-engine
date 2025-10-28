@@ -1,88 +1,49 @@
 import base64
+import copy
 import json
 import logging
 import re
 from datetime import datetime
 
-from openinference.semconv.trace import (
-    MessageAttributes,
-    OpenInferenceMimeTypeValues,
-    SpanAttributes,
-)
+from benedict import benedict
+from openinference.semconv.trace import OpenInferenceMimeTypeValues
 
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)
 
-# Compile regex patterns once for better performance
+# Compiled regex patterns for query extraction (all case-insensitive)
 _QUERY_PATTERNS = [
-    # Direct query indicators
-    re.compile(r"(?:query|Query):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:prompt|Prompt):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:question|Question):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:task|Task):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    re.compile(r"(?:request|Request):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    # User-specific patterns
+    # Direct indicators with optional colon (query, prompt, question, task, request)
     re.compile(
-        r"(?:user query|User query|USER QUERY):\s*(.+?)(?:\n|$)",
+        r"(?:query|prompt|question|task|request):?\s+(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # User-specific patterns with optional colon
     re.compile(
-        r"(?:user prompt|User prompt|USER PROMPT):\s*(.+?)(?:\n|$)",
+        r"user\s+(?:query|prompt|question|asks?|wants?\s+to\s+know|is\s+asking):?\s+(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # Context-based patterns (these naturally have prepositions, no colon expected)
     re.compile(
-        r"(?:user question|User question|USER QUESTION):\s*(.+?)(?:\n|$)",
+        r"(?:based\s+on|given|answer|respond\s+to|help\s+(?:me\s+)?with)\s+(?:the\s+following:?)?\s*(.+?)(?:\n|$)",
         re.IGNORECASE | re.DOTALL,
     ),
-    re.compile(
-        r"(?:user asks?|User asks?):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:user wants? to know|User wants? to know):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:user is asking|User is asking):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    # Context-based patterns
-    re.compile(
-        r"(?:based on the following|Based on the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:given the following|Given the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:answer the following|Answer the following):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(
-        r"(?:respond to|Respond to):\s*(.+?)(?:\n|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    re.compile(r"(?:help with|Help with):\s*(.+?)(?:\n|$)", re.IGNORECASE | re.DOTALL),
-    # Quoted content (might be the actual query)
+    # Quoted content (direct quotes likely contain the query)
     re.compile(r'"([^"]+)"'),
     re.compile(r"'([^']+)'"),
-    # Multi-line patterns with newlines
+    # Multi-line patterns with optional colon
     re.compile(
-        r"(?:query|Query):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
+        r"(?:query|prompt):?\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
         re.IGNORECASE | re.DOTALL,
     ),
+    # Questions (anything ending with ?)
+    re.compile(r"([^.!?]*\?[^.!?]*)"),
+    # Polite requests (please/can you/could you/would you)
     re.compile(
-        r"(?:prompt|Prompt):\s*\n\s*(.+?)(?:\n\n|\n(?=[A-Z])|$)",
-        re.IGNORECASE | re.DOTALL,
-    ),
-    # Fallback: look for sentences that seem like questions or requests
-    re.compile(r"([^.!?]*\?[^.!?]*)"),  # Questions
-    re.compile(
-        r"((?:please|Please|can you|Can you|could you|Could you|would you|Would you)[^.!?]*[.!?])",
+        r"((?:please|can\s+you|could\s+you|would\s+you)\s+[^.!?]*[.!?])",
         re.IGNORECASE,
-    ),  # Polite requests
+    ),
 ]
 
 _WHITESPACE_PATTERN = re.compile(r"\s+")
@@ -94,8 +55,6 @@ _PREFIX_PATTERNS = [
     re.compile(r"^(?:please\s+)?(?:help\s+)?(?:me\s+)?(?:with\s+)?", re.IGNORECASE),
     re.compile(r"^(?:i\s+)?(?:need\s+)?(?:you\s+)?(?:to\s+)?", re.IGNORECASE),
 ]
-
-# Additional compiled patterns for fallback sentence extraction
 _SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
 
 
@@ -149,28 +108,27 @@ def clean_extracted_text(text: str) -> str:
 
 def extract_span_features(span_dict):
     """
-    Extract and clean LLM-specific features from a span dictionary.
-    Optimized version that expects normalized attributes.
+    Extract and clean LLM-specific features from a span dictionary with nested attributes.
 
     Args:
-        span_dict: Dictionary containing span data with normalized attributes
+        span_dict: Dictionary containing span data with nested attributes
 
     Returns:
         Dictionary containing processed span with extracted LLM features
     """
     try:
-        # Get normalized attributes (should already be normalized)
         attributes = span_dict.get("attributes", {})
 
         # Fallback for backward compatibility with OpenTelemetry format
         if isinstance(attributes, list):
             attributes = extract_attributes_from_raw_data(span_dict)
 
-        # Extract LLM-specific data
-        llm_data = extract_llm_data(attributes)
+        # Directly access input_messages from nested attributes
+        input_messages = get_nested_value(attributes, "llm.input_messages") or []
+        output_messages = get_nested_value(attributes, "llm.output_messages") or []
 
         # Early exit if no conversation data
-        if not llm_data["input_conversation"]:
+        if not input_messages:
             return {
                 "system_prompt": "",
                 "user_query": "",
@@ -178,44 +136,45 @@ def extract_span_features(span_dict):
                 "context": [],
             }
 
-        # Extract data with optimized logic
+        # Extract system prompt and user query from nested structure
         system_prompt = ""
-        query = ""
+        user_query = ""
 
-        # Use more efficient extraction
-        for message in llm_data["input_conversation"]:
-            if message["role"] == "system" and not system_prompt:
-                system_prompt = message.get("content", "")
-            elif message["role"] == "user" and not query:
-                query = message.get("content", "")
+        for msg in input_messages:
+            message_obj = msg.get("message", {})
+            role = message_obj.get("role")
+            content = message_obj.get("content", "")
 
-            # Early exit if we have both
-            if system_prompt and query:
+            if role == "system" and not system_prompt:
+                system_prompt = content
+            elif role == "user" and not user_query:
+                user_query = content
+
+            if system_prompt and user_query:
                 break
 
-        # Extract response more efficiently
+        # Extract response from output messages
         response = ""
-        if llm_data["output_conversation"]:
-            first_output = llm_data["output_conversation"][0]
-            if isinstance(first_output, dict):
-                if "content" in first_output:
-                    response = first_output["content"]
-                elif "tool_calls" in first_output:
-                    response = json.dumps(first_output["tool_calls"])
-                else:
-                    response = json.dumps(first_output)
+        if output_messages:
+            first_output = output_messages[0].get("message", {})
+            if "content" in first_output:
+                response = first_output["content"]
+            elif "tool_calls" in first_output:
+                response = json.dumps(first_output["tool_calls"])
             else:
-                response = str(first_output)
+                response = json.dumps(first_output)
 
-        # Only use fuzzy extraction if query is still empty
-        if not query and system_prompt:
-            query = fuzzy_extract_query(system_prompt)
+        # Fuzzy extraction fallback: only if user_query is missing or matches system_prompt
+        if (not user_query or user_query == system_prompt) and system_prompt:
+            extracted = fuzzy_extract_query(system_prompt)
+            if extracted and extracted != system_prompt:
+                user_query = extracted
 
         return {
             "system_prompt": system_prompt,
-            "user_query": query,
+            "user_query": user_query,
             "response": response,
-            "context": llm_data["input_conversation"],
+            "context": input_messages,
         }
 
     except Exception as e:
@@ -312,10 +271,10 @@ def clean_null_values(obj):
 
 def extract_llm_data(attributes):
     """
-    Extract LLM-specific data from a span's attributes.
+    Extract LLM-specific data from nested span attributes.
 
     Args:
-        span_dict: Dictionary containing span data including attributes
+        attributes: Dictionary containing nested span attributes
 
     Returns:
         Dictionary containing extracted LLM data
@@ -330,92 +289,81 @@ def extract_llm_data(attributes):
     }
 
     # Extract input if it exists and is JSON
-    if (
-        SpanAttributes.INPUT_MIME_TYPE in attributes
-        and attributes[SpanAttributes.INPUT_MIME_TYPE]
-        == OpenInferenceMimeTypeValues.JSON.value
-    ):
-        if SpanAttributes.INPUT_VALUE in attributes:
-            llm_data["input"] = json_to_dict(attributes[SpanAttributes.INPUT_VALUE])
+    input_mime_type = get_nested_value(attributes, "input.mime_type")
+    if input_mime_type == OpenInferenceMimeTypeValues.JSON.value:
+        input_value = get_nested_value(attributes, "input.value")
+        if input_value is not None:
+            if isinstance(input_value, str):
+                try:
+                    llm_data["input"] = json.loads(input_value)
+                except json.JSONDecodeError:
+                    llm_data["input"] = input_value
+            else:
+                llm_data["input"] = input_value
 
     # Extract output if it exists and is JSON
-    if (
-        SpanAttributes.OUTPUT_MIME_TYPE in attributes
-        and attributes[SpanAttributes.OUTPUT_MIME_TYPE]
-        == OpenInferenceMimeTypeValues.JSON.value
-    ):
-        if SpanAttributes.OUTPUT_VALUE in attributes:
-            llm_data["output"] = json_to_dict(attributes[SpanAttributes.OUTPUT_VALUE])
+    output_mime_type = get_nested_value(attributes, "output.mime_type")
+    if output_mime_type == OpenInferenceMimeTypeValues.JSON.value:
+        output_value = get_nested_value(attributes, "output.value")
+        if output_value is not None:
+            if isinstance(output_value, str):
+                try:
+                    llm_data["output"] = json.loads(output_value)
+                except json.JSONDecodeError:
+                    llm_data["output"] = output_value
+            else:
+                llm_data["output"] = output_value
 
-    # Extract model name
-    llm_data["model_name"] = attributes.get(SpanAttributes.LLM_MODEL_NAME)
+    # Extract model name and invocation parameters
+    llm_data["model_name"] = get_nested_value(attributes, "llm.model_name")
+    invocation_params = get_nested_value(attributes, "llm.invocation_parameters")
+    if invocation_params is not None:
+        if isinstance(invocation_params, str):
+            try:
+                llm_data["invocation_parameters"] = json.loads(invocation_params)
+            except json.JSONDecodeError:
+                llm_data["invocation_parameters"] = invocation_params
+        else:
+            llm_data["invocation_parameters"] = invocation_params
 
-    # Extract invocation parameters
-    if SpanAttributes.LLM_INVOCATION_PARAMETERS in attributes:
-        llm_data["invocation_parameters"] = json_to_dict(
-            attributes[SpanAttributes.LLM_INVOCATION_PARAMETERS],
-        )
+    def extract_tool_calls_from_message(message_data):
+        """Extract tool calls from nested message structure.
 
-    def extract_tool_calls(attributes, base_key):
+        Note: Arguments are already deserialized by normalize_span_to_nested_dict.
         """
-        Extract tool calls from a message's attributes.
-
-        Args:
-            attributes: Dictionary containing all attributes
-            base_key: Base key for the message (e.g., "llm.input_messages.0.message")
-
-        Returns:
-            List of tool call dictionaries, each containing name and arguments
-        """
-        TOOL_INDEX_POSITION = 5
         tool_calls = []
-        tool_call_keys = [
-            k for k in attributes.keys() if k.startswith(f"{base_key}.tool_calls.")
-        ]
+        tool_calls_data = message_data.get("tool_calls", [])
 
-        if tool_call_keys:
-            # Get unique tool call indices by finding all numbers in the path
-            tool_indices = set()
-            for key in tool_call_keys:
-                parts = key.split(".")
-                if parts[TOOL_INDEX_POSITION].isdigit():
-                    tool_indices.add(int(parts[TOOL_INDEX_POSITION]))
-
-            tool_indices = sorted(tool_indices)
-
-            for tool_idx in tool_indices:
-                tool_call = {"index": tool_idx}
-
-                # Try both possible paths for tool call data
-                tool_base_key = f"{base_key}.tool_calls.{tool_idx}.tool_call.function"
-
-                if f"{tool_base_key}.name" in attributes:
-                    tool_call["name"] = attributes[f"{tool_base_key}.name"]
-                if f"{tool_base_key}.arguments" in attributes:
-                    tool_call["arguments"] = json_to_dict(
-                        attributes[f"{tool_base_key}.arguments"],
+        if tool_calls_data and isinstance(tool_calls_data, list):
+            for i, tool_call_data in enumerate(tool_calls_data):
+                if isinstance(tool_call_data, dict):
+                    function_data = tool_call_data.get("tool_call", {}).get(
+                        "function",
+                        {},
                     )
-
-                if tool_call:  # Only add if we found any tool call data
-                    tool_calls.append(tool_call)
+                    if function_data:
+                        tool_call = {
+                            "index": i,
+                            "name": function_data.get("name"),
+                            "arguments": function_data.get("arguments"),
+                        }
+                        if tool_call.get("name") or tool_call.get("arguments"):
+                            tool_calls.append(tool_call)
 
         return tool_calls
 
-    def extract_message(message_type, msg_idx, tool_queue=None):
-        """Helper function to extract a single message with its tool calls"""
+    def extract_message_from_nested(message_data, msg_idx, tool_queue=None):
+        """Extract a single message from nested structure."""
         message = {"index": msg_idx}
-        base_key = f"llm.{message_type}_messages.{msg_idx}"
 
-        # Extract basic message fields
-        role_key = f"{base_key}.{MessageAttributes.MESSAGE_ROLE}"
-        content_key = f"{base_key}.{MessageAttributes.MESSAGE_CONTENT}"
-        if role_key in attributes:
-            message["role"] = attributes[role_key]
-        if content_key in attributes:
-            content = attributes[content_key]
+        message_obj = message_data.get("message", {})
+        role = message_obj.get("role")
+        content = message_obj.get("content")
 
-            # If this is a tool message, get the tool name from the queue
-            if message.get("role") == "tool" and tool_queue:
+        if role is not None:
+            message["role"] = role
+        if content is not None:
+            if role == "tool" and tool_queue:
                 try:
                     tool_name = tool_queue.pop(0)
                     message["name"] = tool_name
@@ -427,124 +375,69 @@ def extract_llm_data(attributes):
                 message["content"] = content
 
         # Extract tool calls if this is an assistant message
-        if message.get("role") == "assistant":
-            tool_calls = extract_tool_calls(attributes, f"{base_key}.message")
+        if role == "assistant":
+            tool_calls = extract_tool_calls_from_message(message_obj)
             if tool_calls:
                 message["tool_calls"] = tool_calls
 
         return message if message else None
 
-    MESSAGE_INDEX_POSITION = 2
+    # Extract input messages from nested structure
+    input_messages_data = get_nested_value(attributes, "llm.input_messages")
+    if input_messages_data and isinstance(input_messages_data, list):
+        tool_queue = []
+        for msg_idx, msg_data in enumerate(input_messages_data):
+            message = extract_message_from_nested(msg_data, msg_idx, tool_queue)
+            if message:
+                llm_data["input_conversation"].append(message)
+                if message.get("role") == "assistant":
+                    tool_queue = [tc["name"] for tc in message.get("tool_calls", [])]
+                elif message.get("role") != "tool":
+                    tool_queue = []
 
-    # Extract input messages
-    input_keys = [
-        k
-        for k in attributes.keys()
-        if k.startswith(f"{SpanAttributes.LLM_INPUT_MESSAGES}.")
-    ]
-    input_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in input_keys),
-    )
-    tool_queue = []
-    for msg_idx in input_indices:
-        message = extract_message("input", msg_idx, tool_queue)
-        if message:
-            llm_data["input_conversation"].append(message)
-            # If this was an assistant message, update the tool queue
-            if message.get("role") == "assistant":
-                tool_queue = [
-                    tool_call["name"] for tool_call in message.get("tool_calls", [])
-                ]
-            elif message.get("role") != "tool":
-                tool_queue = []
-
-    # Extract output messages
-    output_keys = [
-        k
-        for k in attributes.keys()
-        if k.startswith(f"{SpanAttributes.LLM_OUTPUT_MESSAGES}.")
-    ]
-    output_indices = sorted(
-        set(int(k.split(".")[MESSAGE_INDEX_POSITION]) for k in output_keys),
-    )
-    tool_queue = []
-    for msg_idx in output_indices:
-        message = extract_message("output", msg_idx, tool_queue)
-        if message:
-            llm_data["output_conversation"].append(message)
-            # If this was an assistant message, update the tool queue
-            if message.get("role") == "assistant":
-                tool_queue = [
-                    tool_call["name"] for tool_call in message.get("tool_calls", [])
-                ]
-            elif message.get("role") != "tool":
-                tool_queue = []
+    # Extract output messages from nested structure
+    output_messages_data = get_nested_value(attributes, "llm.output_messages")
+    if output_messages_data and isinstance(output_messages_data, list):
+        tool_queue = []
+        for msg_idx, msg_data in enumerate(output_messages_data):
+            message = extract_message_from_nested(msg_data, msg_idx, tool_queue)
+            if message:
+                llm_data["output_conversation"].append(message)
+                if message.get("role") == "assistant":
+                    tool_queue = [tc["name"] for tc in message.get("tool_calls", [])]
+                elif message.get("role") != "tool":
+                    tool_queue = []
 
     return llm_data
 
 
 def extract_attributes_from_raw_data(span_dict):
     """
-    Extract and normalize attributes from a span dictionary.
+    DEPRECATED: Backward compatibility function for OpenTelemetry format.
 
-    This function converts OpenTelemetry attribute format (list of key-value pairs)
-    to a flat dictionary format for easier querying and processing.
+    New spans are normalized at ingestion using normalize_span_to_nested_dict().
+    This function only handles legacy OpenTelemetry format for backward compatibility.
 
     Args:
         span_dict: Dictionary containing span data with attributes
 
     Returns:
-        dict: Normalized attributes as flat key-value pairs
-
-    Example:
-        Input (OpenTelemetry format):
-        {
-            "attributes": [
-                {"key": "input.value", "value": {"stringValue": "test"}},
-                {"key": "llm.model_name", "value": {"stringValue": "gpt-4"}}
-            ]
-        }
-
-        Output (normalized format):
-        {
-            "input.value": "test",
-            "llm.model_name": "gpt-4"
-        }
+        dict: Flat or nested attributes
     """
     raw_attributes = span_dict.get("attributes", {})
-    attributes = {}
 
-    # Convert attributes to flat dictionary format
+    # Handle OpenTelemetry format: list of {key: str, value: {...}}
     if isinstance(raw_attributes, list):
-        # Handle OpenTelemetry format: list of {key: str, value: {stringValue: str, ...}}
+        attributes = {}
         for attr in raw_attributes:
             key = attr.get("key")
             value_dict = attr.get("value", {})
             if key:
                 attributes[key] = value_dict_to_value(value_dict)
-    elif isinstance(raw_attributes, dict):
-        # Handle already flattened format or convert if needed
-        for key, value in raw_attributes.items():
-            if isinstance(value, dict) and any(
-                k in value
-                for k in ["stringValue", "intValue", "doubleValue", "boolValue"]
-            ):
-                # This is still in OpenTelemetry structured format
-                attributes[key] = value_dict_to_value(value)
-            else:
-                # Already converted to flat format
-                attributes[key] = value
-    else:
-        attributes = {}
+        return attributes
 
-    return attributes
-
-
-def json_to_dict(json_str):
-    try:
-        return json.loads(json_str)
-    except json.JSONDecodeError:
-        return json_str
+    # Already normalized (nested or flat dict)
+    return raw_attributes
 
 
 def clean_status_code(status_code: str) -> str:
@@ -559,3 +452,196 @@ def clean_status_code(status_code: str) -> str:
         return "Unset"
     else:
         return status_code
+
+
+def convert_numeric_keys_to_lists(d):
+    """
+    Recursively convert dictionaries with numeric keys to lists.
+
+    Args:
+        d: Dictionary or other data structure to process
+
+    Returns:
+        Converted data structure with numeric-keyed dicts converted to lists
+    """
+    if isinstance(d, dict):
+        # Check if all keys are numeric strings
+        if all(k.isdigit() for k in d.keys()):
+            # Sort by numeric value and convert to list
+            return [
+                convert_numeric_keys_to_lists(d[k]) for k in sorted(d.keys(), key=int)
+            ]
+        else:
+            return {k: convert_numeric_keys_to_lists(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [convert_numeric_keys_to_lists(x) for x in d]
+    else:
+        return d
+
+
+def deserialize_nested_json_fields(obj):
+    """
+    Recursively deserialize JSON strings in nested structures.
+
+    Specifically handles:
+    - tool_call.function.arguments
+    - Any field named 'arguments' within function contexts
+    - Any field in the json_keys list found at any nesting level
+
+    Args:
+        obj: Nested dictionary or list structure
+
+    Returns:
+        Structure with JSON strings deserialized
+    """
+    if isinstance(obj, dict):
+        result = {}
+        for key, value in obj.items():
+            # Deserialize specific nested fields that should be JSON
+            if key == "arguments" and isinstance(value, str):
+                try:
+                    # Deserialize and then recurse in case the result contains more nested structures
+                    deserialized = json.loads(value)
+                    result[key] = deserialize_nested_json_fields(deserialized)
+                except (json.JSONDecodeError, TypeError):
+                    result[key] = value
+            elif key in [
+                "metadata",
+                "invocation_parameters",
+                "json_schema",
+                "parameters",
+            ] and isinstance(value, str):
+                try:
+                    deserialized = json.loads(value)
+                    result[key] = deserialize_nested_json_fields(deserialized)
+                except (json.JSONDecodeError, TypeError):
+                    result[key] = value
+            else:
+                result[key] = deserialize_nested_json_fields(value)
+        return result
+    elif isinstance(obj, list):
+        return [deserialize_nested_json_fields(item) for item in obj]
+    else:
+        return obj
+
+
+def normalize_span_to_nested_dict(span: dict) -> dict:
+    """
+    Normalize span data to nested dictionary structure with selective JSON deserialization.
+
+    This function performs the following transformations:
+    1. Converts OTEL format (list of key-value pairs) to flat dict
+    2. Deserializes JSON fields based on mime_type (input.value, output.value)
+    3. Deserializes specific known JSON keys
+    4. Handles nested message.contents with special message_content nesting
+    5. Uses benedict to unflatten dot notation to nested structure
+    6. Converts numeric keys to lists
+
+    Args:
+        span: Raw span dictionary (may have OTEL format attributes)
+
+    Returns:
+        Normalized span with nested dictionary structure
+    """
+    result = copy.deepcopy(span)
+    raw_attrs = result.get("attributes", {})
+
+    # Convert OTEL format to flat dict first
+    if isinstance(raw_attrs, list):
+        attrs = {}
+        for attr in raw_attrs:
+            key = attr.get("key")
+            value_dict = attr.get("value", {})
+            if key:
+                attrs[key] = value_dict_to_value(value_dict)
+    else:
+        attrs = raw_attrs
+
+    # Deserialize JSON fields based on mime_type
+    if "input.value" in attrs and attrs.get("input.mime_type") == "application/json":
+        try:
+            attrs["input.value"] = json.loads(attrs["input.value"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    if "output.value" in attrs and attrs.get("output.mime_type") == "application/json":
+        try:
+            attrs["output.value"] = json.loads(attrs["output.value"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # Note: Most JSON deserialization happens in deserialize_nested_json_fields()
+    # after unflattening. Only deserialize fields that exist at the flat level.
+    flat_json_keys = ["metadata"]
+    for key in flat_json_keys:
+        if key in attrs and isinstance(attrs[key], str):
+            try:
+                attrs[key] = json.loads(attrs[key])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    # Handle message.contents with special nesting for message_content
+    for k in list(attrs.keys()):
+        if k.endswith("message.contents") and isinstance(attrs[k], str):
+            try:
+                contents_list = json.loads(attrs[k])
+                nested_list = []
+                for item in contents_list:
+                    new_item = {}
+                    msg_content = {}
+                    for ik, iv in item.items():
+                        if ik.startswith("message_content."):
+                            subkey = ik.split(".", 1)[1]
+                            msg_content[subkey] = iv
+                        else:
+                            new_item[ik] = iv
+                    if msg_content:
+                        new_item["message_content"] = msg_content
+                    nested_list.append(new_item)
+                attrs[k] = nested_list
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    result["attributes"] = attrs
+
+    # Use benedict to unflatten dot notation to nested dicts for entire span structure
+    # Keypath separator is set to / to avoid conflicts with the dot notation.
+    b = benedict(result, keypath_separator="/")
+    # Unflatten the dot notation to nested dicts.
+    # Separator is set to . to match the dot notation.
+    b = b.unflatten(separator=".")
+    nested = convert_numeric_keys_to_lists(b)
+
+    # Deserialize any remaining JSON strings in nested structures (e.g., tool_call arguments)
+    try:
+        nested = deserialize_nested_json_fields(nested)
+    except Exception as e:
+        logger.error(f"Error deserializing nested JSON fields: {e}", exc_info=True)
+
+    return nested
+
+
+def get_nested_value(obj, path):
+    """
+    Safely navigate nested dictionary structure using dot-separated path.
+
+    Args:
+        obj: Dictionary to navigate
+        path: Dot-separated path (e.g., 'llm.model_name')
+
+    Returns:
+        Value at the path, or None if not found
+    """
+    if not isinstance(obj, dict):
+        return None
+
+    keys = path.split(".")
+    current = obj
+
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return None
+
+    return current

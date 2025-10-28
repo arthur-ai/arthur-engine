@@ -32,6 +32,7 @@ from schemas.internal_schemas import Span as InternalSpan
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
+from utils import trace as trace_utils
 
 
 @pytest.fixture(scope="function")
@@ -249,18 +250,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     base_time = datetime.now()
 
     # Session 1, Task1, Trace1 - LLM span with features
-    span1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="api_trace1",
-        span_id="api_span1",
-        task_id="api_task1",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time - timedelta(days=2),
-        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
-        session_id="session1",
-        user_id="user1",
-        raw_data={
+    span1_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "api_span1",
@@ -278,14 +269,44 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span1_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="api_trace1",
+        span_id="api_span1",
+        task_id="api_task1",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time - timedelta(days=2),
+        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
+        session_id="session1",
+        user_id="user1",
+        raw_data=span1_raw_data,
         created_at=base_time - timedelta(days=2) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=2) + timedelta(seconds=1),
     )
     spans.append(span1)
 
     # Session 1, Task1, Trace1 - CHAIN span with parent
+    span2_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Chain",
+            "spanId": "api_span2",
+            "traceId": "api_trace1",
+            "attributes": {
+                "openinference.span.kind": "CHAIN",
+                "session.id": "session1",
+                "user.id": "user1",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
+            },
+        },
+    )
+    span2_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span2 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace1",
@@ -297,37 +318,15 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         end_time=base_time - timedelta(days=1) + timedelta(seconds=1),
         session_id="session1",
         user_id="user1",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Chain",
-            "spanId": "api_span2",
-            "traceId": "api_trace1",
-            "attributes": {
-                "openinference.span.kind": "CHAIN",
-                "session.id": "session1",
-                "user.id": "user1",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span2_raw_data,
         created_at=base_time - timedelta(days=1) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=1) + timedelta(seconds=1),
     )
     spans.append(span2)
 
     # Session 1, Task1, Trace2 - Another LLM span in same session
-    span3 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="api_trace2",
-        span_id="api_span3",
-        task_id="api_task1",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time - timedelta(hours=12),
-        end_time=base_time - timedelta(hours=12) + timedelta(seconds=2),
-        session_id="session1",
-        user_id="user1",
-        raw_data={
+    span3_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "api_span3",
@@ -343,14 +342,44 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span3_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span3 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="api_trace2",
+        span_id="api_span3",
+        task_id="api_task1",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time - timedelta(hours=12),
+        end_time=base_time - timedelta(hours=12) + timedelta(seconds=2),
+        session_id="session1",
+        user_id="user1",
+        raw_data=span3_raw_data,
         created_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
         updated_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
     )
     spans.append(span3)
 
     # Session 2, Task2, Trace3 - AGENT span in different session/task
+    span4_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Agent",
+            "spanId": "api_span4",
+            "traceId": "api_trace3",
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "session.id": "session2",
+                "user.id": "user2",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
+            },
+        },
+    )
+    span4_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span4 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace3",
@@ -362,25 +391,29 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         end_time=base_time + timedelta(seconds=1),
         session_id="session2",
         user_id="user2",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Agent",
-            "spanId": "api_span4",
-            "traceId": "api_trace3",
-            "attributes": {
-                "openinference.span.kind": "AGENT",
-                "session.id": "session2",
-                "user.id": "user2",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span4_raw_data,
         created_at=base_time + timedelta(seconds=1),
         updated_at=base_time + timedelta(seconds=1),
     )
     spans.append(span4)
 
     # Session 2, Task2, Trace3 - RETRIEVER span with parent
+    span5_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Retriever",
+            "spanId": "api_span5",
+            "traceId": "api_trace3",
+            "attributes": {
+                "openinference.span.kind": "RETRIEVER",
+                "session.id": "session2",
+                "user.id": "user2",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
+            },
+        },
+    )
+    span5_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span5 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace3",
@@ -392,25 +425,29 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         end_time=base_time + timedelta(seconds=31),
         session_id="session2",
         user_id="user2",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Retriever",
-            "spanId": "api_span5",
-            "traceId": "api_trace3",
-            "attributes": {
-                "openinference.span.kind": "RETRIEVER",
-                "session.id": "session2",
-                "user.id": "user2",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span5_raw_data,
         created_at=base_time + timedelta(seconds=31),
         updated_at=base_time + timedelta(seconds=31),
     )
     spans.append(span5)
 
     # No session, Task1, Trace4 - TOOL span for tool filtering tests
+    span6_raw_data = trace_utils.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "test_tool",
+            "spanId": "api_span6",
+            "traceId": "api_trace4",
+            "attributes": {
+                "openinference.span.kind": "TOOL",
+                "tool.name": "test_tool",
+                "user.id": "user1",
+                "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
+            },
+        },
+    )
+    span6_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span6 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="api_trace4",
@@ -422,19 +459,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
         session_id=None,
         user_id="user1",
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "test_tool",
-            "spanId": "api_span6",
-            "traceId": "api_trace4",
-            "attributes": {
-                "openinference.span.kind": "TOOL",
-                "tool.name": "test_tool",
-                "user.id": "user1",
-                "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span6_raw_data,
         created_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
         updated_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
     )

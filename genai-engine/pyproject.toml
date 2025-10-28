@@ -78,6 +78,7 @@ arthur-common = "2.4.5"
 openinference-semantic-conventions = "^0.1.12"
 litellm = "^1.77.7"
 jinja2 = "^3.1.6"
+python-benedict = "^0.35.0"
 
 
 [[tool.poetry.source]]
