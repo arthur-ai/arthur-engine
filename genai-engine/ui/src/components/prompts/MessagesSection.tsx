@@ -20,7 +20,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useState } from "react";
 
-import { usePromptContext } from "./PromptContext";
+import { usePromptContext } from "./PromptsPlaygroundContext";
 import SortableMessage from "./SortableMessage";
 import { PromptType } from "./types";
 
