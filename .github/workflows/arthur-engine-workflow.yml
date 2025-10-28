@@ -408,7 +408,7 @@ jobs:
           git push origin "${{ env.VERSION }}"
 
   deploy-genai-engine-cloudformation:
-    needs: [build-genai-engine-docker-images, build-ml-engine-docker-images]
+    needs: [push-tag]
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
