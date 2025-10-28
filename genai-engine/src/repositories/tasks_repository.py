@@ -50,7 +50,7 @@ class TaskRepository:
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
         page_size: int = 10,
         page: int = 0,
-    ) -> list[DatabaseTask]:
+    ) -> tuple[list[DatabaseTask], int]:
         stmt = self.db_session.query(DatabaseTask)
         if ids:
             stmt = stmt.where(DatabaseTask.id.in_(ids))
@@ -89,9 +89,9 @@ class TaskRepository:
     def get_task_by_id(self, id: str) -> Task:
         return Task._from_database_model(self.get_db_task_by_id(id))
 
-    def get_all_tasks(self):
+    def get_all_tasks(self) -> list[Task]:
         # Continuously grab tasks until there are no more, DEFAULT_PAGE_SIZE at a time
-        all_tasks = []
+        all_tasks: list[DatabaseTask] = []
         page = 0
         while True:
             db_tasks, _ = self.query_tasks(
@@ -107,18 +107,18 @@ class TaskRepository:
 
         return tasks
 
-    def archive_task(self, task_id: str):
+    def archive_task(self, task_id: str) -> None:
         db_task = self.get_db_task_by_id(task_id)
         for link in db_task.rule_links:
             if link.rule.scope == RuleScope.TASK:
                 self.rule_repository.archive_rule(link.rule_id)
 
-        for link in db_task.metric_links:
-            self.metric_repository.archive_metric(link.metric_id)
+        for metric_link in db_task.metric_links:
+            self.metric_repository.archive_metric(metric_link.metric_id)
         db_task.archived = True
         self.db_session.commit()
 
-    def create_task(self, task: Task, with_default_rules=True):
+    def create_task(self, task: Task, with_default_rules: bool = True) -> Task:
         db_task = task._to_database_model()
 
         if with_default_rules:
@@ -134,7 +134,12 @@ class TaskRepository:
 
         return Task._from_database_model(db_task)
 
-    def link_rule_to_task(self, task_id: str, rule_id: str, rule_type: RuleType):
+    def link_rule_to_task(
+        self,
+        task_id: str,
+        rule_id: str,
+        rule_type: RuleType,
+    ) -> None:
         if rule_type in LLM_RULE_TYPES:
             llm_rule_count = (
                 self.db_session.query(DatabaseTaskToRules)
@@ -161,7 +166,7 @@ class TaskRepository:
         self.db_session.add(new_link)
         self.db_session.commit()
 
-    def create_task_rule(self, task_id: str, rule: Rule):
+    def create_task_rule(self, task_id: str, rule: Rule) -> Rule:
         db_task = self.get_db_task_by_id(task_id)
 
         if rule.type in LLM_RULE_TYPES:
@@ -179,7 +184,11 @@ class TaskRepository:
 
         return rule
 
-    def get_db_links(self, task_id=None, rule_id=None):
+    def get_db_links(
+        self,
+        task_id: Optional[str] = None,
+        rule_id: Optional[str] = None,
+    ) -> list[DatabaseTaskToRules]:
         # At least one of these should be specified
         if task_id is None and rule_id is None:
             # This is an implementation error on our part if this ever happens
@@ -195,7 +204,12 @@ class TaskRepository:
             query = query.where(DatabaseTaskToRules.rule_id == rule_id)
         return query.all()
 
-    def toggle_task_rule_enabled(self, task_id: str, rule_id: str, enabled: bool):
+    def toggle_task_rule_enabled(
+        self,
+        task_id: str,
+        rule_id: str,
+        enabled: bool,
+    ) -> None:
         task = self.get_db_task_by_id(task_id)
         for rule_link in task.rule_links:
             if rule_link.rule_id == rule_id:
@@ -203,26 +217,23 @@ class TaskRepository:
         self.db_session.commit()
         return
 
-    def delete_rule_link(self, task_id: str, rule_id: str):
+    def delete_rule_link(self, task_id: str, rule_id: str) -> None:
         task = self.get_db_task_by_id(task_id)
         for rule_link in task.rule_links:
             if rule_link.rule_id == rule_id:
                 self.db_session.delete(rule_link)
         self.db_session.commit()
 
-    def delete_task(self, task_id: str):
+    def delete_task(self, task_id: str) -> None:
         self.db_session.query(DatabaseTask).filter(DatabaseTask.id == task_id).delete()
         self.db_session.commit()
 
-    def update_all_tasks_add_default_rule(self, default_rule: Rule):
+    def update_all_tasks_add_default_rule(self, default_rule: Rule) -> None:
         tasks = self.get_all_tasks()
-        tasks_to_rules: list[DatabaseTaskToRules] = []
-        for task in tasks:
-            task_to_rule = DatabaseTaskToRules(
-                task_id=task.id,
-                rule_id=default_rule.id,
-            )
-            tasks_to_rules.append(task_to_rule)
+        tasks_to_rules: list[DatabaseTaskToRules] = [
+            DatabaseTaskToRules(task_id=task.id, rule_id=default_rule.id)
+            for task in tasks
+        ]
         self.db_session.add_all(tasks_to_rules)
         self.db_session.commit()
 
@@ -238,7 +249,7 @@ class TaskRepository:
 
         return len(default_rule_links)
 
-    def check_llm_rule_count(self, enabled_rules: list[DatabaseRule]):
+    def check_llm_rule_count(self, enabled_rules: list[DatabaseRule]) -> None:
         llm_rule_count = len(
             [rule for rule in enabled_rules if rule.type in LLM_RULE_TYPES],
         )
@@ -249,7 +260,7 @@ class TaskRepository:
                 detail=constants.ERROR_TOO_MANY_LLM_RULES_PER_TASK % max_llm_rule_count,
             )
 
-    def link_metric_to_task(self, task_id: str, metric_id: str):
+    def link_metric_to_task(self, task_id: str, metric_id: str) -> None:
         # Check if task is agentic before allowing metric linkage
         db_task = self.get_db_task_by_id(task_id)
         if not db_task.is_agentic:
@@ -266,7 +277,12 @@ class TaskRepository:
         self.db_session.add(new_link)
         self.db_session.commit()
 
-    def toggle_task_metric_enabled(self, task_id: str, metric_id: str, enabled: bool):
+    def toggle_task_metric_enabled(
+        self,
+        task_id: str,
+        metric_id: str,
+        enabled: bool,
+    ) -> None:
         task = self.get_db_task_by_id(task_id)
 
         # Check if task is agentic when enabling a metric
@@ -282,7 +298,7 @@ class TaskRepository:
         self.db_session.commit()
         return
 
-    def archive_metric_link(self, task_id: str, metric_id: str):
+    def archive_metric_link(self, task_id: str, metric_id: str) -> None:
         task = self.get_db_task_by_id(task_id)
         for metric_link in task.metric_links:
             if metric_link.metric_id == metric_id:

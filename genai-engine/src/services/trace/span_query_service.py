@@ -46,13 +46,13 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
-    ) -> Optional[Tuple[List[str], int]]:
+    ) -> Tuple[List[str], int]:
         """
         Single-query strategy that combines all filters and uses database pagination.
         Returns tuple of (trace_ids, total_count).
         """
         if not filters.task_ids:
-            return None, 0
+            return [], 0
 
         # Build comprehensive query with all filters combined
         base_query = self._build_unified_trace_query(filters)
@@ -60,6 +60,9 @@ class SpanQueryService:
         # Get total count before pagination
         count_query = select(func.count()).select_from(base_query.subquery())
         total_count = self.db_session.execute(count_query).scalar()
+
+        if not total_count:
+            return [], 0
 
         # Apply sorting and pagination at database level
         query = self._apply_sorting_and_pagination(base_query, pagination_parameters)
@@ -404,7 +407,7 @@ class SpanQueryService:
         self,
         filters: TraceQuerySchema,
         pagination_parameters: PaginationParameters,
-    ) -> Optional[Tuple[List[Span], int]]:
+    ) -> tuple[list[Span], int]:
         """
         Span-based filtering that finds individual spans matching criteria.
         Returns tuple of (spans, total_count).
@@ -417,7 +420,7 @@ class SpanQueryService:
         - Result: Single query returning individual spans
         """
         if not filters.task_ids:
-            return None, 0
+            return [], 0
 
         # Validate filter compatibility
         compatibility_issues = self.filter_service.validate_filter_compatibility(
@@ -436,6 +439,9 @@ class SpanQueryService:
         # Get total count before pagination
         count_query = select(func.count()).select_from(base_query.subquery())
         total_count = self.db_session.execute(count_query).scalar()
+
+        if not total_count:
+            return [], 0
 
         # Apply sorting and pagination at database level
         query = self._apply_sorting_and_pagination(

@@ -1,12 +1,13 @@
 from datetime import datetime
 from itertools import groupby
-from typing import Optional
+from typing import Any, Optional
 
 from arthur_common.models.enums import TokenUsageScope
 from arthur_common.models.response_schemas import TokenUsageCount, TokenUsageResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select, union
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import CompoundSelect
 
 from db_models import (
     DatabaseInference,
@@ -39,19 +40,19 @@ class UsageRepository:
         rows = self.run_tokens_query(start_time, end_time)
 
         def get_group_key(row: TokenQueryRow) -> int:
-            key = []
+            key: list[str] = []
             for group in group_by:
                 if group == TokenUsageScope.RULE_TYPE:
                     key.append(row.rule_type)
                 elif group == TokenUsageScope.TASK:
-                    key.append(row.task_id)
+                    key.append(row.task_id or "")
             return hash(tuple(key))
 
         usages = []
         # itertools.groupby groups contiguous blocks of equal keys, so the rows must be sorted by the group key
         rows = sorted(rows, key=lambda x: get_group_key(x))
-        for _, group in groupby(rows, lambda x: get_group_key(x)):
-            group = list(group)
+        for _, group_iter in groupby(rows, lambda x: get_group_key(x)):
+            group_list = list(group_iter)
             counter = TokenUsageCount(
                 inference=0,
                 eval_prompt=0,
@@ -60,7 +61,7 @@ class UsageRepository:
                 prompt=0,
                 completion=0,
             )
-            for row in group:
+            for row in group_list:
                 counter.inference += row.user_input_tokens
                 counter.eval_prompt += row.prompt_tokens
                 counter.eval_completion += row.completion_tokens
@@ -72,14 +73,18 @@ class UsageRepository:
             usage = TokenUsageResponse(count=counter)
             for scope in group_by:
                 if scope == TokenUsageScope.RULE_TYPE:
-                    usage.rule_type = group[0].rule_type
+                    usage.rule_type = group_list[0].rule_type
                 elif scope == TokenUsageScope.TASK:
-                    usage.task_id = group[0].task_id
+                    usage.task_id = group_list[0].task_id
 
             usages.append(usage)
         return usages
 
-    def run_tokens_query(self, start_time, end_time) -> list[TokenQueryRow]:
+    def run_tokens_query(
+        self,
+        start_time: Optional[datetime],
+        end_time: Optional[datetime],
+    ) -> list[TokenQueryRow]:
         query = get_token_query_statement(start_time, end_time)
 
         grouped_prompt_tokens = self.db_session.execute(query).all()
@@ -99,7 +104,10 @@ class UsageRepository:
 # Query result is a list of rows with columns (rule_type, task_id, input_tokens, prompt_tokens, response_tokens)
 # There are at most 2*n*m rows (n = number of unique rule types, m = unique tasks (None included)) because there can be n rows per our 2 results tables
 # (in reality some rules aren't applicable to prompts and vice versa with responses)
-def get_token_query_statement(start_time: datetime, end_time: datetime):
+def get_token_query_statement(
+    start_time: Optional[datetime],
+    end_time: Optional[datetime],
+) -> CompoundSelect[Any]:
     prompt_subquery = (
         select(
             DatabaseRule.type,

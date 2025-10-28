@@ -16718,6 +16718,30 @@
                         "type": "boolean",
                         "title": "Enabled",
                         "description": "Boolean value to enable or disable the metric. "
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the metric. Optional."
+                    },
+                    "metric_metadata": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Metric Metadata",
+                        "description": "Metric metadata. Optional."
                     }
                 },
                 "type": "object",

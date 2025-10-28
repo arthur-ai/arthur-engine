@@ -128,6 +128,10 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional request property 'model_name'
 - **CHANGE** for **URL**: /api/v2/validate_prompt  added the new optional request property 'model_name'
 
+# 10/28/2025
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'name'
+
 # 10/23/2025
 - **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'completion_request/strict'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions  added the new optional request property 'strict'

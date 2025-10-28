@@ -83,4 +83,4 @@ class EncryptedJSON(TypeDecorator[Any]):
             logger.error(
                 "failed to decrypt secret from database, did a key get rotated or reset?",
             )
-            return None
+            return ""

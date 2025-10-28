@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
 
+from arthur_common.models.enums import MetricType
 from sqlalchemy import (
     JSON,
     TIMESTAMP,
@@ -178,7 +179,7 @@ class DatabaseMetric(Base, IsArchivable):
     id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
-    type: Mapped[str] = mapped_column(String)
+    type: Mapped[MetricType] = mapped_column(String)
     name: Mapped[str] = mapped_column(String)
     metric_metadata: Mapped[str] = mapped_column(String)
     config: Mapped[Optional[str]] = mapped_column(String, nullable=True)

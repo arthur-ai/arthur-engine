@@ -228,22 +228,22 @@ class Rule(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(x: DatabaseRule):
+    def _from_database_model(x: DatabaseRule) -> "Rule":
         return Rule(
             id=x.id,
             name=x.name,
-            type=x.type,
+            type=RuleType(x.type),
             prompt_enabled=x.prompt_enabled,
             response_enabled=x.response_enabled,
-            scoring_method=x.scoring_method,
+            scoring_method=RuleScoringMethod(x.scoring_method),
             created_at=x.created_at,
             updated_at=x.updated_at,
             rule_data=[RuleData._from_database_model(x) for x in x.rule_data],
             archived=x.archived,
-            scope=x.scope,
+            scope=RuleScope(x.scope),
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseRule:
         return DatabaseRule(
             id=self.id,
             name=self.name,
@@ -258,7 +258,7 @@ class Rule(BaseModel):
             rule_data=[d._to_database_model() for d in self.rule_data],
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> RuleResponse:
         config = None
         if self.type == RuleType.REGEX:
             config = self.get_regex_config()
@@ -367,12 +367,12 @@ class Metric(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(x: DatabaseMetric):
+    def _from_database_model(x: DatabaseMetric) -> "Metric":
         return Metric(
             id=x.id,
             created_at=x.created_at,
             updated_at=x.updated_at,
-            type=x.type,
+            type=MetricType(x.type),
             name=x.name,
             metric_metadata=x.metric_metadata,
             config=x.config,
@@ -524,7 +524,7 @@ class Task(BaseModel):
         )
 
     @staticmethod
-    def _from_database_model(x: DatabaseTask):
+    def _from_database_model(x: DatabaseTask) -> "Task":
         return Task(
             id=x.id,
             name=x.name,
@@ -539,7 +539,7 @@ class Task(BaseModel):
             ],
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseTask:
         return DatabaseTask(
             id=self.id,
             name=self.name,
@@ -1111,7 +1111,7 @@ class InferenceResponse(BaseModel):
     model_name: Optional[str] = None
 
     @staticmethod
-    def _from_database_model(x: DatabaseInferenceResponse):
+    def _from_database_model(x: DatabaseInferenceResponse) -> "InferenceResponse":
         return InferenceResponse(
             id=x.id,
             inference_id=x.inference_id,
@@ -1128,7 +1128,7 @@ class InferenceResponse(BaseModel):
             model_name=x.model_name,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ExternalInferenceResponse:
         return ExternalInferenceResponse(
             id=self.id,
             inference_id=self.inference_id,
@@ -1144,7 +1144,7 @@ class InferenceResponse(BaseModel):
             tokens=self.tokens,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseInferenceResponse:
         return DatabaseInferenceResponse(
             id=self.id,
             inference_id=self.inference_id,
@@ -1171,7 +1171,7 @@ class InferencePrompt(BaseModel):
     created_at: datetime
     updated_at: datetime
     message: str = None
-    prompt_rule_results: Optional[List[PromptRuleResult]] = None
+    prompt_rule_results: List[PromptRuleResult] = []
     tokens: int | None = None
 
     @staticmethod
@@ -1272,14 +1272,14 @@ class Inference(BaseModel):
     user_id: Optional[str] = None
     model_name: Optional[str] = None
 
-    def has_prompt(self):
+    def has_prompt(self) -> bool:
         return self.inference_prompt != None
 
-    def has_response(self):
+    def has_response(self) -> bool:
         return self.inference_response != None
 
     @staticmethod
-    def _from_database_model(x: DatabaseInference):
+    def _from_database_model(x: DatabaseInference) -> "Inference":
         ip = (
             InferencePrompt._from_database_model(x.inference_prompt)
             if x.inference_prompt != None
@@ -1308,7 +1308,7 @@ class Inference(BaseModel):
             model_name=x.model_name,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ExternalInference:
         return ExternalInference(
             id=self.id,
             result=self.result,
@@ -1328,7 +1328,7 @@ class Inference(BaseModel):
             model_name=self.model_name,
         )
 
-    def _to_database_model(self):
+    def _to_database_model(self) -> DatabaseInference:
         return DatabaseInference(
             id=self.id,
             result=self.result,
@@ -1386,7 +1386,7 @@ class Document(BaseModel):
     is_global: bool
 
     @staticmethod
-    def _from_database_model(x: DatabaseDocument):
+    def _from_database_model(x: DatabaseDocument) -> "Document":
         return Document(
             id=x.id,
             owner_id=x.owner_id,
@@ -1396,7 +1396,7 @@ class Document(BaseModel):
             is_global=x.is_global,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ExternalDocument:
         return ExternalDocument(
             id=self.id,
             name=self.name,
@@ -1510,7 +1510,9 @@ class ApplicationConfiguration(BaseModel):
     max_llm_rules_per_task_count: int
 
     @staticmethod
-    def _from_database_model(configs: List[DatabaseApplicationConfiguration]):
+    def _from_database_model(
+        configs: list[DatabaseApplicationConfiguration],
+    ) -> "ApplicationConfiguration":
         doc_storage = None
         max_llm_rules_per_task_count = constants.DEFAULT_MAX_LLM_RULES_PER_TASK
         config_dict = {c.name: c.value for c in configs}
@@ -1591,7 +1593,7 @@ class ApiKey(BaseModel):
     roles: list[str] = [constants.TASK_ADMIN]
 
     @staticmethod
-    def _from_database_model(api_key: DatabaseApiKey):
+    def _from_database_model(api_key: DatabaseApiKey) -> "ApiKey":
         return ApiKey(
             id=api_key.id,
             key_hash=api_key.key_hash,

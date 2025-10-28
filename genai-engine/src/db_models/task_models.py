@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,15 +21,15 @@ class DatabaseTask(Base, IsArchivable):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     is_agentic: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    rule_links: Mapped[List["DatabaseTaskToRules"]] = relationship(
+    rule_links: Mapped[list["DatabaseTaskToRules"]] = relationship(
         back_populates="task",
         lazy="joined",
     )
-    metric_links: Mapped[List["DatabaseTaskToMetrics"]] = relationship(
+    metric_links: Mapped[list["DatabaseTaskToMetrics"]] = relationship(
         back_populates="task",
         lazy="joined",
     )
-    agentic_prompts: Mapped[List["DatabaseAgenticPrompt"]] = relationship(
+    agentic_prompts: Mapped[list["DatabaseAgenticPrompt"]] = relationship(
         back_populates="task",
         lazy="select",
     )

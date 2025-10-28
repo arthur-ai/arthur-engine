@@ -13,6 +13,8 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
+from custom_types import QueryT
+from db_models.base import Base
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -557,6 +559,53 @@ class LLMGetAllFilterRequest(BaseModel):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
+
+    def apply_filters_to_query(
+        self,
+        query: QueryT,
+        db_model: Type[Base],
+    ) -> QueryT:
+        """
+        Apply filters to a query based on the filter request.
+
+        Parameters:
+            query: Query - the SQLAlchemy query to filter
+
+        Returns:
+            Query - the query with filters applied
+        """
+        # Filter by prompt names using LIKE for partial matching
+        if self.llm_asset_names:
+            name_conditions = [
+                db_model.name.like(f"%{name}%") for name in self.llm_asset_names
+            ]
+            query = query.filter(or_(*name_conditions))
+
+        # Filter by model provider
+        if self.model_provider:
+            query = query.filter(
+                db_model.model_provider == self.model_provider,
+            )
+
+        # Filter by model name using LIKE for partial matching
+        if self.model_name:
+            query = query.filter(
+                db_model.model_name.like(f"%{self.model_name}%"),
+            )
+
+        # Filter by start time (inclusive)
+        if self.created_after:
+            query = query.filter(
+                db_model.created_at >= self.created_after,
+            )
+
+        # Filter by end time (exclusive)
+        if self.created_before:
+            query = query.filter(
+                db_model.created_at < self.created_before,
+            )
+
+        return query
 
 
 class CreateEvalRequest(BaseModel):

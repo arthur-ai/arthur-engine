@@ -8,6 +8,8 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, SoftDeletedModel
+from db_models.base import Base
+from schemas.enums import ModelProvider
 
 if TYPE_CHECKING:
     from db_models.task_models import DatabaseTask
@@ -36,7 +38,7 @@ class DatabaseAgenticPrompt(SoftDeletedModel, Base):
 
     # LLM Configuration
     model_name: Mapped[str] = mapped_column(String, nullable=False)
-    model_provider: Mapped[str] = mapped_column(String, nullable=False)
+    model_provider: Mapped[ModelProvider] = mapped_column(String, nullable=False)
 
     # Prompt Content - stored as JSON for flexibility
     messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)

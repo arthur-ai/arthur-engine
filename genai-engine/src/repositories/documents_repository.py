@@ -13,11 +13,16 @@ from schemas.internal_schemas import Document
 
 
 class DocumentRepository:
-    def __init__(self, db_session: Session, s3_client: MagicMock = S3Client):
+    def __init__(self, db_session: Session, s3_client: MagicMock | S3Client) -> None:
         self.db_session = db_session
         self.s3_client = s3_client
 
-    def create_document(self, file: UploadFile, user_id: str, is_global: bool):
+    def create_document(
+        self,
+        file: UploadFile,
+        user_id: str,
+        is_global: bool,
+    ) -> Document:
         file_type = get_file_type(file.content_type)
         file_id = str(uuid.uuid4())
         file_path = self.s3_client.save_file(file_id, file)
@@ -36,7 +41,7 @@ class DocumentRepository:
     def get_documents(
         self,
         user_id: Optional[str] = None,
-    ):
+    ) -> list[Document]:
         query = self.db_session.query(DatabaseDocument)
 
         if user_id is not None:
@@ -54,7 +59,7 @@ class DocumentRepository:
 
         return documents
 
-    def delete_document(self, document_id: str):
+    def delete_document(self, document_id: str) -> None:
         doc = self.db_session.get(DatabaseDocument, document_id)
         if doc is None:
             raise HTTPException(
@@ -71,12 +76,15 @@ class DocumentRepository:
         self.db_session.commit()
         return
 
-    def get_file(self, document_id: str):
+    def get_file(self, document_id: str) -> UploadFile:
         doc = self.get_document_by_id(document_id)
         return self.s3_client.read_file(doc.path)
 
-    def get_document_by_id(self, document_id: str):
-        doc = self.db_session.get(DatabaseDocument, document_id)
+    def get_document_by_id(self, document_id: str) -> DatabaseDocument:
+        doc: Optional[DatabaseDocument] = self.db_session.get(
+            DatabaseDocument,
+            document_id,
+        )
         if doc is None:
             raise HTTPException(
                 status_code=404,
@@ -85,7 +93,12 @@ class DocumentRepository:
         return doc
 
 
-def get_file_type(file_content_type: str):
+def get_file_type(file_content_type: Optional[str]) -> DocumentType:
+    if file_content_type is None:
+        raise HTTPException(
+            status_code=400,
+            detail="File content type is required",
+        )
     if file_content_type == "application/pdf":
         return DocumentType.PDF
     elif file_content_type == "text/csv":

@@ -413,10 +413,10 @@ def create_task_metric(
         )
         task = task_repo.get_task_by_id(str(task_id))
         metric = Metric._from_request_model(request)
-        metric_repo.create_metric(metric)
-        task_repo.link_metric_to_task(task.id, metric.id)
+        created_metric = metric_repo.create_metric(metric)
+        task_repo.link_metric_to_task(task.id, created_metric.id)
 
-        return metric._to_response_model()
+        return created_metric._to_response_model()
     except:
         raise
     finally:

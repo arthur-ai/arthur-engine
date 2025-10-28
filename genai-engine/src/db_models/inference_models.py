@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, List
 
+from arthur_common.models.enums import InferenceFeedbackTarget
 from sqlalchemy import TIMESTAMP, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -123,7 +124,7 @@ class DatabaseInferenceFeedback(Base):
         ForeignKey("inferences.id"),
         index=True,
     )
-    target: Mapped[str] = mapped_column(String)
+    target: Mapped[InferenceFeedbackTarget] = mapped_column(String)
     score: Mapped[int] = mapped_column(Integer)
     reason: Mapped[str] = mapped_column(String, nullable=True)
     user_id: Mapped[str] = mapped_column(String, nullable=True)

@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, Any
 
 import sqlalchemy.types as types
-from sqlalchemy import TIMESTAMP, Boolean, Column
+from sqlalchemy import TIMESTAMP, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from utils import constants
@@ -26,7 +26,7 @@ class CustomerDataString(types.TypeDecorator[str]):
 class IsArchivable(object):
     """Mixin that identifies a class as being archivable"""
 
-    archived = Column(Boolean, nullable=False, default=False)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 # declarative base class
