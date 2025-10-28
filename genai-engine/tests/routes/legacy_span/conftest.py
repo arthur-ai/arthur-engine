@@ -30,10 +30,10 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span as InternalSpan
+from services.trace.span_normalization_service import SpanNormalizationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
-from utils import trace as trace_utils
 
 
 @pytest.fixture(scope="function")
@@ -205,6 +205,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     now = datetime.now()
 
@@ -228,7 +229,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
     }
 
     # Normalize to nested structure (as happens in production ingestion)
-    normalized_raw_data = trace_utils.normalize_span_to_nested_dict(raw_data)
+    normalized_raw_data = span_normalizer.normalize_span_to_nested_dict(raw_data)
     normalized_raw_data["arthur_span_version"] = "arthur_span_v1"
 
     # Create a test span with proper raw_data structure matching real spans
@@ -265,13 +266,14 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     # Create spans with different attributes
     spans = []
     base_time = datetime.now()
 
     # Span 1: Task1, Trace1 - LLM span with features
-    span1_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
@@ -308,7 +310,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans.append(span1)
 
     # Span 2: Task1, Trace1 - CHAIN span with parent
-    span2_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Chain",
@@ -338,7 +340,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans.append(span2)
 
     # Span 3: Task2, Trace2 - AGENT span
-    span3_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Agent",
@@ -368,7 +370,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans.append(span3)
 
     # Span 4: Task2, Trace2 - RETRIEVER span with parent
-    span4_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span4_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Retriever",
@@ -398,7 +400,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans.append(span4)
 
     # Span 5: Task1, Trace3 - TOOL span for tool filtering tests
-    span5_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span5_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "test_tool",  # This will be used for tool_name filtering
@@ -429,7 +431,7 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     spans.append(span5)
 
     # Span 6: Task1, Trace3 - Another LLM span for more metric testing
-    span6_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span6_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",

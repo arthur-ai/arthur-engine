@@ -29,10 +29,10 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span as InternalSpan
+from services.trace.span_normalization_service import SpanNormalizationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
-from utils import trace as trace_utils
 
 
 @pytest.fixture(scope="function")
@@ -244,13 +244,14 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     # Create spans with different attributes for comprehensive testing
     spans = []
     base_time = datetime.now()
 
     # Session 1, Task1, Trace1 - LLM span with features
-    span1_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
@@ -291,7 +292,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans.append(span1)
 
     # Session 1, Task1, Trace1 - CHAIN span with parent
-    span2_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Chain",
@@ -325,7 +326,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans.append(span2)
 
     # Session 1, Task1, Trace2 - Another LLM span in same session
-    span3_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
@@ -364,7 +365,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans.append(span3)
 
     # Session 2, Task2, Trace3 - AGENT span in different session/task
-    span4_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span4_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Agent",
@@ -398,7 +399,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans.append(span4)
 
     # Session 2, Task2, Trace3 - RETRIEVER span with parent
-    span5_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span5_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "Retriever",
@@ -432,7 +433,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans.append(span5)
 
     # No session, Task1, Trace4 - TOOL span for tool filtering tests
-    span6_raw_data = trace_utils.normalize_span_to_nested_dict(
+    span6_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "test_tool",

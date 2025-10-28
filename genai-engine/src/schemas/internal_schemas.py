@@ -1633,7 +1633,10 @@ class Span(BaseModel):
         if self.span_kind != SPAN_KIND_LLM:
             return False
 
-        return trace_utils.validate_span_version(self.raw_data)
+        # Lazy import to avoid circular dependency
+        from services.trace.span_normalization_service import SpanNormalizationService
+
+        return SpanNormalizationService().validate_span_version(self.raw_data)
 
     def _extract_span_features(self) -> dict:
         """Extract span features from raw data."""

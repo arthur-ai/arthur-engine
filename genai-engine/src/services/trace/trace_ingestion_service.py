@@ -17,6 +17,7 @@ from sqlalchemy.dialects.sqlite import (
 from sqlalchemy.orm import Session
 
 from db_models import DatabaseSpan, DatabaseTraceMetadata
+from services.trace.span_normalization_service import SpanNormalizationService
 from utils import trace as trace_utils
 from utils.constants import (
     EXPECTED_SPAN_VERSION,
@@ -34,6 +35,8 @@ class TraceIngestionService:
 
     def __init__(self, db_session: Session):
         self.db_session = db_session
+
+        self.span_normalizer = SpanNormalizationService()
 
     def process_trace_data(self, trace_data: bytes) -> Tuple[int, int, int, list[str]]:
         """Process trace data from protobuf format and return statistics."""
@@ -226,7 +229,7 @@ class TraceIngestionService:
 
     def _normalize_span_attributes(self, span_data: dict) -> dict:
         """Normalize span to nested dictionary structure with selective JSON deserialization."""
-        return trace_utils.normalize_span_to_nested_dict(span_data)
+        return self.span_normalizer.normalize_span_to_nested_dict(span_data)
 
     def _get_attribute_value(
         self,

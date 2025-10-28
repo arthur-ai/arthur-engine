@@ -1,14 +1,17 @@
+"""
+Trace utility functions.
+
+This module contains pure utility functions for trace/span processing.
+For span normalization and validation, see services.trace.SpanNormalizationService.
+"""
+
 import base64
-import copy
 import json
 import logging
 import re
 from datetime import datetime
 
-from benedict import benedict
 from openinference.semconv.trace import OpenInferenceMimeTypeValues
-
-from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -56,30 +59,6 @@ _PREFIX_PATTERNS = [
     re.compile(r"^(?:i\s+)?(?:need\s+)?(?:you\s+)?(?:to\s+)?", re.IGNORECASE),
 ]
 _SENTENCE_SPLIT_PATTERN = re.compile(r"[.!?]+")
-
-
-def validate_span_version(raw_data: dict) -> bool:
-    """
-    Validate that a span's raw data contains the expected version.
-
-    Args:
-        raw_data: The raw span data dictionary
-
-    Returns:
-        bool: True if the span has the expected version, False otherwise
-    """
-    if not isinstance(raw_data, dict):
-        logger.warning("Span has invalid raw_data format")
-        return False
-
-    version = raw_data.get(SPAN_VERSION_KEY)
-    if version != EXPECTED_SPAN_VERSION:
-        logger.warning(
-            f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
-        )
-        return False
-
-    return True
 
 
 def clean_extracted_text(text: str) -> str:
@@ -452,173 +431,6 @@ def clean_status_code(status_code: str) -> str:
         return "Unset"
     else:
         return status_code
-
-
-def convert_numeric_keys_to_lists(d):
-    """
-    Recursively convert dictionaries with numeric keys to lists.
-
-    Args:
-        d: Dictionary or other data structure to process
-
-    Returns:
-        Converted data structure with numeric-keyed dicts converted to lists
-    """
-    if isinstance(d, dict):
-        # Check if all keys are numeric strings
-        if all(k.isdigit() for k in d.keys()):
-            # Sort by numeric value and convert to list
-            return [
-                convert_numeric_keys_to_lists(d[k]) for k in sorted(d.keys(), key=int)
-            ]
-        else:
-            return {k: convert_numeric_keys_to_lists(v) for k, v in d.items()}
-    elif isinstance(d, list):
-        return [convert_numeric_keys_to_lists(x) for x in d]
-    else:
-        return d
-
-
-def deserialize_nested_json_fields(obj):
-    """
-    Recursively deserialize JSON strings in nested structures.
-
-    Specifically handles:
-    - tool_call.function.arguments
-    - Any field named 'arguments' within function contexts
-    - Any field in the json_keys list found at any nesting level
-
-    Args:
-        obj: Nested dictionary or list structure
-
-    Returns:
-        Structure with JSON strings deserialized
-    """
-    if isinstance(obj, dict):
-        result = {}
-        for key, value in obj.items():
-            # Deserialize specific nested fields that should be JSON
-            if key == "arguments" and isinstance(value, str):
-                try:
-                    # Deserialize and then recurse in case the result contains more nested structures
-                    deserialized = json.loads(value)
-                    result[key] = deserialize_nested_json_fields(deserialized)
-                except (json.JSONDecodeError, TypeError):
-                    result[key] = value
-            elif key in [
-                "metadata",
-                "invocation_parameters",
-                "json_schema",
-                "parameters",
-            ] and isinstance(value, str):
-                try:
-                    deserialized = json.loads(value)
-                    result[key] = deserialize_nested_json_fields(deserialized)
-                except (json.JSONDecodeError, TypeError):
-                    result[key] = value
-            else:
-                result[key] = deserialize_nested_json_fields(value)
-        return result
-    elif isinstance(obj, list):
-        return [deserialize_nested_json_fields(item) for item in obj]
-    else:
-        return obj
-
-
-def normalize_span_to_nested_dict(span: dict) -> dict:
-    """
-    Normalize span data to nested dictionary structure with selective JSON deserialization.
-
-    This function performs the following transformations:
-    1. Converts OTEL format (list of key-value pairs) to flat dict
-    2. Deserializes JSON fields based on mime_type (input.value, output.value)
-    3. Deserializes specific known JSON keys
-    4. Handles nested message.contents with special message_content nesting
-    5. Uses benedict to unflatten dot notation to nested structure
-    6. Converts numeric keys to lists
-
-    Args:
-        span: Raw span dictionary (may have OTEL format attributes)
-
-    Returns:
-        Normalized span with nested dictionary structure
-    """
-    result = copy.deepcopy(span)
-    raw_attrs = result.get("attributes", {})
-
-    # Convert OTEL format to flat dict first
-    if isinstance(raw_attrs, list):
-        attrs = {}
-        for attr in raw_attrs:
-            key = attr.get("key")
-            value_dict = attr.get("value", {})
-            if key:
-                attrs[key] = value_dict_to_value(value_dict)
-    else:
-        attrs = raw_attrs
-
-    # Deserialize JSON fields based on mime_type
-    if "input.value" in attrs and attrs.get("input.mime_type") == "application/json":
-        try:
-            attrs["input.value"] = json.loads(attrs["input.value"])
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    if "output.value" in attrs and attrs.get("output.mime_type") == "application/json":
-        try:
-            attrs["output.value"] = json.loads(attrs["output.value"])
-        except (json.JSONDecodeError, TypeError):
-            pass
-
-    # Note: Most JSON deserialization happens in deserialize_nested_json_fields()
-    # after unflattening. Only deserialize fields that exist at the flat level.
-    flat_json_keys = ["metadata"]
-    for key in flat_json_keys:
-        if key in attrs and isinstance(attrs[key], str):
-            try:
-                attrs[key] = json.loads(attrs[key])
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-    # Handle message.contents with special nesting for message_content
-    for k in list(attrs.keys()):
-        if k.endswith("message.contents") and isinstance(attrs[k], str):
-            try:
-                contents_list = json.loads(attrs[k])
-                nested_list = []
-                for item in contents_list:
-                    new_item = {}
-                    msg_content = {}
-                    for ik, iv in item.items():
-                        if ik.startswith("message_content."):
-                            subkey = ik.split(".", 1)[1]
-                            msg_content[subkey] = iv
-                        else:
-                            new_item[ik] = iv
-                    if msg_content:
-                        new_item["message_content"] = msg_content
-                    nested_list.append(new_item)
-                attrs[k] = nested_list
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-    result["attributes"] = attrs
-
-    # Use benedict to unflatten dot notation to nested dicts for entire span structure
-    # Keypath separator is set to / to avoid conflicts with the dot notation.
-    b = benedict(result, keypath_separator="/")
-    # Unflatten the dot notation to nested dicts.
-    # Separator is set to . to match the dot notation.
-    b = b.unflatten(separator=".")
-    nested = convert_numeric_keys_to_lists(b)
-
-    # Deserialize any remaining JSON strings in nested structures (e.g., tool_call arguments)
-    try:
-        nested = deserialize_nested_json_fields(nested)
-    except Exception as e:
-        logger.error(f"Error deserializing nested JSON fields: {e}", exc_info=True)
-
-    return nested
 
 
 def get_nested_value(obj, path):

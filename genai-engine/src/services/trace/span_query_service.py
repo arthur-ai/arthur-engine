@@ -24,7 +24,7 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils import trace as trace_utils
+from services.trace.span_normalization_service import SpanNormalizationService
 from utils.constants import SPAN_KIND_LLM
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ class SpanQueryService:
     def __init__(self, db_session: Session):
         self.db_session = db_session
         self.filter_service = FilterService(db_session)
+        self.span_normalizer = SpanNormalizationService()
 
     def get_paginated_trace_ids_with_filters(
         self,
@@ -123,7 +124,9 @@ class SpanQueryService:
     def validate_spans(self, spans: list[Span]) -> list[Span]:
         """Validate spans and return only valid ones."""
         valid_spans = [
-            span for span in spans if trace_utils.validate_span_version(span.raw_data)
+            span
+            for span in spans
+            if self.span_normalizer.validate_span_version(span.raw_data)
         ]
         invalid_count = len(spans) - len(valid_spans)
         if invalid_count > 0:
