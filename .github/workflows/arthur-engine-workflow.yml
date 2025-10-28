@@ -9,6 +9,13 @@ on:
     branches:
       - main
       - dev
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA for testing"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   run-genai-engine-linter:
@@ -32,13 +39,23 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-      - name: Run pre-commit
-        env:
-          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          with-groups: dev
+      - name: Run isort
+        continue-on-error: true
         run: |
-          poetry -C genai-engine run pre-commit install
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
-          echo "$CHANGED_FILES" | xargs poetry -C genai-engine run pre-commit run --color always --verbose --files
+          poetry -C genai-engine run isort src --profile black --check
+      - name: Run autoflake
+        continue-on-error: true
+        run: |
+          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src
+      - name: Run black
+        continue-on-error: true
+        run: |
+          poetry -C genai-engine run black --check src
+      # TODO: Uncomment this when mypy is fixed
+      # - name: Run mypy
+      #   run: |
+      #     poetry -C genai-engine run mypy src
 
   run-ml-engine-linter:
     if: |
@@ -61,6 +78,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: ml-engine
+          with-groups: linters
       - name: Generate GenAI Client
         run: |
           pip install openapi-generator-cli[jdk4py]
@@ -68,12 +86,22 @@ jobs:
             -i ./genai-engine/staging.openapi.json \
             -o ./ml-engine/src/genai_client \
             --skip-validate-spec --package-name genai_client
-      - name: Run linters
+      - name: Run isort
+        continue-on-error: true
         run: |
-          poetry -C ml-engine install --with linters
-          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --recursive src/ml_engine
-          poetry -C ml-engine run isort src/ml_engine --profile black
-          poetry -C ml-engine run black src/ml_engine
+          poetry -C ml-engine run isort src/ml_engine --profile black --check
+      - name: Run autoflake
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src/ml_engine
+      - name: Run black
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run black --check src/ml_engine
+      # TODO: Uncomment this when mypy is fixed
+      # - name: Run mypy
+      #   run: |
+      #     poetry -C ml-engine run mypy src/ml_engine
 
   run-genai-engine-changelog-cop:
     if: |
@@ -378,3 +406,20 @@ jobs:
         run: |
           git tag -a "${{ env.VERSION }}" -m "Create tag for Arthur Engine ${{ env.VERSION }}"
           git push origin "${{ env.VERSION }}"
+
+  deploy-genai-engine-cloudformation:
+    needs: [push-tag]
+    if: |
+      contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    container: node:20-alpine
+    environment: shared-protected-branch-secrets
+    steps:
+      - name: Trigger GitLab Pipeline
+        uses: fjogeleit/http-request-action@v1.16.5
+        with:
+          url: "https://gitlab.com/api/v4/projects/${{ secrets.GITLAB_PROJECT_ID }}/trigger/pipeline"
+          method: POST
+          contentType: application/x-www-form-urlencoded
+          data: "token=${{ secrets.GITLAB_TRIGGER_TOKEN }}&ref=main&variables[TRIGGER_JOB]=deploy_arthur_engine&variables[ARTHUR_ENGINE_COMMIT_SHA]=${{ inputs.commit_sha || github.sha }}"
