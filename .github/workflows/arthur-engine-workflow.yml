@@ -137,9 +137,9 @@ jobs:
         with:
           name: changelog-artifacts
           path: |
-            new.openapi.json
-            staging.openapi.json
-            src/api_changelog.md
+            genai-engine/new.openapi.json
+            genai-engine/staging.openapi.json
+            genai-engine/src/api_changelog.md
 
   run-genai-engine-unit-tests:
     if: |
