@@ -12,7 +12,7 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 import extractMustacheKeywords from "./mustacheExtractor";
-import { usePromptContext } from "./PromptContext";
+import { usePromptContext } from "./PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;

@@ -11,6 +11,7 @@ import {
 import { generateId, arrayUtils } from "./utils";
 
 import {
+  AgenticPromptMetadataResponse,
   MessageRole,
   ModelProvider,
   ToolChoiceEnum,
@@ -139,7 +140,7 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
-  backendPrompts: new Array<PromptType>(),
+  backendPrompts: new Array<AgenticPromptMetadataResponse>(),
   enabledProviders: new Array<ModelProvider>(),
   availableModels: new Map<ModelProvider, string[]>(),
 };

@@ -9,6 +9,8 @@ import {
   LLMToolInput,
   ToolChoice,
   ModelProvider,
+  AgenticPromptMetadataResponse,
+  Api,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -37,7 +39,10 @@ type PromptAction =
       type: "updatePrompt";
       payload: { promptId: string; prompt: Partial<PromptType> };
     }
-  | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
+  | {
+      type: "updateBackendPrompts";
+      payload: { prompts: AgenticPromptMetadataResponse[] };
+    }
   | {
       type: "updateProviders";
       payload: { providers: ModelProvider[] };
@@ -143,7 +148,7 @@ interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
-  backendPrompts: PromptType[];
+  backendPrompts: AgenticPromptMetadataResponse[]; // prompt metadata
   enabledProviders: ModelProvider[];
   availableModels: Map<ModelProvider, string[]>; // provider -> models
 }
@@ -176,6 +181,16 @@ interface SavePromptDialogProps {
   onSaveError?: (error: string) => void;
 }
 
+interface VersionSubmenuProps {
+  open: boolean;
+  promptName: string;
+  taskId: string;
+  apiClient: Api<unknown>;
+  onVersionSelect: (version: number) => void;
+  onClose: () => void;
+  anchorEl: HTMLElement | null;
+}
+
 const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "system",
   "user",
@@ -196,4 +211,5 @@ export {
   OutputFieldProps,
   SavePromptDialogProps,
   FrontendTool,
+  VersionSubmenuProps,
 };
