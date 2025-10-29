@@ -12,7 +12,6 @@ from schemas.enums import ModelProvider, PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import (
-    ModelProviderResponse,
     ModelProviderList,
     ModelProviderModelList,
 )

@@ -49,7 +49,7 @@ jobs:
         id: autoflake
         continue-on-error: true
         run: |
-          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src
+          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
       - name: Run black
         id: black
         continue-on-error: true
@@ -105,7 +105,7 @@ jobs:
         id: autoflake
         continue-on-error: true
         run: |
-          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src/ml_engine
+          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
       - name: Run black
         id: black
         continue-on-error: true
