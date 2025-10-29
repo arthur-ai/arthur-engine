@@ -1,8 +1,14 @@
 import json
 from datetime import datetime
 
-from dependencies import get_application_config, get_db_session, logger
+from arthur_common.models.enums import TokenUsageScope
+from arthur_common.models.response_schemas import TokenUsageResponse
 from fastapi import APIRouter, Depends, Query, Request
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
+from dependencies import get_application_config, get_db_session, logger
 from repositories.configuration_repository import ConfigurationRepository
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
@@ -10,15 +16,10 @@ from repositories.tasks_repository import TaskRepository
 from repositories.usage_repository import UsageRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.enums import TokenUsageScope
-from arthur_common.models.response_schemas import TokenUsageResponse
-from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import ApplicationConfiguration, User
 from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from schemas.response_schemas import ApplicationConfigurationResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
 from utils.users import permission_checker
 from utils.utils import public_endpoint
 

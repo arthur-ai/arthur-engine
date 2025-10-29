@@ -1,6 +1,7 @@
-from dependencies import get_jwk_client
 from fastapi import Depends, HTTPException
 from starlette import status
+
+from dependencies import get_jwk_client
 
 from .authorization_header_elements import get_bearer_access_token_from_cookie_or_header
 from .jwk_client import JWKClient

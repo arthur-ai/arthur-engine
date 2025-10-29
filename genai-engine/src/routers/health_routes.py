@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from schemas.response_schemas import HealthResponse
 from utils import utils
 from utils.utils import public_endpoint

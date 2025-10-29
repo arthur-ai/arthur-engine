@@ -3,8 +3,9 @@ from io import BytesIO
 
 import boto3
 from botocore.exceptions import ClientError
-from clients.s3.abc_file_client import FileClient
 from fastapi import HTTPException, UploadFile
+
+from clients.s3.abc_file_client import FileClient
 
 logger = logging.getLogger()
 

@@ -28,8 +28,6 @@ from arthur_common.models.connectors import (
 from arthur_common.models.enums import ModelProblemType
 from arthur_common.models.request_schemas import NewRuleRequest
 from arthur_common.models.response_schemas import RuleResponse, TaskResponse
-from config.config import Config
-from connectors.connector import Connector
 from genai_client import (
     ApiClient,
     APIKeysApi,
@@ -56,6 +54,9 @@ from genai_client.models import (
     UpdateRuleRequest,
 )
 from pydantic import ValidationError
+
+from config.config import Config
+from connectors.connector import Connector
 from tools.agentic_filters import (
     SHIELD_SORT_FILTER,
     add_default_sort_filter,

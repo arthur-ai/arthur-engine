@@ -15,12 +15,13 @@ from arthur_common.models.connectors import (
     SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
 )
 from arthur_common.models.enums import SnowflakeConnectorAuthenticatorMethods
-from connectors.odbc_connector import ODBCConnector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import SecretStr
 from snowflake.sqlalchemy import URL
 from sqlalchemy import text
+
+from connectors.odbc_connector import ODBCConnector
 
 
 class SnowflakeConnector(ODBCConnector):
