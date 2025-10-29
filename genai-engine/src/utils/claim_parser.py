@@ -1,9 +1,10 @@
-import commonmark
+import logging
 import re
 import string
-import logging
 
+import commonmark
 from nltk.tokenize.punkt import PunktSentenceTokenizer
+
 from utils.abbreviations import ABBREVIATIONS
 from utils.utils import list_indicator_regex
 

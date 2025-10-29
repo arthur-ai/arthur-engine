@@ -8,11 +8,10 @@ from dependencies import get_db_session
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.enums import PermissionLevelsEnum, ModelProvider
+from schemas.enums import ModelProvider, PermissionLevelsEnum
 from schemas.internal_schemas import User
 from schemas.request_schemas import PutModelProviderCredentials
 from schemas.response_schemas import (
-    ModelProviderResponse,
     ModelProviderList,
     ModelProviderModelList,
 )

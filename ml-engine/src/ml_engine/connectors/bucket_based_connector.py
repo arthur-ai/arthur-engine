@@ -35,9 +35,10 @@ from arthur_common.tools.time_utils import (
     check_datetime_tz_aware,
     find_smallest_timedelta,
 )
-from connectors.connector import Connector
 from dateutil import parser
 from fsspec import AbstractFileSystem
+
+from connectors.connector import Connector
 from tools.connector_read_filters import apply_filters_to_retrieved_inferences
 from tools.schema_interpreters import primary_timestamp_col_name
 

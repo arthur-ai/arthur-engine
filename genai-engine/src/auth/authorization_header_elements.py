@@ -1,8 +1,9 @@
+from starlette.requests import Request as StarletteRequest
+
 from schemas.custom_exceptions import (
     BadCredentialsException,
     RequiresAuthenticationException,
 )
-from starlette.requests import Request as StarletteRequest
 
 from . import auth_constants
 

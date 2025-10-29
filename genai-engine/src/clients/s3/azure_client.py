@@ -1,8 +1,9 @@
 from io import BytesIO
 
 from azure.storage.blob import BlobServiceClient
-from clients.s3.abc_file_client import FileClient
 from fastapi import UploadFile
+
+from clients.s3.abc_file_client import FileClient
 
 
 class AzureBlobStorageClient(FileClient):

@@ -6,6 +6,7 @@ from arthur_client.api_bindings import (
     ConnectorCheckResult,
     ConnectorsV1Api,
 )
+
 from connectors.connector import Connector
 from tools.connector_constructor import ConnectorConstructor
 

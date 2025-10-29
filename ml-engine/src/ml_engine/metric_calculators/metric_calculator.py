@@ -19,11 +19,10 @@ from arthur_common.models.metrics import (
     SketchMetric,
 )
 from arthur_common.models.schema_definitions import ScopeSchemaTag
-from arthur_common.tools.duckdb_data_loader import (
-    escape_identifier,
-)
+from arthur_common.tools.duckdb_data_loader import escape_identifier
 from arthur_common.tools.duckdb_utils import is_column_possible_segmentation
 from arthur_common.tools.functions import uuid_to_base26
+
 from config import Config
 from tools.schema_interpreters import (
     column_scalar_dtype_from_dataset_schema,

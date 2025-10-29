@@ -3,16 +3,17 @@ import logging
 from copy import deepcopy
 from typing import Any, List
 
-from clients.auth.abc_keycloak_client import ABCAuthClient
-from clients.auth.permission_mappings import ROLE_NAMES_TO_PERMISSIONS
-from config.keycloak_config import KeyCloakSettings
+from arthur_common.models.common_schemas import AuthUserRole, UserPermission
+from arthur_common.models.request_schemas import CreateUserRequest
 from fastapi import HTTPException
 from keycloak import KeycloakAdmin
 from keycloak.exceptions import KeycloakGetError, KeycloakPostError
 from pydantic import BaseModel, TypeAdapter
-from arthur_common.models.common_schemas import AuthUserRole, UserPermission
+
+from clients.auth.abc_keycloak_client import ABCAuthClient
+from clients.auth.permission_mappings import ROLE_NAMES_TO_PERMISSIONS
+from config.keycloak_config import KeyCloakSettings
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import CreateUserRequest
 from utils import constants
 from utils.utils import get_env_var, is_api_only_mode_enabled
 

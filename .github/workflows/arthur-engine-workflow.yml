@@ -41,21 +41,31 @@ jobs:
           working-directory: genai-engine
           with-groups: dev
       - name: Run isort
+        id: isort
         continue-on-error: true
         run: |
           poetry -C genai-engine run isort src --profile black --check
       - name: Run autoflake
+        id: autoflake
         continue-on-error: true
         run: |
-          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src
+          poetry -C genai-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src
       - name: Run black
+        id: black
         continue-on-error: true
         run: |
           poetry -C genai-engine run black --check src
       # TODO: Uncomment this when mypy is fixed
       # - name: Run mypy
+      #   id: mypy
+      #   continue-on-error: true
       #   run: |
       #     poetry -C genai-engine run mypy src
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure'
+        run: |
+          echo "One or more linters failed"
+          exit 1
 
   run-ml-engine-linter:
     if: |
@@ -87,14 +97,17 @@ jobs:
             -o ./ml-engine/src/genai_client \
             --skip-validate-spec --package-name genai_client
       - name: Run isort
+        id: isort
         continue-on-error: true
         run: |
           poetry -C ml-engine run isort src/ml_engine --profile black --check
       - name: Run autoflake
+        id: autoflake
         continue-on-error: true
         run: |
-          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive src/ml_engine
+          poetry -C ml-engine run autoflake --remove-all-unused-imports --in-place --check --recursive --quiet src/ml_engine
       - name: Run black
+        id: black
         continue-on-error: true
         run: |
           poetry -C ml-engine run black --check src/ml_engine
@@ -102,6 +115,11 @@ jobs:
       # - name: Run mypy
       #   run: |
       #     poetry -C ml-engine run mypy src/ml_engine
+      - name: Check linter results
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure'
+        run: |
+          echo "One or more linters failed"
+          exit 1
 
   run-genai-engine-changelog-cop:
     if: |
@@ -137,9 +155,9 @@ jobs:
         with:
           name: changelog-artifacts
           path: |
-            new.openapi.json
-            staging.openapi.json
-            src/api_changelog.md
+            genai-engine/new.openapi.json
+            genai-engine/staging.openapi.json
+            genai-engine/src/api_changelog.md
 
   run-genai-engine-unit-tests:
     if: |

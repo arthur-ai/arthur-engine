@@ -2,31 +2,6 @@ from datetime import datetime
 from typing import Annotated, List
 from uuid import UUID
 
-from auth.oauth_validator import validate_token
-from chat.chat import ArthurChat
-from chat.embedding import EmbeddingModel
-from dependencies import (
-    get_application_config,
-    get_db_session,
-    get_s3_client,
-    get_scorer_client,
-)
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi_pagination import Page, Params
-from repositories.configuration_repository import ConfigurationRepository
-from repositories.documents_repository import DocumentRepository
-from repositories.embedding_repository import EmbeddingRepository
-from repositories.feedback_repository import save_feedback
-from repositories.inference_repository import InferenceRepository
-from repositories.metrics_repository import MetricRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
-from repositories.tasks_rules_repository import TasksRulesRepository
-from routers.route_handler import GenaiEngineRoute
-from schemas.custom_exceptions import LLMContentFilterException
-from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
-from schemas.request_schemas import ApplicationConfigurationUpdateRequest
 from arthur_common.models.request_schemas import (
     ChatDefaultTaskRequest,
     ChatRequest,
@@ -42,10 +17,36 @@ from arthur_common.models.response_schemas import (
     ExternalDocument,
     FileUploadResult,
 )
-from scorer.score import ScorerClient
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi_pagination import Page, Params
 from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
+
+from auth.oauth_validator import validate_token
+from chat.chat import ArthurChat
+from chat.embedding import EmbeddingModel
+from dependencies import (
+    get_application_config,
+    get_db_session,
+    get_s3_client,
+    get_scorer_client,
+)
+from repositories.configuration_repository import ConfigurationRepository
+from repositories.documents_repository import DocumentRepository
+from repositories.embedding_repository import EmbeddingRepository
+from repositories.feedback_repository import save_feedback
+from repositories.inference_repository import InferenceRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
+from repositories.tasks_rules_repository import TasksRulesRepository
+from routers.route_handler import GenaiEngineRoute
+from schemas.custom_exceptions import LLMContentFilterException
+from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import ApplicationConfiguration, User, _serialize_datetime
+from schemas.request_schemas import ApplicationConfigurationUpdateRequest
+from scorer.score import ScorerClient
 from utils import constants as constants
 from utils.file_parsing import parse_file_words
 from utils.users import permission_checker

@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Union, List
+from typing import List, Union
 
 import litellm
 from litellm import get_model_cost_map, model_cost_map_url
@@ -9,7 +9,6 @@ from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
 
 from schemas.enums import ModelProvider
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ def supported_models() -> dict[str, list[str]]:
         # filter out ft models for openai, they aren't usable
         provider = cost_config["litellm_provider"]
         if provider == ModelProvider.OPENAI and litellm.is_openai_finetune_model(
-            model_name
+            model_name,
         ):
             continue
 
@@ -63,7 +62,9 @@ class LLMClient:
         return litellm.completion(*args, api_key=self.api_key, **kwargs)
 
     async def acompletion(
-        self, *args, **kwargs
+        self,
+        *args,
+        **kwargs,
     ) -> Union[ModelResponse, CustomStreamWrapper]:
         # Delegate to the top-level function
         return await litellm.acompletion(*args, api_key=self.api_key, **kwargs)

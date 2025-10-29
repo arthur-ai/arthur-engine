@@ -1,6 +1,7 @@
 from logging import Logger
 
 from arthur_client.api_bindings import ConnectorsV1Api, ConnectorType
+
 from connectors.big_query_connector import BigQueryConnector
 from connectors.connector import Connector
 from connectors.gcs_connector import GCSConnector

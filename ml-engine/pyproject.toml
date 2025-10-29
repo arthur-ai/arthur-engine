@@ -65,6 +65,10 @@ implicit_reexport = true
 explicit_package_bases = false
 exclude = ["src/genai_client"]
 
+[tool.isort]
+profile = "black"
+src_paths = ["src/ml_engine", "tests"]
+
 [tool.pytest.ini_options]
 pythonpath = ["src", "src/genai_client"]
 testpaths = ["tests"]

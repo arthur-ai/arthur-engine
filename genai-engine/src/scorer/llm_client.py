@@ -5,7 +5,8 @@ import random
 from datetime import datetime as dt
 
 import openai
-from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
+from arthur_common.models.common_schemas import LLMTokenConsumption
+from arthur_common.models.enums import RuleResultEnum
 from langchain_community.callbacks import get_openai_callback
 from langchain_openai import (
     AzureChatOpenAI,
@@ -14,14 +15,14 @@ from langchain_openai import (
     OpenAIEmbeddings,
 )
 from opentelemetry import trace
-from arthur_common.models.common_schemas import LLMTokenConsumption
+
+from config.openai_config import GenaiEngineOpenAIProvider, OpenAISettings
 from schemas.custom_exceptions import (
     LLMContentFilterException,
     LLMExecutionException,
     LLMMaxRequestTokensException,
     LLMTokensPerPeriodRateLimitException,
 )
-from arthur_common.models.enums import RuleResultEnum
 from schemas.scorer_schemas import RuleScore, ScorerRuleDetails
 
 logger = logging.getLogger()
