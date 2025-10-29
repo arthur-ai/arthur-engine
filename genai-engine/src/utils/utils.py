@@ -6,7 +6,7 @@ import re
 import traceback
 import urllib
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, List, Union
+from typing import Any, Callable, List, Union
 
 from arthur_common.models.common_schemas import (
     LLMTokenConsumption,
@@ -18,9 +18,11 @@ from fastapi import HTTPException, Query
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
+from pydantic_settings.main import T
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
+from custom_types.custom_types import P
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None
@@ -293,19 +295,19 @@ def calculate_duration_ms(start_time, end_time) -> float:
     return (end_time - start_time).total_seconds() * 1000.0
 
 
-def public_endpoint(func):
+def public_endpoint(func: Callable[P, T]) -> Callable[P, T]:
     """
     Decorator to explicitly mark an endpoint as publicly available.
     This will log a debug message when the endpoint is accessed.
     """
 
     @functools.wraps(func)
-    async def async_wrapper(*args, **kwargs):
+    async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
         logger.debug(f"Accessing public endpoint: {func.__name__}")
         if asyncio.iscoroutinefunction(func):
             return await func(*args, **kwargs)
         return func(*args, **kwargs)
 
     # Mark the function as intentionally public
-    async_wrapper._is_public = True
-    return async_wrapper
+    async_wrapper._is_public = True  # type: ignore[attr-defined]
+    return async_wrapper  # type: ignore[return-value]

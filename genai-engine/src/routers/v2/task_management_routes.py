@@ -12,6 +12,7 @@ from arthur_common.models.request_schemas import (
     UpdateRuleRequest,
 )
 from arthur_common.models.response_schemas import (
+    MetricResponse,
     RuleResponse,
     SearchTasksResponse,
     TaskResponse,
@@ -65,7 +66,7 @@ def create_task(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TaskResponse:
     try:
         send_telemetry_event(TelemetryEventTypes.TASK_CREATE_INITIATED)
         if len(request.name.strip()) == 0:
@@ -104,7 +105,7 @@ def get_all_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[TaskResponse]:
     try:
         rules_repo = RuleRepository(db_session)
         tasks_repo = TaskRepository(
@@ -133,7 +134,7 @@ def archive_task(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         rules_repo = RuleRepository(db_session)
         tasks_repo = TaskRepository(
@@ -163,7 +164,7 @@ def get_task(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TaskResponse:
     try:
         task_repo = TaskRepository(
             db_session,
@@ -185,7 +186,7 @@ def get_task(
     tags=["Tasks"],
 )
 @public_endpoint
-def redirect_to_tasks():
+def redirect_to_tasks() -> RedirectResponse:
     return RedirectResponse(
         url="/api/v2/tasks",
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
@@ -213,7 +214,7 @@ def search_tasks(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SearchTasksResponse:
     try:
         rules_repo = RuleRepository(db_session)
         metrics_repo = MetricRepository(db_session)
@@ -262,12 +263,12 @@ def create_task_rule(
     task_id: UUID,
     request: NewRuleRequest = Body(
         None,
-        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],
+        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],  # type: ignore[arg-type]
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RuleResponse:
     try:
         send_telemetry_event(TelemetryEventTypes.TASK_RULE_CREATE_INITIATED)
         task_repo = TaskRepository(
@@ -308,7 +309,7 @@ def update_task_rules(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TaskResponse:
     try:
         task_repo = TaskRepository(
             db_session,
@@ -338,7 +339,7 @@ def archive_task_rule(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> None:
+) -> Response:
     try:
         rule_repo = RuleRepository(db_session)
         rule = rule_repo.get_rule_by_id(str(rule_id))
@@ -397,12 +398,12 @@ def create_task_metric(
     task_id: UUID,
     request: NewMetricRequest = Body(
         None,
-        openapi_examples=NewMetricRequest.model_config["json_schema_extra"],
+        openapi_examples=NewMetricRequest.model_config["json_schema_extra"],  # type: ignore[arg-type]
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> MetricResponse:
     try:
         metric_repo = MetricRepository(db_session)
         task_repo = TaskRepository(
@@ -436,7 +437,7 @@ def update_task_metric(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TaskResponse:
     try:
         task_repo = TaskRepository(
             db_session,
@@ -465,7 +466,7 @@ def archive_task_metric(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         metric_repo = MetricRepository(db_session)
         task_repo = TaskRepository(

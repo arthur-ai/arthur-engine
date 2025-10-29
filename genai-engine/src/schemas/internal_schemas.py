@@ -548,7 +548,7 @@ class Task(BaseModel):
             is_agentic=self.is_agentic,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> TaskResponse:
         response_rules = []
         for link in self.rule_links:
             response_rule: RuleResponse = link.rule._to_response_model()
@@ -1570,7 +1570,7 @@ class ApplicationConfiguration(BaseModel):
             max_llm_rules_per_task_count=max_llm_rules_per_task_count,
         )
 
-    def _to_response_model(self):
+    def _to_response_model(self) -> ApplicationConfigurationResponse:
         return ApplicationConfigurationResponse(
             chat_task_id=self.chat_task_id,
             document_storage_configuration=(

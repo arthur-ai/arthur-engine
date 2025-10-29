@@ -128,6 +128,27 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional request property 'model_name'
 - **CHANGE** for **URL**: /api/v2/validate_prompt  added the new optional request property 'model_name'
 
+# 10/29/2025
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  the response's body type/format changed from ''/'' to 'object'/'' for status '201'
+- **BREAKING CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  the response's body type/format changed from ''/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}  api operation id 'set_model_provider_api_v1_model_providers__provider__delete' removed and replaced with 'delete_model_provider_api_v1_model_providers__provider__delete'
+- **CHANGE** for **URL**: /api/v1/model_providers/{provider}/available_models  api operation id 'get_model_providers_api_v1_model_providers__provider__available_models_get' removed and replaced with 'get_model_providers_available_models_api_v1_model_providers__provider__available_models_get'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'config' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the optional property 'enabled' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'created_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'id' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'metric_metadata' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'name' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'type' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics  added the required property 'updated_at' to the response with the '201' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'is_agentic' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the optional property 'metrics' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'created_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'name' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'rules' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the required property 'updated_at' to the response with the '200' status
+
 # 10/28/2025
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'metric_metadata'
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  added the new optional request property 'name'

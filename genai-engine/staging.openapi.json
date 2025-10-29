@@ -255,12 +255,12 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/InferenceFeedbackTarget"
                                 },
                                 {
                                     "type": "array",
                                     "items": {
-                                        "type": "string"
+                                        "$ref": "#/components/schemas/InferenceFeedbackTarget"
                                     }
                                 },
                                 {
@@ -1657,7 +1657,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/MetricResponse"
+                                }
                             }
                         }
                     },
@@ -1724,7 +1726,9 @@
                         "description": "Successful Response",
                         "content": {
                             "application/json": {
-                                "schema": {}
+                                "schema": {
+                                    "$ref": "#/components/schemas/TaskResponse"
+                                }
                             }
                         }
                     },
@@ -4844,16 +4848,16 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/ModelProvider"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "description": "Filter by model provider. Allowed values: anthropic, gemini, openai",
                             "title": "Model Provider"
                         },
-                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                        "description": "Filter by model provider. Allowed values: anthropic, gemini, openai"
                     },
                     {
                         "name": "model_name",
@@ -5011,16 +5015,16 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/ModelProvider"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "description": "Filter by model provider. Allowed values: anthropic, gemini, openai",
                             "title": "Model Provider"
                         },
-                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                        "description": "Filter by model provider. Allowed values: anthropic, gemini, openai"
                     },
                     {
                         "name": "model_name",
@@ -6043,7 +6047,7 @@
                 ],
                 "summary": "Disables the configuration for a model provider.",
                 "description": "Disables the configuration for a model provider",
-                "operationId": "set_model_provider_api_v1_model_providers__provider__delete",
+                "operationId": "delete_model_provider_api_v1_model_providers__provider__delete",
                 "security": [
                     {
                         "API Key": []
@@ -6110,7 +6114,7 @@
                 ],
                 "summary": "List the models available from a provider.",
                 "description": "Returns a list of the names of all available models for a provider.",
-                "operationId": "get_model_providers_api_v1_model_providers__provider__available_models_get",
+                "operationId": "get_model_providers_available_models_api_v1_model_providers__provider__available_models_get",
                 "security": [
                     {
                         "API Key": []
