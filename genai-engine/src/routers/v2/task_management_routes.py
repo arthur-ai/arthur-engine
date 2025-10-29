@@ -1,6 +1,21 @@
 from typing import Annotated
 from uuid import UUID
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import RuleScope, RuleType
+from arthur_common.models.request_schemas import (
+    NewMetricRequest,
+    NewRuleRequest,
+    NewTaskRequest,
+    SearchTasksRequest,
+    UpdateMetricRequest,
+    UpdateRuleRequest,
+)
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    SearchTasksResponse,
+    TaskResponse,
+)
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 from starlette import status
@@ -20,23 +35,8 @@ from repositories.tasks_repository import TaskRepository
 from repositories.tasks_rules_repository import TasksRulesRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
-from schemas.internal_schemas import ApplicationConfiguration, Metric, Rule, Task, User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.request_schemas import (
-    NewMetricRequest,
-    NewRuleRequest,
-    NewTaskRequest,
-    SearchTasksRequest,
-    UpdateMetricRequest,
-    UpdateRuleRequest,
-)
-from arthur_common.models.response_schemas import (
-    RuleResponse,
-    SearchTasksResponse,
-    TaskResponse,
-)
+from schemas.internal_schemas import ApplicationConfiguration, Metric, Rule, Task, User
 from utils import constants
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters, public_endpoint

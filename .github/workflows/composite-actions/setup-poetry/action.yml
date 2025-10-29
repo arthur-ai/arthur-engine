@@ -1,16 +1,24 @@
-name: 'Setup Poetry'
-description: 'Installs and configures Poetry'
+name: "Setup Poetry"
+description: "Installs and configures Poetry"
 
 inputs:
   working-directory:
-    description: 'Directory containing the pyproject.toml file'
+    description: "Directory containing the pyproject.toml file"
     required: true
+  with-groups:
+    description: "Additional dependency groups to install (comma-separated)"
+    required: false
+    default: ""
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
-    - name: 'Setup Poetry'
+    - name: "Setup Poetry"
       shell: bash
       run: |
         pip install poetry
-        poetry -C ${{ inputs.working-directory }} install
+        GROUPS_FLAG=""
+        if [ -n "${{ inputs.with-groups }}" ]; then
+          GROUPS_FLAG="--with ${{ inputs.with-groups }}"
+        fi
+        poetry -C ${{ inputs.working-directory }} install $GROUPS_FLAG

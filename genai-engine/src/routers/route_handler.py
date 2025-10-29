@@ -1,14 +1,15 @@
 from typing import Callable
 
-from dependencies import logger
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from pydantic import ValidationError as PydanticValidationError
-from schemas.custom_exceptions import GenaiEngineLLMException
 from starlette import status
 from starlette.requests import Request
 from starlette.responses import Response
+
+from dependencies import logger
+from schemas.custom_exceptions import GenaiEngineLLMException
 from utils import constants as constants
 
 

@@ -24,7 +24,7 @@ pydantic = "2.11.10"
 sse-starlette = "3.0.2"
 fastapi-sqlalchemy = "0.2.1"
 alembic = "1.16.5"
-boto3 = "1.40.60"
+boto3 = "1.40.61"
 python-dotenv = "1.1.1"
 psycopg2-binary = "2.9.11"
 sqlalchemy = "2.0.44"
@@ -104,6 +104,8 @@ pytest-cov = "6.3.0"
 pre-commit = "4.3.0"
 black = "25.9.0"
 mypy = "^1.13.0"
+isort = "^7.0.0"
+autoflake = "^2.3.1"
 
 
 [tool.poetry.group.performance.dependencies]
@@ -130,6 +132,13 @@ markers = [
 serve = "src.server:start"
 generate_changelog = "changelog:main"
 routes_security_check = "routes_security_check:main"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+implicit_reexport = true
+explicit_package_bases = false
 
 [tool.black]
 target-version = ['py312']

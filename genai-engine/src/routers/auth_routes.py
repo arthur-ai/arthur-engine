@@ -1,14 +1,15 @@
 import logging
 from base64 import b64encode
 
+from fastapi import APIRouter, Depends
+from starlette.requests import Request
+from starlette.responses import RedirectResponse
+
 from auth import auth_constants
 from auth.auth_constants import OAUTH_CLIENT_NAME
 from auth.authorization_header_elements import get_token_from_bearer
 from dependencies import get_oauth_client
-from fastapi import APIRouter, Depends
 from routers.route_handler import GenaiEngineRoute
-from starlette.requests import Request
-from starlette.responses import RedirectResponse
 from utils import constants
 from utils.users import get_user_info_from_payload
 from utils.utils import get_auth_logout_uri, get_env_var, public_endpoint

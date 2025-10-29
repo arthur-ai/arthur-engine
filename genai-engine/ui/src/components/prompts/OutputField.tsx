@@ -17,7 +17,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 
-import { usePromptContext } from "./PromptContext";
+import { usePromptContext } from "./PromptsPlaygroundContext";
 import { OutputFieldProps } from "./types";
 
 const SAMPLE_RESPONSE_OBJECT = {
