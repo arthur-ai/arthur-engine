@@ -10,6 +10,9 @@ import json
 import logging
 import re
 from datetime import datetime
+from typing import Any, Dict
+
+from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -277,3 +280,27 @@ def get_nested_value(obj, path):
             return None
 
     return current
+
+
+def validate_span_version(raw_data: Dict[str, Any]) -> bool:
+    """
+    Validate that a span's raw data contains the expected version.
+
+    Args:
+        raw_data: The raw span data dictionary
+
+    Returns:
+        bool: True if the span has the expected version, False otherwise
+    """
+    if not isinstance(raw_data, dict):
+        logger.warning("Span has invalid raw_data format")
+        return False
+
+    version = raw_data.get(SPAN_VERSION_KEY)
+    if version != EXPECTED_SPAN_VERSION:
+        logger.warning(
+            f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
+        )
+        return False
+
+    return True

@@ -13,7 +13,6 @@ import logging
 from benedict import benedict
 
 from services.trace.span_semantic_conventions import SpanSemanticConventions
-from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
 from utils.trace import value_dict_to_value
 
 logger = logging.getLogger(__name__)
@@ -32,29 +31,6 @@ class SpanNormalizationService:
 
     def __init__(self):
         self.conventions = SpanSemanticConventions()
-
-    def validate_span_version(self, raw_data: dict) -> bool:
-        """
-        Validate that a span's raw data contains the expected version.
-
-        Args:
-            raw_data: The raw span data dictionary
-
-        Returns:
-            bool: True if the span has the expected version, False otherwise
-        """
-        if not isinstance(raw_data, dict):
-            logger.warning("Span has invalid raw_data format")
-            return False
-
-        version = raw_data.get(SPAN_VERSION_KEY)
-        if version != EXPECTED_SPAN_VERSION:
-            logger.warning(
-                f"Span has unexpected version: {version}, expected: {EXPECTED_SPAN_VERSION}",
-            )
-            return False
-
-        return True
 
     def normalize_span_to_nested_dict(self, span: dict) -> dict:
         """

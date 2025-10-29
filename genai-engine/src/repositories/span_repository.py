@@ -19,10 +19,10 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.metrics_integration_service import MetricsIntegrationService
-from services.trace.span_normalization_service import SpanNormalizationService
 from services.trace.span_query_service import SpanQueryService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from services.trace.tree_building_service import TreeBuildingService
+from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -45,7 +45,6 @@ class SpanRepository:
         # Initialize services
         self.trace_ingestion_service = TraceIngestionService(db_session)
         self.span_query_service = SpanQueryService(db_session)
-        self.span_normalizer = SpanNormalizationService()
         self.metrics_integration_service = MetricsIntegrationService(
             db_session,
             tasks_metrics_repo,
@@ -178,7 +177,7 @@ class SpanRepository:
             return None
 
         # Validate span version
-        if not self.span_normalizer.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             logger.warning(f"Span {span_id} failed version validation")
             return None
 
@@ -207,7 +206,7 @@ class SpanRepository:
             return None
 
         # Validate span version
-        if not self.span_normalizer.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             raise ValueError(f"Span {span_id} failed version validation")
 
         # Validate that this is an LLM span (required for metrics computation)
@@ -446,7 +445,7 @@ class SpanRepository:
             raise ValueError(f"Span with ID {span_id} not found")
 
         # Validate span version
-        if not self.span_normalizer.validate_span_version(span.raw_data):
+        if not validate_span_version(span.raw_data):
             raise ValueError(f"Span {span_id} failed version validation")
 
         # Validate that this is an LLM span
