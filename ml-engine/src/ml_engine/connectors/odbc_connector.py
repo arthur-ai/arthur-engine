@@ -106,8 +106,7 @@ class ODBCConnector(Connector):
 
         # Default to generic ODBC (pyodbc) - fallback or explicitly chosen
         # This handles cases where no dialect is specified or an invalid dialect is provided
-        result: tuple[Union[str, URL], dict[str, Any]] = self._build_odbc_url(conn_str)
-        return result
+        return self._build_odbc_url(conn_str)
 
     def _build_odbc_url(
         self,
