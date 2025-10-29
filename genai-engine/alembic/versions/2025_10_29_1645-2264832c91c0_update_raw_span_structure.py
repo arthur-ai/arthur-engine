@@ -10,6 +10,7 @@ Create Date: 2025-10-29 16:45:15.459000
 import sys
 from pathlib import Path
 
+from psycopg2.extras import Json
 from sqlalchemy import text
 
 from alembic import op
@@ -103,7 +104,7 @@ def upgrade() -> None:
                     WHERE id = :span_id
                 """,
                 ),
-                {"span_id": span_id, "raw_data": normalized_data},
+                {"span_id": span_id, "raw_data": Json(normalized_data)},
             )
 
             offset += 1
