@@ -440,4 +440,4 @@ jobs:
           url: "https://gitlab.com/api/v4/projects/${{ secrets.GITLAB_PROJECT_ID }}/trigger/pipeline"
           method: POST
           contentType: application/x-www-form-urlencoded
-          data: "token=${{ secrets.GITLAB_TRIGGER_TOKEN }}&ref=main&variables[TRIGGER_JOB]=deploy_arthur_engine&variables[ARTHUR_ENGINE_COMMIT_SHA]=${{ inputs.commit_sha || github.sha }}"
+          data: "token=${{ secrets.DEPLOY_TRIGGER_TOKEN }}&ref=main&variables[TRIGGER_JOB]=deploy_arthur_engine&variables[ARTHUR_ENGINE_COMMIT_SHA]=${{ inputs.commit_sha || github.sha }}"
