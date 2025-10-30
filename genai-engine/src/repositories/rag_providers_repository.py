@@ -62,7 +62,7 @@ class RagProvidersRepository:
     def get_rag_provider_configuration(
         self,
         config_id: UUID,
-    ) -> Optional[RagProviderConfiguration]:
+    ) -> RagProviderConfiguration:
         """Get a RAG provider configuration by ID with polymorphic loading"""
         db_config = self._get_db_rag_provider_config(config_id)
         return RagProviderConfiguration._from_database_model(db_config)
