@@ -1,17 +1,20 @@
 name: Version Management
 
 on:
+  push:
+    branches:
+      - dev
   workflow_dispatch:
     inputs:
       intent:
-        description: 'Trigger version bump'
+        description: "Trigger version bump"
         required: true
-        default: 'bump_version'
+        default: "bump_version"
         type: string
       bump_type:
-        description: 'Version bump type (patch, minor, major)'
+        description: "Version bump type (patch, minor, major)"
         required: true
-        default: 'patch'
+        default: "patch"
         type: choice
         options:
           - patch
@@ -21,7 +24,9 @@ on:
 jobs:
   bump-arthur-engine-version:
     environment: shared-protected-branch-secrets
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref != 'refs/heads/main'
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev' && !startsWith(github.event.head_commit.message, 'fix(deps)')) ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -56,7 +61,12 @@ jobs:
         run: |
           set -e
 
-          export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
+          # For automatic triggers (push to dev), use patch. For manual triggers, use the user's choice
+          if [ "${{ github.event_name }}" == "push" ]; then
+            export BUMP_COMMAND="patch"
+          else
+            export BUMP_COMMAND="${{ github.event.inputs.bump_type }}"
+          fi
           export BRANCH_NAME="arthur-engine-version-bump/$(date +%Y%m%d-%H%M%S)"
           # git checkout -b $BRANCH_NAME
 
@@ -70,7 +80,7 @@ jobs:
           MAJOR=${VERSION_PARTS[0]}
           MINOR=${VERSION_PARTS[1]}
           PATCH=${VERSION_PARTS[2]}
-          
+
           # Bump version based on command
           case "$BUMP_COMMAND" in
             "major")
@@ -118,12 +128,12 @@ jobs:
           sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$GENAI_ENGINE_HELM_CHART_YAML_PATH"
           sed -i "s|genaiEngineVersion:.*|genaiEngineVersion: '$NEW_ARTHUR_ENGINE_VERSION'|" "$GENAI_ENGINE_HELM_VALUES_YAML_PATH"
-          
+
           # Include the ml-engine Chart.yaml and values.yaml
           sed -i "s|version:.*|version: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
           sed -i "s|appVersion:.*|appVersion: $NEW_ARTHUR_ENGINE_VERSION|" "$ML_ENGINE_CHART_YAML_PATH"
           sed -i "s|containerImageVersion:.*|containerImageVersion: \"$NEW_ARTHUR_ENGINE_VERSION\"|" "$ML_ENGINE_VALUES_YAML_PATH"
-    
+
           # Update the genai and ml engine pyproject.toml files and the openapi json
           sed -i "s/^version = \".*\"/version = \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/pyproject.toml
           sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_ARTHUR_ENGINE_VERSION\"/" genai-engine/staging.openapi.json
