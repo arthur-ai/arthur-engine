@@ -183,9 +183,11 @@ class PromptCompletionRequest(BaseModel):
         for message in messages:
             if message.content is None:
                 continue
-            
+
             if isinstance(message.content, str):
-                missing_vars.update(self._find_missing_variables_in_text(message.content))
+                missing_vars.update(
+                    self._find_missing_variables_in_text(message.content),
+                )
             elif isinstance(message.content, list):
                 for item in message.content:
                     if item.type == OpenAIMessageType.TEXT.value and item.text:
@@ -419,9 +421,13 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         # replace variables in messages
         completion_messages = self.messages
         if completion_request.variables:
-            completion_messages = completion_request.replace_variables(completion_messages)
-        
-        completion_params["messages"] = [message.model_dump(exclude_none=True) for message in completion_messages]
+            completion_messages = completion_request.replace_variables(
+                completion_messages,
+            )
+
+        completion_params["messages"] = [
+            message.model_dump(exclude_none=True) for message in completion_messages
+        ]
 
         if completion_request.stream is not None:
             completion_params["stream"] = completion_request.stream

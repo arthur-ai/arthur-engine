@@ -25,7 +25,7 @@ from schemas.agentic_prompt_schemas import (
     VariableTemplateValue,
 )
 from schemas.common_schemas import JsonSchema
-from schemas.enums import ModelProvider, MessageRole
+from schemas.enums import MessageRole, ModelProvider
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptMetadataResponse,
@@ -701,12 +701,19 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
 
     completion_request = PromptCompletionRequest(variables=variables)
     messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
-    
+
     result = completion_request.replace_variables(messages)
-    expected_result = [AgenticPromptMessage(role=MessageRole.USER, content=expected_message)]
+    expected_result = [
+        AgenticPromptMessage(role=MessageRole.USER, content=expected_message),
+    ]
     assert result == expected_result
 
-    prompt = AgenticPrompt(name="test_prompt", messages=messages, model_name="gpt-4o", model_provider="openai")
+    prompt = AgenticPrompt(
+        name="test_prompt",
+        messages=messages,
+        model_name="gpt-4o",
+        model_provider="openai",
+    )
     _, completion_params = prompt._get_completion_params(completion_request)
 
     assert completion_params["messages"][0]["content"] == expected_message
