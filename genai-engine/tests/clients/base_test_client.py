@@ -81,6 +81,7 @@ from schemas.response_schemas import (
     RagProviderConfigurationResponse,
     RagProviderSimilarityTextSearchResponse,
     SearchDatasetsResponse,
+    SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
     SessionListResponse,
     SessionTracesResponse,
@@ -2675,6 +2676,27 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 RagProviderSimilarityTextSearchResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def list_rag_provider_collections(
+        self,
+        provider_id: str,
+    ) -> tuple[int, SearchRagProviderCollectionsResponse]:
+        """List collections for a RAG provider."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_providers/{provider_id}/collections",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderCollectionsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
