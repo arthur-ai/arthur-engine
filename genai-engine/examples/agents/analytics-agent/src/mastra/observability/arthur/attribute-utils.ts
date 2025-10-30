@@ -376,10 +376,15 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
 
   // Extract content
   if (item.content !== undefined) {
-    message[SemanticConventions.MESSAGE_CONTENT] =
-      typeof item.content === "string"
-        ? item.content
-        : JSON.stringify(item.content);
+    if (typeof item.content === "string") {
+      message[SemanticConventions.MESSAGE_CONTENT] = item.content;
+    } else if (Array.isArray(item.content) && item.content.length === 1 && isObject(item.content[0]) && typeof item.content[0].text === "string") {
+      // if there is a single text content incorrectly formatted as an array, extract just the text string to adhere to open inference formatting
+      message[SemanticConventions.MESSAGE_CONTENT] = item.content[0].text;
+    } else {
+      // fail safe if content doesn't match any expected formatting
+      message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(item.content);
+    }
   } else if (item.contents !== undefined) {
     // Handle contents array (multimodal content)
     message[SemanticConventions.MESSAGE_CONTENTS] = item.contents;
