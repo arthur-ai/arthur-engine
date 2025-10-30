@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from arthur_common.models.common_schemas import (
     AuthUserRole,
@@ -60,7 +60,8 @@ from arthur_common.models.response_schemas import (
 )
 from fastapi import HTTPException
 from opentelemetry import trace
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
+from pydantic_core import Url
 
 from db_models import (
     DatabaseApiKey,
@@ -85,6 +86,7 @@ from db_models import (
     DatabaseResponseRuleResult,
     DatabaseRule,
     DatabaseRuleResultDetail,
+    DatabaseSecretStorage,
     DatabaseSpan,
     DatabaseTask,
     DatabaseTaskToMetrics,
@@ -94,19 +96,29 @@ from db_models import (
     DatabaseUser,
 )
 from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
+from db_models.rag_provider_models import (
+    DatabaseApiKeyRagProviderConfiguration,
+    DatabaseRagProviderAuthenticationConfigurationTypes,
+)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
     RuleDataType,
     RuleScoringMethod,
+    SecretType,
 )
 from schemas.metric_schemas import MetricScoreDetails
 from schemas.request_schemas import (
+    ApiKeyRagAuthenticationConfigRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
+    RagProviderConfigurationRequest,
 )
 from schemas.response_schemas import (
+    ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
     DatasetResponse,
     DatasetVersionMetadataResponse,
@@ -115,6 +127,7 @@ from schemas.response_schemas import (
     DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
+    RagProviderConfigurationResponse,
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
@@ -2261,3 +2274,200 @@ class ListDatasetVersions(BaseModel):
             total_pages=self.total_pages,
             total_count=self.total_count,
         )
+
+
+class ApiKeyRagProviderSecretValue(BaseModel):
+    api_key: SecretStr
+
+    def _to_sensitive_dict(self) -> dict[str, str]:
+        """Returns dict with all fields in the object. Secrets will be revealed as strings.
+        WARNING: should be very infrequently used. The secret will need to be revealed in a dictionary to store
+        its value in the database.
+        """
+        model_dict = vars(self)
+        model_dict["api_key"] = model_dict["api_key"].get_secret_value()
+        return model_dict
+
+
+class ApiKeyRagProviderSecret(BaseModel):
+    id: str
+    name: str
+    value: ApiKeyRagProviderSecretValue
+    secret_type: SecretType
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _to_database_model(
+        provider_config: "RagProviderConfiguration",
+    ) -> DatabaseSecretStorage:
+        api_key_secret_id = uuid.uuid4()
+        curr_time = datetime.now()
+        secret_value = ApiKeyRagProviderSecretValue(
+            api_key=provider_config.authentication_config.api_key,
+        )
+        return DatabaseSecretStorage(
+            id=str(api_key_secret_id),
+            name=f"api_key_rag_provider_config_{provider_config.id}",
+            value=secret_value._to_sensitive_dict(),
+            secret_type=SecretType.RAG_PROVIDER,
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_secret: DatabaseSecretStorage,
+    ) -> "ApiKeyRagProviderSecret":
+        return ApiKeyRagProviderSecret(
+            id=db_secret.id,
+            name=db_secret.name,
+            value=ApiKeyRagProviderSecretValue.model_validate(db_secret.value),
+            secret_type=SecretType.RAG_PROVIDER,
+            created_at=db_secret.created_at,
+            updated_at=db_secret.updated_at,
+        )
+
+
+class ApiKeyRagAuthenticationConfig(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: SecretStr
+    host_url: Url
+    rag_provider: RagAPIKeyAuthenticationProviderEnum
+
+    @staticmethod
+    def _from_request_model(
+        request: ApiKeyRagAuthenticationConfigRequest,
+    ) -> "ApiKeyRagAuthenticationConfig":
+        return ApiKeyRagAuthenticationConfig(
+            authentication_method=request.authentication_method,
+            api_key=request.api_key,
+            host_url=request.host_url,
+            rag_provider=request.rag_provider,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_config: "DatabaseApiKeyRagProviderConfiguration",
+    ) -> "ApiKeyRagAuthenticationConfig":
+        api_key_secret = ApiKeyRagProviderSecret._from_database_model(db_config.api_key)
+        return ApiKeyRagAuthenticationConfig(
+            authentication_method=RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+            api_key=api_key_secret.value.api_key,
+            host_url=Url(db_config.host_url),
+            rag_provider=db_config.rag_provider,
+        )
+
+    def to_response_model(self) -> ApiKeyRagAuthenticationConfigResponse:
+        return ApiKeyRagAuthenticationConfigResponse(
+            authentication_method=self.authentication_method,
+            host_url=self.host_url,
+            rag_provider=self.rag_provider,
+        )
+
+    @staticmethod
+    def _to_database_model(
+        provider_config: "RagProviderConfiguration",
+    ) -> DatabaseApiKeyRagProviderConfiguration:
+        api_key_secret_db = ApiKeyRagProviderSecret._to_database_model(provider_config)
+        return DatabaseApiKeyRagProviderConfiguration(
+            id=provider_config.id,
+            authentication_method=provider_config.authentication_config.authentication_method,
+            task_id=provider_config.task_id,
+            name=provider_config.name,
+            description=provider_config.description,
+            created_at=provider_config.created_at,
+            updated_at=provider_config.updated_at,
+            api_key=api_key_secret_db,
+            api_key_secret_id=api_key_secret_db.id,
+            host_url=str(provider_config.authentication_config.host_url),
+            rag_provider=provider_config.authentication_config.rag_provider,
+        )
+
+
+RagAuthenticationConfigTypes = Union[ApiKeyRagAuthenticationConfig]
+
+
+class RagProviderConfiguration(BaseModel):
+    id: uuid.UUID
+    task_id: str
+    authentication_config: RagAuthenticationConfigTypes
+    name: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _from_request_model(
+        task_id: str,
+        request: RagProviderConfigurationRequest,
+    ) -> "RagProviderConfiguration":
+        if isinstance(
+            request.authentication_config,
+            ApiKeyRagAuthenticationConfigRequest,
+        ):
+            config = ApiKeyRagAuthenticationConfig._from_request_model(
+                request.authentication_config,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Authentication method {type(request.authentication_config)} is not supported.",
+            )
+
+        return RagProviderConfiguration(
+            id=uuid.uuid4(),
+            task_id=task_id,
+            authentication_config=config,
+            description=request.description,
+            name=request.name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+    @staticmethod
+    def _from_database_model(db_config) -> "RagProviderConfiguration":
+        """Create from polymorphic database model"""
+        if (
+            db_config.authentication_method
+            == RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+        ):
+            # This should be a DatabaseApiKeyRagProviderConfiguration
+            auth_config = ApiKeyRagAuthenticationConfig._from_database_model(db_config)
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported authentication method: {db_config.authentication_method}",
+            )
+
+        return RagProviderConfiguration(
+            id=db_config.id,
+            task_id=db_config.task_id,
+            authentication_config=auth_config,
+            name=db_config.name,
+            description=db_config.description,
+            created_at=db_config.created_at,
+            updated_at=db_config.updated_at,
+        )
+
+    def to_response_model(self) -> RagProviderConfigurationResponse:
+        return RagProviderConfigurationResponse(
+            authentication_config=self.authentication_config.to_response_model(),
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    def _to_database_model(self) -> DatabaseRagProviderAuthenticationConfigurationTypes:
+        if isinstance(self.authentication_config, ApiKeyRagAuthenticationConfig):
+            return ApiKeyRagAuthenticationConfig._to_database_model(self)
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported authentication method: {self.authentication_method}",
+            )
