@@ -20,7 +20,7 @@ import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSpans } from "@/services/tracing";
-import { TablePagination, Typography } from "@mui/material";
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
 
@@ -35,7 +35,7 @@ export const SpanLevel = () => {
 
   const filters = useFilterStore((state) => state.filters);
 
-  const { data, isFetching, isPlaceholderData } = useQuery({
+  const { data, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: queryKeys.spans.listPaginated(
       filters,
       pagination.page,
@@ -73,6 +73,10 @@ export const SpanLevel = () => {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return <Alert severity="error">There was an error fetching spans.</Alert>;
+  }
 
   return (
     <>

@@ -14,12 +14,14 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
 
   let contentToRender = null;
   if (Array.isArray(content) && content.length > 0) {
-    contentToRender = content.map((item) => {
+    contentToRender = content.map((item, index) => {
       switch (item.type) {
         case "text":
-          return <TextMessageRenderer text={item.text} />;
+          return <TextMessageRenderer key={index} text={item.text} />;
         default:
-          return <Highlight code={tryFormatJson(item)} language="json" />;
+          return (
+            <Highlight key={index} code={tryFormatJson(item)} language="json" />
+          );
       }
     });
   }

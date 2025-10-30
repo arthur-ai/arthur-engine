@@ -85,7 +85,7 @@ export const CommonDrawer = () => {
           <Breadcrumbs aria-label="Drawer history">
             {history.slice(0, history.length - 1).map((entry) => (
               <Button
-                key={entry.key}
+                key={entry.ts}
                 variant="text"
                 onClick={() => handleBreadcrumbNavigation(entry)}
               >

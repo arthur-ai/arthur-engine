@@ -9,7 +9,6 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default defineConfig([
-  ...pluginQuery.configs["flat/recommended"],
   globalIgnores(["dist", ".pnp.*", ".yarn"]),
   ...pluginQuery.configs["flat/recommended"],
   {

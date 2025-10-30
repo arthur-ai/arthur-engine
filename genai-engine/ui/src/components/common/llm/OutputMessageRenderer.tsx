@@ -47,6 +47,8 @@ export const OutputMessageRenderer = ({
       content,
     }));
 
+  if (entries.length === 0) return null;
+
   return (
     <Tabs.Root defaultValue={entries[0].type}>
       <Tabs.List>

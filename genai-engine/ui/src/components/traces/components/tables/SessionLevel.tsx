@@ -18,7 +18,7 @@ import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSessions } from "@/services/tracing";
-import { TablePagination, Typography } from "@mui/material";
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { useTracesHistoryStore } from "../../stores/history.store";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
@@ -32,7 +32,7 @@ export const SessionLevel = () => {
 
   const push = useTracesHistoryStore((state) => state.push);
 
-  const { data, isFetching, isPlaceholderData } = useQuery({
+  const { data, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: queryKeys.sessions.listPaginated(
       filters,
       pagination.page,
@@ -72,6 +72,12 @@ export const SessionLevel = () => {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return (
+      <Alert severity="error">There was an error fetching sessions.</Alert>
+    );
+  }
 
   return (
     <>

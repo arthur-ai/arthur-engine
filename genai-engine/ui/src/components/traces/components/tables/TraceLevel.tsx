@@ -1,4 +1,4 @@
-import { TablePagination, Typography } from "@mui/material";
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
@@ -36,7 +36,7 @@ export function TraceLevel() {
 
   const api = useApi()!;
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, error } = useQuery({
     queryKey: queryKeys.traces.listPaginated(filters, 0, FETCH_SIZE),
     placeholderData: keepPreviousData,
     queryFn: () =>
@@ -70,6 +70,10 @@ export function TraceLevel() {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return <Alert severity="error">There was an error fetching traces.</Alert>;
+  }
 
   return (
     <>

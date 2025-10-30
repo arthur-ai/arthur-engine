@@ -20,7 +20,6 @@ export const getSessionsQueryOptions = ({
   filters: IncomingFilter[];
 }) =>
   queryOptions({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.list(filters),
     queryFn: () => {
       return getFilteredSessions(api!, {

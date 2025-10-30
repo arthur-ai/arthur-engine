@@ -87,7 +87,9 @@ const SpanTreeItem = ({
           data-has-children={hasChildren ? "" : undefined}
           className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75"
           sx={{
-            pl: `${4 + level * 16}px`,
+            "--offset-start": "4px",
+            "--offset-multiply": 16,
+            pl: `calc(var(--offset-start) + var(--offset-multiply) * ${level} * 1px)`,
             py: 0.5,
             backgroundColor: isSelected ? "primary.main" : "transparent",
             color: isSelected ? "primary.contrastText" : "text.primary",

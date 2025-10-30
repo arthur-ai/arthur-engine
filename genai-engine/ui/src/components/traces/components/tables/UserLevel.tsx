@@ -1,41 +1,24 @@
-import Box from "@mui/material/Box";
-import LinearProgress from "@mui/material/LinearProgress";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableSortLabel from "@mui/material/TableSortLabel";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
-import {
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
-import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
 
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getUsersInfiniteQueryOptions } from "@/query-options/users";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TablePagination, Typography } from "@mui/material";
-import { TracesTable } from "../TracesTable";
-import { useTracesHistoryStore } from "../../stores/history.store";
 import { queryKeys } from "@/lib/queryKeys";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { getUsers } from "@/services/tracing";
+import { Alert, TablePagination, Typography } from "@mui/material";
+import { useTracesHistoryStore } from "../../stores/history.store";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 export const UserLevel = () => {
   const api = useApi()!;
@@ -44,7 +27,7 @@ export const UserLevel = () => {
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const { data, isFetching, isPlaceholderData } = useQuery({
+  const { data, isFetching, isPlaceholderData, error } = useQuery({
     queryKey: queryKeys.users.listPaginated(
       pagination.page,
       pagination.rowsPerPage
@@ -75,6 +58,10 @@ export const UserLevel = () => {
     manualPagination: true,
     rowCount: data?.count ?? 0,
   });
+
+  if (error) {
+    return <Alert severity="error">There was an error fetching users.</Alert>;
+  }
 
   return (
     <>
