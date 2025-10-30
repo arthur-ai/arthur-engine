@@ -638,14 +638,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.40.61"
+version = "1.40.62"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "botocore-1.40.61-py3-none-any.whl", hash = "sha256:17ebae412692fd4824f99cde0f08d50126dc97954008e5ba2b522eb049238aa7"},
-    {file = "botocore-1.40.61.tar.gz", hash = "sha256:a2487ad69b090f9cccd64cf07c7021cd80ee9c0655ad974f87045b02f3ef52cd"},
+    {file = "botocore-1.40.62-py3-none-any.whl", hash = "sha256:780f1d476d4b530ce3b12fd9f7112156d97d99ebdbbd9ef60635b0432af9d3a5"},
+    {file = "botocore-1.40.62.tar.gz", hash = "sha256:1e8e57c131597dc234d67428bda1323e8f0a687ea13ea570253159ab9256fa28"},
 ]
 
 [package.dependencies]
@@ -8394,6 +8394,21 @@ h11 = ">=0.8"
 standard = ["colorama (>=0.4) ; sys_platform == \"win32\"", "httptools (>=0.6.3)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "uvloop (>=0.15.1) ; sys_platform != \"win32\" and sys_platform != \"cygwin\" and platform_python_implementation != \"PyPy\"", "watchfiles (>=0.13)", "websockets (>=10.4)"]
 
 [[package]]
+name = "validators"
+version = "0.35.0"
+description = "Python Data Validation for Humans™"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "validators-0.35.0-py3-none-any.whl", hash = "sha256:e8c947097eae7892cb3d26868d637f79f47b4a0554bc6b80065dfe5aac3705dd"},
+    {file = "validators-0.35.0.tar.gz", hash = "sha256:992d6c48a4e77c81f1b4daba10d16c3a9bb0dbb79b3a19ea847ff0928e70497a"},
+]
+
+[package.extras]
+crypto-eth-addresses = ["eth-hash[pycryptodome] (>=0.7.0)"]
+
+[[package]]
 name = "virtualenv"
 version = "20.35.4"
 description = "Virtual Python Environment builder"
@@ -8451,6 +8466,30 @@ smart-open = ">=5.2.1,<8.0.0"
 srsly = ">=2.4.3,<3.0.0"
 typer = ">=0.3.0,<1.0.0"
 wasabi = ">=0.9.1,<1.2.0"
+
+[[package]]
+name = "weaviate-client"
+version = "4.17.0"
+description = "A python native Weaviate client"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "weaviate_client-4.17.0-py3-none-any.whl", hash = "sha256:60e4a355b90537ee1e942ab0b76a94750897a13d9cf13c5a6decbd166d0ca8b5"},
+    {file = "weaviate_client-4.17.0.tar.gz", hash = "sha256:731d58d84b0989df4db399b686357ed285fb95971a492ccca8dec90bb2343c51"},
+]
+
+[package.dependencies]
+authlib = ">=1.2.1,<2.0.0"
+deprecation = ">=2.1.0,<3.0.0"
+grpcio = ">=1.59.5,<1.80.0"
+httpx = ">=0.26.0,<0.29.0"
+protobuf = ">=4.21.6,<7.0.0"
+pydantic = ">=2.8.0,<3.0.0"
+validators = ">=0.34.0,<1.0.0"
+
+[package.extras]
+agents = ["weaviate-agents (>=1.0.0,<2.0.0)"]
 
 [[package]]
 name = "websocket-client"
@@ -8938,4 +8977,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "36a7cfd75c2b1b2d8b51642d5c0c52d2d6fce1b5969f576d87c9af841b786a5d"
+content-hash = "86bf570c89357550a6c9039740c6b08735becb6d13fc71c43fda7cd41e50b05b"

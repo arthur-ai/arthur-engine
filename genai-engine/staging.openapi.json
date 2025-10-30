@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.95"
+        "version": "2.1.102"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -6170,6 +6170,477 @@
                 ]
             }
         },
+        "/api/v1/tasks/{task_id}/rag_providers": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Create Rag Provider",
+                "description": "Register a new RAG provider connection configuration.",
+                "operationId": "create_rag_provider_api_v1_tasks__task_id__rag_providers_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the task to register a new provider connection for. Should be formatted as a UUID.",
+                            "title": "Task Id"
+                        },
+                        "description": "ID of the task to register a new provider connection for. Should be formatted as a UUID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagProviderConfigurationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Get Rag Providers",
+                "description": "Get list of RAG provider connection configurations for the task.",
+                "operationId": "get_rag_providers_api_v1_tasks__task_id__rag_providers_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the task to fetch the provider connections for.",
+                            "title": "Task Id"
+                        },
+                        "description": "ID of the task to fetch the provider connections for."
+                    },
+                    {
+                        "name": "config_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "RAG Provider configuration name substring to search for.",
+                            "title": "Config Name"
+                        },
+                        "description": "RAG Provider configuration name substring to search for."
+                    },
+                    {
+                        "name": "authentication_method",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/RagProviderAuthenticationMethodEnum"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "RAG Provider authentication method to filter by.",
+                            "title": "Authentication Method"
+                        },
+                        "description": "RAG Provider authentication method to filter by."
+                    },
+                    {
+                        "name": "rag_provider_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/components/schemas/RagAPIKeyAuthenticationProviderEnum"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "RAG provider name to filter by.",
+                            "title": "Rag Provider Name"
+                        },
+                        "description": "RAG provider name to filter by."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchRagProviderConfigurationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_providers/{provider_id}": {
+            "get": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Get Rag Provider",
+                "description": "Get a single RAG provider connection configuration.",
+                "operationId": "get_rag_provider_api_v1_rag_providers__provider_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of RAG provider configuration.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of RAG provider configuration."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Update Rag Provider",
+                "description": "Update a single RAG provider connection configuration.",
+                "operationId": "update_rag_provider_api_v1_rag_providers__provider_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG provider to update the connection configuration for.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of the RAG provider to update the connection configuration for."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagProviderConfigurationUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderConfigurationResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Delete Rag Provider",
+                "description": "Delete a RAG provider connection configuration.",
+                "operationId": "delete_rag_provider_api_v1_rag_providers__provider_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG provider configuration to delete.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of the RAG provider configuration to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/rag_providers/test_connection": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Test Rag Provider Connection",
+                "description": "Test a new RAG provider connection configuration.",
+                "operationId": "test_rag_provider_connection_api_v1_tasks__task_id__rag_providers_test_connection_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ID of the task to test the new provider connection for. Should be formatted as a UUID.",
+                            "title": "Task Id"
+                        },
+                        "description": "ID of the task to test the new provider connection for. Should be formatted as a UUID."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagProviderConfigurationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConnectionCheckResult"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_providers/{provider_id}/similarity_text_search": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Execute Similarity Text Search",
+                "description": "Execute a RAG Provider Similarity Text Search.",
+                "operationId": "execute_similarity_text_search_api_v1_rag_providers__provider_id__similarity_text_search_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG provider configuration to use for the vector database connection.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of the RAG provider configuration to use for the vector database connection."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagVectorSimilarityTextSearchSettingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderSimilarityTextSearchResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -7733,6 +8204,119 @@
                 "type": "object",
                 "title": "AnthropicThinkingParam"
             },
+            "ApiKeyRagAuthenticationConfigRequest": {
+                "properties": {
+                    "authentication_method": {
+                        "type": "string",
+                        "const": "api_key",
+                        "title": "Authentication Method",
+                        "default": "api_key"
+                    },
+                    "api_key": {
+                        "type": "string",
+                        "format": "password",
+                        "title": "Api Key",
+                        "description": "API key to use for authentication.",
+                        "writeOnly": true
+                    },
+                    "host_url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "format": "uri",
+                        "title": "Host Url",
+                        "description": "URL of host instance to authenticate with."
+                    },
+                    "rag_provider": {
+                        "$ref": "#/components/schemas/RagAPIKeyAuthenticationProviderEnum",
+                        "description": "Name of RAG provider to authenticate with."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "api_key",
+                    "host_url",
+                    "rag_provider"
+                ],
+                "title": "ApiKeyRagAuthenticationConfigRequest"
+            },
+            "ApiKeyRagAuthenticationConfigResponse": {
+                "properties": {
+                    "authentication_method": {
+                        "type": "string",
+                        "const": "api_key",
+                        "title": "Authentication Method",
+                        "default": "api_key"
+                    },
+                    "host_url": {
+                        "type": "string",
+                        "minLength": 1,
+                        "format": "uri",
+                        "title": "Host Url",
+                        "description": "URL of host instance to authenticate with."
+                    },
+                    "rag_provider": {
+                        "$ref": "#/components/schemas/RagAPIKeyAuthenticationProviderEnum",
+                        "description": "Name of RAG provider to authenticate with."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "host_url",
+                    "rag_provider"
+                ],
+                "title": "ApiKeyRagAuthenticationConfigResponse"
+            },
+            "ApiKeyRagAuthenticationConfigUpdateRequest": {
+                "properties": {
+                    "authentication_method": {
+                        "type": "string",
+                        "const": "api_key",
+                        "title": "Authentication Method",
+                        "default": "api_key"
+                    },
+                    "api_key": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "password",
+                                "writeOnly": true
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Api Key",
+                        "description": "API key to use for authentication."
+                    },
+                    "host_url": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1,
+                                "format": "uri"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Host Url",
+                        "description": "URL of host instance to authenticate with."
+                    },
+                    "rag_provider": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/RagAPIKeyAuthenticationProviderEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Name of RAG provider to authenticate with."
+                    }
+                },
+                "type": "object",
+                "title": "ApiKeyRagAuthenticationConfigUpdateRequest"
+            },
             "ApiKeyResponse": {
                 "properties": {
                     "id": {
@@ -8339,6 +8923,39 @@
                 ],
                 "title": "CompletionRequest",
                 "description": "Request schema for running an unsaved agentic prompt"
+            },
+            "ConnectionCheckOutcome": {
+                "type": "string",
+                "enum": [
+                    "passed",
+                    "failed"
+                ],
+                "title": "ConnectionCheckOutcome"
+            },
+            "ConnectionCheckResult": {
+                "properties": {
+                    "connection_check_outcome": {
+                        "$ref": "#/components/schemas/ConnectionCheckOutcome",
+                        "description": "Result of the connection check."
+                    },
+                    "failure_reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Failure Reason",
+                        "description": "Explainer of the connection check failure result."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "connection_check_outcome"
+                ],
+                "title": "ConnectionCheckResult"
             },
             "ConversationBaseResponse": {
                 "properties": {
@@ -9775,6 +10392,49 @@
                 ],
                 "title": "MessageRole"
             },
+            "MetadataQuery": {
+                "properties": {
+                    "creation_time": {
+                        "type": "boolean",
+                        "title": "Creation Time",
+                        "default": false
+                    },
+                    "last_update_time": {
+                        "type": "boolean",
+                        "title": "Last Update Time",
+                        "default": false
+                    },
+                    "distance": {
+                        "type": "boolean",
+                        "title": "Distance",
+                        "default": false
+                    },
+                    "certainty": {
+                        "type": "boolean",
+                        "title": "Certainty",
+                        "default": false
+                    },
+                    "score": {
+                        "type": "boolean",
+                        "title": "Score",
+                        "default": false
+                    },
+                    "explain_score": {
+                        "type": "boolean",
+                        "title": "Explain Score",
+                        "default": false
+                    },
+                    "is_consistent": {
+                        "type": "boolean",
+                        "title": "Is Consistent",
+                        "default": false
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "MetadataQuery",
+                "description": "Define which metadata should be returned in the query's results."
+            },
             "MetricResponse": {
                 "properties": {
                     "id": {
@@ -9985,7 +10645,7 @@
                     "enabled": {
                         "type": "boolean",
                         "title": "Enabled",
-                        "description": "Whether the provider is enabled with credentials"
+                        "description": "Whether the provider is enabled with credentials."
                     }
                 },
                 "type": "object",
@@ -11177,6 +11837,173 @@
                 "title": "QueryTracesWithMetricsResponse",
                 "description": "New response format that groups spans into traces with nested structure"
             },
+            "RagAPIKeyAuthenticationProviderEnum": {
+                "type": "string",
+                "enum": [
+                    "weaviate"
+                ],
+                "title": "RagAPIKeyAuthenticationProviderEnum"
+            },
+            "RagProviderAuthenticationMethodEnum": {
+                "type": "string",
+                "enum": [
+                    "api_key"
+                ],
+                "title": "RagProviderAuthenticationMethodEnum"
+            },
+            "RagProviderConfigurationRequest": {
+                "properties": {
+                    "authentication_config": {
+                        "$ref": "#/components/schemas/ApiKeyRagAuthenticationConfigRequest",
+                        "description": "Configuration of the authentication strategy."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of RAG provider configuration."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of RAG provider configuration."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "authentication_config",
+                    "name"
+                ],
+                "title": "RagProviderConfigurationRequest"
+            },
+            "RagProviderConfigurationResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Unique identifier of the RAG provider configuration."
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "title": "Task Id",
+                        "description": "ID of parent task."
+                    },
+                    "authentication_config": {
+                        "$ref": "#/components/schemas/ApiKeyRagAuthenticationConfigResponse",
+                        "description": "Configuration of the authentication strategy."
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of RAG provider configuration."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of RAG provider configuration."
+                    },
+                    "created_at": {
+                        "type": "integer",
+                        "title": "Created At",
+                        "description": "Time the RAG provider configuration was created in unix milliseconds"
+                    },
+                    "updated_at": {
+                        "type": "integer",
+                        "title": "Updated At",
+                        "description": "Time the RAG provider configuration was updated in unix milliseconds"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "task_id",
+                    "authentication_config",
+                    "name",
+                    "created_at",
+                    "updated_at"
+                ],
+                "title": "RagProviderConfigurationResponse"
+            },
+            "RagProviderConfigurationUpdateRequest": {
+                "properties": {
+                    "authentication_config": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ApiKeyRagAuthenticationConfigUpdateRequest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Configuration of the authentication strategy."
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of RAG provider configuration."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of RAG provider configuration."
+                    }
+                },
+                "type": "object",
+                "title": "RagProviderConfigurationUpdateRequest"
+            },
+            "RagProviderSimilarityTextSearchResponse": {
+                "properties": {
+                    "response": {
+                        "$ref": "#/components/schemas/WeaviateSimilarityTextSearchResponse"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "response"
+                ],
+                "title": "RagProviderSimilarityTextSearchResponse"
+            },
+            "RagVectorSimilarityTextSearchSettingRequest": {
+                "properties": {
+                    "settings": {
+                        "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsRequest",
+                        "description": "Settings for the similarity text search request to the vector database. S"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "settings"
+                ],
+                "title": "RagVectorSimilarityTextSearchSettingRequest"
+            },
             "ReasoningEffortEnum": {
                 "type": "string",
                 "enum": [
@@ -11485,6 +12312,29 @@
                     "datasets"
                 ],
                 "title": "SearchDatasetsResponse"
+            },
+            "SearchRagProviderConfigurationsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG provider configurations matching the parameters."
+                    },
+                    "rag_provider_configurations": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagProviderConfigurationResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Configurations",
+                        "description": "List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_configurations"
+                ],
+                "title": "SearchRagProviderConfigurationsResponse"
             },
             "SearchRulesRequest": {
                 "properties": {
@@ -12996,6 +13846,427 @@
                     "value"
                 ],
                 "title": "VariableTemplateValue"
+            },
+            "WeaviateSimilaritySearchMetadata": {
+                "properties": {
+                    "creation_time": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Creation Time",
+                        "description": "Vector object creation time."
+                    },
+                    "last_update_time": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Last Update Time",
+                        "description": "Vector object last update time."
+                    },
+                    "distance": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Distance",
+                        "description": "Raw distance metric used in the vector search. Lower values indicate closer vectors."
+                    },
+                    "certainty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Certainty",
+                        "description": "Similarity score measure between 0 and 1. Higher values correspond to more similar reesults."
+                    },
+                    "score": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Score",
+                        "description": "Normalized relevance metric that ranks search results."
+                    },
+                    "explain_score": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Explain Score",
+                        "description": "Explanation of how the score was calculated."
+                    },
+                    "is_consistent": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Is Consistent",
+                        "description": "Indicates if the object is consistent across all replicates in a multi-node Weaviate cluster."
+                    }
+                },
+                "type": "object",
+                "title": "WeaviateSimilaritySearchMetadata",
+                "description": "Metadata from weaviate for a vector object:\nhttps://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal"
+            },
+            "WeaviateSimilaritySearchTextResult": {
+                "properties": {
+                    "uuid": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Uuid",
+                        "description": "Unique identifier of the result"
+                    },
+                    "metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateSimilaritySearchMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Search metadata including distance, score, etc."
+                    },
+                    "properties": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Properties",
+                        "description": "Properties of the result object"
+                    },
+                    "vector": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "items": {
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ]
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vector",
+                        "description": "Vector representation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "uuid",
+                    "properties"
+                ],
+                "title": "WeaviateSimilaritySearchTextResult",
+                "description": "Individual search result from Weaviate"
+            },
+            "WeaviateSimilarityTextSearchResponse": {
+                "properties": {
+                    "rag_provider": {
+                        "type": "string",
+                        "const": "weaviate",
+                        "title": "Rag Provider",
+                        "default": "weaviate"
+                    },
+                    "objects": {
+                        "items": {
+                            "$ref": "#/components/schemas/WeaviateSimilaritySearchTextResult"
+                        },
+                        "type": "array",
+                        "title": "Objects",
+                        "description": "List of search result objects"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "objects"
+                ],
+                "title": "WeaviateSimilarityTextSearchResponse",
+                "description": "Response from Weaviate similarity text search"
+            },
+            "WeaviateVectorSimilarityTextSearchSettingsRequest": {
+                "properties": {
+                    "rag_provider": {
+                        "type": "string",
+                        "const": "weaviate",
+                        "title": "Rag Provider",
+                        "default": "weaviate"
+                    },
+                    "collection_name": {
+                        "type": "string",
+                        "title": "Collection Name",
+                        "description": "Name of the vector collection used for the similarity search."
+                    },
+                    "query": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Query",
+                        "description": "Input text to find objects with near vectors for."
+                    },
+                    "certainty": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Certainty",
+                        "description": "Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified."
+                    },
+                    "limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Limit",
+                        "description": "Maximum number of objects to return."
+                    },
+                    "include_vector": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Vector",
+                        "description": "Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+                        "default": false
+                    },
+                    "offset": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Offset",
+                        "description": "Skips first N results in similarity response. Useful for pagination."
+                    },
+                    "distance": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Distance",
+                        "description": "Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified."
+                    },
+                    "auto_limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auto Limit",
+                        "description": "Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps."
+                    },
+                    "target_vector": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/_MultiTargetVectorJoin"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Target Vector",
+                        "description": "Specifies vector to use for similarity search when using named vectors."
+                    },
+                    "return_metadata": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "creation_time",
+                                        "last_update_time",
+                                        "distance",
+                                        "certainty",
+                                        "score",
+                                        "explain_score",
+                                        "is_consistent"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/MetadataQuery"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Metadata",
+                        "description": "Specify metadata fields to return."
+                    },
+                    "return_properties": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Properties",
+                        "description": "Specify which properties to return for each object."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "collection_name",
+                    "query"
+                ],
+                "title": "WeaviateVectorSimilarityTextSearchSettingsRequest"
+            },
+            "_MultiTargetVectorJoin": {
+                "properties": {
+                    "combination": {
+                        "$ref": "#/components/schemas/_MultiTargetVectorJoinEnum"
+                    },
+                    "target_vectors": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Target Vectors"
+                    },
+                    "weights": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {
+                                            "type": "number"
+                                        },
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ]
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Weights"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "combination",
+                    "target_vectors"
+                ],
+                "title": "_MultiTargetVectorJoin"
+            },
+            "_MultiTargetVectorJoinEnum": {
+                "type": "integer",
+                "enum": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "title": "_MultiTargetVectorJoinEnum",
+                "description": "Define how multi target vector searches should be combined."
             }
         },
         "securitySchemes": {
