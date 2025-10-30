@@ -706,6 +706,100 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
 
 
 @pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "message,variables,missing_variables",
+    [
+        (
+            "What is the capital of {{country}}?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "What is the capital of {{country}}?",
+            {"city": "Paris"},
+            {"country"},
+        ),
+        (
+            "What is the capital of {country}?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "What is the capital of country?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "User {{user_id}} has {{item_counts}} items",
+            {"user_id": "123", "item_count": "5"},
+            {"item_counts"},
+        ),
+        (
+            "User {{user_ids}} has {{item_counts}} items",
+            {"user_id": "123", "item_count": "5"},
+            {"user_ids", "item_counts"},
+        ),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_2": "Alice"},
+            {"name_variable_1"},
+        ),
+        (
+            [{"type": "text", "text": "name_variable_1"}],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "text", "text": "{{ name_variable_2 }}"},
+            ],
+            {"name_variable_3": "Alice", "name_variable_2": "Bob"},
+            {"name_variable_1"},
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+    ],
+)
+def test_agentic_prompt_find_missing_variables(message, variables, missing_variables):
+    """Test running unsaved prompt with variables"""
+    if variables is not None:
+        variables = [
+            VariableTemplateValue(name=name, value=value)
+            for name, value in variables.items()
+        ]
+    else:
+        variables = []
+
+    completion_request = PromptCompletionRequest(variables=variables)
+    message = [{"role": "user", "content": message}]
+    results = completion_request.find_missing_variables(message)
+    assert results == missing_variables
+
+
+@pytest.mark.unit_tests
 def test_agentic_prompt_tools_serialization():
     """Test that tools serialize and deserialize correctly"""
     prompt_data = {
