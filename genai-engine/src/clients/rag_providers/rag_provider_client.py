@@ -7,6 +7,7 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    RagProviderQueryResponse,
     SearchRagProviderCollectionsResponse,
 )
 
