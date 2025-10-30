@@ -68,9 +68,9 @@ from schemas.request_schemas import (
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
-    RagVectorKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsRequest,
@@ -2707,7 +2707,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             and_operator=and_operator,
         )
 
-        request = RagVectorKeywordSearchSettingRequest(
+        request = RagKeywordSearchSettingRequest(
             settings=weaviate_settings,
         )
 

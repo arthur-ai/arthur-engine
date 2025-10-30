@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from schemas.internal_schemas import RagProviderConfiguration
 from schemas.request_schemas import (
-    RagVectorKeywordSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -29,6 +29,6 @@ class RagProviderClient(ABC):
     @abstractmethod
     def keyword_search(
         self,
-        settings_request: RagVectorKeywordSearchSettingRequest,
+        settings_request: RagKeywordSearchSettingRequest,
     ) -> RagProviderQueryResponse:
         raise NotImplementedError

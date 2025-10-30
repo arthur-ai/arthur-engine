@@ -19,9 +19,9 @@ from schemas.enums import (
 )
 from schemas.internal_schemas import RagProviderConfiguration, User
 from schemas.request_schemas import (
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
-    RagVectorKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -249,7 +249,7 @@ def execute_similarity_text_search(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def execute_keyword_search(
-    request: RagVectorKeywordSearchSettingRequest,
+    request: RagKeywordSearchSettingRequest,
     provider_id: UUID = Path(
         description="ID of the RAG provider configuration to use for the vector database connection.",
     ),

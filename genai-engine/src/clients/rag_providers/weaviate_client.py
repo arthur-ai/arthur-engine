@@ -13,7 +13,7 @@ from schemas.internal_schemas import (
     RagProviderConfiguration,
 )
 from schemas.request_schemas import (
-    RagVectorKeywordSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -120,7 +120,7 @@ class WeaviateClient(RagProviderClient):
 
     def keyword_search(
         self,
-        settings_request: RagVectorKeywordSearchSettingRequest,
+        settings_request: RagKeywordSearchSettingRequest,
     ) -> RagProviderQueryResponse:
         weaviate_settings = settings_request.settings
         collection = self.client.collections.use(weaviate_settings.collection_name)

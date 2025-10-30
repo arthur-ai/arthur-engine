@@ -284,7 +284,7 @@ class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
 RagKeywordSearchSettingRequestTypes = Union[WeaviateKeywordSearchSettingsRequest]
 
 
-class RagVectorKeywordSearchSettingRequest(BaseModel):
+class RagKeywordSearchSettingRequest(BaseModel):
     settings: RagKeywordSearchSettingRequestTypes = Field(
         description="Settings for the keyword search request to the vector database.",
     )

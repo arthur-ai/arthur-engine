@@ -5,7 +5,7 @@ from clients.rag_providers.rag_provider_client import RagProviderClient
 from schemas.enums import ConnectionCheckOutcome
 from schemas.internal_schemas import RagProviderConfiguration
 from schemas.request_schemas import (
-    RagVectorKeywordSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -124,7 +124,7 @@ class MockWeaviateClient(RagProviderClient):
 
     def keyword_search(
         self,
-        settings_request: RagVectorKeywordSearchSettingRequest,
+        settings_request: RagKeywordSearchSettingRequest,
     ) -> RagProviderQueryResponse:
         """Mock keyword_search method."""
         if self.search_error:
