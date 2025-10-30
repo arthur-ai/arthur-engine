@@ -1,7 +1,7 @@
 import weaviate
 from fastapi import HTTPException
 from weaviate.classes.init import Auth
-from weaviate.exceptions import WeaviateQueryError
+from weaviate.exceptions import WeaviateBaseError, WeaviateQueryError
 
 from clients.rag_providers.rag_provider_client import RagProviderClient
 from schemas.enums import ConnectionCheckOutcome
@@ -21,23 +21,30 @@ from schemas.response_schemas import (
 
 class WeaviateClient(RagProviderClient):
     def __init__(self, provider_config: RagProviderConfiguration) -> None:
-        if not isinstance(
-            provider_config.authentication_config,
-            ApiKeyRagAuthenticationConfig,
-        ):
-            raise HTTPException(
-                status_code=404,
-                detail=f"Unsupported authentication method: {provider_config.authentication_config.authentication_method}",
+        try:
+            if not isinstance(
+                provider_config.authentication_config,
+                ApiKeyRagAuthenticationConfig,
+            ):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Unsupported authentication method: {provider_config.authentication_config.authentication_method}",
+                )
+
+            self.host_url = provider_config.authentication_config.host_url
+            self.api_key = provider_config.authentication_config.api_key
+            self.client = weaviate.connect_to_weaviate_cloud(
+                cluster_url=str(self.host_url),
+                auth_credentials=Auth.api_key(self.api_key.get_secret_value()),
             )
 
-        self.host_url = provider_config.authentication_config.host_url
-        self.api_key = provider_config.authentication_config.api_key
-        self.client = weaviate.connect_to_weaviate_cloud(
-            cluster_url=str(self.host_url),
-            auth_credentials=Auth.api_key(self.api_key.get_secret_value()),
-        )
-
-        super().__init__(provider_config)
+            super().__init__(provider_config)
+        except WeaviateBaseError as e:
+            # re-raise any weaviate errors as 400s so the details are reported to the user
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error connecting to Weaviate: {e}.",
+            )
 
     def test_connection(self) -> ConnectionCheckResult:
         # the constructor initiates the connection to weaviate and there doesn't seem to be a good way

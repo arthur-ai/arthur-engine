@@ -60,7 +60,7 @@ from arthur_common.models.response_schemas import (
 )
 from fastapi import HTTPException
 from opentelemetry import trace
-from pydantic import BaseModel, Field, SecretStr, field_serializer
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_core import Url
 
 from db_models import (
@@ -2224,9 +2224,14 @@ class ListDatasetVersions(BaseModel):
 class ApiKeyRagProviderSecretValue(BaseModel):
     api_key: SecretStr
 
-    @field_serializer("api_key")
-    def reveal_api_key(self, v: SecretStr) -> str:
-        return v.get_secret_value() if v else None
+    def _to_sensitive_dict(self) -> dict[str, str]:
+        """Returns dict with all fields in the object. Secrets will be revealed as strings.
+        WARNING: should be very infrequently used. The secret will need to be revealed in a dictionary to store
+        its value in the database.
+        """
+        model_dict = vars(self)
+        model_dict["api_key"] = model_dict["api_key"].get_secret_value()
+        return model_dict
 
 
 class ApiKeyRagProviderSecret(BaseModel):
@@ -2249,7 +2254,7 @@ class ApiKeyRagProviderSecret(BaseModel):
         return DatabaseSecretStorage(
             id=str(api_key_secret_id),
             name=f"api_key_rag_provider_config_{provider_config.id}",
-            value=secret_value.model_dump(mode="json"),
+            value=secret_value._to_sensitive_dict(),
             secret_type=SecretType.RAG_PROVIDER,
             created_at=curr_time,
             updated_at=curr_time,
