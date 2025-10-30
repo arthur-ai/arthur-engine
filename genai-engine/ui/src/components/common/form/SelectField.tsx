@@ -3,7 +3,6 @@ import { Paper } from "@mui/material";
 
 import { useFieldContext } from "@/components/traces/components/filtering/hooks/form-context";
 import { cn } from "@/utils/cn";
-import { Children } from "react";
 
 const Root = <Value, Multiple extends boolean>(
   props: BaseSelect.Root.Props<Value, Multiple>

@@ -9,16 +9,24 @@ export const useTracesStore = createStoreHook({
       span: "",
     },
   },
+  emits: {
+    changed: (_payload: { for: Level; id: string }) => {},
+    closed: () => {},
+  },
   on: {
-    openDrawer: (context, event: { for: Level; id: string }) => {
+    openDrawer: (context, event: { for: Level; id: string }, enqueue) => {
       const newHistory = [...context.history, { for: event.for, id: event.id }];
+
+      enqueue.emit.changed({ for: event.for, id: event.id });
 
       return {
         ...context,
         history: newHistory,
       };
     },
-    closeDrawer: (context) => {
+    closeDrawer: (context, _: unknown, enqueue) => {
+      enqueue.emit.closed();
+
       return {
         ...context,
         history: [],
@@ -27,7 +35,7 @@ export const useTracesStore = createStoreHook({
         },
       };
     },
-    popUntil: (context, event: { for: Level; id: string }) => {
+    popUntil: (context, event: { for: Level; id: string }, enqueue) => {
       const newHistory = [...context.history];
 
       // Find the index of the item that matches the criteria
@@ -39,9 +47,20 @@ export const useTracesStore = createStoreHook({
       const updatedHistory =
         matchIndex >= 0 ? newHistory.slice(0, matchIndex + 1) : newHistory;
 
+      enqueue.emit.changed({ for: event.for, id: event.id });
+
       return {
         ...context,
         history: updatedHistory,
+      };
+    },
+    setDrawer: (context, event: { for: Level; id: string }) => {
+      return {
+        ...context,
+        history: [{ for: event.for, id: event.id }],
+        selected: {
+          ...context.selected,
+        },
       };
     },
     selectSpan: (context, event: { id: string }) => {
