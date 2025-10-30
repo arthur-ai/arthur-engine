@@ -1,7 +1,7 @@
 name: arthur-engine
 services:
   db:
-    image: postgres:18
+    image: postgres:15
     shm_size: 128mb
     ports:
       - "5435:5432"
@@ -9,7 +9,7 @@ services:
       - POSTGRES_PASSWORD=changeme_pg_password
       - POSTGRES_DB=arthur_genai_engine
     volumes:
-      - db_data:/var/lib/postgresql
+      - db_data:/var/lib/postgresql/data
     env_file:
       - .env
     healthcheck:
