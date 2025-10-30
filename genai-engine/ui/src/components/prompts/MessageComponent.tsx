@@ -12,7 +12,7 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 import extractMustacheKeywords from "./mustacheExtractor";
-import { usePromptContext } from "./PromptContext";
+import { usePromptContext } from "./PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 const DEBOUNCE_TIME = 500;
@@ -142,12 +142,12 @@ const Message: React.FC<MessageComponentProps> = ({
               aria-label="duplicate message"
               onClick={handleDuplicate}
             >
-              <ContentCopyIcon />
+              <ContentCopyIcon color="secondary" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Delete Message" placement="top-start" arrow>
             <IconButton aria-label="delete message" onClick={handleDelete}>
-              <DeleteIcon />
+              <DeleteIcon color="error" />
             </IconButton>
           </Tooltip>
         </div>

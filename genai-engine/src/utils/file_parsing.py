@@ -4,6 +4,7 @@ import re
 from io import BytesIO, TextIOWrapper
 
 from pypdf import PdfReader
+
 from schemas.enums import DocumentType
 from schemas.internal_schemas import Document
 

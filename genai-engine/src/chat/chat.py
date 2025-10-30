@@ -2,11 +2,12 @@ import logging
 import re
 from typing import List
 
+from arthur_common.models.enums import PaginationSortMethod
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from opentelemetry import trace
+
 from repositories.embedding_repository import EmbeddingRepository
 from repositories.inference_repository import InferenceRepository
-from arthur_common.models.enums import PaginationSortMethod
 from schemas.internal_schemas import AugmentedRetrieval
 from scorer.llm_client import get_llm_executor
 from utils import constants

@@ -1,8 +1,8 @@
 """create rag configs
 
 Revision ID: 5a02e38003af
-Revises: 7fb45748e807
-Create Date: 2025-10-22 12:09:52.294798
+Revises: 16d81eaac5c2
+Create Date: 2025-10-30 12:09:52.294798
 
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5a02e38003af"
-down_revision = "7fb45748e807"
+down_revision = "16d81eaac5c2"
 branch_labels = None
 depends_on = None
 

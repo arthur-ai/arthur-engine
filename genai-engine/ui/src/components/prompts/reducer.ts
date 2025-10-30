@@ -6,14 +6,14 @@ import {
   promptClassificationEnum,
   PromptPlaygroundState,
   PromptType,
-  PROVIDER_OPTIONS,
   FrontendTool,
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
 import {
+  AgenticPromptMetadataResponse,
   MessageRole,
-  ProviderEnum,
+  ModelProvider,
   ToolChoiceEnum,
 } from "@/lib/api-client/api-client";
 
@@ -103,7 +103,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   name: "",
   created_at: undefined, // created on BE
   modelName: "",
-  provider: PROVIDER_OPTIONS[0],
+  provider: "",
   messages: [newMessage()],
   modelParameters: createModelParameters(),
   outputField: "",
@@ -113,8 +113,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   ...overrides,
 });
 
-const newPrompt = (provider: ProviderEnum = PROVIDER_OPTIONS[0]): PromptType =>
-  createPrompt({ provider });
+const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
   const newId = "-" + Date.now(); // TODO: overwrite on save
@@ -141,7 +140,9 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
-  backendPrompts: new Array<PromptType>(),
+  backendPrompts: new Array<AgenticPromptMetadataResponse>(),
+  enabledProviders: new Array<ModelProvider>(),
+  availableModels: new Map<ModelProvider, string[]>(),
 };
 
 const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
@@ -193,6 +194,24 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
+    case "updatePromptProvider": {
+      const { promptId, provider } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, provider } : prompt
+        ),
+      };
+    }
+    case "updatePromptModelName": {
+      const { promptId, modelName } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, modelName } : prompt
+        ),
+      };
+    }
     case "updatePrompt": {
       const { promptId, prompt } = action.payload;
       return {
@@ -217,6 +236,20 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         backendPrompts: prompts,
+      };
+    }
+    case "updateProviders": {
+      const { providers } = action.payload;
+      return {
+        ...state,
+        enabledProviders: providers as ModelProvider[],
+      };
+    }
+    case "updateAvailableModels": {
+      const { availableModels } = action.payload;
+      return {
+        ...state,
+        availableModels,
       };
     }
     case "addMessage": {
@@ -444,7 +477,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           prompt.id === parentId
             ? {
                 ...prompt,
-                messages: arrayUtils.moveItem(prompt.messages, fromIndex, toIndex),
+                messages: arrayUtils.moveItem(
+                  prompt.messages,
+                  fromIndex,
+                  toIndex
+                ),
               }
             : prompt
         ),

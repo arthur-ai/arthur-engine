@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.94"
+version = "2.1.101"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -14,7 +14,7 @@ flask = "3.1.2"
 gcsfs = "2025.9.0"
 google-cloud-bigquery = "3.36.0"
 pandas = "2.3.3"
-psycopg = {extras = ["binary"], version = "3.2.11"}
+psycopg = {extras = ["binary"], version = "3.2.12"}
 pymysql = "1.1.2"
 pyodbc = "5.2.0"
 pyyaml = "6.0.3"
@@ -31,8 +31,8 @@ types-psutil = "7.0.0.20251001"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = "1.4.1549"
-arthur-common = "2.4.4"
+arthur-client = "1.4.1573"
+arthur-common = "2.4.5"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.44"
 snowflake-sqlalchemy = "1.7.7"
@@ -64,6 +64,10 @@ ignore_missing_imports = true
 implicit_reexport = true
 explicit_package_bases = false
 exclude = ["src/genai_client"]
+
+[tool.isort]
+profile = "black"
+src_paths = ["src/ml_engine", "tests"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "src/genai_client"]

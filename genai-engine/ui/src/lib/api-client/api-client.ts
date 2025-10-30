@@ -20,6 +20,11 @@ export interface AgenticPrompt {
    */
   created_at?: string | null;
   /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
    */
@@ -55,7 +60,7 @@ export interface AgenticPrompt {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Name
    * Name of the agentic prompt
@@ -114,6 +119,12 @@ export interface AgenticPrompt {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
 /** AgenticPromptBaseConfig */
@@ -123,6 +134,11 @@ export interface AgenticPromptBaseConfig {
    * Timestamp when the prompt was created.
    */
   created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -159,7 +175,7 @@ export interface AgenticPromptBaseConfig {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Presence Penalty
    * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
@@ -213,6 +229,12 @@ export interface AgenticPromptBaseConfig {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
 /** AgenticPromptMessage */
@@ -257,6 +279,51 @@ export interface AgenticPromptMessageOutput {
   tool_calls?: ToolCall[] | null;
 }
 
+/** AgenticPromptMetadataListResponse */
+export interface AgenticPromptMetadataListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Prompt Metadata
+   * List of prompt metadata
+   */
+  prompt_metadata: AgenticPromptMetadataResponse[];
+}
+
+/** AgenticPromptMetadataResponse */
+export interface AgenticPromptMetadataResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted Versions
+   * List of deleted versions of the prompt
+   */
+  deleted_versions: number[];
+  /**
+   * Latest Version Created At
+   * Timestamp when the last version of the prompt was created
+   * @format date-time
+   */
+  latest_version_created_at: string;
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /**
+   * Versions
+   * Number of versions of the prompt
+   */
+  versions: number;
+}
+
 /** AgenticPromptRunResponse */
 export interface AgenticPromptRunResponse {
   /** Content */
@@ -267,10 +334,55 @@ export interface AgenticPromptRunResponse {
   tool_calls?: ChatCompletionMessageToolCall[] | null;
 }
 
-/** AgenticPrompts */
-export interface AgenticPrompts {
-  /** Prompts */
-  prompts: AgenticPrompt[];
+/** AgenticPromptVersionListResponse */
+export interface AgenticPromptVersionListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Versions
+   * List of prompt version metadata
+   */
+  versions: AgenticPromptVersionResponse[];
+}
+
+/** AgenticPromptVersionResponse */
+export interface AgenticPromptVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the prompt version was deleted
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name of the prompt
+   */
+  model_name: string;
+  /** Model provider of the prompt */
+  model_provider: ModelProvider;
+  /**
+   * Num Messages
+   * Number of messages in the prompt
+   */
+  num_messages: number;
+  /**
+   * Num Tools
+   * Number of tools in the prompt
+   */
+  num_tools: number;
+  /**
+   * Version
+   * Version number of the prompt
+   */
+  version: number;
 }
 
 /** AnthropicThinkingParam */
@@ -482,7 +594,7 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
 export interface CompletionRequest {
   /**
    * Run configuration for the unsaved prompt
-   * @default {"variables":[],"stream":false}
+   * @default {"variables":[],"stream":false,"strict":false}
    */
   completion_request?: PromptCompletionRequest;
   /**
@@ -490,6 +602,11 @@ export interface CompletionRequest {
    * Timestamp when the prompt was created.
    */
   created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -526,7 +643,7 @@ export interface CompletionRequest {
    */
   model_name: string;
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ProviderEnum;
+  model_provider: ModelProvider;
   /**
    * Presence Penalty
    * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
@@ -580,13 +697,19 @@ export interface CompletionRequest {
    * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
    */
   top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
 }
 
-export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData = SessionTracesResponse;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
 
-export type ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError = HTTPValidationError;
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError = HTTPValidationError;
 
-export interface ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams {
+export interface ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams {
   /**
    * Page
    * Page number
@@ -608,9 +731,9 @@ export interface ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData = SpanWithMetricsResponse;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData = SpanWithMetricsResponse;
 
-export type ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError = HTTPValidationError;
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError = HTTPValidationError;
 
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
 
@@ -700,6 +823,11 @@ export interface DatasetResponse {
    * @format uuid
    */
   id: string;
+  /**
+   * Latest Version Number
+   * Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet.
+   */
+  latest_version_number?: number | null;
   /**
    * Metadata
    * Any metadata to include that describes additional information about the dataset.
@@ -828,6 +956,11 @@ export interface DatasetVersionRowColumnItemResponse {
 /** DatasetVersionRowResponse */
 export interface DatasetVersionRowResponse {
   /**
+   * Created At
+   * Timestamp representing the time of dataset row creation in unix milliseconds. May differ within a version if a row already existed in a past version of the dataset.
+   */
+  created_at: number;
+  /**
    * Data
    * List of column names and values in the row.
    */
@@ -852,13 +985,13 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
-export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData = any;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
 
-export type DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError = HTTPValidationError;
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
 
-export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData = any;
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
 
-export type DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError =
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError =
   HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
@@ -957,11 +1090,6 @@ export interface ExternalInferencePrompt {
   inference_id: string;
   /** Message */
   message: string;
-  /**
-   * Model Name
-   * The model name and version used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
-   */
-  model_name?: string | null;
   /** Prompt Rule Results */
   prompt_rule_results: ExternalRuleResult[];
   result: RuleResultEnum;
@@ -1062,20 +1190,137 @@ export interface FileUploadResult {
   word_count: number;
 }
 
-export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
 
-export type GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
 
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
 
-export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData = AgenticPrompts;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData =
+  AgenticPromptVersionListResponse;
 
-export type GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError = HTTPValidationError;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError = HTTPValidationError;
 
-export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData = AgenticPrompts;
+export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Exclude Deleted
+   * Whether to exclude deleted prompt versions from the results. Default is False.
+   * @default false
+   */
+  exclude_deleted?: boolean;
+  /**
+   * Max Version
+   * Maximum version number to filter on (inclusive).
+   */
+  max_version?: number | null;
+  /**
+   * Min Version
+   * Minimum version number to filter on (inclusive).
+   */
+  min_version?: number | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Name
+   * The name of the prompt to retrieve.
+   */
+  promptName: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
-export type GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError = HTTPValidationError;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
+
+export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Names
+   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.
+   */
+  prompt_names?: string[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
@@ -1226,11 +1471,17 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
-export type GetSessionTracesApiV1SessionsSessionIdGetData = SessionTracesResponse;
+export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
-export type GetSessionTracesApiV1SessionsSessionIdGetError = HTTPValidationError;
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
 
-export interface GetSessionTracesApiV1SessionsSessionIdGetParams {
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
+
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
+
+export interface GetSessionTracesApiV1TracesSessionsSessionIdGetParams {
   /**
    * Page
    * Page number
@@ -1252,9 +1503,9 @@ export interface GetSessionTracesApiV1SessionsSessionIdGetParams {
   sort?: PaginationSortMethod;
 }
 
-export type GetSpanByIdApiV1SpansSpanIdGetData = SpanWithMetricsResponse;
+export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
 
-export type GetSpanByIdApiV1SpansSpanIdGetError = HTTPValidationError;
+export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
@@ -1289,6 +1540,21 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
 export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
+
+export interface GetUserDetailsApiV1TracesUsersUserIdGetParams {
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /** User Id */
+  userId: string;
+}
 
 /**
  * HTTPError
@@ -1573,11 +1839,11 @@ export interface ListDatasetVersionsResponse {
   versions: DatasetVersionMetadataResponse[];
 }
 
-export type ListSessionsMetadataApiV1SessionsGetData = SessionListResponse;
+export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
 
-export type ListSessionsMetadataApiV1SessionsGetError = HTTPValidationError;
+export type ListSessionsMetadataApiV1TracesSessionsGetError = HTTPValidationError;
 
-export interface ListSessionsMetadataApiV1SessionsGetParams {
+export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -1613,13 +1879,18 @@ export interface ListSessionsMetadataApiV1SessionsGetParams {
    * @minItems 1
    */
   task_ids: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
 }
 
-export type ListSpansMetadataApiV1SpansGetData = SpanListResponse;
+export type ListSpansMetadataApiV1TracesSpansGetData = SpanListResponse;
 
-export type ListSpansMetadataApiV1SpansGetError = HTTPValidationError;
+export type ListSpansMetadataApiV1TracesSpansGetError = HTTPValidationError;
 
-export interface ListSpansMetadataApiV1SpansGetParams {
+export interface ListSpansMetadataApiV1TracesSpansGetParams {
   /**
    * End Time
    * Exclusive end date in ISO8601 string format. Use local time (not UTC).
@@ -1935,6 +2206,53 @@ export interface ListTracesMetadataApiV1TracesGetParams {
    * Trace IDs to filter on. Optional.
    */
   trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
+}
+
+export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
+
+export type ListUsersMetadataApiV1TracesUsersGetError = HTTPValidationError;
+
+export interface ListUsersMetadataApiV1TracesUsersGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
 }
 
 /** LogitBiasItem */
@@ -2054,6 +2372,40 @@ export interface MetricResultResponse {
 
 /** MetricType */
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
+
+/** ModelProvider */
+export type ModelProvider = "anthropic" | "openai" | "gemini";
+
+/** ModelProviderList */
+export interface ModelProviderList {
+  /**
+   * Providers
+   * List of model providers
+   */
+  providers: ModelProviderResponse[];
+}
+
+/** ModelProviderModelList */
+export interface ModelProviderModelList {
+  /**
+   * Available Models
+   * Available models from the provider
+   */
+  available_models: string[];
+  /** Provider of the models */
+  provider: ModelProvider;
+}
+
+/** ModelProviderResponse */
+export interface ModelProviderResponse {
+  /**
+   * Enabled
+   * Whether the provider is enabled with credentials
+   */
+  enabled: boolean;
+  /** The model provider */
+  provider: ModelProvider;
+}
 
 /**
  * NestedSpanWithMetricsResponse
@@ -2403,6 +2755,12 @@ export interface PromptCompletionRequest {
    */
   stream?: boolean | null;
   /**
+   * Strict
+   * Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.
+   * @default false
+   */
+  strict?: boolean | null;
+  /**
    * Variables
    * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt
    * @default []
@@ -2418,11 +2776,6 @@ export interface PromptValidationRequest {
    */
   conversation_id?: string | null;
   /**
-   * Model Name
-   * The model name and version being used for this prompt (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
-   */
-  model_name?: string | null;
-  /**
    * Prompt
    * Prompt to be validated by GenAI Engine
    */
@@ -2434,37 +2787,15 @@ export interface PromptValidationRequest {
   user_id?: string | null;
 }
 
-/** ProviderEnum */
-export type ProviderEnum =
-  | "anthropic"
-  | "openai"
-  | "gemini"
-  | "azure"
-  | "deepseek"
-  | "mistral"
-  | "meta_llama"
-  | "groq"
-  | "bedrock"
-  | "sagemaker"
-  | "vertex_ai"
-  | "huggingface"
-  | "cloudflare"
-  | "ai21"
-  | "baseten"
-  | "cohere"
-  | "empower"
-  | "featherless_ai"
-  | "friendliai"
-  | "galadriel"
-  | "nebius"
-  | "nlp_cloud"
-  | "novita"
-  | "openrouter"
-  | "petals"
-  | "replicate"
-  | "together_ai"
-  | "vllm"
-  | "watsonx";
+/** PutModelProviderCredentials */
+export interface PutModelProviderCredentials {
+  /**
+   * Api Key
+   * The API key for the provider.
+   * @format password
+   */
+  api_key: string;
+}
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
 
@@ -3187,6 +3518,8 @@ export interface ResponseValidationRequest {
   response: string;
 }
 
+export type RotateSecretsApiV1SecretsRotationPostData = any;
+
 /** RuleResponse */
 export interface RuleResponse {
   /**
@@ -3261,15 +3594,15 @@ export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
 export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
 
-export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData =
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData =
   AgenticPromptRunResponse;
 
-export type RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError =
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError =
   HTTPValidationError;
 
-export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData = any;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
-export type SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError = HTTPValidationError;
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -3503,6 +3836,11 @@ export interface SessionMetadataResponse {
    * List of trace IDs in this session
    */
   trace_ids: string[];
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /**
@@ -3526,6 +3864,14 @@ export interface SessionTracesResponse {
    */
   traces: TraceResponse[];
 }
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
 /**
  * SpanListResponse
@@ -3623,6 +3969,11 @@ export interface SpanMetadataResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /** SpanWithMetricsResponse */
@@ -3971,6 +4322,11 @@ export interface TraceMetadataResponse {
    * @format date-time
    */
   updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
 }
 
 /**
@@ -4001,6 +4357,77 @@ export interface TraceResponse {
    * ID of the trace
    */
   trace_id: string;
+}
+
+/**
+ * TraceUserListResponse
+ * Response for trace user list endpoint
+ */
+export interface TraceUserListResponse {
+  /**
+   * Count
+   * Total number of users matching filters
+   */
+  count: number;
+  /**
+   * Users
+   * List of user metadata
+   */
+  users: TraceUserMetadataResponse[];
+}
+
+/**
+ * TraceUserMetadataResponse
+ * User summary metadata in trace context
+ */
+export interface TraceUserMetadataResponse {
+  /**
+   * Earliest Start Time
+   * Start time of earliest trace
+   * @format date-time
+   */
+  earliest_start_time: string;
+  /**
+   * Latest End Time
+   * End time of latest trace
+   * @format date-time
+   */
+  latest_end_time: string;
+  /**
+   * Session Count
+   * Number of sessions for this user
+   */
+  session_count: number;
+  /**
+   * Session Ids
+   * List of session IDs for this user
+   */
+  session_ids: string[];
+  /**
+   * Span Count
+   * Total number of spans for this user
+   */
+  span_count: number;
+  /**
+   * Task Id
+   * Task ID this user belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces for this user
+   */
+  trace_count: number;
+  /**
+   * Trace Ids
+   * List of trace IDs for this user
+   */
+  trace_ids: string[];
+  /**
+   * User Id
+   * User identifier
+   */
+  user_id: string;
 }
 
 export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
@@ -4377,20 +4804,20 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.
      *
      * @tags Sessions
-     * @name ComputeSessionMetricsApiV1SessionsSessionIdMetricsGet
+     * @name ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet
      * @summary Compute Missing Session Metrics
-     * @request GET:/api/v1/sessions/{session_id}/metrics
+     * @request GET:/api/v1/traces/sessions/{session_id}/metrics
      * @secure
      */
-    computeSessionMetricsApiV1SessionsSessionIdMetricsGet: (
-      { sessionId, ...query }: ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetParams,
+    computeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet: (
+      { sessionId, ...query }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
       params: RequestParams = {},
     ) =>
       this.request<
-        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetData,
-        ComputeSessionMetricsApiV1SessionsSessionIdMetricsGetError
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData,
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError
       >({
-        path: `/api/v1/sessions/${sessionId}/metrics`,
+        path: `/api/v1/traces/sessions/${sessionId}/metrics`,
         method: "GET",
         query: query,
         secure: true,
@@ -4402,21 +4829,22 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Compute all missing metrics for a single span on-demand. Returns span with computed metrics.
      *
      * @tags Spans
-     * @name ComputeSpanMetricsApiV1SpansSpanIdMetricsGet
+     * @name ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGet
      * @summary Compute Missing Span Metrics
-     * @request GET:/api/v1/spans/{span_id}/metrics
+     * @request GET:/api/v1/traces/spans/{span_id}/metrics
      * @secure
      */
-    computeSpanMetricsApiV1SpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<ComputeSpanMetricsApiV1SpansSpanIdMetricsGetData, ComputeSpanMetricsApiV1SpansSpanIdMetricsGetError>(
-        {
-          path: `/api/v1/spans/${spanId}/metrics`,
-          method: "GET",
-          secure: true,
-          format: "json",
-          ...params,
-        },
-      ),
+    computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData,
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError
+      >({
+        path: `/api/v1/traces/spans/${spanId}/metrics`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.
@@ -4620,51 +5048,49 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Deletes an entire agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete
+     * @tags Prompts
+     * @name DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete
      * @summary Delete an agentic prompt
-     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}
      * @secure
      */
-    deleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDelete: (
+    deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (
       promptName: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteData,
-        DeleteAgenticPromptApiV1TaskIdAgenticPromptsPromptNameDeleteError
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData,
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
         method: "DELETE",
         secure: true,
-        format: "json",
         ...params,
       }),
 
     /**
      * @description Deletes a specific version of an agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete
-     * @summary Delete an agentic prompt
-     * @request DELETE:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @tags Prompts
+     * @name DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete
+     * @summary Delete an agentic prompt version
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
      * @secure
      */
-    deleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDelete: (
+    deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete: (
       promptName: string,
       promptVersion: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteData,
-        DeleteAgenticPromptVersionApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionDeleteError
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
         method: "DELETE",
         secure: true,
-        format: "json",
         ...params,
       }),
 
@@ -4704,23 +5130,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Get an agentic prompt by name and version
      *
-     * @tags AgenticPrompt
-     * @name GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet
+     * @tags Prompts
+     * @name GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet
      * @summary Get an agentic prompt
-     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions/{prompt_version}
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
      * @secure
      */
-    getAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGet: (
+    getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet: (
       promptName: string,
       promptVersion: string,
       taskId: string,
       params: RequestParams = {},
     ) =>
       this.request<
-        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetData,
-        GetAgenticPromptApiV1TaskIdAgenticPromptsPromptNameVersionsPromptVersionGetError
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData,
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions/${promptVersion}`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -4728,46 +5154,50 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
-     * @description Get all agentic prompts for a given task
+     * @description Get all agentic prompts for a given task with optional filtering.
      *
-     * @tags AgenticPrompt
-     * @name GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGet
+     * @tags Prompts
+     * @name GetAllAgenticPromptsApiV1TasksTaskIdPromptsGet
      * @summary Get all agentic prompts
-     * @request GET:/api/v1/{task_id}/agentic_prompts
+     * @request GET:/api/v1/tasks/{task_id}/prompts
      * @secure
      */
-    getAllAgenticPromptsApiV1TaskIdAgenticPromptsGet: (taskId: string, params: RequestParams = {}) =>
-      this.request<
-        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetData,
-        GetAllAgenticPromptsApiV1TaskIdAgenticPromptsGetError
-      >({
-        path: `/api/v1/${taskId}/agentic_prompts`,
-        method: "GET",
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description List all versions of an agentic prompt
-     *
-     * @tags AgenticPrompt
-     * @name GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet
-     * @summary List all versions of an agentic prompt
-     * @request GET:/api/v1/{task_id}/agentic_prompts/{prompt_name}/versions
-     * @secure
-     */
-    getAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGet: (
-      promptName: string,
-      taskId: string,
+    getAllAgenticPromptsApiV1TasksTaskIdPromptsGet: (
+      { taskId, ...query }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
       params: RequestParams = {},
     ) =>
       this.request<
-        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetData,
-        GetAllAgenticPromptVersionsApiV1TaskIdAgenticPromptsPromptNameVersionsGetError
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData,
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}/versions`,
+        path: `/api/v1/tasks/${taskId}/prompts`,
         method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an agentic prompt with optional filtering.
+     *
+     * @tags Prompts
+     * @name GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet
+     * @summary List all versions of an agentic prompt
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+     * @secure
+     */
+    getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet: (
+      { promptName, taskId, ...query }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData,
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -4969,20 +5399,65 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Shows all model providers and if they're enabled.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersGet
+     * @summary List the model providers.
+     * @request GET:/api/v1/model_providers
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersGet: (params: RequestParams = {}) =>
+      this.request<GetModelProvidersApiV1ModelProvidersGetData, any>({
+        path: `/api/v1/model_providers`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of the names of all available models for a provider.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGet
+     * @summary List the models available from a provider.
+     * @request GET:/api/v1/model_providers/{provider}/available_models
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (
+      provider: ModelProvider,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/available_models`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
      *
      * @tags Sessions
-     * @name GetSessionTracesApiV1SessionsSessionIdGet
+     * @name GetSessionTracesApiV1TracesSessionsSessionIdGet
      * @summary Get Session Traces
-     * @request GET:/api/v1/sessions/{session_id}
+     * @request GET:/api/v1/traces/sessions/{session_id}
      * @secure
      */
-    getSessionTracesApiV1SessionsSessionIdGet: (
-      { sessionId, ...query }: GetSessionTracesApiV1SessionsSessionIdGetParams,
+    getSessionTracesApiV1TracesSessionsSessionIdGet: (
+      { sessionId, ...query }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<GetSessionTracesApiV1SessionsSessionIdGetData, GetSessionTracesApiV1SessionsSessionIdGetError>({
-        path: `/api/v1/sessions/${sessionId}`,
+      this.request<
+        GetSessionTracesApiV1TracesSessionsSessionIdGetData,
+        GetSessionTracesApiV1TracesSessionsSessionIdGetError
+      >({
+        path: `/api/v1/traces/sessions/${sessionId}`,
         method: "GET",
         query: query,
         secure: true,
@@ -4994,14 +5469,14 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get single span with existing metrics (no computation). Returns full span object with any existing metrics.
      *
      * @tags Spans
-     * @name GetSpanByIdApiV1SpansSpanIdGet
+     * @name GetSpanByIdApiV1TracesSpansSpanIdGet
      * @summary Get Single Span
-     * @request GET:/api/v1/spans/{span_id}
+     * @request GET:/api/v1/traces/spans/{span_id}
      * @secure
      */
-    getSpanByIdApiV1SpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<GetSpanByIdApiV1SpansSpanIdGetData, GetSpanByIdApiV1SpansSpanIdGetError>({
-        path: `/api/v1/spans/${spanId}`,
+    getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
+        path: `/api/v1/traces/spans/${spanId}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -5064,20 +5539,42 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get detailed information for a single user including session and trace metadata.
+     *
+     * @tags Users
+     * @name GetUserDetailsApiV1TracesUsersUserIdGet
+     * @summary Get User Details
+     * @request GET:/api/v1/traces/users/{user_id}
+     * @secure
+     */
+    getUserDetailsApiV1TracesUsersUserIdGet: (
+      { userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
+        path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get session metadata with pagination and filtering. Returns aggregated session information.
      *
      * @tags Sessions
-     * @name ListSessionsMetadataApiV1SessionsGet
+     * @name ListSessionsMetadataApiV1TracesSessionsGet
      * @summary List Session Metadata
-     * @request GET:/api/v1/sessions
+     * @request GET:/api/v1/traces/sessions
      * @secure
      */
-    listSessionsMetadataApiV1SessionsGet: (
-      query: ListSessionsMetadataApiV1SessionsGetParams,
+    listSessionsMetadataApiV1TracesSessionsGet: (
+      query: ListSessionsMetadataApiV1TracesSessionsGetParams,
       params: RequestParams = {},
     ) =>
-      this.request<ListSessionsMetadataApiV1SessionsGetData, ListSessionsMetadataApiV1SessionsGetError>({
-        path: `/api/v1/sessions`,
+      this.request<ListSessionsMetadataApiV1TracesSessionsGetData, ListSessionsMetadataApiV1TracesSessionsGetError>({
+        path: `/api/v1/traces/sessions`,
         method: "GET",
         query: query,
         secure: true,
@@ -5089,14 +5586,17 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.
      *
      * @tags Spans
-     * @name ListSpansMetadataApiV1SpansGet
+     * @name ListSpansMetadataApiV1TracesSpansGet
      * @summary List Span Metadata with Filtering
-     * @request GET:/api/v1/spans
+     * @request GET:/api/v1/traces/spans
      * @secure
      */
-    listSpansMetadataApiV1SpansGet: (query: ListSpansMetadataApiV1SpansGetParams, params: RequestParams = {}) =>
-      this.request<ListSpansMetadataApiV1SpansGetData, ListSpansMetadataApiV1SpansGetError>({
-        path: `/api/v1/spans`,
+    listSpansMetadataApiV1TracesSpansGet: (
+      query: ListSpansMetadataApiV1TracesSpansGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
+        path: `/api/v1/traces/spans`,
         method: "GET",
         query: query,
         secure: true,
@@ -5116,6 +5616,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     listTracesMetadataApiV1TracesGet: (query: ListTracesMetadataApiV1TracesGetParams, params: RequestParams = {}) =>
       this.request<ListTracesMetadataApiV1TracesGetData, ListTracesMetadataApiV1TracesGetError>({
         path: `/api/v1/traces`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get user metadata with pagination and filtering. Returns aggregated user information across sessions and traces.
+     *
+     * @tags Users
+     * @name ListUsersMetadataApiV1TracesUsersGet
+     * @summary List User Metadata
+     * @request GET:/api/v1/traces/users
+     * @secure
+     */
+    listUsersMetadataApiV1TracesUsersGet: (
+      query: ListUsersMetadataApiV1TracesUsersGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListUsersMetadataApiV1TracesUsersGetData, ListUsersMetadataApiV1TracesUsersGetError>({
+        path: `/api/v1/traces/users`,
         method: "GET",
         query: query,
         secure: true,
@@ -5250,9 +5772,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. At this point all existing and new secrets will be managed by 'new-key'.
+     *
+     * @tags Secrets
+     * @name RotateSecretsApiV1SecretsRotationPost
+     * @summary Rotates secrets
+     * @request POST:/api/v1/secrets/rotation
+     * @secure
+     */
+    rotateSecretsApiV1SecretsRotationPost: (params: RequestParams = {}) =>
+      this.request<RotateSecretsApiV1SecretsRotationPostData, any>({
+        path: `/api/v1/secrets/rotation`,
+        method: "POST",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Runs or streams an unsaved agentic prompt
      *
-     * @tags AgenticPrompt
+     * @tags Prompts
      * @name RunAgenticPromptApiV1CompletionsPost
      * @summary Run/Stream an unsaved agentic prompt
      * @request POST:/api/v1/completions
@@ -5272,13 +5811,13 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Run or stream a specific version of an existing agentic prompt
      *
-     * @tags AgenticPrompt
-     * @name RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost
+     * @tags Prompts
+     * @name RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost
      * @summary Run/Stream a specific version of an agentic prompt
-     * @request POST:/api/v1/task/{task_id}/prompt/{prompt_name}/versions/{prompt_version}/completions
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions
      * @secure
      */
-    runSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPost: (
+    runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost: (
       promptName: string,
       promptVersion: string,
       taskId: string,
@@ -5286,10 +5825,10 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       params: RequestParams = {},
     ) =>
       this.request<
-        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostData,
-        RunSavedAgenticPromptApiV1TaskTaskIdPromptPromptNameVersionsPromptVersionCompletionsPostError
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError
       >({
-        path: `/api/v1/task/${taskId}/prompt/${promptName}/versions/${promptVersion}/completions`,
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/completions`,
         method: "POST",
         body: data,
         secure: true,
@@ -5301,24 +5840,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Save an agentic prompt to the database
      *
-     * @tags AgenticPrompt
-     * @name SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut
+     * @tags Prompts
+     * @name SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost
      * @summary Save an agentic prompt
-     * @request PUT:/api/v1/{task_id}/agentic_prompts/{prompt_name}
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}
      * @secure
      */
-    saveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePut: (
+    saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost: (
       promptName: string,
       taskId: string,
       data: AgenticPromptBaseConfig,
       params: RequestParams = {},
     ) =>
       this.request<
-        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutData,
-        SaveAgenticPromptApiV1TaskIdAgenticPromptsPromptNamePutError
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData,
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError
       >({
-        path: `/api/v1/${taskId}/agentic_prompts/${promptName}`,
-        method: "PUT",
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
+        method: "POST",
         body: data,
         secure: true,
         type: ContentType.Json,
@@ -5369,6 +5908,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v2/tasks/search`,
         method: "POST",
         query: query,
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Disables the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderDelete
+     * @summary Disables the configuration for a model provider.
+     * @request DELETE:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderDeleteData,
+        SetModelProviderApiV1ModelProvidersProviderDeleteError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Set the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderPut
+     * @summary Set the configuration for a model provider.
+     * @request PUT:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderPut: (
+      provider: ModelProvider,
+      data: PutModelProviderCredentials,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderPutData,
+        SetModelProviderApiV1ModelProvidersProviderPutError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,

@@ -72,6 +72,7 @@ class InferenceRepository:
         task_name: str | None = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
+        model_name: str | None = None,
         page_size: int = 10,
         start_time: datetime = None,
         end_time: datetime = None,
@@ -124,6 +125,8 @@ class InferenceRepository:
             stmt = stmt.where(DatabaseInference.conversation_id == conversation_id)
         if user_id:
             stmt = stmt.where(DatabaseInference.user_id == user_id)
+        if model_name:
+            stmt = stmt.where(DatabaseInference.model_name.ilike(f"%{model_name}%"))
         if start_time:
             stmt = stmt.where(DatabaseInference.created_at >= start_time)
         if end_time:
@@ -323,6 +326,7 @@ class InferenceRepository:
         response: str,
         response_context: str,
         response_rule_results: List[RuleEngineResult],
+        model_name: str | None = None,
     ):
         inference_response = get_inference_response(
             inference_id,
@@ -330,6 +334,7 @@ class InferenceRepository:
             response_context,
             response_rule_results,
             tokens=self.token_counter.count(response),
+            model_name=model_name,
         )
 
         db_inference_response = inference_response._to_database_model()
@@ -345,6 +350,7 @@ class InferenceRepository:
                 )
                 else RuleResultEnum.FAIL
             )
+            db_inference.model_name = model_name
             self.db_session.commit()
         except IntegrityError as err:
             logger.warning("Response was already validated.")
@@ -499,6 +505,7 @@ def get_inference_response(
     response_context: str,
     rule_engine_results: List[RuleEngineResult],
     tokens: Optional[int] = None,
+    model_name: str | None = None,
 ) -> InferenceResponse:
     response_rule_results = [
         ResponseRuleResult._from_rule_engine_model(r) for r in rule_engine_results
@@ -520,6 +527,7 @@ def get_inference_response(
         context=response_context,
         response_rule_results=response_rule_results,
         tokens=tokens,
+        model_name=model_name,
     )
 
     return inference_response

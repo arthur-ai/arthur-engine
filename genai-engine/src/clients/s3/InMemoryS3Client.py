@@ -1,8 +1,9 @@
 import logging
 from io import BytesIO
 
-from clients.s3.abc_file_client import FileClient
 from fastapi import UploadFile
+
+from clients.s3.abc_file_client import FileClient
 
 logger = logging.getLogger()
 
