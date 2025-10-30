@@ -105,8 +105,12 @@ class PromptCompletionRequest(BaseModel):
                 missing_vars.update(self._find_missing_variables_in_text(content))
             elif isinstance(content, list):
                 for item in content:
-                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get("text"):
-                        missing_vars.update(self._find_missing_variables_in_text(item["text"]))
+                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get(
+                        "text",
+                    ):
+                        missing_vars.update(
+                            self._find_missing_variables_in_text(item["text"]),
+                        )
 
         return missing_vars
 
@@ -122,7 +126,9 @@ class PromptCompletionRequest(BaseModel):
                 message["content"] = self._replace_variables_in_text(content)
             elif isinstance(content, list):
                 for item in content:
-                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get("text"):
+                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get(
+                        "text",
+                    ):
                         item["text"] = self._replace_variables_in_text(item["text"])
 
         return messages
@@ -153,14 +159,29 @@ class ImageURL(BaseModel):
 
 class InputAudio(BaseModel):
     data: str = Field(..., description="Base64 encoded audio data")
-    format: str = Field(..., description="audio format (e.g. 'mp3', 'wav', 'flac', etc.)")
+    format: str = Field(
+        ...,
+        description="audio format (e.g. 'mp3', 'wav', 'flac', etc.)",
+    )
 
 
 class OpenAIMessageItem(BaseModel):
-    type: OpenAIMessageType = Field(..., description="Type of the message (either 'text', 'image_url', or 'input_audio')")
-    text: Optional[str] = Field(default=None, description="Text content of the message if type is 'text'")
-    image_url: Optional[ImageURL] = Field(default=None, description="Image URL content of the message if type is 'image_url'")
-    input_audio: Optional[InputAudio] = Field(default=None, description="Input audio content of the message if type is 'input_audio'")
+    type: OpenAIMessageType = Field(
+        ...,
+        description="Type of the message (either 'text', 'image_url', or 'input_audio')",
+    )
+    text: Optional[str] = Field(
+        default=None,
+        description="Text content of the message if type is 'text'",
+    )
+    image_url: Optional[ImageURL] = Field(
+        default=None,
+        description="Image URL content of the message if type is 'image_url'",
+    )
+    input_audio: Optional[InputAudio] = Field(
+        default=None,
+        description="Input audio content of the message if type is 'input_audio'",
+    )
 
     class Config:
         use_enum_values = True
@@ -171,9 +192,16 @@ class AgenticPromptMessage(BaseModel):
     The message schema class for the prompts playground.
     This class adheres to OpenAI's message schema.
     """
+
     role: MessageRole = Field(description="Role of the message")
-    name: Optional[str] = Field(default=None, description="An optional name for the participant. Provides the model information to differentiate between participants of the same role.")
-    content: Optional[str | List[OpenAIMessageItem]] = Field(default=None, description="Content of the message")
+    name: Optional[str] = Field(
+        default=None,
+        description="An optional name for the participant. Provides the model information to differentiate between participants of the same role.",
+    )
+    content: Optional[str | List[OpenAIMessageItem]] = Field(
+        default=None,
+        description="Content of the message",
+    )
     tool_calls: Optional[List[ToolCall]] = Field(
         default=None,
         description="Tool calls made by assistant",
