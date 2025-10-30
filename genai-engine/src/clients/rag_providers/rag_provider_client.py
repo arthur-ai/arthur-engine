@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
 
 from schemas.internal_schemas import RagProviderConfiguration
-from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
+from schemas.request_schemas import (
+    RagVectorKeywordSearchSettingRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+)
 from schemas.response_schemas import (
     ConnectionCheckResult,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
 )
 
 
@@ -20,5 +23,12 @@ class RagProviderClient(ABC):
     def vector_similarity_text_search(
         self,
         settings_request: RagVectorSimilarityTextSearchSettingRequest,
-    ) -> RagProviderSimilarityTextSearchResponse:
+    ) -> RagProviderQueryResponse:
+        raise NotImplementedError
+
+    @abstractmethod
+    def keyword_search(
+        self,
+        settings_request: RagVectorKeywordSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
         raise NotImplementedError

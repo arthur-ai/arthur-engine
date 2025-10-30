@@ -4,10 +4,13 @@ from clients.rag_providers.rag_provider_client import RagProviderClient
 from clients.rag_providers.weaviate_client import WeaviateClient
 from schemas.enums import ConnectionCheckOutcome, RagAPIKeyAuthenticationProviderEnum
 from schemas.internal_schemas import RagProviderConfiguration
-from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
+from schemas.request_schemas import (
+    RagVectorKeywordSearchSettingRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+)
 from schemas.response_schemas import (
     ConnectionCheckResult,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
 )
 
 
@@ -44,6 +47,13 @@ class RagClientConstructor:
     def execute_similarity_text_search(
         self,
         settings_request: RagVectorSimilarityTextSearchSettingRequest,
-    ) -> RagProviderSimilarityTextSearchResponse:
+    ) -> RagProviderQueryResponse:
         rag_client = self.pick_rag_provider_client()
         return rag_client.vector_similarity_text_search(settings_request)
+
+    def execute_keyword_search(
+        self,
+        settings_request: RagVectorKeywordSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        rag_client = self.pick_rag_provider_client()
+        return rag_client.keyword_search(settings_request)

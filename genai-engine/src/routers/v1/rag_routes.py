@@ -21,12 +21,13 @@ from schemas.internal_schemas import RagProviderConfiguration, User
 from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
+    RagVectorKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderConfigurationResponse,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
     SearchRagProviderConfigurationsResponse,
 )
 from utils.users import permission_checker
@@ -217,7 +218,7 @@ def test_rag_provider_connection(
 @rag_routes.post(
     "/rag_providers/{provider_id}/similarity_text_search",
     description="Execute a RAG Provider Similarity Text Search.",
-    response_model=RagProviderSimilarityTextSearchResponse,
+    response_model=RagProviderQueryResponse,
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
@@ -228,7 +229,7 @@ def execute_similarity_text_search(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-) -> RagProviderSimilarityTextSearchResponse:
+) -> RagProviderQueryResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
@@ -236,5 +237,31 @@ def execute_similarity_text_search(
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_similarity_text_search(request)
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/rag_providers/{provider_id}/keyword_search",
+    description="Execute a RAG Provider Keyword (BM25/Sparse Vector) Search.",
+    response_model=RagProviderQueryResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def execute_keyword_search(
+    request: RagVectorKeywordSearchSettingRequest,
+    provider_id: UUID = Path(
+        description="ID of the RAG provider configuration to use for the vector database connection.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagProviderQueryResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id,
+        )
+        rag_client_constructor = RagClientConstructor(rag_provider_config)
+        return rag_client_constructor.execute_keyword_search(request)
     finally:
         db_session.close()

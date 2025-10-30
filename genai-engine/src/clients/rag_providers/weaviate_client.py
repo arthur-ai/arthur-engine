@@ -1,6 +1,9 @@
 import weaviate
 from fastapi import HTTPException
 from weaviate.classes.init import Auth
+from weaviate.classes.query import BM25Operator
+from weaviate.collections.classes.internal import CrossReferences, QueryReturn
+from weaviate.collections.classes.types import Properties
 from weaviate.exceptions import WeaviateBaseError, WeaviateQueryError
 
 from clients.rag_providers.rag_provider_client import RagProviderClient
@@ -9,13 +12,16 @@ from schemas.internal_schemas import (
     ApiKeyRagAuthenticationConfig,
     RagProviderConfiguration,
 )
-from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
+from schemas.request_schemas import (
+    RagVectorKeywordSearchSettingRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+)
 from schemas.response_schemas import (
     ConnectionCheckResult,
-    RagProviderSimilarityTextSearchResponse,
-    WeaviateSimilaritySearchMetadata,
-    WeaviateSimilaritySearchTextResult,
-    WeaviateSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
+    WeaviateQueryResult,
+    WeaviateQueryResultMetadata,
+    WeaviateQueryResults,
 )
 
 
@@ -59,10 +65,40 @@ class WeaviateClient(RagProviderClient):
             connection_check_outcome=ConnectionCheckOutcome.PASSED,
         )
 
+    @staticmethod
+    def _client_result_to_arthur_response(
+        query_return: QueryReturn[Properties, CrossReferences],
+    ) -> RagProviderQueryResponse:
+        return RagProviderQueryResponse(
+            response=WeaviateQueryResults(
+                objects=[
+                    WeaviateQueryResult(
+                        uuid=obj.uuid,
+                        metadata=(
+                            WeaviateQueryResultMetadata(
+                                creation_time=obj.metadata.creation_time,
+                                last_update_time=obj.metadata.last_update_time,
+                                distance=obj.metadata.distance,
+                                certainty=obj.metadata.certainty,
+                                score=obj.metadata.score,
+                                explain_score=obj.metadata.explain_score,
+                                is_consistent=obj.metadata.is_consistent,
+                            )
+                            if hasattr(obj, "metadata")
+                            else None
+                        ),
+                        properties=obj.properties,
+                        vector=obj.vector if hasattr(obj, "vector") else None,
+                    )
+                    for obj in query_return.objects
+                ],
+            ),
+        )
+
     def vector_similarity_text_search(
         self,
         settings_request: RagVectorSimilarityTextSearchSettingRequest,
-    ) -> RagProviderSimilarityTextSearchResponse:
+    ) -> RagProviderQueryResponse:
         weaviate_settings = settings_request.settings
         collection = self.client.collections.use(weaviate_settings.collection_name)
         try:
@@ -80,31 +116,45 @@ class WeaviateClient(RagProviderClient):
                 detail=f"Error querying Weaviate: {e}.",
             )
 
-        return RagProviderSimilarityTextSearchResponse(
-            response=WeaviateSimilarityTextSearchResponse(
-                objects=[
-                    WeaviateSimilaritySearchTextResult(
-                        uuid=obj.uuid,
-                        metadata=(
-                            WeaviateSimilaritySearchMetadata(
-                                creation_time=obj.metadata.creation_time,
-                                last_update_time=obj.metadata.last_update_time,
-                                distance=obj.metadata.distance,
-                                certainty=obj.metadata.certainty,
-                                score=obj.metadata.score,
-                                explain_score=obj.metadata.explain_score,
-                                is_consistent=obj.metadata.is_consistent,
-                            )
-                            if hasattr(obj, "metadata")
-                            else None
-                        ),
-                        properties=obj.properties,
-                        vector=obj.vector if hasattr(obj, "vector") else None,
-                    )
-                    for obj in response.objects
-                ],
-            ),
+        return self._client_result_to_arthur_response(response)
+
+    def keyword_search(
+        self,
+        settings_request: RagVectorKeywordSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        weaviate_settings = settings_request.settings
+        collection = self.client.collections.use(weaviate_settings.collection_name)
+
+        # construct parameters to bm25 query function
+        weaviate_settings_dict = weaviate_settings.model_dump(
+            exclude={
+                "collection_name",
+                "rag_provider",
+                "minimum_match_or_operator",
+                "and_operator",
+            },
         )
+        if weaviate_settings.and_operator:
+            weaviate_settings_dict["operator"] = BM25Operator.and_()
+        elif weaviate_settings.minimum_match_or_operator is not None:
+            weaviate_settings_dict["operator"] = BM25Operator.or_(
+                minimum_match=weaviate_settings.minimum_match_or_operator,
+            )
+
+        # execute search
+        try:
+            response = collection.query.bm25(
+                **weaviate_settings_dict,
+            )
+        except WeaviateQueryError as e:
+            # raise query errors cleanly so the user knows what went wrong
+            # (eg. no vectorizer configured for the collection)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {e}.",
+            )
+
+        return self._client_result_to_arthur_response(response)
 
     def __del__(self):
         # client may not have been initialized if clean up happens after a failed class instantiation so validate
