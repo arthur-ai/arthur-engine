@@ -59,81 +59,6 @@ class LogitBiasItem(BaseModel):
     )
 
 
-class PromptCompletionRequest(BaseModel):
-    """Request schema for running an agentic prompt"""
-
-    variables: Optional[List[VariableTemplateValue]] = Field(
-        description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
-        default=[],
-    )
-    stream: Optional[bool] = Field(
-        description="Whether to stream the response",
-        default=False,
-    )
-    strict: Optional[bool] = Field(
-        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
-        default=False,
-    )
-
-    _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
-
-    # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
-    #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
-    #   autoescape=False "{{ name }}" -> "<Bob>"
-    #   autoescape=True "{{ name }}" -> "&lt;Bob&gt;"
-    _jinja_env: SandboxedEnvironment = PrivateAttr(
-        default_factory=lambda: SandboxedEnvironment(autoescape=False),
-    )
-
-    @model_validator(mode="after")
-    def _build_variable_map(self):
-        """Construct a private lookup dictionary for variable substitution"""
-        if self.variables:
-            self._variable_map = {v.name: v.value for v in self.variables}
-        return self
-
-    def _find_missing_variables_in_text(self, text: str) -> List[str]:
-        template_ast = self._jinja_env.parse(text)
-        undeclared_vars = meta.find_undeclared_variables(template_ast)
-        return [v for v in undeclared_vars if v not in self._variable_map]
-
-    def find_missing_variables(self, messages: List[Dict]) -> Set[str]:
-        missing_vars = set()
-        for message in messages:
-            content = message.get("content")
-            if isinstance(content, str):
-                missing_vars.update(self._find_missing_variables_in_text(content))
-            elif isinstance(content, list):
-                for item in content:
-                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get(
-                        "text",
-                    ):
-                        missing_vars.update(
-                            self._find_missing_variables_in_text(item["text"]),
-                        )
-
-        return missing_vars
-
-    def _replace_variables_in_text(self, text: str) -> str:
-        template = self._jinja_env.from_string(text)
-        return template.render(**self._variable_map)
-
-    def replace_variables(self, messages: list[dict]) -> list[dict]:
-        for message in messages:
-            content = message.get("content")
-
-            if isinstance(content, str):
-                message["content"] = self._replace_variables_in_text(content)
-            elif isinstance(content, list):
-                for item in content:
-                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get(
-                        "text",
-                    ):
-                        item["text"] = self._replace_variables_in_text(item["text"])
-
-        return messages
-
-
 class ToolCallFunction(BaseModel):
     name: str = Field(..., description="Name of the function to call")
     arguments: str = Field(..., description="JSON string of function arguments")
@@ -213,6 +138,80 @@ class AgenticPromptMessage(BaseModel):
 
     class Config:
         use_enum_values = True
+
+
+class PromptCompletionRequest(BaseModel):
+    """Request schema for running an agentic prompt"""
+
+    variables: Optional[List[VariableTemplateValue]] = Field(
+        description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
+        default=[],
+    )
+    stream: Optional[bool] = Field(
+        description="Whether to stream the response",
+        default=False,
+    )
+    strict: Optional[bool] = Field(
+        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+        default=False,
+    )
+
+    _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
+
+    # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
+    #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
+    #   autoescape=False "{{ name }}" -> "<Bob>"
+    #   autoescape=True "{{ name }}" -> "&lt;Bob&gt;"
+    _jinja_env: SandboxedEnvironment = PrivateAttr(
+        default_factory=lambda: SandboxedEnvironment(autoescape=False),
+    )
+
+    @model_validator(mode="after")
+    def _build_variable_map(self):
+        """Construct a private lookup dictionary for variable substitution"""
+        if self.variables:
+            self._variable_map = {v.name: v.value for v in self.variables}
+        return self
+
+    def _find_missing_variables_in_text(self, text: str) -> List[str]:
+        template_ast = self._jinja_env.parse(text)
+        undeclared_vars = meta.find_undeclared_variables(template_ast)
+        return [v for v in undeclared_vars if v not in self._variable_map]
+
+    def find_missing_variables(self, messages: List[AgenticPromptMessage]) -> Set[str]:
+        missing_vars = set()
+        for message in messages:
+            if message.content is None:
+                continue
+            
+            if isinstance(message.content, str):
+                missing_vars.update(self._find_missing_variables_in_text(message.content))
+            elif isinstance(message.content, list):
+                for item in message.content:
+                    if item.type == OpenAIMessageType.TEXT.value and item.text:
+                        missing_vars.update(
+                            self._find_missing_variables_in_text(item.text),
+                        )
+
+        return missing_vars
+
+    def _replace_variables_in_text(self, text: str) -> str:
+        template = self._jinja_env.from_string(text)
+        return template.render(**self._variable_map)
+
+    def replace_variables(self, messages: List[AgenticPromptMessage]) -> list[dict]:
+        for message in messages:
+            if message.content is None:
+                continue
+
+            if isinstance(message.content, str):
+                message.content = self._replace_variables_in_text(message.content)
+            elif isinstance(message.content, list):
+                for item in message.content:
+                    if item.type == OpenAIMessageType.TEXT.value and item.text:
+                        item.text = self._replace_variables_in_text(item.text)
+
+        return messages
 
 
 class ToolFunction(BaseModel):
@@ -402,6 +401,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 "created_at",
                 "version",
                 "deleted_at",
+                "messages",
             },
             exclude_none=True,
         )
@@ -409,7 +409,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         # validate all variables are passed in to the prompt if strict mode is enabled
         if completion_request.strict == True:
             missing_vars = completion_request.find_missing_variables(
-                completion_params["messages"],
+                self.messages,
             )
             if missing_vars:
                 raise ValueError(
@@ -417,10 +417,11 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 )
 
         # replace variables in messages
+        completion_messages = self.messages
         if completion_request.variables:
-            completion_params["messages"] = completion_request.replace_variables(
-                completion_params["messages"],
-            )
+            completion_messages = completion_request.replace_variables(completion_messages)
+        
+        completion_params["messages"] = [message.model_dump(exclude_none=True) for message in completion_messages]
 
         if completion_request.stream is not None:
             completion_params["stream"] = completion_request.stream

@@ -25,7 +25,7 @@ from schemas.agentic_prompt_schemas import (
     VariableTemplateValue,
 )
 from schemas.common_schemas import JsonSchema
-from schemas.enums import ModelProvider
+from schemas.enums import ModelProvider, MessageRole
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptMetadataResponse,
@@ -662,12 +662,12 @@ def test_agentic_prompt_run_chat_completion(
         (
             [
                 {"type": "text", "text": "{{ name_variable_1 }}"},
-                {"type": "image_url", "image_url": "test"},
+                {"type": "image_url", "image_url": {"url": "test"}},
             ],
             {"name_variable_1": "Alice", "name_variable_2": "Bob"},
             [
                 {"type": "text", "text": "Alice"},
-                {"type": "image_url", "image_url": "test"},
+                {"type": "image_url", "image_url": {"url": "test"}},
             ],
         ),
         (
@@ -700,9 +700,16 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
         variables = []
 
     completion_request = PromptCompletionRequest(variables=variables)
-    message = [{"role": "user", "content": message}]
-    result = completion_request.replace_variables(message)
-    assert result[0]["content"] == expected_message
+    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
+    
+    result = completion_request.replace_variables(messages)
+    expected_result = [AgenticPromptMessage(role=MessageRole.USER, content=expected_message)]
+    assert result == expected_result
+
+    prompt = AgenticPrompt(name="test_prompt", messages=messages, model_name="gpt-4o", model_provider="openai")
+    _, completion_params = prompt._get_completion_params(completion_request)
+
+    assert completion_params["messages"][0]["content"] == expected_message
 
 
 @pytest.mark.unit_tests
@@ -793,9 +800,9 @@ def test_agentic_prompt_find_missing_variables(message, variables, missing_varia
     else:
         variables = []
 
+    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
     completion_request = PromptCompletionRequest(variables=variables)
-    message = [{"role": "user", "content": message}]
-    results = completion_request.find_missing_variables(message)
+    results = completion_request.find_missing_variables(messages)
     assert results == missing_variables
 
 
