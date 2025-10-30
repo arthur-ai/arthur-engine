@@ -10,7 +10,9 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    RagProviderCollectionResponse,
     RagProviderQueryResponse,
+    SearchRagProviderCollectionsResponse,
     WeaviateQueryResult,
     WeaviateQueryResultMetadata,
     WeaviateQueryResults,
@@ -35,6 +37,10 @@ class MockWeaviateClient(RagProviderClient):
         self.search_error = None
         self.search_results = []
 
+        # Collections state
+        self.collections_error = None
+        self.collections_results = []
+
     def test_connection(self) -> ConnectionCheckResult:
         """Mock test_connection method."""
         if self.connection_error:
@@ -51,6 +57,30 @@ class MockWeaviateClient(RagProviderClient):
 
         return ConnectionCheckResult(
             connection_check_outcome=ConnectionCheckOutcome.PASSED,
+        )
+
+    def list_collections(self) -> SearchRagProviderCollectionsResponse:
+        """Mock list_collections method."""
+        if self.collections_error:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error listing collections: {self.collections_error}.",
+            )
+
+        # Convert mock results to RagProviderCollectionResponse objects
+        collections = [
+            RagProviderCollectionResponse(
+                identifier=result.get("identifier", "default_collection"),
+                description=result.get("description"),
+            )
+            for result in self.collections_results
+        ]
+
+        return SearchRagProviderCollectionsResponse(
+            count=len(collections),
+            rag_provider_collections=collections,
         )
 
     def _mock_results_to_arthur_response(self) -> RagProviderQueryResponse:
@@ -180,6 +210,16 @@ class MockWeaviateClientFactory:
                 "vector": None,
             },
         ]
+        client.collections_results = [
+            {
+                "identifier": "test_collection_1",
+                "description": "Test collection 1 for unit testing",
+            },
+            {
+                "identifier": "test_collection_2",
+                "description": "Test collection 2 for unit testing",
+            },
+        ]
         return client
 
     @staticmethod
@@ -209,6 +249,8 @@ class MockWeaviateClientFactory:
         connection_error: str = None,
         search_error: str = None,
         search_results: list[dict] = None,
+        collections_error: str = None,
+        collections_results: list[dict] = None,
     ) -> MockWeaviateClient:
         """Create a custom mock client with specific configuration.
 
@@ -218,10 +260,14 @@ class MockWeaviateClientFactory:
             connection_error: Error message for connection failures
             search_error: Error message for search failures
             search_results: List of search results to return
+            collections_error: Error message for collections listing failures
+            collections_results: List of collections to return
         """
         client = MockWeaviateClient(provider_config)
         client.is_connected_value = is_connected
         client.connection_error = connection_error
         client.search_error = search_error
         client.search_results = search_results or []
+        client.collections_error = collections_error
+        client.collections_results = collections_results or []
         return client

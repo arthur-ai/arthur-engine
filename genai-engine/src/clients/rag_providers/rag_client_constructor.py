@@ -11,6 +11,7 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderQueryResponse,
+    SearchRagProviderCollectionsResponse,
 )
 
 
@@ -30,6 +31,10 @@ class RagClientConstructor:
                     status_code=404,
                     detail=f"Unsupported rag provider: {self.provider_config.authentication_config.rag_provider}",
                 )
+
+    def list_collections(self) -> SearchRagProviderCollectionsResponse:
+        rag_client = self.pick_rag_provider_client()
+        return rag_client.list_collections()
 
     def execute_test_connection(self) -> ConnectionCheckResult:
         """Some clients, like weaviate, initialize the connection in the client __init__ function. So we'll

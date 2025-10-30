@@ -10,9 +10,7 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added '#/components/schemas/WeaviateQueryResultMetadata' to the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed '#/components/schemas/WeaviateSimilaritySearchMetadata' from the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v2/inferences/query  added the optional property 'inferences/items/inference_prompt/model_name' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  added the new optional request property 'model_name'
-- **CHANGE** for **URL**: /api/v2/validate_prompt  added the new optional request property 'model_name'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections  endpoint added
 
 
 # 10/30/2025

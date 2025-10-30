@@ -17,7 +17,9 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    RagProviderCollectionResponse,
     RagProviderQueryResponse,
+    SearchRagProviderCollectionsResponse,
     WeaviateQueryResult,
     WeaviateQueryResultMetadata,
     WeaviateQueryResults,
@@ -50,6 +52,27 @@ class WeaviateClient(RagProviderClient):
                 status_code=400,
                 detail=f"Error connecting to Weaviate: {e}.",
             )
+
+    def list_collections(self) -> SearchRagProviderCollectionsResponse:
+        try:
+            response = self.client.collections.list_all(simple=True)
+        except WeaviateBaseError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {e}.",
+            )
+        collections = [
+            RagProviderCollectionResponse(
+                identifier=name,
+                description=config.description,
+            )
+            for name, config in response.items()
+        ]
+
+        return SearchRagProviderCollectionsResponse(
+            count=len(collections),
+            rag_provider_collections=collections,
+        )
 
     def test_connection(self) -> ConnectionCheckResult:
         # the constructor initiates the connection to weaviate and there doesn't seem to be a good way
