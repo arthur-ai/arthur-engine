@@ -27,6 +27,8 @@ import { useApi } from "@/hooks/useApi";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
 import { queryKeys } from "@/lib/queryKeys";
+import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
+import { Button, ButtonGroup } from "@mui/material";
 
 type Props = {
   id: string;
@@ -103,43 +105,34 @@ export const TraceDrawerContent = ({ id }: Props) => {
           borderColor: "divider",
         }}
       >
-        <Stack direction="column" spacing={0}>
+        <Stack direction="column" gap={0}>
           <Typography variant="body2" color="text.secondary">
             Trace Details
           </Typography>
-          <Typography variant="h5" color="text.primary" fontWeight="bold">
-            {name}
-          </Typography>
+          <Stack direction="row" gap={2}>
+            <Typography variant="h5" color="text.primary" fontWeight="bold">
+              {name}
+            </Typography>
+            <CopyableChip
+              label={id!}
+              sx={{
+                fontFamily: "monospace",
+              }}
+            />
+          </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={0} sx={{ marginLeft: "auto" }}>
-          <CopyableChip
-            label={id!}
-            sx={{
-              fontFamily: "monospace",
-              borderTopRightRadius: 0,
-              borderBottomRightRadius: 0,
-            }}
-          />
-          <LoadingButton
-            className="px-4 rounded-r-full text-nowrap shrink-0"
-            loading={refreshMetrics.isPending}
-            onClick={() => refreshMetrics.mutate()}
-          >
-            <span className="flex items-center gap-1">
-              <RefreshIcon
-                sx={{
-                  fontSize: 16,
-                  width: 16,
-                  height: "1lh",
-                  flexShrink: 0,
-                }}
-              />
-              <Typography variant="caption" lineHeight={1}>
-                Refresh Metrics
-              </Typography>
-            </span>
-          </LoadingButton>
+        <Stack gap={2} alignItems="flex-end">
+          <ButtonGroup variant="outlined" size="small" disableElevation>
+            <Button
+              loading={refreshMetrics.isPending}
+              onClick={() => refreshMetrics.mutate()}
+              startIcon={<RefreshIcon />}
+            >
+              Refresh Metrics
+            </Button>
+            <AddToDatasetDrawer traceId={id} />
+          </ButtonGroup>
         </Stack>
       </Stack>
 
