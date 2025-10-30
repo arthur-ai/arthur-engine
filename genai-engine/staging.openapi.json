@@ -7957,10 +7957,28 @@
                         "$ref": "#/components/schemas/MessageRole",
                         "description": "Role of the message"
                     },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
+                    },
                     "content": {
                         "anyOf": [
                             {
                                 "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIMessageItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -8001,7 +8019,8 @@
                 "required": [
                     "role"
                 ],
-                "title": "AgenticPromptMessage"
+                "title": "AgenticPromptMessage",
+                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
             },
             "AgenticPromptMessage-Output": {
                 "properties": {
@@ -8009,10 +8028,28 @@
                         "$ref": "#/components/schemas/MessageRole",
                         "description": "Role of the message"
                     },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
+                    },
                     "content": {
                         "anyOf": [
                             {
                                 "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIMessageItem"
+                                },
+                                "type": "array"
                             },
                             {
                                 "type": "null"
@@ -8053,7 +8090,8 @@
                 "required": [
                     "role"
                 ],
-                "title": "AgenticPromptMessage"
+                "title": "AgenticPromptMessage",
+                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
             },
             "AgenticPromptMetadataListResponse": {
                 "properties": {
@@ -9927,6 +9965,20 @@
                 ],
                 "title": "HallucinationDetailsResponse"
             },
+            "ImageURL": {
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "title": "Url",
+                        "description": "URL of the image"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "title": "ImageURL"
+            },
             "InferenceFeedbackResponse": {
                 "properties": {
                     "id": {
@@ -9996,6 +10048,26 @@
                     "prompt_results"
                 ],
                 "title": "InferenceFeedbackTarget"
+            },
+            "InputAudio": {
+                "properties": {
+                    "data": {
+                        "type": "string",
+                        "title": "Data",
+                        "description": "Base64 encoded audio data"
+                    },
+                    "format": {
+                        "type": "string",
+                        "title": "Format",
+                        "description": "audio format (e.g. 'mp3', 'wav', 'flac', etc.)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "format"
+                ],
+                "title": "InputAudio"
             },
             "JsonPropertySchema": {
                 "properties": {
@@ -10436,6 +10508,7 @@
             "MessageRole": {
                 "type": "string",
                 "enum": [
+                    "developer",
                     "system",
                     "user",
                     "assistant",
@@ -11340,6 +11413,62 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
+            },
+            "OpenAIMessageItem": {
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/OpenAIMessageType",
+                        "description": "Type of the message (either 'text', 'image_url', or 'input_audio')"
+                    },
+                    "text": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Text",
+                        "description": "Text content of the message if type is 'text'"
+                    },
+                    "image_url": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ImageURL"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Image URL content of the message if type is 'image_url'"
+                    },
+                    "input_audio": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/InputAudio"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Input audio content of the message if type is 'input_audio'"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type"
+                ],
+                "title": "OpenAIMessageItem"
+            },
+            "OpenAIMessageType": {
+                "type": "string",
+                "enum": [
+                    "text",
+                    "image_url",
+                    "input_audio"
+                ],
+                "title": "OpenAIMessageType"
             },
             "PIIConfig": {
                 "properties": {

@@ -24,6 +24,7 @@ from schemas.enums import (
     LLMResponseFormatEnum,
     MessageRole,
     ModelProvider,
+    OpenAIMessageType,
     ReasoningEffortEnum,
     ToolChoiceEnum,
 )
@@ -91,26 +92,40 @@ class PromptCompletionRequest(BaseModel):
             self._variable_map = {v.name: v.value for v in self.variables}
         return self
 
+    def _find_missing_variables_in_text(self, text: str) -> List[str]:
+        template_ast = self._jinja_env.parse(text)
+        undeclared_vars = meta.find_undeclared_variables(template_ast)
+        return [v for v in undeclared_vars if v not in self._variable_map]
+
     def find_missing_variables(self, messages: List[Dict]) -> Set[str]:
         missing_vars = set()
         for message in messages:
-            template_ast = self._jinja_env.parse(message["content"])
-            undeclared_vars = meta.find_undeclared_variables(template_ast)
-            missing = [v for v in undeclared_vars if v not in self._variable_map]
-            missing_vars.update(missing)
+            content = message.get("content")
+            if isinstance(content, str):
+                missing_vars.update(self._find_missing_variables_in_text(content))
+            elif isinstance(content, list):
+                for item in content:
+                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get("text"):
+                        missing_vars.update(self._find_missing_variables_in_text(item["text"]))
 
         return missing_vars
 
-    def replace_variables(self, messages: List[Dict]) -> List[Dict]:
-        updated_messages = []
+    def _replace_variables_in_text(self, text: str) -> str:
+        template = self._jinja_env.from_string(text)
+        return template.render(**self._variable_map)
 
+    def replace_variables(self, messages: list[dict]) -> list[dict]:
         for message in messages:
-            updated_message = message.copy()
-            template = self._jinja_env.from_string(updated_message["content"])
-            updated_message["content"] = template.render(**self._variable_map)
-            updated_messages.append(updated_message)
+            content = message.get("content")
 
-        return updated_messages
+            if isinstance(content, str):
+                message["content"] = self._replace_variables_in_text(content)
+            elif isinstance(content, list):
+                for item in content:
+                    if item.get("type") == OpenAIMessageType.TEXT.value and item.get("text"):
+                        item["text"] = self._replace_variables_in_text(item["text"])
+
+        return messages
 
 
 class ToolCallFunction(BaseModel):
@@ -132,9 +147,33 @@ class ToolCall(BaseModel):
         return "function"
 
 
+class ImageURL(BaseModel):
+    url: str = Field(..., description="URL of the image")
+
+
+class InputAudio(BaseModel):
+    data: str = Field(..., description="Base64 encoded audio data")
+    format: str = Field(..., description="audio format (e.g. 'mp3', 'wav', 'flac', etc.)")
+
+
+class OpenAIMessageItem(BaseModel):
+    type: OpenAIMessageType = Field(..., description="Type of the message (either 'text', 'image_url', or 'input_audio')")
+    text: Optional[str] = Field(default=None, description="Text content of the message if type is 'text'")
+    image_url: Optional[ImageURL] = Field(default=None, description="Image URL content of the message if type is 'image_url'")
+    input_audio: Optional[InputAudio] = Field(default=None, description="Input audio content of the message if type is 'input_audio'")
+
+    class Config:
+        use_enum_values = True
+
+
 class AgenticPromptMessage(BaseModel):
+    """
+    The message schema class for the prompts playground.
+    This class adheres to OpenAI's message schema.
+    """
     role: MessageRole = Field(description="Role of the message")
-    content: Optional[str] = Field(default=None, description="Content of the message")
+    name: Optional[str] = Field(default=None, description="An optional name for the participant. Provides the model information to differentiate between participants of the same role.")
+    content: Optional[str | List[OpenAIMessageItem]] = Field(default=None, description="Content of the message")
     tool_calls: Optional[List[ToolCall]] = Field(
         default=None,
         description="Tool calls made by assistant",
