@@ -371,3 +371,63 @@ def test_execute_similarity_text_search_failure(
     assert status_code == 204
     status_code = client.delete_task(task_id)
     assert status_code == 204
+
+
+@pytest.mark.unit_tests
+@patch("routers.v1.rag_routes.RagClientConstructor")
+def test_list_rag_provider_collections_success(
+    mock_rag_client_constructor,
+    client: GenaiEngineTestClientBase,
+) -> None:
+    """Test successful RAG provider collections listing. Basic happy path."""
+    # Create a task and RAG provider first
+    status_code, task = client.create_task(name="Test Task for Collections Listing")
+    assert status_code == 200
+    task_id = task.id
+
+    status_code, rag_provider = client.create_rag_provider(
+        task_id=task_id,
+        name="Test RAG Provider",
+        description="Test RAG provider for collections listing",
+    )
+    assert status_code == 200
+    provider_id = rag_provider.id
+
+    # Mock the RagClientConstructor to return successful collections listing
+    mock_client = MockWeaviateClientFactory.create_successful_client(Mock())
+    mock_constructor_instance = Mock()
+    mock_constructor_instance.list_collections.return_value = (
+        mock_client.list_collections()
+    )
+    mock_rag_client_constructor.return_value = mock_constructor_instance
+
+    # Test collections listing
+    status_code, result = client.list_rag_provider_collections(
+        provider_id=provider_id,
+    )
+
+    # Verify the response
+    assert status_code == 200
+    assert result is not None
+    assert result.count == 2
+    assert len(result.rag_provider_collections) == 2
+    assert result.rag_provider_collections[0].identifier == "test_collection_1"
+    assert (
+        result.rag_provider_collections[0].description
+        == "Test collection 1 for unit testing"
+    )
+    assert result.rag_provider_collections[1].identifier == "test_collection_2"
+    assert (
+        result.rag_provider_collections[1].description
+        == "Test collection 2 for unit testing"
+    )
+
+    # Verify the constructor was called correctly
+    mock_rag_client_constructor.assert_called_once()
+    mock_constructor_instance.list_collections.assert_called_once()
+
+    # Clean up
+    status_code = client.delete_rag_provider(provider_id)
+    assert status_code == 204
+    status_code = client.delete_task(task_id)
+    assert status_code == 204

@@ -6520,6 +6520,57 @@
                 }
             }
         },
+        "/api/v1/rag_providers/{provider_id}/collections": {
+            "get": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "List Rag Provider Collections",
+                "description": "Lists all available vector database collections.",
+                "operationId": "list_rag_provider_collections_api_v1_rag_providers__provider_id__collections_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of RAG provider configuration to use for authentication with the vector store.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of RAG provider configuration to use for authentication with the vector store."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchRagProviderCollectionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/rag_providers/test_connection": {
             "post": {
                 "tags": [
@@ -10645,7 +10696,7 @@
                     "enabled": {
                         "type": "boolean",
                         "title": "Enabled",
-                        "description": "Whether the provider is enabled with credentials."
+                        "description": "Whether the provider is enabled with credentials"
                     }
                 },
                 "type": "object",
@@ -11851,6 +11902,32 @@
                 ],
                 "title": "RagProviderAuthenticationMethodEnum"
             },
+            "RagProviderCollectionResponse": {
+                "properties": {
+                    "identifier": {
+                        "type": "string",
+                        "title": "Identifier",
+                        "description": "Unique identifier of the collection."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the collection."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "identifier"
+                ],
+                "title": "RagProviderCollectionResponse"
+            },
             "RagProviderConfigurationRequest": {
                 "properties": {
                     "authentication_config": {
@@ -12312,6 +12389,28 @@
                     "datasets"
                 ],
                 "title": "SearchDatasetsResponse"
+            },
+            "SearchRagProviderCollectionsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG provider collections matching the parameters."
+                    },
+                    "rag_provider_collections": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagProviderCollectionResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Collections"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_collections"
+                ],
+                "title": "SearchRagProviderCollectionsResponse"
             },
             "SearchRagProviderConfigurationsResponse": {
                 "properties": {
