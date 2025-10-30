@@ -8,8 +8,11 @@ from starlette.responses import Response
 from starlette.status import HTTP_204_NO_CONTENT
 
 from clients.rag_providers.rag_client_constructor import RagClientConstructor
-from dependencies import get_db_session
+from dependencies import get_application_config, get_db_session
+from repositories.metrics_repository import MetricRepository
 from repositories.rag_providers_repository import RagProvidersRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import (
@@ -17,7 +20,11 @@ from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
 )
-from schemas.internal_schemas import RagProviderConfiguration, User
+from schemas.internal_schemas import (
+    ApplicationConfiguration,
+    RagProviderConfiguration,
+    User,
+)
 from schemas.request_schemas import (
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
@@ -57,8 +64,19 @@ def create_rag_provider(
         description="ID of the task to register a new provider connection for. Should be formatted as a UUID.",
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> RagProviderConfigurationResponse:
+    # validate task exists - get function will raise a 404 if it doesn't exist
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task_repo.get_task_by_id(task_id)
+
+    # create config
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_provider_config = RagProviderConfiguration._from_request_model(

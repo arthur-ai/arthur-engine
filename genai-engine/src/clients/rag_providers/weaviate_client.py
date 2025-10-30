@@ -1,7 +1,6 @@
 import weaviate
 from fastapi import HTTPException
 from weaviate.classes.init import Auth
-from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.internal import CrossReferences, QueryReturn
 from weaviate.collections.classes.types import Properties
 from weaviate.exceptions import WeaviateBaseError, WeaviateQueryError
@@ -104,9 +103,7 @@ class WeaviateClient(RagProviderClient):
         try:
             response = collection.query.near_text(
                 # collection_name should not be passed as an argument to this function - it was already used above
-                **weaviate_settings.model_dump(
-                    exclude={"collection_name", "rag_provider"},
-                ),
+                **weaviate_settings._to_client_settings_dict(),
             )
         except WeaviateQueryError as e:
             # raise query errors cleanly so the user knows what went wrong
@@ -125,26 +122,10 @@ class WeaviateClient(RagProviderClient):
         weaviate_settings = settings_request.settings
         collection = self.client.collections.use(weaviate_settings.collection_name)
 
-        # construct parameters to bm25 query function
-        weaviate_settings_dict = weaviate_settings.model_dump(
-            exclude={
-                "collection_name",
-                "rag_provider",
-                "minimum_match_or_operator",
-                "and_operator",
-            },
-        )
-        if weaviate_settings.and_operator:
-            weaviate_settings_dict["operator"] = BM25Operator.and_()
-        elif weaviate_settings.minimum_match_or_operator is not None:
-            weaviate_settings_dict["operator"] = BM25Operator.or_(
-                minimum_match=weaviate_settings.minimum_match_or_operator,
-            )
-
         # execute search
         try:
             response = collection.query.bm25(
-                **weaviate_settings_dict,
+                **weaviate_settings._to_client_settings_dict(),
             )
         except WeaviateQueryError as e:
             # raise query errors cleanly so the user knows what went wrong

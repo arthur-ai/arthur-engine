@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_core import Url
 from sqlalchemy import or_
 from sqlalchemy.orm import Query
+from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import METADATA, TargetVectorJoinType
 from weaviate.types import INCLUDE_VECTOR
 
@@ -239,6 +240,12 @@ class WeaviateVectorSimilarityTextSearchSettingsRequest(WeaviateSearchCommonSett
         description="Specifies vector to use for similarity search when using named vectors.",
     )
 
+    def _to_client_settings_dict(self) -> dict[str, Any]:
+        """Parses settings to the client parameters for the near_text function."""
+        return self.model_dump(
+            exclude={"collection_name", "rag_provider"},
+        )
+
 
 RagVectorSimilarityTextSearchSettingRequestTypes = Union[
     WeaviateVectorSimilarityTextSearchSettingsRequest
@@ -279,6 +286,26 @@ class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
             )
 
         return values
+
+    def _to_client_settings_dict(self) -> dict[str, Any]:
+        """Parses settings to the client parameters for the near_text function."""
+        settings_dict = self.model_dump(
+            exclude={
+                "collection_name",
+                "rag_provider",
+                "minimum_match_or_operator",
+                "and_operator",
+            },
+        )
+
+        if self.and_operator:
+            settings_dict["operator"] = BM25Operator.and_()
+        elif self.minimum_match_or_operator is not None:
+            settings_dict["operator"] = BM25Operator.or_(
+                minimum_match=self.minimum_match_or_operator,
+            )
+
+        return settings_dict
 
 
 RagKeywordSearchSettingRequestTypes = Union[WeaviateKeywordSearchSettingsRequest]
