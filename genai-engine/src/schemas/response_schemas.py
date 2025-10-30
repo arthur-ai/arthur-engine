@@ -299,6 +299,21 @@ class SearchRagProviderConfigurationsResponse(BaseModel):
     )
 
 
+class RagProviderCollectionResponse(BaseModel):
+    identifier: str = Field(description="Unique identifier of the collection.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the collection.",
+    )
+
+
+class SearchRagProviderCollectionsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG provider collections matching the parameters.",
+    )
+    rag_provider_collections: list[RagProviderCollectionResponse]
+
+
 class ConnectionCheckResult(BaseModel):
     connection_check_outcome: ConnectionCheckOutcome = Field(
         description="Result of the connection check.",

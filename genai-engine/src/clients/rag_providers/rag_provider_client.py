@@ -5,6 +5,7 @@ from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderSimilarityTextSearchResponse,
+    SearchRagProviderCollectionsResponse,
 )
 
 
@@ -14,6 +15,10 @@ class RagProviderClient(ABC):
 
     @abstractmethod
     def test_connection(self) -> ConnectionCheckResult:
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_collections(self) -> SearchRagProviderCollectionsResponse:
         raise NotImplementedError
 
     @abstractmethod

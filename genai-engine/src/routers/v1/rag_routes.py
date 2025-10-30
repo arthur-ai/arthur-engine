@@ -27,6 +27,7 @@ from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderConfigurationResponse,
     RagProviderSimilarityTextSearchResponse,
+    SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
 )
 from utils.users import permission_checker
@@ -184,6 +185,31 @@ def delete_rag_provider(
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_providers_repo.delete_rag_provider_configuration(provider_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
+@rag_routes.get(
+    "/rag_providers/{provider_id}/collections",
+    description="Lists all available vector database collections.",
+    response_model=SearchRagProviderCollectionsResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def list_rag_provider_collections(
+    provider_id: UUID = Path(
+        description="ID of RAG provider configuration to use for authentication with the vector store.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> SearchRagProviderCollectionsResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id,
+        )
+        rag_client_constructor = RagClientConstructor(rag_provider_config)
+        return rag_client_constructor.list_collections()
     finally:
         db_session.close()
 
