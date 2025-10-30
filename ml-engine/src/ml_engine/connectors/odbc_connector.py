@@ -26,7 +26,6 @@ from arthur_common.models.connectors import (
     ODBC_CONNECTOR_USERNAME_FIELD,
     ConnectorPaginationOptions,
 )
-from connectors.connector import Connector
 from dateutil import parser
 from pydantic import SecretStr
 from sqlalchemy import (
@@ -44,6 +43,8 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.elements import BinaryExpression
+
+from connectors.connector import Connector
 from tools.schema_interpreters import primary_timestamp_col_name
 
 

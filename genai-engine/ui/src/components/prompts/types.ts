@@ -1,6 +1,5 @@
 import {
   ReasoningEffortEnum,
-  ProviderEnum,
   AgenticPromptMessageInput,
   MessageRole,
   LogitBiasItem,
@@ -9,6 +8,9 @@ import {
   ToolChoiceEnum,
   LLMToolInput,
   ToolChoice,
+  ModelProvider,
+  AgenticPromptMetadataResponse,
+  Api,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -26,10 +28,29 @@ type PromptAction =
   | { type: "hydratePrompt"; payload: { promptData: Partial<PromptType> } }
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
+      type: "updatePromptProvider";
+      payload: { promptId: string; provider: string };
+    }
+  | {
+      type: "updatePromptModelName";
+      payload: { promptId: string; modelName: string };
+    }
+  | {
       type: "updatePrompt";
       payload: { promptId: string; prompt: Partial<PromptType> };
     }
-  | { type: "updateBackendPrompts"; payload: { prompts: PromptType[] } }
+  | {
+      type: "updateBackendPrompts";
+      payload: { prompts: AgenticPromptMetadataResponse[] };
+    }
+  | {
+      type: "updateProviders";
+      payload: { providers: ModelProvider[] };
+    }
+  | {
+      type: "updateAvailableModels";
+      payload: { availableModels: Map<ModelProvider, string[]> };
+    }
   | { type: "addMessage"; payload: { parentId: string } }
   | { type: "deleteMessage"; payload: { parentId: string; id: string } }
   | { type: "duplicateMessage"; payload: { parentId: string; id: string } }
@@ -113,7 +134,7 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: ProviderEnum;
+  provider: string;
   messages: MessageType[];
   modelParameters: ModelParametersType;
   outputField: string; // The actual output content
@@ -127,7 +148,9 @@ interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
-  backendPrompts: PromptType[];
+  backendPrompts: AgenticPromptMetadataResponse[]; // prompt metadata
+  enabledProviders: ModelProvider[];
+  availableModels: Map<ModelProvider, string[]>; // provider -> models
 }
 
 interface MessageComponentProps {
@@ -145,6 +168,7 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
+  outputField: string;
   responseFormat: string | undefined;
 }
 
@@ -157,43 +181,21 @@ interface SavePromptDialogProps {
   onSaveError?: (error: string) => void;
 }
 
+interface VersionSubmenuProps {
+  open: boolean;
+  promptName: string;
+  taskId: string;
+  apiClient: Api<unknown>;
+  onVersionSelect: (version: number) => void;
+  onClose: () => void;
+  anchorEl: HTMLElement | null;
+}
+
 const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
   "system",
   "user",
   "assistant",
   "tool",
-];
-
-const PROVIDER_OPTIONS: ProviderEnum[] = [
-  "anthropic",
-  "openai",
-  "gemini",
-  "azure",
-  "deepseek",
-  "mistral",
-  "meta_llama",
-  "groq",
-  "bedrock",
-  "sagemaker",
-  "vertex_ai",
-  "huggingface",
-  "cloudflare",
-  "ai21",
-  "baseten",
-  "cohere",
-  "empower",
-  "featherless_ai",
-  "friendliai",
-  "galadriel",
-  "nebius",
-  "nlp_cloud",
-  "novita",
-  "openrouter",
-  "petals",
-  "replicate",
-  "together_ai",
-  "vllm",
-  "watsonx",
 ];
 
 export {
@@ -208,6 +210,6 @@ export {
   promptClassificationEnum,
   OutputFieldProps,
   SavePromptDialogProps,
-  PROVIDER_OPTIONS,
   FrontendTool,
+  VersionSubmenuProps,
 };

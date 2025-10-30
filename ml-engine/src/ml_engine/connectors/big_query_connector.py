@@ -25,10 +25,11 @@ from arthur_common.models.connectors import (
     GOOGLE_CONNECTOR_PROJECT_ID_FIELD,
     ConnectorPaginationOptions,
 )
-from connectors.connector import Connector
 from google.auth import load_credentials_from_dict
 from google.cloud import bigquery
 from google.cloud.bigquery import SchemaField
+
+from connectors.connector import Connector
 from tools.schema_interpreters import primary_timestamp_col_name
 
 

@@ -131,6 +131,7 @@ from schemas.response_schemas import (
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
+    TraceUserMetadataResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -550,6 +551,7 @@ class Task(BaseModel):
 class TraceMetadata(BaseModel):
     trace_id: str
     task_id: str
+    user_id: Optional[str] = None
     session_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
@@ -562,6 +564,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
+            user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
             end_time=x.end_time,
@@ -574,6 +577,7 @@ class TraceMetadata(BaseModel):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
@@ -588,6 +592,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadataResponse(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
@@ -1053,6 +1058,7 @@ class InferenceResponse(BaseModel):
     context: Optional[str] = None
     response_rule_results: List[ResponseRuleResult] = []
     tokens: int | None = None
+    model_name: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseInferenceResponse):
@@ -1069,6 +1075,7 @@ class InferenceResponse(BaseModel):
                 for r in x.response_rule_results
             ],
             tokens=x.tokens,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1103,6 +1110,7 @@ class InferenceResponse(BaseModel):
                 r._to_database_model() for r in self.response_rule_results
             ],
             tokens=self.tokens,
+            model_name=self.model_name,
         )
 
 
@@ -1212,6 +1220,7 @@ class Inference(BaseModel):
     inference_response: Optional[InferenceResponse] = None
     inference_feedback: List[InferenceFeedback]
     user_id: Optional[str] = None
+    model_name: Optional[str] = None
 
     def has_prompt(self):
         return self.inference_prompt != None
@@ -1246,6 +1255,7 @@ class Inference(BaseModel):
                 InferenceFeedback.from_database_model(i) for i in x.inference_feedback
             ],
             user_id=x.user_id,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1265,6 +1275,7 @@ class Inference(BaseModel):
             ),
             inference_feedback=[i.to_response_model() for i in self.inference_feedback],
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
     def _to_database_model(self):
@@ -1282,6 +1293,7 @@ class Inference(BaseModel):
                 else None
             ),
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
 
@@ -1296,6 +1308,10 @@ class ValidationRequest(BaseModel):
     )
     context: Optional[str] = Field(
         description="Optional data provided as context for the validation.",
+        default=None,
+    )
+    model_name: Optional[str] = Field(
+        description="Model name to be used for the validation.",
         default=None,
     )
     tokens: Optional[List[str]] = Field(
@@ -1573,6 +1589,7 @@ class Span(BaseModel):
     end_time: datetime
     task_id: Optional[str] = None
     session_id: Optional[str] = None
+    user_id: Optional[str] = None
     status_code: str = "Unset"
     raw_data: dict
     created_at: datetime
@@ -1649,6 +1666,7 @@ class Span(BaseModel):
             end_time=db_span.end_time,
             task_id=db_span.task_id,
             session_id=db_span.session_id,
+            user_id=db_span.user_id,
             status_code=db_span.status_code,
             raw_data=db_span.raw_data,
             created_at=db_span.created_at,
@@ -1671,6 +1689,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1689,6 +1708,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1717,6 +1737,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1746,13 +1767,14 @@ class Span(BaseModel):
             duration_ms=duration_ms,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
 
     @staticmethod
-    def from_span_data(span_data: dict, user_id: str) -> "Span":
+    def from_span_data(span_data: dict) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""
         return Span(
             id=str(uuid.uuid4()),
@@ -1765,6 +1787,7 @@ class Span(BaseModel):
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],
             session_id=span_data.get("session_id"),
+            user_id=span_data.get("user_id"),
             status_code=span_data.get("status_code", "Unset"),
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
@@ -1786,6 +1809,7 @@ class SessionMetadata(BaseModel):
 
     session_id: str
     task_id: str
+    user_id: Optional[str] = None
     trace_ids: list[str]
     span_count: int
     earliest_start_time: datetime
@@ -1800,12 +1824,39 @@ class SessionMetadata(BaseModel):
         return SessionMetadataResponse(
             session_id=self.session_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             trace_ids=self.trace_ids,
             trace_count=len(self.trace_ids),
             span_count=self.span_count,
             earliest_start_time=self.earliest_start_time,
             latest_end_time=self.latest_end_time,
             duration_ms=duration_ms,
+        )
+
+
+class TraceUserMetadata(BaseModel):
+    """Internal trace user metadata representation"""
+
+    user_id: str
+    task_id: str
+    session_ids: list[str]
+    trace_ids: list[str]
+    span_count: int
+    earliest_start_time: datetime
+    latest_end_time: datetime
+
+    def _to_metadata_response_model(self) -> TraceUserMetadataResponse:
+        """Convert to API response model"""
+        return TraceUserMetadataResponse(
+            user_id=self.user_id,
+            task_id=self.task_id,
+            session_ids=self.session_ids,
+            session_count=len(self.session_ids),
+            trace_ids=self.trace_ids,
+            trace_count=len(self.trace_ids),
+            span_count=self.span_count,
+            earliest_start_time=self.earliest_start_time,
+            latest_end_time=self.latest_end_time,
         )
 
 
@@ -1853,6 +1904,10 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    user_ids: Optional[list[str]] = Field(
+        None,
+        description="User IDs to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":

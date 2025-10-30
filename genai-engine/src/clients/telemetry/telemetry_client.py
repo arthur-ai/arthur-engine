@@ -5,8 +5,9 @@ from enum import Enum
 
 import requests
 from amplitude import Amplitude, BaseEvent
-from config.telemetry_config import TelemetryConfig
 from arthur_common.models.enums import RuleType
+
+from config.telemetry_config import TelemetryConfig
 from utils import utils
 
 logging.getLogger("amplitude").setLevel(logging.CRITICAL)

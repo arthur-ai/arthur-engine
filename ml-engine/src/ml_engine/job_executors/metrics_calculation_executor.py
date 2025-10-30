@@ -37,10 +37,11 @@ from arthur_common.models.metrics import (
     SketchTimeSeries,
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
+from duckdb import DuckDBPyConnection
+
 from config import Config
 from connectors.shield_connector import ShieldBaseConnector
 from dataset_loader import DatasetLoader
-from duckdb import DuckDBPyConnection
 from metric_calculators.custom_metric_sql_calculator import CustomMetricSQLCalculator
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
 from metric_calculators.metric_calculator import MetricCalculator
@@ -296,7 +297,9 @@ class MetricsCalculationExecutor:
                     )
 
                 self._add_dimensions_to_metrics(
-                    metrics_to_add, aggregate_args, agg_spec
+                    metrics_to_add,
+                    aggregate_args,
+                    agg_spec,
                 )
                 metrics.extend(metrics_to_add)
             except Exception as exc:
@@ -342,19 +345,20 @@ class MetricsCalculationExecutor:
                 [
                     Dimension(name="dataset_name", value=dataset_ref.dataset_name),
                     Dimension(name="dataset_id", value=str(dataset_ref.dataset_id)),
-                ]
+                ],
             )
 
         # add dimensions to the metrics
         dimensions_to_add.append(
-            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id))
+            Dimension(name="aggregation_id", value=str(agg_spec.aggregation_id)),
         )
 
         if agg_spec.aggregation_version is not None:
             dimensions_to_add.append(
                 Dimension(
-                    name="aggregation_version", value=str(agg_spec.aggregation_version)
-                )
+                    name="aggregation_version",
+                    value=str(agg_spec.aggregation_version),
+                ),
             )
 
         for metric in metrics_to_add:

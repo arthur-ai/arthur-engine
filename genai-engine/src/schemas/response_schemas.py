@@ -135,6 +135,7 @@ class TraceMetadataResponse(BaseModel):
 
     trace_id: str = Field(description="ID of the trace")
     task_id: str = Field(description="Task ID this trace belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     start_time: datetime = Field(description="Start time of the earliest span")
     end_time: datetime = Field(description="End time of the latest span")
@@ -157,6 +158,7 @@ class SpanMetadataResponse(BaseModel):
     end_time: datetime = Field(description="Span end time")
     duration_ms: float = Field(description="Span duration in milliseconds")
     task_id: Optional[str] = Field(None, description="Task ID this span belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     session_id: Optional[str] = Field(None, description="Session ID if available")
     status_code: str = Field(description="Status code (Unset, Error, Ok)")
     created_at: datetime = Field(description="When the span was created")
@@ -169,6 +171,7 @@ class SessionMetadataResponse(BaseModel):
 
     session_id: str = Field(description="Session identifier")
     task_id: str = Field(description="Task ID this session belongs to")
+    user_id: Optional[str] = Field(None, description="User ID if available")
     trace_ids: list[str] = Field(description="List of trace IDs in this session")
     trace_count: int = Field(description="Number of traces in this session")
     span_count: int = Field(description="Total number of spans in this session")
@@ -208,6 +211,27 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
+class TraceUserMetadataResponse(BaseModel):
+    """User summary metadata in trace context"""
+
+    user_id: str = Field(description="User identifier")
+    task_id: str = Field(description="Task ID this user belongs to")
+    session_ids: list[str] = Field(description="List of session IDs for this user")
+    session_count: int = Field(description="Number of sessions for this user")
+    trace_ids: list[str] = Field(description="List of trace IDs for this user")
+    trace_count: int = Field(description="Number of traces for this user")
+    span_count: int = Field(description="Total number of spans for this user")
+    earliest_start_time: datetime = Field(description="Start time of earliest trace")
+    latest_end_time: datetime = Field(description="End time of latest trace")
+
+
+class TraceUserListResponse(BaseModel):
+    """Response for trace user list endpoint"""
+
+    count: int = Field(description="Total number of users matching filters")
+    users: list[TraceUserMetadataResponse] = Field(description="List of user metadata")
+
+
 class AgenticPromptRunResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[ChatCompletionMessageToolCall]] = None
@@ -217,7 +241,7 @@ class AgenticPromptRunResponse(BaseModel):
 class ModelProviderResponse(BaseModel):
     provider: ModelProvider = Field(description="The model provider")
     enabled: bool = Field(
-        description="Whether the provider is enabled with credentials.",
+        description="Whether the provider is enabled with credentials",
     )
 
 
@@ -353,3 +377,43 @@ RagProviderSimilarityTextSearchResponseTypes = Union[
 
 class RagProviderSimilarityTextSearchResponse(BaseModel):
     response: RagProviderSimilarityTextSearchResponseTypes
+
+
+class AgenticPromptMetadataResponse(BaseModel):
+    name: str = Field(description="Name of the prompt")
+    versions: int = Field(description="Number of versions of the prompt")
+    created_at: datetime = Field(description="Timestamp when the prompt was created")
+    latest_version_created_at: datetime = Field(
+        description="Timestamp when the last version of the prompt was created",
+    )
+    deleted_versions: List[int] = Field(
+        description="List of deleted versions of the prompt",
+    )
+
+
+class AgenticPromptMetadataListResponse(BaseModel):
+    prompt_metadata: list[AgenticPromptMetadataResponse] = Field(
+        description="List of prompt metadata",
+    )
+    count: int = Field(description="Total number of prompts matching filters")
+
+
+class AgenticPromptVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the prompt")
+    created_at: datetime = Field(
+        description="Timestamp when the prompt version was created",
+    )
+    deleted_at: Optional[datetime] = Field(
+        description="Timestamp when the prompt version was deleted",
+    )
+    model_provider: ModelProvider = Field(description="Model provider of the prompt")
+    model_name: str = Field(description="Model name of the prompt")
+    num_messages: int = Field(description="Number of messages in the prompt")
+    num_tools: int = Field(description="Number of tools in the prompt")
+
+
+class AgenticPromptVersionListResponse(BaseModel):
+    versions: list[AgenticPromptVersionResponse] = Field(
+        description="List of prompt version metadata",
+    )
+    count: int = Field(description="Total number of prompts matching filters")

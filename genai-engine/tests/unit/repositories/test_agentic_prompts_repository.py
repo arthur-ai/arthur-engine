@@ -1,9 +1,12 @@
 from datetime import datetime
+from types import SimpleNamespace
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import PaginationSortMethod
 from litellm.types.utils import ChatCompletionMessageToolCall, Function
 from sqlalchemy.exc import IntegrityError
 
@@ -13,7 +16,6 @@ from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptMessage,
-    AgenticPrompts,
     CompletionRequest,
     LLMResponseFormat,
     LLMResponseSchema,
@@ -24,7 +26,11 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.common_schemas import JsonSchema
 from schemas.enums import ModelProvider
-from schemas.response_schemas import AgenticPromptRunResponse
+from schemas.response_schemas import (
+    AgenticPromptMetadataListResponse,
+    AgenticPromptMetadataResponse,
+    AgenticPromptRunResponse,
+)
 
 
 def to_agentic_prompt_messages(
@@ -37,6 +43,15 @@ def to_agentic_prompt_messages(
 def mock_db_session():
     """Mock database session for testing"""
     return MagicMock()
+
+
+@pytest.fixture
+def mock_llm_client():
+    """Mock LiteLLM client for testing"""
+    return LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
+    )
 
 
 @pytest.fixture
@@ -57,6 +72,7 @@ def sample_prompt_data():
         "max_tokens": 100,
         "tools": [{"type": "function", "function": {"name": "test_tool"}}],
         "tool_choice": "auto",
+        "version": 1,
     }
 
 
@@ -64,6 +80,19 @@ def sample_prompt_data():
 def sample_agentic_prompt(sample_prompt_data):
     """Create sample AgenticPrompt instance"""
     return AgenticPrompt(**sample_prompt_data)
+
+
+@pytest.fixture
+def sample_deleted_prompt(sample_db_prompt):
+    """Create sample deleted AgenticPrompt instance"""
+    return AgenticPrompt(
+        name="deleted_prompt",
+        messages=[],
+        model_name="",
+        model_provider="openai",
+        version=1,
+        deleted_at=datetime.now(),
+    )
 
 
 @pytest.fixture
@@ -122,6 +151,7 @@ def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
 def test_run_prompt(
     mock_completion_cost,
     mock_completion,
+    mock_llm_client,
     agentic_prompt_repo,
     sample_unsaved_run_config,
 ):
@@ -136,13 +166,8 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    llm_client = LLMClient(
-        provider=ModelProvider.OPENAI,
-        api_key="api_key",
-    )
-
     prompt, request = sample_unsaved_run_config.to_prompt_and_request()
-    result = prompt.run_chat_completion(llm_client, request)
+    result = prompt.run_chat_completion(mock_llm_client, request)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -182,6 +207,8 @@ def test_get_prompt_success(
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
     mock_filter.first.return_value = sample_db_prompt
 
     result = agentic_prompt_repo.get_prompt(task_id, prompt_name)
@@ -206,13 +233,17 @@ def test_get_prompt_not_found(agentic_prompt_repo, mock_db_session):
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
     mock_filter.first.return_value = None
 
-    with pytest.raises(
-        ValueError,
-        match="Prompt 'nonexistent_prompt' not found for task 'nonexistent_task'",
-    ):
+    with pytest.raises(ValueError) as exc_info:
         agentic_prompt_repo.get_prompt(task_id, prompt_name)
+
+    assert (
+        str(exc_info.value)
+        == "Prompt 'nonexistent_prompt' (version 'latest') not found for task 'nonexistent_task'"
+    )
 
 
 @pytest.mark.unit_tests
@@ -228,6 +259,8 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
         model_name="gpt-3.5-turbo",
         model_provider="openai",
         created_at=datetime.now(),
+        version=1,
+        deleted_at=None,
     )
 
     # Mock database query
@@ -235,15 +268,51 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
-    mock_filter.all.return_value = [sample_db_prompt, prompt2]
+    mock_filter.group_by.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
+    mock_filter.all.return_value = [
+        SimpleNamespace(
+            name=sample_db_prompt.name,
+            versions=1,
+            created_at=sample_db_prompt.created_at or datetime.now(),
+            latest_version_created_at=sample_db_prompt.created_at or datetime.now(),
+        ),
+        SimpleNamespace(
+            name=prompt2.name,
+            versions=1,
+            created_at=prompt2.created_at or datetime.now(),
+            latest_version_created_at=prompt2.created_at or datetime.now(),
+        ),
+    ]
 
-    result = agentic_prompt_repo.get_all_prompts(task_id)
+    # Mock deleted_versions query
+    mock_deleted = MagicMock()
+    mock_deleted.filter.return_value = mock_deleted
+    mock_deleted.order_by.return_value = mock_deleted
+    mock_deleted.all.return_value = []
+    mock_db_session.query.side_effect = [mock_query, mock_deleted, mock_deleted]
 
-    assert isinstance(result, AgenticPrompts)
-    assert len(result.prompts) == 2
-    assert all(isinstance(prompt, AgenticPrompt) for prompt in result.prompts)
-    assert result.prompts[0].name == sample_db_prompt.name
-    assert result.prompts[1].name == prompt2.name
+    # Mock count query
+    mock_filter.count.return_value = 2
+    mock_filter.offset.return_value = mock_filter
+    mock_filter.limit.return_value = mock_filter
+
+    # Use default pagination parameters
+    pagination_parameters = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.DESCENDING,
+    )
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
+
+    assert isinstance(result, AgenticPromptMetadataListResponse)
+    assert len(result.prompt_metadata) == 2
+    assert all(
+        isinstance(prompt, AgenticPromptMetadataResponse)
+        for prompt in result.prompt_metadata
+    )
+    assert result.prompt_metadata[0].name == sample_db_prompt.name
+    assert result.prompt_metadata[1].name == prompt2.name
 
 
 @pytest.mark.unit_tests
@@ -256,12 +325,23 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
+    mock_filter.group_by.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
+    mock_filter.count.return_value = 0
+    mock_filter.offset.return_value = mock_filter
+    mock_filter.limit.return_value = mock_filter
     mock_filter.all.return_value = []
 
-    result = agentic_prompt_repo.get_all_prompts(task_id)
+    # Use default pagination parameters
+    pagination_parameters = PaginationParameters(
+        page=0,
+        page_size=10,
+        sort=PaginationSortMethod.DESCENDING,
+    )
+    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
 
-    assert isinstance(result, AgenticPrompts)
-    assert len(result.prompts) == 0
+    assert isinstance(result, AgenticPromptMetadataListResponse)
+    assert len(result.prompt_metadata) == 0
 
 
 @pytest.mark.unit_tests
@@ -272,6 +352,8 @@ def test_save_prompt_with_agentic_prompt_object(
 ):
     """Test saving an AgenticPrompt object to database"""
     task_id = "test_task_id"
+
+    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
 
     agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
 
@@ -298,6 +380,8 @@ def test_save_prompt_with_dict(
     """Test saving a prompt from dictionary data"""
     task_id = "test_task_id"
 
+    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
+
     agentic_prompt_repo.save_prompt(task_id, sample_prompt_data)
 
     # Verify database operations
@@ -323,11 +407,13 @@ def test_save_prompt_integrity_error(
     # Mock IntegrityError on commit
     mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
 
-    with pytest.raises(
-        ValueError,
-        match="Prompt 'test_prompt' already exists for task 'test_task_id'",
-    ):
+    with pytest.raises(ValueError) as exc_info:
         agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
+
+    assert (
+        str(exc_info.value)
+        == "Failed to save prompt 'test_prompt' for task 'test_task_id' — possible duplicate constraint."
+    )
 
     # Verify rollback was called
     mock_db_session.rollback.assert_called_once()
@@ -344,7 +430,7 @@ def test_delete_prompt_success(agentic_prompt_repo, mock_db_session, sample_db_p
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
+    mock_filter.all.return_value = [sample_db_prompt]
 
     agentic_prompt_repo.delete_prompt(task_id, prompt_name)
 
@@ -364,7 +450,7 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
-    mock_filter.first.return_value = None
+    mock_filter.all.return_value = None
 
     with pytest.raises(
         ValueError,
@@ -379,6 +465,7 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 def test_run_saved_prompt(
     mock_completion_cost,
     mock_completion,
+    mock_llm_client,
     agentic_prompt_repo,
     mock_db_session,
     sample_db_prompt,
@@ -392,6 +479,8 @@ def test_run_saved_prompt(
     mock_filter = MagicMock()
     mock_db_session.query.return_value = mock_query
     mock_query.filter.return_value = mock_filter
+    mock_filter.filter.return_value = mock_filter
+    mock_filter.order_by.return_value = mock_filter
     mock_filter.first.return_value = sample_db_prompt
 
     # Mock completion response
@@ -404,13 +493,8 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    llm_client = LLMClient(
-        provider=ModelProvider.OPENAI,
-        api_key="api_key",
-    )
-
     prompt = agentic_prompt_repo.get_prompt(task_id, prompt_name)
-    result = prompt.run_chat_completion(llm_client)
+    result = prompt.run_chat_completion(mock_llm_client)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"
@@ -452,6 +536,7 @@ def test_agentic_prompt_model_dump(sample_agentic_prompt):
 def test_agentic_prompt_run_chat_completion(
     mock_completion_cost,
     mock_completion,
+    mock_llm_client,
     sample_agentic_prompt,
 ):
     """Test running chat completion directly on AgenticPrompt"""
@@ -465,12 +550,7 @@ def test_agentic_prompt_run_chat_completion(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.003456
 
-    llm_client = LLMClient(
-        provider=ModelProvider.OPENAI,
-        api_key="api_key",
-    )
-
-    result = sample_agentic_prompt.run_chat_completion(llm_client)
+    result = sample_agentic_prompt.run_chat_completion(mock_llm_client)
 
     assert result.content == "Direct completion response"
     assert result.tool_calls == [
@@ -693,6 +773,7 @@ def test_agentic_prompt_response_format_serialization():
 def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost,
     mock_completion,
+    mock_llm_client,
 ):
     """Test that assistant tool_call messages are still serialized correctly when set with an invalid type"""
     # Construct an unsaved prompt that includes a tool_call assistant message
@@ -735,14 +816,9 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.000123
 
-    llm_client = LLMClient(
-        provider=ModelProvider.OPENAI,
-        api_key="api_key",
-    )
-
     # Run the unsaved prompt
     prompt, request = completion_request.to_prompt_and_request()
-    result = prompt.run_chat_completion(llm_client, request)
+    result = prompt.run_chat_completion(mock_llm_client, request)
     call_args = mock_completion.call_args[1]
 
     # Extract messages sent to LiteLLM
@@ -774,6 +850,7 @@ def test_agentic_prompt_tool_call_message_serialization(
 def test_run_chat_completion_strict_additional_properties_validation(
     mock_completion,
     mock_cost,
+    mock_llm_client,
     has_additional_props,
 ):
     schema_body = JsonSchema(
@@ -806,14 +883,35 @@ def test_run_chat_completion_strict_additional_properties_validation(
 
     completion_request = PromptCompletionRequest()
 
-    llm_client = LLMClient(
-        provider=ModelProvider.OPENAI,
-        api_key="api_key",
-    )
-
     if has_additional_props:
-        result = prompt.run_chat_completion(llm_client, completion_request)
+        result = prompt.run_chat_completion(mock_llm_client, completion_request)
         assert result.content == "ok"
     else:
         with pytest.raises(ValueError, match="additionalProperties"):
-            prompt.run_chat_completion(llm_client, completion_request)
+            prompt.run_chat_completion(mock_llm_client, completion_request)
+
+
+@pytest.mark.unit_tests
+def test_run_deleted_prompt_spawns_error(sample_deleted_prompt, mock_llm_client):
+    """Test run chat completion raises an error if the prompt has been deleted"""
+    with pytest.raises(
+        ValueError,
+        match="Cannot run chat completion for this prompt because it was deleted on",
+    ):
+        sample_deleted_prompt.run_chat_completion(mock_llm_client)
+
+
+@pytest.mark.unit_tests
+@pytest.mark.asyncio
+async def test_stream_deleted_prompt_spawns_error(
+    sample_deleted_prompt,
+    mock_llm_client,
+):
+    """Test stream chat completion raises an error if the prompt has been deleted"""
+    stream = sample_deleted_prompt.stream_chat_completion(mock_llm_client)
+    events = [event async for event in stream]
+    assert len(events) == 1
+    assert (
+        "event: error\ndata: Cannot stream chat completion for this prompt because it was deleted on"
+        in events[0]
+    )

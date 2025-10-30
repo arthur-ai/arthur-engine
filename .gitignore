@@ -13,6 +13,10 @@ __pycache__
 *.egg-info
 build/
 
+# Node.js
+node_modules/
+package-lock.json
+
 .html_cov*
 .coverage*
 coverage.xml

@@ -29,6 +29,7 @@ class DatabaseInference(Base):
         lazy="joined",
     )
     task: Mapped["DatabaseTask"] = relationship(lazy="joined")
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
     __table_args__ = (
         Index(
@@ -75,6 +76,7 @@ class DatabaseInferenceResponse(Base):
     )
     content: Mapped["DatabaseInferenceResponseContent"] = relationship(lazy="joined")
     tokens: Mapped[int] = mapped_column(Integer, nullable=True)
+    model_name: Mapped[str] = mapped_column(String, nullable=True)
 
 
 # Store in seperate table as its TBD if this database will always hold the more sensitive customer data

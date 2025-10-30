@@ -23,6 +23,7 @@ from utils.constants import (
     SPAN_KIND_KEY,
     SPAN_VERSION_KEY,
     TASK_ID_KEY,
+    USER_ID_KEY,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,6 +168,7 @@ class TraceIngestionService:
             end_time=end_time,
             task_id=resource_task_id,
             session_id=self._get_attribute_value(span_data, SpanAttributes.SESSION_ID),
+            user_id=self._get_attribute_value(span_data, USER_ID_KEY),
             status_code=span_status_code,
             raw_data=span_data,
         )
@@ -299,6 +301,7 @@ class TraceIngestionService:
                     "trace_id": trace_id,
                     "task_id": span.task_id,
                     "session_id": span.session_id,
+                    "user_id": span.user_id,
                     "start_time": span.start_time,
                     "end_time": span.end_time,
                     "span_count": 0,
@@ -319,6 +322,10 @@ class TraceIngestionService:
             # Handle session_id conflicts: use first non-null session_id found
             if span.session_id and not trace_updates[trace_id]["session_id"]:
                 trace_updates[trace_id]["session_id"] = span.session_id
+
+            # Handle user_id conflicts: use first non-null user_id found
+            if span.user_id and not trace_updates[trace_id]["user_id"]:
+                trace_updates[trace_id]["user_id"] = span.user_id
 
         if not trace_updates:
             return
@@ -346,6 +353,10 @@ class TraceIngestionService:
                         DatabaseTraceMetadata.session_id,
                         stmt.excluded.session_id,
                     ),
+                    user_id=func.coalesce(
+                        DatabaseTraceMetadata.user_id,
+                        stmt.excluded.user_id,
+                    ),
                     updated_at=stmt.excluded.updated_at,
                 ),
             )
@@ -370,6 +381,10 @@ class TraceIngestionService:
                     session_id=func.coalesce(
                         DatabaseTraceMetadata.session_id,
                         stmt.excluded.session_id,
+                    ),
+                    user_id=func.coalesce(
+                        DatabaseTraceMetadata.user_id,
+                        stmt.excluded.user_id,
                     ),
                     updated_at=stmt.excluded.updated_at,
                 ),
