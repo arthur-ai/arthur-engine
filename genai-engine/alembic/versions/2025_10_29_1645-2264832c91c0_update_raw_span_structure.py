@@ -1,7 +1,7 @@
 """update_raw_span_structure
 
 Revision ID: 2264832c91c0
-Revises: 16d81eaac5c2
+Revises: 5a02e38003af
 Create Date: 2025-10-29 16:45:15.459000
 
 """
@@ -24,7 +24,7 @@ from services.trace.span_normalization_service import SpanNormalizationService
 
 # revision identifiers, used by Alembic.
 revision = "2264832c91c0"
-down_revision = "16d81eaac5c2"
+down_revision = "5a02e38003af"
 branch_labels = None
 depends_on = None
 
