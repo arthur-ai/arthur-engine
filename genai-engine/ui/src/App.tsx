@@ -24,6 +24,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
 import "./App.css";
 
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+
 // Component to redirect /tasks/:id to /tasks/:id/task-details
 const TaskRedirect = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +35,7 @@ const TaskRedirect = () => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools />
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gray-50">

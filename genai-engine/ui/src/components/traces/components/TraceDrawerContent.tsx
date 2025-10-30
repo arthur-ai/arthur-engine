@@ -26,6 +26,7 @@ import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useApi } from "@/hooks/useApi";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
+import { queryKeys } from "@/lib/queryKeys";
 
 type Props = {
   id: string;
@@ -40,8 +41,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const { span: spanId } = selected;
 
   const { data: trace } = useSuspenseQuery({
-    // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: ["trace", id],
+    queryKey: queryKeys.traces.byId(id),
     queryFn: () => getTrace(api!, { traceId: id! }),
   });
 

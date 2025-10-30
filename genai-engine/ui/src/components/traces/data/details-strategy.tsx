@@ -17,7 +17,11 @@ import {
   getOutputMessages,
   getOutputTokens,
   getTotalTokens,
+  isLLMOutputMessage,
+  tryFormatJson,
 } from "@/utils/llm";
+import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
+import { TokenCountWidget } from "../components/widgets/TokenCount";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime: string =
@@ -38,7 +42,9 @@ const PANELS = {
       const { type } = getHighlightType(span);
       return (
         <Highlight
-          code={span.raw_data.attributes[SemanticConventions.INPUT_VALUE]}
+          code={tryFormatJson(
+            span.raw_data.attributes[SemanticConventions.INPUT_VALUE]
+          )}
           language={type}
         />
       );
@@ -51,7 +57,9 @@ const PANELS = {
       const { type } = getHighlightType(span);
       return (
         <Highlight
-          code={span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE]}
+          code={tryFormatJson(
+            span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE]
+          )}
           language={type}
         />
       );
@@ -61,33 +69,23 @@ const PANELS = {
   RAW_DATA: {
     label: "Raw Data",
     render: (span: NestedSpanWithMetricsResponse) => {
-      return (
-        <Highlight
-          code={JSON.stringify(span.raw_data, null, 2)}
-          language="json"
-        />
-      );
+      return <Highlight code={tryFormatJson(span.raw_data)} language="json" />;
     },
     defaultOpen: false,
   },
-  METRICS_RAW: {
-    label: "Metrics Report",
+  METRICS: {
+    label: "Metrics",
     render: (span: NestedSpanWithMetricsResponse) => {
-      return (
-        <Highlight
-          code={JSON.stringify(span.metric_results, null, 2)}
-          language="json"
-        />
-      );
+      return <LLMMetricsPanel span={span} />;
     },
-    defaultOpen: false,
+    defaultOpen: true,
   },
 } as const;
 
 const spanDetailsStrategy = [
   {
     kind: OpenInferenceSpanKind.AGENT,
-    panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.METRICS_RAW, PANELS.RAW_DATA],
+    panels: [PANELS.INPUT, PANELS.OUTPUT, PANELS.RAW_DATA],
     widgets: [],
   },
   {
@@ -167,16 +165,20 @@ const spanDetailsStrategy = [
                 p={1}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                {messages.map((message, index) => (
-                  <OutputMessageRenderer message={message} key={index} />
-                ))}
+                {messages.map((message, index) =>
+                  isLLMOutputMessage(message) ? (
+                    <OutputMessageRenderer message={message} key={index} />
+                  ) : (
+                    <MessageRenderer message={message} key={index} />
+                  )
+                )}
               </Box>
             </Paper>
           );
         },
         defaultOpen: true,
       },
-      PANELS.METRICS_RAW,
+      PANELS.METRICS,
       PANELS.RAW_DATA,
     ],
     widgets: [
@@ -204,16 +206,12 @@ const spanDetailsStrategy = [
       },
       {
         render: (span: NestedSpanWithMetricsResponse) => {
-          const inputTokens = getInputTokens(span) || "N/A";
-          const outputTokens = getOutputTokens(span) || "N/A";
-
-          const totalTokens = getTotalTokens(span);
-
           return (
-            <Typography variant="body2" color="text.secondary">
-              {inputTokens} prompt → {outputTokens} output = {totalTokens}{" "}
-              tokens
-            </Typography>
+            <TokenCountWidget
+              input={getInputTokens(span)}
+              output={getOutputTokens(span)}
+              total={getTotalTokens(span)}
+            />
           );
         },
       },

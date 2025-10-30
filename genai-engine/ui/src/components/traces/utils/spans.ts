@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 
 import { SPAN_TYPE_ICONS } from "../constants";
 
-import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { NestedSpanWithMetricsResponse, TraceResponse } from "@/lib/api";
 
 export function getSpanInput(span?: NestedSpanWithMetricsResponse) {
   return span?.raw_data.attributes?.[SemanticConventions.INPUT_VALUE] || null;
@@ -61,7 +61,7 @@ export function getSpanType(span?: NestedSpanWithMetricsResponse) {
 export function getSpanIcon(span?: NestedSpanWithMetricsResponse) {
   const type = getSpanType(span);
 
-  const icon = SPAN_TYPE_ICONS[type];
+  const icon = SPAN_TYPE_ICONS[type] ?? SPAN_TYPE_ICONS.AGENT;
 
   return icon;
 }

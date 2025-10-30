@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 
 import { CopyableChip } from "@/components/common";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
-
+import { formatDate } from "@/utils/date";
 
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 
@@ -28,11 +28,11 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("start_time", {
     header: "Start Time",
-    cell: ({ getValue }) => dayjs(getValue()).format("YYYY-MM-DD HH:mm:ss"),
+    cell: ({ getValue }) => formatDate(getValue()),
   }),
   columnHelper.accessor("duration_ms", {
     header: "Duration",
-    cell: ({ getValue }) => `${getValue()}ms`,
+    cell: ({ getValue }) => `${getValue().toFixed(2)}ms`,
   }),
   columnHelper.accessor("trace_id", {
     header: "Trace ID",
@@ -42,6 +42,38 @@ export const spanLevelColumns = [
         <Tooltip title={label}>
           <span>
             <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+          </span>
+        </Tooltip>
+      );
+    },
+  }),
+  columnHelper.accessor("session_id", {
+    header: "Session ID",
+    cell: ({ getValue }) => {
+      const label = getValue();
+      return (
+        <Tooltip title={label}>
+          <span>
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+            />
+          </span>
+        </Tooltip>
+      );
+    },
+  }),
+  columnHelper.accessor("user_id", {
+    header: "User ID",
+    cell: ({ getValue }) => {
+      const label = getValue();
+      return (
+        <Tooltip title={label}>
+          <span>
+            <CopyableChip
+              label={label ?? ""}
+              sx={{ fontFamily: "monospace" }}
+            />
           </span>
         </Tooltip>
       );

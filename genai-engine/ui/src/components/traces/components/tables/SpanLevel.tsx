@@ -8,7 +8,11 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import {
   flexRender,
   getCoreRowModel,
@@ -30,34 +34,50 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { getSpansInfiniteQueryOptions } from "@/query-options/spans";
+import { TracesTable } from "../TracesTable";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TablePagination, Typography } from "@mui/material";
+import { queryKeys } from "@/lib/queryKeys";
+import { getFilteredSpans } from "@/services/tracing";
+import { SpanMetadataResponse } from "@/lib/api-client/api-client";
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
+
+const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
 export const SpanLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
   const [, store] = useTracesStore(() => null);
 
+  const pagination = useDatasetPagination(FETCH_SIZE);
+
   const filters = useSelector(
     useFilterStore(),
     (state) => state.context.filters
   );
 
-  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
-    ...getSpansInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
+  const { data, isFetching, isPlaceholderData } = useQuery({
+    queryKey: queryKeys.spans.listPaginated(
+      filters,
+      pagination.page,
+      pagination.rowsPerPage
+    ),
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      getFilteredSpans(api, {
+        taskId: task?.id ?? "",
+        page: pagination.page,
+        pageSize: pagination.rowsPerPage,
+        filters,
+      }),
   });
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: "start_time", desc: true },
   ]);
 
-  const flatData = useMemo(
-    () => data?.pages?.flatMap((page) => page.spans) ?? [],
-    [data]
-  );
-
-  const totalDBRowCount = data?.pages?.[0]?.count ?? 0;
-
   const table = useReactTable({
-    data: flatData,
+    data: data?.spans ?? DEFAULT_DATA,
     columns: spanLevelColumns,
     getCoreRowModel: getCoreRowModel(),
     state: {
@@ -65,14 +85,6 @@ export const SpanLevel = () => {
     },
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-    debugHeaders: true,
-    debugColumns: true,
-  });
-
-  const { execute, ref } = useTableScrollThrottler({
-    onOffsetReached: fetchNextPage,
-    enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
   });
 
   const { FiltersRow } = useMemo(
@@ -86,83 +98,40 @@ export const SpanLevel = () => {
   return (
     <>
       <FiltersRow />
-      <TableContainer
-        component={Paper}
-        sx={{ flexGrow: 1 }}
-        ref={ref}
-        onScroll={(e) => {
-          execute(e.currentTarget);
-        }}
-      >
-        {isFetching && <LinearProgress />}
-        <Table stickyHeader size="small">
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    sx={{
-                      backgroundColor: "grey.50",
-                    }}
-                    sortDirection={header.column.getIsSorted()}
-                  >
-                    <TableSortLabel
-                      disabled={!header.column.getCanSort()}
-                      active={header.column.getIsSorted() !== false}
-                      direction={header.column.getIsSorted() || undefined}
-                      onClick={() => {
-                        table.setSorting((prev) => [
-                          { id: header.column.id, desc: !prev[0].desc },
-                        ]);
-                      }}
-                    >
-                      <Box sx={{ width: header.getSize() }}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </Box>
-                    </TableSortLabel>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                hover
-                onClick={() => {
-                  store.send({
-                    type: "openDrawer",
-                    for: "span",
-                    id: row.original.span_id,
-                  });
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    sx={{
-                      maxWidth: cell.column.getSize(),
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {data?.spans?.length ? (
+        <>
+          <TracesTable
+            table={table}
+            loading={isFetching}
+            onRowClick={(row) => {
+              store.send({
+                type: "openDrawer",
+                for: "span",
+                id: row.original.span_id,
+              });
+            }}
+          />
+
+          <TablePagination
+            component="div"
+            count={data?.count ?? 0}
+            onPageChange={pagination.handlePageChange}
+            page={pagination.page}
+            rowsPerPage={pagination.rowsPerPage}
+            onRowsPerPageChange={pagination.handleRowsPerPageChange}
+            disabled={isPlaceholderData}
+            sx={{
+              overflow: "visible",
+            }}
+          />
+        </>
+      ) : (
+        <TracesEmptyState title="No spans found">
+          <Typography variant="body1" color="text.secondary">
+            Try adjusting your search query
+          </Typography>
+        </TracesEmptyState>
+      )}
     </>
   );
 };

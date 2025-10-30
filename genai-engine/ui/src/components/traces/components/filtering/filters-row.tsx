@@ -35,9 +35,14 @@ type DynamicEnumArgMap<
   [K in Dynamic["name"]]: InferDynamicEnumArg<Dynamic>;
 };
 
+type Opts = {
+  portalRoot?: HTMLElement;
+};
+
 export function createFilterRow<TFields extends Field[]>(
   fields: TFields,
-  dynamicEnumArgMap: DynamicEnumArgMap<TFields>
+  dynamicEnumArgMap: DynamicEnumArgMap<TFields>,
+  opts?: Opts
 ) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
@@ -185,7 +190,7 @@ export function createFilterRow<TFields extends Field[]>(
                 <SelectField.Trigger className="rounded-none rounded-l group-data-[stage='0']:rounded-r">
                   <SelectField.Value />
                 </SelectField.Trigger>
-                <SelectField.Portal>
+                <SelectField.Portal container={opts?.portalRoot}>
                   <SelectField.Positioner>
                     <SelectField.Popup>
                       <SelectField.List>
@@ -218,7 +223,7 @@ export function createFilterRow<TFields extends Field[]>(
                   <SelectField.Trigger className="rounded-none group-data-[stage='1']:rounded-r border-l-0">
                     <SelectField.Value />
                   </SelectField.Trigger>
-                  <SelectField.Portal>
+                  <SelectField.Portal container={opts?.portalRoot}>
                     <SelectField.Positioner>
                       <SelectField.Popup>
                         <SelectField.List>
@@ -245,12 +250,13 @@ export function createFilterRow<TFields extends Field[]>(
           )}
           {stage >= 2 && (
             <ValueInput
+              stage={stage}
               form={form}
               index={index}
               onOpenChange={(open) => handleOpenChange(open, "value" as const)}
             />
           )}
-          {stage === 3 && (
+          {stage >= 0 && (
             <button
               onClick={onRemove}
               className="h-full aspect-square bg-gray-50 border border-gray-200 rounded-r border-l-0 grid place-items-center"
@@ -268,8 +274,9 @@ export function createFilterRow<TFields extends Field[]>(
     props: {} as {
       index: number;
       onOpenChange: (open: boolean) => void;
+      stage: number;
     },
-    render: function Render({ form, index, onOpenChange }) {
+    render: function Render({ form, index, onOpenChange, stage }) {
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
@@ -294,7 +301,7 @@ export function createFilterRow<TFields extends Field[]>(
                   <SelectField.Trigger className="rounded-l-none border-l-0 group-data-[stage='3']:rounded-r-none">
                     <SelectField.Value />
                   </SelectField.Trigger>
-                  <SelectField.Portal>
+                  <SelectField.Portal container={opts?.portalRoot}>
                     <SelectField.Positioner>
                       <SelectField.Popup>
                         <SelectField.List>
@@ -336,7 +343,7 @@ export function createFilterRow<TFields extends Field[]>(
                       <SelectField.Value />
                     )}
                   </SelectField.Trigger>
-                  <SelectField.Portal>
+                  <SelectField.Portal container={opts?.portalRoot}>
                     <SelectField.Positioner>
                       <SelectField.Popup>
                         <Suspense

@@ -1,18 +1,10 @@
+import { TablePagination, Typography } from "@mui/material";
 import {
-  LinearProgress,
-  TableRow,
-  TableHead,
-  Paper,
-  Table,
-  TableContainer,
-  Box,
-  TableBody,
-  TableSortLabel,
-  TableCell,
-} from "@mui/material";
-import { useInfiniteQuery } from "@tanstack/react-query";
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import {
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
@@ -30,14 +22,20 @@ import { TRACE_FIELDS } from "../filtering/trace-fields";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { TraceResponse } from "@/lib/api-client/api-client";
+import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { getTracesInfiniteQueryOptions } from "@/query-options/traces";
+import { TracesTable } from "../TracesTable";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { queryKeys } from "@/lib/queryKeys";
+import { getFilteredTraces } from "@/services/tracing";
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 
-const DEFAULT_DATA: TraceResponse[] = [];
+const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
 export function TraceLevel() {
   const { task } = useTask();
+  const pagination = useDatasetPagination(FETCH_SIZE);
 
   const [, store] = useTracesStore(() => null);
 
@@ -46,23 +44,24 @@ export function TraceLevel() {
 
   const api = useApi()!;
 
-  const { data, fetchNextPage, isFetching } = useInfiniteQuery({
-    ...getTracesInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
+  const { data, isFetching } = useQuery({
+    queryKey: queryKeys.traces.listPaginated(filters, 0, FETCH_SIZE),
+    placeholderData: keepPreviousData,
+    queryFn: () =>
+      getFilteredTraces(api, {
+        taskId: task?.id ?? "",
+        page: 0,
+        pageSize: FETCH_SIZE,
+        filters,
+      }),
   });
-
-  const flatData = useMemo(
-    () => data?.pages?.flatMap((page) => page.traces) ?? [],
-    [data]
-  );
-
-  const totalDBRowCount = data?.pages?.[0]?.count ?? 0;
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: "start_time", desc: true },
   ]);
 
   const table = useReactTable({
-    data: flatData ?? DEFAULT_DATA, // Use test data to verify scrolling
+    data: data?.traces ?? DEFAULT_DATA, // Use test data to verify scrolling
     columns,
     getCoreRowModel: getCoreRowModel(),
     state: {
@@ -70,14 +69,6 @@ export function TraceLevel() {
     },
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    debugTable: true,
-    debugHeaders: true,
-    debugColumns: true,
-  });
-
-  const { execute, ref } = useTableScrollThrottler({
-    onOffsetReached: fetchNextPage,
-    enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
   });
 
   const { FiltersRow } = useMemo(
@@ -91,83 +82,37 @@ export function TraceLevel() {
   return (
     <>
       <FiltersRow />
-      <TableContainer
-        component={Paper}
-        sx={{ flexGrow: 1 }}
-        ref={ref}
-        onScroll={(e) => {
-          execute(e.currentTarget);
-        }}
-      >
-        {isFetching && <LinearProgress />}
-        <Table stickyHeader size="small">
-          <TableHead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableCell
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    sx={{
-                      backgroundColor: "grey.50",
-                    }}
-                    sortDirection={header.column.getIsSorted()}
-                  >
-                    <TableSortLabel
-                      disabled={!header.column.getCanSort()}
-                      active={header.column.getIsSorted() !== false}
-                      direction={header.column.getIsSorted() || undefined}
-                      onClick={() => {
-                        table.setSorting((prev) => [
-                          { id: header.column.id, desc: !prev[0].desc },
-                        ]);
-                      }}
-                    >
-                      <Box sx={{ width: header.getSize() }}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </Box>
-                    </TableSortLabel>
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableHead>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                hover
-                onClick={() => {
-                  store.send({
-                    type: "openDrawer",
-                    for: "trace",
-                    id: row.original.trace_id,
-                  });
-                }}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    sx={{
-                      maxWidth: cell.column.getSize(),
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {data?.traces?.length ? (
+        <>
+          <TracesTable
+            table={table}
+            loading={isFetching}
+            onRowClick={(row) => {
+              store.send({
+                type: "openDrawer",
+                for: "trace",
+                id: row.original.trace_id,
+              });
+            }}
+          />
+          <TablePagination
+            component="div"
+            count={data?.count ?? 0}
+            onPageChange={pagination.handlePageChange}
+            page={pagination.page}
+            rowsPerPage={pagination.rowsPerPage}
+            sx={{
+              overflow: "visible",
+            }}
+          />
+        </>
+      ) : (
+        <TracesEmptyState title="No traces found">
+          <Typography variant="body1" color="text.secondary">
+            Try adjusting your search query
+          </Typography>
+        </TracesEmptyState>
+      )}
     </>
   );
 }

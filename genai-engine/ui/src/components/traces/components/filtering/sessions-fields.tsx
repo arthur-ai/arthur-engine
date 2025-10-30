@@ -10,7 +10,7 @@ export const SESSION_FIELDS = [
   createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "user_ids">({
     type: "dynamic_enum",
     name: "user_ids",
-    getTriggerClassName: () => "w-full",
+    getTriggerClassName: () => "",
     renderValue: (value) => [value].flat().join(", "),
     operators: [EnumOperators.EQUALS, EnumOperators.IN],
     itemToStringLabel: undefined,

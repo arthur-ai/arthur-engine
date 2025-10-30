@@ -1,12 +1,14 @@
-import { Box, Breadcrumbs, Button } from "@mui/material";
+import { Box, Breadcrumbs, Button, IconButton, Stack } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useLayoutEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Drawer } from "vaul";
 
 import { Level, useTracesStore } from "../store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
+
+import CloseIcon from "@mui/icons-material/Close";
 
 const CONTENT_MAP = {
   trace: lazy(() =>
@@ -19,8 +21,16 @@ const CONTENT_MAP = {
       default: module.SpanDrawerContent,
     }))
   ),
-  session: null,
-  user: null,
+  session: lazy(() =>
+    import("./SessionDrawerContent").then((module) => ({
+      default: module.SessionDrawerContent,
+    }))
+  ),
+  user: lazy(() =>
+    import("./UserDrawerContent").then((module) => ({
+      default: module.UserDrawerContent,
+    }))
+  ),
 };
 
 export const CommonDrawer = () => {
@@ -69,31 +79,38 @@ export const CommonDrawer = () => {
             insetBlock: 0,
             right: 0,
             zIndex: 11,
-            width: "80%",
+            width: "90%",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          <Breadcrumbs
-            aria-label="Drawer history"
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
             sx={{
               px: 4,
               py: 1,
               backgroundColor: "grey.300",
             }}
           >
-            {history.slice(0, history.length - 1).map((entry) => (
-              <Button
-                key={entry.id}
-                variant="text"
-                onClick={() => handleBreadcrumbNavigation(entry)}
-              >
-                {entry.for} ({entry.id})
-              </Button>
-            ))}
-            <Button disabled>{latestEntry?.for}</Button>
-          </Breadcrumbs>
+            <Breadcrumbs aria-label="Drawer history">
+              {history.slice(0, history.length - 1).map((entry) => (
+                <Button
+                  key={entry.id}
+                  variant="text"
+                  onClick={() => handleBreadcrumbNavigation(entry)}
+                >
+                  {entry.for} ({entry.id})
+                </Button>
+              ))}
+              <Button disabled>{latestEntry?.for}</Button>
+            </Breadcrumbs>
+            <IconButton onClick={handleClose}>
+              <CloseIcon />
+            </IconButton>
+          </Stack>
           <AnimatePresence mode="popLayout">
             <motion.div
               key={latestEntry?.id}

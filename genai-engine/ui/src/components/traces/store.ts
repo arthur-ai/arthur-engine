@@ -1,6 +1,6 @@
 import { createStoreHook } from "@xstate/store/react";
 
-export type Level = "trace" | "span" | "session";
+export type Level = "trace" | "span" | "session" | "user";
 
 export const useTracesStore = createStoreHook({
   context: {

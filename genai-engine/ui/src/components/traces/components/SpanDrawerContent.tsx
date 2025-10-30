@@ -1,7 +1,11 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Box, Button, Stack, Typography } from "@mui/material";
-import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 
 import { useTracesStore } from "../store";
 import { isSpanOfType } from "../utils/spans";
@@ -17,6 +21,7 @@ import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useApi } from "@/hooks/useApi";
 import { computeSpanMetrics, getSpan } from "@/services/tracing";
 import { wait } from "@/utils";
+import { queryKeys } from "@/lib/queryKeys";
 
 type Props = {
   id: string;
@@ -24,10 +29,12 @@ type Props = {
 
 export const SpanDrawerContent = ({ id }: Props) => {
   const api = useApi();
+  const queryClient = useQueryClient();
+
   const [, store] = useTracesStore(() => null);
 
   const { data: span } = useSuspenseQuery({
-    queryKey: ["span", id, { id, api }],
+    queryKey: queryKeys.spans.byId(id),
     queryFn: () => getSpan(api!, { spanId: id! }),
   });
 
@@ -39,6 +46,9 @@ export const SpanDrawerContent = ({ id }: Props) => {
       ]);
 
       return data;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.spans.byId(id), data);
     },
   });
 

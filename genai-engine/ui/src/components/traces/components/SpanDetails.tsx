@@ -16,6 +16,7 @@ import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { formatDate } from "@/utils/date";
 
 const SpanDetailsContext = createContext<{
   span: NestedSpanWithMetricsResponse;
@@ -58,7 +59,7 @@ export const SpanDetailsHeader = () => {
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
-  const start = dayjs(span.start_time);
+  const start = new Date(span.start_time);
 
   const onOpenSpanDrawer = () => {
     store.send({
@@ -97,7 +98,7 @@ export const SpanDetailsHeader = () => {
       </Stack>
       <Stack direction="row" spacing={1}>
         <Typography variant="caption" color="text.secondary">
-          {start.format("YYYY-MM-DD HH:mm:ss")}
+          {formatDate(start)}
         </Typography>
         <Typography variant="caption" color="text.secondary">
           {duration}ms

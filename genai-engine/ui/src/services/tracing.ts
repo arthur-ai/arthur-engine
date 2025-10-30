@@ -101,7 +101,7 @@ type GetSessionsParams = {
   filters: IncomingFilter[];
 };
 
-export async function getFitleredSessions(
+export async function getFilteredSessions(
   api: Api<unknown>,
   { taskId, page, pageSize, filters }: GetSessionsParams
 ) {
@@ -111,6 +111,21 @@ export async function getFitleredSessions(
     page_size: pageSize,
     ...mapFiltersToRequest(filters),
   });
+  return response.data;
+}
+
+type GetSessionParams = {
+  sessionId: string;
+};
+
+export async function getSession(
+  api: Api<unknown>,
+  { sessionId }: GetSessionParams
+) {
+  const response =
+    await api.api.getSessionTracesApiV1TracesSessionsSessionIdGet({
+      sessionId,
+    });
   return response.data;
 }
 
@@ -134,5 +149,21 @@ export async function getUsers(
     ...mapFiltersToRequest(filters),
   });
 
+  return response.data;
+}
+
+type GetUserParams = {
+  taskId: string;
+  userId: string;
+};
+
+export async function getUser(
+  api: Api<unknown>,
+  { taskId, userId }: GetUserParams
+) {
+  const response = await api.api.getUserDetailsApiV1TracesUsersUserIdGet({
+    userId,
+    task_ids: [taskId],
+  });
   return response.data;
 }
