@@ -101,7 +101,7 @@ type GetSessionsParams = {
   filters: IncomingFilter[];
 };
 
-export async function getFitleredSessions(
+export async function getFilteredSessions(
   api: Api<unknown>,
   { taskId, page, pageSize, filters }: GetSessionsParams
 ) {

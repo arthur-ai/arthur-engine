@@ -17,6 +17,8 @@ import { NumberField } from "@/components/common/form/NumberField";
 import { SelectField } from "@/components/common/form/SelectField";
 import { cn } from "@/utils/cn";
 
+const ROW_SCROLL_OFFSET = 100;
+
 type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> =
   Field extends DynamicEnumField<infer Arg> ? Arg : never;
 
@@ -58,7 +60,7 @@ export function createFilterRow<TFields extends Field[]>(
       const offsetToEnd =
         scrollableRef.current.scrollWidth -
         scrollableRef.current.clientWidth -
-        100;
+        ROW_SCROLL_OFFSET;
 
       scrollableRef.current.scrollTo({ left: offsetToEnd, behavior: "smooth" });
     };
@@ -278,7 +280,7 @@ export function createFilterRow<TFields extends Field[]>(
 
       const fieldConfig = fields.find((field) => field.name === name);
 
-      if (!fieldConfig) return null!;
+      if (!fieldConfig) return null;
 
       return (
         <form.AppField name={`config[${index}].value` as const}>

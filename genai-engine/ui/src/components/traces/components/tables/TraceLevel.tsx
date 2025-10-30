@@ -9,6 +9,7 @@ import {
   TableBody,
   TableSortLabel,
   TableCell,
+  Alert,
 } from "@mui/material";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import {
@@ -46,7 +47,7 @@ export function TraceLevel() {
 
   const api = useApi()!;
 
-  const { data, fetchNextPage, isFetching } = useInfiniteQuery({
+  const { data, fetchNextPage, isFetching, error } = useInfiniteQuery({
     ...getTracesInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
   });
 
@@ -87,6 +88,10 @@ export function TraceLevel() {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return <Alert severity="error">There was an error fetching traces.</Alert>;
+  }
 
   return (
     <>

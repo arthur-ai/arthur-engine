@@ -29,7 +29,6 @@ export const LoadingButton = ({
       {...props}
     >
       <motion.span
-        key={loading ? "loading" : "content"}
         animate={{
           opacity: loading ? 1 : 0,
           y: loading ? 0 : -4,

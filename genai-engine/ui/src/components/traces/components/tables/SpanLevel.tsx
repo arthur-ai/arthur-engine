@@ -30,6 +30,7 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { getSpansInfiniteQueryOptions } from "@/query-options/spans";
+import { Alert } from "@mui/material";
 
 export const SpanLevel = () => {
   const api = useApi()!;
@@ -41,7 +42,7 @@ export const SpanLevel = () => {
     (state) => state.context.filters
   );
 
-  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
+  const { data, isFetching, fetchNextPage, error } = useInfiniteQuery({
     ...getSpansInfiniteQueryOptions({ api, taskId: task?.id ?? "", filters }),
   });
 
@@ -82,6 +83,10 @@ export const SpanLevel = () => {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return <Alert severity="error">There was an error fetching spans.</Alert>;
+  }
 
   return (
     <>

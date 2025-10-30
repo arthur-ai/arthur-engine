@@ -17,7 +17,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useSelector } from "@xstate/store/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
 import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
@@ -29,6 +29,8 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { getSessionsInfiniteQueryOptions } from "@/query-options/sessions";
+import { toast } from "sonner";
+import { Alert } from "@mui/material";
 
 export const SessionLevel = () => {
   const api = useApi()!;
@@ -38,7 +40,7 @@ export const SessionLevel = () => {
     (state) => state.context.filters
   );
 
-  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
+  const { data, isFetching, fetchNextPage, error } = useInfiniteQuery({
     ...getSessionsInfiniteQueryOptions({
       api,
       taskId: task?.id ?? "",
@@ -83,6 +85,12 @@ export const SessionLevel = () => {
       }),
     [task?.id, api]
   );
+
+  if (error) {
+    return (
+      <Alert severity="error">There was an error fetching sessions.</Alert>
+    );
+  }
 
   return (
     <>
@@ -135,7 +143,7 @@ export const SessionLevel = () => {
           </TableHead>
           <TableBody>
             {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} hover onClick={() => {}}>
+              <TableRow key={row.id} hover>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}

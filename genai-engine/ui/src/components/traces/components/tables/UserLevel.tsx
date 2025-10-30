@@ -25,12 +25,13 @@ import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { getUsersInfiniteQueryOptions } from "@/query-options/users";
+import { Alert } from "@mui/material";
 
 export const UserLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
 
-  const { data, isFetching, fetchNextPage } = useInfiniteQuery({
+  const { data, isFetching, fetchNextPage, error } = useInfiniteQuery({
     ...getUsersInfiniteQueryOptions({
       api,
       taskId: task?.id ?? "",
@@ -67,6 +68,10 @@ export const UserLevel = () => {
     enabled: !isFetching && totalDBRowCount >= FETCH_SIZE,
   });
 
+  if (error) {
+    return <Alert severity="error">There was an error fetching users.</Alert>;
+  }
+
   return (
     <>
       <TableContainer
@@ -97,7 +102,10 @@ export const UserLevel = () => {
                       direction={header.column.getIsSorted() || undefined}
                       onClick={() => {
                         table.setSorting((prev) => [
-                          { id: header.column.id, desc: !prev[0].desc },
+                          {
+                            id: header.column.id,
+                            desc: !(prev[0]?.desc ?? true),
+                          },
                         ]);
                       }}
                     >

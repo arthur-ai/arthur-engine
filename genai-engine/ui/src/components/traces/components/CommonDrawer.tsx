@@ -85,7 +85,7 @@ export const CommonDrawer = () => {
           >
             {history.slice(0, history.length - 1).map((entry) => (
               <Button
-                key={entry.id}
+                key={`${entry.for}-${entry.id}`}
                 variant="text"
                 onClick={() => handleBreadcrumbNavigation(entry)}
               >
