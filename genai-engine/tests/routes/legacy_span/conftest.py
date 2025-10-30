@@ -30,6 +30,7 @@ from repositories.metrics_repository import MetricRepository
 from repositories.span_repository import SpanRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import Span as InternalSpan
+from services.trace.span_normalization_service import SpanNormalizationService
 from services.trace.trace_ingestion_service import TraceIngestionService
 from tests.clients.base_test_client import override_get_db_session
 from tests.clients.unit_test_client import get_genai_engine_test_client
@@ -204,8 +205,32 @@ def create_span() -> Generator[InternalSpan, None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     now = datetime.now()
+
+    # Create raw_data with flat attributes (as it comes from OTEL)
+    raw_data = {
+        "kind": "SPAN_KIND_INTERNAL",
+        "name": "ChatOpenAI",
+        "spanId": "test_span_id",
+        "traceId": "test_trace_id",
+        "attributes": {
+            "openinference.span.kind": "LLM",
+            "llm.model_name": "gpt-4",
+            "llm.input_messages.0.message.role": "system",
+            "llm.input_messages.0.message.content": "You are a helpful assistant.",
+            "llm.input_messages.1.message.role": "user",
+            "llm.input_messages.1.message.content": "What is the weather like today?",
+            "llm.output_messages.0.message.role": "assistant",
+            "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+            "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
+        },
+    }
+
+    # Normalize to nested structure (as happens in production ingestion)
+    normalized_raw_data = span_normalizer.normalize_span_to_nested_dict(raw_data)
+    normalized_raw_data["arthur_span_version"] = "arthur_span_v1"
 
     # Create a test span with proper raw_data structure matching real spans
     span = InternalSpan(
@@ -217,24 +242,7 @@ def create_span() -> Generator[InternalSpan, None, None]:
         span_kind="LLM",
         start_time=now,
         end_time=now + timedelta(seconds=1),
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "ChatOpenAI",
-            "spanId": "test_span_id",
-            "traceId": "test_trace_id",
-            "attributes": {
-                "openinference.span.kind": "LLM",
-                "llm.model_name": "gpt-4",
-                "llm.input_messages.0.message.role": "system",
-                "llm.input_messages.0.message.content": "You are a helpful assistant.",
-                "llm.input_messages.1.message.role": "user",
-                "llm.input_messages.1.message.content": "What is the weather like today?",
-                "llm.output_messages.0.message.role": "assistant",
-                "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
-                "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=normalized_raw_data,
         created_at=now,
         updated_at=now,
     )
@@ -258,22 +266,15 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
     tasks_metrics_repo = TasksMetricsRepository(db_session)
     metrics_repo = MetricRepository(db_session)
     span_repo = SpanRepository(db_session, tasks_metrics_repo, metrics_repo)
+    span_normalizer = SpanNormalizationService()
 
     # Create spans with different attributes
     spans = []
     base_time = datetime.now()
 
     # Span 1: Task1, Trace1 - LLM span with features
-    span1 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="trace1",
-        span_id="span1",
-        task_id="task1",
-        parent_span_id=None,
-        span_kind="LLM",
-        start_time=base_time - timedelta(days=2),
-        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
-        raw_data={
+    span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "span1",
@@ -289,14 +290,40 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span1_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span1 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="trace1",
+        span_id="span1",
+        task_id="task1",
+        parent_span_id=None,
+        span_kind="LLM",
+        start_time=base_time - timedelta(days=2),
+        end_time=base_time - timedelta(days=2) + timedelta(seconds=1),
+        raw_data=span1_raw_data,
         created_at=base_time - timedelta(days=2) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=2) + timedelta(seconds=1),
     )
     spans.append(span1)
 
     # Span 2: Task1, Trace1 - CHAIN span with parent
+    span2_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Chain",
+            "spanId": "span2",
+            "traceId": "trace1",
+            "attributes": {
+                "openinference.span.kind": "CHAIN",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
+            },
+        },
+    )
+    span2_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span2 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace1",
@@ -306,23 +333,27 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         span_kind="CHAIN",
         start_time=base_time - timedelta(days=1),
         end_time=base_time - timedelta(days=1) + timedelta(seconds=1),
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Chain",
-            "spanId": "span2",
-            "traceId": "trace1",
-            "attributes": {
-                "openinference.span.kind": "CHAIN",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "chain_model", "ls_model_type": "chain"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span2_raw_data,
         created_at=base_time - timedelta(days=1) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=1) + timedelta(seconds=1),
     )
     spans.append(span2)
 
     # Span 3: Task2, Trace2 - AGENT span
+    span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Agent",
+            "spanId": "span3",
+            "traceId": "trace2",
+            "attributes": {
+                "openinference.span.kind": "AGENT",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
+            },
+        },
+    )
+    span3_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span3 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace2",
@@ -332,23 +363,27 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         span_kind="AGENT",
         start_time=base_time,
         end_time=base_time + timedelta(seconds=1),
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Agent",
-            "spanId": "span3",
-            "traceId": "trace2",
-            "attributes": {
-                "openinference.span.kind": "AGENT",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "agent_model", "ls_model_type": "agent"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span3_raw_data,
         created_at=base_time + timedelta(seconds=1),
         updated_at=base_time + timedelta(seconds=1),
     )
     spans.append(span3)
 
     # Span 4: Task2, Trace2 - RETRIEVER span with parent
+    span4_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
+            "kind": "SPAN_KIND_INTERNAL",
+            "name": "Retriever",
+            "spanId": "span4",
+            "traceId": "trace2",
+            "attributes": {
+                "openinference.span.kind": "RETRIEVER",
+                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
+            },
+        },
+    )
+    span4_raw_data["arthur_span_version"] = "arthur_span_v1"
+
     span4 = InternalSpan(
         id=str(uuid.uuid4()),
         trace_id="trace2",
@@ -358,33 +393,15 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
         span_kind="RETRIEVER",
         start_time=base_time + timedelta(seconds=30),
         end_time=base_time + timedelta(seconds=31),
-        raw_data={
-            "kind": "SPAN_KIND_INTERNAL",
-            "name": "Retriever",
-            "spanId": "span4",
-            "traceId": "trace2",
-            "attributes": {
-                "openinference.span.kind": "RETRIEVER",
-                "metadata": '{"ls_provider": "langchain", "ls_model_name": "retriever_model", "ls_model_type": "retriever"}',
-            },
-            "arthur_span_version": "arthur_span_v1",
-        },
+        raw_data=span4_raw_data,
         created_at=base_time + timedelta(seconds=31),
         updated_at=base_time + timedelta(seconds=31),
     )
     spans.append(span4)
 
     # Span 5: Task1, Trace3 - TOOL span for tool filtering tests
-    span5 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="trace3",
-        span_id="span5",
-        task_id="task1",
-        parent_span_id=None,
-        span_kind="TOOL",
-        start_time=base_time + timedelta(hours=1),
-        end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
-        raw_data={
+    span5_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "test_tool",  # This will be used for tool_name filtering
             "spanId": "span5",
@@ -394,24 +411,28 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
                 "tool.name": "test_tool",
                 "metadata": '{"ls_provider": "custom", "ls_model_name": "tool_model", "ls_model_type": "tool"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span5_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span5 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="trace3",
+        span_id="span5",
+        task_id="task1",
+        parent_span_id=None,
+        span_kind="TOOL",
+        start_time=base_time + timedelta(hours=1),
+        end_time=base_time + timedelta(hours=1) + timedelta(seconds=1),
+        raw_data=span5_raw_data,
         created_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
         updated_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
     )
     spans.append(span5)
 
     # Span 6: Task1, Trace3 - Another LLM span for more metric testing
-    span6 = InternalSpan(
-        id=str(uuid.uuid4()),
-        trace_id="trace3",
-        span_id="span6",
-        task_id="task1",
-        parent_span_id="span5",
-        span_kind="LLM",
-        start_time=base_time + timedelta(hours=1) + timedelta(seconds=2),
-        end_time=base_time + timedelta(hours=1) + timedelta(seconds=4),
-        raw_data={
+    span6_raw_data = span_normalizer.normalize_span_to_nested_dict(
+        {
             "kind": "SPAN_KIND_INTERNAL",
             "name": "ChatOpenAI",
             "spanId": "span6",
@@ -425,8 +446,20 @@ def create_test_spans() -> Generator[List[InternalSpan], None, None]:
                 "llm.output_messages.0.message.content": "Test response with different metrics",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
             },
-            "arthur_span_version": "arthur_span_v1",
         },
+    )
+    span6_raw_data["arthur_span_version"] = "arthur_span_v1"
+
+    span6 = InternalSpan(
+        id=str(uuid.uuid4()),
+        trace_id="trace3",
+        span_id="span6",
+        task_id="task1",
+        parent_span_id="span5",
+        span_kind="LLM",
+        start_time=base_time + timedelta(hours=1) + timedelta(seconds=2),
+        end_time=base_time + timedelta(hours=1) + timedelta(seconds=4),
+        raw_data=span6_raw_data,
         created_at=base_time + timedelta(hours=1) + timedelta(seconds=4),
         updated_at=base_time + timedelta(hours=1) + timedelta(seconds=4),
     )

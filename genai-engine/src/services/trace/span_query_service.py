@@ -24,8 +24,8 @@ from schemas.internal_schemas import (
     TraceUserMetadata,
 )
 from services.trace.filter_service import FilterService
-from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
+from utils.trace import validate_span_version
 
 logger = logging.getLogger(__name__)
 
@@ -122,9 +122,7 @@ class SpanQueryService:
 
     def validate_spans(self, spans: list[Span]) -> list[Span]:
         """Validate spans and return only valid ones."""
-        valid_spans = [
-            span for span in spans if trace_utils.validate_span_version(span.raw_data)
-        ]
+        valid_spans = [span for span in spans if validate_span_version(span.raw_data)]
         invalid_count = len(spans) - len(valid_spans)
         if invalid_count > 0:
             logger.warning(
