@@ -613,6 +613,80 @@ def test_agentic_prompt_run_chat_completion(
             "This is a message without variables",
         ),
         ("{{ name_variable_1 }}", {"name_variable_1": "Alice"}, "Alice"),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_1": "Alice"},
+            [{"type": "text", "text": "Alice"}],
+        ),
+        (
+            [{"type": "text", "text": "name_variable_1"}],
+            {"name_variable_1": "Alice"},
+            [{"type": "text", "text": "name_variable_1"}],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "text", "text": "{{ name_variable_2 }}"},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [{"type": "text", "text": "Alice"}, {"type": "text", "text": "Bob"}],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "test", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "test", "format": "wav"},
+                },
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": "test"},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {"type": "image_url", "image_url": "test"},
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+        ),
     ],
 )
 def test_agentic_prompt_variable_replacement(message, variables, expected_message):
