@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.response_schemas import ExternalInference, TraceResponse
@@ -8,9 +8,11 @@ from pydantic import BaseModel, Field
 from pydantic_core import Url
 
 from schemas.enums import (
+    ConnectionCheckOutcome,
     ModelProvider,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
 )
 
 
@@ -295,6 +297,86 @@ class SearchRagProviderConfigurationsResponse(BaseModel):
     rag_provider_configurations: list[RagProviderConfigurationResponse] = Field(
         description="List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter",
     )
+
+
+class ConnectionCheckResult(BaseModel):
+    connection_check_outcome: ConnectionCheckOutcome = Field(
+        description="Result of the connection check.",
+    )
+    failure_reason: Optional[str] = Field(
+        default=None,
+        description="Explainer of the connection check failure result.",
+    )
+
+
+class WeaviateSimilaritySearchMetadata(BaseModel):
+    """
+    Metadata from weaviate for a vector object:
+    https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
+    """
+
+    creation_time: Optional[datetime] = Field(
+        default=None,
+        description="Vector object creation time.",
+    )
+    last_update_time: Optional[datetime] = Field(
+        default=None,
+        description="Vector object last update time.",
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Raw distance metric used in the vector search. Lower values indicate closer vectors.",
+    )
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Similarity score measure between 0 and 1. Higher values correspond to more similar reesults.",
+    )
+    score: Optional[float] = Field(
+        default=None,
+        description="Normalized relevance metric that ranks search results.",
+    )
+    explain_score: Optional[str] = Field(
+        default=None,
+        description="Explanation of how the score was calculated.",
+    )
+    is_consistent: Optional[bool] = Field(
+        default=None,
+        description="Indicates if the object is consistent across all replicates in a multi-node Weaviate cluster.",
+    )
+
+
+class WeaviateSimilaritySearchTextResult(BaseModel):
+    """Individual search result from Weaviate"""
+
+    uuid: UUID = Field(description="Unique identifier of the result")
+    metadata: Optional[WeaviateSimilaritySearchMetadata] = Field(
+        default=None,
+        description="Search metadata including distance, score, etc.",
+    )
+    # left out references for now
+    properties: Dict[str, Any] = Field(description="Properties of the result object")
+    vector: Optional[Dict[str, Union[List[float], List[List[float]]]]] = Field(
+        default=None,
+        description="Vector representation",
+    )
+
+
+class WeaviateSimilarityTextSearchResponse(BaseModel):
+    """Response from Weaviate similarity text search"""
+
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    objects: List[WeaviateSimilaritySearchTextResult] = Field(
+        description="List of search result objects",
+    )
+
+
+RagProviderSimilarityTextSearchResponseTypes = Union[
+    WeaviateSimilarityTextSearchResponse
+]
+
+
+class RagProviderSimilarityTextSearchResponse(BaseModel):
+    response: RagProviderSimilarityTextSearchResponseTypes
 
 
 class AgenticPromptMetadataResponse(BaseModel):

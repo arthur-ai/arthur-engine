@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+
+# 10/30/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_providers/test_connection  endpoint added
+
 # 10/30/2025
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}  endpoint added
