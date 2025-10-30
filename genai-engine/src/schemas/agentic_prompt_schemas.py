@@ -24,6 +24,7 @@ from schemas.enums import (
     LLMResponseFormatEnum,
     MessageRole,
     ModelProvider,
+    OpenAIMessageType,
     ReasoningEffortEnum,
     ToolChoiceEnum,
 )
@@ -56,6 +57,87 @@ class LogitBiasItem(BaseModel):
         le=100,
         description="Bias value between -100 and 100",
     )
+
+
+class ToolCallFunction(BaseModel):
+    name: str = Field(..., description="Name of the function to call")
+    arguments: str = Field(..., description="JSON string of function arguments")
+
+
+class ToolCall(BaseModel):
+    type: str = Field(
+        default="function",
+        description="The type of tool call. Currently the only type supported is 'function'.",
+    )
+    id: str = Field(..., description="Unique identifier for the tool call")
+    function: ToolCallFunction = Field(..., description="Function details")
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def force_type(cls, v):
+        return "function"
+
+
+class ImageURL(BaseModel):
+    url: str = Field(..., description="URL of the image")
+
+
+class InputAudio(BaseModel):
+    data: str = Field(..., description="Base64 encoded audio data")
+    format: str = Field(
+        ...,
+        description="audio format (e.g. 'mp3', 'wav', 'flac', etc.)",
+    )
+
+
+class OpenAIMessageItem(BaseModel):
+    type: OpenAIMessageType = Field(
+        ...,
+        description="Type of the message (either 'text', 'image_url', or 'input_audio')",
+    )
+    text: Optional[str] = Field(
+        default=None,
+        description="Text content of the message if type is 'text'",
+    )
+    image_url: Optional[ImageURL] = Field(
+        default=None,
+        description="Image URL content of the message if type is 'image_url'",
+    )
+    input_audio: Optional[InputAudio] = Field(
+        default=None,
+        description="Input audio content of the message if type is 'input_audio'",
+    )
+
+    class Config:
+        use_enum_values = True
+
+
+class AgenticPromptMessage(BaseModel):
+    """
+    The message schema class for the prompts playground.
+    This class adheres to OpenAI's message schema.
+    """
+
+    role: MessageRole = Field(description="Role of the message")
+    name: Optional[str] = Field(
+        default=None,
+        description="An optional name for the participant. Provides the model information to differentiate between participants of the same role.",
+    )
+    content: Optional[str | List[OpenAIMessageItem]] = Field(
+        default=None,
+        description="Content of the message",
+    )
+    tool_calls: Optional[List[ToolCall]] = Field(
+        default=None,
+        description="Tool calls made by assistant",
+    )
+    tool_call_id: Optional[str] = Field(
+        default=None,
+        description="ID of the tool call this message is responding to",
+    )
+
+    class Config:
+        use_enum_values = True
 
 
 class PromptCompletionRequest(BaseModel):
@@ -91,61 +173,47 @@ class PromptCompletionRequest(BaseModel):
             self._variable_map = {v.name: v.value for v in self.variables}
         return self
 
-    def find_missing_variables(self, messages: List[Dict]) -> Set[str]:
+    def _find_missing_variables_in_text(self, text: str) -> List[str]:
+        template_ast = self._jinja_env.parse(text)
+        undeclared_vars = meta.find_undeclared_variables(template_ast)
+        return [v for v in undeclared_vars if v not in self._variable_map]
+
+    def find_missing_variables(self, messages: List[AgenticPromptMessage]) -> Set[str]:
         missing_vars = set()
         for message in messages:
-            template_ast = self._jinja_env.parse(message["content"])
-            undeclared_vars = meta.find_undeclared_variables(template_ast)
-            missing = [v for v in undeclared_vars if v not in self._variable_map]
-            missing_vars.update(missing)
+            if message.content is None:
+                continue
+
+            if isinstance(message.content, str):
+                missing_vars.update(
+                    self._find_missing_variables_in_text(message.content),
+                )
+            elif isinstance(message.content, list):
+                for item in message.content:
+                    if item.type == OpenAIMessageType.TEXT.value and item.text:
+                        missing_vars.update(
+                            self._find_missing_variables_in_text(item.text),
+                        )
 
         return missing_vars
 
-    def replace_variables(self, messages: List[Dict]) -> List[Dict]:
-        updated_messages = []
+    def _replace_variables_in_text(self, text: str) -> str:
+        template = self._jinja_env.from_string(text)
+        return template.render(**self._variable_map)
 
+    def replace_variables(self, messages: List[AgenticPromptMessage]) -> list[dict]:
         for message in messages:
-            updated_message = message.copy()
-            template = self._jinja_env.from_string(updated_message["content"])
-            updated_message["content"] = template.render(**self._variable_map)
-            updated_messages.append(updated_message)
+            if message.content is None:
+                continue
 
-        return updated_messages
+            if isinstance(message.content, str):
+                message.content = self._replace_variables_in_text(message.content)
+            elif isinstance(message.content, list):
+                for item in message.content:
+                    if item.type == OpenAIMessageType.TEXT.value and item.text:
+                        item.text = self._replace_variables_in_text(item.text)
 
-
-class ToolCallFunction(BaseModel):
-    name: str = Field(..., description="Name of the function to call")
-    arguments: str = Field(..., description="JSON string of function arguments")
-
-
-class ToolCall(BaseModel):
-    type: str = Field(
-        default="function",
-        description="The type of tool call. Currently the only type supported is 'function'.",
-    )
-    id: str = Field(..., description="Unique identifier for the tool call")
-    function: ToolCallFunction = Field(..., description="Function details")
-
-    @field_validator("type", mode="before")
-    @classmethod
-    def force_type(cls, v):
-        return "function"
-
-
-class AgenticPromptMessage(BaseModel):
-    role: MessageRole = Field(description="Role of the message")
-    content: Optional[str] = Field(default=None, description="Content of the message")
-    tool_calls: Optional[List[ToolCall]] = Field(
-        default=None,
-        description="Tool calls made by assistant",
-    )
-    tool_call_id: Optional[str] = Field(
-        default=None,
-        description="ID of the tool call this message is responding to",
-    )
-
-    class Config:
-        use_enum_values = True
+        return messages
 
 
 class ToolFunction(BaseModel):
@@ -335,6 +403,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 "created_at",
                 "version",
                 "deleted_at",
+                "messages",
             },
             exclude_none=True,
         )
@@ -342,7 +411,7 @@ class AgenticPrompt(AgenticPromptBaseConfig):
         # validate all variables are passed in to the prompt if strict mode is enabled
         if completion_request.strict == True:
             missing_vars = completion_request.find_missing_variables(
-                completion_params["messages"],
+                self.messages,
             )
             if missing_vars:
                 raise ValueError(
@@ -350,10 +419,15 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 )
 
         # replace variables in messages
+        completion_messages = self.messages
         if completion_request.variables:
-            completion_params["messages"] = completion_request.replace_variables(
-                completion_params["messages"],
+            completion_messages = completion_request.replace_variables(
+                completion_messages,
             )
+
+        completion_params["messages"] = [
+            message.model_dump(exclude_none=True) for message in completion_messages
+        ]
 
         if completion_request.stream is not None:
             completion_params["stream"] = completion_request.stream

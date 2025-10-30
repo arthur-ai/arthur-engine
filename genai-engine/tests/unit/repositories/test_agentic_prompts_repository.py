@@ -25,7 +25,7 @@ from schemas.agentic_prompt_schemas import (
     VariableTemplateValue,
 )
 from schemas.common_schemas import JsonSchema
-from schemas.enums import ModelProvider
+from schemas.enums import MessageRole, ModelProvider
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptMetadataResponse,
@@ -613,6 +613,80 @@ def test_agentic_prompt_run_chat_completion(
             "This is a message without variables",
         ),
         ("{{ name_variable_1 }}", {"name_variable_1": "Alice"}, "Alice"),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_1": "Alice"},
+            [{"type": "text", "text": "Alice"}],
+        ),
+        (
+            [{"type": "text", "text": "name_variable_1"}],
+            {"name_variable_1": "Alice"},
+            [{"type": "text", "text": "name_variable_1"}],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "text", "text": "{{ name_variable_2 }}"},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [{"type": "text", "text": "Alice"}, {"type": "text", "text": "Bob"}],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "test", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "test", "format": "wav"},
+                },
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": {"url": "test"}},
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {"type": "image_url", "image_url": {"url": "test"}},
+            ],
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice", "name_variable_2": "Bob"},
+            [
+                {"type": "text", "text": "Alice"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+        ),
     ],
 )
 def test_agentic_prompt_variable_replacement(message, variables, expected_message):
@@ -626,9 +700,117 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
         variables = []
 
     completion_request = PromptCompletionRequest(variables=variables)
-    message = [{"role": "user", "content": message}]
-    result = completion_request.replace_variables(message)
-    assert result[0]["content"] == expected_message
+    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
+
+    result = completion_request.replace_variables(messages)
+    expected_result = [
+        AgenticPromptMessage(role=MessageRole.USER, content=expected_message),
+    ]
+    assert result == expected_result
+
+    prompt = AgenticPrompt(
+        name="test_prompt",
+        messages=messages,
+        model_name="gpt-4o",
+        model_provider="openai",
+    )
+    _, completion_params = prompt._get_completion_params(completion_request)
+
+    assert completion_params["messages"][0]["content"] == expected_message
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "message,variables,missing_variables",
+    [
+        (
+            "What is the capital of {{country}}?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "What is the capital of {{country}}?",
+            {"city": "Paris"},
+            {"country"},
+        ),
+        (
+            "What is the capital of {country}?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "What is the capital of country?",
+            {"country": "France"},
+            set(),
+        ),
+        (
+            "User {{user_id}} has {{item_counts}} items",
+            {"user_id": "123", "item_count": "5"},
+            {"item_counts"},
+        ),
+        (
+            "User {{user_ids}} has {{item_counts}} items",
+            {"user_id": "123", "item_count": "5"},
+            {"user_ids", "item_counts"},
+        ),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [{"type": "text", "text": "{{ name_variable_1 }}"}],
+            {"name_variable_2": "Alice"},
+            {"name_variable_1"},
+        ),
+        (
+            [{"type": "text", "text": "name_variable_1"}],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "text", "text": "{{ name_variable_2 }}"},
+            ],
+            {"name_variable_3": "Alice", "name_variable_2": "Bob"},
+            {"name_variable_1"},
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {"type": "image_url", "image_url": {"url": "{{ name_variable_2 }}"}},
+            ],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+        (
+            [
+                {"type": "text", "text": "{{ name_variable_1 }}"},
+                {
+                    "type": "input_audio",
+                    "input_audio": {"data": "{{ name_variable_2 }}", "format": "wav"},
+                },
+            ],
+            {"name_variable_1": "Alice"},
+            set(),
+        ),
+    ],
+)
+def test_agentic_prompt_find_missing_variables(message, variables, missing_variables):
+    """Test running unsaved prompt with variables"""
+    if variables is not None:
+        variables = [
+            VariableTemplateValue(name=name, value=value)
+            for name, value in variables.items()
+        ]
+    else:
+        variables = []
+
+    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
+    completion_request = PromptCompletionRequest(variables=variables)
+    results = completion_request.find_missing_variables(messages)
+    assert results == missing_variables
 
 
 @pytest.mark.unit_tests

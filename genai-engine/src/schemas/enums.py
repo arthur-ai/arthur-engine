@@ -198,10 +198,17 @@ class ModelProvider(str, Enum):
 
 
 class MessageRole(Enum):
+    DEVELOPER = "developer"
     SYSTEM = "system"
     USER = "user"
     AI = "assistant"
     TOOL = "tool"
+
+
+class OpenAIMessageType(str, Enum):
+    TEXT = "text"
+    IMAGE_URL = "image_url"
+    INPUT_AUDIO = "input_audio"
 
 
 class ReasoningEffortEnum(str, Enum):

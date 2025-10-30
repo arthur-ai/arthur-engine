@@ -3,6 +3,8 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 10/30/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'developer' enum value to the 'messages/items/role' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections  endpoint added
 
 
