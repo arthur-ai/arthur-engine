@@ -393,7 +393,7 @@ class InferenceRepository:
         self,
         user_id: str,
         query_params: Params = Params(),
-    ) -> Page[List[ConversationBaseResponse]]:
+    ) -> Page[ConversationBaseResponse]:
         subquery = (
             self.db_session.query(
                 DatabaseInference.conversation_id,
@@ -411,7 +411,7 @@ class InferenceRepository:
                 DatabaseInference.updated_at == subquery.c.newest_entry,
             ),
         )
-        paginated_user_inferences: Page[List[ConversationBaseResponse]] = paginate(
+        paginated_user_inferences: Page[ConversationBaseResponse] = paginate(
             self.db_session,
             query,
             params=query_params,

@@ -403,6 +403,10 @@ def query_spans_by_type(
             span_types=query_request.span_types,
             start_time=query_request.start_time,
             end_time=query_request.end_time,
+            trace_duration_gt=None,
+            trace_duration_gte=None,
+            trace_duration_lt=None,
+            trace_duration_lte=None,
         )
 
         span_repo = _get_span_repository(db_session)
