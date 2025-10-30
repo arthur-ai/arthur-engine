@@ -25,7 +25,7 @@ jobs:
   bump-arthur-engine-version:
     environment: shared-protected-branch-secrets
     if: |
-      (github.event_name == 'push' && github.ref == 'refs/heads/dev' && !startsWith(github.event.head_commit.message, 'fix(deps)')) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev' && !startsWith(github.event.head_commit.message, 'fix(deps)') && !startsWith(github.event.head_commit.message, 'Increment arthur-engine')) ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.intent == 'bump_version' && github.ref != 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
