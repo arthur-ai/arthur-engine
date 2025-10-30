@@ -12,6 +12,7 @@ from schemas.internal_schemas import (
     RagProviderConfiguration,
 )
 from schemas.request_schemas import (
+    RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
@@ -148,6 +149,28 @@ class WeaviateClient(RagProviderClient):
         # execute search
         try:
             response = collection.query.bm25(
+                **weaviate_settings._to_client_settings_dict(),
+            )
+        except WeaviateQueryError as e:
+            # raise query errors cleanly so the user knows what went wrong
+            # (eg. no vectorizer configured for the collection)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {e}.",
+            )
+
+        return self._client_result_to_arthur_response(response)
+
+    def hybrid_search(
+        self,
+        settings_request: RagHybridSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        weaviate_settings = settings_request.settings
+        collection = self.client.collections.use(weaviate_settings.collection_name)
+
+        # execute search
+        try:
+            response = collection.query.hybrid(
                 **weaviate_settings._to_client_settings_dict(),
             )
         except WeaviateQueryError as e:

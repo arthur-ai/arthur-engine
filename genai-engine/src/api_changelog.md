@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 10/31/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  endpoint added
+
+# 10/31/2025
 - **CHANGE** for **URL**: /api/v2/inferences/query  removed the optional property 'inferences/items/inference_prompt/model_name' from the response with the '200' status
 - **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  removed the request property 'model_name'
 - **CHANGE** for **URL**: /api/v2/validate_prompt  removed the request property 'model_name'
