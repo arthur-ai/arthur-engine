@@ -5,6 +5,7 @@ from clients.rag_providers.weaviate_client import WeaviateClient
 from schemas.enums import ConnectionCheckOutcome, RagAPIKeyAuthenticationProviderEnum
 from schemas.internal_schemas import RagProviderConfiguration
 from schemas.request_schemas import (
+    RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
@@ -62,3 +63,10 @@ class RagClientConstructor:
     ) -> RagProviderQueryResponse:
         rag_client = self.pick_rag_provider_client()
         return rag_client.keyword_search(settings_request)
+
+    def execute_hybrid_search(
+        self,
+        settings_request: RagHybridSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        rag_client = self.pick_rag_provider_client()
+        return rag_client.hybrid_search(settings_request)
