@@ -18,10 +18,10 @@ import { usePromptContext } from "./PromptsPlaygroundContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
+import { toCompletionRequest } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider } from "@/lib/api-client/api-client";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
@@ -35,7 +35,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
-  const { dispatch } = usePromptContext();
+  const { state, dispatch } = usePromptContext();
   const apiClient = useApi();
   const { task } = useTask();
   const taskId = task?.id;
@@ -45,13 +45,10 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
       console.error("No api client or task id");
       return;
     }
+    // Replace template strings with variable values before sending to API
+    const completionRequest = toCompletionRequest(prompt, state.keywords);
     await apiClient.api
-      .runAgenticPromptApiV1CompletionsPost({
-        messages: prompt.messages,
-        model_name: prompt.modelName,
-        model_provider: prompt.modelProvider as ModelProvider,
-        temperature: prompt.modelParameters.temperature,
-      })
+      .runAgenticPromptApiV1CompletionsPost(completionRequest)
       .then((response) => {
         dispatch({
           type: "updatePrompt",
@@ -71,7 +68,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           },
         });
       });
-  }, [apiClient, taskId, prompt, dispatch]);
+  }, [apiClient, taskId, prompt, state.keywords, dispatch]);
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);

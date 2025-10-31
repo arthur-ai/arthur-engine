@@ -13,6 +13,7 @@ import {
   JsonSchema,
   ToolCall,
   CompletionRequest,
+  OpenAIMessageItem,
 } from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
@@ -318,12 +319,23 @@ export const toCompletionRequest = (
   keywords: Map<string, string>
 ): CompletionRequest => {
   // Replace keywords in all message content
-  const messages = prompt.messages.map((msg) => ({
-    role: msg.role,
-    content: replaceKeywords(msg.content, keywords),
-    tool_call_id: msg.tool_call_id || null,
-    tool_calls: msg.tool_calls || null,
-  }));
+  const messages = prompt.messages.map((msg) => {
+    // Handle content replacement: only replace if content is a string
+    // The API accepts: string | OpenAIMessageItem[] | null | undefined
+    let processedContent: string | OpenAIMessageItem[] | null | undefined = msg.content;
+    if (typeof msg.content === "string") {
+      processedContent = replaceKeywords(msg.content, keywords);
+    }
+    // If content is null/undefined or an array, keep it as is (API accepts these)
+
+    return {
+      role: msg.role,
+      content: processedContent,
+      name: msg.name || null,
+      tool_call_id: msg.tool_call_id || null,
+      tool_calls: msg.tool_calls || null,
+    };
+  });
 
   return {
     model_name: prompt.modelName,
