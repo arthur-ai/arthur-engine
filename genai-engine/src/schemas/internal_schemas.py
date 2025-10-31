@@ -1629,9 +1629,14 @@ class Span(TokenCountCostSchema):
 
         Extracts from raw_data.attributes.input.value per OpenInference semantic conventions.
         Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
         """
         try:
-            return trace_utils.get_nested_value(self.raw_data, "attributes.input.value")
+            value = trace_utils.get_nested_value(
+                self.raw_data,
+                "attributes.input.value",
+            )
+            return trace_utils.value_to_string(value)
         except Exception:
             return None
 
@@ -1641,12 +1646,14 @@ class Span(TokenCountCostSchema):
 
         Extracts from raw_data.attributes.output.value per OpenInference semantic conventions.
         Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
         """
         try:
-            return trace_utils.get_nested_value(
+            value = trace_utils.get_nested_value(
                 self.raw_data,
                 "attributes.output.value",
             )
+            return trace_utils.value_to_string(value)
         except Exception:
             return None
 
@@ -1788,6 +1795,8 @@ class Span(TokenCountCostSchema):
             status_code=self.status_code,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
     @staticmethod

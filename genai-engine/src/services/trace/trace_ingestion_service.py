@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 from datetime import datetime
@@ -386,10 +385,10 @@ class TraceIngestionService:
                     )
 
                     trace_updates[trace_id]["input_content"] = (
-                        self._convert_to_string_for_db(input_value)
+                        trace_utils.value_to_string(input_value)
                     )
                     trace_updates[trace_id]["output_content"] = (
-                        self._convert_to_string_for_db(output_value)
+                        trace_utils.value_to_string(output_value)
                     )
 
             for field in TOKEN_FIELDS:
@@ -432,86 +431,80 @@ class TraceIngestionService:
             f"Upserted metadata for {len(trace_updates)} traces from {len(spans)} spans",
         )
 
+    def _build_upsert_set_dict(self, stmt, min_func, max_func) -> dict:
+        """Build the set_ dictionary for upsert operations.
 
-def _build_upsert_set_dict(self, stmt, min_func, max_func) -> dict:
-    """Build the set_ dictionary for upsert operations.
+        Args:
+            stmt: The insert statement with excluded values
+            min_func: Function to use for minimum (func.least for PostgreSQL, func.min for SQLite)
+            max_func: Function to use for maximum (func.greatest for PostgreSQL, func.max for SQLite)
 
-    Args:
-        stmt: The insert statement with excluded values
-        min_func: Function to use for minimum (func.least for PostgreSQL, func.min for SQLite)
-        max_func: Function to use for maximum (func.greatest for PostgreSQL, func.max for SQLite)
-
-    Returns:
-        Dictionary of fields to update on conflict
-    """
-    return dict(
-        start_time=min_func(
-            stmt.excluded.start_time,
-            DatabaseTraceMetadata.start_time,
-        ),
-        end_time=max_func(
-            stmt.excluded.end_time,
-            DatabaseTraceMetadata.end_time,
-        ),
-        span_count=DatabaseTraceMetadata.span_count + stmt.excluded.span_count,
-        session_id=func.coalesce(
-            DatabaseTraceMetadata.session_id,
-            stmt.excluded.session_id,
-        ),
-        user_id=func.coalesce(
-            DatabaseTraceMetadata.user_id,
-            stmt.excluded.user_id,
-        ),
-        # NULL-safe addition: if both NULL -> NULL, if one NULL -> use non-NULL, else sum
-        prompt_token_count=func.coalesce(
-            DatabaseTraceMetadata.prompt_token_count + stmt.excluded.prompt_token_count,
-            DatabaseTraceMetadata.prompt_token_count,
-            stmt.excluded.prompt_token_count,
-        ),
-        completion_token_count=func.coalesce(
-            DatabaseTraceMetadata.completion_token_count
-            + stmt.excluded.completion_token_count,
-            DatabaseTraceMetadata.completion_token_count,
-            stmt.excluded.completion_token_count,
-        ),
-        total_token_count=func.coalesce(
-            DatabaseTraceMetadata.total_token_count + stmt.excluded.total_token_count,
-            DatabaseTraceMetadata.total_token_count,
-            stmt.excluded.total_token_count,
-        ),
-        prompt_token_cost=func.coalesce(
-            DatabaseTraceMetadata.prompt_token_cost + stmt.excluded.prompt_token_cost,
-            DatabaseTraceMetadata.prompt_token_cost,
-            stmt.excluded.prompt_token_cost,
-        ),
-        completion_token_cost=func.coalesce(
-            DatabaseTraceMetadata.completion_token_cost
-            + stmt.excluded.completion_token_cost,
-            DatabaseTraceMetadata.completion_token_cost,
-            stmt.excluded.completion_token_cost,
-        ),
-        total_token_cost=func.coalesce(
-            DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
-            DatabaseTraceMetadata.total_token_cost,
-            stmt.excluded.total_token_cost,
-        ),
-        # Prefer new non-null values for input/output content
-        # This allows updates if a new batch provides a better root span
-        input_content=func.coalesce(
-            stmt.excluded.input_content,
-            DatabaseTraceMetadata.input_content,
-        ),
-        output_content=func.coalesce(
-            stmt.excluded.output_content,
-            DatabaseTraceMetadata.output_content,
-        ),
-        updated_at=stmt.excluded.updated_at,
-    )
-
-    def _input_output_to_string_helper(self, value) -> Optional[str]:
-        """Convert a value to string for database storage."""
-        if value is None:
-            return None
-        if isinstance(value, (dict, list)):
-            return json.dumps(value)
-        return str(value)
+        Returns:
+            Dictionary of fields to update on conflict
+        """
+        return dict(
+            start_time=min_func(
+                stmt.excluded.start_time,
+                DatabaseTraceMetadata.start_time,
+            ),
+            end_time=max_func(
+                stmt.excluded.end_time,
+                DatabaseTraceMetadata.end_time,
+            ),
+            span_count=DatabaseTraceMetadata.span_count + stmt.excluded.span_count,
+            session_id=func.coalesce(
+                DatabaseTraceMetadata.session_id,
+                stmt.excluded.session_id,
+            ),
+            user_id=func.coalesce(
+                DatabaseTraceMetadata.user_id,
+                stmt.excluded.user_id,
+            ),
+            # NULL-safe addition: if both NULL -> NULL, if one NULL -> use non-NULL, else sum
+            prompt_token_count=func.coalesce(
+                DatabaseTraceMetadata.prompt_token_count
+                + stmt.excluded.prompt_token_count,
+                DatabaseTraceMetadata.prompt_token_count,
+                stmt.excluded.prompt_token_count,
+            ),
+            completion_token_count=func.coalesce(
+                DatabaseTraceMetadata.completion_token_count
+                + stmt.excluded.completion_token_count,
+                DatabaseTraceMetadata.completion_token_count,
+                stmt.excluded.completion_token_count,
+            ),
+            total_token_count=func.coalesce(
+                DatabaseTraceMetadata.total_token_count
+                + stmt.excluded.total_token_count,
+                DatabaseTraceMetadata.total_token_count,
+                stmt.excluded.total_token_count,
+            ),
+            prompt_token_cost=func.coalesce(
+                DatabaseTraceMetadata.prompt_token_cost
+                + stmt.excluded.prompt_token_cost,
+                DatabaseTraceMetadata.prompt_token_cost,
+                stmt.excluded.prompt_token_cost,
+            ),
+            completion_token_cost=func.coalesce(
+                DatabaseTraceMetadata.completion_token_cost
+                + stmt.excluded.completion_token_cost,
+                DatabaseTraceMetadata.completion_token_cost,
+                stmt.excluded.completion_token_cost,
+            ),
+            total_token_cost=func.coalesce(
+                DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
+                DatabaseTraceMetadata.total_token_cost,
+                stmt.excluded.total_token_cost,
+            ),
+            # Prefer new non-null values for input/output content
+            # This allows updates if a new batch provides a better root span
+            input_content=func.coalesce(
+                stmt.excluded.input_content,
+                DatabaseTraceMetadata.input_content,
+            ),
+            output_content=func.coalesce(
+                stmt.excluded.output_content,
+                DatabaseTraceMetadata.output_content,
+            ),
+            updated_at=stmt.excluded.updated_at,
+        )

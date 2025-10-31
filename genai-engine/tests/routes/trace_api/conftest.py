@@ -250,7 +250,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans = []
     base_time = datetime.now()
 
-    # Session 1, Task1, Trace1 - LLM span with features
+    # Session 1, Task1, Trace1 - LLM span with text input/output
     span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
@@ -266,6 +266,10 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "input.value": "What is the weather like today?",
+                "input.mime_type": "text/plain",
+                "output.value": "I don't have access to real-time weather information.",
+                "output.mime_type": "text/plain",
                 "session.id": "session1",
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
@@ -325,7 +329,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     )
     spans.append(span2)
 
-    # Session 1, Task1, Trace2 - Another LLM span in same session
+    # Session 1, Task1, Trace2 - LLM span with JSON input/output
     span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
@@ -339,6 +343,10 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.0.message.content": "Follow-up question",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "Follow-up response",
+                "input.value": '{"question": "Follow-up question", "context": "previous conversation"}',
+                "input.mime_type": "application/json",
+                "output.value": '{"answer": "Follow-up response", "sources": ["doc1", "doc2"]}',
+                "output.mime_type": "application/json",
                 "session.id": "session1",
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
@@ -498,6 +506,27 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         trace_start_time = min(span.start_time for span in trace_spans)
         trace_end_time = max(span.end_time for span in trace_spans)
 
+        # Extract input/output from root span (earliest span without parent)
+        root_spans = [span for span in trace_spans if span.parent_span_id is None]
+        input_content = None
+        output_content = None
+        if root_spans:
+            # Find the earliest root span
+            earliest_root = min(root_spans, key=lambda s: s.start_time)
+            # Extract using same logic as TraceIngestionService
+            from utils import trace as trace_utils
+
+            input_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.input.value",
+            )
+            output_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.output.value",
+            )
+            input_content = trace_utils.value_to_string(input_value)
+            output_content = trace_utils.value_to_string(output_value)
+
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
@@ -508,6 +537,8 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             end_time=trace_end_time,
             created_at=trace_start_time,
             updated_at=trace_end_time,
+            input_content=input_content,
+            output_content=output_content,
         )
         trace_metadatas.append(trace_metadata)
 
