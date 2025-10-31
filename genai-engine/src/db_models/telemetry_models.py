@@ -79,6 +79,8 @@ class DatabaseTraceMetadata(Base):
             postgresql_where=text("session_id IS NOT NULL"),
         ),
         Index("idx_traces_session_time", "session_id", "start_time"),
+        Index("idx_traces_total_token_count", "total_token_count"),
+        Index("idx_traces_total_token_cost", "total_token_cost"),
     )
 
 
