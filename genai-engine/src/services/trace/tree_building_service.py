@@ -6,6 +6,7 @@ from arthur_common.models.response_schemas import TraceResponse
 
 from db_models import DatabaseTraceMetadata
 from schemas.internal_schemas import Span
+from utils.token_count import safe_add
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,52 @@ class TreeBuildingService:
         # Build trace responses
         traces = []
         for trace_id, trace_spans in traces_dict.items():
-            # Use trace metadata start/end times if available, otherwise calculate from spans
             if trace_id in metadata_by_trace_id:
                 metadata = metadata_by_trace_id[trace_id]
                 start_time = metadata.start_time
                 end_time = metadata.end_time
+                prompt_token_count = metadata.prompt_token_count
+                completion_token_count = metadata.completion_token_count
+                total_token_count = metadata.total_token_count
+                prompt_token_cost = metadata.prompt_token_cost
+                completion_token_cost = metadata.completion_token_cost
+                total_token_cost = metadata.total_token_cost
             else:
-                # Fallback to calculating from spans (backward compatibility)
+                # Calculate times from spans, aggregate token/cost from all spans in this trace
                 start_time = min(span.start_time for span in trace_spans)
                 end_time = max(span.end_time for span in trace_spans)
+
+                # Aggregate token/cost from all spans in this trace (NULL-safe)
+                # Initialize to None, only convert to 0 if we find actual values
+                prompt_token_count = None
+                completion_token_count = None
+                total_token_count = None
+                prompt_token_cost = None
+                completion_token_cost = None
+                total_token_cost = None
+
+                for span in trace_spans:
+                    prompt_token_count = safe_add(
+                        prompt_token_count,
+                        span.prompt_token_count,
+                    )
+                    completion_token_count = safe_add(
+                        completion_token_count,
+                        span.completion_token_count,
+                    )
+                    total_token_count = safe_add(
+                        total_token_count,
+                        span.total_token_count,
+                    )
+                    prompt_token_cost = safe_add(
+                        prompt_token_cost,
+                        span.prompt_token_cost,
+                    )
+                    completion_token_cost = safe_add(
+                        completion_token_cost,
+                        span.completion_token_cost,
+                    )
+                    total_token_cost = safe_add(total_token_cost, span.total_token_cost)
 
             # Build nested spans for this trace
             root_spans = self._build_span_tree(trace_spans)
@@ -59,6 +97,13 @@ class TreeBuildingService:
                 start_time=start_time,
                 end_time=end_time,
                 root_spans=root_spans,
+                # Add aggregated token/cost fields
+                prompt_token_count=prompt_token_count,
+                completion_token_count=completion_token_count,
+                total_token_count=total_token_count,
+                prompt_token_cost=prompt_token_cost,
+                completion_token_cost=completion_token_cost,
+                total_token_cost=total_token_cost,
             )
             traces.append(trace_response)
 

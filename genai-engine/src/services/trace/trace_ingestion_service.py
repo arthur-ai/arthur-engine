@@ -26,6 +26,7 @@ from utils.constants import (
     TASK_ID_KEY,
     USER_ID_KEY,
 )
+from utils.token_count import safe_add
 
 logger = logging.getLogger(__name__)
 
@@ -179,12 +180,16 @@ class TraceIngestionService:
             )
         span_status_code = trace_utils.clean_status_code(span_status_code)
 
+        # Extract token/cost info (fast - from attributes only, compute cost if needed)
+        span_kind = self._get_attribute_value(span_data, SPAN_KIND_KEY)
+        token_data = trace_utils.extract_token_cost_from_span(span_data, span_kind)
+
         return DatabaseSpan(
             id=str(uuid.uuid4()),
             trace_id=trace_utils.convert_id_to_hex(span_data.get("traceId")),
             span_id=trace_utils.convert_id_to_hex(span_data.get("spanId")),
             parent_span_id=self._get_parent_span_id(span_data),
-            span_kind=self._get_attribute_value(span_data, SPAN_KIND_KEY),
+            span_kind=span_kind,
             span_name=span_data.get("name"),
             start_time=start_time,
             end_time=end_time,
@@ -193,6 +198,12 @@ class TraceIngestionService:
             user_id=self._get_attribute_value(span_data, USER_ID_KEY),
             status_code=span_status_code,
             raw_data=span_data,
+            prompt_token_count=token_data["prompt_token_count"],
+            completion_token_count=token_data["completion_token_count"],
+            total_token_count=token_data["total_token_count"],
+            prompt_token_cost=token_data["prompt_token_cost"],
+            completion_token_cost=token_data["completion_token_cost"],
+            total_token_cost=token_data["total_token_cost"],
         )
 
     def _extract_value_from_otel_format(
@@ -284,9 +295,6 @@ class TraceIngestionService:
             return
 
         self.db_session.add_all(spans)
-
-        # Batch trace metadata updates within this transaction
-        # This avoids N separate upserts for N spans in the same trace
         self._batch_upsert_trace_metadata(spans)
 
         if commit:
@@ -309,9 +317,22 @@ class TraceIngestionService:
         trace_updates = {}
         current_time = datetime.now()
 
+        TOKEN_FIELDS = [
+            "prompt_token_count",
+            "completion_token_count",
+            "total_token_count",
+        ]
+
+        COST_FIELDS = [
+            "prompt_token_cost",
+            "completion_token_cost",
+            "total_token_cost",
+        ]
+
         for span in spans:
             trace_id = span.trace_id
             if trace_id not in trace_updates:
+
                 trace_updates[trace_id] = {
                     "trace_id": trace_id,
                     "task_id": span.task_id,
@@ -321,6 +342,7 @@ class TraceIngestionService:
                     "end_time": span.end_time,
                     "span_count": 0,
                     "updated_at": current_time,
+                    **{field: None for field in TOKEN_FIELDS + COST_FIELDS},
                 }
 
             # Aggregate within this batch (handles multiple spans per trace in one ingestion)
@@ -342,6 +364,13 @@ class TraceIngestionService:
             if span.user_id and not trace_updates[trace_id]["user_id"]:
                 trace_updates[trace_id]["user_id"] = span.user_id
 
+            for field in TOKEN_FIELDS + COST_FIELDS:
+                span_value = getattr(span, field)
+                trace_updates[trace_id][field] = safe_add(
+                    trace_updates[trace_id][field],
+                    span_value,
+                )
+
         if not trace_updates:
             return
 
@@ -353,27 +382,7 @@ class TraceIngestionService:
             stmt = pg_insert(DatabaseTraceMetadata).values(values_list)
             stmt = stmt.on_conflict_do_update(
                 index_elements=["trace_id"],
-                set_=dict(
-                    start_time=func.least(
-                        stmt.excluded.start_time,
-                        DatabaseTraceMetadata.start_time,
-                    ),
-                    end_time=func.greatest(
-                        stmt.excluded.end_time,
-                        DatabaseTraceMetadata.end_time,
-                    ),
-                    span_count=DatabaseTraceMetadata.span_count
-                    + stmt.excluded.span_count,
-                    session_id=func.coalesce(
-                        DatabaseTraceMetadata.session_id,
-                        stmt.excluded.session_id,
-                    ),
-                    user_id=func.coalesce(
-                        DatabaseTraceMetadata.user_id,
-                        stmt.excluded.user_id,
-                    ),
-                    updated_at=stmt.excluded.updated_at,
-                ),
+                set_=self._build_upsert_set_dict(stmt, func.least, func.greatest),
             )
 
         # SQLite upsert with min/max functions
@@ -382,27 +391,7 @@ class TraceIngestionService:
             stmt = sqlite_insert(DatabaseTraceMetadata).values(values_list)
             stmt = stmt.on_conflict_do_update(
                 index_elements=["trace_id"],
-                set_=dict(
-                    start_time=func.min(
-                        stmt.excluded.start_time,
-                        DatabaseTraceMetadata.start_time,
-                    ),
-                    end_time=func.max(
-                        stmt.excluded.end_time,
-                        DatabaseTraceMetadata.end_time,
-                    ),
-                    span_count=DatabaseTraceMetadata.span_count
-                    + stmt.excluded.span_count,
-                    session_id=func.coalesce(
-                        DatabaseTraceMetadata.session_id,
-                        stmt.excluded.session_id,
-                    ),
-                    user_id=func.coalesce(
-                        DatabaseTraceMetadata.user_id,
-                        stmt.excluded.user_id,
-                    ),
-                    updated_at=stmt.excluded.updated_at,
-                ),
+                set_=self._build_upsert_set_dict(stmt, func.min, func.max),
             )
 
         self.db_session.execute(stmt)
@@ -410,3 +399,69 @@ class TraceIngestionService:
         logger.debug(
             f"Upserted metadata for {len(trace_updates)} traces from {len(spans)} spans",
         )
+
+
+def _build_upsert_set_dict(self, stmt, min_func, max_func) -> dict:
+    """Build the set_ dictionary for upsert operations.
+
+    Args:
+        stmt: The insert statement with excluded values
+        min_func: Function to use for minimum (func.least for PostgreSQL, func.min for SQLite)
+        max_func: Function to use for maximum (func.greatest for PostgreSQL, func.max for SQLite)
+
+    Returns:
+        Dictionary of fields to update on conflict
+    """
+    return dict(
+        start_time=min_func(
+            stmt.excluded.start_time,
+            DatabaseTraceMetadata.start_time,
+        ),
+        end_time=max_func(
+            stmt.excluded.end_time,
+            DatabaseTraceMetadata.end_time,
+        ),
+        span_count=DatabaseTraceMetadata.span_count + stmt.excluded.span_count,
+        session_id=func.coalesce(
+            DatabaseTraceMetadata.session_id,
+            stmt.excluded.session_id,
+        ),
+        user_id=func.coalesce(
+            DatabaseTraceMetadata.user_id,
+            stmt.excluded.user_id,
+        ),
+        # NULL-safe addition: if both NULL -> NULL, if one NULL -> use non-NULL, else sum
+        prompt_token_count=func.coalesce(
+            DatabaseTraceMetadata.prompt_token_count + stmt.excluded.prompt_token_count,
+            DatabaseTraceMetadata.prompt_token_count,
+            stmt.excluded.prompt_token_count,
+        ),
+        completion_token_count=func.coalesce(
+            DatabaseTraceMetadata.completion_token_count
+            + stmt.excluded.completion_token_count,
+            DatabaseTraceMetadata.completion_token_count,
+            stmt.excluded.completion_token_count,
+        ),
+        total_token_count=func.coalesce(
+            DatabaseTraceMetadata.total_token_count + stmt.excluded.total_token_count,
+            DatabaseTraceMetadata.total_token_count,
+            stmt.excluded.total_token_count,
+        ),
+        prompt_token_cost=func.coalesce(
+            DatabaseTraceMetadata.prompt_token_cost + stmt.excluded.prompt_token_cost,
+            DatabaseTraceMetadata.prompt_token_cost,
+            stmt.excluded.prompt_token_cost,
+        ),
+        completion_token_cost=func.coalesce(
+            DatabaseTraceMetadata.completion_token_cost
+            + stmt.excluded.completion_token_cost,
+            DatabaseTraceMetadata.completion_token_cost,
+            stmt.excluded.completion_token_cost,
+        ),
+        total_token_cost=func.coalesce(
+            DatabaseTraceMetadata.total_token_cost + stmt.excluded.total_token_cost,
+            DatabaseTraceMetadata.total_token_cost,
+            stmt.excluded.total_token_cost,
+        ),
+        updated_at=stmt.excluded.updated_at,
+    )

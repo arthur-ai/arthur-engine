@@ -2,7 +2,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from arthur_common.models.response_schemas import ExternalInference, TraceResponse
+from arthur_common.models.response_schemas import (
+    ExternalInference,
+    TokenCountCostSchema,
+    TraceResponse,
+)
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -130,7 +134,7 @@ class ListDatasetVersionsResponse(BaseModel):
     )
 
 
-class TraceMetadataResponse(BaseModel):
+class TraceMetadataResponse(TokenCountCostSchema):
     """Lightweight trace metadata for list operations"""
 
     trace_id: str = Field(description="ID of the trace")
@@ -166,7 +170,7 @@ class SpanMetadataResponse(BaseModel):
     # Note: Excludes raw_data, computed features, and metrics for performance
 
 
-class SessionMetadataResponse(BaseModel):
+class SessionMetadataResponse(TokenCountCostSchema):
     """Session summary metadata"""
 
     session_id: str = Field(description="Session identifier")
@@ -211,7 +215,7 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
-class TraceUserMetadataResponse(BaseModel):
+class TraceUserMetadataResponse(TokenCountCostSchema):
     """User summary metadata in trace context"""
 
     user_id: str = Field(description="User identifier")
