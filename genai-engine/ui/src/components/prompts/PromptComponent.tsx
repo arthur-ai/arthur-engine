@@ -1,5 +1,6 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
 // import SettingsIcon from "@mui/icons-material/Settings"; Use for permanent delete option
 import TuneIcon from "@mui/icons-material/Tune";
@@ -50,6 +51,13 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     });
   }, [dispatch, prompt.id]);
 
+  const handleRunPrompt = useCallback(() => {
+    dispatch({
+      type: "runPrompt",
+      payload: { promptId: prompt.id },
+    });
+  }, [dispatch, prompt.id]);
+
   const handleParamsModelOpen = () => {
     setParamsModelOpen(true);
   };
@@ -58,6 +66,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
 
+  const runDisabled = prompt.running || prompt.modelName === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
@@ -75,6 +84,15 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             />
           </div>
           <div className="flex justify-end items-center gap-1">
+            <Tooltip title="Run Prompt" placement="top-start" arrow>
+              <IconButton
+                aria-label="run prompt"
+                onClick={handleRunPrompt}
+                disabled={runDisabled}
+              >
+                <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
               <IconButton
                 aria-label="duplicate"

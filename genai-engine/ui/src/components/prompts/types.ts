@@ -75,6 +75,10 @@ type PromptAction =
       payload: { keyword: string; value: string };
     }
   | {
+      type: "runPrompt";
+      payload: { promptId: string };
+    }
+  | {
       type: "updateModelParameters";
       payload: { promptId: string; modelParameters: ModelParametersType };
     }
@@ -142,6 +146,7 @@ type PromptType = {
   tools: FrontendTool[]; //LLMToolOutput
   toolChoice?: ToolChoiceEnum | ToolChoice;
   // tags: Array<string>; // TODO
+  running?: boolean; // Whether the prompt is running
 };
 
 interface PromptPlaygroundState {

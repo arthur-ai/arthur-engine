@@ -110,6 +110,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   responseFormat: undefined,
   tools: [],
   toolChoice: "auto" as ToolChoiceEnum,
+  running: false,
   ...overrides,
 });
 
@@ -390,6 +391,15 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         keywords: new Map(state.keywords).set(keyword, value),
+      };
+    }
+    case "runPrompt": {
+      const { promptId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, running: true } : prompt
+        ),
       };
     }
     case "updateModelParameters": {
