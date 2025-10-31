@@ -19,6 +19,10 @@ import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
 
+import { useApi } from "@/hooks/useApi";
+import { useTask } from "@/hooks/useTask";
+import { ModelProvider } from "@/lib/api-client/api-client";
+
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
@@ -32,6 +36,42 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
 
   const { dispatch } = usePromptContext();
+  const apiClient = useApi();
+  const { task } = useTask();
+  const taskId = task?.id;
+
+  const runPrompt = useCallback(async () => {
+    if (!apiClient || !taskId) {
+      console.error("No api client or task id");
+      return;
+    }
+    await apiClient.api
+      .runAgenticPromptApiV1CompletionsPost({
+        messages: prompt.messages,
+        model_name: prompt.modelName,
+        model_provider: prompt.modelProvider as ModelProvider,
+        temperature: prompt.modelParameters.temperature,
+      })
+      .then((response) => {
+        dispatch({
+          type: "updatePrompt",
+          payload: {
+            promptId: prompt.id,
+            prompt: { running: false, runResponse: response.data },
+          },
+        });
+      })
+      .catch((error) => {
+        console.error("Error running prompt:", error);
+        dispatch({
+          type: "updatePrompt",
+          payload: {
+            promptId: prompt.id,
+            prompt: { running: false, runResponse: null },
+          },
+        });
+      });
+  }, [apiClient, taskId, prompt, dispatch]);
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
@@ -66,6 +106,12 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
 
+  useEffect(() => {
+    if (prompt.running) {
+      runPrompt();
+    }
+  }, [prompt.running, runPrompt]);
+
   const runDisabled = prompt.running || prompt.modelName === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
@@ -85,13 +131,15 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           </div>
           <div className="flex justify-end items-center gap-1">
             <Tooltip title="Run Prompt" placement="top-start" arrow>
-              <IconButton
-                aria-label="run prompt"
-                onClick={handleRunPrompt}
-                disabled={runDisabled}
-              >
-                <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
-              </IconButton>
+              <span>
+                <IconButton
+                  aria-label="run prompt"
+                  onClick={handleRunPrompt}
+                  disabled={runDisabled}
+                >
+                  <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
+                </IconButton>
+              </span>
             </Tooltip>
             <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
               <IconButton
@@ -142,7 +190,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           <Paper elevation={2} className="p-1">
             <OutputField
               promptId={prompt.id}
-              outputField={prompt.outputField}
+              runResponse={prompt.runResponse}
               responseFormat={prompt.responseFormat}
             />
           </Paper>

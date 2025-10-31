@@ -233,13 +233,13 @@ const PromptsPlayground = () => {
                   </div>
                   <div className="flex justify-center items-center">
                     <Typography variant="body2" className="text-center">
-                      Variables allow you to create
-                      reusable templates by using double curly (mustache) braces
-                      like <code>{`{{variable}}`}</code>. When you define a
-                      variable below, it will automatically replace all
-                      instances of <code>{`{{variable}}`}</code> in your prompt
-                      messages. This lets you quickly test different values
-                      without editing each message individually.
+                      Variables allow you to create reusable templates by using
+                      double curly (mustache) braces like{" "}
+                      <code>{`{{variable}}`}</code>. When you define a variable
+                      below, it will automatically replace all instances of{" "}
+                      <code>{`{{variable}}`}</code> in your prompt messages.
+                      This lets you quickly test different values without
+                      editing each message individually.
                     </Typography>
                   </div>
                 </div>

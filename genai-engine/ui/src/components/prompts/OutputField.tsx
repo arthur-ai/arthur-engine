@@ -20,30 +20,6 @@ import React, { useEffect, useState } from "react";
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { OutputFieldProps } from "./types";
 
-const SAMPLE_RESPONSE_OBJECT = {
-  data: {
-    span: {
-      __typename: "Span",
-      id: "U3BhbjoxNTA1",
-      spanId: "2cc4e1e2c004999",
-      trace: {
-        id: "VHJhY2U6MTA1",
-        traceId: "5ab12d0c810d1a193623a8a2c20fab62",
-        project: {
-          id: "UHJvamVjdDoz",
-        },
-      },
-      tokenCountTotal: 24,
-      latencyMs: 1819.7,
-      costSummary: {
-        total: {
-          cost: 0.0001275,
-        },
-      },
-    },
-  },
-};
-
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
     type: "json_schema",
@@ -59,7 +35,7 @@ const getFormatValue = (format: string | undefined) => {
 
 const OutputField = ({
   promptId,
-  outputField,
+  runResponse,
   responseFormat,
 }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
@@ -94,8 +70,8 @@ const OutputField = ({
   };
 
   useEffect(() => {
-    setIsExpanded(outputField.length > 0);
-  }, [outputField]);
+    setIsExpanded(Boolean(runResponse?.content?.length));
+  }, [runResponse]);
 
   useEffect(() => {
     setCopiedFormat(getFormatValue(responseFormat));
@@ -128,32 +104,36 @@ const OutputField = ({
         </div>
       </div>
       <Collapse in={isExpanded}>
-        <div>{outputField}</div>
+        <div>{runResponse?.content}</div>
         <Divider />
         <div className="flex gap-3">
-          <div className="flex items-center">
-            <Tooltip title="Total Tokens">
-              <GeneratingTokensIcon />
-            </Tooltip>
-            <Typography variant="body1">
-              {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal}
-            </Typography>
-          </div>
-          <div className="flex items-center">
-            <Tooltip title="Latency (seconds)">
-              <HourglassEmptyIcon />
-            </Tooltip>
-            <Typography variant="body1">
-              {(SAMPLE_RESPONSE_OBJECT.data.span.latencyMs / 1000).toFixed(2)}
-            </Typography>
-          </div>
+          {/* eslint-disable-next-line no-constant-condition */}
+          {false ? (
+            <div className="flex items-center">
+              <Tooltip title="Total Tokens">
+                <GeneratingTokensIcon />
+              </Tooltip>
+              <Typography variant="body1">
+                {/* {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal} */}
+              </Typography>
+            </div>
+          ) : null}
+          {/* eslint-disable-next-line no-constant-condition */}
+          {false ? (
+            <div className="flex items-center">
+              <Tooltip title="Latency (seconds)">
+                <HourglassEmptyIcon />
+              </Tooltip>
+              <Typography variant="body1">
+                {/* {(latencyMs / 1000).toFixed(2)} */}
+              </Typography>
+            </div>
+          ) : null}
           <div className="flex items-center">
             <Tooltip title="Cost">
               <AttachMoneyIcon />
             </Tooltip>
-            <Typography variant="body1">
-              {SAMPLE_RESPONSE_OBJECT.data.span.costSummary.total.cost}
-            </Typography>
+            <Typography variant="body1">{runResponse?.cost || "-"}</Typography>
           </div>
         </div>
       </Collapse>

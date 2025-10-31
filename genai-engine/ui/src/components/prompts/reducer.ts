@@ -103,10 +103,10 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   name: "",
   created_at: undefined, // created on BE
   modelName: "",
-  provider: "",
+  modelProvider: "",
   messages: [newMessage()],
   modelParameters: createModelParameters(),
-  outputField: "",
+  runResponse: null,
   responseFormat: undefined,
   tools: [],
   toolChoice: "auto" as ToolChoiceEnum,
@@ -196,11 +196,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       };
     }
     case "updatePromptProvider": {
-      const { promptId, provider } = action.payload;
+      const { promptId, modelProvider } = action.payload;
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, provider } : prompt
+          prompt.id === promptId ? { ...prompt, modelProvider } : prompt
         ),
       };
     }

@@ -11,6 +11,7 @@ import {
   ModelProvider,
   AgenticPromptMetadataResponse,
   Api,
+  AgenticPromptRunResponse,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -29,7 +30,7 @@ type PromptAction =
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
       type: "updatePromptProvider";
-      payload: { promptId: string; provider: string };
+      payload: { promptId: string; modelProvider: ModelProvider | "" };
     }
   | {
       type: "updatePromptModelName";
@@ -138,10 +139,10 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: string;
+  modelProvider: ModelProvider | "";
   messages: MessageType[];
   modelParameters: ModelParametersType;
-  outputField: string; // The actual output content
+  runResponse: AgenticPromptRunResponse | null; // The response from the last run
   responseFormat: string | undefined; //LLMResponseSchemaInput
   tools: FrontendTool[]; //LLMToolOutput
   toolChoice?: ToolChoiceEnum | ToolChoice;
@@ -173,7 +174,7 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
-  outputField: string;
+  runResponse: AgenticPromptRunResponse | null;
   responseFormat: string | undefined;
 }
 

@@ -37,7 +37,7 @@ export const generateId = (type: "msg" | "tool") => {
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
   model_name: prompt.modelName,
-  model_provider: prompt.provider as ModelProvider,
+  model_provider: prompt.modelProvider as ModelProvider,
   messages: prompt.messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
@@ -90,7 +90,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   name: backendPrompt.name,
   created_at: backendPrompt.created_at || undefined,
   modelName: backendPrompt.model_name,
-  provider: backendPrompt.model_provider,
+  modelProvider: backendPrompt.model_provider,
   messages: backendPrompt.messages.map((msg) => ({
     id: `msg-${uuidv4()}`,
     role: msg.role,
@@ -125,7 +125,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     logit_bias: backendPrompt.logit_bias,
     thinking: backendPrompt.thinking,
   },
-  outputField: "",
+  runResponse: null,
   responseFormat: backendPrompt.response_format
     ? JSON.stringify(backendPrompt.response_format)
     : undefined,
@@ -158,12 +158,12 @@ export const spanToPrompt = (
       metadata.ls_model_name ||
       defaultModel;
 
-    const provider =
+    const modelProvider =
       (attributes["litellm.provider"] as string) ||
       metadata.ls_provider ||
       defaultProvider;
 
-    return { modelName, provider };
+    return { modelName, modelProvider };
   };
 
   // Extract model parameters from LiteLLM attributes
@@ -289,7 +289,7 @@ export const spanToPrompt = (
     return tools;
   };
 
-  const { modelName, provider } = extractModelInfo(spanData.raw_data);
+  const { modelName, modelProvider } = extractModelInfo(spanData.raw_data);
   const modelParameters = extractModelParameters(spanData.raw_data);
   const messages = convertContextToMessages(spanData.context);
   const tools = extractTools(spanData.context, spanData.raw_data);
@@ -301,10 +301,10 @@ export const spanToPrompt = (
     name: `Span: ${spanData.span_name || spanData.span_id || "Unknown"}`,
     created_at: spanData.created_at,
     modelName,
-    provider,
+    modelProvider,
     messages,
     modelParameters,
-    outputField: spanData.response || "",
+    runResponse: null, // TODO
     responseFormat: undefined,
     tools,
     toolChoice: tools.length > 0 ? "auto" : undefined,
@@ -327,7 +327,7 @@ export const toCompletionRequest = (
 
   return {
     model_name: prompt.modelName,
-    model_provider: prompt.provider as ModelProvider,
+    model_provider: prompt.modelProvider as ModelProvider,
     messages,
     tools:
       prompt.tools.length > 0
