@@ -1,12 +1,19 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from arthur_common.models.response_schemas import ExternalInference, TraceResponse
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
+from pydantic_core import Url
 
-from schemas.enums import ModelProvider
+from schemas.enums import (
+    ConnectionCheckOutcome,
+    ModelProvider,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
+)
 
 
 class DocumentStorageConfigurationResponse(BaseModel):
@@ -249,6 +256,140 @@ class ModelProviderModelList(BaseModel):
     available_models: List[str] = Field(
         description="Available models from the provider",
     )
+
+
+class ApiKeyRagAuthenticationConfigResponse(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    host_url: Url = Field(description="URL of host instance to authenticate with.")
+    rag_provider: RagAPIKeyAuthenticationProviderEnum = Field(
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigResponseTypes = Union[ApiKeyRagAuthenticationConfigResponse]
+
+
+class RagProviderConfigurationResponse(BaseModel):
+    id: UUID = Field(description="Unique identifier of the RAG provider configuration.")
+    task_id: str = Field(description="ID of parent task.")
+    authentication_config: RagAuthenticationConfigResponseTypes = Field(
+        description="Configuration of the authentication strategy.",
+    )
+    name: str = Field(description="Name of RAG provider configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )
+    created_at: int = Field(
+        description="Time the RAG provider configuration was created in unix milliseconds",
+    )
+    updated_at: int = Field(
+        description="Time the RAG provider configuration was updated in unix milliseconds",
+    )
+
+
+class SearchRagProviderConfigurationsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG provider configurations matching the parameters.",
+    )
+    rag_provider_configurations: list[RagProviderConfigurationResponse] = Field(
+        description="List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter",
+    )
+
+
+class RagProviderCollectionResponse(BaseModel):
+    identifier: str = Field(description="Unique identifier of the collection.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the collection.",
+    )
+
+
+class SearchRagProviderCollectionsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG provider collections matching the parameters.",
+    )
+    rag_provider_collections: list[RagProviderCollectionResponse]
+
+
+class ConnectionCheckResult(BaseModel):
+    connection_check_outcome: ConnectionCheckOutcome = Field(
+        description="Result of the connection check.",
+    )
+    failure_reason: Optional[str] = Field(
+        default=None,
+        description="Explainer of the connection check failure result.",
+    )
+
+
+class WeaviateQueryResultMetadata(BaseModel):
+    """
+    Metadata from weaviate for a vector object:
+    https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
+    """
+
+    creation_time: Optional[datetime] = Field(
+        default=None,
+        description="Vector object creation time.",
+    )
+    last_update_time: Optional[datetime] = Field(
+        default=None,
+        description="Vector object last update time.",
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Raw distance metric used in the vector search. Lower values indicate closer vectors.",
+    )
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Similarity score measure between 0 and 1. Higher values correspond to more similar reesults.",
+    )
+    score: Optional[float] = Field(
+        default=None,
+        description="Normalized relevance metric that ranks search results.",
+    )
+    explain_score: Optional[str] = Field(
+        default=None,
+        description="Explanation of how the score was calculated.",
+    )
+    is_consistent: Optional[bool] = Field(
+        default=None,
+        description="Indicates if the object is consistent across all replicates in a multi-node Weaviate cluster.",
+    )
+
+
+class WeaviateQueryResult(BaseModel):
+    """Individual search result from Weaviate"""
+
+    uuid: UUID = Field(description="Unique identifier of the result")
+    metadata: Optional[WeaviateQueryResultMetadata] = Field(
+        default=None,
+        description="Search metadata including distance, score, etc.",
+    )
+    # left out references for now
+    properties: Dict[str, Any] = Field(description="Properties of the result object")
+    vector: Optional[Dict[str, Union[List[float], List[List[float]]]]] = Field(
+        default=None,
+        description="Vector representation",
+    )
+
+
+class WeaviateQueryResults(BaseModel):
+    """Response from Weaviate similarity text search"""
+
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    objects: List[WeaviateQueryResult] = Field(
+        description="List of search result objects",
+    )
+
+
+RagProviderSimilarityTextSearchResponseTypes = Union[WeaviateQueryResults]
+
+
+class RagProviderQueryResponse(BaseModel):
+    response: RagProviderSimilarityTextSearchResponseTypes
 
 
 class AgenticPromptMetadataResponse(BaseModel):

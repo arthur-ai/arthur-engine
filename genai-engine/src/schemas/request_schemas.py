@@ -1,16 +1,24 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Literal, Optional, Union
 from uuid import UUID
 
+from fastapi import HTTPException
 from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic_core import Url
 from sqlalchemy import or_
 from sqlalchemy.orm import Query
+from weaviate.classes.query import BM25Operator
+from weaviate.collections.classes.grpc import METADATA, TargetVectorJoinType
+from weaviate.types import INCLUDE_VECTOR
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
 )
 
 
@@ -112,6 +120,201 @@ class NewDatasetVersionRequest(BaseModel):
 
 class PutModelProviderCredentials(BaseModel):
     api_key: SecretStr = Field(description="The API key for the provider.")
+
+
+class ApiKeyRagAuthenticationConfigRequest(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: SecretStr = Field(description="API key to use for authentication.")
+    host_url: Url = Field(description="URL of host instance to authenticate with.")
+    rag_provider: RagAPIKeyAuthenticationProviderEnum = Field(
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigRequestTypes = Union[ApiKeyRagAuthenticationConfigRequest]
+
+
+class RagProviderConfigurationRequest(BaseModel):
+    authentication_config: RagAuthenticationConfigRequestTypes = Field(
+        description="Configuration of the authentication strategy.",
+    )
+    name: str = Field(description="Name of RAG provider configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )
+
+
+class ApiKeyRagAuthenticationConfigUpdateRequest(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: Optional[SecretStr] = Field(
+        default=None,
+        description="API key to use for authentication.",
+    )
+    host_url: Optional[Url] = Field(
+        default=None,
+        description="URL of host instance to authenticate with.",
+    )
+    rag_provider: Optional[RagAPIKeyAuthenticationProviderEnum] = Field(
+        default=None,
+        description="Name of RAG provider to authenticate with.",
+    )
+
+
+RagAuthenticationConfigUpdateRequestTypes = Union[
+    ApiKeyRagAuthenticationConfigUpdateRequest
+]
+
+
+class RagProviderConfigurationUpdateRequest(BaseModel):
+    authentication_config: Optional[RagAuthenticationConfigUpdateRequestTypes] = Field(
+        default=None,
+        description="Configuration of the authentication strategy.",
+    )
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of RAG provider configuration.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of RAG provider configuration.",
+    )
+
+
+class WeaviateSearchCommonSettings(BaseModel):
+    collection_name: str = Field(
+        description="Name of the vector collection used for the search.",
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        description="Maximum number of objects to return.",
+    )
+    include_vector: Optional[INCLUDE_VECTOR] = Field(
+        default=False,
+        description="Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+    )
+    offset: Optional[int] = Field(
+        default=None,
+        description="Skips first N results in similarity response. Useful for pagination.",
+    )
+    auto_limit: Optional[int] = Field(
+        default=None,
+        description="Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.",
+    )
+    return_metadata: Optional[METADATA] = Field(
+        default=None,
+        description="Specify metadata fields to return.",
+    )
+    return_properties: Optional[List[str]] = Field(
+        default=None,
+        description="Specify which properties to return for each object.",
+    )
+
+
+class WeaviateVectorSimilarityTextSearchSettingsRequest(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+
+    # fields match the names of the inputs to the weaviate near_text function
+    # the only exception is collection_name, which is used to fetch the vector collection used for the similarity search
+    # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.grpc.html#weaviate.collections.grpc.query._QueryGRPC.near_text
+    # left out for now: group_by, rerank, filters, move_to, move_away, include_references
+    query: Union[List[str], str] = Field(
+        description="Input text to find objects with near vectors for.",
+    )
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.",
+        ge=0,
+        le=1,
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for similarity search when using named vectors.",
+    )
+
+    def _to_client_settings_dict(self) -> dict[str, Any]:
+        """Parses settings to the client parameters for the near_text function."""
+        return self.model_dump(
+            exclude={"collection_name", "rag_provider"},
+        )
+
+
+RagVectorSimilarityTextSearchSettingRequestTypes = Union[
+    WeaviateVectorSimilarityTextSearchSettingsRequest
+]
+
+
+class RagVectorSimilarityTextSearchSettingRequest(BaseModel):
+    settings: RagVectorSimilarityTextSearchSettingRequestTypes = Field(
+        description="Settings for the similarity text search request to the vector database.",
+    )
+
+
+class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+
+    # fields match the names of the inputs to the weaviate bm25 function
+    # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
+    # left out filters, rerank, return_references, group_by
+    query: str = Field(
+        description="Input text to find objects with near vectors for.",
+    )
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator",
+    )
+
+    @model_validator(mode="before")
+    def check_operators(cls, values):
+        if values.get("and_operator") and values.get("minimum_match_or_operator"):
+            raise HTTPException(
+                status_code=400,
+                detail="Both and_operator and minimum_match_or_operator cannot be set. The search must either use the or operator (default) or the and operator.",
+                headers={"full_stacktrace": "false"},
+            )
+
+        return values
+
+    def _to_client_settings_dict(self) -> dict[str, Any]:
+        """Parses settings to the client parameters for the near_text function."""
+        settings_dict = self.model_dump(
+            exclude={
+                "collection_name",
+                "rag_provider",
+                "minimum_match_or_operator",
+                "and_operator",
+            },
+        )
+
+        if self.and_operator:
+            settings_dict["operator"] = BM25Operator.and_()
+        elif self.minimum_match_or_operator is not None:
+            settings_dict["operator"] = BM25Operator.or_(
+                minimum_match=self.minimum_match_or_operator,
+            )
+
+        return settings_dict
+
+
+RagKeywordSearchSettingRequestTypes = Union[WeaviateKeywordSearchSettingsRequest]
+
+
+class RagKeywordSearchSettingRequest(BaseModel):
+    settings: RagKeywordSearchSettingRequestTypes = Field(
+        description="Settings for the keyword search request to the vector database.",
+    )
 
 
 class BasePromptFilterRequest(BaseModel, ABC):

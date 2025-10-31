@@ -16,6 +16,7 @@ from arthur_common.models.connectors import (
     AWS_CONNECTOR_SECRET_ACCESS_KEY_FIELD,
     S3_CONNECTOR_ENDPOINT_FIELD,
 )
+
 from connectors.bucket_based_connector import BucketBasedConnector
 from tools.aws_credentials import assume_role
 

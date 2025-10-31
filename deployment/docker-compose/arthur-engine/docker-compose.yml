@@ -1,7 +1,7 @@
 name: arthur-engine
 services:
   db:
-    image: postgres
+    image: postgres:15
     shm_size: 128mb
     ports:
       - "5435:5432"
@@ -12,12 +12,19 @@ services:
       - db_data:/var/lib/postgresql/data
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arthur_genai_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "3030:3030"
     environment:

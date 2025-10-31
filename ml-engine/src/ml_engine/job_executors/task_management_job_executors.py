@@ -36,6 +36,7 @@ from arthur_common.models.task_job_specs import (
     TaskType,
     UpdateModelTaskRulesJobSpec,
 )
+
 from connectors.connector import Connector
 from connectors.shield_connector import ShieldBaseConnector
 from tools.api_client_type_converters import ScopeClientTypeConverter

@@ -5,7 +5,7 @@ import logging
 import os
 
 import sqlalchemy.types as types
-from cryptography.fernet import Fernet, MultiFernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
 logger = logging.getLogger(__name__)
 

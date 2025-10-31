@@ -25,6 +25,10 @@ from db_models.inference_models import (
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
 )
+from db_models.rag_provider_models import (
+    DatabaseRagProviderConfiguration,
+    DatabaseApiKeyRagProviderConfiguration,
+)
 from db_models.rule_models import DatabaseRule, DatabaseRuleData
 from db_models.rule_result_models import (
     DatabaseHallucinationClaim,
@@ -96,4 +100,7 @@ __all__ = [
     "DatabaseDataset",
     # Secret storage models
     "DatabaseSecretStorage",
+    # RAG provider models
+    "DatabaseRagProviderConfiguration",
+    "DatabaseApiKeyRagProviderConfiguration",
 ]

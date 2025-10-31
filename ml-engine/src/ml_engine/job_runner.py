@@ -6,6 +6,7 @@ from threading import Thread
 from typing import Optional, Protocol
 
 from arthur_client.api_bindings import Job, JobRun, JobState
+
 from job_executor import JobExecutor
 
 logger = logging.getLogger()

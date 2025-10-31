@@ -1,11 +1,11 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import List
 
 from fastapi import HTTPException
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
-from typing import List
 
 from clients.llm.llm_client import LLMClient
 from db_models.secret_storage_models import DatabaseSecretStorage

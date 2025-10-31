@@ -55,18 +55,36 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
 
 from config.database_config import DatabaseConfig
+from schemas.enums import (
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
+)
 from schemas.request_schemas import (
+    ApiKeyRagAuthenticationConfigRequest,
+    ApiKeyRagAuthenticationConfigUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    RagKeywordSearchSettingRequest,
+    RagProviderConfigurationRequest,
+    RagProviderConfigurationUpdateRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+    WeaviateKeywordSearchSettingsRequest,
+    WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
+    ConnectionCheckResult,
     DatasetResponse,
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
+    RagProviderConfigurationResponse,
+    RagProviderQueryResponse,
     SearchDatasetsResponse,
+    SearchRagProviderCollectionsResponse,
+    SearchRagProviderConfigurationsResponse,
     SessionListResponse,
     SessionTracesResponse,
     SpanListResponse,
@@ -2411,6 +2429,322 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 ListDatasetVersionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider(
+        self,
+        task_id: str,
+        name: str,
+        description: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+        api_key: str = "test-api-key",
+        host_url: str = "https://test-weaviate.example.com",
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = RagAPIKeyAuthenticationProviderEnum.WEAVIATE,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Create a new RAG provider configuration."""
+        auth_config = ApiKeyRagAuthenticationConfigRequest(
+            api_key=api_key,
+            host_url=host_url,
+            rag_provider=rag_provider,
+        )
+
+        request = RagProviderConfigurationRequest(
+            name=name,
+            description=description,
+            authentication_method=authentication_method,
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_providers",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_provider(
+        self,
+        provider_id: str,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Get a RAG provider configuration by ID."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_providers/{provider_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_rag_provider(
+        self,
+        provider_id: str,
+        name: str = None,
+        description: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = None,
+        api_key: str = None,
+        host_url: str = None,
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = None,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Update a RAG provider configuration."""
+        auth_config = None
+        if any([api_key, host_url, rag_provider]):
+            auth_config = ApiKeyRagAuthenticationConfigUpdateRequest(
+                api_key=api_key,
+                host_url=host_url,
+                rag_provider=rag_provider,
+            )
+
+        request = RagProviderConfigurationUpdateRequest(
+            name=name,
+            description=description,
+            authentication_method=authentication_method,
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v1/rag_providers/{provider_id}",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_provider(self, provider_id: str) -> int:
+        """Delete a RAG provider configuration."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_providers/{provider_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def search_rag_providers(
+        self,
+        task_id: str,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        config_name: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = None,
+        rag_provider_name: RagAPIKeyAuthenticationProviderEnum = None,
+    ) -> tuple[int, SearchRagProviderConfigurationsResponse]:
+        """Search RAG provider configurations for a task."""
+        path = f"api/v1/tasks/{task_id}/rag_providers"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if config_name:
+            params["config_name"] = config_name
+        if authentication_method:
+            params["authentication_method"] = authentication_method
+        if rag_provider_name:
+            params["rag_provider_name"] = rag_provider_name
+
+        resp = self.base_client.get(
+            "{}{}".format(
+                path,
+                "?" + urllib.parse.urlencode(params, doseq=True) if params else "",
+            ),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderConfigurationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def test_rag_provider_connection(
+        self,
+        task_id: str,
+        name: str,
+        description: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+        api_key: str = "test-api-key",
+        host_url: str = "https://test-weaviate.example.com",
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = RagAPIKeyAuthenticationProviderEnum.WEAVIATE,
+    ) -> tuple[int, ConnectionCheckResult]:
+        """Test a RAG provider connection configuration."""
+        auth_config = ApiKeyRagAuthenticationConfigRequest(
+            api_key=api_key,
+            host_url=host_url,
+            rag_provider=rag_provider,
+        )
+
+        request = RagProviderConfigurationRequest(
+            name=name,
+            description=description,
+            authentication_method=authentication_method,
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_providers/test_connection",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ConnectionCheckResult.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_similarity_text_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        certainty: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        distance: float = None,
+        auto_limit: int = None,
+        move_to: dict = None,
+        move_away: dict = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a similarity text search on a RAG provider."""
+        weaviate_settings = WeaviateVectorSimilarityTextSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            certainty=certainty,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            distance=distance,
+            auto_limit=auto_limit,
+            move_to=move_to,
+            move_away=move_away,
+        )
+
+        request = RagVectorSimilarityTextSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/similarity_text_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_keyword_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a keyword search on a RAG provider."""
+        weaviate_settings = WeaviateKeywordSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+            minimum_match_or_operator=minimum_match_or_operator,
+            and_operator=and_operator,
+        )
+
+        request = RagKeywordSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/keyword_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def list_rag_provider_collections(
+        self,
+        provider_id: str,
+    ) -> tuple[int, SearchRagProviderCollectionsResponse]:
+        """List collections for a RAG provider."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_providers/{provider_id}/collections",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderCollectionsResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
