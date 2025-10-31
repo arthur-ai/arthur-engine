@@ -1,7 +1,8 @@
+import useSnackbar from "@/hooks/useSnackbar";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { Alert, Snackbar } from "@mui/material";
 import Chip from "@mui/material/Chip";
 import { SxProps, Theme } from "@mui/material/styles";
-import { toast } from "sonner";
 
 type Props = {
   label: string;
@@ -31,6 +32,8 @@ export const CopyableChip = ({
   propagateClick = false,
   sx,
 }: Props) => {
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
   const handleCopy = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!propagateClick) {
       e.stopPropagation();
@@ -38,13 +41,13 @@ export const CopyableChip = ({
 
     try {
       await navigator.clipboard.writeText(label);
-      toast.success("Copied to clipboard!");
+      showSnackbar("Copied to clipboard!", "success");
 
       // Call optional callback
       onCopy?.(label);
     } catch (error) {
       console.error("Failed to copy to clipboard:", error);
-      toast("Failed to copy to clipboard");
+      showSnackbar("Failed to copy to clipboard", "error");
     }
   };
 
@@ -72,6 +75,10 @@ export const CopyableChip = ({
           ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
         ]}
       />
+
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
+      </Snackbar>
     </>
   );
 };

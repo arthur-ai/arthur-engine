@@ -44,13 +44,11 @@
     "react-syntax-highlighter": "^15.6.6",
     "react-use-measure": "^2.1.7",
     "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7",
     "swagger-typescript-api": "^13.2.13",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.13",
     "usehooks-ts": "^3.1.1",
     "uuid": "^13.0.0",
-    "vaul": "^1.1.2",
     "weaviate-client": "^3.8.1",
     "zod": "^4.1.12"
   },

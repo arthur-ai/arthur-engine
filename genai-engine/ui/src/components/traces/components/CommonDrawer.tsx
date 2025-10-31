@@ -1,14 +1,14 @@
-import { Box, Breadcrumbs, Button, IconButton, Stack } from "@mui/material";
+import { Breadcrumbs, Button, IconButton, Stack } from "@mui/material";
 import { AnimatePresence, motion } from "framer-motion";
-import { lazy, Suspense, useLayoutEffect } from "react";
+import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { Drawer } from "vaul";
 
 import { Level, useTracesStore } from "../store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
 import CloseIcon from "@mui/icons-material/Close";
+import { Drawer } from "@/components/common/Drawer";
 
 const CONTENT_MAP = {
   trace: lazy(() =>
@@ -55,85 +55,64 @@ export const CommonDrawer = () => {
   const shouldRender = !!Content;
 
   return (
-    <Drawer.Root
-      open={shouldRender}
-      onOpenChange={handleClose}
-      direction="right"
-    >
-      <Drawer.Portal>
-        <Box
-          component={Drawer.Overlay}
+    <Drawer open={shouldRender} onClose={handleClose}>
+      <Drawer.Content
+        slotProps={{
+          paper: {
+            sx: {
+              width: "90%",
+            },
+          },
+        }}
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
           sx={{
-            backgroundColor: "oklch(0 0 360 / 0.5)",
-            position: "fixed",
-            inset: 0,
-            zIndex: 10,
-          }}
-        />
-
-        <Box
-          component={Drawer.Content}
-          sx={{
-            backgroundColor: "background.paper",
-            position: "fixed",
-            insetBlock: 0,
-            right: 0,
-            zIndex: 11,
-            width: "90%",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
+            px: 4,
+            py: 1,
+            backgroundColor: "grey.300",
           }}
         >
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{
-              px: 4,
-              py: 1,
-              backgroundColor: "grey.300",
-            }}
+          <Breadcrumbs aria-label="Drawer history">
+            {history.slice(0, history.length - 1).map((entry) => (
+              <Button
+                key={entry.id}
+                variant="text"
+                onClick={() => handleBreadcrumbNavigation(entry)}
+              >
+                {entry.for} ({entry.id})
+              </Button>
+            ))}
+            <Button disabled>{latestEntry?.for}</Button>
+          </Breadcrumbs>
+          <IconButton onClick={handleClose}>
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={latestEntry?.id}
+            initial={{ opacity: 0, x: -64, filter: "blur(8px)" }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, x: 64, filter: "blur(8px)" }}
+            transition={{ type: "spring", duration: 0.3 }}
+            className="w-full flex-1 overflow-y-auto"
           >
-            <Breadcrumbs aria-label="Drawer history">
-              {history.slice(0, history.length - 1).map((entry) => (
-                <Button
-                  key={entry.id}
-                  variant="text"
-                  onClick={() => handleBreadcrumbNavigation(entry)}
-                >
-                  {entry.for} ({entry.id})
-                </Button>
-              ))}
-              <Button disabled>{latestEntry?.for}</Button>
-            </Breadcrumbs>
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Stack>
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={latestEntry?.id}
-              initial={{ opacity: 0, x: -64, filter: "blur(8px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: 64, filter: "blur(8px)" }}
-              transition={{ type: "spring", duration: 0.3 }}
-              className="w-full flex-1 overflow-y-auto"
-            >
-              {Content && latestEntry && (
-                <ErrorBoundary
-                  key={latestEntry.id}
-                  fallback={<div>Something went wrong</div>}
-                >
-                  <Suspense fallback={<TraceContentSkeleton />}>
-                    <Content id={latestEntry?.id} />
-                  </Suspense>
-                </ErrorBoundary>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </Box>
-      </Drawer.Portal>
-    </Drawer.Root>
+            {Content && latestEntry && (
+              <ErrorBoundary
+                key={latestEntry.id}
+                fallback={<div>Something went wrong</div>}
+              >
+                <Suspense fallback={<TraceContentSkeleton />}>
+                  <Content id={latestEntry?.id} />
+                </Suspense>
+              </ErrorBoundary>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </Drawer.Content>
+    </Drawer>
   );
 };
