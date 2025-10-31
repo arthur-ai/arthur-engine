@@ -52,6 +52,8 @@ class TreeBuildingService:
                 prompt_token_cost = metadata.prompt_token_cost
                 completion_token_cost = metadata.completion_token_cost
                 total_token_cost = metadata.total_token_cost
+                input_content = metadata.input_content
+                output_content = metadata.output_content
             else:
                 # Calculate times from spans, aggregate token/cost from all spans in this trace
                 start_time = min(span.start_time for span in trace_spans)
@@ -65,6 +67,8 @@ class TreeBuildingService:
                 prompt_token_cost = None
                 completion_token_cost = None
                 total_token_cost = None
+                input_content = None
+                output_content = None
 
                 for span in trace_spans:
                     prompt_token_count = safe_add(
@@ -96,6 +100,8 @@ class TreeBuildingService:
                 trace_id=trace_id,
                 start_time=start_time,
                 end_time=end_time,
+                input_content=input_content,
+                output_content=output_content,
                 root_spans=root_spans,
                 # Add aggregated token/cost fields
                 prompt_token_count=prompt_token_count,

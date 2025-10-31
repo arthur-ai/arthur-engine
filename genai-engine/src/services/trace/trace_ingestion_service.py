@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from datetime import datetime
@@ -321,9 +322,6 @@ class TraceIngestionService:
             "prompt_token_count",
             "completion_token_count",
             "total_token_count",
-        ]
-
-        COST_FIELDS = [
             "prompt_token_cost",
             "completion_token_cost",
             "total_token_cost",
@@ -342,7 +340,10 @@ class TraceIngestionService:
                     "end_time": span.end_time,
                     "span_count": 0,
                     "updated_at": current_time,
-                    **{field: None for field in TOKEN_FIELDS + COST_FIELDS},
+                    "input_content": None,
+                    "output_content": None,
+                    "earliest_root_start_time": None,  # Track time of earliest root span
+                    **{field: None for field in TOKEN_FIELDS},
                 }
 
             # Aggregate within this batch (handles multiple spans per trace in one ingestion)
@@ -364,7 +365,34 @@ class TraceIngestionService:
             if span.user_id and not trace_updates[trace_id]["user_id"]:
                 trace_updates[trace_id]["user_id"] = span.user_id
 
-            for field in TOKEN_FIELDS + COST_FIELDS:
+            # Extract input/output from root spans (no parent_span_id)
+            # Only use the earliest root span for each trace
+            if not span.parent_span_id:
+                earliest_time = trace_updates[trace_id]["earliest_root_start_time"]
+                if earliest_time is None or span.start_time < earliest_time:
+                    # This is the earliest root span so far, extract its input/output
+                    trace_updates[trace_id][
+                        "earliest_root_start_time"
+                    ] = span.start_time
+
+                    # Extract and convert to string for database storage
+                    input_value = trace_utils.get_nested_value(
+                        span.raw_data,
+                        "attributes.input.value",
+                    )
+                    output_value = trace_utils.get_nested_value(
+                        span.raw_data,
+                        "attributes.output.value",
+                    )
+
+                    trace_updates[trace_id]["input_content"] = (
+                        self._convert_to_string_for_db(input_value)
+                    )
+                    trace_updates[trace_id]["output_content"] = (
+                        self._convert_to_string_for_db(output_value)
+                    )
+
+            for field in TOKEN_FIELDS:
                 span_value = getattr(span, field)
                 trace_updates[trace_id][field] = safe_add(
                     trace_updates[trace_id][field],
@@ -373,6 +401,10 @@ class TraceIngestionService:
 
         if not trace_updates:
             return
+
+        # Remove tracking field before database upsert (not a database column)
+        for trace_data in trace_updates.values():
+            trace_data.pop("earliest_root_start_time", None)
 
         # Single native upsert operation - replaces complex manual logic
         values_list = list(trace_updates.values())
@@ -463,5 +495,23 @@ def _build_upsert_set_dict(self, stmt, min_func, max_func) -> dict:
             DatabaseTraceMetadata.total_token_cost,
             stmt.excluded.total_token_cost,
         ),
+        # Prefer new non-null values for input/output content
+        # This allows updates if a new batch provides a better root span
+        input_content=func.coalesce(
+            stmt.excluded.input_content,
+            DatabaseTraceMetadata.input_content,
+        ),
+        output_content=func.coalesce(
+            stmt.excluded.output_content,
+            DatabaseTraceMetadata.output_content,
+        ),
         updated_at=stmt.excluded.updated_at,
     )
+
+    def _input_output_to_string_helper(self, value) -> Optional[str]:
+        """Convert a value to string for database storage."""
+        if value is None:
+            return None
+        if isinstance(value, (dict, list)):
+            return json.dumps(value)
+        return str(value)
