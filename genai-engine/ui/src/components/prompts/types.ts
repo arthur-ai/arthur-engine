@@ -174,6 +174,7 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
+  running: boolean;
   runResponse: AgenticPromptRunResponse | null;
   responseFormat: string | undefined;
 }

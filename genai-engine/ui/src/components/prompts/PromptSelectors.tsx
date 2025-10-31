@@ -205,7 +205,7 @@ const PromptSelectors = ({
 
   const handleProviderChange = (
     _event: SyntheticEvent<Element, Event>,
-    newValue: string | null
+    newValue: ModelProvider | null
   ) => {
     dispatch({
       type: "updatePromptProvider",
@@ -228,7 +228,10 @@ const PromptSelectors = ({
     if (state.enabledProviders.length > 0) {
       dispatch({
         type: "updatePromptProvider",
-        payload: { promptId: prompt.id, modelProvider: state.enabledProviders[0] },
+        payload: {
+          promptId: prompt.id,
+          modelProvider: state.enabledProviders[0],
+        },
       });
     }
   }, [state.enabledProviders, dispatch, prompt.id]);
@@ -320,10 +323,10 @@ const PromptSelectors = ({
       </div>
       <div className="w-1/3">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
-          <Autocomplete
+          <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
             options={state.enabledProviders}
-            value={prompt.modelProvider || ""}
+            value={prompt.modelProvider || null}
             onChange={handleProviderChange}
             disabled={providerDisabled}
             renderInput={(params) => (

@@ -133,6 +133,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                   aria-label="run prompt"
                   onClick={handleRunPrompt}
                   disabled={runDisabled}
+                  loading={prompt.running}
                 >
                   <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
                 </IconButton>
@@ -187,6 +188,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           <Paper elevation={2} className="p-1">
             <OutputField
               promptId={prompt.id}
+              running={prompt.running || false}
               runResponse={prompt.runResponse}
               responseFormat={prompt.responseFormat}
             />

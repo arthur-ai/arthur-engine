@@ -355,14 +355,14 @@ export const toCompletionRequest = (
         : undefined,
     tool_choice: prompt.toolChoice,
     temperature: prompt.modelParameters.temperature,
-    top_p: prompt.modelParameters.top_p,
+    // top_p: prompt.modelParameters.top_p,
     max_tokens: prompt.modelParameters.max_tokens,
     max_completion_tokens: prompt.modelParameters.max_completion_tokens,
-    frequency_penalty: prompt.modelParameters.frequency_penalty,
-    presence_penalty: prompt.modelParameters.presence_penalty,
+    // frequency_penalty: prompt.modelParameters.frequency_penalty,
+    // presence_penalty: prompt.modelParameters.presence_penalty,
     stop: prompt.modelParameters.stop,
     seed: prompt.modelParameters.seed,
-    reasoning_effort: prompt.modelParameters.reasoning_effort,
+    // reasoning_effort: prompt.modelParameters.reasoning_effort,
     response_format: prompt.responseFormat
       ? JSON.parse(prompt.responseFormat)
       : null,

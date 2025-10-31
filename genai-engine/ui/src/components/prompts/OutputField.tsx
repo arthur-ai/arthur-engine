@@ -13,6 +13,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
@@ -35,6 +36,7 @@ const getFormatValue = (format: string | undefined) => {
 
 const OutputField = ({
   promptId,
+  running,
   runResponse,
   responseFormat,
 }: OutputFieldProps) => {
@@ -93,10 +95,10 @@ const OutputField = ({
       >
         <div className="flex items-center">
           {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          <span>Output</span>
+          <span>Response</span>
         </div>
         <div className="flex items-center">
-          <Tooltip title="Format Output">
+          <Tooltip title="Format Response">
             <IconButton aria-label="format_output" onClick={handleOpen}>
               <DataObjectIcon color="primary" />
             </IconButton>
@@ -105,6 +107,13 @@ const OutputField = ({
       </div>
       <Collapse in={isExpanded}>
         <div>{runResponse?.content}</div>
+        {running ? (
+          <>
+            <Skeleton variant="text" width="92%" />
+            <Skeleton variant="text" width="99%" />
+            <Skeleton variant="text" width="96%" />
+          </>
+        ) : null}
         <Divider />
         <div className="flex gap-3">
           {/* eslint-disable-next-line no-constant-condition */}
