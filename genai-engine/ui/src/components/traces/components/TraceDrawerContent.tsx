@@ -130,7 +130,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
             >
               Refresh Metrics
             </Button>
-            <AddToDatasetDrawer traceId={id} />
+            {/* <AddToDatasetDrawer traceId={id} /> */}
           </ButtonGroup>
         </Stack>
       </Stack>
