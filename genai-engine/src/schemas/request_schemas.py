@@ -9,7 +9,11 @@ from pydantic_core import Url
 from sqlalchemy import or_
 from sqlalchemy.orm import Query
 from weaviate.classes.query import BM25Operator
-from weaviate.collections.classes.grpc import METADATA, TargetVectorJoinType
+from weaviate.collections.classes.grpc import (
+    METADATA,
+    HybridFusion,
+    TargetVectorJoinType,
+)
 from weaviate.types import INCLUDE_VECTOR
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
@@ -265,7 +269,7 @@ class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
     # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
     # left out filters, rerank, return_references, group_by
     query: str = Field(
-        description="Input text to find objects with near vectors for.",
+        description="Input text to find objects with keyword matches.",
     )
     minimum_match_or_operator: Optional[int] = Field(
         default=None,
@@ -288,7 +292,7 @@ class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
         return values
 
     def _to_client_settings_dict(self) -> dict[str, Any]:
-        """Parses settings to the client parameters for the near_text function."""
+        """Parses settings to the client parameters for the bm25 function."""
         settings_dict = self.model_dump(
             exclude={
                 "collection_name",
@@ -314,6 +318,73 @@ RagKeywordSearchSettingRequestTypes = Union[WeaviateKeywordSearchSettingsRequest
 class RagKeywordSearchSettingRequest(BaseModel):
     settings: RagKeywordSearchSettingRequestTypes = Field(
         description="Settings for the keyword search request to the vector database.",
+    )
+
+
+class WeaviateHybridSearchSettingsRequest(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+
+    # fields match the names of the inputs to the weaviate hybrid function
+    # some are left out for now: return_references, group_by, rerank, filters, vector, target_vector
+    query: str = Field(
+        description="Input text to find objects with near vectors or keyword matches.",
+    )
+    alpha: float = Field(
+        default=0.7,
+        description="Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
+    )
+    query_properties: Optional[list[str]] = Field(
+        default=None,
+        description="Apply keyword search to only a specified subset of object properties.",
+    )
+    fusion_type: Optional[HybridFusion] = Field(
+        default=None,
+        description="Set the fusion algorithm to use. Default is Relative Score Fusion.",
+    )
+    max_vector_distance: Optional[float] = Field(
+        default=None,
+        description="Maximum threshold for the vector search component.",
+    )
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for vector search when using named vectors.",
+    )
+
+    def _to_client_settings_dict(self) -> dict[str, Any]:
+        """Parses settings to the client parameters for the hybrid function."""
+        settings_dict = self.model_dump(
+            exclude={
+                "collection_name",
+                "rag_provider",
+                "minimum_match_or_operator",
+                "and_operator",
+            },
+        )
+
+        if self.and_operator:
+            settings_dict["operator"] = BM25Operator.and_()
+        elif self.minimum_match_or_operator is not None:
+            settings_dict["operator"] = BM25Operator.or_(
+                minimum_match=self.minimum_match_or_operator,
+            )
+
+        return settings_dict
+
+
+RagHybridSearchSettingRequestTypes = Union[WeaviateHybridSearchSettingsRequest]
+
+
+class RagHybridSearchSettingRequest(BaseModel):
+    settings: RagHybridSearchSettingRequestTypes = Field(
+        description="Settings for the hybrid search request to the vector database.",
     )
 
 
