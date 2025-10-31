@@ -41,18 +41,9 @@ class DatabaseTraceMetadata(Base):
         nullable=True,
     )
     total_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    prompt_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
-    completion_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
-    total_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
+    prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
@@ -133,18 +124,9 @@ class DatabaseSpan(Base):
         nullable=True,
     )
     total_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    prompt_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
-    completion_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
-    total_token_cost: Mapped[Optional[float]] = mapped_column(
-        postgresql.DOUBLE_PRECISION.with_variant(Float, "sqlite"),
-        nullable=True,
-    )
+    prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
