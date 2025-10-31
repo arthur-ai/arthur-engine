@@ -6,7 +6,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Highlight } from "@/components/common/Highlight";
 import { useTracesHistoryStore } from "../../stores/history.store";
 import dayjs from "dayjs";
-import { formatDate } from "@/utils/date";
+import { formatDate } from "@/utils/formatters";
 import { TraceDrawerContent } from "../TraceDrawerContent";
 
 type Props = {

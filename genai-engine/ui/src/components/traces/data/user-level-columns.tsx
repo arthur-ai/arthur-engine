@@ -3,7 +3,7 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 import { CopyableChip } from "@/components/common";
 import { TraceUserMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/date";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<TraceUserMetadataResponse>();
 

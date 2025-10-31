@@ -1,12 +1,12 @@
 import { Accordion } from "@base-ui-components/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Box } from "@mui/material";
+import { Box, Divider } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { cloneElement } from "react";
 
 import { useTracesHistoryStore } from "../../stores/history.store";
-import { getSpanDuration, getSpanIcon } from "../../utils/spans";
+import { getSpanDuration, getSpanIcon, getSpanType } from "../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { cn } from "@/utils/cn";
@@ -85,7 +85,7 @@ const SpanTreeItem = ({
           alignItems="center"
           spacing={1}
           data-has-children={hasChildren ? "" : undefined}
-          className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75"
+          className="group-data-selected:rounded-t rounded-b group-data-selected:data-open:data-has-children:rounded-b-none transition-all duration-75 cursor-pointer select-none"
           sx={{
             "--offset-start": "4px",
             "--offset-multiply": 16,
@@ -122,19 +122,24 @@ const SpanTreeItem = ({
         {icon && (
           <div
             className={cn(
-              "flex items-center justify-center p-1 border border-gray-300 rounded-full "
+              "flex items-center justify-center p-1 border border-gray-300 rounded-full"
             )}
           >
             {icon}
           </div>
         )}
-        <Stack direction="column" alignItems="flex-start" spacing={-0.5} ml={1}>
+        <Stack direction="column" alignItems="flex-start" gap={0} ml={1}>
           <Typography variant="body2" fontWeight={500} fontSize={12}>
             {span.span_name}
           </Typography>
-          <Typography variant="caption" color="inherit" fontSize={10}>
-            {getSpanDuration(span)}ms
-          </Typography>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Typography variant="caption" color="inherit" fontSize={10}>
+              {getSpanDuration(span)}ms
+            </Typography>
+            <Typography variant="caption" color="inherit" fontSize={10}>
+              {getSpanType(span)}
+            </Typography>
+          </Stack>
         </Stack>
       </Stack>
     </Accordion.Header>

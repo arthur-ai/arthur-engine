@@ -9,11 +9,30 @@ import { SPAN_TYPE_ICONS } from "../constants";
 import { NestedSpanWithMetricsResponse, TraceResponse } from "@/lib/api";
 
 export function getSpanInput(span?: NestedSpanWithMetricsResponse) {
-  return span?.raw_data.attributes?.[SemanticConventions.INPUT_VALUE] || null;
+  return (
+    getNestedValue<string>(
+      span?.raw_data.attributes,
+      SemanticConventions.INPUT_VALUE
+    ) || null
+  );
 }
 
 export function getSpanOutput(span?: NestedSpanWithMetricsResponse) {
-  return span?.raw_data.attributes?.[SemanticConventions.OUTPUT_VALUE] || null;
+  return (
+    getNestedValue<string>(
+      span?.raw_data.attributes,
+      SemanticConventions.OUTPUT_VALUE
+    ) || null
+  );
+}
+
+export function getSpanInputMimeType(span?: NestedSpanWithMetricsResponse) {
+  return (
+    getNestedValue<"text/plain" | "application/json">(
+      span?.raw_data.attributes,
+      SemanticConventions.INPUT_MIME_TYPE
+    ) || null
+  );
 }
 
 export function getSpanDuration(span?: NestedSpanWithMetricsResponse) {
@@ -42,26 +61,35 @@ export function flattenSpans(
 
 export function getSpanModel(span?: NestedSpanWithMetricsResponse) {
   return (
-    (span?.raw_data.attributes?.[
+    getNestedValue<string>(
+      span?.raw_data.attributes,
       SemanticConventions.LLM_MODEL_NAME
-    ] as string) || null
+    ) || null
   );
 }
 
 export function getSpanCost(span?: NestedSpanWithMetricsResponse) {
-  return Number(span?.raw_data.attributes?.[SemanticConventions.LLM_COST]) || 0;
+  return (
+    Number(
+      getNestedValue<number>(
+        span?.raw_data.attributes,
+        SemanticConventions.LLM_COST
+      )
+    ) || 0
+  );
 }
 
 export function getSpanType(span?: NestedSpanWithMetricsResponse) {
-  return span?.raw_data.attributes?.[
+  return getNestedValue<OpenInferenceSpanKind>(
+    span?.raw_data.attributes,
     SemanticConventions.OPENINFERENCE_SPAN_KIND
-  ] as OpenInferenceSpanKind;
+  );
 }
 
 export function getSpanIcon(span?: NestedSpanWithMetricsResponse) {
-  const type = getSpanType(span);
+  const type = getSpanType(span) ?? OpenInferenceSpanKind.AGENT;
 
-  const icon = SPAN_TYPE_ICONS[type] ?? SPAN_TYPE_ICONS.AGENT;
+  const icon = SPAN_TYPE_ICONS[type];
 
   return icon;
 }
@@ -71,4 +99,30 @@ export function isSpanOfType(
   type: OpenInferenceSpanKind
 ) {
   return getSpanType(span) === type;
+}
+
+export function getNestedValue<Return extends any>(
+  obj: unknown,
+  path: string
+): Return | undefined {
+  if (typeof obj !== "object" || obj === null) return undefined;
+
+  const keys = path.split(".");
+  let current = obj;
+
+  for (const key of keys) {
+    if (current == null) return undefined;
+
+    // handle numeric keys for arrays
+    const index = Number(key);
+    if (!Number.isNaN(index) && Array.isArray(current)) {
+      current = current[index];
+    } else if (typeof current === "object" && key in current) {
+      current = current[key as keyof typeof current];
+    } else {
+      return undefined;
+    }
+  }
+
+  return current as Return;
 }

@@ -27,32 +27,26 @@ export const LLMOutputMessage = z.object({
   object: z.any(),
 });
 
-export const MessageContent = z
-  .discriminatedUnion("type", [TextContent, ToolCallContent, ToolResultContent])
-  .catch({ type: "text", text: "-" });
-
 export const Message = z.discriminatedUnion("role", [
   z.object({
     role: z.literal("system"),
-    content: z.array(MessageContent),
+    content: z.string(),
   }),
   z.object({
     role: z.literal("user"),
-    content: z.array(MessageContent),
+    content: z.string(),
   }),
   z.object({
     role: z.literal("assistant"),
-    content: z.array(MessageContent),
+    content: z.string(),
   }),
   z.object({
     role: z.literal("tool"),
-    content: z.array(MessageContent),
+    content: z.string(),
   }),
 ]);
 
 export type Message = z.infer<typeof Message>;
-
-export type MessageContent = z.infer<typeof MessageContent>;
 
 export type TextContent = z.infer<typeof TextContent>;
 export type ToolCallContent = z.infer<typeof ToolCallContent>;

@@ -1,11 +1,14 @@
-import {
-  OpenInferenceSpanKind,
-  SemanticConventions,
-} from "@arizeai/openinference-semantic-conventions";
-import { Box, Paper } from "@mui/material";
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { Box, Chip, Paper } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
-import { getSpanCost, getSpanModel } from "../utils/spans";
+import {
+  getSpanCost,
+  getSpanInput,
+  getSpanInputMimeType,
+  getSpanModel,
+  getSpanOutput,
+} from "../utils/spans";
 
 import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
@@ -17,18 +20,17 @@ import {
   getOutputMessages,
   getOutputTokens,
   getTotalTokens,
-  isLLMOutputMessage,
   tryFormatJson,
 } from "@/utils/llm";
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
 import { TokenCountWidget } from "../components/widgets/TokenCount";
+import { formatCurrency } from "@/utils/formatters";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
-  const mime: string =
-    span.raw_data.attributes[SemanticConventions.INPUT_MIME_TYPE] ?? undefined;
+  const mime = getSpanInputMimeType(span);
   let type = "none";
 
-  if (mime?.startsWith("application/json")) {
+  if (mime === "application/json") {
     type = "json";
   }
 
@@ -41,12 +43,7 @@ const PANELS = {
     render: (span: NestedSpanWithMetricsResponse) => {
       const { type } = getHighlightType(span);
       return (
-        <Highlight
-          code={tryFormatJson(
-            span.raw_data.attributes[SemanticConventions.INPUT_VALUE]
-          )}
-          language={type}
-        />
+        <Highlight code={tryFormatJson(getSpanInput(span))} language={type} />
       );
     },
     defaultOpen: true,
@@ -56,12 +53,7 @@ const PANELS = {
     render: (span: NestedSpanWithMetricsResponse) => {
       const { type } = getHighlightType(span);
       return (
-        <Highlight
-          code={tryFormatJson(
-            span.raw_data.attributes[SemanticConventions.OUTPUT_VALUE]
-          )}
-          language={type}
-        />
+        <Highlight code={tryFormatJson(getSpanOutput(span))} language={type} />
       );
     },
     defaultOpen: true,
@@ -124,7 +116,7 @@ const spanDetailsStrategy = [
                 p={1}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                {messages.map((message, index) => (
+                {messages.map(({ message }, index) => (
                   <MessageRenderer message={message} key={index} />
                 ))}
               </Box>
@@ -165,13 +157,9 @@ const spanDetailsStrategy = [
                 p={1}
                 sx={{ display: "flex", flexDirection: "column", gap: 1 }}
               >
-                {messages.map((message, index) =>
-                  isLLMOutputMessage(message) ? (
-                    <OutputMessageRenderer message={message} key={index} />
-                  ) : (
-                    <MessageRenderer message={message} key={index} />
-                  )
-                )}
+                {messages.map((message, index) => (
+                  <MessageRenderer message={message.message} key={index} />
+                ))}
               </Box>
             </Paper>
           );
@@ -187,9 +175,7 @@ const spanDetailsStrategy = [
           const model = getSpanModel(span);
 
           return (
-            <Typography variant="body2" color="text.secondary">
-              model: {model}
-            </Typography>
+            <Chip label={`model: ${model}`} variant="outlined" size="small" />
           );
         },
       },
@@ -198,9 +184,11 @@ const spanDetailsStrategy = [
           const cost = getSpanCost(span);
 
           return (
-            <Typography variant="body2" color="text.secondary">
-              cost: ${cost.toFixed(5)}
-            </Typography>
+            <Chip
+              label={`cost: ${formatCurrency(cost)}`}
+              variant="outlined"
+              size="small"
+            />
           );
         },
       },

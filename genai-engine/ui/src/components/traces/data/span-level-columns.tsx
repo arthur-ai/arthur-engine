@@ -1,10 +1,9 @@
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
-import dayjs from "dayjs";
 
 import { CopyableChip } from "@/components/common";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/date";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 

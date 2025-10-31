@@ -5,7 +5,7 @@ import { Chip } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import dayjs from "dayjs";
-import { createContext, useContext } from "react";
+import { createContext, Fragment, useContext } from "react";
 
 import {
   getSpanDetailsStrategy,
@@ -16,7 +16,7 @@ import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatDate } from "@/utils/date";
+import { formatDate } from "@/utils/formatters";
 
 const SpanDetailsContext = createContext<{
   span: NestedSpanWithMetricsResponse;
@@ -149,12 +149,7 @@ export const SpanDetailsWidgets = () => {
   return (
     <Stack direction="row" gap={1} flexWrap="wrap">
       {strategy.widgets.map((widget, index) => (
-        <Chip
-          key={index}
-          variant="outlined"
-          size="small"
-          label={widget.render(span)}
-        />
+        <Fragment key={index}>{widget.render(span)}</Fragment>
       ))}
     </Stack>
   );
