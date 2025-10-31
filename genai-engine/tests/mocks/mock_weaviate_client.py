@@ -4,15 +4,18 @@ from uuid import uuid4
 from clients.rag_providers.rag_provider_client import RagProviderClient
 from schemas.enums import ConnectionCheckOutcome
 from schemas.internal_schemas import RagProviderConfiguration
-from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
+from schemas.request_schemas import (
+    RagKeywordSearchSettingRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+)
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderCollectionResponse,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
     SearchRagProviderCollectionsResponse,
-    WeaviateSimilaritySearchMetadata,
-    WeaviateSimilaritySearchTextResult,
-    WeaviateSimilarityTextSearchResponse,
+    WeaviateQueryResult,
+    WeaviateQueryResultMetadata,
+    WeaviateQueryResults,
 )
 
 
@@ -80,20 +83,13 @@ class MockWeaviateClient(RagProviderClient):
             rag_provider_collections=collections,
         )
 
-    def vector_similarity_text_search(
-        self,
-        settings_request: RagVectorSimilarityTextSearchSettingRequest,
-    ) -> RagProviderSimilarityTextSearchResponse:
-        """Mock vector_similarity_text_search method."""
-        if self.search_error:
-            from fastapi import HTTPException
+    def _mock_results_to_arthur_response(self) -> RagProviderQueryResponse:
+        """Helper method to convert mock search results to Arthur response format.
 
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error querying Weaviate: {self.search_error}.",
-            )
-
-        # Convert mock results to WeaviateSimilaritySearchTextResult objects
+        Reuses the same logic for both vector_similarity_text_search and keyword_search,
+        similar to how the real WeaviateClient uses _client_result_to_arthur_response.
+        """
+        # Convert mock results to WeaviateQueryResult objects
         mock_objects = []
         for result in self.search_results:
             mock_obj = Mock()
@@ -115,13 +111,13 @@ class MockWeaviateClient(RagProviderClient):
             mock_obj.vector = result.get("vector", None)
             mock_objects.append(mock_obj)
 
-        return RagProviderSimilarityTextSearchResponse(
-            response=WeaviateSimilarityTextSearchResponse(
+        return RagProviderQueryResponse(
+            response=WeaviateQueryResults(
                 objects=[
-                    WeaviateSimilaritySearchTextResult(
+                    WeaviateQueryResult(
                         uuid=obj.uuid,
                         metadata=(
-                            WeaviateSimilaritySearchMetadata(
+                            WeaviateQueryResultMetadata(
                                 creation_time=obj.metadata.creation_time,
                                 last_update_time=obj.metadata.last_update_time,
                                 distance=obj.metadata.distance,
@@ -140,6 +136,36 @@ class MockWeaviateClient(RagProviderClient):
                 ],
             ),
         )
+
+    def vector_similarity_text_search(
+        self,
+        settings_request: RagVectorSimilarityTextSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        """Mock vector_similarity_text_search method."""
+        if self.search_error:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {self.search_error}.",
+            )
+
+        return self._mock_results_to_arthur_response()
+
+    def keyword_search(
+        self,
+        settings_request: RagKeywordSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        """Mock keyword_search method."""
+        if self.search_error:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {self.search_error}.",
+            )
+
+        return self._mock_results_to_arthur_response()
 
 
 class MockWeaviateClientFactory:

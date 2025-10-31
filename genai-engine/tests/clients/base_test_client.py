@@ -68,9 +68,11 @@ from schemas.request_schemas import (
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
+    WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
@@ -79,7 +81,7 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
@@ -2644,7 +2646,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         auto_limit: int = None,
         move_to: dict = None,
         move_away: dict = None,
-    ) -> tuple[int, RagProviderSimilarityTextSearchResponse]:
+    ) -> tuple[int, RagProviderQueryResponse]:
         """Execute a similarity text search on a RAG provider."""
         weaviate_settings = WeaviateVectorSimilarityTextSearchSettingsRequest(
             rag_provider=RagProviderEnum.WEAVIATE,
@@ -2675,7 +2677,53 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagProviderSimilarityTextSearchResponse.model_validate(resp.json())
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_keyword_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a keyword search on a RAG provider."""
+        weaviate_settings = WeaviateKeywordSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+            minimum_match_or_operator=minimum_match_or_operator,
+            and_operator=and_operator,
+        )
+
+        request = RagKeywordSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/keyword_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

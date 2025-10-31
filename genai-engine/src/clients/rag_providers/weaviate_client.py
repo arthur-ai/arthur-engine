@@ -1,6 +1,8 @@
 import weaviate
 from fastapi import HTTPException
 from weaviate.classes.init import Auth
+from weaviate.collections.classes.internal import CrossReferences, QueryReturn
+from weaviate.collections.classes.types import Properties
 from weaviate.exceptions import WeaviateBaseError, WeaviateQueryError
 
 from clients.rag_providers.rag_provider_client import RagProviderClient
@@ -9,15 +11,18 @@ from schemas.internal_schemas import (
     ApiKeyRagAuthenticationConfig,
     RagProviderConfiguration,
 )
-from schemas.request_schemas import RagVectorSimilarityTextSearchSettingRequest
+from schemas.request_schemas import (
+    RagKeywordSearchSettingRequest,
+    RagVectorSimilarityTextSearchSettingRequest,
+)
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderCollectionResponse,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
     SearchRagProviderCollectionsResponse,
-    WeaviateSimilaritySearchMetadata,
-    WeaviateSimilaritySearchTextResult,
-    WeaviateSimilarityTextSearchResponse,
+    WeaviateQueryResult,
+    WeaviateQueryResultMetadata,
+    WeaviateQueryResults,
 )
 
 
@@ -82,34 +87,17 @@ class WeaviateClient(RagProviderClient):
             connection_check_outcome=ConnectionCheckOutcome.PASSED,
         )
 
-    def vector_similarity_text_search(
-        self,
-        settings_request: RagVectorSimilarityTextSearchSettingRequest,
-    ) -> RagProviderSimilarityTextSearchResponse:
-        weaviate_settings = settings_request.settings
-        collection = self.client.collections.use(weaviate_settings.collection_name)
-        try:
-            response = collection.query.near_text(
-                # collection_name should not be passed as an argument to this function - it was already used above
-                **weaviate_settings.model_dump(
-                    exclude={"collection_name", "rag_provider"},
-                ),
-            )
-        except WeaviateQueryError as e:
-            # raise query errors cleanly so the user knows what went wrong
-            # (eg. no vectorizer configured for the collection)
-            raise HTTPException(
-                status_code=400,
-                detail=f"Error querying Weaviate: {e}.",
-            )
-
-        return RagProviderSimilarityTextSearchResponse(
-            response=WeaviateSimilarityTextSearchResponse(
+    @staticmethod
+    def _client_result_to_arthur_response(
+        query_return: QueryReturn[Properties, CrossReferences],
+    ) -> RagProviderQueryResponse:
+        return RagProviderQueryResponse(
+            response=WeaviateQueryResults(
                 objects=[
-                    WeaviateSimilaritySearchTextResult(
+                    WeaviateQueryResult(
                         uuid=obj.uuid,
                         metadata=(
-                            WeaviateSimilaritySearchMetadata(
+                            WeaviateQueryResultMetadata(
                                 creation_time=obj.metadata.creation_time,
                                 last_update_time=obj.metadata.last_update_time,
                                 distance=obj.metadata.distance,
@@ -124,10 +112,53 @@ class WeaviateClient(RagProviderClient):
                         properties=obj.properties,
                         vector=obj.vector if hasattr(obj, "vector") else None,
                     )
-                    for obj in response.objects
+                    for obj in query_return.objects
                 ],
             ),
         )
+
+    def vector_similarity_text_search(
+        self,
+        settings_request: RagVectorSimilarityTextSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        weaviate_settings = settings_request.settings
+        collection = self.client.collections.use(weaviate_settings.collection_name)
+        try:
+            response = collection.query.near_text(
+                # collection_name should not be passed as an argument to this function - it was already used above
+                **weaviate_settings._to_client_settings_dict(),
+            )
+        except WeaviateQueryError as e:
+            # raise query errors cleanly so the user knows what went wrong
+            # (eg. no vectorizer configured for the collection)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {e}.",
+            )
+
+        return self._client_result_to_arthur_response(response)
+
+    def keyword_search(
+        self,
+        settings_request: RagKeywordSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        weaviate_settings = settings_request.settings
+        collection = self.client.collections.use(weaviate_settings.collection_name)
+
+        # execute search
+        try:
+            response = collection.query.bm25(
+                **weaviate_settings._to_client_settings_dict(),
+            )
+        except WeaviateQueryError as e:
+            # raise query errors cleanly so the user knows what went wrong
+            # (eg. no vectorizer configured for the collection)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {e}.",
+            )
+
+        return self._client_result_to_arthur_response(response)
 
     def __del__(self):
         # client may not have been initialized if clean up happens after a failed class instantiation so validate
