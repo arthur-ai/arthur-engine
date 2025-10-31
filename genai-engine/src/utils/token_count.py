@@ -10,8 +10,6 @@ TIKTOKEN_ENCODER = "cl100k_base"
 
 
 class TokenCounter:
-    """Existing class - keep as is for search functionality"""
-
     def __init__(self, model: str = TIKTOKEN_ENCODER):
         """Initializes a titoken encoder
 
