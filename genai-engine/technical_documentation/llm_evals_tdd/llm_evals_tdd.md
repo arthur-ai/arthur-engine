@@ -32,7 +32,7 @@
                 - task_id: str
                 - eval_request: CreateEvalRequest (in diagram below)
             - Outputs: AgenticPrompt
-        - soft_delete_eval:
+        - soft_delete_eval_version:
             - Inputs:
                 - task_id: str
                 - eval_id: str
