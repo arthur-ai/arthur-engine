@@ -33,8 +33,6 @@ class DatabaseTraceMetadata(Base):
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     span_count: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    # Token/cost fields (nullable - aggregated from spans, NULL if no LLM spans)
     prompt_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     completion_token_count: Mapped[Optional[int]] = mapped_column(
         Integer,
@@ -116,8 +114,6 @@ class DatabaseSpan(Base):
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=False,
     )
-
-    # Token/cost fields (nullable - NULL means no data available)
     prompt_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     completion_token_count: Mapped[Optional[int]] = mapped_column(
         Integer,
@@ -158,6 +154,7 @@ class DatabaseSpan(Base):
             postgresql_where=text("span_kind = 'LLM'"),
         ),
         Index("idx_spans_total_token_count", "total_token_count"),
+        Index("idx_spans_total_token_cost", "total_token_cost"),
     )
 
     metric_results: Mapped[List["DatabaseMetricResult"]] = relationship(
