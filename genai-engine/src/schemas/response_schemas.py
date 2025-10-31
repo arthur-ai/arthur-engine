@@ -324,7 +324,7 @@ class ConnectionCheckResult(BaseModel):
     )
 
 
-class WeaviateSimilaritySearchMetadata(BaseModel):
+class WeaviateQueryResultMetadata(BaseModel):
     """
     Metadata from weaviate for a vector object:
     https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
@@ -360,11 +360,11 @@ class WeaviateSimilaritySearchMetadata(BaseModel):
     )
 
 
-class WeaviateSimilaritySearchTextResult(BaseModel):
+class WeaviateQueryResult(BaseModel):
     """Individual search result from Weaviate"""
 
     uuid: UUID = Field(description="Unique identifier of the result")
-    metadata: Optional[WeaviateSimilaritySearchMetadata] = Field(
+    metadata: Optional[WeaviateQueryResultMetadata] = Field(
         default=None,
         description="Search metadata including distance, score, etc.",
     )
@@ -376,21 +376,19 @@ class WeaviateSimilaritySearchTextResult(BaseModel):
     )
 
 
-class WeaviateSimilarityTextSearchResponse(BaseModel):
+class WeaviateQueryResults(BaseModel):
     """Response from Weaviate similarity text search"""
 
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    objects: List[WeaviateSimilaritySearchTextResult] = Field(
+    objects: List[WeaviateQueryResult] = Field(
         description="List of search result objects",
     )
 
 
-RagProviderSimilarityTextSearchResponseTypes = Union[
-    WeaviateSimilarityTextSearchResponse
-]
+RagProviderSimilarityTextSearchResponseTypes = Union[WeaviateQueryResults]
 
 
-class RagProviderSimilarityTextSearchResponse(BaseModel):
+class RagProviderQueryResponse(BaseModel):
     response: RagProviderSimilarityTextSearchResponseTypes
 
 

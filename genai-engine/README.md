@@ -317,7 +317,7 @@ Follow the steps below to run performance tests:
 Prerequisites in terminal:
 ```bash
 brew install oasdiff
-export PYTHONPATH="src:$PYTHONPATH
+export PYTHONPATH="src:$PYTHONPATH"
 ```
 
 `poetry run generate_changelog` from the genai-engine directory when making changes to routes and request/response schemas.
