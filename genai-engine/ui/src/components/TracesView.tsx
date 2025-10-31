@@ -10,20 +10,54 @@ import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
-import { useSelectionStore } from "./traces/stores/selection.store";
-import { useTracesHistoryStore } from "./traces/stores/history.store";
+import { v4 as uuidv4 } from "uuid";
+import {
+  HistoryStore,
+  TargetBase,
+  useTracesHistoryStore,
+} from "./traces/stores/history.store";
 
 type Level = "trace" | "span" | "session" | "user";
 
 export const TracesView: React.FC = () => {
   const [level, setLevel] = useState<Level>("trace");
+  const current = useTracesHistoryStore((state) => state.current());
+  const reset = useTracesHistoryStore((state) => state.reset);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const onHistoryChange = useEffectEvent((state: HistoryStore<TargetBase>) => {
+    const current = state.current();
+
+    const searchParams = new URLSearchParams();
+    if (!current) return setSearchParams(searchParams);
+
+    searchParams.set("target", current.target.type);
+    searchParams.set("id", current.target.id.toString());
+
+    setSearchParams(searchParams);
+  });
+
+  const onInitialLoad = useEffectEvent(() => {
+    const target = searchParams.get("target") as Level;
+    const id = searchParams.get("id") as string;
+
+    if (target && id) {
+      setLevel(target as Level);
+      reset([
+        {
+          key: uuidv4(),
+          target: { type: target, id },
+          ts: Date.now(),
+        },
+      ]);
+    }
+  });
 
   useEffect(() => {
-    return useTracesHistoryStore.subscribe((state) => {
-      const current = state.current();
-      console.log({ current });
-    });
+    return useTracesHistoryStore.subscribe(onHistoryChange);
   }, []);
+
+  useEffect(onInitialLoad, []);
 
   const handleLevelChange = (_event: React.SyntheticEvent, newValue: Level) => {
     setLevel(newValue);

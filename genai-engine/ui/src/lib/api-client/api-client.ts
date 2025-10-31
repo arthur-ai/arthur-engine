@@ -237,13 +237,22 @@ export interface AgenticPromptBaseConfig {
   version?: number;
 }
 
-/** AgenticPromptMessage */
+/**
+ * AgenticPromptMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
 export interface AgenticPromptMessageInput {
   /**
    * Content
    * Content of the message
    */
-  content?: string | null;
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
   /** Role of the message */
   role: MessageRole;
   /**
@@ -258,13 +267,22 @@ export interface AgenticPromptMessageInput {
   tool_calls?: ToolCall[] | null;
 }
 
-/** AgenticPromptMessage */
+/**
+ * AgenticPromptMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
 export interface AgenticPromptMessageOutput {
   /**
    * Content
    * Content of the message
    */
-  content?: string | null;
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
   /** Role of the message */
   role: MessageRole;
   /**
@@ -391,6 +409,69 @@ export interface AnthropicThinkingParam {
   budget_tokens?: number;
   /** Type */
   type?: "enabled";
+}
+
+/** ApiKeyRagAuthenticationConfigRequest */
+export interface ApiKeyRagAuthenticationConfigRequest {
+  /**
+   * Api Key
+   * API key to use for authentication.
+   * @format password
+   */
+  api_key: string;
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   * @format uri
+   * @minLength 1
+   */
+  host_url: string;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider: RagAPIKeyAuthenticationProviderEnum;
+}
+
+/** ApiKeyRagAuthenticationConfigResponse */
+export interface ApiKeyRagAuthenticationConfigResponse {
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   * @format uri
+   * @minLength 1
+   */
+  host_url: string;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider: RagAPIKeyAuthenticationProviderEnum;
+}
+
+/** ApiKeyRagAuthenticationConfigUpdateRequest */
+export interface ApiKeyRagAuthenticationConfigUpdateRequest {
+  /**
+   * Api Key
+   * API key to use for authentication.
+   */
+  api_key?: string | null;
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   */
+  host_url?: string | null;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider?: RagAPIKeyAuthenticationProviderEnum | null;
 }
 
 /** ApiKeyResponse */
@@ -743,6 +824,20 @@ export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData = TraceResponse;
 
 export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError = HTTPValidationError;
 
+/** ConnectionCheckOutcome */
+export type ConnectionCheckOutcome = "passed" | "failed";
+
+/** ConnectionCheckResult */
+export interface ConnectionCheckResult {
+  /** Result of the connection check. */
+  connection_check_outcome: ConnectionCheckOutcome;
+  /**
+   * Failure Reason
+   * Explainer of the connection check failure result.
+   */
+  failure_reason?: string | null;
+}
+
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
   /** Id */
@@ -769,6 +864,10 @@ export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError = HTTPVa
 export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
 
 export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
+
+export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
+
+export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidationError;
 
 export type CreateTaskApiV2TasksPostData = TaskResponse;
 
@@ -1002,6 +1101,10 @@ export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
 export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
 
+export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
+
+export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
+
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
@@ -1039,6 +1142,11 @@ export interface ExamplesConfig {
    */
   hint?: string | null;
 }
+
+export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData =
+  RagProviderSimilarityTextSearchResponse;
+
+export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
 /** ExternalDocument */
 export interface ExternalDocument {
@@ -1477,6 +1585,55 @@ export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData =
 
 export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
+export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
+
+export type GetRagProviderApiV1RagProvidersProviderIdGetError = HTTPValidationError;
+
+export type GetRagProvidersApiV1TasksTaskIdRagProvidersGetData = SearchRagProviderConfigurationsResponse;
+
+export type GetRagProvidersApiV1TasksTaskIdRagProvidersGetError = HTTPValidationError;
+
+export interface GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams {
+  /**
+   * Authentication Method
+   * RAG Provider authentication method to filter by.
+   */
+  authentication_method?: RagProviderAuthenticationMethodEnum | null;
+  /**
+   * Config Name
+   * RAG Provider configuration name substring to search for.
+   */
+  config_name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Rag Provider Name
+   * RAG provider name to filter by.
+   */
+  rag_provider_name?: RagAPIKeyAuthenticationProviderEnum | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * ID of the task to fetch the provider connections for.
+   * @format uuid
+   */
+  taskId: string;
+}
+
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
 
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
@@ -1597,6 +1754,15 @@ export interface HallucinationDetailsResponse {
   score?: boolean | null;
 }
 
+/** ImageURL */
+export interface ImageURL {
+  /**
+   * Url
+   * URL of the image
+   */
+  url: string;
+}
+
 /** InferenceFeedbackResponse */
 export interface InferenceFeedbackResponse {
   /**
@@ -1624,6 +1790,20 @@ export interface InferenceFeedbackResponse {
 
 /** InferenceFeedbackTarget */
 export type InferenceFeedbackTarget = "context" | "response_results" | "prompt_results";
+
+/** InputAudio */
+export interface InputAudio {
+  /**
+   * Data
+   * Base64 encoded audio data
+   */
+  data: string;
+  /**
+   * Format
+   * audio format (e.g. 'mp3', 'wav', 'flac', etc.)
+   */
+  format: string;
+}
 
 /** JsonPropertySchema */
 export interface JsonPropertySchema {
@@ -1838,6 +2018,11 @@ export interface ListDatasetVersionsResponse {
    */
   versions: DatasetVersionMetadataResponse[];
 }
+
+export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData =
+  SearchRagProviderCollectionsResponse;
+
+export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
 
 export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
 
@@ -2272,7 +2457,49 @@ export interface LogitBiasItem {
 }
 
 /** MessageRole */
-export type MessageRole = "system" | "user" | "assistant" | "tool";
+export type MessageRole = "developer" | "system" | "user" | "assistant" | "tool";
+
+/**
+ * MetadataQuery
+ * Define which metadata should be returned in the query's results.
+ */
+export interface MetadataQuery {
+  /**
+   * Certainty
+   * @default false
+   */
+  certainty?: boolean;
+  /**
+   * Creation Time
+   * @default false
+   */
+  creation_time?: boolean;
+  /**
+   * Distance
+   * @default false
+   */
+  distance?: boolean;
+  /**
+   * Explain Score
+   * @default false
+   */
+  explain_score?: boolean;
+  /**
+   * Is Consistent
+   * @default false
+   */
+  is_consistent?: boolean;
+  /**
+   * Last Update Time
+   * @default false
+   */
+  last_update_time?: boolean;
+  /**
+   * Score
+   * @default false
+   */
+  score?: boolean;
+}
 
 /** MetricResponse */
 export interface MetricResponse {
@@ -2406,6 +2633,22 @@ export interface ModelProviderResponse {
   /** The model provider */
   provider: ModelProvider;
 }
+
+/** _MultiTargetVectorJoin */
+export interface MultiTargetVectorJoin {
+  /** Define how multi target vector searches should be combined. */
+  combination: MultiTargetVectorJoinEnum;
+  /** Target Vectors */
+  target_vectors: string[];
+  /** Weights */
+  weights?: Record<string, number | number[]> | null;
+}
+
+/**
+ * _MultiTargetVectorJoinEnum
+ * Define how multi target vector searches should be combined.
+ */
+export type MultiTargetVectorJoinEnum = 1 | 2 | 3 | 4 | 5;
 
 /**
  * NestedSpanWithMetricsResponse
@@ -2630,6 +2873,24 @@ export interface NewTaskRequest {
    */
   name: string;
 }
+
+/** OpenAIMessageItem */
+export interface OpenAIMessageItem {
+  /** Image URL content of the message if type is 'image_url' */
+  image_url?: ImageURL | null;
+  /** Input audio content of the message if type is 'input_audio' */
+  input_audio?: InputAudio | null;
+  /**
+   * Text
+   * Text content of the message if type is 'text'
+   */
+  text?: string | null;
+  /** Type of the message (either 'text', 'image_url', or 'input_audio') */
+  type: OpenAIMessageType;
+}
+
+/** OpenAIMessageType */
+export type OpenAIMessageType = "text" | "image_url" | "input_audio";
 
 /**
  * PIIConfig
@@ -3412,6 +3673,107 @@ export interface QueryTracesWithMetricsResponse {
   traces: TraceResponse[];
 }
 
+/** RagAPIKeyAuthenticationProviderEnum */
+export type RagAPIKeyAuthenticationProviderEnum = "weaviate";
+
+/** RagProviderAuthenticationMethodEnum */
+export type RagProviderAuthenticationMethodEnum = "api_key";
+
+/** RagProviderCollectionResponse */
+export interface RagProviderCollectionResponse {
+  /**
+   * Description
+   * Description of the collection.
+   */
+  description?: string | null;
+  /**
+   * Identifier
+   * Unique identifier of the collection.
+   */
+  identifier: string;
+}
+
+/** RagProviderConfigurationRequest */
+export interface RagProviderConfigurationRequest {
+  /** Configuration of the authentication strategy. */
+  authentication_config: ApiKeyRagAuthenticationConfigRequest;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name: string;
+}
+
+/** RagProviderConfigurationResponse */
+export interface RagProviderConfigurationResponse {
+  /** Configuration of the authentication strategy. */
+  authentication_config: ApiKeyRagAuthenticationConfigResponse;
+  /**
+   * Created At
+   * Time the RAG provider configuration was created in unix milliseconds
+   */
+  created_at: number;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * Unique identifier of the RAG provider configuration.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of parent task.
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * Time the RAG provider configuration was updated in unix milliseconds
+   */
+  updated_at: number;
+}
+
+/** RagProviderConfigurationUpdateRequest */
+export interface RagProviderConfigurationUpdateRequest {
+  /** Configuration of the authentication strategy. */
+  authentication_config?: ApiKeyRagAuthenticationConfigUpdateRequest | null;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name?: string | null;
+}
+
+/** RagProviderSimilarityTextSearchResponse */
+export interface RagProviderSimilarityTextSearchResponse {
+  /** Response from Weaviate similarity text search */
+  response: WeaviateSimilarityTextSearchResponse;
+}
+
+/** RagVectorSimilarityTextSearchSettingRequest */
+export interface RagVectorSimilarityTextSearchSettingRequest {
+  /** Settings for the similarity text search request to the vector database. S */
+  settings: WeaviateVectorSimilarityTextSearchSettingsRequest;
+}
+
 /** ReasoningEffortEnum */
 export type ReasoningEffortEnum = "none" | "minimal" | "low" | "medium" | "high" | "default";
 
@@ -3616,6 +3978,31 @@ export interface SearchDatasetsResponse {
    * List of datasets matching the search filters. Length is less than or equal to page_size parameter
    */
   datasets: DatasetResponse[];
+}
+
+/** SearchRagProviderCollectionsResponse */
+export interface SearchRagProviderCollectionsResponse {
+  /**
+   * Count
+   * The total number of RAG provider collections matching the parameters.
+   */
+  count: number;
+  /** Rag Provider Collections */
+  rag_provider_collections: RagProviderCollectionResponse[];
+}
+
+/** SearchRagProviderConfigurationsResponse */
+export interface SearchRagProviderConfigurationsResponse {
+  /**
+   * Count
+   * The total number of RAG provider configurations matching the parameters.
+   */
+  count: number;
+  /**
+   * Rag Provider Configurations
+   * List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter
+   */
+  rag_provider_configurations: RagProviderConfigurationResponse[];
 }
 
 export type SearchRulesApiV2RulesSearchPostData = SearchRulesResponse;
@@ -4085,6 +4472,10 @@ export interface TaskResponse {
   updated_at: number;
 }
 
+export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
+
+export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
+
 /** TokenUsageCount */
 export interface TokenUsageCount {
   /**
@@ -4447,6 +4838,10 @@ export interface UpdateMetricRequest {
   enabled: boolean;
 }
 
+export type UpdateRagProviderApiV1RagProvidersProviderIdPatchData = RagProviderConfigurationResponse;
+
+export type UpdateRagProviderApiV1RagProvidersProviderIdPatchError = HTTPValidationError;
+
 /** UpdateRuleRequest */
 export interface UpdateRuleRequest {
   /**
@@ -4556,6 +4951,165 @@ export interface VariableTemplateValue {
    */
   value: string;
 }
+
+/**
+ * WeaviateSimilaritySearchMetadata
+ * Metadata from weaviate for a vector object:
+ * https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
+ */
+export interface WeaviateSimilaritySearchMetadata {
+  /**
+   * Certainty
+   * Similarity score measure between 0 and 1. Higher values correspond to more similar reesults.
+   */
+  certainty?: number | null;
+  /**
+   * Creation Time
+   * Vector object creation time.
+   */
+  creation_time?: string | null;
+  /**
+   * Distance
+   * Raw distance metric used in the vector search. Lower values indicate closer vectors.
+   */
+  distance?: number | null;
+  /**
+   * Explain Score
+   * Explanation of how the score was calculated.
+   */
+  explain_score?: string | null;
+  /**
+   * Is Consistent
+   * Indicates if the object is consistent across all replicates in a multi-node Weaviate cluster.
+   */
+  is_consistent?: boolean | null;
+  /**
+   * Last Update Time
+   * Vector object last update time.
+   */
+  last_update_time?: string | null;
+  /**
+   * Score
+   * Normalized relevance metric that ranks search results.
+   */
+  score?: number | null;
+}
+
+/**
+ * WeaviateSimilaritySearchTextResult
+ * Individual search result from Weaviate
+ */
+export interface WeaviateSimilaritySearchTextResult {
+  /** Search metadata including distance, score, etc. */
+  metadata?: WeaviateSimilaritySearchMetadata | null;
+  /**
+   * Properties
+   * Properties of the result object
+   */
+  properties: Record<string, any>;
+  /**
+   * Uuid
+   * Unique identifier of the result
+   * @format uuid
+   */
+  uuid: string;
+  /**
+   * Vector
+   * Vector representation
+   */
+  vector?: Record<string, number[] | number[][]> | null;
+}
+
+/**
+ * WeaviateSimilarityTextSearchResponse
+ * Response from Weaviate similarity text search
+ */
+export interface WeaviateSimilarityTextSearchResponse {
+  /**
+   * Objects
+   * List of search result objects
+   */
+  objects: WeaviateSimilaritySearchTextResult[];
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+}
+
+/** WeaviateVectorSimilarityTextSearchSettingsRequest */
+export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Certainty
+   * Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.
+   */
+  certainty?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the similarity search.
+   */
+  collection_name: string;
+  /**
+   * Distance
+   * Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.
+   */
+  distance?: number | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query
+   * Input text to find objects with near vectors for.
+   */
+  query: string[] | string;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Target Vector
+   * Specifies vector to use for similarity search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -4693,7 +5247,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.94
+ * @version 2.1.106
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -4935,6 +5489,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Register a new RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name CreateRagProviderApiV1TasksTaskIdRagProvidersPost
+     * @summary Create Rag Provider
+     * @request POST:/api/v1/tasks/{task_id}/rag_providers
+     * @secure
+     */
+    createRagProviderApiV1TasksTaskIdRagProvidersPost: (
+      taskId: string,
+      data: RagProviderConfigurationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        CreateRagProviderApiV1TasksTaskIdRagProvidersPostData,
+        CreateRagProviderApiV1TasksTaskIdRagProvidersPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Register a new task. When a new task is created, all existing default rules will be auto-applied for this new task. Optionally specify if the task is agentic.
      *
      * @tags Tasks
@@ -5123,6 +5704,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
         path: `/api/chat/files/${fileId}`,
         method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name DeleteRagProviderApiV1RagProvidersProviderIdDelete
+     * @summary Delete Rag Provider
+     * @request DELETE:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    deleteRagProviderApiV1RagProvidersProviderIdDelete: (providerId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteRagProviderApiV1RagProvidersProviderIdDeleteData,
+        DeleteRagProviderApiV1RagProvidersProviderIdDeleteError
+      >({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Execute a RAG Provider Similarity Text Search.
+     *
+     * @tags RAG Providers
+     * @name ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPost
+     * @summary Execute Similarity Text Search
+     * @request POST:/api/v1/rag_providers/{provider_id}/similarity_text_search
+     * @secure
+     */
+    executeSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPost: (
+      providerId: string,
+      data: RagVectorSimilarityTextSearchSettingRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData,
+        ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/similarity_text_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -5441,6 +6069,51 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get a single RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name GetRagProviderApiV1RagProvidersProviderIdGet
+     * @summary Get Rag Provider
+     * @request GET:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    getRagProviderApiV1RagProvidersProviderIdGet: (providerId: string, params: RequestParams = {}) =>
+      this.request<GetRagProviderApiV1RagProvidersProviderIdGetData, GetRagProviderApiV1RagProvidersProviderIdGetError>(
+        {
+          path: `/api/v1/rag_providers/${providerId}`,
+          method: "GET",
+          secure: true,
+          format: "json",
+          ...params,
+        },
+      ),
+
+    /**
+     * @description Get list of RAG provider connection configurations for the task.
+     *
+     * @tags RAG Providers
+     * @name GetRagProvidersApiV1TasksTaskIdRagProvidersGet
+     * @summary Get Rag Providers
+     * @request GET:/api/v1/tasks/{task_id}/rag_providers
+     * @secure
+     */
+    getRagProvidersApiV1TasksTaskIdRagProvidersGet: (
+      { taskId, ...query }: GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetRagProvidersApiV1TasksTaskIdRagProvidersGetData,
+        GetRagProvidersApiV1TasksTaskIdRagProvidersGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
      *
      * @tags Sessions
@@ -5555,6 +6228,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces/users/${userId}`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Lists all available vector database collections.
+     *
+     * @tags RAG Providers
+     * @name ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet
+     * @summary List Rag Provider Collections
+     * @request GET:/api/v1/rag_providers/{provider_id}/collections
+     * @secure
+     */
+    listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet: (
+      providerId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData,
+        ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/collections`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -5963,6 +6660,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Test a new RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPost
+     * @summary Test Rag Provider Connection
+     * @request POST:/api/v1/tasks/{task_id}/rag_providers/test_connection
+     * @secure
+     */
+    testRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPost: (
+      taskId: string,
+      data: RagProviderConfigurationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData,
+        TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers/test_connection`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update a dataset.
      *
      * @tags Datasets
@@ -5999,6 +6723,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/default_task`,
         method: "PUT",
         body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a single RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name UpdateRagProviderApiV1RagProvidersProviderIdPatch
+     * @summary Update Rag Provider
+     * @request PATCH:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    updateRagProviderApiV1RagProvidersProviderIdPatch: (
+      providerId: string,
+      data: RagProviderConfigurationUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UpdateRagProviderApiV1RagProvidersProviderIdPatchData,
+        UpdateRagProviderApiV1RagProvidersProviderIdPatchError
+      >({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
         type: ContentType.Json,
         format: "json",
         ...params,

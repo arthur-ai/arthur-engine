@@ -22,6 +22,7 @@ import { useApi } from "@/hooks/useApi";
 import { computeSpanMetrics, getSpan } from "@/services/tracing";
 import { wait } from "@/utils";
 import { queryKeys } from "@/lib/queryKeys";
+import { useSelectionStore } from "../stores/selection.store";
 
 type Props = {
   id: string;
@@ -32,6 +33,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
 
   const push = useTracesHistoryStore((state) => state.push);
+  const select = useSelectionStore((state) => state.select);
 
   const { data: span } = useSuspenseQuery({
     queryKey: queryKeys.spans.byId(id),
@@ -55,6 +57,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
   const onOpenTraceDrawer = () => {
+    select("span", span.span_id);
     push({
       type: "trace",
       id: span.trace_id,

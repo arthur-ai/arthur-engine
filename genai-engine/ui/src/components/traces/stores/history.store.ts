@@ -29,22 +29,14 @@ export interface PopUntilOptions {
 export interface HistoryStore<TTarget extends TargetBase, TState = unknown> {
   entries: HistoryEntry<TTarget, TState>[];
 
-  // helper
   current(): HistoryEntry<TTarget, TState> | null;
 
-  // actions
   push: (
     target: TTarget,
     init?: Omit<HistoryEntry<TTarget, TState>, "target" | "key" | "ts">
   ) => HistoryEntry<TTarget, TState>;
 
-  /**
-   * Pops from the top until a match is found (searching downward).
-   * If no match is found, clears the stack.
-   */
   popUntil: (match: Match<TTarget, TState>, opts?: PopUntilOptions) => void;
-
-  /** Replace the whole stack (or empty if omitted). */
   reset: (initial?: HistoryEntry<TTarget, TState>[]) => void;
 }
 

@@ -74,19 +74,20 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const onOpenDrawer = useEffectEvent(() => {
     if (!rootSpan) return;
 
-    select("span", rootSpan.span_id);
+    if (!selectedSpanId) {
+      select("span", rootSpan.span_id);
+    }
   });
 
-  useEffect(() => {
-    onOpenDrawer();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(onOpenDrawer, []);
 
   if (!trace) return null;
 
   const selectedSpan = flatSpans.find(
     (span) => span.span_id === selectedSpanId
   );
+
+  console.log({ selectedSpan, selectedSpanId });
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>

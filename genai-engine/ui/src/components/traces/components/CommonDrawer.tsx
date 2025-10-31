@@ -3,7 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
-import { Level, useTracesHistoryStore } from "../stores/history.store";
+import {
+  HistoryEntry,
+  Level,
+  TargetBase,
+  useTracesHistoryStore,
+} from "../stores/history.store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
@@ -38,6 +43,7 @@ export const CommonDrawer = () => {
   const current = useTracesHistoryStore((state) => state.current());
   const history = useTracesHistoryStore((state) => state.entries);
   const reset = useTracesHistoryStore((state) => state.reset);
+  const popUntil = useTracesHistoryStore((state) => state.popUntil);
   const resetSelection = useSelectionStore((state) => state.reset);
 
   const handleClose = () => {
@@ -45,7 +51,9 @@ export const CommonDrawer = () => {
     resetSelection();
   };
 
-  const handleBreadcrumbNavigation = () => {};
+  const handleBreadcrumbNavigation = (entry: HistoryEntry<TargetBase>) => {
+    popUntil(entry);
+  };
 
   const Content = current?.target.type
     ? CONTENT_MAP[current?.target.type]
@@ -79,7 +87,7 @@ export const CommonDrawer = () => {
               <Button
                 key={entry.key}
                 variant="text"
-                onClick={() => handleBreadcrumbNavigation()}
+                onClick={() => handleBreadcrumbNavigation(entry)}
               >
                 {entry.target.type} ({entry.target.id})
               </Button>
