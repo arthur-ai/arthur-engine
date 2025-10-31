@@ -17,7 +17,8 @@ import {
   useTracesHistoryStore,
 } from "./traces/stores/history.store";
 
-type Level = "trace" | "span" | "session" | "user";
+const LEVELS = ["trace", "span", "session", "user"] as const;
+type Level = (typeof LEVELS)[number];
 
 export const TracesView: React.FC = () => {
   const [level, setLevel] = useState<Level>("trace");
@@ -41,16 +42,17 @@ export const TracesView: React.FC = () => {
     const target = searchParams.get("target") as Level;
     const id = searchParams.get("id") as string;
 
-    if (target && id) {
-      setLevel(target as Level);
-      reset([
-        {
-          key: uuidv4(),
-          target: { type: target, id },
-          ts: Date.now(),
-        },
-      ]);
-    }
+    if (!target || !id) return;
+    if (!LEVELS.includes(target)) return;
+
+    setLevel(target as Level);
+    reset([
+      {
+        key: uuidv4(),
+        target: { type: target, id },
+        ts: Date.now(),
+      },
+    ]);
   });
 
   useEffect(() => {

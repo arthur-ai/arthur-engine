@@ -5,7 +5,6 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import {
   HistoryEntry,
-  Level,
   TargetBase,
   useTracesHistoryStore,
 } from "../stores/history.store";
@@ -14,7 +13,9 @@ import { TraceContentSkeleton } from "./TraceDrawerContent";
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Drawer } from "@/components/common/Drawer";
+import { ErrorFallback } from "@/components/common/ErrorFallback";
 import { useSelectionStore } from "../stores/selection.store";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
 
 const CONTENT_MAP = {
   trace: lazy(() =>
@@ -108,14 +109,19 @@ export const CommonDrawer = () => {
             className="w-full flex-1 overflow-y-auto"
           >
             {Content && current && (
-              <ErrorBoundary
-                key={current.key}
-                fallback={<div>Something went wrong</div>}
-              >
-                <Suspense fallback={<TraceContentSkeleton />}>
-                  <Content id={current.target.id.toString()} />
-                </Suspense>
-              </ErrorBoundary>
+              <QueryErrorResetBoundary>
+                {({ reset }) => (
+                  <ErrorBoundary
+                    key={current.key}
+                    onReset={reset}
+                    FallbackComponent={ErrorFallback}
+                  >
+                    <Suspense fallback={<TraceContentSkeleton />}>
+                      <Content id={current.target.id.toString()} />
+                    </Suspense>
+                  </ErrorBoundary>
+                )}
+              </QueryErrorResetBoundary>
             )}
           </motion.div>
         </AnimatePresence>

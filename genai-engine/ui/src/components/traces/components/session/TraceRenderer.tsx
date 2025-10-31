@@ -82,8 +82,8 @@ const FormattedTrace = ({ trace }: { trace: TraceResponse }) => {
 
   return (
     <Stack gap={1}>
-      <MessageBubble label="Input" content={input} align="right" />
-      <MessageBubble label="Output" content={output} align="left" />
+      <MessageBubble label="Input" content={input ?? ""} align="right" />
+      <MessageBubble label="Output" content={output ?? ""} align="left" />
     </Stack>
   );
 };
