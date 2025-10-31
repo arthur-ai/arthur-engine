@@ -2,6 +2,24 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 10/31/2025
+- **CHANGE** for **URL**: /api/v2/inferences/query  removed the optional property 'inferences/items/inference_prompt/model_name' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/validate_prompt  removed the request property 'model_name'
+- **CHANGE** for **URL**: /api/v2/validate_prompt  removed the request property 'model_name'
+- **CHANGE** for Component/Schema:  removed the schema 'RagVectorKeywordSearchSettingRequest'
+
+# 10/30/2025
+- **CHANGE** for Component/Schema:  removed the schema 'RagProviderSimilarityTextSearchResponse'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchMetadata'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilaritySearchTextResult'
+- **CHANGE** for Component/Schema:  removed the schema 'WeaviateSimilarityTextSearchResponse'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added '#/components/schemas/WeaviateQueryResultMetadata' to the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed '#/components/schemas/WeaviateSimilaritySearchMetadata' from the 'response/objects/items/metadata' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new 'developer' enum value to the 'messages/items/role' response property for the response status '200'
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/collections  endpoint added
+
 
 # 10/30/2025
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  endpoint added

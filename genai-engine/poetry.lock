@@ -618,18 +618,18 @@ numpy = {version = ">=1.19.0,<3.0.0", markers = "python_version >= \"3.9\""}
 
 [[package]]
 name = "boto3"
-version = "1.40.61"
+version = "1.40.63"
 description = "The AWS SDK for Python"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "boto3-1.40.61-py3-none-any.whl", hash = "sha256:6b9c57b2a922b5d8c17766e29ed792586a818098efe84def27c8f582b33f898c"},
-    {file = "boto3-1.40.61.tar.gz", hash = "sha256:d6c56277251adf6c2bdd25249feae625abe4966831676689ff23b4694dea5b12"},
+    {file = "boto3-1.40.63-py3-none-any.whl", hash = "sha256:f15d4abf1a6283887c336f660cdfc2162a210d2d8f4d98dbcbcef983371c284d"},
+    {file = "boto3-1.40.63.tar.gz", hash = "sha256:3bf4b034900c87a6a9b3b3b44c4aec26e96fc73bff2505f0766224b7295178ce"},
 ]
 
 [package.dependencies]
-botocore = ">=1.40.61,<1.41.0"
+botocore = ">=1.40.63,<1.41.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.14.0,<0.15.0"
 
@@ -8977,4 +8977,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13.dev0"
-content-hash = "5dcde4275749c9075fda1598227342e98e2065ff8cf2d218efd49a4715fb014b"
+content-hash = "cfff658bf6df1c2d6306abe4ffc3eca39cbb938b99a9f0a79987589380289219"
