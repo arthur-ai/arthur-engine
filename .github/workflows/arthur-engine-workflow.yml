@@ -233,14 +233,15 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: changeme_pg_password
-          POSTGRES_URL: localhost
+          POSTGRES_URL: postgres
           POSTGRES_PORT: 5432
           POSTGRES_DB: arthur_genai_engine
           POSTGRES_USE_SSL: false
-          PYTHONPATH: genai-engine/src:$PYTHONPATH
           GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+          PYTHONPATH: "src:$PYTHONPATH"
         run: |
-          poetry -C genai-engine run alembic upgrade head
+          cd genai-engine
+          poetry run alembic upgrade head
 
   run-ml-engine-unit-tests:
     if: |
