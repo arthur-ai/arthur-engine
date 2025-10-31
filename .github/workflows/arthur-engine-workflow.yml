@@ -201,6 +201,47 @@ jobs:
             genai-engine/report.xml
             pytest-coverage.txt
 
+  run-genai-engine-alembic-migration-check:
+    if: |
+      (
+        github.event_name == 'pull_request' ||
+        (github.event_name == 'push' && github.ref_type == 'branch')
+      )
+    runs-on: ubuntu-latest
+    container: python:3.12.9-bullseye
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_PASSWORD: changeme_pg_password
+          POSTGRES_DB: arthur_genai_engine
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: ${{ env.GIT_DEPTH }}
+      - uses: ./.github/workflows/composite-actions/setup-git
+        with:
+          safe-directory: ${{ runner.workspace }}
+      - uses: ./.github/workflows/composite-actions/setup-poetry
+        with:
+          working-directory: genai-engine
+      - name: Run alembic migration check
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: changeme_pg_password
+          POSTGRES_URL: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: arthur_genai_engine
+          POSTGRES_USE_SSL: false
+          PYTHONPATH: genai-engine/src:$PYTHONPATH
+          GENAI_ENGINE_SECRET_STORE_KEY: changeme_secret_store_key
+        run: |
+          poetry -C genai-engine run alembic upgrade head
+
   run-ml-engine-unit-tests:
     if: |
       (
