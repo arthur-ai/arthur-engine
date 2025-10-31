@@ -4,7 +4,7 @@ import { Box, Paper, Stack, Typography } from "@mui/material";
 import { flattenSpans, getSpanInput, getSpanOutput } from "../../utils/spans";
 import { Tabs } from "@/components/ui/Tabs";
 import { Highlight } from "@/components/common/Highlight";
-import { useTracesStore } from "../../store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import dayjs from "dayjs";
 import { formatDate } from "@/utils/date";
 import { TraceDrawerContent } from "../TraceDrawerContent";
@@ -15,14 +15,13 @@ type Props = {
 
 export const TraceRenderer = ({ trace }: Props) => {
   const root = trace.root_spans?.[0];
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   if (!root) return null;
 
   function onOpenTraceDrawer() {
-    store.send({
-      type: "openDrawer",
-      for: "trace",
+    push({
+      type: "trace",
       id: trace.trace_id,
     });
   }

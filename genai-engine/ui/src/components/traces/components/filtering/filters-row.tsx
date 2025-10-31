@@ -9,7 +9,7 @@ import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { canBeCombinedWith } from "./rules";
 import { sharedFormOptions } from "./shared";
-import { useFilterStore } from "./stores/filter.store";
+import { useFilterStore } from "../../stores/filter.store";
 import { EnumOperators, Operator } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
@@ -46,15 +46,12 @@ export function createFilterRow<TFields extends Field[]>(
 ) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
-    const filterStore = useFilterStore();
+    const filterStore = useFilterStore((state) => state.setFilters);
 
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        filterStore.send({
-          type: "setFilters",
-          filters: value.config as IncomingFilter[],
-        });
+        filterStore(value.config as IncomingFilter[]);
       },
     });
 

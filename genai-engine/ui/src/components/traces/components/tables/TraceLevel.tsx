@@ -1,35 +1,28 @@
 import { TablePagination, Typography } from "@mui/material";
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useSelector } from "@xstate/store/react";
 import { useMemo, useState } from "react";
 
 import { columns } from "../../data/columns";
-import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
-import { useTracesStore } from "../../store";
+import { useFilterStore } from "../../stores/filter.store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
-import { useFilterStore } from "../filtering/stores/filter.store";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getTracesInfiniteQueryOptions } from "@/query-options/traces";
-import { TracesTable } from "../TracesTable";
-import { TracesEmptyState } from "../TracesEmptyState";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredTraces } from "@/services/tracing";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -37,10 +30,9 @@ export function TraceLevel() {
   const { task } = useTask();
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
-  const filterStore = useFilterStore();
-  const filters = useSelector(filterStore, (state) => state.context.filters);
+  const filters = useFilterStore((state) => state.filters);
 
   const api = useApi()!;
 
@@ -88,9 +80,8 @@ export function TraceLevel() {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              store.send({
-                type: "openDrawer",
-                for: "trace",
+              push({
+                type: "trace",
                 id: row.original.trace_id,
               });
             }}

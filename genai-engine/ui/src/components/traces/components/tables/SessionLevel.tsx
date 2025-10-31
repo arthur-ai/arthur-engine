@@ -1,46 +1,36 @@
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useSelector } from "@xstate/store/react";
 import { useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
-import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
+import { useFilterStore } from "../../stores/filter.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
-import { useFilterStore } from "../filtering/stores/filter.store";
 
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getSessionsInfiniteQueryOptions } from "@/query-options/sessions";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TablePagination, Typography } from "@mui/material";
-import { TracesTable } from "../TracesTable";
-import { useTracesStore } from "../../store";
 import { queryKeys } from "@/lib/queryKeys";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { getFilteredSessions } from "@/services/tracing";
+import { TablePagination, Typography } from "@mui/material";
+import { useTracesHistoryStore } from "../../stores/history.store";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 export const SessionLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const filters = useSelector(
-    useFilterStore(),
-    (state) => state.context.filters
-  );
+  const filters = useFilterStore((state) => state.filters);
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   const { data, isFetching, isPlaceholderData } = useQuery({
     queryKey: queryKeys.sessions.listPaginated(
@@ -92,9 +82,8 @@ export const SessionLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              store.send({
-                type: "openDrawer",
-                for: "session",
+              push({
+                type: "session",
                 id: row.original.session_id,
               });
             }}

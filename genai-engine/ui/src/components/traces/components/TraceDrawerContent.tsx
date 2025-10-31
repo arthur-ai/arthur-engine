@@ -10,7 +10,7 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
-import { useTracesStore } from "../store";
+import { useTracesHistoryStore } from "../stores/history.store";
 import { flattenSpans } from "../utils/spans";
 
 import {
@@ -29,6 +29,7 @@ import { wait } from "@/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { Button, ButtonGroup } from "@mui/material";
+import { useSelectionStore } from "../stores/selection.store";
 
 type Props = {
   id: string;
@@ -38,9 +39,8 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
 
   const api = useApi();
-  const [selected, store] = useTracesStore((state) => state.context.selected);
-
-  const { span: spanId } = selected;
+  const select = useSelectionStore((state) => state.select);
+  const selectedSpanId = useSelectionStore((state) => state.selection.span);
 
   const { data: trace } = useSuspenseQuery({
     queryKey: queryKeys.traces.byId(id),
@@ -72,13 +72,9 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const rootSpan = trace?.root_spans?.[0];
 
   const onOpenDrawer = useEffectEvent(() => {
-    if (selected.span) return;
     if (!rootSpan) return;
 
-    store.send({
-      type: "selectSpan",
-      id: rootSpan.span_id,
-    });
+    select("span", rootSpan.span_id);
   });
 
   useEffect(() => {
@@ -88,7 +84,9 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   if (!trace) return null;
 
-  const selectedSpan = flatSpans?.find((span) => span.span_id === spanId);
+  const selectedSpan = flatSpans.find(
+    (span) => span.span_id === selectedSpanId
+  );
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>

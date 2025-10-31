@@ -11,7 +11,7 @@ import {
   getSpanDetailsStrategy,
   SpanDetailsStrategy,
 } from "../data/details-strategy";
-import { useTracesStore } from "../store";
+import { useTracesHistoryStore } from "../stores/history.store";
 import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
@@ -55,16 +55,15 @@ export const SpanDetails = ({ span, children }: Props) => {
 };
 
 export const SpanDetailsHeader = () => {
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
   const start = new Date(span.start_time);
 
   const onOpenSpanDrawer = () => {
-    store.send({
-      type: "openDrawer",
-      for: "span",
+    push({
+      type: "span",
       id: span.span_id,
     });
   };

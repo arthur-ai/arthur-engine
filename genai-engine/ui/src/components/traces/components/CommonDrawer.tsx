@@ -3,12 +3,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 
-import { Level, useTracesStore } from "../store";
+import { Level, useTracesHistoryStore } from "../stores/history.store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
 import CloseIcon from "@mui/icons-material/Close";
 import { Drawer } from "@/components/common/Drawer";
+import { useSelectionStore } from "../stores/selection.store";
 
 const CONTENT_MAP = {
   trace: lazy(() =>
@@ -34,23 +35,21 @@ const CONTENT_MAP = {
 };
 
 export const CommonDrawer = () => {
-  const [history, store] = useTracesStore((state) => state.context.history);
-  const latestEntry = history.at(-1);
+  const current = useTracesHistoryStore((state) => state.current());
+  const history = useTracesHistoryStore((state) => state.entries);
+  const reset = useTracesHistoryStore((state) => state.reset);
+  const resetSelection = useSelectionStore((state) => state.reset);
 
   const handleClose = () => {
-    store.send({
-      type: "closeDrawer",
-    });
+    reset();
+    resetSelection();
   };
 
-  const handleBreadcrumbNavigation = (data: { for: Level; id: string }) => {
-    store.send({
-      type: "popUntil",
-      ...data,
-    });
-  };
+  const handleBreadcrumbNavigation = () => {};
 
-  const Content = latestEntry?.for ? CONTENT_MAP[latestEntry?.for] : null;
+  const Content = current?.target.type
+    ? CONTENT_MAP[current?.target.type]
+    : null;
 
   const shouldRender = !!Content;
 
@@ -78,14 +77,14 @@ export const CommonDrawer = () => {
           <Breadcrumbs aria-label="Drawer history">
             {history.slice(0, history.length - 1).map((entry) => (
               <Button
-                key={entry.id}
+                key={entry.key}
                 variant="text"
-                onClick={() => handleBreadcrumbNavigation(entry)}
+                onClick={() => handleBreadcrumbNavigation()}
               >
-                {entry.for} ({entry.id})
+                {entry.target.type} ({entry.target.id})
               </Button>
             ))}
-            <Button disabled>{latestEntry?.for}</Button>
+            <Button disabled>{current?.target.type}</Button>
           </Breadcrumbs>
           <IconButton onClick={handleClose}>
             <CloseIcon />
@@ -93,20 +92,20 @@ export const CommonDrawer = () => {
         </Stack>
         <AnimatePresence mode="popLayout">
           <motion.div
-            key={latestEntry?.id}
+            key={current?.key}
             initial={{ opacity: 0, x: -64, filter: "blur(8px)" }}
             animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, x: 64, filter: "blur(8px)" }}
             transition={{ type: "spring", duration: 0.3 }}
             className="w-full flex-1 overflow-y-auto"
           >
-            {Content && latestEntry && (
+            {Content && current && (
               <ErrorBoundary
-                key={latestEntry.id}
+                key={current.key}
                 fallback={<div>Something went wrong</div>}
               >
                 <Suspense fallback={<TraceContentSkeleton />}>
-                  <Content id={latestEntry?.id} />
+                  <Content id={current.target.id.toString()} />
                 </Suspense>
               </ErrorBoundary>
             )}

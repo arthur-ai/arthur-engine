@@ -7,7 +7,7 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 
-import { useTracesStore } from "../store";
+import { useTracesHistoryStore } from "../stores/history.store";
 import { isSpanOfType } from "../utils/spans";
 
 import {
@@ -31,7 +31,7 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const api = useApi();
   const queryClient = useQueryClient();
 
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   const { data: span } = useSuspenseQuery({
     queryKey: queryKeys.spans.byId(id),
@@ -55,14 +55,9 @@ export const SpanDrawerContent = ({ id }: Props) => {
   const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
   const onOpenTraceDrawer = () => {
-    store.send({
-      type: "openDrawer",
-      for: "trace",
+    push({
+      type: "trace",
       id: span.trace_id,
-    });
-    store.send({
-      type: "selectSpan",
-      id: id,
     });
   };
 

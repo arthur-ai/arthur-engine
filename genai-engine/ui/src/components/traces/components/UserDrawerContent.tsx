@@ -1,9 +1,16 @@
+import { Tabs } from "@/components/ui/Tabs";
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import {
+  SessionMetadataResponse,
+  TraceMetadataResponse,
+} from "@/lib/api-client/api-client";
+import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import {
-  getFilteredTraces,
   getFilteredSessions,
+  getFilteredTraces,
   getUser,
 } from "@/services/tracing";
 import {
@@ -14,38 +21,20 @@ import {
   TablePagination,
   Typography,
 } from "@mui/material";
-import {
-  useQuery,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
-import { SessionDrawerContent } from "./SessionDrawerContent";
-import { Suspense, useMemo, useRef } from "react";
-import { TracesTable } from "./TracesTable";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { IncomingFilter } from "./filtering/mapper";
-import { Operators } from "./filtering/types";
+import { Suspense, useMemo, useRef } from "react";
 import { columns } from "../data/columns";
-import { useTracesStore } from "../store";
-import { Tabs } from "@/components/ui/Tabs";
-import useMeasure from "react-use-measure";
-import { motion } from "framer-motion";
 import { sessionLevelColumns } from "../data/session-level-columns";
+import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
+import { useTracesHistoryStore } from "../stores/history.store";
+import { filterFields } from "./filtering/fields";
 import { createFilterRow } from "./filtering/filters-row";
+import { IncomingFilter } from "./filtering/mapper";
 import { TRACE_FIELDS } from "./filtering/trace-fields";
-import { FieldNames, filterFields } from "./filtering/fields";
-import {
-  FilterStoreProvider,
-  useFilterStore,
-} from "./filtering/stores/filter.store";
-import { useSelector } from "@xstate/store/react";
-import {
-  SessionMetadataResponse,
-  TraceMetadataResponse,
-} from "@/lib/api-client/api-client";
+import { Operators } from "./filtering/types";
 import { TracesEmptyState } from "./TracesEmptyState";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
-import { FETCH_SIZE } from "@/lib/constants";
+import { TracesTable } from "./TracesTable";
 
 type Props = {
   id: string;
@@ -138,14 +127,11 @@ type UserTableProps = {
 const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
   const api = useApi()!;
   const ref = useRef<HTMLDivElement | null>(null);
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const filters = useSelector(
-    useFilterStore(),
-    (state) => state.context.filters
-  );
+  const filters = useFilterStore((state) => state.filters);
 
   const combinedFilters: IncomingFilter[] = useMemo(
     () => [
@@ -191,9 +177,8 @@ const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
             ref={ref}
             loading={traces.isFetching}
             onRowClick={(row) => {
-              store.send({
-                type: "openDrawer",
-                for: "trace",
+              push({
+                type: "trace",
                 id: row.original.trace_id,
               });
             }}
@@ -224,7 +209,7 @@ const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
 const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
   const ref = useRef<HTMLDivElement | null>(null);
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const filters: IncomingFilter[] = useMemo(
@@ -261,9 +246,8 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
         ref={ref}
         loading={sessions.isFetching}
         onRowClick={(row) => {
-          store.send({
-            type: "openDrawer",
-            for: "session",
+          push({
+            type: "session",
             id: row.original.session_id,
           });
         }}

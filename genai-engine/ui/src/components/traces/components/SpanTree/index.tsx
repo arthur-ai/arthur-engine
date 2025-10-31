@@ -5,11 +5,12 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { cloneElement } from "react";
 
-import { useTracesStore } from "../../store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import { getSpanDuration, getSpanIcon } from "../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { cn } from "@/utils/cn";
+import { useSelectionStore } from "../../stores/selection.store";
 
 type Props = {
   level?: number;
@@ -22,9 +23,8 @@ export const SpanTree = ({
   spans,
   ancestors = new Set(),
 }: Props) => {
-  const [selectedSpanId, store] = useTracesStore(
-    (state) => state.context.selected.span
-  );
+  const selectedSpanId = useSelectionStore((state) => state.selection.span);
+  const select = useSelectionStore((state) => state.select);
 
   const values = spans.map((span) => span.span_id);
 
@@ -38,11 +38,7 @@ export const SpanTree = ({
           className="group data-selected:*:bg-gray-200"
           onClick={(e) => {
             e.stopPropagation();
-
-            store.send({
-              type: "selectSpan",
-              id: span.span_id,
-            });
+            select("span", span.span_id);
           }}
         >
           <SpanTreeItem span={span} level={level} />
@@ -70,9 +66,7 @@ const SpanTreeItem = ({
   span: NestedSpanWithMetricsResponse;
   level: number;
 }) => {
-  const [selectedSpanId] = useTracesStore(
-    (state) => state.context.selected.span
-  );
+  const selectedSpanId = useSelectionStore((state) => state.selection.span);
 
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;

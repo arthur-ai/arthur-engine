@@ -5,77 +5,29 @@ import React, { Activity, useEffect, useEffectEvent, useState } from "react";
 
 import { useSearchParams } from "react-router-dom";
 import { CommonDrawer } from "./traces/components/CommonDrawer";
-import { FilterStoreProvider } from "./traces/components/filtering/stores/filter.store";
+import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
-import { useTracesStore } from "./traces/store";
+import { useSelectionStore } from "./traces/stores/selection.store";
+import { useTracesHistoryStore } from "./traces/stores/history.store";
 
 type Level = "trace" | "span" | "session" | "user";
 
 export const TracesView: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [, store] = useTracesStore(() => null);
   const [level, setLevel] = useState<Level>("trace");
+
+  useEffect(() => {
+    return useTracesHistoryStore.subscribe((state) => {
+      const current = state.current();
+      console.log({ current });
+    });
+  }, []);
 
   const handleLevelChange = (_event: React.SyntheticEvent, newValue: Level) => {
     setLevel(newValue);
   };
-
-  const handleInitialLoad = useEffectEvent(() => {
-    const sources = ["trace", "span", "session", "user"];
-    const params = Object.fromEntries(
-      sources.map((source) => [source, searchParams.get(source)])
-    );
-
-    const firstNonNullParam = Object.entries(params).find(
-      ([_, value]) => value !== null
-    );
-
-    if (firstNonNullParam) {
-      const [source, id] = firstNonNullParam;
-      setLevel(source as Level);
-
-      store.send({
-        type: "setDrawer",
-        for: source as Level,
-        id: id as string,
-      });
-    }
-  });
-
-  useEffect(handleInitialLoad, []);
-
-  const handleChanged = useEffectEvent(
-    (payload: { for: Level; id: string }) => {
-      setSearchParams(() => {
-        const newParams = new URLSearchParams();
-
-        newParams.set(payload.for, payload.id);
-
-        return newParams;
-      });
-    }
-  );
-
-  const handleClosed = useEffectEvent(() => {
-    setSearchParams(() => {
-      const newParams = new URLSearchParams();
-      return newParams;
-    });
-  });
-
-  useEffect(() => {
-    const subscriptions = [
-      store.on("changed", handleChanged),
-      store.on("closed", handleClosed),
-    ];
-
-    return () => {
-      subscriptions.forEach((subscription) => subscription.unsubscribe());
-    };
-  }, []);
 
   return (
     <>

@@ -32,7 +32,7 @@ import { getUsersInfiniteQueryOptions } from "@/query-options/users";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TablePagination, Typography } from "@mui/material";
 import { TracesTable } from "../TracesTable";
-import { useTracesStore } from "../../store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import { queryKeys } from "@/lib/queryKeys";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { getUsers } from "@/services/tracing";
@@ -40,7 +40,7 @@ import { getUsers } from "@/services/tracing";
 export const UserLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
@@ -84,9 +84,8 @@ export const UserLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              store.send({
-                type: "openDrawer",
-                for: "user",
+              push({
+                type: "user",
                 id: row.original.user_id,
               });
             }}

@@ -1,60 +1,39 @@
-import Box from "@mui/material/Box";
-import LinearProgress from "@mui/material/LinearProgress";
-import Paper from "@mui/material/Paper";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableSortLabel from "@mui/material/TableSortLabel";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useQuery,
-} from "@tanstack/react-query";
-import {
-  flexRender,
   getCoreRowModel,
   getSortedRowModel,
   SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { useSelector } from "@xstate/store/react";
 import { useMemo, useState } from "react";
 
 import { spanLevelColumns } from "../../data/span-level-columns";
-import { useTableScrollThrottler } from "../../hooks/useTableScrollThrottler";
-import { useTracesStore } from "../../store";
+import { useFilterStore } from "../../stores/filter.store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
-import { useFilterStore } from "../filtering/stores/filter.store";
 
+import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
+import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
-import { getSpansInfiniteQueryOptions } from "@/query-options/spans";
-import { TracesTable } from "../TracesTable";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TablePagination, Typography } from "@mui/material";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSpans } from "@/services/tracing";
-import { SpanMetadataResponse } from "@/lib/api-client/api-client";
-import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
+import { TablePagination, Typography } from "@mui/material";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
 export const SpanLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
-  const [, store] = useTracesStore(() => null);
+  const push = useTracesHistoryStore((state) => state.push);
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const filters = useSelector(
-    useFilterStore(),
-    (state) => state.context.filters
-  );
+  const filters = useFilterStore((state) => state.filters);
 
   const { data, isFetching, isPlaceholderData } = useQuery({
     queryKey: queryKeys.spans.listPaginated(
@@ -104,9 +83,8 @@ export const SpanLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              store.send({
-                type: "openDrawer",
-                for: "span",
+              push({
+                type: "span",
                 id: row.original.span_id,
               });
             }}
