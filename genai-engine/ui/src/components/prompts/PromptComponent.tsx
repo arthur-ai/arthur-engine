@@ -4,9 +4,11 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
 // import SettingsIcon from "@mui/icons-material/Settings"; Use for permanent delete option
 import TuneIcon from "@mui/icons-material/Tune";
+import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
+import Snackbar from "@mui/material/Snackbar";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -21,6 +23,7 @@ import { PromptComponentProps } from "./types";
 import { toCompletionRequest } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
+import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 
 /**
@@ -34,6 +37,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { state, dispatch } = usePromptContext();
   const apiClient = useApi();
@@ -60,6 +64,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
       })
       .catch((error) => {
         console.error("Error running prompt:", error);
+        showSnackbar(error.response.data.detail, "error");
         dispatch({
           type: "updatePrompt",
           payload: {
@@ -68,7 +73,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           },
         });
       });
-  }, [apiClient, taskId, prompt, state.keywords, dispatch]);
+  }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
@@ -201,6 +206,9 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         prompt={prompt}
         initialName={nameInputValue}
       />
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
+      </Snackbar>
     </div>
   );
 };
