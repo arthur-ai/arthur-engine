@@ -105,15 +105,16 @@ const OutputField = ({
           </Tooltip>
         </div>
       </div>
-      <Collapse in={isExpanded}>
-        <div>{runResponse?.content}</div>
+      <Collapse in={isExpanded || running}>
         {running ? (
           <>
             <Skeleton variant="text" width="92%" />
             <Skeleton variant="text" width="99%" />
             <Skeleton variant="text" width="96%" />
           </>
-        ) : null}
+        ) : (
+          <div>{runResponse?.content}</div>
+        )}
         <Divider />
         <div className="flex gap-3">
           {/* eslint-disable-next-line no-constant-condition */}
@@ -142,7 +143,13 @@ const OutputField = ({
             <Tooltip title="Cost">
               <AttachMoneyIcon />
             </Tooltip>
-            <Typography variant="body1">{runResponse?.cost || "-"}</Typography>
+            <Typography variant="body1">
+              {running ? (
+                <Skeleton variant="text" width="100px" />
+              ) : (
+                runResponse?.cost || "-"
+              )}
+            </Typography>
           </div>
         </div>
       </Collapse>

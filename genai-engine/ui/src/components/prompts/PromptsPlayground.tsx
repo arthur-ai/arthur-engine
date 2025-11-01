@@ -177,16 +177,22 @@ const PromptsPlayground = () => {
     }
   }, [state.enabledProviders, fetchAvailableModels]);
 
-  const handleAddPrompt = useCallback(() => {
+  const handleAddPrompt = () => {
     dispatch({ type: "addPrompt" });
-  }, [dispatch]);
+  };
 
-  const handleKeywordValueChange = useCallback(
-    (keyword: string, value: string) => {
-      dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
-    },
-    [dispatch]
-  );
+  const handleRunAllPrompts = () => {
+    state.prompts.forEach((prompt) => {
+      if (!prompt.running) {
+        // Only run prompts that are not already running
+        dispatch({ type: "runPrompt", payload: { promptId: prompt.id } });
+      }
+    });
+  };
+
+  const handleKeywordValueChange = (keyword: string, value: string) => {
+    dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
+  };
 
   const variables = Array.from(state.keywords.keys());
 
@@ -218,7 +224,7 @@ const PromptsPlayground = () => {
                 <Button
                   variant="contained"
                   size="small"
-                  onClick={() => {}}
+                  onClick={handleRunAllPrompts}
                   startIcon={<PlayArrowIcon />}
                 >
                   Run All Prompts
