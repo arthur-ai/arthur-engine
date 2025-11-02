@@ -5,6 +5,7 @@ from clients.rag_providers.rag_provider_client import RagProviderClient
 from schemas.enums import ConnectionCheckOutcome
 from schemas.internal_schemas import RagProviderConfiguration
 from schemas.request_schemas import (
+    RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
@@ -157,6 +158,21 @@ class MockWeaviateClient(RagProviderClient):
         settings_request: RagKeywordSearchSettingRequest,
     ) -> RagProviderQueryResponse:
         """Mock keyword_search method."""
+        if self.search_error:
+            from fastapi import HTTPException
+
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error querying Weaviate: {self.search_error}.",
+            )
+
+        return self._mock_results_to_arthur_response()
+
+    def hybrid_search(
+        self,
+        settings_request: RagHybridSearchSettingRequest,
+    ) -> RagProviderQueryResponse:
+        """Mock execute_hybrid_search method."""
         if self.search_error:
             from fastapi import HTTPException
 

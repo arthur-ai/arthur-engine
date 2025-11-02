@@ -26,6 +26,7 @@ from schemas.internal_schemas import (
     User,
 )
 from schemas.request_schemas import (
+    RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
@@ -307,5 +308,31 @@ def execute_keyword_search(
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_keyword_search(request)
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/rag_providers/{provider_id}/hybrid_search",
+    description="Execute a RAG provider hybrid (keyword and vector similarity) search.",
+    response_model=RagProviderQueryResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def execute_hybrid_search(
+    request: RagHybridSearchSettingRequest,
+    provider_id: UUID = Path(
+        description="ID of the RAG provider configuration to use for the vector database connection.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagProviderQueryResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_provider_config = rag_providers_repo.get_rag_provider_configuration(
+            provider_id,
+        )
+        rag_client_constructor = RagClientConstructor(rag_provider_config)
+        return rag_client_constructor.execute_hybrid_search(request)
     finally:
         db_session.close()
