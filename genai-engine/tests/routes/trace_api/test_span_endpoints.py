@@ -117,6 +117,11 @@ def test_list_spans_metadata_with_span_type_filtering(
     if expected_count > 0:
         assert_spans_match_types(data.spans, span_types)
 
+        # Verify all spans have input_content and output_content fields
+        for span in data.spans:
+            assert hasattr(span, "input_content")
+            assert hasattr(span, "output_content")
+
 
 @pytest.mark.unit_tests
 def test_list_spans_metadata_pagination_sorting_and_validation(
@@ -195,7 +200,7 @@ def test_get_span_by_id_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span retrieval with metrics, features, and error handling."""
+    """Test span retrieval with metrics, input/output content, and error handling."""
 
     # Test successful span retrieval with metrics and features
     status_code, span_data = client.trace_api_get_span_by_id("api_span1")
@@ -212,10 +217,34 @@ def test_get_span_by_id_comprehensive(
             assert hasattr(metric, "completion_tokens")
             assert hasattr(metric, "latency_ms")
 
-    # Verify LLM span features are extracted
-    assert span_data.system_prompt == "You are a helpful assistant."
-    assert span_data.user_query == "What is the weather like today?"
-    assert span_data.response == "I don't have access to real-time weather information."
+    # Verify new standardized input_content and output_content fields
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
+
+    # Test JSON format span (api_span3)
+    status_code, span_data = client.trace_api_get_span_by_id("api_span3")
+    assert status_code == 200
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    # Verify JSON content - should be stringified even if normalizer parsed it
+    import json
+
+    expected_input = {
+        "question": "Follow-up question",
+        "context": "previous conversation",
+    }
+    expected_output = {"answer": "Follow-up response", "sources": ["doc1", "doc2"]}
+    assert json.loads(span_data.input_content) == expected_input
+    assert json.loads(span_data.output_content) == expected_output
+    # Verify mime_type for JSON
+    attributes = span_data.raw_data["attributes"]
+    assert attributes["input"]["mime_type"] == "application/json"
+    assert attributes["output"]["mime_type"] == "application/json"
 
     # Test non-existent span
     status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
@@ -226,10 +255,9 @@ def test_get_span_by_id_comprehensive(
     status_code, span_data = client.trace_api_get_span_by_id("api_span2")
     assert status_code == 200
     assert span_data.span_kind == "CHAIN"
-    # Non-LLM spans should not have these features
-    assert getattr(span_data, "system_prompt", None) is None
-    assert getattr(span_data, "user_query", None) is None
-    assert getattr(span_data, "response", None) is None
+    # Non-LLM spans should have input_content/output_content fields (may be None)
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
 
 
 # ============================================================================
@@ -252,6 +280,15 @@ def test_compute_span_metrics_comprehensive(
 
     # Should have the same structure as regular span response
     assert_valid_span_full_response(span_data)
+
+    # Verify input_content and output_content are present after metrics computation
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
 
     # Test non-existent span
     status_code, response_data = client.trace_api_compute_span_metrics(

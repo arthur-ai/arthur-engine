@@ -405,3 +405,24 @@ def _calculate_total(
     if prompt is not None and completion is not None:
         return prompt + completion
     return None
+
+
+def value_to_string(value) -> Optional[str]:
+    """Convert a value to string, handling dicts/lists by JSON serialization.
+
+    This is used to ensure consistent string representation for input/output
+    content across spans and trace metadata. The normalizer may parse JSON
+    strings into dicts/lists based on mime_type, and this function converts
+    them back to strings for storage and API responses.
+
+    Args:
+        value: Any value to convert to string
+
+    Returns:
+        String representation of the value, or None if value is None
+    """
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return str(value)

@@ -138,20 +138,13 @@ def test_query_traces_span_features(
     assert span1 is not None, "Could not find span1 in the response"
 
     # Verify LLM span features (should be from span1 in trace1)
-    assert span1.system_prompt == "You are a helpful assistant."
-    assert span1.user_query == "What is the weather like today?"
-    assert span1.response == "I don't have access to real-time weather information."
     assert span1.span_kind == "LLM"
     assert span1.span_name == "ChatOpenAI"
     assert "arthur_span_version" in span1.raw_data
 
-    # Test non-LLM span features (should not be extracted)
+    # Test non-LLM span features
     non_llm_span = find_span_by_kind(all_spans, "CHAIN")
     assert non_llm_span is not None
-    assert non_llm_span.system_prompt is None
-    assert non_llm_span.user_query is None
-    assert non_llm_span.response is None
-    assert non_llm_span.context is None
     assert non_llm_span.span_kind == "CHAIN"
     assert non_llm_span.span_name == "Chain"
 

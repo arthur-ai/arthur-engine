@@ -146,7 +146,7 @@ from schemas.scorer_schemas import (
 )
 from utils import constants
 from utils import trace as trace_utils
-from utils.constants import MAX_DATASET_ROWS, SPAN_KIND_LLM
+from utils.constants import MAX_DATASET_ROWS
 from utils.utils import calculate_duration_ms
 
 tracer = trace.get_tracer(__name__)
@@ -559,6 +559,8 @@ class TraceMetadata(TokenCountCostSchema):
     span_count: int
     created_at: datetime
     updated_at: datetime
+    input_content: Optional[str] = None
+    output_content: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -578,6 +580,8 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=x.total_token_cost,
             created_at=x.created_at,
             updated_at=x.updated_at,
+            input_content=x.input_content,
+            output_content=x.output_content,
         )
 
     def _to_database_model(self):
@@ -597,6 +601,8 @@ class TraceMetadata(TokenCountCostSchema):
             total_token_cost=self.total_token_cost,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
     def _to_metadata_response_model(self) -> TraceMetadataResponse:
@@ -619,6 +625,8 @@ class TraceMetadata(TokenCountCostSchema):
             prompt_token_cost=self.prompt_token_cost,
             completion_token_cost=self.completion_token_cost,
             total_token_cost=self.total_token_cost,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
 
@@ -1616,61 +1624,38 @@ class Span(TokenCountCostSchema):
     metric_results: Optional[List[MetricResult]] = None
 
     @property
-    def system_prompt(self) -> Optional[str]:
-        """Get system prompt from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("system_prompt")
-            except Exception:
-                return None
-        return None
+    def input_content(self) -> Optional[str]:
+        """Get input value from span attributes using OpenInference conventions.
+
+        Extracts from raw_data.attributes.input.value per OpenInference semantic conventions.
+        Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
+        """
+        try:
+            value = trace_utils.get_nested_value(
+                self.raw_data,
+                "attributes.input.value",
+            )
+            return trace_utils.value_to_string(value)
+        except Exception:
+            return None
 
     @property
-    def user_query(self) -> Optional[str]:
-        """Get user query from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("user_query")
-            except Exception:
-                return None
-        return None
+    def output_content(self) -> Optional[str]:
+        """Get output value from span attributes using OpenInference conventions.
 
-    @property
-    def response(self) -> Optional[str]:
-        """Get response from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("response")
-            except Exception:
-                return None
-        return None
-
-    @property
-    def context(self) -> Optional[List[dict]]:
-        """Get context from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("context")
-            except Exception:
-                return None
-        return None
-
-    def _should_extract_features(self) -> bool:
-        """Check if we should extract features for this span."""
-        # Only extract for LLM spans
-        if self.span_kind != SPAN_KIND_LLM:
-            return False
-
-        return trace_utils.validate_span_version(self.raw_data)
-
-    def _extract_span_features(self) -> dict:
-        """Extract span features from raw data."""
-
-        return trace_utils.extract_span_features(self.raw_data)
+        Extracts from raw_data.attributes.output.value per OpenInference semantic conventions.
+        Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
+        """
+        try:
+            value = trace_utils.get_nested_value(
+                self.raw_data,
+                "attributes.output.value",
+            )
+            return trace_utils.value_to_string(value)
+        except Exception:
+            return None
 
     @staticmethod
     def _from_database_model(db_span: DatabaseSpan) -> "Span":
@@ -1744,10 +1729,8 @@ class Span(TokenCountCostSchema):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
+            input_content=self.input_content,
+            output_content=self.output_content,
             prompt_token_count=self.prompt_token_count,
             completion_token_count=self.completion_token_count,
             total_token_count=self.total_token_count,
@@ -1779,10 +1762,8 @@ class Span(TokenCountCostSchema):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
+            input_content=self.input_content,
+            output_content=self.output_content,
             prompt_token_count=self.prompt_token_count,
             completion_token_count=self.completion_token_count,
             total_token_count=self.total_token_count,
@@ -1814,6 +1795,8 @@ class Span(TokenCountCostSchema):
             status_code=self.status_code,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
     @staticmethod

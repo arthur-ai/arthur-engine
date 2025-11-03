@@ -42,6 +42,8 @@ class DatabaseTraceMetadata(Base):
     prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    input_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    output_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,

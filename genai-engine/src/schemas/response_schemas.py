@@ -147,6 +147,14 @@ class TraceMetadataResponse(TokenCountCostSchema):
     duration_ms: float = Field(description="Total trace duration in milliseconds")
     created_at: datetime = Field(description="When the trace was first created")
     updated_at: datetime = Field(description="When the trace was last updated")
+    input_content: Optional[str] = Field(
+        None,
+        description="Root span input value from trace metadata",
+    )
+    output_content: Optional[str] = Field(
+        None,
+        description="Root span output value from trace metadata",
+    )
 
 
 class SpanMetadataResponse(BaseModel):
@@ -167,6 +175,14 @@ class SpanMetadataResponse(BaseModel):
     status_code: str = Field(description="Status code (Unset, Error, Ok)")
     created_at: datetime = Field(description="When the span was created")
     updated_at: datetime = Field(description="When the span was updated")
+    input_content: Optional[str] = Field(
+        None,
+        description="Span input value from raw_data.attributes.input.value",
+    )
+    output_content: Optional[str] = Field(
+        None,
+        description="Span output value from raw_data.attributes.output.value",
+    )
     # Note: Excludes raw_data, computed features, and metrics for performance
 
 
