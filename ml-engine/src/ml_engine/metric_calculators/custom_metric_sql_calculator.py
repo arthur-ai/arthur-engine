@@ -36,7 +36,7 @@ class CustomMetricSQLCalculator(MetricCalculator):
         :param agg_function_type: The AggregationFunction to execute.
         :param agg_function_schema: The schema of the aggregation function to execute.
         """
-        super().__init__(conn, logger, agg_spec)
+        super().__init__(conn, logger, agg_spec, agg_spec_schema.name)
         self.agg_schema = agg_spec_schema
         if len(self.agg_schema.versions) != 1:
             raise ValueError(
@@ -51,7 +51,10 @@ class CustomMetricSQLCalculator(MetricCalculator):
     def aggregate_args_schemas(
         self,
     ) -> List[CustomAggregationVersionSpecSchemaAggregateArgsInner]:
-        return self.agg_schema_config.aggregate_args
+        result: List[CustomAggregationVersionSpecSchemaAggregateArgsInner] = (
+            self.agg_schema_config.aggregate_args
+        )
+        return result
 
     @staticmethod
     def _calculate_time_series(

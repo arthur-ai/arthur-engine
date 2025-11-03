@@ -82,3 +82,10 @@ repos:
         pass_filenames: false
         always_run: false
         files: ^ml-engine/src/
+      - id: ml-engine-mypy-check
+        name: "ml-engine: mypy type checking"
+        entry: poetry -C ml-engine run mypy src/ml_engine
+        language: system
+        types: [python]
+        pass_filenames: false
+        files: ^ml-engine/src/

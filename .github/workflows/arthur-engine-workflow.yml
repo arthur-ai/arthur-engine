@@ -111,12 +111,13 @@ jobs:
         continue-on-error: true
         run: |
           poetry -C ml-engine run black --check src/ml_engine
-      # TODO: Uncomment this when mypy is fixed
-      # - name: Run mypy
-      #   run: |
-      #     poetry -C ml-engine run mypy src/ml_engine
+      - name: Run mypy
+        id: mypy
+        continue-on-error: true
+        run: |
+          poetry -C ml-engine run mypy src/ml_engine
       - name: Check linter results
-        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure'
+        if: steps.isort.outcome == 'failure' || steps.autoflake.outcome == 'failure' || steps.black.outcome == 'failure' || steps.mypy.outcome == 'failure'
         run: |
           echo "One or more linters failed"
           exit 1
