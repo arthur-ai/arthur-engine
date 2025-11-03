@@ -1,0 +1,11 @@
+# Ignore artifacts:
+build
+coverage
+node_modules
+package.json
+.yarn
+yarn.lock
+.vscode
+.gitignore
+.prettierignore
+tsconfig.**.*

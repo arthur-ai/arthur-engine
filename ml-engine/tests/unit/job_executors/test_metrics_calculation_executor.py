@@ -35,16 +35,17 @@ from arthur_common.models.metrics import (
 )
 from arthur_common.tools.aggregation_loader import AggregationLoader
 from arthur_common.tools.functions import uuid_to_base26
+from mock_data.connector_helpers import (
+    MOCK_BQ_DATASET,
+)
+from mock_data.mock_data_generator import random_model
+
 from dataset_loader import DatasetLoader
 from job_executors.metrics_calculation_executor import (
     MetricsCalculationExecutor,
     _create_alert_check_job,
 )
 from metric_calculators.default_metric_calculator import DefaultMetricCalculator
-from mock_data.connector_helpers import (
-    MOCK_BQ_DATASET,
-)
-from mock_data.mock_data_generator import random_model
 
 logger = logging.getLogger("job_logger")
 
@@ -281,6 +282,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
         mock_calculator.aggregate.side_effect = slow_aggregate
         mock_calculator.process_agg_args.return_value = ([], [])
         mock_calculator.agg_schema.name = "test_aggregation"
+        mock_calculator.agg_name = "test_aggregation"
 
         # mock the model andother dependencies
         mock_models_client = Mock()
@@ -348,7 +350,7 @@ def test_metrics_calculation_timeout(mock_bigquery_client, caplog):
 
             # test the timeout error message is logged
             assert any(
-                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_schema.name}"
+                f"Aggregation calculation timed out for {agg_spec.aggregation_id} - {mock_calculator.agg_name}"
                 in rec.message
                 for rec in caplog.records
             )

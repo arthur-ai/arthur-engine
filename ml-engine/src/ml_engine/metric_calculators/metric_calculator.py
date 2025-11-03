@@ -37,11 +37,13 @@ class MetricCalculator(ABC):
         conn: duckdb.DuckDBPyConnection,
         logger: Logger,
         agg_spec: AggregationSpec,
+        agg_name: str,
     ) -> None:
         # TODO: Make conn read only for aggregations? Would have to manually manage table existence across different connections (write for transform, read for aggregate)
         self.conn = conn
         self.agg_spec = agg_spec
         self.logger = logger
+        self.agg_name = agg_name
 
     def transform(self) -> None:
         # TODO: One day

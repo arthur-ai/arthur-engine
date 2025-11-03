@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.111"
+version = "2.1.125"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -31,7 +31,7 @@ types-psutil = "7.0.0.20251001"
 types-requests = "2.32.4.20250913"
 psutil = "7.0.0"
 pyarrow = "21.0.0"
-arthur-client = "1.4.1578"
+arthur-client = "1.4.1589"
 arthur-common = "2.4.5"
 gunicorn = "^23.0.0"
 sqlalchemy = "2.0.44"
@@ -62,7 +62,9 @@ python_version = "3.13"
 strict = true
 ignore_missing_imports = true
 implicit_reexport = true
-explicit_package_bases = false
+explicit_package_bases = true
+mypy_path = "src/ml_engine"
+namespace_packages = true
 exclude = ["src/genai_client"]
 
 [tool.isort]
