@@ -134,19 +134,23 @@ def _backfill_spans_token_data():
 
 
 def _compute_missing_costs(connection):
-    """Compute costs for spans that have token counts but no costs."""
-    # Find spans with token counts but no costs
+    """Compute costs for spans that have token counts but missing costs."""
+    # Find spans with token counts but missing at least one cost field
+    # Note: We need model_name to compute costs
     result = connection.execute(
         text(
             """
         SELECT id,
                prompt_token_count,
                completion_token_count,
+               total_token_count,
+               prompt_token_cost,
+               completion_token_cost,
+               total_token_cost,
                raw_data->'attributes'->'llm'->>'model_name' as model_name
         FROM spans
-        WHERE prompt_token_count IS NOT NULL
-          AND completion_token_count IS NOT NULL
-          AND total_token_cost IS NULL
+        WHERE (prompt_token_count IS NOT NULL OR completion_token_count IS NOT NULL OR total_token_count IS NOT NULL)
+          AND (prompt_token_cost IS NULL OR completion_token_cost IS NULL OR total_token_cost IS NULL)
           AND raw_data->'attributes'->'llm'->>'model_name' IS NOT NULL
     """,
         ),
@@ -155,46 +159,81 @@ def _compute_missing_costs(connection):
     rows = result.fetchall()
 
     for row in rows:
-        span_id, prompt_tokens, completion_tokens, model_name = row
+        (
+            span_id,
+            prompt_tokens,
+            completion_tokens,
+            total_tokens,
+            existing_prompt_cost,
+            existing_completion_cost,
+            existing_total_cost,
+            model_name,
+        ) = row
 
         try:
-            # Compute costs using tokencost
-            prompt_cost = float(
-                calculate_cost_by_tokens(
-                    model_name=model_name,
-                    input_tokens=prompt_tokens,
-                    output_tokens=0,
-                ),
-            )
+            # Start with existing costs
+            prompt_cost = existing_prompt_cost
+            completion_cost = existing_completion_cost
+            total_cost = existing_total_cost
 
-            completion_cost = float(
-                calculate_cost_by_tokens(
-                    model_name=model_name,
-                    input_tokens=0,
-                    output_tokens=completion_tokens,
-                ),
-            )
+            # Compute prompt cost if missing
+            if prompt_tokens and prompt_cost is None:
+                prompt_cost = float(
+                    calculate_cost_by_tokens(
+                        num_tokens=prompt_tokens,
+                        model=model_name,
+                        token_type="input",
+                    ),
+                )
 
-            total_cost = prompt_cost + completion_cost
+            # Compute completion cost if missing
+            if completion_tokens and completion_cost is None:
+                completion_cost = float(
+                    calculate_cost_by_tokens(
+                        num_tokens=completion_tokens,
+                        model=model_name,
+                        token_type="output",
+                    ),
+                )
 
-            # Update the span
-            connection.execute(
-                text(
-                    """
-                    UPDATE spans
-                    SET prompt_token_cost = :prompt_cost,
-                        completion_token_cost = :completion_cost,
-                        total_token_cost = :total_cost
-                    WHERE id = :span_id
-                """,
-                ),
-                {
-                    "prompt_cost": prompt_cost,
-                    "completion_cost": completion_cost,
-                    "total_cost": total_cost,
-                    "span_id": span_id,
-                },
-            )
+            # Compute total cost if missing
+            if total_cost is None:
+                # Prefer computing from total_token_count if available
+                if total_tokens:
+                    total_cost = float(
+                        calculate_cost_by_tokens(
+                            num_tokens=total_tokens,
+                            model=model_name,
+                            token_type="output",
+                        ),
+                    )
+                # Fallback to summing prompt_cost + completion_cost
+                elif prompt_cost is not None and completion_cost is not None:
+                    total_cost = prompt_cost + completion_cost
+
+            # Update the span if any costs changed
+            if (
+                prompt_cost != existing_prompt_cost
+                or completion_cost != existing_completion_cost
+                or total_cost != existing_total_cost
+            ):
+                connection.execute(
+                    text(
+                        """
+                        UPDATE spans
+                        SET prompt_token_cost = :prompt_cost,
+                            completion_token_cost = :completion_cost,
+                            total_token_cost = :total_cost
+                        WHERE id = :span_id
+                    """,
+                    ),
+                    {
+                        "prompt_cost": prompt_cost,
+                        "completion_cost": completion_cost,
+                        "total_cost": total_cost,
+                        "span_id": span_id,
+                    },
+                )
 
         except Exception:
             continue
