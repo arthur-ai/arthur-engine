@@ -93,21 +93,26 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function renderRelevance(details: MetricDetails) {
-  const d = details.query_relevance ?? null;
+function renderRelevance(
+  details:
+    | MetricDetails["query_relevance"]
+    | MetricDetails["response_relevance"]
+) {
   return (
     <Stack direction="column" spacing={1}>
       <KV
         label="LLM relevance score"
-        value={formatNumber(d?.llm_relevance_score)}
+        value={formatNumber(details?.llm_relevance_score)}
       />
       <KV
         label="Reranker relevance score"
-        value={formatNumber(d?.reranker_relevance_score)}
+        value={formatNumber(details?.reranker_relevance_score)}
       />
-      <KV label="BERT F-score" value={formatNumber(d?.bert_f_score)} />
-      {d?.reason ? <KV label="Reason" value={d.reason} /> : null}
-      {d?.refinement ? <KV label="Refinement" value={d.refinement} /> : null}
+      <KV label="BERT F-score" value={formatNumber(details?.bert_f_score)} />
+      {details?.reason ? <KV label="Reason" value={details.reason} /> : null}
+      {details?.refinement ? (
+        <KV label="Refinement" value={details.refinement} />
+      ) : null}
     </Stack>
   );
 }
@@ -134,9 +139,9 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
 
   let content: React.ReactNode = null;
   if (result.metric_type === "QueryRelevance") {
-    content = renderRelevance(parsed);
+    content = renderRelevance(parsed.query_relevance);
   } else if (result.metric_type === "ResponseRelevance") {
-    content = renderRelevance(parsed);
+    content = renderRelevance(parsed.response_relevance);
   } else if (result.metric_type === "ToolSelection") {
     content = renderToolSelection(parsed);
   }
