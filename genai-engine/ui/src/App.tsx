@@ -1,9 +1,10 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
+  Navigate,
+  Route,
   BrowserRouter as Router,
   Routes,
-  Route,
-  Navigate,
   useParams,
 } from "react-router-dom";
 
@@ -17,11 +18,11 @@ import PromptsPlayground from "./components/prompts/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";
+import "./App.css";
 import { TracesView } from "./components/TracesView";
 import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import "./App.css";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details
 const TaskRedirect = () => {
@@ -32,6 +33,7 @@ const TaskRedirect = () => {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ReactQueryDevtools />
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-gray-50">
