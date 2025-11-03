@@ -1,12 +1,30 @@
 import logging
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 import tiktoken
+from pydantic import BaseModel
 from tokencost import calculate_cost_by_tokens
 
 logger = logging.getLogger(__name__)
 
 TIKTOKEN_ENCODER = "cl100k_base"
+
+
+class TokenCount(BaseModel):
+    prompt_token_count: Optional[int] = None
+    completion_token_count: Optional[int] = None
+    total_token_count: Optional[int] = None
+
+
+class TokenCost(BaseModel):
+    prompt_token_cost: Optional[float] = None
+    completion_token_cost: Optional[float] = None
+    total_token_cost: Optional[float] = None
+
+
+class TokenCountCost(BaseModel):
+    token_count: Optional[TokenCount] = None
+    token_cost: Optional[TokenCost] = None
 
 
 class TokenCounter:
@@ -29,7 +47,8 @@ def compute_cost_from_counts(
     model_name: str,
     prompt_tokens: int,
     completion_tokens: int,
-) -> Dict[str, Optional[float]]:
+    total_tokens: Optional[int] = None,
+) -> TokenCost:
     """
     Compute costs from token counts using tokencost package.
 
@@ -42,11 +61,11 @@ def compute_cost_from_counts(
         Dict with keys: prompt_cost, completion_cost, total_cost
         Values are None if computation fails.
     """
-    result = {
-        "prompt_cost": None,
-        "completion_cost": None,
-        "total_cost": None,
-    }
+    result = TokenCost(
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
+    )
 
     try:
         prompt_cost = calculate_cost_by_tokens(
@@ -61,9 +80,18 @@ def compute_cost_from_counts(
             output_tokens=completion_tokens,
         )
 
-        result["prompt_cost"] = float(prompt_cost)
-        result["completion_cost"] = float(completion_cost)
-        result["total_cost"] = result["prompt_cost"] + result["completion_cost"]
+        if total_tokens is not None:
+            total_cost = calculate_cost_by_tokens(
+                model_name=model_name,
+                input_tokens=total_tokens,
+                output_tokens=0,
+            )
+        else:
+            total_cost = prompt_cost + completion_cost
+
+        result.prompt_token_cost = float(prompt_cost)
+        result.completion_token_cost = float(completion_cost)
+        result.total_token_cost = float(total_cost)
 
     except Exception as e:
         logger.warning(

@@ -198,12 +198,12 @@ class TraceIngestionService:
             user_id=self._get_attribute_value(span_data, USER_ID_KEY),
             status_code=span_status_code,
             raw_data=span_data,
-            prompt_token_count=token_data["prompt_token_count"],
-            completion_token_count=token_data["completion_token_count"],
-            total_token_count=token_data["total_token_count"],
-            prompt_token_cost=token_data["prompt_token_cost"],
-            completion_token_cost=token_data["completion_token_cost"],
-            total_token_cost=token_data["total_token_cost"],
+            prompt_token_count=token_data.token_count.prompt_token_count,
+            completion_token_count=token_data.token_count.completion_token_count,
+            total_token_count=token_data.token_count.total_token_count,
+            prompt_token_cost=token_data.token_cost.prompt_token_cost,
+            completion_token_cost=token_data.token_cost.completion_token_cost,
+            total_token_cost=token_data.token_cost.total_token_cost,
         )
 
     def _extract_value_from_otel_format(

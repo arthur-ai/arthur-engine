@@ -13,7 +13,12 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
-from utils.token_count import compute_cost_from_counts
+from utils.token_count import (
+    TokenCost,
+    TokenCount,
+    TokenCountCost,
+    compute_cost_from_counts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +318,7 @@ def validate_span_version(raw_data: Dict[str, Any]) -> bool:
 def extract_token_cost_from_span(
     span_raw_data: dict,
     span_kind: str,
-) -> Dict[str, Optional[float]]:
+) -> TokenCountCost:
     """
     Extract token counts and costs from span attributes.
 
@@ -323,75 +328,60 @@ def extract_token_cost_from_span(
         Values are None if not available.
     """
 
-    # Default None values
-    result = {
-        "prompt_token_count": None,
-        "completion_token_count": None,
-        "total_token_count": None,
-        "prompt_token_cost": None,
-        "completion_token_cost": None,
-        "total_token_cost": None,
-    }
-
-    # Only extract for LLM spans
     if span_kind != SPAN_KIND_LLM:
-        return result
+        return TokenCountCost(token_count=TokenCount(), token_cost=TokenCost())
 
-    try:
-        attributes = span_raw_data.get("attributes", {})
+    attributes = span_raw_data.get("attributes", {})
 
-        # Extract token counts
-        token_count = get_nested_value(attributes, "llm.token_count") or {}
-        prompt_tokens = token_count.get("prompt")
-        completion_tokens = token_count.get("completion")
-        total_tokens = token_count.get("total")
+    # Extract token counts
+    token_count = get_nested_value(attributes, "llm.token_count") or {}
+    prompt_tokens = token_count.get("prompt")
+    completion_tokens = token_count.get("completion")
+    total_tokens = token_count.get("total")
 
-        result["prompt_token_count"] = prompt_tokens
-        result["completion_token_count"] = completion_tokens
-        result["total_token_count"] = _calculate_total(
+    token_count_result = TokenCount(
+        prompt_token_count=prompt_tokens,
+        completion_token_count=completion_tokens,
+        total_token_count=_calculate_total(
             total_tokens,
             prompt_tokens,
             completion_tokens,
+        ),
+    )
+
+    # Extract costs
+    cost_data = get_nested_value(attributes, "llm.cost") or {}
+    prompt_cost = cost_data.get("prompt")
+    completion_cost = cost_data.get("completion")
+    total_cost = cost_data.get("total")
+
+    # If no costs provided but we have token counts, compute them
+    if (
+        total_cost is None
+        and prompt_cost is None
+        and completion_cost is None
+        and prompt_tokens is not None
+        and completion_tokens is not None
+    ):
+        model_name = get_nested_value(attributes, "llm.model_name")
+        token_cost_result = (
+            compute_cost_from_counts(
+                model_name=model_name,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+            )
+            if model_name
+            else TokenCost()
+        )
+    else:
+        token_cost_result = TokenCost(
+            prompt_token_cost=prompt_cost,
+            completion_token_cost=completion_cost,
+            total_token_cost=total_cost,
         )
 
-        # Extract costs
-        cost_data = get_nested_value(attributes, "llm.cost") or {}
-        prompt_cost = cost_data.get("prompt")
-        completion_cost = cost_data.get("completion")
-        total_cost = cost_data.get("total")
-
-        # If no costs provided but we have token counts, compute them
-        if (
-            total_cost is None
-            and prompt_cost is None
-            and completion_cost is None
-            and prompt_tokens is not None
-            and completion_tokens is not None
-        ):
-            model_name = get_nested_value(attributes, "llm.model_name")
-            if model_name:
-                computed_costs = compute_cost_from_counts(
-                    model_name=model_name,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                )
-                result["prompt_token_cost"] = computed_costs["prompt_cost"]
-                result["completion_token_cost"] = computed_costs["completion_cost"]
-                result["total_token_cost"] = computed_costs["total_cost"]
-        else:
-            # Use provided costs
-            result["prompt_token_cost"] = prompt_cost
-            result["completion_token_cost"] = completion_cost
-            result["total_token_cost"] = _calculate_total(
-                total_cost,
-                prompt_cost,
-                completion_cost,
-            )
-
-    except Exception as e:
-        logger.warning(f"Error extracting token/cost from LLM span: {e}")
-
-    return result
+    return TokenCountCost(token_count=token_count_result, token_cost=token_cost_result)
 
 
 def _calculate_total(

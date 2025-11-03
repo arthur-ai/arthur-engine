@@ -69,8 +69,15 @@ def test_list_traces_metadata_functionality(
         # Verify new fields are present
         assert hasattr(trace_metadata, "input_content")
         assert hasattr(trace_metadata, "output_content")
+        # Verify token count/cost fields are present (may be None if no LLM spans)
+        assert hasattr(trace_metadata, "prompt_token_count")
+        assert hasattr(trace_metadata, "completion_token_count")
+        assert hasattr(trace_metadata, "total_token_count")
+        assert hasattr(trace_metadata, "prompt_token_cost")
+        assert hasattr(trace_metadata, "completion_token_cost")
+        assert hasattr(trace_metadata, "total_token_cost")
 
-    # Verify specific traces have expected input/output content
+    # Verify specific traces have expected input/output content and token data
     trace1 = next((t for t in data.traces if t.trace_id == "api_trace1"), None)
     if trace1:
         assert trace1.input_content == "What is the weather like today?"
@@ -78,6 +85,14 @@ def test_list_traces_metadata_functionality(
             trace1.output_content
             == "I don't have access to real-time weather information."
         )
+        # Trace1 has api_span1 (LLM with tokens) and api_span2 (CHAIN, no tokens)
+        # Should aggregate tokens from api_span1 only
+        assert trace1.prompt_token_count == 100
+        assert trace1.completion_token_count == 50
+        assert trace1.total_token_count == 150
+        assert trace1.prompt_token_cost == 0.001
+        assert trace1.completion_token_cost == 0.002
+        assert trace1.total_token_cost == 0.003
 
     trace2 = next((t for t in data.traces if t.trace_id == "api_trace2"), None)
     if trace2:
@@ -91,6 +106,13 @@ def test_list_traces_metadata_functionality(
         expected_output = {"answer": "Follow-up response", "sources": ["doc1", "doc2"]}
         assert json.loads(trace2.input_content) == expected_input
         assert json.loads(trace2.output_content) == expected_output
+        # Trace2 has only api_span3 (LLM with tokens)
+        assert trace2.prompt_token_count == 200
+        assert trace2.completion_token_count == 100
+        assert trace2.total_token_count == 300
+        assert trace2.prompt_token_cost == 0.002
+        assert trace2.completion_token_cost == 0.003
+        assert trace2.total_token_cost == 0.005
 
     # Test multiple tasks
     status_code, data = client.trace_api_list_traces_metadata(

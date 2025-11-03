@@ -19,6 +19,13 @@ def assert_valid_span_metadata_response(spans):
         assert span.user_id is not None  # Should have user_id
         assert span.start_time is not None
         assert span.end_time is not None
+        # Verify token count/cost fields are present (may be None for non-LLM spans)
+        assert hasattr(span, "prompt_token_count")
+        assert hasattr(span, "completion_token_count")
+        assert hasattr(span, "total_token_count")
+        assert hasattr(span, "prompt_token_cost")
+        assert hasattr(span, "completion_token_cost")
+        assert hasattr(span, "total_token_cost")
 
 
 def assert_valid_span_full_response(span):
@@ -31,6 +38,13 @@ def assert_valid_span_full_response(span):
     assert span.end_time is not None
     assert span.raw_data and isinstance(span.raw_data, dict)
     assert hasattr(span, "metric_results")  # Can be None or list
+    # Verify token count/cost fields are present (may be None for non-LLM spans)
+    assert hasattr(span, "prompt_token_count")
+    assert hasattr(span, "completion_token_count")
+    assert hasattr(span, "total_token_count")
+    assert hasattr(span, "prompt_token_cost")
+    assert hasattr(span, "completion_token_cost")
+    assert hasattr(span, "total_token_cost")
 
 
 def assert_spans_match_types(spans, expected_types):
@@ -121,6 +135,18 @@ def test_list_spans_metadata_with_span_type_filtering(
         for span in data.spans:
             assert hasattr(span, "input_content")
             assert hasattr(span, "output_content")
+
+        # If filtering for LLM spans only, verify token counts/costs are present
+        if span_types == ["LLM"]:
+            llm_spans = data.spans
+            # api_span1 and api_span3 should both have token data
+            for span in llm_spans:
+                assert span.prompt_token_count is not None
+                assert span.completion_token_count is not None
+                assert span.total_token_count is not None
+                assert span.prompt_token_cost is not None
+                assert span.completion_token_cost is not None
+                assert span.total_token_cost is not None
 
 
 @pytest.mark.unit_tests
@@ -226,6 +252,14 @@ def test_get_span_by_id_comprehensive(
         == "I don't have access to real-time weather information."
     )
 
+    # Verify token count/cost for LLM span
+    assert span_data.prompt_token_count == 100
+    assert span_data.completion_token_count == 50
+    assert span_data.total_token_count == 150
+    assert span_data.prompt_token_cost == 0.001
+    assert span_data.completion_token_cost == 0.002
+    assert span_data.total_token_cost == 0.003
+
     # Test JSON format span (api_span3)
     status_code, span_data = client.trace_api_get_span_by_id("api_span3")
     assert status_code == 200
@@ -246,6 +280,14 @@ def test_get_span_by_id_comprehensive(
     assert attributes["input"]["mime_type"] == "application/json"
     assert attributes["output"]["mime_type"] == "application/json"
 
+    # Verify token count/cost for api_span3 (LLM span)
+    assert span_data.prompt_token_count == 200
+    assert span_data.completion_token_count == 100
+    assert span_data.total_token_count == 300
+    assert span_data.prompt_token_cost == 0.002
+    assert span_data.completion_token_cost == 0.003
+    assert span_data.total_token_cost == 0.005
+
     # Test non-existent span
     status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
     assert status_code == 404
@@ -258,6 +300,14 @@ def test_get_span_by_id_comprehensive(
     # Non-LLM spans should have input_content/output_content fields (may be None)
     assert hasattr(span_data, "input_content")
     assert hasattr(span_data, "output_content")
+
+    # Verify that non-LLM spans have None token counts/costs
+    assert span_data.prompt_token_count is None
+    assert span_data.completion_token_count is None
+    assert span_data.total_token_count is None
+    assert span_data.prompt_token_cost is None
+    assert span_data.completion_token_cost is None
+    assert span_data.total_token_cost is None
 
 
 # ============================================================================

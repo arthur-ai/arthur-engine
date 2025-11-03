@@ -22,6 +22,13 @@ def assert_valid_session_metadata_response(sessions):
         )
         assert session.earliest_start_time is not None
         assert session.latest_end_time is not None
+        # Verify token count/cost fields are present (may be None if no LLM spans)
+        assert hasattr(session, "prompt_token_count")
+        assert hasattr(session, "completion_token_count")
+        assert hasattr(session, "total_token_count")
+        assert hasattr(session, "prompt_token_cost")
+        assert hasattr(session, "completion_token_cost")
+        assert hasattr(session, "total_token_cost")
 
 
 def assert_valid_session_traces_response(traces):
@@ -82,6 +89,14 @@ def test_list_sessions_metadata_functionality(
     assert session.span_count > 0
     assert session.earliest_start_time is not None
     assert session.latest_end_time is not None
+    # Session1 has api_trace1 (span1: 100/50/150, span2: None) and api_trace2 (span3: 200/100/300)
+    # Total: 300 prompt, 150 completion, 450 total
+    assert session.prompt_token_count == 300
+    assert session.completion_token_count == 150
+    assert session.total_token_count == 450
+    assert session.prompt_token_cost == 0.003  # 0.001 + 0.002
+    assert session.completion_token_cost == 0.005  # 0.002 + 0.003
+    assert session.total_token_cost == 0.008  # 0.003 + 0.005
 
     # Test multiple tasks
     status_code, data = client.trace_api_list_sessions_metadata(

@@ -157,7 +157,7 @@ class TraceMetadataResponse(TokenCountCostSchema):
     )
 
 
-class SpanMetadataResponse(BaseModel):
+class SpanMetadataResponse(TokenCountCostSchema):
     """Lightweight span metadata for list operations"""
 
     id: str = Field(description="Internal database ID")

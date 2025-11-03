@@ -1797,6 +1797,12 @@ class Span(TokenCountCostSchema):
             updated_at=self.updated_at,
             input_content=self.input_content,
             output_content=self.output_content,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
         )
 
     @staticmethod
