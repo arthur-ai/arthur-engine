@@ -43,62 +43,35 @@ class TokenCounter:
         return len(self.encoder.encode(query))
 
 
-def compute_cost_from_counts(
+def compute_cost_from_tokens(
     model_name: str,
-    prompt_tokens: int,
-    completion_tokens: int,
-    total_tokens: Optional[int] = None,
-) -> TokenCost:
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+) -> Optional[float]:
     """
-    Compute costs from token counts using tokencost package.
+    Compute cost from token counts.
 
     Args:
         model_name: The model name (e.g., "gpt-4", "claude-3-opus")
-        prompt_tokens: Number of prompt tokens
-        completion_tokens: Number of completion tokens
+        input_tokens: Number of input tokens
+        output_tokens: Number of output tokens
 
     Returns:
-        Dict with keys: prompt_cost, completion_cost, total_cost
-        Values are None if computation fails.
+        Cost or None if computation fails
     """
-    result = TokenCost(
-        prompt_token_cost=None,
-        completion_token_cost=None,
-        total_token_cost=None,
-    )
-
     try:
-        prompt_cost = calculate_cost_by_tokens(
-            model_name=model_name,
-            input_tokens=prompt_tokens,
-            output_tokens=0,
-        )
-
-        completion_cost = calculate_cost_by_tokens(
-            model_name=model_name,
-            input_tokens=0,
-            output_tokens=completion_tokens,
-        )
-
-        if total_tokens is not None:
-            total_cost = calculate_cost_by_tokens(
+        return float(
+            calculate_cost_by_tokens(
                 model_name=model_name,
-                input_tokens=total_tokens,
-                output_tokens=0,
-            )
-        else:
-            total_cost = prompt_cost + completion_cost
-
-        result.prompt_token_cost = float(prompt_cost)
-        result.completion_token_cost = float(completion_cost)
-        result.total_token_cost = float(total_cost)
-
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            ),
+        )
     except Exception as e:
         logger.warning(
-            f"Error computing costs with tokencost for model {model_name}: {e}",
+            f"Error computing cost for model {model_name}: {e}",
         )
-
-    return result
+        return None
 
 
 def safe_add(

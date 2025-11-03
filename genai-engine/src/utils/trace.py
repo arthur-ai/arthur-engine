@@ -19,7 +19,7 @@ from utils.token_count import (
     TokenCost,
     TokenCount,
     TokenCountCost,
-    compute_cost_from_counts,
+    compute_cost_from_tokens,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,8 +112,12 @@ def extract_span_features(span_dict):
         attributes = span_dict.get("attributes", {})
 
         # Access already-normalized nested messages
-        input_messages = get_nested_value(attributes, "llm.input_messages") or []
-        output_messages = get_nested_value(attributes, "llm.output_messages") or []
+        input_messages = get_nested_value(attributes, "llm.input_messages", default=[])
+        output_messages = get_nested_value(
+            attributes,
+            "llm.output_messages",
+            default=[],
+        )
 
         # Early exit if no conversation data
         if not input_messages:
@@ -264,19 +268,26 @@ def clean_status_code(status_code: str) -> str:
         return status_code
 
 
-def get_nested_value(obj, path):
+def get_nested_value(obj, path, default=None):
     """
     Safely navigate nested dictionary structure using dot-separated path.
 
     Args:
         obj: Dictionary to navigate
         path: Dot-separated path (e.g., 'llm.model_name')
+        default: Default value to return if path not found (defaults to None)
 
     Returns:
-        Value at the path, or None if not found
+        Value at the path, or default if not found
+
+    Examples:
+        get_nested_value({"a": {"b": 1}}, "a.b") -> 1
+        get_nested_value({"a": {"b": 1}}, "a.c") -> None
+        get_nested_value({"a": {"b": 1}}, "a.c", default=0) -> 0
+        get_nested_value(None, "a.b", default="missing") -> "missing"
     """
     if not isinstance(obj, dict):
-        return None
+        return default
 
     keys = path.split(".")
     current = obj
@@ -285,7 +296,7 @@ def get_nested_value(obj, path):
         if isinstance(current, dict) and key in current:
             current = current[key]
         else:
-            return None
+            return default
 
     return current
 
@@ -325,9 +336,7 @@ def extract_token_cost_from_span(
     Extract token counts and costs from span attributes.
 
     Returns:
-        Dict with keys: prompt_token_count, completion_token_count,
-        total_token_count, prompt_token_cost, completion_token_cost, total_token_cost
-        Values are None if not available.
+        TokenCountCost object with token_count and token_cost
     """
 
     if span_kind != SPAN_KIND_LLM:
@@ -358,31 +367,38 @@ def extract_token_cost_from_span(
     completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
     total_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_TOTAL)
 
-    # If no costs provided but we have token counts, compute them
-    if (
-        total_cost is None
-        and prompt_cost is None
-        and completion_cost is None
-        and prompt_tokens is not None
-        and completion_tokens is not None
-    ):
-        model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
-        token_cost_result = (
-            compute_cost_from_counts(
-                model_name=model_name,
-                prompt_tokens=prompt_tokens,
-                completion_tokens=completion_tokens,
-                total_tokens=total_tokens,
+    # Compute missing costs if needed
+    model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
+    if model_name:
+        # Compute prompt cost if missing
+        if prompt_tokens and prompt_cost is None:
+            prompt_cost = compute_cost_from_tokens(
+                model_name,
+                input_tokens=prompt_tokens,
             )
-            if model_name
-            else TokenCost()
-        )
-    else:
-        token_cost_result = TokenCost(
-            prompt_token_cost=prompt_cost,
-            completion_token_cost=completion_cost,
-            total_token_cost=total_cost,
-        )
+
+        # Compute completion cost if missing
+        if completion_tokens and completion_cost is None:
+            completion_cost = compute_cost_from_tokens(
+                model_name,
+                output_tokens=completion_tokens,
+            )
+
+        # Compute total cost if missing
+        if total_cost is None:
+            if token_count_result.total_token_count is not None:
+                total_cost = compute_cost_from_tokens(
+                    model_name,
+                    input_tokens=token_count_result.total_token_count,
+                )
+            elif prompt_cost is not None and completion_cost is not None:
+                total_cost = prompt_cost + completion_cost
+
+    token_cost_result = TokenCost(
+        prompt_token_cost=prompt_cost,
+        completion_token_cost=completion_cost,
+        total_token_cost=total_cost,
+    )
 
     return TokenCountCost(token_count=token_count_result, token_cost=token_cost_result)
 

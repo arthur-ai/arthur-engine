@@ -175,8 +175,10 @@ class TraceIngestionService:
                 )
             )
         else:
-            span_status_code = (
-                trace_utils.get_nested_value(span_data, "status.code") or "Unset"
+            span_status_code = trace_utils.get_nested_value(
+                span_data,
+                "status.code",
+                default="Unset",
             )
         span_status_code = trace_utils.clean_status_code(span_status_code)
 

@@ -1631,11 +1631,14 @@ class Span(TokenCountCostSchema):
         Uses get_nested_value for safe nested dictionary access.
         Converts dicts/lists to JSON strings to ensure string return type.
         """
+        value = trace_utils.get_nested_value(
+            self.raw_data,
+            "attributes.input.value",
+            default=None,
+        )
+        if value is None:
+            return None
         try:
-            value = trace_utils.get_nested_value(
-                self.raw_data,
-                "attributes.input.value",
-            )
             return trace_utils.value_to_string(value)
         except Exception:
             return None
@@ -1648,11 +1651,14 @@ class Span(TokenCountCostSchema):
         Uses get_nested_value for safe nested dictionary access.
         Converts dicts/lists to JSON strings to ensure string return type.
         """
+        value = trace_utils.get_nested_value(
+            self.raw_data,
+            "attributes.output.value",
+            default=None,
+        )
+        if value is None:
+            return None
         try:
-            value = trace_utils.get_nested_value(
-                self.raw_data,
-                "attributes.output.value",
-            )
             return trace_utils.value_to_string(value)
         except Exception:
             return None
