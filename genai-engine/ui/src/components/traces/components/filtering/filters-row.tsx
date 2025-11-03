@@ -10,7 +10,7 @@ import { DynamicEnumField, Field } from "./fields";
 import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { canBeCombinedWith } from "./rules";
-import { sharedFormOptions } from "./shared";
+import { sharedFormOptions, validators } from "./shared";
 import { EnumOperators, Operator } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
@@ -36,14 +36,9 @@ type DynamicEnumArgMap<
   [K in Dynamic["name"]]: InferDynamicEnumArg<Dynamic>;
 };
 
-type Opts = {
-  portalRoot?: HTMLElement;
-};
-
 export function createFilterRow<TFields extends Field[]>(
   fields: TFields,
-  dynamicEnumArgMap: DynamicEnumArgMap<TFields>,
-  opts?: Opts
+  dynamicEnumArgMap: DynamicEnumArgMap<TFields>
 ) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
@@ -116,9 +111,19 @@ export function createFilterRow<TFields extends Field[]>(
               </form.Field>
             </ScrollArea.Content>
           </ScrollArea.Viewport>
-          <IconButton type="submit">
-            <FilterList />
-          </IconButton>
+          <form.Subscribe selector={(state) => state.canSubmit}>
+            {(canSubmit) => (
+              <IconButton
+                type="submit"
+                disabled={!canSubmit}
+                sx={{
+                  alignSelf: "center",
+                }}
+              >
+                <FilterList />
+              </IconButton>
+            )}
+          </form.Subscribe>
         </ScrollArea.Root>
       </Paper>
     );
@@ -162,7 +167,13 @@ export function createFilterRow<TFields extends Field[]>(
 
       return (
         <Stack direction="row" className="group shrink-0" data-stage={stage}>
-          <form.AppField name={`config[${index}].name` as const}>
+          <form.AppField
+            name={`config[${index}].name` as const}
+            validators={{
+              onMount: validators.name,
+              onChange: validators.name,
+            }}
+          >
             {(field) => (
               <field.MaterialAutocompleteField
                 disablePortal
@@ -190,7 +201,13 @@ export function createFilterRow<TFields extends Field[]>(
           </form.AppField>
 
           {stage >= 1 && (
-            <form.AppField name={`config[${index}].operator` as const}>
+            <form.AppField
+              name={`config[${index}].operator` as const}
+              validators={{
+                onMount: validators.operator,
+                onChange: validators.operator,
+              }}
+            >
               {(field) => (
                 <field.MaterialAutocompleteField
                   disablePortal
@@ -227,7 +244,7 @@ export function createFilterRow<TFields extends Field[]>(
               )}
             </form.AppField>
           )}
-          {stage >= 2 && <ValueInput stage={stage} form={form} index={index} />}
+          {stage >= 2 && <ValueInput form={form} index={index} />}
           <Button
             size="small"
             variant="outlined"
@@ -247,9 +264,8 @@ export function createFilterRow<TFields extends Field[]>(
     ...sharedFormOptions,
     props: {} as {
       index: number;
-      stage: number;
     },
-    render: function Render({ form, index, stage }) {
+    render: function Render({ form, index }) {
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
@@ -260,8 +276,32 @@ export function createFilterRow<TFields extends Field[]>(
 
       if (!fieldConfig) return null;
 
+      let fieldValidators = {};
+      if (fieldConfig.type === "enum" || fieldConfig.type === "dynamic_enum") {
+        const multiple = config.operator === EnumOperators.IN;
+        fieldValidators = {
+          onMount: multiple ? validators.valueArray : validators.value,
+          onChange: multiple ? validators.valueArray : validators.value,
+        };
+      } else if (fieldConfig.type === "numeric") {
+        fieldValidators = {
+          onMount: validators.numeric(
+            fieldConfig.min ?? -Infinity,
+            fieldConfig.max ?? Infinity
+          ),
+          onChange: validators.numeric(
+            fieldConfig.min ?? -Infinity,
+            fieldConfig.max ?? Infinity
+          ),
+        };
+      }
+
       return (
-        <form.AppField key={index} name={`config[${index}].value` as const}>
+        <form.AppField
+          key={index}
+          name={`config[${index}].value` as const}
+          validators={fieldValidators}
+        >
           {(field) => {
             if (fieldConfig.type === "enum") {
               const multiple = config.operator === EnumOperators.IN;
