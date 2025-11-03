@@ -6872,6 +6872,108 @@
                         }
                     }
                 }
+            },
+            "get": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Get Task Rag Provider Settings",
+                "description": "Get list of RAG provider setting configurations for the task.",
+                "operationId": "get_task_rag_provider_settings_api_v1_tasks__task_id__rag_provider_settings_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the task to fetch the provider connections for.",
+                            "title": "Task Id"
+                        },
+                        "description": "ID of the task to fetch the provider connections for."
+                    },
+                    {
+                        "name": "config_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "RAG Provider setting configuration name substring to search for.",
+                            "title": "Config Name"
+                        },
+                        "description": "RAG Provider setting configuration name substring to search for."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SearchRagProviderSettingConfigurationsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/rag_provider_settings/{setting_configuration_id}": {
@@ -6953,6 +7055,65 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Update Rag Provider Settings",
+                "description": "Update a single RAG provider setting configuration.",
+                "operationId": "update_rag_provider_settings_api_v1_rag_provider_settings__setting_configuration_id__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG setting configuration to update.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of the RAG setting configuration to update."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagSettingConfigurationUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagSettingConfigurationResponse"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -12642,6 +12803,36 @@
                 ],
                 "title": "RagSettingConfigurationResponse"
             },
+            "RagSettingConfigurationUpdateRequest": {
+                "properties": {
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "Name of the setting configuration."
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the setting configuration."
+                    }
+                },
+                "type": "object",
+                "title": "RagSettingConfigurationUpdateRequest"
+            },
             "RagSettingConfigurationVersionResponse": {
                 "properties": {
                     "setting_configuration_id": {
@@ -13072,6 +13263,29 @@
                     "rag_provider_configurations"
                 ],
                 "title": "SearchRagProviderConfigurationsResponse"
+            },
+            "SearchRagProviderSettingConfigurationsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG provider setting configurations matching the parameters."
+                    },
+                    "rag_provider_setting_configurations": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagSettingConfigurationResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Setting Configurations",
+                        "description": "List of RAG provider setting configurations matching the search filters. Length is less than or equal to page_size parameter"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_setting_configurations"
+                ],
+                "title": "SearchRagProviderSettingConfigurationsResponse"
             },
             "SearchRulesRequest": {
                 "properties": {

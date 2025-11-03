@@ -557,6 +557,15 @@ class RagSettingConfigurationResponse(BaseModel):
     )
 
 
+class SearchRagProviderSettingConfigurationsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG provider setting configurations matching the parameters.",
+    )
+    rag_provider_setting_configurations: list[RagSettingConfigurationResponse] = Field(
+        description="List of RAG provider setting configurations matching the search filters. Length is less than or equal to page_size parameter",
+    )
+
+
 class AgenticPromptMetadataResponse(BaseModel):
     name: str = Field(description="Name of the prompt")
     versions: int = Field(description="Number of versions of the prompt")

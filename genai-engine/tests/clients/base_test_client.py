@@ -76,6 +76,7 @@ from schemas.request_schemas import (
     RagProviderTestConfigurationRequest,
     RagSettingConfigurationRequest,
     RagSettingConfigurationRequestTypes,
+    RagSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
@@ -94,6 +95,7 @@ from schemas.response_schemas import (
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
+    SearchRagProviderSettingConfigurationsResponse,
     SessionListResponse,
     SessionTracesResponse,
     SpanListResponse,
@@ -2876,6 +2878,35 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
+    def update_rag_provider_settings(
+        self,
+        setting_configuration_id: str,
+        name: str = None,
+        description: str = None,
+    ) -> tuple[int, RagSettingConfigurationResponse]:
+        """Update a RAG provider settings configuration."""
+        request = RagSettingConfigurationUpdateRequest(
+            name=name,
+            description=description,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v1/rag_provider_settings/{setting_configuration_id}",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
     def delete_rag_provider_settings(self, setting_configuration_id: str) -> int:
         """Delete a RAG provider settings configuration."""
         resp = self.base_client.delete(
@@ -2886,6 +2917,44 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def get_task_rag_provider_settings(
+        self,
+        task_id: str,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        config_name: str = None,
+    ) -> tuple[int, SearchRagProviderSettingConfigurationsResponse]:
+        """Search RAG provider setting configurations for a task."""
+        path = f"api/v1/tasks/{task_id}/rag_provider_settings"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if config_name:
+            params["config_name"] = config_name
+
+        resp = self.base_client.get(
+            "{}{}".format(
+                path,
+                "?" + urllib.parse.urlencode(params, doseq=True) if params else "",
+            ),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderSettingConfigurationsResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
     def create_rag_provider_settings_hybrid(
         self,

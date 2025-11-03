@@ -9,7 +9,7 @@ from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 @pytest.mark.unit_tests
 def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
-    """Test the basic happy path for rag provider settings CRUD operations: create, get, delete."""
+    """Test the basic happy path for rag provider settings CRUD operations: create, get, update, delete."""
     # First create a task to associate the RAG provider settings with
     status_code, task = client.create_task(name="Test Task for RAG Provider Settings")
     assert status_code == 200
@@ -95,6 +95,42 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
         retrieved_settings.latest_version.settings.minimum_match_or_operator
         == minimum_match_or_operator
     )
+
+    # test rag provider settings update
+    updated_name = "Updated Test RAG Provider Settings"
+    updated_description = "Updated test RAG provider settings description"
+
+    status_code, updated_settings = client.update_rag_provider_settings(
+        setting_configuration_id=created_settings.id,
+        name=updated_name,
+        description=updated_description,
+    )
+    assert status_code == 200
+    assert updated_settings.id == created_settings.id
+    assert updated_settings.name == updated_name
+    assert updated_settings.description == updated_description
+    # Settings version should remain unchanged
+    assert updated_settings.latest_version_number == 1
+    assert updated_settings.latest_version.tags == tags
+    assert updated_settings.latest_version.settings.collection_name == collection_name
+    assert updated_settings.latest_version.settings.rag_provider == "weaviate"
+    assert updated_settings.latest_version.settings.search_kind == "keyword_search"
+    assert updated_settings.updated_at > updated_settings.created_at
+
+    # validate updates persisted on fetch
+    status_code, final_settings = client.get_rag_provider_settings(
+        created_settings.id,
+    )
+    assert status_code == 200
+    assert final_settings.name == updated_name
+    assert final_settings.description == updated_description
+
+    # fail to update rag provider settings that doesn't exist
+    status_code, _ = client.update_rag_provider_settings(
+        setting_configuration_id=str(uuid4()),
+        name="Non-existent Settings",
+    )
+    assert status_code == 404
 
     # delete rag provider settings
     status_code = client.delete_rag_provider_settings(created_settings.id)

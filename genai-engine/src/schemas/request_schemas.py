@@ -454,6 +454,17 @@ class RagSettingConfigurationRequest(BaseModel):
     )
 
 
+class RagSettingConfigurationUpdateRequest(BaseModel):
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the setting configuration.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the setting configuration.",
+    )
+
+
 class BasePromptFilterRequest(BaseModel, ABC):
     """Abstract Pydantic base class enforcing apply_filters_to_query implementation."""
 

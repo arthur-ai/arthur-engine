@@ -4,6 +4,10 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 11/03/2025
 - **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_provider_settings  endpoint added
+
+# 11/03/2025
+- **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/search_kind'
