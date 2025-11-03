@@ -3,17 +3,7 @@ import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import {
-  Accordion,
-  AccordionSummary,
-  Collapse,
-  FormControl,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-} from "@mui/material";
+import { Accordion, AccordionSummary, Collapse, FormControl, IconButton, InputLabel, MenuItem, Select, SelectChangeEvent } from "@mui/material";
 import { AccordionDetails } from "@mui/material";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -52,9 +42,7 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
 
 const Tools = ({ prompt }: { prompt: PromptType }) => {
   const { dispatch } = usePromptContext();
-  const [toolsExpanded, setToolsExpanded] = useState<boolean>(
-    prompt.tools.length > 0
-  );
+  const [toolsExpanded, setToolsExpanded] = useState<boolean>(prompt.tools.length > 0);
 
   // Add state to track which accordions are expanded
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
@@ -96,18 +84,17 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
   }, [prompt.tools, prevToolCount, toolsExpanded]);
 
   // Handle accordion expand/collapse
-  const handleToolAccordionChange =
-    (toolId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-      setExpandedTools((prev) => {
-        const newSet = new Set(prev);
-        if (isExpanded) {
-          newSet.add(toolId);
-        } else {
-          newSet.delete(toolId);
-        }
-        return newSet;
-      });
-    };
+  const handleToolAccordionChange = (toolId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpandedTools((prev) => {
+      const newSet = new Set(prev);
+      if (isExpanded) {
+        newSet.add(toolId);
+      } else {
+        newSet.delete(toolId);
+      }
+      return newSet;
+    });
+  };
 
   const handleDeleteTool = useCallback(
     (toolId: string) => {
@@ -151,22 +138,14 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
     [dispatch, prompt.id]
   );
 
-  const pointerClass =
-    prompt.tools.length > 0 ? "cursor-pointer" : "cursor-default";
+  const pointerClass = prompt.tools.length > 0 ? "cursor-pointer" : "cursor-default";
   return (
     <>
-      <div
-        className={`flex justify-between items-center ${pointerClass}`}
-        onClick={handleToggleTools}
-      >
+      <div className={`flex justify-between items-center ${pointerClass}`} onClick={handleToggleTools}>
         <div className="flex items-center">
           {toolsExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
           <span className="font-medium">Tools</span>
-          {prompt.tools.length > 0 && (
-            <span className="bg-gray-300 px-2 py-1 rounded text-sm">
-              {prompt.tools.length}
-            </span>
-          )}
+          {prompt.tools.length > 0 && <span className="bg-gray-300 px-2 py-1 rounded text-sm">{prompt.tools.length}</span>}
         </div>
         <Tooltip title="Add Tool">
           <IconButton aria-label="add_tool" onClick={handleAddTool}>
@@ -179,26 +158,15 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={
-                typeof prompt.toolChoice === "string"
-                  ? prompt.toolChoice
-                  : prompt.toolChoice?.function?.name || "auto"
-              }
+              value={typeof prompt.toolChoice === "string" ? prompt.toolChoice : prompt.toolChoice?.function?.name || "auto"}
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
                 if (["auto", "none", "required"].includes(selected)) {
                   return renderToolChoiceOption(selected);
                 } else {
-                  const selectedTool = prompt.tools.find(
-                    (tool) => tool.id === selected
-                  );
-                  return selectedTool
-                    ? renderToolChoiceOption(
-                        selected,
-                        selectedTool.function.name
-                      )
-                    : selected;
+                  const selectedTool = prompt.tools.find((tool) => tool.id === selected);
+                  return selectedTool ? renderToolChoiceOption(selected, selectedTool.function.name) : selected;
                 }
               }}
               sx={{
@@ -210,9 +178,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
             >
               <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
               <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
-              <MenuItem value="required">
-                {renderToolChoiceOption("required")}
-              </MenuItem>
+              <MenuItem value="required">{renderToolChoiceOption("required")}</MenuItem>
               {prompt.tools.length > 0 && [
                 ...prompt.tools.map((tool) => (
                   <MenuItem key={tool.id} value={tool.id}>
@@ -225,11 +191,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
         </div>
         <div className="space-y-2 mt-2">
           {prompt.tools.map((tool) => (
-            <Accordion
-              key={tool.id}
-              expanded={expandedTools.has(tool.id)}
-              onChange={handleToolAccordionChange(tool.id)}
-            >
+            <Accordion key={tool.id} expanded={expandedTools.has(tool.id)} onChange={handleToolAccordionChange(tool.id)}>
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 sx={{
@@ -246,9 +208,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                 }}
               >
                 <div className="flex items-center justify-between w-full mr-4">
-                  <span className="text-sm font-mono">
-                    📋 {tool.function.name}
-                  </span>
+                  <span className="text-sm font-mono">📋 {tool.function.name}</span>
                   <div
                     onClick={(e) => {
                       e.stopPropagation();

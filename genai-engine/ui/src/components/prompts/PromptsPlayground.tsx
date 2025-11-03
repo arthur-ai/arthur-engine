@@ -17,10 +17,7 @@ import { spanToPrompt } from "./utils";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import {
-  ModelProvider,
-  ModelProviderResponse,
-} from "@/lib/api-client/api-client";
+import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -47,10 +44,9 @@ const PromptsPlayground = () => {
 
     hasFetchedPrompts.current = true;
     try {
-      const response =
-        await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
-          taskId,
-        });
+      const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
+        taskId,
+      });
 
       dispatch({
         type: "updateBackendPrompts",
@@ -72,8 +68,7 @@ const PromptsPlayground = () => {
     }
 
     hasFetchedProviders.current = true;
-    const response =
-      await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
+    const response = await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
 
     const { data } = response;
     const providers = data.providers
@@ -87,11 +82,7 @@ const PromptsPlayground = () => {
   }, [apiClient]);
 
   const fetchAvailableModels = useCallback(async () => {
-    if (
-      hasFetchedAvailableModels.current ||
-      !apiClient ||
-      state.enabledProviders.length === 0
-    ) {
+    if (hasFetchedAvailableModels.current || !apiClient || state.enabledProviders.length === 0) {
       return;
     }
 
@@ -100,16 +91,10 @@ const PromptsPlayground = () => {
     // Fetch models for all enabled providers in parallel
     const modelPromises = state.enabledProviders.map(async (provider) => {
       try {
-        const response =
-          await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(
-            provider as ModelProvider
-          );
+        const response = await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
         return { provider, models: response.data.available_models };
       } catch (error) {
-        console.error(
-          `Failed to fetch models for provider ${provider}:`,
-          error
-        );
+        console.error(`Failed to fetch models for provider ${provider}:`, error);
         return { provider, models: [] };
       }
     });
@@ -140,9 +125,7 @@ const PromptsPlayground = () => {
     hasFetchedSpan.current = true;
 
     try {
-      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
-        spanId
-      );
+      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
       const spanData = response.data;
       const spanPrompt = spanToPrompt(spanData);
 
@@ -201,32 +184,12 @@ const PromptsPlayground = () => {
       <div className="h-dvh bg-gray-200 overflow-y-auto">
         <div className={`h-full w-full p-1 flex flex-col gap-1`}>
           <div className={`bg-gray-300 flex-shrink-0 p-1`}>
-            <Container
-              component="div"
-              maxWidth="xl"
-              disableGutters
-              className="mb-1"
-            >
-              <Stack
-                direction="row"
-                justifyContent="flex-end"
-                alignItems="center"
-                spacing={2}
-              >
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleAddPrompt}
-                  startIcon={<AddIcon />}
-                >
+            <Container component="div" maxWidth="xl" disableGutters className="mb-1">
+              <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
+                <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
                   Add Prompt
                 </Button>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleRunAllPrompts}
-                  startIcon={<PlayArrowIcon />}
-                >
+                <Button variant="contained" size="small" onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
                   Run All Prompts
                 </Button>
               </Stack>
@@ -239,13 +202,9 @@ const PromptsPlayground = () => {
                   </div>
                   <div className="flex justify-center items-center">
                     <Typography variant="body2" className="text-center">
-                      Variables allow you to create reusable templates by using
-                      double curly (mustache) braces like{" "}
-                      <code>{`{{variable}}`}</code>. When you define a variable
-                      below, it will automatically replace all instances of{" "}
-                      <code>{`{{variable}}`}</code> in your prompt messages.
-                      This lets you quickly test different values without
-                      editing each message individually.
+                      Variables allow you to create reusable templates by using double curly (mustache) braces like <code>{`{{variable}}`}</code>.
+                      When you define a variable below, it will automatically replace all instances of <code>{`{{variable}}`}</code> in your prompt
+                      messages. This lets you quickly test different values without editing each message individually.
                     </Typography>
                   </div>
                 </div>

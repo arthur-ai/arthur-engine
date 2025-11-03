@@ -6,14 +6,7 @@ import MessageComponent from "./MessageComponent";
 import { MessageComponentProps } from "./types";
 
 const SortableMessage = (props: MessageComponentProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),

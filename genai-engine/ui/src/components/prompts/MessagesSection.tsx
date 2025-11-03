@@ -1,17 +1,5 @@
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import AddIcon from "@mui/icons-material/Add";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -59,12 +47,8 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
     const { active, over } = event;
 
     if (active.id !== over?.id) {
-      const oldIndex = prompt.messages.findIndex(
-        (item) => item.id === active.id
-      );
-      const newIndex = prompt.messages.findIndex(
-        (item) => item.id === over?.id
-      );
+      const oldIndex = prompt.messages.findIndex((item) => item.id === active.id);
+      const newIndex = prompt.messages.findIndex((item) => item.id === over?.id);
 
       dispatch({
         type: "moveMessage",
@@ -79,10 +63,7 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
 
   return (
     <div>
-      <div
-        onClick={handleExpand}
-        className="flex justify-between cursor-pointer"
-      >
+      <div onClick={handleExpand} className="flex justify-between cursor-pointer">
         <div className="flex items-center">
           {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
           <span>Messages</span>
@@ -96,15 +77,8 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
         </div>
       </div>
       <Collapse in={isExpanded}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={prompt.messages.map((msg) => msg.id)}
-            strategy={verticalListSortingStrategy}
-          >
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={prompt.messages.map((msg) => msg.id)} strategy={verticalListSortingStrategy}>
             {prompt.messages.map((message) => (
               <SortableMessage
                 key={message.id}

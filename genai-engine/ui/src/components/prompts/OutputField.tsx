@@ -34,18 +34,11 @@ const getFormatValue = (format: string | undefined) => {
   return format !== undefined ? format : DEFAULT_RESPONSE_FORMAT;
 };
 
-const OutputField = ({
-  promptId,
-  running,
-  runResponse,
-  responseFormat,
-}: OutputFieldProps) => {
+const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [copiedFormat, setCopiedFormat] = useState<string | undefined>(
-    getFormatValue(responseFormat)
-  );
+  const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
 
   const handleExpand = () => {
     setIsExpanded((prev) => !prev);
@@ -89,10 +82,7 @@ const OutputField = ({
 
   return (
     <>
-      <div
-        onClick={handleExpand}
-        className="flex justify-between cursor-pointer"
-      >
+      <div onClick={handleExpand} className="flex justify-between cursor-pointer">
         <div className="flex items-center">
           {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
           <span>Response</span>
@@ -123,9 +113,7 @@ const OutputField = ({
               <Tooltip title="Total Tokens">
                 <GeneratingTokensIcon />
               </Tooltip>
-              <Typography variant="body1">
-                {/* {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal} */}
-              </Typography>
+              <Typography variant="body1">{/* {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal} */}</Typography>
             </div>
           ) : null}
           {/* eslint-disable-next-line no-constant-condition */}
@@ -134,22 +122,14 @@ const OutputField = ({
               <Tooltip title="Latency (seconds)">
                 <HourglassEmptyIcon />
               </Tooltip>
-              <Typography variant="body1">
-                {/* {(latencyMs / 1000).toFixed(2)} */}
-              </Typography>
+              <Typography variant="body1">{/* {(latencyMs / 1000).toFixed(2)} */}</Typography>
             </div>
           ) : null}
           <div className="flex items-center">
             <Tooltip title="Cost">
               <AttachMoneyIcon />
             </Tooltip>
-            <Typography variant="body1">
-              {running ? (
-                <Skeleton variant="text" width="100px" />
-              ) : (
-                runResponse?.cost || "-"
-              )}
-            </Typography>
+            <Typography variant="body1">{running ? <Skeleton variant="text" width="100px" /> : runResponse?.cost || "-"}</Typography>
           </div>
         </div>
       </Collapse>

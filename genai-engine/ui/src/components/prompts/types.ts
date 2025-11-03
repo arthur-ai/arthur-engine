@@ -199,12 +199,7 @@ interface VersionSubmenuProps {
   anchorEl: HTMLElement | null;
 }
 
-const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
-  "system",
-  "user",
-  "assistant",
-  "tool",
-];
+const MESSAGE_ROLE_OPTIONS: MessageRole[] = ["system", "user", "assistant", "tool"];
 
 export {
   MESSAGE_ROLE_OPTIONS,

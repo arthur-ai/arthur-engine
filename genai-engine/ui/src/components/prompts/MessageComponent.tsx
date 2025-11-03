@@ -20,14 +20,7 @@ import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 
-const Message: React.FC<MessageComponentProps> = ({
-  id,
-  parentId,
-  role,
-  defaultContent = "",
-  content,
-  dragHandleProps,
-}) => {
+const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, dragHandleProps }) => {
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
 
@@ -45,12 +38,9 @@ const Message: React.FC<MessageComponentProps> = ({
     [id, role, parentId]
   );
 
-  const handleContentChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setInputValue(event.target.value);
-    },
-    []
-  );
+  const handleContentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(event.target.value);
+  }, []);
 
   const handleDuplicate = useCallback(() => {
     dispatch({
@@ -79,10 +69,7 @@ const Message: React.FC<MessageComponentProps> = ({
           payload: {
             parentId,
             id,
-            content:
-              typeof value === "string"
-                ? value
-                : value.map((item) => item.text || "").join(" "),
+            content: typeof value === "string" ? value : value.map((item) => item.text || "").join(" "),
           },
         });
       }, DEBOUNCE_TIME),
@@ -100,9 +87,7 @@ const Message: React.FC<MessageComponentProps> = ({
     if (typeof content === "string") {
       extractedKeywords = extractMustacheKeywords(content).keywords;
     } else {
-      extractedKeywords = content
-        .map((item) => item.text || "")
-        .filter((text) => text !== null);
+      extractedKeywords = content.map((item) => item.text || "").filter((text) => text !== null);
     }
 
     if (extractedKeywords.length > 0) {
@@ -128,13 +113,7 @@ const Message: React.FC<MessageComponentProps> = ({
         <div className="flex justify-start items-center">
           <FormControl sx={{ width: "50%" }} size="small">
             <InputLabel id={`message-role-${id}`}>{LABEL_TEXT}</InputLabel>
-            <Select
-              labelId={`message-role-${id}`}
-              id={`message-role-${id}`}
-              label={LABEL_TEXT}
-              value={role}
-              onChange={handleRoleChange}
-            >
+            <Select labelId={`message-role-${id}`} id={`message-role-${id}`} label={LABEL_TEXT} value={role} onChange={handleRoleChange}>
               {MESSAGE_ROLE_OPTIONS.map((roleValue) => (
                 <MenuItem key={roleValue} value={roleValue}>
                   {roleValue.charAt(0).toUpperCase() + roleValue.slice(1)}
@@ -145,19 +124,12 @@ const Message: React.FC<MessageComponentProps> = ({
         </div>
         <div className="flex justify-end items-center">
           <Tooltip title="Drag to reorder" placement="top-start" arrow>
-            <IconButton
-              aria-label="drag handle"
-              sx={{ cursor: "grab" }}
-              {...dragHandleProps}
-            >
+            <IconButton aria-label="drag handle" sx={{ cursor: "grab" }} {...dragHandleProps}>
               <DragIndicatorIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Duplicate Message" placement="top-start" arrow>
-            <IconButton
-              aria-label="duplicate message"
-              onClick={handleDuplicate}
-            >
+            <IconButton aria-label="duplicate message" onClick={handleDuplicate}>
               <ContentCopyIcon color="secondary" />
             </IconButton>
           </Tooltip>
@@ -169,12 +141,7 @@ const Message: React.FC<MessageComponentProps> = ({
         </div>
       </div>
       <div className="mt-2">
-        <HighlightedInputComponent
-          value={inputValue}
-          onChange={handleContentChange}
-          label="Content"
-          placeholder={role}
-        />
+        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" placeholder={role} />
       </div>
     </div>
   );

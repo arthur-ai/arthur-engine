@@ -178,11 +178,7 @@ export const HighlightedInputComponent = ({
   return (
     <div>
       <SyntaxHighlighterWrapper>
-        {label && (
-          <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>
-            {label}
-          </FloatingLabel>
-        )}
+        {label && <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>{label}</FloatingLabel>}
         <SyntaxHighlighter
           language="handlebars"
           style={customStyle}
@@ -215,19 +211,11 @@ export const HighlightedInputComponent = ({
           className="syntax-highlighter"
           useInlineStyles={false}
         >
-          {typeof value === "string"
-            ? value || placeholder || ""
-            : value.map((item) => item.text || "").join(" ") ||
-              placeholder ||
-              ""}
+          {typeof value === "string" ? value || placeholder || "" : value.map((item) => item.text || "").join(" ") || placeholder || ""}
         </SyntaxHighlighter>
         <HiddenTextarea
           ref={textareaRef}
-          value={
-            typeof value === "string"
-              ? value
-              : value.map((item) => item.text || "").join(" ")
-          }
+          value={typeof value === "string" ? value : value.map((item) => item.text || "").join(" ")}
           onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}

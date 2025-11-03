@@ -15,10 +15,7 @@ import VersionSubmenu from "./VersionSubmenu";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
-import {
-  ModelProvider,
-  AgenticPromptMetadataResponse,
-} from "@/lib/api-client/api-client";
+import { ModelProvider, AgenticPromptMetadataResponse } from "@/lib/api-client/api-client";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -31,8 +28,7 @@ const TruncatedText = ({ text }: { text: string }) => {
   useEffect(() => {
     const checkTruncation = () => {
       if (textRef.current) {
-        const isTextTruncated =
-          textRef.current.scrollWidth > textRef.current.clientWidth;
+        const isTextTruncated = textRef.current.scrollWidth > textRef.current.clientWidth;
         setIsTruncated(isTextTruncated);
       }
     };
@@ -80,27 +76,20 @@ const PromptSelectors = ({
 }) => {
   const promptSelectorRef = useRef<HTMLDivElement>(null);
   const [versionSubmenuOpen, setVersionSubmenuOpen] = useState(false);
-  const [selectedPromptForVersions, setSelectedPromptForVersions] = useState<
-    string | null
-  >(null);
+  const [selectedPromptForVersions, setSelectedPromptForVersions] = useState<string | null>(null);
   const apiClient = useApi();
   const { task } = useTask();
   const { state, dispatch } = usePromptContext();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const handleSelectPrompt = async (
-    _event: SyntheticEvent<Element, Event>,
-    newValue: AgenticPromptMetadataResponse | null
-  ) => {
+  const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: AgenticPromptMetadataResponse | null) => {
     const selection = newValue?.name || "";
     if (selection === "") {
       return;
     }
     onPromptNameChange(selection);
 
-    const backendPromptData = state.backendPrompts.find(
-      (bp) => bp.name === selection
-    );
+    const backendPromptData = state.backendPrompts.find((bp) => bp.name === selection);
 
     if (typeof backendPromptData === "undefined") {
       showSnackbar("Prompt not found", "error");
@@ -129,23 +118,18 @@ const PromptSelectors = ({
     }
   };
 
-  const fetchAndLoadPromptVersion = async (
-    promptName: string,
-    taskId: string,
-    version: number
-  ) => {
+  const fetchAndLoadPromptVersion = async (promptName: string, taskId: string, version: number) => {
     if (!apiClient) {
       throw new Error("API client not available");
     }
 
     try {
       // Fetch the specific version's full data
-      const response =
-        await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-          promptName,
-          version.toString(),
-          taskId
-        );
+      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        promptName,
+        version.toString(),
+        taskId
+      );
 
       // Convert to frontend format and update prompt
       const frontendPrompt = toFrontendPrompt(response.data);
@@ -166,11 +150,7 @@ const PromptSelectors = ({
     }
 
     try {
-      await fetchAndLoadPromptVersion(
-        selectedPromptForVersions,
-        task.id,
-        version
-      );
+      await fetchAndLoadPromptVersion(selectedPromptForVersions, task.id, version);
       setVersionSubmenuOpen(false);
       setSelectedPromptForVersions(null);
     } catch (error) {
@@ -188,35 +168,25 @@ const PromptSelectors = ({
   // Close submenu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        promptSelectorRef.current &&
-        !promptSelectorRef.current.contains(event.target as Node)
-      ) {
+      if (promptSelectorRef.current && !promptSelectorRef.current.contains(event.target as Node)) {
         setVersionSubmenuOpen(false);
       }
     };
 
     if (versionSubmenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [versionSubmenuOpen]);
 
-  const handleProviderChange = (
-    _event: SyntheticEvent<Element, Event>,
-    newValue: ModelProvider | null
-  ) => {
+  const handleProviderChange = (_event: SyntheticEvent<Element, Event>, newValue: ModelProvider | null) => {
     dispatch({
       type: "updatePromptProvider",
       payload: { promptId: prompt.id, modelProvider: newValue || "" },
     });
   };
 
-  const handleModelChange = (
-    _event: SyntheticEvent<Element, Event>,
-    newValue: string | null
-  ) => {
+  const handleModelChange = (_event: SyntheticEvent<Element, Event>, newValue: string | null) => {
     dispatch({
       type: "updatePromptModelName",
       payload: { promptId: prompt.id, modelName: newValue || "" },
@@ -238,32 +208,20 @@ const PromptSelectors = ({
 
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.modelProvider === "";
-  const tooltipTitle = providerDisabled
-    ? "No providers available. Please configure at least one provider."
-    : "";
-  const backendPromptOptions = state.backendPrompts.map(
-    (backendPrompt) => backendPrompt.name
-  );
+  const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
+  const backendPromptOptions = state.backendPrompts.map((backendPrompt) => backendPrompt.name);
   const availableModels = useMemo(
-    () =>
-      state.availableModels.get(prompt.modelProvider as ModelProvider) || [],
+    () => state.availableModels.get(prompt.modelProvider as ModelProvider) || [],
     [state.availableModels, prompt.modelProvider]
   );
 
   return (
     <>
-      <div
-        className="w-1/3"
-        ref={promptSelectorRef}
-        style={{ position: "relative", display: "flex", alignItems: "center" }}
-      >
+      <div className="w-1/3" ref={promptSelectorRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
           options={state.backendPrompts}
-          value={
-            state.backendPrompts.find((bp) => bp.name === currentPromptName) ||
-            null
-          }
+          value={state.backendPrompts.find((bp) => bp.name === currentPromptName) || null}
           onChange={(_event, newValue) => handleSelectPrompt(_event, newValue)}
           getOptionLabel={(option) => option.name}
           isOptionEqualToValue={(option, value) => option.name === value?.name}
@@ -273,12 +231,7 @@ const PromptSelectors = ({
           renderOption={(props, option) => {
             const { key, ...optionProps } = props;
             return (
-              <Box
-                key={key}
-                component="li"
-                sx={{ "& > img": { mr: 2, flexShrink: 0 } }}
-                {...optionProps}
-              >
+              <Box key={key} component="li" sx={{ "& > img": { mr: 2, flexShrink: 0 } }} {...optionProps}>
                 <Box
                   sx={{
                     overflow: "hidden",
@@ -290,11 +243,7 @@ const PromptSelectors = ({
                 >
                   <TruncatedText text={option.name} />
                 </Box>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ ml: 1, flexShrink: 0 }}
-                >
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 1, flexShrink: 0 }}>
                   ({option.versions})
                 </Typography>
               </Box>

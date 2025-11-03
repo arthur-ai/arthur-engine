@@ -31,9 +31,7 @@ import { useTask } from "@/hooks/useTask";
  */
 const Prompt = ({ prompt }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
-  const [currentPromptName, setCurrentPromptName] = useState<string>(
-    prompt.name || ""
-  );
+  const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
@@ -117,46 +115,26 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const runDisabled = prompt.running || prompt.modelName === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
-      <Container
-        component="div"
-        className="p-1 mt-1"
-        maxWidth="xl"
-        disableGutters
-      >
+      <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
         <div className="grid grid-cols-[3fr_2fr] gap-1">
           <div className="flex justify-start items-center gap-1">
-            <PromptSelectors
-              prompt={prompt}
-              currentPromptName={currentPromptName}
-              onPromptNameChange={setCurrentPromptName}
-            />
+            <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
           </div>
           <div className="flex justify-end items-center gap-1">
             <Tooltip title="Run Prompt" placement="top-start" arrow>
               <span>
-                <IconButton
-                  aria-label="run prompt"
-                  onClick={handleRunPrompt}
-                  disabled={runDisabled}
-                  loading={prompt.running}
-                >
+                <IconButton aria-label="run prompt" onClick={handleRunPrompt} disabled={runDisabled} loading={prompt.running}>
                   <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
                 </IconButton>
               </span>
             </Tooltip>
             <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
-              <IconButton
-                aria-label="duplicate"
-                onClick={handleDuplicatePrompt}
-              >
+              <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt}>
                 <ContentCopyIcon color="secondary" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Model Parameters" placement="top-start" arrow>
-              <IconButton
-                aria-label="model parameters"
-                onClick={handleParamsModelOpen}
-              >
+              <IconButton aria-label="model parameters" onClick={handleParamsModelOpen}>
                 <TuneIcon color="info" />
               </IconButton>
             </Tooltip>
@@ -200,12 +178,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           </Paper>
         </div>
       </Container>
-      <SavePromptDialog
-        open={savePromptOpen}
-        setOpen={setSavePromptOpen}
-        prompt={prompt}
-        initialName={nameInputValue}
-      />
+      <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={nameInputValue} />
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />
       </Snackbar>

@@ -10,15 +10,7 @@ import { VersionSubmenuProps } from "./types";
 
 import { AgenticPromptVersionResponse } from "@/lib/api-client/api-client";
 
-const VersionSubmenu = ({
-  open,
-  promptName,
-  taskId,
-  apiClient,
-  onVersionSelect,
-  onClose,
-  anchorEl,
-}: VersionSubmenuProps) => {
+const VersionSubmenu = ({ open, promptName, taskId, apiClient, onVersionSelect, onClose, anchorEl }: VersionSubmenuProps) => {
   const [versions, setVersions] = useState<AgenticPromptVersionResponse[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -29,15 +21,12 @@ const VersionSubmenu = ({
 
     setLoading(true);
     try {
-      const response =
-        await apiClient.api.getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet(
-          {
-            promptName,
-            taskId,
-            page_size: 100,
-            sort: "desc",
-          }
-        );
+      const response = await apiClient.api.getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet({
+        promptName,
+        taskId,
+        page_size: 100,
+        sort: "desc",
+      });
       setVersions(response.data.versions);
     } catch (error) {
       console.error("Failed to fetch prompt versions:", error);
@@ -49,10 +38,7 @@ const VersionSubmenu = ({
 
   // Sort versions in descending order (newest first)
   const sortedVersions = useMemo(() => {
-    return [...versions].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    return [...versions].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [versions]);
 
   const handleVersionClick = (version: number) => {
@@ -93,12 +79,7 @@ const VersionSubmenu = ({
       }}
     >
       {loading ? (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          minHeight="100px"
-        >
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="100px">
           <CircularProgress size={24} />
         </Box>
       ) : sortedVersions.length === 0 ? (
@@ -113,14 +94,8 @@ const VersionSubmenu = ({
         </MenuItem>
       ) : (
         sortedVersions.map((version) => (
-          <MenuItem
-            key={version.version}
-            onClick={() => handleVersionClick(version.version)}
-          >
-            <ListItemText
-              primary={`Version ${version.version}`}
-              secondary={new Date(version.created_at).toLocaleString()}
-            />
+          <MenuItem key={version.version} onClick={() => handleVersionClick(version.version)}>
+            <ListItemText primary={`Version ${version.version}`} secondary={new Date(version.created_at).toLocaleString()} />
           </MenuItem>
         ))
       )}
