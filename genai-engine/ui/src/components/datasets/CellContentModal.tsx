@@ -12,9 +12,9 @@ import {
   Snackbar,
   Typography,
 } from "@mui/material";
-import React, { useState } from "react";
+import React from "react";
 
-import { SNACKBAR_SHORT_AUTO_HIDE_DURATION } from "@/constants/snackbar";
+import useSnackbar from "@/hooks/useSnackbar";
 import { formatFullValue } from "@/utils/datasetFormatters";
 
 interface CellContentModalProps {
@@ -30,26 +30,23 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({
   columnName,
   value,
 }) => {
-  const [showCopySuccess, setShowCopySuccess] = useState(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar({
+    duration: "short",
+  });
 
   const fullValue = formatFullValue(value);
   const charCount = fullValue.length;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(fullValue);
-    setShowCopySuccess(true);
-  };
-
-  const handleClose = () => {
-    setShowCopySuccess(false);
-    onClose();
+    showSnackbar("Copied to clipboard!", "success");
   };
 
   return (
     <>
       <Dialog
         open={open}
-        onClose={handleClose}
+        onClose={onClose}
         maxWidth="md"
         fullWidth
         onClick={(e) => e.stopPropagation()}
@@ -89,7 +86,7 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({
           <Box
             sx={{
               p: 2,
-              bgcolor: "grey.50",
+              bgcolor: "background.default",
               borderRadius: 1,
               fontSize: "0.875rem",
               whiteSpace: "pre-wrap",
@@ -110,26 +107,15 @@ export const CellContentModal: React.FC<CellContentModalProps> = ({
           <Button onClick={handleCopy} variant="outlined" size="small">
             Copy
           </Button>
-          <Button onClick={handleClose} variant="contained">
+          <Button onClick={onClose} variant="contained">
             Close
           </Button>
         </DialogActions>
       </Dialog>
 
       <Portal>
-        <Snackbar
-          open={showCopySuccess}
-          autoHideDuration={SNACKBAR_SHORT_AUTO_HIDE_DURATION}
-          onClose={() => setShowCopySuccess(false)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
-          <Alert
-            onClose={() => setShowCopySuccess(false)}
-            severity="success"
-            sx={{ width: "100%" }}
-          >
-            Copied to clipboard!
-          </Alert>
+        <Snackbar {...snackbarProps}>
+          <Alert {...alertProps} />
         </Snackbar>
       </Portal>
     </>
