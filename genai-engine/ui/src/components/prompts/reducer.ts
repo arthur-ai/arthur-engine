@@ -98,6 +98,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   tools: [],
   toolChoice: "auto" as ToolChoiceEnum,
   running: false,
+  version: null,
   ...overrides,
 });
 

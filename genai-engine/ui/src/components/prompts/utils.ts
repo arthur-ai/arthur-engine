@@ -123,6 +123,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   runResponse: null,
   responseFormat: backendPrompt.response_format ? JSON.stringify(backendPrompt.response_format) : undefined,
   running: false,
+  version: backendPrompt.version || null,
 });
 
 /**

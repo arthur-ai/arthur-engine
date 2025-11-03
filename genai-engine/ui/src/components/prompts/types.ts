@@ -149,6 +149,7 @@ type PromptType = {
   toolChoice?: ToolChoiceEnum | ToolChoice;
   // tags: Array<string>; // TODO
   running?: boolean; // Whether the prompt is running
+  version?: number | null; // Unsaved prompts have no version
 };
 
 interface PromptPlaygroundState {
