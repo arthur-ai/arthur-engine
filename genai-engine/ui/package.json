@@ -8,6 +8,8 @@
     "dev": "vite --mode dev",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "type-check": "tsc -b --noEmit",
     "check": "yarn type-check && yarn lint",
     "preview": "vite preview",
