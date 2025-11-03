@@ -89,7 +89,8 @@ export function getSpanType(span?: NestedSpanWithMetricsResponse) {
 export function getSpanIcon(span?: NestedSpanWithMetricsResponse) {
   const type = getSpanType(span) ?? OpenInferenceSpanKind.AGENT;
 
-  const icon = SPAN_TYPE_ICONS[type];
+  const icon =
+    SPAN_TYPE_ICONS[type] ?? SPAN_TYPE_ICONS[OpenInferenceSpanKind.AGENT];
 
   return icon;
 }
@@ -101,7 +102,7 @@ export function isSpanOfType(
   return getSpanType(span) === type;
 }
 
-export function getNestedValue<Return extends any>(
+export function getNestedValue<Return>(
   obj: unknown,
   path: string
 ): Return | undefined {

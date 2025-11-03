@@ -4,7 +4,9 @@ import { createDynamicEnumField, Field } from "./fields";
 import { EnumOperators } from "./types";
 
 import { Api } from "@/lib/api";
-import { getUsersQueryOptions } from "@/query-options/users";
+import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { queryKeys } from "@/lib/queryKeys";
+import { getUsers } from "@/services/tracing";
 
 export const SESSION_FIELDS = [
   createDynamicEnumField<{ taskId: string; api: Api<unknown> }, "user_ids">({
@@ -14,11 +16,20 @@ export const SESSION_FIELDS = [
     renderValue: (value) => [value].flat().join(", "),
     operators: [EnumOperators.EQUALS, EnumOperators.IN],
     itemToStringLabel: undefined,
-    promise: function usePromise({ taskId, api }) {
-      return useQuery({
-        ...getUsersQueryOptions({ api, taskId }),
+    useData: function useData({ taskId, api }) {
+      const { data, isLoading } = useQuery({
+        queryKey: queryKeys.users.listPaginated(0, MAX_PAGE_SIZE),
+        queryFn: () =>
+          getUsers(api, {
+            taskId,
+            page: 0,
+            pageSize: MAX_PAGE_SIZE,
+            filters: [],
+          }),
         select: (data) => data.users.map((user) => user.user_id),
-      }).promise;
+      });
+
+      return { data: data ?? [], loading: isLoading };
     },
   }),
 ] as const satisfies Field[];

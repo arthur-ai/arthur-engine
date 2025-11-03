@@ -1,21 +1,20 @@
 import { ScrollArea } from "@base-ui-components/react/scroll-area";
 import { Close, FilterList } from "@mui/icons-material";
-import { IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Button, IconButton, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
-import { Suspense, use, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
+
+import { useFilterStore } from "../../stores/filter.store";
 
 import { DynamicEnumField, Field } from "./fields";
 import { useAppForm, withForm } from "./hooks/form";
 import { IncomingFilter } from "./mapper";
 import { canBeCombinedWith } from "./rules";
 import { sharedFormOptions } from "./shared";
-import { useFilterStore } from "../../stores/filter.store";
 import { EnumOperators, Operator } from "./types";
 import { getFieldLabel, getOperatorLabel } from "./utils";
 
 import { NumberField } from "@/components/common/form/NumberField";
-import { SelectField } from "@/components/common/form/SelectField";
-import { cn } from "@/utils/cn";
 
 const ROW_SCROLL_OFFSET = 100;
 
@@ -79,11 +78,11 @@ export function createFilterRow<TFields extends Field[]>(
               }}
             />
           }
-          className="grid grid-cols-[1fr_min-content] gap-2 h-10"
+          className="grid grid-cols-[1fr_min-content] gap-2"
         >
           <ScrollArea.Viewport
             ref={scrollableRef}
-            className="px-2 py-1 bg-gray-50 border border-gray-200 rounded h-full has-[input:hover]:bg-gray-100 transition-colors duration-100"
+            className="p-2 bg-gray-50 border border-gray-200 rounded h-full has-[input:hover]:bg-gray-100 transition-colors duration-100"
           >
             <ScrollArea.Content className="flex flex-row gap-2 h-full text-xs">
               <form.Field mode="array" name="config">
@@ -142,10 +141,9 @@ export function createFilterRow<TFields extends Field[]>(
 
       const operatorItems = useMemo(
         () =>
-          getAvailableOperators(allMetrics, config.name)?.map((operator) => ({
-            label: getOperatorLabel(operator),
-            value: operator,
-          })),
+          getAvailableOperators(allMetrics, config.name)?.map(
+            (operator) => operator
+          ),
         [allMetrics, config.name]
       );
 
@@ -162,107 +160,84 @@ export function createFilterRow<TFields extends Field[]>(
         }
       })();
 
-      const handleOpenChange = (
-        open: boolean,
-        type: "name" | "operator" | "value"
-      ) => {
-        if (open) return;
-
-        onClose();
-
-        if (type === "name" && !config.name) return onRemove();
-        if (type === "operator" && !config.operator) return onRemove();
-        if (type === "value" && config.value === "") return onRemove();
-      };
-
       return (
         <Stack direction="row" className="group shrink-0" data-stage={stage}>
           <form.AppField name={`config[${index}].name` as const}>
             {(field) => (
-              <field.SelectField
-                itemToStringLabel={getFieldLabel}
-                defaultOpen={stage === 0}
-                onOpenChangeComplete={(open) =>
-                  handleOpenChange(open, "name" as const)
-                }
-              >
-                <SelectField.Trigger className="rounded-none rounded-l group-data-[stage='0']:rounded-r">
-                  <SelectField.Value />
-                </SelectField.Trigger>
-                <SelectField.Portal container={opts?.portalRoot}>
-                  <SelectField.Positioner>
-                    <SelectField.Popup>
-                      <SelectField.List>
-                        {fields.map(({ name }) => (
-                          <SelectField.Item key={name} value={name}>
-                            <SelectField.ItemText>
-                              <Typography variant="body2">
-                                {getFieldLabel(name)}
-                              </Typography>
-                            </SelectField.ItemText>
-                          </SelectField.Item>
-                        ))}
-                      </SelectField.List>
-                    </SelectField.Popup>
-                  </SelectField.Positioner>
-                </SelectField.Portal>
-              </field.SelectField>
+              <field.MaterialAutocompleteField
+                disablePortal
+                options={fields.map(({ name }) => name)}
+                getOptionLabel={getFieldLabel}
+                size="small"
+                onClose={() => {
+                  field.handleBlur();
+                }}
+                sx={{
+                  width: 200,
+                  "& .MuiAutocomplete-inputRoot": {
+                    borderTopRightRadius: 0,
+                    borderBottomRightRadius: 0,
+                    "& fieldset": {
+                      borderRightWidth: 0,
+                    },
+                  },
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} variant="filled" label="Field" />
+                )}
+              />
             )}
           </form.AppField>
+
           {stage >= 1 && (
             <form.AppField name={`config[${index}].operator` as const}>
               {(field) => (
-                <field.SelectField
-                  items={operatorItems}
-                  defaultOpen={stage === 1}
-                  onOpenChangeComplete={(open) =>
-                    handleOpenChange(open, "operator" as const)
-                  }
-                >
-                  <SelectField.Trigger className="rounded-none group-data-[stage='1']:rounded-r border-l-0">
-                    <SelectField.Value />
-                  </SelectField.Trigger>
-                  <SelectField.Portal container={opts?.portalRoot}>
-                    <SelectField.Positioner>
-                      <SelectField.Popup>
-                        <SelectField.List>
-                          {operatorItems?.map(({ value }) => (
-                            <SelectField.Item
-                              key={value}
-                              value={value}
-                              className="min-w-(--anchor-width)"
-                            >
-                              <SelectField.ItemText>
-                                <Typography variant="body2">
-                                  {getOperatorLabel(value)}
-                                </Typography>
-                              </SelectField.ItemText>
-                            </SelectField.Item>
-                          ))}
-                        </SelectField.List>
-                      </SelectField.Popup>
-                    </SelectField.Positioner>
-                  </SelectField.Portal>
-                </field.SelectField>
+                <field.MaterialAutocompleteField
+                  disablePortal
+                  options={operatorItems}
+                  multiple={false}
+                  getOptionLabel={getOperatorLabel}
+                  onClose={() => {
+                    field.handleBlur();
+                    onClose();
+                  }}
+                  onChange={(_, value) => {
+                    const isMultiple = value === EnumOperators.IN;
+
+                    form.resetField(`config[${index}].value`);
+                    form.setFieldValue(
+                      `config[${index}].value`,
+                      isMultiple ? [] : ""
+                    );
+                  }}
+                  size="small"
+                  sx={{
+                    width: 150,
+                    "& .MuiAutocomplete-inputRoot": {
+                      borderRadius: 0,
+                      "& fieldset": {
+                        borderInlineWidth: 0,
+                      },
+                    },
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} variant="filled" label="Operator" />
+                  )}
+                />
               )}
             </form.AppField>
           )}
-          {stage >= 2 && (
-            <ValueInput
-              stage={stage}
-              form={form}
-              index={index}
-              onOpenChange={(open) => handleOpenChange(open, "value" as const)}
-            />
-          )}
-          {stage >= 0 && (
-            <button
-              onClick={onRemove}
-              className="h-full aspect-square bg-gray-50 border border-gray-200 rounded-r border-l-0 grid place-items-center"
-            >
-              <Close sx={{ fontSize: 12 }} />
-            </button>
-          )}
+          {stage >= 2 && <ValueInput stage={stage} form={form} index={index} />}
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            disableElevation
+            onClick={onRemove}
+            className="rounded-l-none!"
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </Button>
         </Stack>
       );
     },
@@ -272,10 +247,9 @@ export function createFilterRow<TFields extends Field[]>(
     ...sharedFormOptions,
     props: {} as {
       index: number;
-      onOpenChange: (open: boolean) => void;
       stage: number;
     },
-    render: function Render({ form, index, onOpenChange, stage }) {
+    render: function Render({ form, index, stage }) {
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
@@ -287,83 +261,49 @@ export function createFilterRow<TFields extends Field[]>(
       if (!fieldConfig) return null;
 
       return (
-        <form.AppField name={`config[${index}].value` as const}>
+        <form.AppField key={index} name={`config[${index}].value` as const}>
           {(field) => {
-            if (fieldConfig.type === "enum")
-              return (
-                <field.SelectField
-                  defaultOpen
-                  onOpenChangeComplete={onOpenChange}
-                  itemToStringLabel={fieldConfig.itemToStringLabel}
-                  multiple={config.operator === EnumOperators.IN}
-                >
-                  <SelectField.Trigger className="rounded-l-none border-l-0 group-data-[stage='3']:rounded-r-none">
-                    <SelectField.Value />
-                  </SelectField.Trigger>
-                  <SelectField.Portal container={opts?.portalRoot}>
-                    <SelectField.Positioner>
-                      <SelectField.Popup>
-                        <SelectField.List>
-                          {fieldConfig.options.map((option) => (
-                            <SelectField.Item key={option} value={option}>
-                              <SelectField.ItemText>
-                                {fieldConfig.itemToStringLabel?.(option) ??
-                                  option}
-                              </SelectField.ItemText>
-                            </SelectField.Item>
-                          ))}
-                        </SelectField.List>
-                      </SelectField.Popup>
-                    </SelectField.Positioner>
-                  </SelectField.Portal>
-                </field.SelectField>
-              );
-
-            if (fieldConfig.type === "dynamic_enum") {
+            if (fieldConfig.type === "enum") {
               const multiple = config.operator === EnumOperators.IN;
               return (
-                <field.SelectField
-                  defaultOpen
-                  onOpenChangeComplete={onOpenChange}
-                  itemToStringLabel={fieldConfig.itemToStringLabel}
+                <field.MaterialAutocompleteField
+                  disablePortal
+                  options={fieldConfig.options}
+                  getOptionLabel={(option) =>
+                    fieldConfig.itemToStringLabel?.(option) ?? option
+                  }
                   multiple={multiple}
-                >
-                  <SelectField.Trigger
-                    className={cn(
-                      "rounded-l-none border-l-0 group-data-[stage='3']:rounded-r-none",
-                      fieldConfig.getTriggerClassName()
-                    )}
-                  >
-                    {multiple ? (
-                      <SelectField.Value>
-                        {fieldConfig.renderValue}
-                      </SelectField.Value>
-                    ) : (
-                      <SelectField.Value />
-                    )}
-                  </SelectField.Trigger>
-                  <SelectField.Portal container={opts?.portalRoot}>
-                    <SelectField.Positioner>
-                      <SelectField.Popup>
-                        <Suspense
-                          fallback={
-                            <SelectField.List>Loading...</SelectField.List>
-                          }
-                        >
-                          <DynamicEnumInputList
-                            form={form}
-                            config={
-                              fieldConfig as Extract<
-                                TFields[number],
-                                { type: "dynamic_enum" }
-                              >
-                            }
-                          />
-                        </Suspense>
-                      </SelectField.Popup>
-                    </SelectField.Positioner>
-                  </SelectField.Portal>
-                </field.SelectField>
+                  size="small"
+                  sx={{
+                    width: multiple ? "max-content" : 200,
+                    minWidth: 200,
+                    "& .MuiAutocomplete-inputRoot": {
+                      borderRadius: 0,
+                      "& fieldset": {
+                        borderInlineWidth: 0,
+                      },
+                    },
+                  }}
+                  limitTags={1}
+                  renderInput={(params) => (
+                    <TextField {...params} variant="filled" label="Value" />
+                  )}
+                />
+              );
+            }
+
+            if (fieldConfig.type === "dynamic_enum") {
+              return (
+                <DynamicEnumInput
+                  form={form}
+                  config={
+                    fieldConfig as Extract<
+                      TFields[number],
+                      { type: "dynamic_enum" }
+                    >
+                  }
+                  index={index}
+                />
               );
             }
 
@@ -372,14 +312,19 @@ export function createFilterRow<TFields extends Field[]>(
                 <field.NumberField
                   min={fieldConfig.min}
                   max={fieldConfig.max}
-                  onBlur={() => {
-                    field.handleBlur();
-                    onOpenChange(false);
-                  }}
-                  className="bg-white border border-gray-200 rounded-r group-data-[stage='3']:rounded-r-none border-l-0 overflow-hidden"
+                  className=" overflow-hidden"
                 >
                   <NumberField.Group className="flex h-full">
-                    <NumberField.Input className="h-full" />
+                    <NumberField.Input
+                      className="h-full"
+                      render={
+                        <TextField
+                          variant="filled"
+                          label="Value"
+                          size="small"
+                        />
+                      }
+                    />
                   </NumberField.Group>
                 </field.NumberField>
               );
@@ -390,36 +335,52 @@ export function createFilterRow<TFields extends Field[]>(
     },
   });
 
-  const DynamicEnumInputList = withForm({
+  const DynamicEnumInput = withForm({
     ...sharedFormOptions,
     props: {} as {
       config: Extract<TFields[number], { type: "dynamic_enum" }>;
+      index: number;
     },
-    render: function Render({ config }) {
-      let data: string[] = [];
+    render: function Render({ config, form, index }) {
+      const ctx =
+        dynamicEnumArgMap[config.name as keyof typeof dynamicEnumArgMap];
+      const { data, loading } = config.useData(ctx);
 
-      if (config.name in dynamicEnumArgMap) {
-        data = use(
-          config.promise(
-            dynamicEnumArgMap[config.name as keyof typeof dynamicEnumArgMap]
-          )
-        );
-      }
+      const field = useField({ form, name: `config[${index}]` as const });
+
+      const operator = useStore(field.store, (state) => state.value.operator);
+
+      const multiple = operator === EnumOperators.IN;
 
       return (
-        <SelectField.List>
-          {data.length > 0 ? (
-            data.map((item) => (
-              <SelectField.Item key={item} value={item}>
-                <SelectField.ItemText>{item}</SelectField.ItemText>
-              </SelectField.Item>
-            ))
-          ) : (
-            <SelectField.Item key="no-data" value="no-data" disabled>
-              <SelectField.ItemText>No data</SelectField.ItemText>
-            </SelectField.Item>
+        <form.AppField name={`config[${index}].value` as const}>
+          {(field) => (
+            <field.MaterialAutocompleteField
+              disablePortal
+              options={data}
+              multiple={multiple}
+              limitTags={1}
+              loading={loading}
+              size="small"
+              sx={{
+                width: multiple ? "max-content" : undefined,
+                minWidth: 200,
+                "& .MuiAutocomplete-input": {
+                  width: multiple ? undefined : "max-content !important",
+                },
+                "& .MuiAutocomplete-inputRoot": {
+                  borderRadius: 0,
+                  "& fieldset": {
+                    borderInlineWidth: 0,
+                  },
+                },
+              }}
+              renderInput={(params) => (
+                <TextField {...params} variant="filled" label="Value" />
+              )}
+            />
           )}
-        </SelectField.List>
+        </form.AppField>
       );
     },
   });
@@ -446,5 +407,5 @@ export function createFilterRow<TFields extends Field[]>(
       );
   };
 
-  return { FiltersRow, FilterItem, ValueInput, DynamicEnumInputList };
+  return { FiltersRow, FilterItem, ValueInput, DynamicEnumInput };
 }

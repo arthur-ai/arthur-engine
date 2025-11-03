@@ -2,6 +2,8 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Box, Chip, Paper } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
+import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
+import { TokenCountWidget } from "../components/widgets/TokenCount";
 import {
   getSpanCost,
   getSpanInput,
@@ -12,8 +14,8 @@ import {
 
 import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
-import { OutputMessageRenderer } from "@/components/common/llm/OutputMessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
+import { formatCurrency } from "@/utils/formatters";
 import {
   getInputTokens,
   getMessages,
@@ -22,9 +24,6 @@ import {
   getTotalTokens,
   tryFormatJson,
 } from "@/utils/llm";
-import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
-import { TokenCountWidget } from "../components/widgets/TokenCount";
-import { formatCurrency } from "@/utils/formatters";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime = getSpanInputMimeType(span);

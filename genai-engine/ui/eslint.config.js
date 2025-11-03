@@ -6,7 +6,6 @@ import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 import { defineConfig, globalIgnores } from "eslint/config";
-import pluginQuery from "@tanstack/eslint-plugin-query";
 
 export default defineConfig([
   globalIgnores(["dist", ".pnp.*", ".yarn"]),

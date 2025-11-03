@@ -30,9 +30,9 @@ export const getFieldLabel = (name: string) => {
 };
 
 const ENUM_OPTION_TO_LABEL = {
-  ["0"]: "NOT RELEVANT",
-  ["1"]: "RELEVANT",
-  ["2"]: "N/A",
+  "0": "NOT RELEVANT",
+  "1": "RELEVANT",
+  "2": "N/A",
 } as const;
 
 export const getEnumOptionLabel = (option: string) => {
@@ -40,20 +40,3 @@ export const getEnumOptionLabel = (option: string) => {
     ENUM_OPTION_TO_LABEL[option as keyof typeof ENUM_OPTION_TO_LABEL] ?? option
   );
 };
-
-// export const filtersToRequest = (
-//   filters: MetricFilterSchema[]
-// ): DataResultFilter[] => {
-//   return filters.map((filter) => {
-//     const isNumerical =
-//       Object.values(ComparisonOperators).includes(
-//         filter.operator as ComparisonOperator
-//       ) && !isNaN(Number(filter.value));
-
-//     return {
-//       field_name: filter.name,
-//       op: OPERATOR_TO_DATA_RESULT_FILTER_OP[filter.operator as Operator],
-//       value: isNumerical ? +filter.value : filter.value,
-//     };
-//   });
-// };

@@ -1,10 +1,10 @@
 import Tooltip from "@mui/material/Tooltip";
 import { createColumnHelper } from "@tanstack/react-table";
-import dayjs from "dayjs";
 
 import { CopyableChip } from "../../common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<TraceMetadataResponse>();
 
@@ -29,7 +29,7 @@ export const columns = [
   }),
   columnHelper.accessor("start_time", {
     header: "Timestamp",
-    cell: ({ getValue }) => dayjs(getValue()).format("YYYY-MM-DD HH:mm:ss"),
+    cell: ({ getValue }) => formatDate(getValue()),
     sortingFn: "datetime",
   }),
   columnHelper.accessor("duration_ms", {

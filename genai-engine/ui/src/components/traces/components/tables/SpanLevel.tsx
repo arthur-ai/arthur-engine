@@ -1,3 +1,4 @@
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
@@ -12,6 +13,8 @@ import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -20,9 +23,6 @@ import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSpans } from "@/services/tracing";
-import { Alert, TablePagination, Typography } from "@mui/material";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TracesTable } from "../TracesTable";
 
 const DEFAULT_DATA: SpanMetadataResponse[] = [];
 
@@ -36,6 +36,7 @@ export const SpanLevel = () => {
   const filters = useFilterStore((state) => state.filters);
 
   const { data, isFetching, isPlaceholderData, error } = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.spans.listPaginated(
       filters,
       pagination.page,

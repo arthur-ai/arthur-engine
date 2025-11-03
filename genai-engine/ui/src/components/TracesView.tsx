@@ -2,15 +2,15 @@ import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import React, { Activity, useEffect, useEffectEvent, useState } from "react";
-
 import { useSearchParams } from "react-router-dom";
+import { v4 as uuidv4 } from "uuid";
+
 import { CommonDrawer } from "./traces/components/CommonDrawer";
-import { FilterStoreProvider } from "./traces/stores/filter.store";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
-import { v4 as uuidv4 } from "uuid";
+import { FilterStoreProvider } from "./traces/stores/filter.store";
 import {
   HistoryStore,
   TargetBase,
@@ -22,7 +22,6 @@ type Level = (typeof LEVELS)[number];
 
 export const TracesView: React.FC = () => {
   const [level, setLevel] = useState<Level>("trace");
-  const current = useTracesHistoryStore((state) => state.current());
   const reset = useTracesHistoryStore((state) => state.reset);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -45,7 +44,7 @@ export const TracesView: React.FC = () => {
     if (!target || !id) return;
     if (!LEVELS.includes(target)) return;
 
-    setLevel(target as Level);
+    setLevel(target);
     reset([
       {
         key: uuidv4(),
@@ -57,8 +56,10 @@ export const TracesView: React.FC = () => {
 
   useEffect(() => {
     return useTracesHistoryStore.subscribe(onHistoryChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(onInitialLoad, []);
 
   const handleLevelChange = (_event: React.SyntheticEvent, newValue: Level) => {

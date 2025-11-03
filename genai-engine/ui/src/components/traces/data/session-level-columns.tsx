@@ -1,11 +1,9 @@
-import { createColumnHelper } from "@tanstack/react-table";
-import dayjs from "dayjs";
-
-import { SessionMetadataResponse } from "@/lib/api-client/api-client";
 import { Tooltip } from "@mui/material";
+import { createColumnHelper } from "@tanstack/react-table";
+
 import { CopyableChip } from "@/components/common";
-import { getSessionTotals } from "../utils/sessions";
-import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
+import { SessionMetadataResponse } from "@/lib/api-client/api-client";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<SessionMetadataResponse>();
 
@@ -33,11 +31,11 @@ export const sessionLevelColumns = [
   }),
   columnHelper.accessor("earliest_start_time", {
     header: "Earliest Start Time",
-    cell: ({ getValue }) => dayjs(getValue()).format("YYYY-MM-DD HH:mm:ss"),
+    cell: ({ getValue }) => formatDate(getValue()),
   }),
   columnHelper.accessor("latest_end_time", {
     header: "Latest End Time",
-    cell: ({ getValue }) => dayjs(getValue()).format("YYYY-MM-DD HH:mm:ss"),
+    cell: ({ getValue }) => formatDate(getValue()),
   }),
   columnHelper.accessor("user_id", {
     header: "User ID",

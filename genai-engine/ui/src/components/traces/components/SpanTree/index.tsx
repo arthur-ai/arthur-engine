@@ -1,16 +1,15 @@
 import { Accordion } from "@base-ui-components/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Box, Divider } from "@mui/material";
+import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { cloneElement } from "react";
 
-import { useTracesHistoryStore } from "../../stores/history.store";
+import { useSelectionStore } from "../../stores/selection.store";
 import { getSpanDuration, getSpanIcon, getSpanType } from "../../utils/spans";
 
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { cn } from "@/utils/cn";
-import { useSelectionStore } from "../../stores/selection.store";
 
 type Props = {
   level?: number;

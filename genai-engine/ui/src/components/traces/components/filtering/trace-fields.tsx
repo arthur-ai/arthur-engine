@@ -6,7 +6,9 @@ import { ComparisonOperators, EnumOperators } from "./types";
 import { getEnumOptionLabel } from "./utils";
 
 import { Api } from "@/lib/api";
-import { getTracesQueryOptions } from "@/query-options/traces";
+import { MAX_PAGE_SIZE } from "@/lib/constants";
+import { queryKeys } from "@/lib/queryKeys";
+import { getFilteredTraces } from "@/services/tracing";
 
 export const TRACE_FIELDS = [
   createPrimitiveField({
@@ -56,11 +58,20 @@ export const TRACE_FIELDS = [
     type: "dynamic_enum",
     operators: [EnumOperators.IN, EnumOperators.EQUALS],
     itemToStringLabel: undefined,
-    promise: function usePromise({ taskId, api }) {
-      return useQuery({
-        ...getTracesQueryOptions({ api, taskId, filters: [] }),
+    useData: function useData({ taskId, api }) {
+      const { data, isLoading } = useQuery({
+        queryKey: queryKeys.traces.listPaginated([], 0, MAX_PAGE_SIZE),
+        queryFn: () =>
+          getFilteredTraces(api, {
+            taskId,
+            page: 0,
+            pageSize: MAX_PAGE_SIZE,
+            filters: [],
+          }),
         select: (data) => data.traces.map((trace) => trace.trace_id),
-      }).promise;
+      });
+
+      return { data: data ?? [], loading: isLoading };
     },
     getTriggerClassName: () => "font-mono",
     renderValue: (value) => {

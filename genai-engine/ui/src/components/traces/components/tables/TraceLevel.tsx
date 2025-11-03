@@ -13,6 +13,8 @@ import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -21,8 +23,6 @@ import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredTraces } from "@/services/tracing";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TracesTable } from "../TracesTable";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -37,7 +37,12 @@ export function TraceLevel() {
   const api = useApi()!;
 
   const { data, isFetching, error } = useQuery({
-    queryKey: queryKeys.traces.listPaginated(filters, 0, FETCH_SIZE),
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
+    queryKey: queryKeys.traces.listPaginated(
+      filters,
+      pagination.page,
+      pagination.rowsPerPage
+    ),
     placeholderData: keepPreviousData,
     queryFn: () =>
       getFilteredTraces(api, {

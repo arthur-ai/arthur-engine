@@ -1,14 +1,13 @@
-import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
-import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import NumbersIcon from "@mui/icons-material/Numbers";
 import { Collapsible } from "@base-ui-components/react/collapsible";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
+import { z } from "zod";
 
 import type {
   MetricResultResponse,
   NestedSpanWithMetricsResponse,
 } from "@/lib/api-client/api-client";
-import { z } from "zod";
 
 const RelevanceBlock = z.object({
   bert_f_score: z.number().nullable().optional(),
@@ -74,9 +73,7 @@ function safeParseDetails(details?: string | null): MetricDetails | null {
 
 function formatNumber(value: number | null | undefined, fractionDigits = 3) {
   if (value === null || value === undefined) return "N/A";
-  return Number.isFinite(value)
-    ? (value as number).toFixed(fractionDigits)
-    : String(value);
+  return value.toFixed(fractionDigits);
 }
 
 function KV({ label, value }: { label: string; value: React.ReactNode }) {

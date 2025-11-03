@@ -1,4 +1,5 @@
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { Button, ButtonGroup } from "@mui/material";
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
@@ -10,9 +11,10 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
-import { useTracesHistoryStore } from "../stores/history.store";
+import { useSelectionStore } from "../stores/selection.store";
 import { flattenSpans } from "../utils/spans";
 
+import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import {
   SpanDetails,
   SpanDetailsHeader,
@@ -22,14 +24,10 @@ import {
 import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
-import { LoadingButton } from "@/components/ui/LoadingButton";
 import { useApi } from "@/hooks/useApi";
+import { queryKeys } from "@/lib/queryKeys";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
-import { queryKeys } from "@/lib/queryKeys";
-import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import { Button, ButtonGroup } from "@mui/material";
-import { useSelectionStore } from "../stores/selection.store";
 
 type Props = {
   id: string;
@@ -43,6 +41,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const selectedSpanId = useSelectionStore((state) => state.selection.span);
 
   const { data: trace } = useSuspenseQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.byId(id),
     queryFn: () => getTrace(api!, { traceId: id! }),
   });
@@ -87,8 +86,6 @@ export const TraceDrawerContent = ({ id }: Props) => {
     (span) => span.span_id === selectedSpanId
   );
 
-  console.log({ selectedSpan, selectedSpanId });
-
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
       <Stack
@@ -130,7 +127,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
             >
               Refresh Metrics
             </Button>
-            {/* <AddToDatasetDrawer traceId={id} /> */}
+            <AddToDatasetDrawer traceId={id} />
           </ButtonGroup>
         </Stack>
       </Stack>

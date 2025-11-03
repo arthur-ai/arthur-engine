@@ -6434,19 +6434,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-use-measure@npm:^2.1.7":
-  version: 2.1.7
-  resolution: "react-use-measure@npm:2.1.7"
-  peerDependencies:
-    react: ">=16.13"
-    react-dom: ">=16.13"
-  peerDependenciesMeta:
-    react-dom:
-      optional: true
-  checksum: 10c0/ff24130e6f95e853feb6892fb74af08dbc5aae3574b701169e3bc3adb392c3162f51a58ddfe39bb7337db13ae609bbec0bb51a9de8b5fae5420f9d17e1f8b542
-  languageName: node
-  linkType: hard
-
 "react@npm:^19.1.1":
   version: 19.2.0
   resolution: "react@npm:19.2.0"
@@ -7492,7 +7479,6 @@ __metadata:
     react-markdown: "npm:^10.1.0"
     react-router-dom: "npm:^7.9.2"
     react-syntax-highlighter: "npm:^15.6.6"
-    react-use-measure: "npm:^2.1.7"
     remark-gfm: "npm:^4.0.1"
     swagger-typescript-api: "npm:^13.2.13"
     tailwind-merge: "npm:^3.3.1"

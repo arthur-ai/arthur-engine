@@ -16,17 +16,16 @@ export type EnumField = {
   itemToStringLabel: ((item: string) => string) | undefined;
 };
 
+export type UseDataFn<TCtx> = (ctx: TCtx) => {
+  data: string[];
+  loading: boolean;
+};
+
 export type DynamicEnumField<TCtx> = {
   type: "dynamic_enum";
   operators: Operator[];
   itemToStringLabel: ((item: string) => string) | undefined;
-  /**
-   * Experimental promise to resolve the dynamic enum values.
-   * ! Use with tanstack query to ensure stable promises.
-   * @param ctx - The context for the dynamic enum field.
-   * @returns The dynamic enum values.
-   */
-  promise: (ctx: TCtx) => Promise<string[]>;
+  useData: UseDataFn<TCtx>;
   getTriggerClassName: () => string;
   renderValue: (value: string[]) => React.ReactNode;
 };

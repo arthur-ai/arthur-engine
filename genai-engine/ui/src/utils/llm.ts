@@ -26,7 +26,6 @@ export function getOutputMessages(span: NestedSpanWithMetricsResponse) {
     SemanticConventions.LLM_OUTPUT_MESSAGES
   );
 
-  console.log({ span });
   try {
     return Messages.parse(messages);
   } catch {

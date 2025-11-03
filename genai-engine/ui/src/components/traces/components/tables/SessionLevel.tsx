@@ -1,3 +1,4 @@
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
@@ -9,8 +10,11 @@ import { useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
 import { useFilterStore } from "../../stores/filter.store";
+import { useTracesHistoryStore } from "../../stores/history.store";
 import { createFilterRow } from "../filtering/filters-row";
 import { SESSION_FIELDS } from "../filtering/sessions-fields";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -18,10 +22,6 @@ import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredSessions } from "@/services/tracing";
-import { Alert, TablePagination, Typography } from "@mui/material";
-import { useTracesHistoryStore } from "../../stores/history.store";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TracesTable } from "../TracesTable";
 
 export const SessionLevel = () => {
   const api = useApi()!;
@@ -33,6 +33,7 @@ export const SessionLevel = () => {
   const push = useTracesHistoryStore((state) => state.push);
 
   const { data, isFetching, isPlaceholderData, error } = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.listPaginated(
       filters,
       pagination.page,

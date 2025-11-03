@@ -1,4 +1,5 @@
 import { NumberField as BaseNumberField } from "@base-ui-components/react/number-field";
+import { TextField } from "@mui/material";
 
 import { useFieldContext } from "@/components/traces/components/filtering/hooks/form-context";
 import { cn } from "@/utils/cn";
@@ -15,13 +16,9 @@ const Root = (props: BaseNumberField.Root.Props) => {
   );
 };
 const Group = BaseNumberField.Group;
-const Input = ({ className, ...props }: BaseNumberField.Input.Props) => {
-  return (
-    <BaseNumberField.Input
-      className={cn("bg-white h-full px-2 outline-none", className)}
-      {...props}
-    />
-  );
+
+const Input = (props: BaseNumberField.Input.Props) => {
+  return <BaseNumberField.Input {...props} />;
 };
 const Increment = BaseNumberField.Increment;
 const Decrement = BaseNumberField.Decrement;

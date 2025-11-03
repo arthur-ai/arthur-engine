@@ -1,8 +1,9 @@
-import useSnackbar from "@/hooks/useSnackbar";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { Alert, Snackbar } from "@mui/material";
 import Chip from "@mui/material/Chip";
 import { SxProps, Theme } from "@mui/material/styles";
+
+import useSnackbar from "@/hooks/useSnackbar";
 
 type Props = {
   label: string;

@@ -1,4 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   Navigate,
   Route,
@@ -22,9 +23,6 @@ import { TracesView } from "./components/TracesView";
 import { WeaviateRetrievalsPlayground } from "./components/weaviate/WeaviateRetrievalsPlayground";
 import { AuthProvider } from "./contexts/AuthContext";
 import { queryClient } from "./lib/queryClient";
-import "./App.css";
-
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 // Component to redirect /tasks/:id to /tasks/:id/task-details
 const TaskRedirect = () => {

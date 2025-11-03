@@ -1,3 +1,4 @@
+import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   getCoreRowModel,
@@ -8,6 +9,9 @@ import {
 import { useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
+import { useTracesHistoryStore } from "../../stores/history.store";
+import { TracesEmptyState } from "../TracesEmptyState";
+import { TracesTable } from "../TracesTable";
 
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -15,10 +19,6 @@ import { useTask } from "@/hooks/useTask";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getUsers } from "@/services/tracing";
-import { Alert, TablePagination, Typography } from "@mui/material";
-import { useTracesHistoryStore } from "../../stores/history.store";
-import { TracesEmptyState } from "../TracesEmptyState";
-import { TracesTable } from "../TracesTable";
 
 export const UserLevel = () => {
   const api = useApi()!;
@@ -28,6 +28,7 @@ export const UserLevel = () => {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const { data, isFetching, isPlaceholderData, error } = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.listPaginated(
       pagination.page,
       pagination.rowsPerPage

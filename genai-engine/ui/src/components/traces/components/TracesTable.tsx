@@ -58,7 +58,10 @@ export const TracesTable = <TTable,>({
                     direction={header.column.getIsSorted() || undefined}
                     onClick={() => {
                       table.setSorting((prev) => [
-                        { id: header.column.id, desc: !prev[0].desc },
+                        {
+                          id: header.column.id,
+                          desc: !(prev?.[0].desc ?? false),
+                        },
                       ]);
                     }}
                   >
