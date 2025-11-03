@@ -34,6 +34,7 @@ from schemas.request_schemas import (
     RagProviderConfigurationUpdateRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationRequest,
+    RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -43,6 +44,7 @@ from schemas.response_schemas import (
     RagSearchSettingConfigurationResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
+    SearchRagSearchSettingConfigurationsResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -440,5 +442,81 @@ def delete_rag_search_setting(
         rag_providers_repo = RagProvidersRepository(db_session)
         rag_providers_repo.delete_rag_setting_configuration(setting_configuration_id)
         return Response(status_code=HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
+@rag_routes.patch(
+    "/rag_search_settings/{setting_configuration_id}",
+    description="Update a single RAG search setting configuration.",
+    response_model=RagSearchSettingConfigurationResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def update_rag_search_settings(
+    request: RagSearchSettingConfigurationUpdateRequest,
+    setting_configuration_id: UUID = Path(
+        description="ID of the RAG setting configuration to update.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_providers_repo.update_rag_provider_setting_configuration(
+            setting_configuration_id,
+            request,
+        )
+        config = rag_providers_repo.get_rag_setting_configuration(
+            setting_configuration_id,
+        )
+        return config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_routes.get(
+    "/tasks/{task_id}/rag_search_settings",
+    description="Get list of RAG search setting configurations for the task.",
+    response_model=SearchRagSearchSettingConfigurationsResponse,
+    tags=[rag_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_task_rag_search_settings(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    task_id: UUID = Path(
+        description="ID of the task to fetch the provider connections for.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    config_name: Optional[str] = Query(
+        default=None,
+        description="Rag search setting configuration name substring to search for.",
+    ),
+    rag_provider_ids: Optional[list[UUID]] = Query(
+        default=None,
+        description="List of rag provider configuration IDs to filter for.",
+    ),
+) -> SearchRagSearchSettingConfigurationsResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        configs, total_count = (
+            rag_providers_repo.get_rag_search_setting_configurations_by_task(
+                str(task_id),
+                pagination_parameters,
+                config_name=config_name,
+                rag_provider_ids=rag_provider_ids,
+            )
+        )
+
+        return SearchRagSearchSettingConfigurationsResponse(
+            count=total_count,
+            rag_provider_setting_configurations=[
+                config.to_response_model() for config in configs
+            ],
+        )
     finally:
         db_session.close()

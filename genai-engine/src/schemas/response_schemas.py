@@ -555,7 +555,7 @@ class RagSearchSettingConfigurationResponse(BaseModel):
         description="The latest version of the settings configuration.",
     )
     all_possible_tags: Optional[list[str]] = Field(
-        defaeult=None,
+        default=None,
         description="Set of all tags applied for any version of the settings configuration.",
     )
     created_at: int = Field(
@@ -563,6 +563,17 @@ class RagSearchSettingConfigurationResponse(BaseModel):
     )
     updated_at: int = Field(
         description="Time the RAG settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created.",
+    )
+
+
+class SearchRagSearchSettingConfigurationsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG search setting configurations matching the parameters.",
+    )
+    rag_provider_setting_configurations: list[RagSearchSettingConfigurationResponse] = (
+        Field(
+            description="List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter",
+        )
     )
 
 

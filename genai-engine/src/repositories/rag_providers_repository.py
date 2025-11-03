@@ -26,6 +26,7 @@ from schemas.internal_schemas import (
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigUpdateRequest,
     RagProviderConfigurationUpdateRequest,
+    RagSearchSettingConfigurationUpdateRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -208,3 +209,71 @@ class RagProvidersRepository:
         db_config = self._get_db_rag_setting_config(config_id)
         self.db_session.delete(db_config)
         self.db_session.commit()
+
+    def update_rag_provider_setting_configuration(
+        self,
+        config_id: UUID,
+        update_config: RagSearchSettingConfigurationUpdateRequest,
+    ) -> None:
+        """Update a RAG provider setting configuration"""
+        db_setting_config = self._get_db_rag_setting_config(config_id)
+
+        if update_config.name:
+            db_setting_config.name = update_config.name
+        if update_config.description is not None:
+            db_setting_config.description = update_config.description
+        if update_config.rag_provider_id:
+            # check rag provider exists - will raise 404 otherwise
+            self._get_db_rag_provider_config(update_config.rag_provider_id)
+            # set new field
+            db_setting_config.rag_provider_id = update_config.rag_provider_id
+
+        db_setting_config.updated_at = datetime.now()
+
+        self.db_session.commit()
+
+    def get_rag_search_setting_configurations_by_task(
+        self,
+        task_id: str,
+        pagination_params: PaginationParameters,
+        config_name: Optional[str],
+        rag_provider_ids: Optional[list[UUID]],
+    ) -> Tuple[List[RagSearchSettingConfiguration], int]:
+        """Get RAG provider setting configurations for a task with pagination"""
+        query = self.db_session.query(DatabaseRagSearchSettingConfiguration).filter(
+            DatabaseRagSearchSettingConfiguration.task_id == task_id,
+        )
+
+        # apply filters
+        if config_name:
+            query = query.where(
+                DatabaseRagSearchSettingConfiguration.name.ilike(f"%{config_name}%"),
+            )
+        if rag_provider_ids:
+            query = query.where(
+                DatabaseRagSearchSettingConfiguration.rag_provider_id.in_(
+                    rag_provider_ids,
+                ),
+            )
+
+        # apply sorting
+        if pagination_params.sort == PaginationSortMethod.DESCENDING:
+            query = query.order_by(
+                desc(DatabaseRagSearchSettingConfiguration.updated_at),
+            )
+        elif pagination_params.sort == PaginationSortMethod.ASCENDING:
+            query = query.order_by(
+                asc(DatabaseRagSearchSettingConfiguration.updated_at),
+            )
+
+        total_count = query.count()
+
+        # Apply pagination
+        offset = pagination_params.page * pagination_params.page_size
+        db_configs = query.offset(offset).limit(pagination_params.page_size).all()
+
+        configs = [
+            RagSearchSettingConfiguration._from_database_model(db_config)
+            for db_config in db_configs
+        ]
+        return configs, total_count
