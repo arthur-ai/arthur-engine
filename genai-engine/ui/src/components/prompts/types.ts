@@ -11,6 +11,8 @@ import {
   ModelProvider,
   AgenticPromptMetadataResponse,
   Api,
+  AgenticPromptRunResponse,
+  OpenAIMessageItem,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -29,7 +31,7 @@ type PromptAction =
   | { type: "updatePromptName"; payload: { promptId: string; name: string } }
   | {
       type: "updatePromptProvider";
-      payload: { promptId: string; provider: string };
+      payload: { promptId: string; modelProvider: ModelProvider | "" };
     }
   | {
       type: "updatePromptModelName";
@@ -73,6 +75,10 @@ type PromptAction =
   | {
       type: "updateKeywordValue";
       payload: { keyword: string; value: string };
+    }
+  | {
+      type: "runPrompt";
+      payload: { promptId: string };
     }
   | {
       type: "updateModelParameters";
@@ -134,14 +140,15 @@ type PromptType = {
   name: string;
   created_at: string | undefined;
   modelName: string;
-  provider: string;
+  modelProvider: ModelProvider | "";
   messages: MessageType[];
   modelParameters: ModelParametersType;
-  outputField: string; // The actual output content
+  runResponse: AgenticPromptRunResponse | null; // The response from the last run
   responseFormat: string | undefined; //LLMResponseSchemaInput
   tools: FrontendTool[]; //LLMToolOutput
   toolChoice?: ToolChoiceEnum | ToolChoice;
   // tags: Array<string>; // TODO
+  running?: boolean; // Whether the prompt is running
 };
 
 interface PromptPlaygroundState {
@@ -157,8 +164,8 @@ interface MessageComponentProps {
   id: string;
   parentId: string;
   role?: string;
-  defaultContent?: string;
-  content: string | "";
+  defaultContent?: string | OpenAIMessageItem[];
+  content: string | OpenAIMessageItem[] | "";
   dragHandleProps?: Record<string, unknown>;
 }
 
@@ -168,7 +175,8 @@ interface PromptComponentProps {
 
 interface OutputFieldProps {
   promptId: string;
-  outputField: string;
+  running: boolean;
+  runResponse: AgenticPromptRunResponse | null;
   responseFormat: string | undefined;
 }
 

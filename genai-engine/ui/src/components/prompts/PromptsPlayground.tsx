@@ -1,7 +1,10 @@
+import AddIcon from "@mui/icons-material/Add";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
@@ -174,18 +177,24 @@ const PromptsPlayground = () => {
     }
   }, [state.enabledProviders, fetchAvailableModels]);
 
-  const handleAddPrompt = useCallback(() => {
+  const handleAddPrompt = () => {
     dispatch({ type: "addPrompt" });
-  }, [dispatch]);
+  };
 
-  const handleKeywordValueChange = useCallback(
-    (keyword: string, value: string) => {
-      dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
-    },
-    [dispatch]
-  );
+  const handleRunAllPrompts = () => {
+    state.prompts.forEach((prompt) => {
+      if (!prompt.running) {
+        // Only run prompts that are not already running
+        dispatch({ type: "runPrompt", payload: { promptId: prompt.id } });
+      }
+    });
+  };
 
-  const keywords = Array.from(state.keywords.keys());
+  const handleKeywordValueChange = (keyword: string, value: string) => {
+    dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
+  };
+
+  const variables = Array.from(state.keywords.keys());
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
@@ -194,50 +203,62 @@ const PromptsPlayground = () => {
           <div className={`bg-gray-300 flex-shrink-0 p-1`}>
             <Container
               component="div"
-              className="flex justify-between items-center mb-1"
               maxWidth="xl"
               disableGutters
+              className="mb-1"
             >
-              <div>Prompts Playground</div>
-              <Button
-                variant="contained"
-                size="small"
-                onClick={handleAddPrompt}
+              <Stack
+                direction="row"
+                justifyContent="flex-end"
+                alignItems="center"
+                spacing={2}
               >
-                Add Prompt
-              </Button>
-              <Button variant="contained" size="small" onClick={() => {}}>
-                Run Prompts
-              </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleAddPrompt}
+                  startIcon={<AddIcon />}
+                >
+                  Add Prompt
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleRunAllPrompts}
+                  startIcon={<PlayArrowIcon />}
+                >
+                  Run All Prompts
+                </Button>
+              </Stack>
             </Container>
             <Container component="div" maxWidth="xl" disableGutters>
               <Paper elevation={3} className="p-1">
                 <div className="grid grid-template-rows-2">
                   <div className="flex justify-center items-center">
-                    <Typography variant="h5">Keyword Templates</Typography>
+                    <Typography variant="h5">Variables</Typography>
                   </div>
                   <div className="flex justify-center items-center">
                     <Typography variant="body2" className="text-center">
-                      Keywords allow you to create reusable templates by using
+                      Variables allow you to create reusable templates by using
                       double curly (mustache) braces like{" "}
-                      <code>{`{{keyword}}`}</code>. When you define a keyword
+                      <code>{`{{variable}}`}</code>. When you define a variable
                       below, it will automatically replace all instances of{" "}
-                      <code>{`{{keyword}}`}</code> in your prompt messages. This
-                      lets you quickly test different values without editing
-                      each message individually.
+                      <code>{`{{variable}}`}</code> in your prompt messages.
+                      This lets you quickly test different values without
+                      editing each message individually.
                     </Typography>
                   </div>
                 </div>
                 <Divider />
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
-                  {keywords.map((keyword) => (
-                    <div key={keyword} className="w-full">
+                  {variables.map((variable) => (
+                    <div key={variable} className="w-full">
                       <TextField
-                        id={`keyword-${keyword}`}
-                        label={keyword}
-                        value={state.keywords.get(keyword)}
+                        id={`variable-${variable}`}
+                        label={variable}
+                        value={state.keywords.get(variable)}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          handleKeywordValueChange(keyword, e.target.value);
+                          handleKeywordValueChange(variable, e.target.value);
                         }}
                         variant="standard"
                         fullWidth
