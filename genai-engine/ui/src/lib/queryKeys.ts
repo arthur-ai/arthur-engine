@@ -1,3 +1,5 @@
+import { IncomingFilter } from "@/components/traces/components/filtering/mapper";
+
 export const queryKeys = {
   datasets: {
     search: {
@@ -37,5 +39,54 @@ export const queryKeys = {
         "getDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet",
         { datasetId },
       ] as const,
+  },
+  spans: {
+    listPaginated: (
+      filters: IncomingFilter[],
+      page: number,
+      pageSize: number
+    ) =>
+      [
+        "listSpansMetadataApiV1TracesSpansGet",
+        filters,
+        page,
+        pageSize,
+      ] as const,
+    byId: (spanId: string) =>
+      ["getSpanByIdApiV1TracesSpansSpanIdGet", spanId] as const,
+  },
+  sessions: {
+    list: (filters: IncomingFilter[]) =>
+      ["listSessionsMetadataApiV1TracesSessionsGet", filters] as const,
+    listPaginated: (
+      filters: IncomingFilter[],
+      page: number,
+      pageSize: number
+    ) =>
+      [
+        "listSessionsMetadataApiV1TracesSessionsGet",
+        filters,
+        page,
+        pageSize,
+      ] as const,
+    byId: (sessionId: string) =>
+      ["getSessionTracesApiV1TracesSessionsSessionIdGet", sessionId] as const,
+  },
+  traces: {
+    list: (filters: IncomingFilter[]) =>
+      ["listTracesMetadataApiV1TracesGet", filters] as const,
+    listPaginated: (
+      filters: IncomingFilter[],
+      page: number,
+      pageSize: number
+    ) => ["listTracesMetadataApiV1TracesGet", filters, page, pageSize] as const,
+    byId: (traceId: string) =>
+      ["getTraceByIdApiV1TracesTraceIdGet", traceId] as const,
+  },
+  users: {
+    listPaginated: (page: number, pageSize: number) =>
+      ["listUsersMetadataApiV1TracesUsersGet", page, pageSize] as const,
+    byId: (userId: string) =>
+      ["getUserDetailsApiV1TracesUsersUserIdGet", userId] as const,
   },
 } as const;
