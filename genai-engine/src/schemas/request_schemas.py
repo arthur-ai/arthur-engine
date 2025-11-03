@@ -141,10 +141,13 @@ class ApiKeyRagAuthenticationConfigRequest(BaseModel):
 RagAuthenticationConfigRequestTypes = Union[ApiKeyRagAuthenticationConfigRequest]
 
 
-class RagProviderConfigurationRequest(BaseModel):
+class RagProviderTestConfigurationRequest(BaseModel):
     authentication_config: RagAuthenticationConfigRequestTypes = Field(
         description="Configuration of the authentication strategy.",
     )
+
+
+class RagProviderConfigurationRequest(RagProviderTestConfigurationRequest):
     name: str = Field(description="Name of RAG provider configuration.")
     description: Optional[str] = Field(
         default=None,

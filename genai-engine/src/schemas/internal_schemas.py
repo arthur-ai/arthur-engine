@@ -126,6 +126,7 @@ from schemas.request_schemas import (
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
+    RagProviderTestConfigurationRequest,
     RagSettingConfigurationRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
@@ -2407,6 +2408,31 @@ class ApiKeyRagAuthenticationConfig(BaseModel):
 
 
 RagAuthenticationConfigTypes = Union[ApiKeyRagAuthenticationConfig]
+
+
+class RagProviderTestConfiguration(BaseModel):
+    authentication_config: RagAuthenticationConfigTypes
+
+    @staticmethod
+    def _from_request_model(
+        request: RagProviderTestConfigurationRequest,
+    ) -> "RagProviderTestConfiguration":
+        if isinstance(
+            request.authentication_config,
+            ApiKeyRagAuthenticationConfigRequest,
+        ):
+            config = ApiKeyRagAuthenticationConfig._from_request_model(
+                request.authentication_config,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Authentication method {type(request.authentication_config)} is not supported.",
+            )
+
+        return RagProviderTestConfiguration(
+            authentication_config=config,
+        )
 
 
 class RagProviderConfiguration(BaseModel):

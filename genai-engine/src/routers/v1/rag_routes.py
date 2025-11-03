@@ -23,6 +23,7 @@ from schemas.enums import (
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     RagProviderConfiguration,
+    RagProviderTestConfiguration,
     RagSettingConfiguration,
     User,
 )
@@ -31,6 +32,7 @@ from schemas.request_schemas import (
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
+    RagProviderTestConfigurationRequest,
     RagSettingConfigurationRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
@@ -245,16 +247,25 @@ def list_rag_provider_collections(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def test_rag_provider_connection(
-    request: RagProviderConfigurationRequest,
+    request: RagProviderTestConfigurationRequest,
     task_id: str = Path(
         description="ID of the task to test the new provider connection for. Should be formatted as a UUID.",
     ),
     db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> ConnectionCheckResult:
+    # validate task exists - get function will raise a 404 if it doesn't exist
+    task_repo = TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+    task_repo.get_task_by_id(task_id)
+
     try:
-        rag_provider_config = RagProviderConfiguration._from_request_model(
-            task_id,
+        rag_provider_config = RagProviderTestConfiguration._from_request_model(
             request,
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)

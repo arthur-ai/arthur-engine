@@ -1,9 +1,14 @@
+from typing import Union
+
 from fastapi import HTTPException
 
 from clients.rag_providers.rag_provider_client import RagProviderClient
 from clients.rag_providers.weaviate_client import WeaviateClient
 from schemas.enums import ConnectionCheckOutcome, RagAPIKeyAuthenticationProviderEnum
-from schemas.internal_schemas import RagProviderConfiguration
+from schemas.internal_schemas import (
+    RagProviderConfiguration,
+    RagProviderTestConfiguration,
+)
 from schemas.request_schemas import (
     RagHybridSearchSettingRequest,
     RagKeywordSearchSettingRequest,
@@ -19,7 +24,10 @@ from schemas.response_schemas import (
 class RagClientConstructor:
     """Responsible for picking a RAG client."""
 
-    def __init__(self, provider_config: RagProviderConfiguration) -> None:
+    def __init__(
+        self,
+        provider_config: Union[RagProviderTestConfiguration, RagProviderConfiguration],
+    ) -> None:
         self.provider_config = provider_config
 
     def pick_rag_provider_client(self) -> RagProviderClient:
