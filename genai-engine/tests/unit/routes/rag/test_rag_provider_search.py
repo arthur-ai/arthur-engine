@@ -30,8 +30,6 @@ def test_rag_provider_connection_success(
     # Test the connection
     status_code, result = client.test_rag_provider_connection(
         task_id=task_id,
-        name="Test RAG Provider",
-        description="Test RAG provider for connection testing",
         api_key="test-api-key",
         host_url="https://test-weaviate.example.com",
     )
@@ -73,8 +71,6 @@ def test_rag_provider_connection_failure(
     # Test the connection
     status_code, result = client.test_rag_provider_connection(
         task_id=task_id,
-        name="Test RAG Provider",
-        description="Test RAG provider for connection failure testing",
         api_key="invalid-api-key",
         host_url="https://invalid-weaviate.example.com",
     )
@@ -124,8 +120,6 @@ def test_rag_provider_connection_constructor_exception(
     # Test the connection
     status_code, result = client.test_rag_provider_connection(
         task_id=task_id,
-        name="Test RAG Provider",
-        description="Test RAG provider for connection not connected testing",
         api_key="invalid-api-key",
         host_url="https://invalid-weaviate.example.com",
     )

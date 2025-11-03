@@ -73,6 +73,7 @@ from schemas.request_schemas import (
     RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
+    RagProviderTestConfigurationRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
@@ -2598,8 +2599,6 @@ class GenaiEngineTestClientBase(httpx.Client):
     def test_rag_provider_connection(
         self,
         task_id: str,
-        name: str,
-        description: str = None,
         authentication_method: RagProviderAuthenticationMethodEnum = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
         api_key: str = "test-api-key",
         host_url: str = "https://test-weaviate.example.com",
@@ -2610,12 +2609,10 @@ class GenaiEngineTestClientBase(httpx.Client):
             api_key=api_key,
             host_url=host_url,
             rag_provider=rag_provider,
+            authentication_method=authentication_method,
         )
 
-        request = RagProviderConfigurationRequest(
-            name=name,
-            description=description,
-            authentication_method=authentication_method,
+        request = RagProviderTestConfigurationRequest(
             authentication_config=auth_config,
         )
 
