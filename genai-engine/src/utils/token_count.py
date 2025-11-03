@@ -60,13 +60,28 @@ def compute_cost_from_tokens(
         Cost or None if computation fails
     """
     try:
-        return float(
-            calculate_cost_by_tokens(
-                model_name=model_name,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-            ),
-        )
+        total_cost = 0.0
+
+        # Calculate prompt token cost if input_tokens provided
+        if input_tokens > 0:
+            prompt_cost = calculate_cost_by_tokens(
+                num_tokens=input_tokens,
+                model=model_name,
+                token_type="input",
+            )
+            total_cost += float(prompt_cost)
+
+        # Calculate completion token cost if output_tokens provided
+        if output_tokens > 0:
+            completion_cost = calculate_cost_by_tokens(
+                num_tokens=output_tokens,
+                model=model_name,
+                token_type="output",
+            )
+            total_cost += float(completion_cost)
+
+        return total_cost if (input_tokens > 0 or output_tokens > 0) else None
+
     except Exception as e:
         logger.warning(
             f"Error computing cost for model {model_name}: {e}",
