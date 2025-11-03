@@ -26,8 +26,19 @@ from arthur_common.models.connectors import (
     ConnectorPaginationOptions,
 )
 from arthur_common.models.enums import ModelProblemType
-from arthur_common.models.request_schemas import NewRuleRequest
-from arthur_common.models.response_schemas import RuleResponse, TaskResponse
+from arthur_common.models.request_schemas import (
+    NewMetricRequest as ArthurCommonNewMetricRequest,
+)
+from arthur_common.models.request_schemas import (
+    NewRuleRequest,
+)
+from arthur_common.models.response_schemas import (
+    MetricResponse as ArthurCommonMetricResponse,
+)
+from arthur_common.models.response_schemas import (
+    RuleResponse,
+    TaskResponse,
+)
 from genai_client import (
     ApiClient,
     APIKeysApi,
@@ -44,9 +55,7 @@ from genai_client.exceptions import (
 from genai_client.models import (
     ApiKeyResponse,
     APIKeysRolesEnum,
-    MetricResponse,
     NewApiKeyRequest,
-    NewMetricRequest,
     NewTaskRequest,
     QueryTracesWithMetricsResponse,
     RuleType,
@@ -350,8 +359,8 @@ class ShieldBaseConnector(Connector, ABC):
     def add_metric_to_task(
         self,
         task_id: str,
-        new_metric: NewMetricRequest,
-    ) -> MetricResponse:
+        new_metric: ArthurCommonNewMetricRequest,
+    ) -> ArthurCommonMetricResponse:
         try:
             response = self._tasks_client.create_task_metric_api_v2_tasks_task_id_metrics_post_with_http_info(
                 task_id=task_id,
@@ -359,7 +368,7 @@ class ShieldBaseConnector(Connector, ABC):
                     new_metric,
                 ),
             )
-            return MetricResponse.model_validate_json(response.raw_data)
+            return ArthurCommonMetricResponse.model_validate_json(response.raw_data)
         except Exception as e:
             self.logger.error(f"Failed to add metric to task {task_id}: {e}")
             raise

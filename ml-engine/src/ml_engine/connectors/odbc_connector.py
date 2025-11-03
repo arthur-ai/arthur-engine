@@ -81,7 +81,7 @@ class ODBCConnector(Connector):
     def _build_engine_url(
         self,
         conn_str: str,
-    ) -> Tuple[Union[str, URL], Dict[str, Any]]:
+    ) -> tuple[Union[str, URL], dict[str, Any]]:
         """
         Build the SQLAlchemy engine URL based on dialect and driver configuration.
         Returns the engine URL and any connect args that need to be passed to the engine.
@@ -106,7 +106,7 @@ class ODBCConnector(Connector):
 
         # Default to generic ODBC (pyodbc) - fallback or explicitly chosen
         # This handles cases where no dialect is specified or an invalid dialect is provided
-        return self._build_odbc_url(conn_str), {}
+        return self._build_odbc_url(conn_str)
 
     def _build_odbc_url(
         self,

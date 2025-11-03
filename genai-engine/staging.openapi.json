@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.106"
+        "version": "2.1.126"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -6674,7 +6674,129 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RagProviderSimilarityTextSearchResponse"
+                                    "$ref": "#/components/schemas/RagProviderQueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_providers/{provider_id}/keyword_search": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Execute Keyword Search",
+                "description": "Execute a RAG Provider Keyword (BM25/Sparse Vector) Search.",
+                "operationId": "execute_keyword_search_api_v1_rag_providers__provider_id__keyword_search_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG provider configuration to use for the vector database connection.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of the RAG provider configuration to use for the vector database connection."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagKeywordSearchSettingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderQueryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_providers/{provider_id}/hybrid_search": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Execute Hybrid Search",
+                "description": "Execute a RAG provider hybrid (keyword and vector similarity) search.",
+                "operationId": "execute_hybrid_search_api_v1_rag_providers__provider_id__hybrid_search_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "provider_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG provider configuration to use for the vector database connection.",
+                            "title": "Provider Id"
+                        },
+                        "description": "ID of the RAG provider configuration to use for the vector database connection."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagHybridSearchSettingRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagProviderQueryResponse"
                                 }
                             }
                         }
@@ -9965,6 +10087,15 @@
                 ],
                 "title": "HallucinationDetailsResponse"
             },
+            "HybridFusion": {
+                "type": "string",
+                "enum": [
+                    "FUSION_TYPE_RANKED",
+                    "FUSION_TYPE_RELATIVE_SCORE"
+                ],
+                "title": "HybridFusion",
+                "description": "Define how the query's hybrid fusion operation should be performed."
+            },
             "ImageURL": {
                 "properties": {
                     "url": {
@@ -12024,6 +12155,32 @@
                 ],
                 "title": "RagAPIKeyAuthenticationProviderEnum"
             },
+            "RagHybridSearchSettingRequest": {
+                "properties": {
+                    "settings": {
+                        "$ref": "#/components/schemas/WeaviateHybridSearchSettingsRequest",
+                        "description": "Settings for the hybrid search request to the vector database."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "settings"
+                ],
+                "title": "RagHybridSearchSettingRequest"
+            },
+            "RagKeywordSearchSettingRequest": {
+                "properties": {
+                    "settings": {
+                        "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsRequest",
+                        "description": "Settings for the keyword search request to the vector database."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "settings"
+                ],
+                "title": "RagKeywordSearchSettingRequest"
+            },
             "RagProviderAuthenticationMethodEnum": {
                 "type": "string",
                 "enum": [
@@ -12185,23 +12342,23 @@
                 "type": "object",
                 "title": "RagProviderConfigurationUpdateRequest"
             },
-            "RagProviderSimilarityTextSearchResponse": {
+            "RagProviderQueryResponse": {
                 "properties": {
                     "response": {
-                        "$ref": "#/components/schemas/WeaviateSimilarityTextSearchResponse"
+                        "$ref": "#/components/schemas/WeaviateQueryResults"
                     }
                 },
                 "type": "object",
                 "required": [
                     "response"
                 ],
-                "title": "RagProviderSimilarityTextSearchResponse"
+                "title": "RagProviderQueryResponse"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {
                     "settings": {
                         "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsRequest",
-                        "description": "Settings for the similarity text search request to the vector database. S"
+                        "description": "Settings for the similarity text search request to the vector database."
                     }
                 },
                 "type": "object",
@@ -14075,7 +14232,437 @@
                 ],
                 "title": "VariableTemplateValue"
             },
-            "WeaviateSimilaritySearchMetadata": {
+            "WeaviateHybridSearchSettingsRequest": {
+                "properties": {
+                    "collection_name": {
+                        "type": "string",
+                        "title": "Collection Name",
+                        "description": "Name of the vector collection used for the search."
+                    },
+                    "limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Limit",
+                        "description": "Maximum number of objects to return."
+                    },
+                    "include_vector": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Vector",
+                        "description": "Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+                        "default": false
+                    },
+                    "offset": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Offset",
+                        "description": "Skips first N results in similarity response. Useful for pagination."
+                    },
+                    "auto_limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auto Limit",
+                        "description": "Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps."
+                    },
+                    "return_metadata": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "creation_time",
+                                        "last_update_time",
+                                        "distance",
+                                        "certainty",
+                                        "score",
+                                        "explain_score",
+                                        "is_consistent"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/MetadataQuery"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Metadata",
+                        "description": "Specify metadata fields to return."
+                    },
+                    "return_properties": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Properties",
+                        "description": "Specify which properties to return for each object."
+                    },
+                    "rag_provider": {
+                        "type": "string",
+                        "const": "weaviate",
+                        "title": "Rag Provider",
+                        "default": "weaviate"
+                    },
+                    "query": {
+                        "type": "string",
+                        "title": "Query",
+                        "description": "Input text to find objects with near vectors or keyword matches."
+                    },
+                    "alpha": {
+                        "type": "number",
+                        "title": "Alpha",
+                        "description": "Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
+                        "default": 0.7
+                    },
+                    "query_properties": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Query Properties",
+                        "description": "Apply keyword search to only a specified subset of object properties."
+                    },
+                    "fusion_type": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/HybridFusion"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Set the fusion algorithm to use. Default is Relative Score Fusion."
+                    },
+                    "max_vector_distance": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Vector Distance",
+                        "description": "Maximum threshold for the vector search component."
+                    },
+                    "minimum_match_or_operator": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Minimum Match Or Operator",
+                        "description": "Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only."
+                    },
+                    "and_operator": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "And Operator",
+                        "description": "Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only."
+                    },
+                    "target_vector": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/_MultiTargetVectorJoin"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Target Vector",
+                        "description": "Specifies vector to use for vector search when using named vectors."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "collection_name",
+                    "query"
+                ],
+                "title": "WeaviateHybridSearchSettingsRequest"
+            },
+            "WeaviateKeywordSearchSettingsRequest": {
+                "properties": {
+                    "collection_name": {
+                        "type": "string",
+                        "title": "Collection Name",
+                        "description": "Name of the vector collection used for the search."
+                    },
+                    "limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Limit",
+                        "description": "Maximum number of objects to return."
+                    },
+                    "include_vector": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Include Vector",
+                        "description": "Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+                        "default": false
+                    },
+                    "offset": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Offset",
+                        "description": "Skips first N results in similarity response. Useful for pagination."
+                    },
+                    "auto_limit": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Auto Limit",
+                        "description": "Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps."
+                    },
+                    "return_metadata": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string",
+                                    "enum": [
+                                        "creation_time",
+                                        "last_update_time",
+                                        "distance",
+                                        "certainty",
+                                        "score",
+                                        "explain_score",
+                                        "is_consistent"
+                                    ]
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/MetadataQuery"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Metadata",
+                        "description": "Specify metadata fields to return."
+                    },
+                    "return_properties": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Return Properties",
+                        "description": "Specify which properties to return for each object."
+                    },
+                    "rag_provider": {
+                        "type": "string",
+                        "const": "weaviate",
+                        "title": "Rag Provider",
+                        "default": "weaviate"
+                    },
+                    "query": {
+                        "type": "string",
+                        "title": "Query",
+                        "description": "Input text to find objects with keyword matches."
+                    },
+                    "minimum_match_or_operator": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Minimum Match Or Operator",
+                        "description": "Minimum number of keywords that define a match. Objects returned will have to have at least this many matches."
+                    },
+                    "and_operator": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "And Operator",
+                        "description": "Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "collection_name",
+                    "query"
+                ],
+                "title": "WeaviateKeywordSearchSettingsRequest"
+            },
+            "WeaviateQueryResult": {
+                "properties": {
+                    "uuid": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Uuid",
+                        "description": "Unique identifier of the result"
+                    },
+                    "metadata": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateQueryResultMetadata"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Search metadata including distance, score, etc."
+                    },
+                    "properties": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Properties",
+                        "description": "Properties of the result object"
+                    },
+                    "vector": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": {
+                                    "anyOf": [
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "type": "array"
+                                        },
+                                        {
+                                            "items": {
+                                                "items": {
+                                                    "type": "number"
+                                                },
+                                                "type": "array"
+                                            },
+                                            "type": "array"
+                                        }
+                                    ]
+                                },
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Vector",
+                        "description": "Vector representation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "uuid",
+                    "properties"
+                ],
+                "title": "WeaviateQueryResult",
+                "description": "Individual search result from Weaviate"
+            },
+            "WeaviateQueryResultMetadata": {
                 "properties": {
                     "creation_time": {
                         "anyOf": [
@@ -14165,75 +14752,10 @@
                     }
                 },
                 "type": "object",
-                "title": "WeaviateSimilaritySearchMetadata",
+                "title": "WeaviateQueryResultMetadata",
                 "description": "Metadata from weaviate for a vector object:\nhttps://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal"
             },
-            "WeaviateSimilaritySearchTextResult": {
-                "properties": {
-                    "uuid": {
-                        "type": "string",
-                        "format": "uuid",
-                        "title": "Uuid",
-                        "description": "Unique identifier of the result"
-                    },
-                    "metadata": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/WeaviateSimilaritySearchMetadata"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Search metadata including distance, score, etc."
-                    },
-                    "properties": {
-                        "additionalProperties": true,
-                        "type": "object",
-                        "title": "Properties",
-                        "description": "Properties of the result object"
-                    },
-                    "vector": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": {
-                                    "anyOf": [
-                                        {
-                                            "items": {
-                                                "type": "number"
-                                            },
-                                            "type": "array"
-                                        },
-                                        {
-                                            "items": {
-                                                "items": {
-                                                    "type": "number"
-                                                },
-                                                "type": "array"
-                                            },
-                                            "type": "array"
-                                        }
-                                    ]
-                                },
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Vector",
-                        "description": "Vector representation"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "uuid",
-                    "properties"
-                ],
-                "title": "WeaviateSimilaritySearchTextResult",
-                "description": "Individual search result from Weaviate"
-            },
-            "WeaviateSimilarityTextSearchResponse": {
+            "WeaviateQueryResults": {
                 "properties": {
                     "rag_provider": {
                         "type": "string",
@@ -14243,7 +14765,7 @@
                     },
                     "objects": {
                         "items": {
-                            "$ref": "#/components/schemas/WeaviateSimilaritySearchTextResult"
+                            "$ref": "#/components/schemas/WeaviateQueryResult"
                         },
                         "type": "array",
                         "title": "Objects",
@@ -14254,50 +14776,15 @@
                 "required": [
                     "objects"
                 ],
-                "title": "WeaviateSimilarityTextSearchResponse",
+                "title": "WeaviateQueryResults",
                 "description": "Response from Weaviate similarity text search"
             },
             "WeaviateVectorSimilarityTextSearchSettingsRequest": {
                 "properties": {
-                    "rag_provider": {
-                        "type": "string",
-                        "const": "weaviate",
-                        "title": "Rag Provider",
-                        "default": "weaviate"
-                    },
                     "collection_name": {
                         "type": "string",
                         "title": "Collection Name",
-                        "description": "Name of the vector collection used for the similarity search."
-                    },
-                    "query": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "string"
-                            }
-                        ],
-                        "title": "Query",
-                        "description": "Input text to find objects with near vectors for."
-                    },
-                    "certainty": {
-                        "anyOf": [
-                            {
-                                "type": "number",
-                                "maximum": 1.0,
-                                "minimum": 0.0
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Certainty",
-                        "description": "Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified."
+                        "description": "Name of the vector collection used for the search."
                     },
                     "limit": {
                         "anyOf": [
@@ -14345,18 +14832,6 @@
                         "title": "Offset",
                         "description": "Skips first N results in similarity response. Useful for pagination."
                     },
-                    "distance": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Distance",
-                        "description": "Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified."
-                    },
                     "auto_limit": {
                         "anyOf": [
                             {
@@ -14368,27 +14843,6 @@
                         ],
                         "title": "Auto Limit",
                         "description": "Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps."
-                    },
-                    "target_vector": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "$ref": "#/components/schemas/_MultiTargetVectorJoin"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Target Vector",
-                        "description": "Specifies vector to use for similarity search when using named vectors."
                     },
                     "return_metadata": {
                         "anyOf": [
@@ -14431,6 +14885,74 @@
                         ],
                         "title": "Return Properties",
                         "description": "Specify which properties to return for each object."
+                    },
+                    "rag_provider": {
+                        "type": "string",
+                        "const": "weaviate",
+                        "title": "Rag Provider",
+                        "default": "weaviate"
+                    },
+                    "query": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ],
+                        "title": "Query",
+                        "description": "Input text to find objects with near vectors for."
+                    },
+                    "certainty": {
+                        "anyOf": [
+                            {
+                                "type": "number",
+                                "maximum": 1.0,
+                                "minimum": 0.0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Certainty",
+                        "description": "Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified."
+                    },
+                    "distance": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Distance",
+                        "description": "Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified."
+                    },
+                    "target_vector": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "$ref": "#/components/schemas/_MultiTargetVectorJoin"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Target Vector",
+                        "description": "Specifies vector to use for similarity search when using named vectors."
                     }
                 },
                 "type": "object",

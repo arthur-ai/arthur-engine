@@ -1143,8 +1143,12 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
+
+export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
+
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData =
-  RagProviderSimilarityTextSearchResponse;
+  RagProviderQueryResponse;
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
@@ -3676,6 +3680,12 @@ export interface QueryTracesWithMetricsResponse {
 /** RagAPIKeyAuthenticationProviderEnum */
 export type RagAPIKeyAuthenticationProviderEnum = "weaviate";
 
+/** RagKeywordSearchSettingRequest */
+export interface RagKeywordSearchSettingRequest {
+  /** Settings for the keyword search request to the vector database. */
+  settings: WeaviateKeywordSearchSettingsRequest;
+}
+
 /** RagProviderAuthenticationMethodEnum */
 export type RagProviderAuthenticationMethodEnum = "api_key";
 
@@ -3762,15 +3772,15 @@ export interface RagProviderConfigurationUpdateRequest {
   name?: string | null;
 }
 
-/** RagProviderSimilarityTextSearchResponse */
-export interface RagProviderSimilarityTextSearchResponse {
+/** RagProviderQueryResponse */
+export interface RagProviderQueryResponse {
   /** Response from Weaviate similarity text search */
-  response: WeaviateSimilarityTextSearchResponse;
+  response: WeaviateQueryResults;
 }
 
 /** RagVectorSimilarityTextSearchSettingRequest */
 export interface RagVectorSimilarityTextSearchSettingRequest {
-  /** Settings for the similarity text search request to the vector database. S */
+  /** Settings for the similarity text search request to the vector database. */
   settings: WeaviateVectorSimilarityTextSearchSettingsRequest;
 }
 
@@ -4952,12 +4962,106 @@ export interface VariableTemplateValue {
   value: string;
 }
 
+/** WeaviateKeywordSearchSettingsRequest */
+export interface WeaviateKeywordSearchSettingsRequest {
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query
+   * Input text to find objects with near vectors for.
+   */
+  query: string;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateKeywordSearchSettingsRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+}
+
+export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
 /**
- * WeaviateSimilaritySearchMetadata
+ * WeaviateQueryResult
+ * Individual search result from Weaviate
+ */
+export interface WeaviateQueryResult {
+  /** Search metadata including distance, score, etc. */
+  metadata?: WeaviateQueryResultMetadata | null;
+  /**
+   * Properties
+   * Properties of the result object
+   */
+  properties: Record<string, any>;
+  /**
+   * Uuid
+   * Unique identifier of the result
+   * @format uuid
+   */
+  uuid: string;
+  /**
+   * Vector
+   * Vector representation
+   */
+  vector?: Record<string, number[] | number[][]> | null;
+}
+
+/**
+ * WeaviateQueryResultMetadata
  * Metadata from weaviate for a vector object:
  * https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
  */
-export interface WeaviateSimilaritySearchMetadata {
+export interface WeaviateQueryResultMetadata {
   /**
    * Certainty
    * Similarity score measure between 0 and 1. Higher values correspond to more similar reesults.
@@ -4996,40 +5100,15 @@ export interface WeaviateSimilaritySearchMetadata {
 }
 
 /**
- * WeaviateSimilaritySearchTextResult
- * Individual search result from Weaviate
- */
-export interface WeaviateSimilaritySearchTextResult {
-  /** Search metadata including distance, score, etc. */
-  metadata?: WeaviateSimilaritySearchMetadata | null;
-  /**
-   * Properties
-   * Properties of the result object
-   */
-  properties: Record<string, any>;
-  /**
-   * Uuid
-   * Unique identifier of the result
-   * @format uuid
-   */
-  uuid: string;
-  /**
-   * Vector
-   * Vector representation
-   */
-  vector?: Record<string, number[] | number[][]> | null;
-}
-
-/**
- * WeaviateSimilarityTextSearchResponse
+ * WeaviateQueryResults
  * Response from Weaviate similarity text search
  */
-export interface WeaviateSimilarityTextSearchResponse {
+export interface WeaviateQueryResults {
   /**
    * Objects
    * List of search result objects
    */
-  objects: WeaviateSimilaritySearchTextResult[];
+  objects: WeaviateQueryResult[];
   /**
    * Rag Provider
    * @default "weaviate"
@@ -5051,7 +5130,7 @@ export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
   certainty?: number | null;
   /**
    * Collection Name
-   * Name of the vector collection used for the similarity search.
+   * Name of the vector collection used for the search.
    */
   collection_name: string;
   /**
@@ -5247,7 +5326,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.106
+ * @version 2.1.111
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -5725,6 +5804,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/rag_providers/${providerId}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Execute a RAG Provider Keyword (BM25/Sparse Vector) Search.
+     *
+     * @tags RAG Providers
+     * @name ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPost
+     * @summary Execute Keyword Search
+     * @request POST:/api/v1/rag_providers/{provider_id}/keyword_search
+     * @secure
+     */
+    executeKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPost: (
+      providerId: string,
+      data: RagKeywordSearchSettingRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData,
+        ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/keyword_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
 

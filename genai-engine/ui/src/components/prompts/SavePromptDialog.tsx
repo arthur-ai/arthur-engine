@@ -12,6 +12,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { SavePromptDialogProps } from "./types";
 import { toBackendPromptBaseConfig } from "./utils";
 
+import { SNACKBAR_AUTO_HIDE_DURATION } from "@/constants/snackbar";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";

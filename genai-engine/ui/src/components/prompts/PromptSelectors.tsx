@@ -15,7 +15,10 @@ import VersionSubmenu from "./VersionSubmenu";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider, AgenticPromptMetadataResponse } from "@/lib/api-client/api-client";
+import {
+  ModelProvider,
+  AgenticPromptMetadataResponse,
+} from "@/lib/api-client/api-client";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -202,11 +205,11 @@ const PromptSelectors = ({
 
   const handleProviderChange = (
     _event: SyntheticEvent<Element, Event>,
-    newValue: string | null
+    newValue: ModelProvider | null
   ) => {
     dispatch({
       type: "updatePromptProvider",
-      payload: { promptId: prompt.id, provider: newValue || "" },
+      payload: { promptId: prompt.id, modelProvider: newValue || "" },
     });
   };
 
@@ -225,13 +228,16 @@ const PromptSelectors = ({
     if (state.enabledProviders.length > 0) {
       dispatch({
         type: "updatePromptProvider",
-        payload: { promptId: prompt.id, provider: state.enabledProviders[0] },
+        payload: {
+          promptId: prompt.id,
+          modelProvider: state.enabledProviders[0],
+        },
       });
     }
   }, [state.enabledProviders, dispatch, prompt.id]);
 
   const providerDisabled = state.enabledProviders.length === 0;
-  const modelDisabled = prompt.provider === "";
+  const modelDisabled = prompt.modelProvider === "";
   const tooltipTitle = providerDisabled
     ? "No providers available. Please configure at least one provider."
     : "";
@@ -239,8 +245,9 @@ const PromptSelectors = ({
     (backendPrompt) => backendPrompt.name
   );
   const availableModels = useMemo(
-    () => state.availableModels.get(prompt.provider as ModelProvider) || [],
-    [state.availableModels, prompt.provider]
+    () =>
+      state.availableModels.get(prompt.modelProvider as ModelProvider) || [],
+    [state.availableModels, prompt.modelProvider]
   );
 
   return (
@@ -253,12 +260,11 @@ const PromptSelectors = ({
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
           options={state.backendPrompts}
-          value={state.backendPrompts.find(
-            (bp) => bp.name === currentPromptName
-          ) || null}
-          onChange={(_event, newValue) =>
-            handleSelectPrompt(_event, newValue)
+          value={
+            state.backendPrompts.find((bp) => bp.name === currentPromptName) ||
+            null
           }
+          onChange={(_event, newValue) => handleSelectPrompt(_event, newValue)}
           getOptionLabel={(option) => option.name}
           isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}
@@ -317,10 +323,10 @@ const PromptSelectors = ({
       </div>
       <div className="w-1/3">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
-          <Autocomplete
+          <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
             options={state.enabledProviders}
-            value={prompt.provider || ""}
+            value={prompt.modelProvider || null}
             onChange={handleProviderChange}
             disabled={providerDisabled}
             renderInput={(params) => (

@@ -65,7 +65,7 @@ def get_args_with_tag_hint(
     }
 
 
-def _find_dtype_in_object(col_id: str, obj_type: DatasetObjectType):
+def _find_dtype_in_object(col_id: str, obj_type: DatasetObjectType) -> DType | None:
     """Find dtype for a field ID within an object type"""
     for field_name, field_value in obj_type.object.items():
         field_instance = field_value.actual_instance

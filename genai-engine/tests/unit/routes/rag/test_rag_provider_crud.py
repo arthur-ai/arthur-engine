@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from pydantic_core import Url
 
@@ -17,6 +19,16 @@ def test_rag_provider_crud(client: GenaiEngineTestClientBase) -> None:
     rag_provider_description = "Test RAG provider for CRUD operations"
     api_key = "test-api-key-123"
     host_url = "https://test-weaviate.example.com"
+
+    # test provider creation for non-existing task
+    status_code, _ = client.create_rag_provider(
+        task_id=str(uuid4()),
+        name=rag_provider_name,
+        description=rag_provider_description,
+        api_key=api_key,
+        host_url=host_url,
+    )
+    assert status_code == 404
 
     status_code, created_rag_provider = client.create_rag_provider(
         task_id=task_id,

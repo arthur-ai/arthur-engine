@@ -53,6 +53,7 @@ from arthur_common.models.response_schemas import (
 )
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
+from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
 from schemas.enums import (
@@ -68,9 +69,13 @@ from schemas.request_schemas import (
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
+    RagHybridSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
+    WeaviateHybridSearchSettingsRequest,
+    WeaviateKeywordSearchSettingsRequest,
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
@@ -79,7 +84,7 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
-    RagProviderSimilarityTextSearchResponse,
+    RagProviderQueryResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
@@ -2644,7 +2649,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         auto_limit: int = None,
         move_to: dict = None,
         move_away: dict = None,
-    ) -> tuple[int, RagProviderSimilarityTextSearchResponse]:
+    ) -> tuple[int, RagProviderQueryResponse]:
         """Execute a similarity text search on a RAG provider."""
         weaviate_settings = WeaviateVectorSimilarityTextSearchSettingsRequest(
             rag_provider=RagProviderEnum.WEAVIATE,
@@ -2675,7 +2680,119 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagProviderSimilarityTextSearchResponse.model_validate(resp.json())
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_keyword_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a keyword search on a RAG provider."""
+        weaviate_settings = WeaviateKeywordSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+            minimum_match_or_operator=minimum_match_or_operator,
+            and_operator=and_operator,
+        )
+
+        request = RagKeywordSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/keyword_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_hybrid_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        alpha: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        query_properties: list[str] = None,
+        fusion_type: HybridFusion = None,
+        max_vector_distance: float = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+        target_vector: TargetVectorJoinType = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a hybrid search on a RAG provider."""
+        # Build settings dict, only including non-None values
+        settings_dict = {
+            "rag_provider": RagProviderEnum.WEAVIATE,
+            "collection_name": collection_name,
+            "query": query,
+            "include_vector": include_vector,
+        }
+        if alpha is not None:
+            settings_dict["alpha"] = alpha
+        if limit is not None:
+            settings_dict["limit"] = limit
+        if offset is not None:
+            settings_dict["offset"] = offset
+        if query_properties is not None:
+            settings_dict["query_properties"] = query_properties
+        if fusion_type is not None:
+            settings_dict["fusion_type"] = fusion_type
+        if max_vector_distance is not None:
+            settings_dict["max_vector_distance"] = max_vector_distance
+        if minimum_match_or_operator is not None:
+            settings_dict["minimum_match_or_operator"] = minimum_match_or_operator
+        if and_operator is not None:
+            settings_dict["and_operator"] = and_operator
+        if target_vector is not None:
+            settings_dict["target_vector"] = target_vector
+
+        weaviate_settings = WeaviateHybridSearchSettingsRequest(**settings_dict)
+
+        request = RagHybridSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/hybrid_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
