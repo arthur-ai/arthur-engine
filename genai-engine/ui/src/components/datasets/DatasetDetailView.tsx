@@ -13,6 +13,7 @@ import { VersionDrawer } from "./VersionDrawer";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
+import { SNACKBAR_AUTO_HIDE_DURATION } from "@/constants/snackbar";
 import { useDatasetLocalState } from "@/hooks/datasets/useDatasetLocalState";
 import { useDatasetModalState } from "@/hooks/datasets/useDatasetModalState";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
@@ -329,7 +330,7 @@ export const DatasetDetailView: React.FC = () => {
 
       <Snackbar
         open={!!errorMessage}
-        autoHideDuration={6000}
+        autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION}
         onClose={() => setErrorMessage(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >

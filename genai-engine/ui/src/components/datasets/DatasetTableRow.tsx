@@ -22,9 +22,20 @@ export const DatasetTableRow: React.FC<DatasetTableRowProps> = React.memo(
           const columnData = row.data.find((col) => col.column_name === column);
           const value = columnData?.column_value;
 
-          return <DatasetTableCell key={column} value={value} />;
+          return (
+            <DatasetTableCell key={column} value={value} columnName={column} />
+          );
         })}
-        <TableCell sx={{ textAlign: "center" }}>
+        <TableCell
+          sx={{
+            textAlign: "center",
+            position: "sticky",
+            right: 0,
+            backgroundColor: "background.paper",
+            zIndex: 1,
+            boxShadow: "-2px 0 4px rgba(0, 0, 0, 0.1)",
+          }}
+        >
           <Box
             sx={{
               display: "flex",

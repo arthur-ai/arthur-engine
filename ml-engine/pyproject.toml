@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ml-engine"
-version = "2.1.122"
+version = "2.1.125"
 description = ""
 authors = ["Arthur <engineering@arthur.ai>"]
 license = "MIT"
@@ -62,7 +62,9 @@ python_version = "3.13"
 strict = true
 ignore_missing_imports = true
 implicit_reexport = true
-explicit_package_bases = false
+explicit_package_bases = true
+mypy_path = "src/ml_engine"
+namespace_packages = true
 exclude = ["src/genai_client"]
 
 [tool.isort]
