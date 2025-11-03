@@ -2,93 +2,223 @@
 
 ## Backend
 
-### Modifications
+### DB
+- Create an LLM Evals table that will hold all the eval prompts
+- DB Schema:
+    ```
+    task_id: str
+    name: str
+    model_provider: str
+    model_name: str
+    instructions: str
+    score_range: JSON (a min_score and max_score range defaults to boolean)
+    config: JSON
+    created_at: timestamp
+    deleted_at: timestamp
+    version: int
+    ```
+- enforce same unique constraint as agentic prompts for task_id, name and version, and also have a unique id exclusive to the table
 
-- Option 1:
-    - Create an LLM Evals table that will hold all the eval prompts (however they would still just be AgenticPrompts on the backend)
-    - Langfuse doesn’t seem to enforce unique name constraints for llm evals like we have for prompts they have an id. Not sure if we want to continue with that enforcement or not for this option
-    - LLM Evals Repository:
-        - get_all_evals:
-            - Inputs:
-                - task_id: str
-                - pagination_params: PaginationParameters
-                - filter_request: LLMEvalsFilterRequest
-            - Outputs: AgenticPromptMetadataListResponse
-        - get_eval_versions:
-            - Inputs:
-                - task_id: str
-                - eval_id: str
-                - pagination_params: PaginationParameters
-                - filter_request: LLMEvalsFilterRequest
-            - Outputs: AgenticPromptVersionListResponse
-        - get_eval:
-            - Inputs:
-                - task_id: str
-                - eval_id: str
-                - version: str (latest, number or timestamp)
-            - Outputs: AgenticPrompt
-        - save_eval:
-            - Inputs:
-                - task_id: str
-                - eval_request: CreateEvalRequest (in diagram below)
-            - Outputs: AgenticPrompt
-        - soft_delete_eval_version:
-            - Inputs:
-                - task_id: str
-                - eval_id: str
-                - version: str  (latest, number or timestamp)
-            - Outputs: None
-        - delete_eval:
-            - Inputs:
-                - task_id: str
-                - eval_id: str
-            - Outputs: None
-- Option 2:
-    - new enum to be added to the agentic_prompt class for whether the prompt is a “prompt” or an “llm_eval”. (< 1 day)
-    - Update prompts table to have a new column for the enum so we can filter based on prompt type for the existing endpoints and the new ones mentioned below (< 1 day)
-    - change “/completions” to only allow running prompts of type “prompt” not llm_eval since those should run a saved prompt through the other completions route (< 1 day)
-    - change /tasks/{task_id}/prompts to only return prompts of type “prompt” (< 1 day)
-    - change /tasks/{task_id}/prompts/{prompt_id}/versions to only allow returning prompts of type “prompt” (< 1 day)
-    - change save endpoint to save prompts of only type ‘prompt’ (< 1 day)
+### Class Schemas:
+- ScoreRange
+  ```python
+  min_score: int
+  max_score: int
+  ```
 
-### Proposed new endpoints (1-2 days closer to 1 most likely)
+- LLMEvalMetadata:
+  ```python
+  name: str
+  versions: int
+  created_at: datetime
+  latest_version_created_at: datetime
+  deleted_versions: List[int]
+  ```
+
+- LLMEvalMetadataListResponse
+    ```python
+    eval_metadata: List[LLMEvalMetadata]
+    count: int
+    ```
+
+- LLMEvalsGetAllFilterRequest
+    ```python
+    eval_names: Optional[list[str]]
+    model_provider: Optional[ModelProvider]
+    model_name: Optional[str]
+    created_after: Optional[datetime]
+    created_before: Optional[datetime]
+    ```
+
+- LLMEvalsGetVersionsFilterRequest
+    ```python
+    model_provider: Optional[ModelProvider]
+    model_name: Optional[str]
+    created_after: Optional[datetime]
+    created_before: Optional[datetime]
+    exclude_deleted: Optional[bool]
+    min_version: Optional[int]
+    max_version: Optional[int]
+    ```
+
+- LLMEvalsVersionResponse
+    ```python
+    version: int
+    created_at: datetime
+    deleted_at: Optional[datetime]
+    model_provider: ModelProvider
+    model_name: str
+    ```
+
+- LLMEvalsVersionListResponse
+    ```python
+    versions: list[LLMEvalsVersionResponse]
+    count: int
+    ```
+
+- LLMEvalResponseFormat
+  ```python
+  score_range: [ScoreRange | bool]
+  reasoning: str
+  ```
+
+- LLMEvalRunRequest
+  ```python
+  variables: Optional[List[VariableTemplateValue]]
+  ```
+
+- LLMEval:
+    ```python
+    instructions: str
+    model_name: str
+    model_provider: ModelProvider
+    version: int
+    score_range: ScoreRange
+    timeout: Optional[float]
+    temperature: Optional[float]
+    top_p: Optional[float]
+    max_tokens: Optional[int]
+    stop: Optional[str]
+    presence_penalty: Optional[float]
+    frequency_penalty: Optional[float]
+    seed: Optional[int]
+    logprobs: Optional[bool]
+    top_logprobs: Optional[int]
+    logit_bias: Optional[List[LogitBiasItem]]
+    max_completion_tokens: Optional[int]
+    reasoning_effort: Optional[ReasoningEffortEnum]
+    thinking: Optional[AnthropicThinkingParam]
+    created_at: Optional[datetime]
+    deleted_at: Optional[datetime]
+    ```
+
+- CreateEvalRequest
+    ```python
+    instructions: str
+    model_name: str
+    model_provider: ModelProvider
+    timeout: Optional[float]
+    temperature: Optional[float]
+    top_p: Optional[float]
+    max_tokens: Optional[int]
+    stop: Optional[str]
+    presence_penalty: Optional[float]
+    frequency_penalty: Optional[float]
+    seed: Optional[int]
+    logprobs: Optional[bool]
+    top_logprobs: Optional[int]
+    logit_bias: Optional[List[LogitBiasItem]]
+    max_completion_tokens: Optional[int]
+    reasoning_effort: Optional[ReasoningEffortEnum]
+    thinking: Optional[AnthropicThinkingParam]
+    ```
+
+- LLMEvalRunResponse:
+  ```python
+  score: [int | bool]
+  reason: str
+  cost: float
+  ```
+
+### Repository
+- LLM Evals Repository:
+    - get_all_evals:
+        - Inputs:
+            - task_id: str
+            - pagination_params: PaginationParameters
+            - filter_request: LLMEvalsGetAllFilterRequest
+        - Outputs: LLMEvalMetadataListResponse
+    - get_eval_versions:
+        - Inputs:
+            - task_id: str
+            - eval_id: str
+            - pagination_params: PaginationParameters
+            - filter_request: LLMEvalsGetVersionsFilterRequest
+        - Outputs: LLMEvalsVersionListResponse
+    - get_eval:
+        - Inputs:
+            - task_id: str
+            - eval_id: str
+            - version: str (latest, number or timestamp)
+        - Outputs: LLMEval
+    - save_eval:
+        - Inputs:
+            - task_id: str
+            - eval_request: CreateEvalRequest (in diagram below)
+        - Outputs: AgenticPrompt
+    - soft_delete_eval_version:
+        - Inputs:
+            - task_id: str
+            - eval_id: str
+            - version: str  (latest, number or timestamp)
+        - Outputs: None
+    - delete_eval:
+        - Inputs:
+            - task_id: str
+            - eval_id: str
+        - Outputs: None
+
+### LLM Evals Router
 
 - POST: /tasks/{task_id}/llm_evals - Creates a new version of a prompt which has the following parameters:
     - Request:
+      - CreateEvalRequest
         - required:
             - name
             - model_provider
             - model_name
-            - “evaluation_prompt” (or instruction and input prompts)
-                - Langfuse seems to treat this as one user prompt. I think it makes more sense to have an instruction section vs an input section. The former being a system prompt and latter a user prompt. Both would still allow variables.
-            - score reasoning prompt - how the llm should explain its evaluation (will be in the response_format)
-            - score range (also in the response_format, this will be static and binary to start we can expose this to the user in the future if we want)
-            - Force type to be llm_eval (not exposted to user if option 2)
+            - instructions
+            - score range
         - Optional:
-            - The rest of the config settings (e.g. temperature) present in other prompts
+            - The rest of the LLM config settings (e.g. temperature)
     - Response:
-        - AgenticPrompt
+        - LLMEval
     - Functionality:
-        - Uses the request parameters to create an agentic prompt
-        - The AgenticPrompt will have a system prompt message containing instructions the llm-as-a-judge should use and the user input message with the variables to be updated during the run.
-        - Sets the response_format as as structured output (if supported otherwise json schema or with a parameter to hold the binary score and a string that will be the llm’s reasoning for the score (should be the same whether we expose this to the user or not).
-        - Use litellm’s supports_response_schema to verify the model uses structured outputs
+        - Uses the request parameters to create an LLMEval and save it to the llm_evals table
 - GET: /tasks/{task_id}/llm_evals - Lists all llm evals
     - Request:
-        - force filter type to be llm_eval (not exposed to user) if option 2 otherwise use llm evals table
-        - sorting/filtering/pagination similar to agentic prompt
+        - PaginationParameters
+        - LLMEvalsGetAllFilterRequest
     - Response:
-        - List[AgenticPrompt]
-- GET: /tasks/{task_id}/llm_evals/{evaluator_id} - Lists all versions of a specific llm_eval
-    - Err if not type llm_eval
-- If Choosing Option 1 above:
-    - POST: /tasks/{task_id}/llm_evals/{eval_id}/completions or /tasks/{task_id}/llm_evals/{eval_id}/versions/{version}/completions if we still want versioning - Run an llm eval
-        - Request:
-            - new type of CompletionRequest that let’s variables be set but forces strict mode = True, stream = False (in diagram)
-        - Response:
-            - AgenticPromptRunResponse
-    - DELETE: /tasks/{task_id}/llm_evals/{eval_id}/versions/{version} - soft-delete a version of an llm eval
-    - DELETE: /tasks/{task_id}/llm_evals/{eval_id} - Delete all versions of an llm eval
+        - LLMEvalMetadataListResponse
+- GET: /tasks/{task_id}/llm_evals/{evaluator_id}/versions - Lists all versions of a specific llm_eval
+    - Request:
+      - PaginationParameters
+      - LLMEvalsGetVersionsFilterRequest
+    - Response:
+      - LLMEvalsVersionListResponse
+- POST: /tasks/{task_id}/llm_evals/{eval_id}/versions/{version}
+    - Request:
+      - LLMEvalRunRequest
+    - Response:
+        - LLMEvalRunResponse
+    - Functionality:
+      - grabs an llm_eval from the db
+      - converts it to an AgenticPrompt by setting the instructions to the system prompt and converting the LLMEvalResponseFormat to a properly formatted response_format in OpenAI formatting style
+      - Converts the LLMEvalRunRequest to an AgenticPromptRunRequest with the same variables, strict=True, stream=False
+      - run chat completion
+- DELETE: /tasks/{task_id}/llm_evals/{eval_id}/versions/{version} - soft-delete a version of an llm eval
+- DELETE: /tasks/{task_id}/llm_evals/{eval_id} - Delete all versions of an llm eval
 - Future additions:
     - either a new endpoint or modify the existing completions endpoint with a dataset_id/or list of trace ids/etc to run completions in bulk without needing to make multiple requests
 
@@ -105,19 +235,141 @@
     - toxicity
     - In terms of timing for each of these I could see each being 1 day, a few days or potentially even longer. Not sure how much time we want to dedicate to each of these. But finding datasets to benchmark each of these evaluators and iterating to find the best llm-as-a-judge prompt can definitely take some time.
 
-### Questions
 
-- Do we want to have a new separate llm_evals router or add these routes to the existing prompts router?
-- I assume we want “GET: /tasks/{task_id}/prompts” to return only the prompts that will be of type ‘prompt’ after making the enum above. Do we want to have a separate get request to get all prompts and llm_evals?
-- For getting a specific version, deleting all versions and deleting a specific version of an llm eval do we want to make new routes for it or use the existing prompt routes? because the functionality would be identical just under a different route name
-- rn we have a unique constraint for prompt names, task_id and version. with the addition of type we could add it to the constraint so we could technically have duplicate names as long as they are different prompt types. Or, we could create an llm_evals table to keep them separate?
-- Do we want to have a separate table and foreign key (as described in ian’s comment to the above question) to the prompt in the prompts table or keep it entirely separate? I would be leaning towards keeping it entirely separate so management in the prompts repo/table wouldn’t need to worry about llm evals at all (needing to add a new column/enum etc.) but there would be a lot of duplicated fields if we did that in the llm_evals table since it’s basically just an AgenticPrompt.
+### Diagrams
+![llm_eval_table](./img/llm_evals_table_schema.png)
+![llm_eval_workflow.png](./img/llm_eval_workflow.png)
+![save_eval](./img/save_llm_eval.png)
+![run_eval](./img/run_llm_eval.png)
+![get_eval](./img/get_llm_eval.png)
+![get_eval_versions](./img/list_versions.png)
+![get_all_evals](./img/get_all_llm_evals.png)
+![delete_evals](./img/delete_evals.png)
 
-### Diagram
+### Examples
 
-![LLMEvals.png](./img/LLMEvals.png)
+- POST: /tasks/{task_id}/llm_evals/{eval_name}
+    - Input:
+        ```json
+        {
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Given a ground truth and an answer statements, analyze each statement and classify them in one of the following categories: TP (true positive): statements that are present in answer that are also directly supported by the one or more statements in ground truth, FP (false positive): statements present in the answer but not directly supported by any statement in ground truth, FN (false negative): statements found in the ground truth but not present in answer. Each statement can only belong to one of the categories. Provide a reason for each classification. Examples: {{examples}}",
+            "score_range": {
+                "min_score": 0,
+                "max_score": 1
+            },
+            "temperature": 0
+        }
+        ```
+    - Response:
+        ```json
+        {
+            "name": "{eval_name}",
+            "model_name": "gpt-4o",
+            "model_provider": "openai",
+            "instructions": "Given a ground truth and an answer statements, analyze each statement and classify them in one of the following categories: TP (true positive): statements that are present in answer that are also directly supported by the one or more statements in ground truth, FP (false positive): statements present in the answer but not directly supported by any statement in ground truth, FN (false negative): statements found in the ground truth but not present in answer. Each statement can only belong to one of the categories. Provide a reason for each classification. Examples: {{examples}}",
+            "score_range": {
+                "min_score": 0,
+                "max_score": 1
+            },
+            "temperature": 0,
+            "version": 1,
+            "created_at": "2025-10-31T09:23:45-05:00",
+            "deleted_at": null
+        }
+        ```
 
-- **Recommendation**: Option 1. Although evals are effectively the same right now as prompts, option 1 gives us the freedom to expand on LLM Evals if we want to add params or differing functionality from prompts in the future
+- POST: /tasks/{task_id}/llm_evals/{eval_name}/versions/{version}/completions
+  - Input: 
+    ```json
+    {
+        "variables": [
+            {"name": "ground_truth", "value": "The sky is blue"},
+            {"name": "answer", "value": "The sky is green"}
+        ]
+    }
+    ```
+  - BE Conversion: 
+    ```json
+    {
+        "variables": [
+            {"name": "ground_truth", "value": "The sky is blue"},
+            {"name": "answer", "value": "The sky is green"}
+        ],
+        "strict": true,
+        "stream": false,
+    }
+    ```
+  - Response: 
+    ```json
+    {
+        "score": 1,
+        "reasoning": "The answer statements mostly align with the ground truth, with only minor omissions that do not affect accuracy.",
+        "cost": 0.00012,
+    }
+    ```    
+
+- GET: /tasks/{task_id}/llm_evals/{eval_name}/versions/{version}
+    ```json
+    {
+        "name": "{eval_name}",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Given a ground truth and an answer statements, analyze each statement and classify them in one of the following categories: TP (true positive): statements that are present in answer that are also directly supported by the one or more statements in ground truth, FP (false positive): statements present in the answer but not directly supported by any statement in ground truth, FN (false negative): statements found in the ground truth but not present in answer. Each statement can only belong to one of the categories. Provide a reason for each classification. Examples: {{examples}}",
+        "score_range": {
+            "min_score": 0,
+            "max_score": 1
+        },
+        "temperature": 0,
+        "version": 1,
+        "created_at": "2025-10-31T09:23:45-05:00"
+    }
+    ```    
+
+- GET: /tasks/{task_id}/llm_evals/{eval_name}/versions
+    ```json
+    {
+        "versions": [
+            "version": 1,
+            "created_at": "2025-10-20T09:23:45-05:00",
+            "deleted_at": null,
+            "model_provider": "openai",
+            "model_name": "gpt-4o",
+        ],
+        "count": 1
+    }
+    ```   
+
+- GET: /tasks/{task_id}/llm_evals
+    ```json
+    {
+        "eval_metadata": [
+            "name": "test_eval",
+            "versions": 3,
+            "created_at": "2025-10-31T09:23:45-05:00",
+            "latest_version_created_at": "2025-10-31T09:23:45-05:00",
+            "deleted_versions": [1, 2]
+        ],
+        "count": 1
+    }
+    ```   
+
+- DELETE: /tasks/{task_id}/llm_evals/{eval_name}
+    - 204 no content response, deletes all versions of an eval
+
+- DELETE: /tasks/{task_id}/llm_evals/{eval_name}/versions/{version}
+    - 204 no content response, soft-deletes a specific version of an eval
+
+
+### Tasks
+- Create llm_evals table (<1 day)
+- Save an llm_eval (<1 day)
+- Run a saved llm_eval (<1 day)
+- Create get requests for llm_evals (~1 day)
+- Create delete requests for llm_evals (<1 day)
+- Extract Ragas prompts for FE (<1 day)
+- Run llm evals over entire datasets/traces (future work, just noting it so we don't lose track)
 
 ## Frontend
 
@@ -130,9 +382,6 @@ Instruction (System) Prompt:
 Given a ground truth and an answer statements, analyze each statement and classify them in one of the following categories: TP (true positive): statements that are present in answer that are also directly supported by the one or more statements in ground truth, FP (false positive): statements present in the answer but not directly supported by any statement in ground truth, FN (false negative): statements found in the ground truth but not present in answer. Each statement can only belong to one of the categories. Provide a reason for each classification.
 
 Examples: {{examples}}
-
------------------------------------------------------
-Input (User) Prompt:
 
 ground truth: {{ground_truth}}
 answer: {{answer}}
