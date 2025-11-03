@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderConfiguration,
+    DatabaseRagSettingConfiguration,
 )
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -20,6 +21,7 @@ from schemas.enums import (
 from schemas.internal_schemas import (
     ApiKeyRagProviderSecretValue,
     RagProviderConfiguration,
+    RagSettingConfiguration,
 )
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigUpdateRequest,
@@ -164,5 +166,45 @@ class RagProvidersRepository:
     def delete_rag_provider_configuration(self, config_id: UUID) -> None:
         """Delete a RAG provider configuration"""
         db_config = self._get_db_rag_provider_config(config_id)
+        self.db_session.delete(db_config)
+        self.db_session.commit()
+
+    def create_rag_setting_configuration(
+        self,
+        rag_setting_config: RagSettingConfiguration,
+    ) -> None:
+        """Create a new RAG setting configuration"""
+        db_config = rag_setting_config._to_database_model()
+        self.db_session.add(db_config)
+        self.db_session.commit()
+
+    def _get_db_rag_setting_config(
+        self,
+        setting_config_id: UUID,
+    ) -> DatabaseRagSettingConfiguration:
+        db_config = (
+            self.db_session.query(DatabaseRagSettingConfiguration)
+            .filter(DatabaseRagSettingConfiguration.id == setting_config_id)
+            .first()
+        )
+
+        if not db_config:
+            raise HTTPException(
+                status_code=404,
+                detail="RAG setting configuration not found",
+            )
+        return db_config
+
+    def get_rag_setting_configuration(
+        self,
+        config_id: UUID,
+    ) -> RagSettingConfiguration:
+        """Get a RAG provider configuration by ID with polymorphic loading"""
+        db_config = self._get_db_rag_setting_config(config_id)
+        return RagSettingConfiguration._from_database_model(db_config)
+
+    def delete_rag_setting_configuration(self, config_id: UUID) -> None:
+        """Delete a RAG setting configuration"""
+        db_config = self._get_db_rag_setting_config(config_id)
         self.db_session.delete(db_config)
         self.db_session.commit()

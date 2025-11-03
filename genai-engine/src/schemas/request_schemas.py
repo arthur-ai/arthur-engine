@@ -23,6 +23,7 @@ from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
+    RagSearchKind,
 )
 
 
@@ -189,7 +190,7 @@ class RagProviderConfigurationUpdateRequest(BaseModel):
     )
 
 
-class WeaviateSearchCommonSettings(BaseModel):
+class WeaviateSearchCommonSettingsRequest(BaseModel):
     collection_name: str = Field(
         description="Name of the vector collection used for the search.",
     )
@@ -219,16 +220,14 @@ class WeaviateSearchCommonSettings(BaseModel):
     )
 
 
-class WeaviateVectorSimilarityTextSearchSettingsRequest(WeaviateSearchCommonSettings):
+class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+    WeaviateSearchCommonSettingsRequest,
+):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-
-    # fields match the names of the inputs to the weaviate near_text function
-    # the only exception is collection_name, which is used to fetch the vector collection used for the similarity search
-    # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.grpc.html#weaviate.collections.grpc.query._QueryGRPC.near_text
-    # left out for now: group_by, rerank, filters, move_to, move_away, include_references
-    query: Union[List[str], str] = Field(
-        description="Input text to find objects with near vectors for.",
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
     )
+
     certainty: Optional[float] = Field(
         default=None,
         description="Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.",
@@ -242,6 +241,20 @@ class WeaviateVectorSimilarityTextSearchSettingsRequest(WeaviateSearchCommonSett
     target_vector: Optional[TargetVectorJoinType] = Field(
         default=None,
         description="Specifies vector to use for similarity search when using named vectors.",
+    )
+
+
+class WeaviateVectorSimilarityTextSearchSettingsRequest(
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+
+    # fields match the names of the inputs to the weaviate near_text function
+    # the only exception is collection_name, which is used to fetch the vector collection used for the similarity search
+    # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.grpc.html#weaviate.collections.grpc.query._QueryGRPC.near_text
+    # left out for now: group_by, rerank, filters, move_to, move_away, include_references
+    query: Union[List[str], str] = Field(
+        description="Input text to find objects with near vectors for.",
     )
 
     def _to_client_settings_dict(self) -> dict[str, Any]:
@@ -262,15 +275,12 @@ class RagVectorSimilarityTextSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
+class WeaviateKeywordSearchSettingsConfigurationRequest(
+    WeaviateSearchCommonSettingsRequest,
+):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
 
-    # fields match the names of the inputs to the weaviate bm25 function
-    # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
-    # left out filters, rerank, return_references, group_by
-    query: str = Field(
-        description="Input text to find objects with keyword matches.",
-    )
     minimum_match_or_operator: Optional[int] = Field(
         default=None,
         description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.",
@@ -280,16 +290,27 @@ class WeaviateKeywordSearchSettingsRequest(WeaviateSearchCommonSettings):
         description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator",
     )
 
-    @model_validator(mode="before")
-    def check_operators(cls, values):
-        if values.get("and_operator") and values.get("minimum_match_or_operator"):
+    @model_validator(mode="after")
+    def check_operators(self):
+        if self.and_operator and self.minimum_match_or_operator:
             raise HTTPException(
                 status_code=400,
                 detail="Both and_operator and minimum_match_or_operator cannot be set. The search must either use the or operator (default) or the and operator.",
                 headers={"full_stacktrace": "false"},
             )
 
-        return values
+        return self
+
+
+class WeaviateKeywordSearchSettingsRequest(
+    WeaviateKeywordSearchSettingsConfigurationRequest,
+):
+    # fields match the names of the inputs to the weaviate bm25 function
+    # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
+    # left out filters, rerank, return_references, group_by
+    query: str = Field(
+        description="Input text to find objects with keyword matches.",
+    )
 
     def _to_client_settings_dict(self) -> dict[str, Any]:
         """Parses settings to the client parameters for the bm25 function."""
@@ -321,14 +342,12 @@ class RagKeywordSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateHybridSearchSettingsRequest(WeaviateSearchCommonSettings):
+class WeaviateHybridSearchSettingsConfigurationRequest(
+    WeaviateSearchCommonSettingsRequest,
+):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
 
-    # fields match the names of the inputs to the weaviate hybrid function
-    # some are left out for now: return_references, group_by, rerank, filters, vector, target_vector
-    query: str = Field(
-        description="Input text to find objects with near vectors or keyword matches.",
-    )
     alpha: float = Field(
         default=0.7,
         description="Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
@@ -358,6 +377,27 @@ class WeaviateHybridSearchSettingsRequest(WeaviateSearchCommonSettings):
         description="Specifies vector to use for vector search when using named vectors.",
     )
 
+    @model_validator(mode="after")
+    def check_operators(self):
+        if self.and_operator and self.minimum_match_or_operator:
+            raise HTTPException(
+                status_code=400,
+                detail="Both and_operator and minimum_match_or_operator cannot be set. The search must either use the or operator (default) or the and operator.",
+                headers={"full_stacktrace": "false"},
+            )
+
+        return self
+
+
+class WeaviateHybridSearchSettingsRequest(
+    WeaviateHybridSearchSettingsConfigurationRequest,
+):
+    # fields match the names of the inputs to the weaviate hybrid function
+    # some are left out for now: return_references, group_by, rerank, filters, vector, target_vector
+    query: str = Field(
+        description="Input text to find objects with near vectors or keyword matches.",
+    )
+
     def _to_client_settings_dict(self) -> dict[str, Any]:
         """Parses settings to the client parameters for the hybrid function."""
         settings_dict = self.model_dump(
@@ -385,6 +425,29 @@ RagHybridSearchSettingRequestTypes = Union[WeaviateHybridSearchSettingsRequest]
 class RagHybridSearchSettingRequest(BaseModel):
     settings: RagHybridSearchSettingRequestTypes = Field(
         description="Settings for the hybrid search request to the vector database.",
+    )
+
+
+RagSettingConfigurationRequestTypes = Union[
+    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsRequest,
+    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+]
+
+
+class RagSettingConfigurationRequest(BaseModel):
+    settings: RagSettingConfigurationRequestTypes = Field(
+        description="Settings configuration for a search request to a RAG provider.",
+    )
+    name: str = Field(description="Name of the setting configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the setting configuration.",
+    )
+    tags: Optional[list[str]] = Field(
+        default=None,
+        description="Optional list of tags to configure for this version of the settings configuration.",
     )
 
 

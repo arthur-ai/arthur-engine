@@ -6,6 +6,12 @@ from arthur_common.models.response_schemas import ExternalInference, TraceRespon
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
+from weaviate.collections.classes.grpc import (
+    METADATA,
+    HybridFusion,
+    TargetVectorJoinType,
+)
+from weaviate.types import INCLUDE_VECTOR
 
 from schemas.enums import (
     ConnectionCheckOutcome,
@@ -13,6 +19,7 @@ from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
+    RagSearchKind,
 )
 
 
@@ -390,6 +397,164 @@ RagProviderSimilarityTextSearchResponseTypes = Union[WeaviateQueryResults]
 
 class RagProviderQueryResponse(BaseModel):
     response: RagProviderSimilarityTextSearchResponseTypes
+
+
+class WeaviateSearchCommonSettingsResponse(BaseModel):
+    collection_name: str = Field(
+        description="Name of the vector collection used for the search.",
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        description="Maximum number of objects to return.",
+    )
+    include_vector: Optional[INCLUDE_VECTOR] = Field(
+        default=False,
+        description="Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+    )
+    offset: Optional[int] = Field(
+        default=None,
+        description="Skips first N results in similarity response. Useful for pagination.",
+    )
+    auto_limit: Optional[int] = Field(
+        default=None,
+        description="Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.",
+    )
+    return_metadata: Optional[METADATA] = Field(
+        default=None,
+        description="Specify metadata fields to return.",
+    )
+    return_properties: Optional[List[str]] = Field(
+        default=None,
+        description="Specify which properties to return for each object.",
+    )
+
+
+class WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse(
+    WeaviateSearchCommonSettingsResponse,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
+    )
+
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.",
+        ge=0,
+        le=1,
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for similarity search when using named vectors.",
+    )
+
+
+class WeaviateKeywordSearchSettingsConfigurationResponse(
+    WeaviateSearchCommonSettingsResponse,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator",
+    )
+
+
+class WeaviateHybridSearchSettingsConfigurationResponse(
+    WeaviateSearchCommonSettingsResponse,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+    alpha: float = Field(
+        default=0.7,
+        description="Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
+    )
+    query_properties: Optional[list[str]] = Field(
+        default=None,
+        description="Apply keyword search to only a specified subset of object properties.",
+    )
+    fusion_type: Optional[HybridFusion] = Field(
+        default=None,
+        description="Set the fusion algorithm to use. Default is Relative Score Fusion.",
+    )
+    max_vector_distance: Optional[float] = Field(
+        default=None,
+        description="Maximum threshold for the vector search component.",
+    )
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for vector search when using named vectors.",
+    )
+
+
+RagSettingConfigurationResponseTypes = Union[
+    WeaviateHybridSearchSettingsConfigurationResponse,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
+    WeaviateKeywordSearchSettingsConfigurationResponse,
+]
+
+
+class RagSettingConfigurationVersionResponse(BaseModel):
+    setting_configuration_id: UUID = Field(
+        description="ID of the parent setting configuration.",
+    )
+    version_number: int = Field(
+        description="Version number of the setting configuration.",
+    )
+    tags: Optional[list[str]] = Field(
+        default=None,
+        description="Optional list of tags configured for this version of the settings configuration.",
+    )
+
+    settings: RagSettingConfigurationResponseTypes = Field(
+        description="Settings configuration for a search request to a RAG provider.",
+    )
+    created_at: int = Field(
+        description="Time the RAG provider settings configuration version was created in unix milliseconds",
+    )
+    updated_at: int = Field(
+        description="Time the RAG provider settings configuration version was updated in unix milliseconds",
+    )
+
+
+class RagSettingConfigurationResponse(BaseModel):
+    id: UUID = Field(description="ID of the setting configuration.")
+    task_id: str = Field(description="ID of the parent task.")
+    name: str = Field(description="Name of the setting configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the setting configuration.",
+    )
+    latest_version_number: int = Field(
+        description="The latest version number of the settings configuration.",
+    )
+    latest_version: RagSettingConfigurationVersionResponse = Field(
+        description="The latest version of the settings configuration.",
+    )
+    created_at: int = Field(
+        description="Time the RAG provider settings configuration was created in unix milliseconds.",
+    )
+    updated_at: int = Field(
+        description="Time the RAG provider settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created.",
+    )
 
 
 class AgenticPromptMetadataResponse(BaseModel):
