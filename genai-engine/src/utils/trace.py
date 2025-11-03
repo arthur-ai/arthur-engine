@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from openinference.semconv.trace import SpanAttributes
+from openinference.semconv.trace import MessageAttributes, SpanAttributes
 
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
 from utils.token_count import (
@@ -112,10 +112,14 @@ def extract_span_features(span_dict):
         attributes = span_dict.get("attributes", {})
 
         # Access already-normalized nested messages
-        input_messages = get_nested_value(attributes, "llm.input_messages", default=[])
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
         output_messages = get_nested_value(
             attributes,
-            "llm.output_messages",
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
             default=[],
         )
 
@@ -129,20 +133,21 @@ def extract_span_features(span_dict):
             }
 
         # Extract system prompt and user query (data is already normalized)
+        # Using OpenInference semantic convention constants for message attributes
         system_prompt = next(
             (
-                msg.get("message", {}).get("content", "")
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
                 for msg in input_messages
-                if msg.get("message", {}).get("role") == "system"
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "system"
             ),
             "",
         )
 
         user_query = next(
             (
-                msg.get("message", {}).get("content", "")
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
                 for msg in input_messages
-                if msg.get("message", {}).get("role") == "user"
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "user"
             ),
             "",
         )
@@ -150,13 +155,23 @@ def extract_span_features(span_dict):
         # Extract response from output messages
         response = ""
         if output_messages:
-            first_output = output_messages[0].get("message", {})
-            if "content" in first_output:
-                response = first_output["content"]
-            elif "tool_calls" in first_output:
-                response = json.dumps(first_output["tool_calls"])
+            first_output_msg = output_messages[0]
+            content = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_CONTENT,
+            )
+            tool_calls = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_TOOL_CALLS,
+            )
+
+            if content is not None:
+                response = content
+            elif tool_calls is not None:
+                response = json.dumps(tool_calls)
             else:
-                response = json.dumps(first_output)
+                # Fallback: serialize the entire message dict
+                response = json.dumps(get_nested_value(first_output_msg, "message", {}))
 
         # Fuzzy extraction fallback: only if user_query is missing or matches system_prompt
         if (not user_query or user_query == system_prompt) and system_prompt:

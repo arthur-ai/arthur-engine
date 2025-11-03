@@ -377,13 +377,15 @@ class TraceIngestionService:
                     ] = span.start_time
 
                     # Extract and convert to string for database storage
+                    # Using OpenInference semantic convention constants on attributes dict
+                    attributes = span.raw_data.get("attributes", {})
                     input_value = trace_utils.get_nested_value(
-                        span.raw_data,
-                        "attributes.input.value",
+                        attributes,
+                        SpanAttributes.INPUT_VALUE,
                     )
                     output_value = trace_utils.get_nested_value(
-                        span.raw_data,
-                        "attributes.output.value",
+                        attributes,
+                        SpanAttributes.OUTPUT_VALUE,
                     )
 
                     trace_updates[trace_id]["input_content"] = (

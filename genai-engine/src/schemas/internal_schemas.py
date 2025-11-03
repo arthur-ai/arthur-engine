@@ -60,6 +60,7 @@ from arthur_common.models.response_schemas import (
     UserResponse,
 )
 from fastapi import HTTPException
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_core import Url
@@ -1627,13 +1628,14 @@ class Span(TokenCountCostSchema):
     def input_content(self) -> Optional[str]:
         """Get input value from span attributes using OpenInference conventions.
 
-        Extracts from raw_data.attributes.input.value per OpenInference semantic conventions.
+        Extracts from raw_data.attributes using SpanAttributes.INPUT_VALUE constant.
         Uses get_nested_value for safe nested dictionary access.
         Converts dicts/lists to JSON strings to ensure string return type.
         """
+        attributes = self.raw_data.get("attributes", {})
         value = trace_utils.get_nested_value(
-            self.raw_data,
-            "attributes.input.value",
+            attributes,
+            SpanAttributes.INPUT_VALUE,
             default=None,
         )
         if value is None:
@@ -1647,13 +1649,14 @@ class Span(TokenCountCostSchema):
     def output_content(self) -> Optional[str]:
         """Get output value from span attributes using OpenInference conventions.
 
-        Extracts from raw_data.attributes.output.value per OpenInference semantic conventions.
+        Extracts from raw_data.attributes using SpanAttributes.OUTPUT_VALUE constant.
         Uses get_nested_value for safe nested dictionary access.
         Converts dicts/lists to JSON strings to ensure string return type.
         """
+        attributes = self.raw_data.get("attributes", {})
         value = trace_utils.get_nested_value(
-            self.raw_data,
-            "attributes.output.value",
+            attributes,
+            SpanAttributes.OUTPUT_VALUE,
             default=None,
         )
         if value is None:
