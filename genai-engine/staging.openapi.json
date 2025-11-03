@@ -6602,7 +6602,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/RagProviderConfigurationRequest"
+                                "$ref": "#/components/schemas/RagProviderTestConfigurationRequest"
                             }
                         }
                     }
@@ -12353,6 +12353,19 @@
                     "response"
                 ],
                 "title": "RagProviderQueryResponse"
+            },
+            "RagProviderTestConfigurationRequest": {
+                "properties": {
+                    "authentication_config": {
+                        "$ref": "#/components/schemas/ApiKeyRagAuthenticationConfigRequest",
+                        "description": "Configuration of the authentication strategy."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "authentication_config"
+                ],
+                "title": "RagProviderTestConfigurationRequest"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {
