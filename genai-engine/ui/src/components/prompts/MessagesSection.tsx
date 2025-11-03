@@ -111,8 +111,9 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
                 id={message.id}
                 parentId={prompt.id}
                 role={message.role}
-                defaultContent={message.content || ""}
-                content={message.content || ""}
+                // TODO!: Fix this type casting
+                defaultContent={(message.content || "") as string}
+                content={(message.content || "") as string}
               />
             ))}
           </SortableContext>
