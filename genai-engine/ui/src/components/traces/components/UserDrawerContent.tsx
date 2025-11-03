@@ -1,3 +1,28 @@
+import {
+  Box,
+  Paper,
+  Skeleton,
+  Stack,
+  TablePagination,
+  Typography,
+} from "@mui/material";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { Suspense, useMemo, useRef } from "react";
+
+import { columns } from "../data/columns";
+import { sessionLevelColumns } from "../data/session-level-columns";
+import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
+import { useTracesHistoryStore } from "../stores/history.store";
+
+import { filterFields } from "./filtering/fields";
+import { createFilterRow } from "./filtering/filters-row";
+import { IncomingFilter } from "./filtering/mapper";
+import { TRACE_FIELDS } from "./filtering/trace-fields";
+import { Operators } from "./filtering/types";
+import { TracesEmptyState } from "./TracesEmptyState";
+import { TracesTable } from "./TracesTable";
+
 import { Tabs } from "@/components/ui/Tabs";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
@@ -13,28 +38,6 @@ import {
   getFilteredTraces,
   getUser,
 } from "@/services/tracing";
-import {
-  Box,
-  Paper,
-  Skeleton,
-  Stack,
-  TablePagination,
-  Typography,
-} from "@mui/material";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { Suspense, useMemo, useRef } from "react";
-import { columns } from "../data/columns";
-import { sessionLevelColumns } from "../data/session-level-columns";
-import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
-import { useTracesHistoryStore } from "../stores/history.store";
-import { filterFields } from "./filtering/fields";
-import { createFilterRow } from "./filtering/filters-row";
-import { IncomingFilter } from "./filtering/mapper";
-import { TRACE_FIELDS } from "./filtering/trace-fields";
-import { Operators } from "./filtering/types";
-import { TracesEmptyState } from "./TracesEmptyState";
-import { TracesTable } from "./TracesTable";
 
 type Props = {
   id: string;
@@ -43,9 +46,9 @@ type Props = {
 export const UserDrawerContent = ({ id }: Props) => {
   const api = useApi()!;
   const { task } = useTask();
-  const portalRootRef = useRef<HTMLDivElement>(null);
 
   const { data: user } = useSuspenseQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.users.byId(id),
     queryFn: () => getUser(api, { taskId: task?.id ?? "", userId: id }),
   });
@@ -63,7 +66,6 @@ export const UserDrawerContent = ({ id }: Props) => {
           borderBottom: "1px solid",
           borderColor: "divider",
         }}
-        ref={portalRootRef}
       >
         <Stack direction="column" gap={1}>
           <Typography variant="body2" color="text.secondary">
@@ -92,7 +94,6 @@ export const UserDrawerContent = ({ id }: Props) => {
                   <UserTracesTable
                     ids={user.trace_ids}
                     taskId={task?.id ?? ""}
-                    portalRootRef={portalRootRef}
                   />
                 </FilterStoreProvider>
               </Suspense>
@@ -104,7 +105,6 @@ export const UserDrawerContent = ({ id }: Props) => {
                 <UserSessionsTable
                   ids={user.session_ids}
                   taskId={task?.id ?? ""}
-                  portalRootRef={portalRootRef}
                 />
               </Suspense>
             </Tabs.Panel>
@@ -121,10 +121,9 @@ const DEFAULT_DATA = [] as unknown[];
 type UserTableProps = {
   ids: string[];
   taskId: string;
-  portalRootRef: React.RefObject<HTMLDivElement | null>;
 };
 
-const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
+const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
   const api = useApi()!;
   const ref = useRef<HTMLDivElement | null>(null);
   const push = useTracesHistoryStore((state) => state.push);
@@ -141,6 +140,7 @@ const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
     [ids, filters]
   );
   const traces = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.traces.listPaginated(
       combinedFilters,
       pagination.page,
@@ -161,11 +161,7 @@ const UserTracesTable = ({ ids, taskId, portalRootRef }: UserTableProps) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
-  const { FiltersRow } = useMemo(
-    () =>
-      createFilterRow(USER_FILTERS, {}, { portalRoot: portalRootRef.current! }),
-    []
-  );
+  const { FiltersRow } = useMemo(() => createFilterRow(USER_FILTERS, {}), []);
 
   return (
     <Stack gap={1} mt={1}>
@@ -218,6 +214,7 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
   );
 
   const sessions = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.listPaginated(
       filters,
       pagination.page,
