@@ -15,6 +15,8 @@ import extractMustacheKeywords from "./mustacheExtractor";
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
+import { OpenAIMessageItem } from "@/lib/api-client/api-client";
+
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 
@@ -69,12 +71,19 @@ const Message: React.FC<MessageComponentProps> = ({
   // Debounce the setMessage function to prevent excessive re-renders/API calls
   const debouncedSetMessage = useMemo(
     () =>
-      debounce((value: string) => {
+      debounce((value: string | OpenAIMessageItem[]) => {
         // Empty strings are valid messages, but avoid propagating no-change events
         if (value === content) return;
         dispatch({
           type: "editMessage",
-          payload: { parentId, id, content: value },
+          payload: {
+            parentId,
+            id,
+            content:
+              typeof value === "string"
+                ? value
+                : value.map((item) => item.text || "").join(" "),
+          },
         });
       }, DEBOUNCE_TIME),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,7 +96,14 @@ const Message: React.FC<MessageComponentProps> = ({
 
   // When the content changes, whether by user or hydration, update the keyword values
   useEffect(() => {
-    const extractedKeywords = extractMustacheKeywords(content).keywords;
+    let extractedKeywords: string[] = [];
+    if (typeof content === "string") {
+      extractedKeywords = extractMustacheKeywords(content).keywords;
+    } else {
+      extractedKeywords = content
+        .map((item) => item.text || "")
+        .filter((text) => text !== null);
+    }
 
     if (extractedKeywords.length > 0) {
       dispatch({

@@ -103,13 +103,14 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   name: "",
   created_at: undefined, // created on BE
   modelName: "",
-  provider: "",
+  modelProvider: "",
   messages: [newMessage()],
   modelParameters: createModelParameters(),
-  outputField: "",
+  runResponse: null,
   responseFormat: undefined,
   tools: [],
   toolChoice: "auto" as ToolChoiceEnum,
+  running: false,
   ...overrides,
 });
 
@@ -195,11 +196,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       };
     }
     case "updatePromptProvider": {
-      const { promptId, provider } = action.payload;
+      const { promptId, modelProvider } = action.payload;
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, provider } : prompt
+          prompt.id === promptId ? { ...prompt, modelProvider } : prompt
         ),
       };
     }
@@ -390,6 +391,15 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         keywords: new Map(state.keywords).set(keyword, value),
+      };
+    }
+    case "runPrompt": {
+      const { promptId } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, running: true } : prompt
+        ),
       };
     }
     case "updateModelParameters": {

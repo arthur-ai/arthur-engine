@@ -1,11 +1,14 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import SaveIcon from "@mui/icons-material/Save";
 // import SettingsIcon from "@mui/icons-material/Settings"; Use for permanent delete option
 import TuneIcon from "@mui/icons-material/Tune";
+import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
+import Snackbar from "@mui/material/Snackbar";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -17,6 +20,11 @@ import { usePromptContext } from "./PromptsPlaygroundContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
 import { PromptComponentProps } from "./types";
+import { toCompletionRequest } from "./utils";
+
+import { useApi } from "@/hooks/useApi";
+import useSnackbar from "@/hooks/useSnackbar";
+import { useTask } from "@/hooks/useTask";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
@@ -29,8 +37,43 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { dispatch } = usePromptContext();
+  const { state, dispatch } = usePromptContext();
+  const apiClient = useApi();
+  const { task } = useTask();
+  const taskId = task?.id;
+
+  const runPrompt = useCallback(async () => {
+    if (!apiClient || !taskId) {
+      console.error("No api client or task id");
+      return;
+    }
+    // Replace template strings with variable values before sending to API
+    const completionRequest = toCompletionRequest(prompt, state.keywords);
+    await apiClient.api
+      .runAgenticPromptApiV1CompletionsPost(completionRequest)
+      .then((response) => {
+        dispatch({
+          type: "updatePrompt",
+          payload: {
+            promptId: prompt.id,
+            prompt: { running: false, runResponse: response.data },
+          },
+        });
+      })
+      .catch((error) => {
+        console.error("Error running prompt:", error);
+        showSnackbar(error.response.data.detail, "error");
+        dispatch({
+          type: "updatePrompt",
+          payload: {
+            promptId: prompt.id,
+            prompt: { running: false, runResponse: null },
+          },
+        });
+      });
+  }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
 
   const handleSavePromptOpen = () => {
     setSavePromptOpen(true);
@@ -50,6 +93,13 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     });
   }, [dispatch, prompt.id]);
 
+  const handleRunPrompt = useCallback(() => {
+    dispatch({
+      type: "runPrompt",
+      payload: { promptId: prompt.id },
+    });
+  }, [dispatch, prompt.id]);
+
   const handleParamsModelOpen = () => {
     setParamsModelOpen(true);
   };
@@ -58,6 +108,13 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
 
+  useEffect(() => {
+    if (prompt.running) {
+      runPrompt();
+    }
+  }, [prompt.running, runPrompt]);
+
+  const runDisabled = prompt.running || prompt.modelName === "";
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container
@@ -75,6 +132,18 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             />
           </div>
           <div className="flex justify-end items-center gap-1">
+            <Tooltip title="Run Prompt" placement="top-start" arrow>
+              <span>
+                <IconButton
+                  aria-label="run prompt"
+                  onClick={handleRunPrompt}
+                  disabled={runDisabled}
+                  loading={prompt.running}
+                >
+                  <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
               <IconButton
                 aria-label="duplicate"
@@ -124,7 +193,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           <Paper elevation={2} className="p-1">
             <OutputField
               promptId={prompt.id}
-              outputField={prompt.outputField}
+              running={prompt.running || false}
+              runResponse={prompt.runResponse}
               responseFormat={prompt.responseFormat}
             />
           </Paper>
@@ -136,6 +206,9 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         prompt={prompt}
         initialName={nameInputValue}
       />
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
+      </Snackbar>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 
+import { replaceKeywords } from "./mustacheExtractor";
 import { PromptType, promptClassificationEnum } from "./types";
 
 import {
@@ -11,6 +12,8 @@ import {
   SpanWithMetricsResponse,
   JsonSchema,
   ToolCall,
+  CompletionRequest,
+  OpenAIMessageItem,
 } from "@/lib/api-client/api-client";
 
 export const arrayUtils = {
@@ -35,7 +38,7 @@ export const generateId = (type: "msg" | "tool") => {
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
   model_name: prompt.modelName,
-  model_provider: prompt.provider as ModelProvider,
+  model_provider: prompt.modelProvider as ModelProvider,
   messages: prompt.messages.map((msg) => ({
     role: msg.role,
     content: msg.content,
@@ -88,7 +91,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   name: backendPrompt.name,
   created_at: backendPrompt.created_at || undefined,
   modelName: backendPrompt.model_name,
-  provider: backendPrompt.model_provider,
+  modelProvider: backendPrompt.model_provider,
   messages: backendPrompt.messages.map((msg) => ({
     id: `msg-${uuidv4()}`,
     role: msg.role,
@@ -123,10 +126,11 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     logit_bias: backendPrompt.logit_bias,
     thinking: backendPrompt.thinking,
   },
-  outputField: "",
+  runResponse: null,
   responseFormat: backendPrompt.response_format
     ? JSON.stringify(backendPrompt.response_format)
     : undefined,
+  running: false,
 });
 
 /**
@@ -155,12 +159,12 @@ export const spanToPrompt = (
       metadata.ls_model_name ||
       defaultModel;
 
-    const provider =
+    const modelProvider =
       (attributes["litellm.provider"] as string) ||
       metadata.ls_provider ||
       defaultProvider;
 
-    return { modelName, provider };
+    return { modelName, modelProvider };
   };
 
   // Extract model parameters from LiteLLM attributes
@@ -286,7 +290,7 @@ export const spanToPrompt = (
     return tools;
   };
 
-  const { modelName, provider } = extractModelInfo(spanData.raw_data);
+  const { modelName, modelProvider } = extractModelInfo(spanData.raw_data);
   const modelParameters = extractModelParameters(spanData.raw_data);
   const messages = convertContextToMessages(spanData.context);
   const tools = extractTools(spanData.context, spanData.raw_data);
@@ -298,14 +302,75 @@ export const spanToPrompt = (
     name: `Span: ${spanData.span_name || spanData.span_id || "Unknown"}`,
     created_at: spanData.created_at,
     modelName,
-    provider,
+    modelProvider,
     messages,
     modelParameters,
-    outputField: spanData.response || "",
+    runResponse: null, // TODO
     responseFormat: undefined,
     tools,
     toolChoice: tools.length > 0 ? "auto" : undefined,
   };
 
   return prompt;
+};
+
+export const toCompletionRequest = (
+  prompt: PromptType,
+  keywords: Map<string, string>
+): CompletionRequest => {
+  // Replace keywords in all message content
+  const messages = prompt.messages.map((msg) => {
+    // Handle content replacement: only replace if content is a string
+    // The API accepts: string | OpenAIMessageItem[] | null | undefined
+    let processedContent: string | OpenAIMessageItem[] | null | undefined = msg.content;
+    if (typeof msg.content === "string") {
+      processedContent = replaceKeywords(msg.content, keywords);
+    }
+    // If content is null/undefined or an array, keep it as is (API accepts these)
+
+    return {
+      role: msg.role,
+      content: processedContent,
+      name: msg.name || null,
+      tool_call_id: msg.tool_call_id || null,
+      tool_calls: msg.tool_calls || null,
+    };
+  });
+
+  return {
+    model_name: prompt.modelName,
+    model_provider: prompt.modelProvider as ModelProvider,
+    messages,
+    tools:
+      prompt.tools.length > 0
+        ? prompt.tools.map((tool) => ({
+            function: {
+              name: tool.function.name,
+              description: tool.function.description,
+              parameters: tool.function.parameters,
+            },
+            strict: tool.strict,
+            type: tool.type,
+          }))
+        : undefined,
+    tool_choice: prompt.toolChoice,
+    temperature: prompt.modelParameters.temperature,
+    // top_p: prompt.modelParameters.top_p,
+    max_tokens: prompt.modelParameters.max_tokens,
+    max_completion_tokens: prompt.modelParameters.max_completion_tokens,
+    // frequency_penalty: prompt.modelParameters.frequency_penalty,
+    // presence_penalty: prompt.modelParameters.presence_penalty,
+    stop: prompt.modelParameters.stop,
+    seed: prompt.modelParameters.seed,
+    // reasoning_effort: prompt.modelParameters.reasoning_effort,
+    response_format: prompt.responseFormat
+      ? JSON.parse(prompt.responseFormat)
+      : null,
+    timeout: prompt.modelParameters.timeout,
+    stream_options: prompt.modelParameters.stream_options,
+    logprobs: prompt.modelParameters.logprobs,
+    top_logprobs: prompt.modelParameters.top_logprobs,
+    logit_bias: prompt.modelParameters.logit_bias,
+    thinking: prompt.modelParameters.thinking,
+  };
 };

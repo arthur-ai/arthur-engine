@@ -13,36 +13,13 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { OutputFieldProps } from "./types";
-
-const SAMPLE_RESPONSE_OBJECT = {
-  data: {
-    span: {
-      __typename: "Span",
-      id: "U3BhbjoxNTA1",
-      spanId: "2cc4e1e2c004999",
-      trace: {
-        id: "VHJhY2U6MTA1",
-        traceId: "5ab12d0c810d1a193623a8a2c20fab62",
-        project: {
-          id: "UHJvamVjdDoz",
-        },
-      },
-      tokenCountTotal: 24,
-      latencyMs: 1819.7,
-      costSummary: {
-        total: {
-          cost: 0.0001275,
-        },
-      },
-    },
-  },
-};
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {
@@ -59,7 +36,8 @@ const getFormatValue = (format: string | undefined) => {
 
 const OutputField = ({
   promptId,
-  outputField,
+  running,
+  runResponse,
   responseFormat,
 }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
@@ -94,8 +72,8 @@ const OutputField = ({
   };
 
   useEffect(() => {
-    setIsExpanded(outputField.length > 0);
-  }, [outputField]);
+    setIsExpanded(Boolean(runResponse?.content?.length));
+  }, [runResponse]);
 
   useEffect(() => {
     setCopiedFormat(getFormatValue(responseFormat));
@@ -117,42 +95,60 @@ const OutputField = ({
       >
         <div className="flex items-center">
           {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          <span>Output</span>
+          <span>Response</span>
         </div>
         <div className="flex items-center">
-          <Tooltip title="Format Output">
+          <Tooltip title="Format Response">
             <IconButton aria-label="format_output" onClick={handleOpen}>
               <DataObjectIcon color="primary" />
             </IconButton>
           </Tooltip>
         </div>
       </div>
-      <Collapse in={isExpanded}>
-        <div>{outputField}</div>
+      <Collapse in={isExpanded || running}>
+        {running ? (
+          <>
+            <Skeleton variant="text" width="92%" />
+            <Skeleton variant="text" width="99%" />
+            <Skeleton variant="text" width="96%" />
+          </>
+        ) : (
+          <div>{runResponse?.content}</div>
+        )}
         <Divider />
         <div className="flex gap-3">
-          <div className="flex items-center">
-            <Tooltip title="Total Tokens">
-              <GeneratingTokensIcon />
-            </Tooltip>
-            <Typography variant="body1">
-              {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal}
-            </Typography>
-          </div>
-          <div className="flex items-center">
-            <Tooltip title="Latency (seconds)">
-              <HourglassEmptyIcon />
-            </Tooltip>
-            <Typography variant="body1">
-              {(SAMPLE_RESPONSE_OBJECT.data.span.latencyMs / 1000).toFixed(2)}
-            </Typography>
-          </div>
+          {/* eslint-disable-next-line no-constant-condition */}
+          {false ? (
+            <div className="flex items-center">
+              <Tooltip title="Total Tokens">
+                <GeneratingTokensIcon />
+              </Tooltip>
+              <Typography variant="body1">
+                {/* {SAMPLE_RESPONSE_OBJECT.data.span.tokenCountTotal} */}
+              </Typography>
+            </div>
+          ) : null}
+          {/* eslint-disable-next-line no-constant-condition */}
+          {false ? (
+            <div className="flex items-center">
+              <Tooltip title="Latency (seconds)">
+                <HourglassEmptyIcon />
+              </Tooltip>
+              <Typography variant="body1">
+                {/* {(latencyMs / 1000).toFixed(2)} */}
+              </Typography>
+            </div>
+          ) : null}
           <div className="flex items-center">
             <Tooltip title="Cost">
               <AttachMoneyIcon />
             </Tooltip>
             <Typography variant="body1">
-              {SAMPLE_RESPONSE_OBJECT.data.span.costSummary.total.cost}
+              {running ? (
+                <Skeleton variant="text" width="100px" />
+              ) : (
+                runResponse?.cost || "-"
+              )}
             </Typography>
           </div>
         </div>
