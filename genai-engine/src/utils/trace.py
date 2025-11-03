@@ -12,6 +12,8 @@ import re
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from openinference.semconv.trace import SpanAttributes
+
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
 from utils.token_count import (
     TokenCost,
@@ -334,10 +336,12 @@ def extract_token_cost_from_span(
     attributes = span_raw_data.get("attributes", {})
 
     # Extract token counts
-    token_count = get_nested_value(attributes, "llm.token_count") or {}
-    prompt_tokens = token_count.get("prompt")
-    completion_tokens = token_count.get("completion")
-    total_tokens = token_count.get("total")
+    prompt_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_PROMPT)
+    completion_tokens = get_nested_value(
+        attributes,
+        SpanAttributes.LLM_TOKEN_COUNT_COMPLETION,
+    )
+    total_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_TOTAL)
 
     token_count_result = TokenCount(
         prompt_token_count=prompt_tokens,
@@ -350,10 +354,9 @@ def extract_token_cost_from_span(
     )
 
     # Extract costs
-    cost_data = get_nested_value(attributes, "llm.cost") or {}
-    prompt_cost = cost_data.get("prompt")
-    completion_cost = cost_data.get("completion")
-    total_cost = cost_data.get("total")
+    prompt_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_PROMPT)
+    completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
+    total_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_TOTAL)
 
     # If no costs provided but we have token counts, compute them
     if (
@@ -363,7 +366,7 @@ def extract_token_cost_from_span(
         and prompt_tokens is not None
         and completion_tokens is not None
     ):
-        model_name = get_nested_value(attributes, "llm.model_name")
+        model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
         token_cost_result = (
             compute_cost_from_counts(
                 model_name=model_name,
