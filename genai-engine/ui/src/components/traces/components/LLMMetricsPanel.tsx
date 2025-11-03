@@ -93,27 +93,8 @@ function KV({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function renderQueryRelevance(details: MetricDetails) {
+function renderRelevance(details: MetricDetails) {
   const d = details.query_relevance ?? null;
-  return (
-    <Stack direction="column" spacing={1}>
-      <KV
-        label="LLM relevance score"
-        value={formatNumber(d?.llm_relevance_score)}
-      />
-      <KV
-        label="Reranker relevance score"
-        value={formatNumber(d?.reranker_relevance_score)}
-      />
-      <KV label="BERT F-score" value={formatNumber(d?.bert_f_score)} />
-      {d?.reason ? <KV label="Reason" value={d.reason} /> : null}
-      {d?.refinement ? <KV label="Refinement" value={d.refinement} /> : null}
-    </Stack>
-  );
-}
-
-function renderResponseRelevance(details: MetricDetails) {
-  const d = details.response_relevance ?? null;
   return (
     <Stack direction="column" spacing={1}>
       <KV
@@ -153,9 +134,9 @@ function MetricCard({ result }: { result: MetricResultResponse }) {
 
   let content: React.ReactNode = null;
   if (result.metric_type === "QueryRelevance") {
-    content = renderQueryRelevance(parsed);
+    content = renderRelevance(parsed);
   } else if (result.metric_type === "ResponseRelevance") {
-    content = renderResponseRelevance(parsed);
+    content = renderRelevance(parsed);
   } else if (result.metric_type === "ToolSelection") {
     content = renderToolSelection(parsed);
   }
