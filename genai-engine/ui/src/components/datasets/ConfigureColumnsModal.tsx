@@ -129,6 +129,15 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
       maxWidth="sm"
       fullWidth
       aria-labelledby="configure-columns-dialog-title"
+      slotProps={{
+        paper: {
+          sx: {
+            maxHeight: "90vh",
+            display: "flex",
+            flexDirection: "column",
+          },
+        },
+      }}
     >
       <form
         key={columnsKey}
@@ -140,11 +149,23 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
           }
           form.handleSubmit();
         }}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
       >
         <DialogTitle id="configure-columns-dialog-title">
           Configure Columns
         </DialogTitle>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            overflow: "auto",
+            flex: 1,
+            minHeight: 0,
+          }}
+        >
           <form.Field name="columns">
             {(field) => {
               const columns = field.state.value;
@@ -203,57 +224,72 @@ export const ConfigureColumnsModal: React.FC<ConfigureColumnsModalProps> = ({
                       ))}
                     </List>
                   )}
-
-                  <Box
-                    sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
-                  >
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="New Column Name"
-                      placeholder="e.g., user_id, message, score"
-                      value={newColumnName}
-                      onChange={(e) => {
-                        setNewColumnName(e.target.value);
-                        setError(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddColumn();
-                        }
-                      }}
-                      error={!!error && editingIndex === null}
-                      helperText={editingIndex === null ? error : ""}
-                    />
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={handleAddColumn}
-                      disabled={!newColumnName.trim()}
-                      sx={{ minWidth: "100px", height: "40px" }}
-                    >
-                      Add
-                    </Button>
-                  </Box>
                 </Box>
               );
             }}
           </form.Field>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose} color="inherit">
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="contained"
-            color="primary"
-            disabled={editingIndex !== null}
-          >
-            Save Changes
-          </Button>
-        </DialogActions>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
+            position: "sticky",
+            bottom: 0,
+            backgroundColor: "background.paper",
+            borderTop: 1,
+            borderColor: "divider",
+            zIndex: 1,
+            px: 3,
+            pt: 2,
+            pb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="New Column Name"
+              placeholder="e.g., user_id, message, score"
+              value={newColumnName}
+              onChange={(e) => {
+                setNewColumnName(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddColumn();
+                }
+              }}
+              error={!!error && editingIndex === null}
+              helperText={editingIndex === null ? error : ""}
+            />
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={handleAddColumn}
+              disabled={!newColumnName.trim()}
+              sx={{ minWidth: "100px", height: "40px" }}
+            >
+              Add
+            </Button>
+          </Box>
+
+          <DialogActions>
+            <Button onClick={handleClose} color="inherit">
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={editingIndex !== null}
+            >
+              Save Changes
+            </Button>
+          </DialogActions>
+        </Box>
       </form>
     </Dialog>
   );

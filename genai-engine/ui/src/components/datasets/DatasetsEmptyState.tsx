@@ -23,6 +23,7 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({
           justifyContent: "center",
           height: "100%",
           textAlign: "center",
+          py: 4,
         }}
       >
         <FolderOpenIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
@@ -58,6 +59,7 @@ export const DatasetsEmptyState: React.FC<DatasetsEmptyStateProps> = ({
         justifyContent: "center",
         height: "100%",
         textAlign: "center",
+        py: 4,
       }}
     >
       <SearchIcon sx={{ fontSize: 64, color: "text.primary", mb: 2 }} />

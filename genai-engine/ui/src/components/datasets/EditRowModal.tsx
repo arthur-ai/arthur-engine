@@ -69,8 +69,8 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
         <DialogTitle id="edit-row-dialog-title">
           {rowId === "new" ? "Add Row" : "Edit Row"}
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <DialogContent dividers>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {columns.map((column) => (
               <form.Field key={column} name={column}>
                 {(field) => {
@@ -82,9 +82,10 @@ export const EditRowModal: React.FC<EditRowModalProps> = ({
                       onChange={(e) => field.handleChange(e.target.value)}
                       disabled={isLoading}
                       fullWidth
+                      multiline
+                      minRows={2}
+                      maxRows={20}
                       size="small"
-                      multiline={value.length > 50}
-                      rows={value.length > 50 ? 3 : 1}
                     />
                   );
                 }}

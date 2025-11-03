@@ -88,6 +88,10 @@ export const DatasetTable: React.FC<DatasetTableProps> = ({
                 minWidth: 100,
                 backgroundColor: "grey.100",
                 textAlign: "center",
+                position: "sticky",
+                right: 0,
+                zIndex: 3,
+                boxShadow: "-2px 0 4px rgba(0, 0, 0, 0.1)",
               }}
             >
               Actions
