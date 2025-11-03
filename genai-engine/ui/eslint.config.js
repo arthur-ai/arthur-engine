@@ -6,6 +6,7 @@ import tseslint from "typescript-eslint";
 import importPlugin from "eslint-plugin-import";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 import { defineConfig, globalIgnores } from "eslint/config";
+import prettier from "eslint-config-prettier";
 
 export default defineConfig([
   globalIgnores(["dist", ".pnp.*", ".yarn"]),
@@ -17,6 +18,7 @@ export default defineConfig([
       tseslint.configs.recommended,
       reactHooks.configs["recommended-latest"],
       reactRefresh.configs.vite,
+      prettier,
     ],
     languageOptions: {
       ecmaVersion: 2020,
