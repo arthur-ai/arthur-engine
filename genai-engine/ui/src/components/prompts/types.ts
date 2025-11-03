@@ -12,6 +12,7 @@ import {
   AgenticPromptMetadataResponse,
   Api,
   AgenticPromptRunResponse,
+  OpenAIMessageItem,
 } from "@/lib/api-client/api-client";
 
 // Frontend tool type that extends LLMToolInput with an id for UI purposes
@@ -163,8 +164,8 @@ interface MessageComponentProps {
   id: string;
   parentId: string;
   role?: string;
-  defaultContent?: string;
-  content: string | "";
+  defaultContent?: string | OpenAIMessageItem[];
+  content: string | OpenAIMessageItem[] | "";
   dragHandleProps?: Record<string, unknown>;
 }
 
