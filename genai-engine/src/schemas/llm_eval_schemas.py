@@ -97,13 +97,13 @@ class LLMEval(BaseModel):
     )
     created_at: Optional[datetime] = Field(
         default=None,
-        description="Timestamp when the prompt was created.",
+        description="Timestamp when the llm eval was created.",
     )
     deleted_at: Optional[datetime] = Field(
         None,
-        description="Time that this prompt was deleted",
+        description="Time that this llm eval was deleted",
     )
-    version: int = Field(default=1, description="Version of the agentic prompt")
+    version: int = Field(default=1, description="Version of the llm eval")
 
     class Config:
         use_enum_values = True

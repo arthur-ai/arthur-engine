@@ -10973,7 +10973,7 @@
                             }
                         ],
                         "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
+                        "description": "Timestamp when the llm eval was created."
                     },
                     "deleted_at": {
                         "anyOf": [
@@ -10986,7 +10986,7 @@
                             }
                         ],
                         "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
+                        "description": "Time that this llm eval was deleted"
                     },
                     "version": {
                         "type": "integer",

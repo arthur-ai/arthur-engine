@@ -48,7 +48,7 @@ def test_llm_eval_routes_require_authentication(
 @pytest.mark.unit_tests
 def test_save_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: Task):
     """Test saving an llm eval"""
-    # Save a prompt
+    # Save an llm eval
     eval_data = {
         "model_name": "gpt-4o",
         "model_provider": "openai",

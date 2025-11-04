@@ -47,7 +47,7 @@ def sample_create_eval_request():
 
 @pytest.fixture
 def sample_db_llm_eval():
-    """Create sample DatabaseAgenticPrompt instance"""
+    """Create sample DatabaseLLMEval instance"""
     task_id = str(uuid4())
     return DatabaseLLMEval(
         task_id=task_id,
@@ -113,7 +113,7 @@ def test_save_llm_eval_with_llm_eval_object(
     mock_db_session.add.assert_called_once()
     mock_db_session.commit.assert_called_once()
 
-    # Check the DatabaseAgenticPrompt object that was added
+    # Check the DatabaseLLMEval object that was added
     added_eval = mock_db_session.add.call_args[0][0]
 
     # Compare was inserted to the database correctly
