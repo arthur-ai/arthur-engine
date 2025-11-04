@@ -23,27 +23,6 @@ from sqlalchemy.orm import Session
 from starlette import status
 from starlette.responses import Response
 
-from arthur_common.models.request_schemas import (
-    ChatDefaultTaskRequest,
-    ChatRequest,
-    FeedbackRequest,
-    PromptValidationRequest,
-    ResponseValidationRequest,
-)
-from arthur_common.models.response_schemas import (
-    ChatDefaultTaskResponse,
-    ChatDocumentContext,
-    ChatResponse,
-    ConversationBaseResponse,
-    ExternalDocument,
-    FileUploadResult,
-)
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi_pagination import Page, Params
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
-
 from auth.oauth_validator import validate_token
 from chat.chat import ArthurChat
 from chat.embedding import EmbeddingModel

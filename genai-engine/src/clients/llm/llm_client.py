@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, List, Union
+from typing import Any, List
 
 import litellm
 from litellm import get_model_cost_map, model_cost_map_url

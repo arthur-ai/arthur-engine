@@ -10,6 +10,14 @@ The intention of this changelog is to document API changes as they happen to eff
 # 11/07/2025
 - **CHANGE** for Component/Schema:  removed the schema 'LLMEvalsVersionResponse'
 
+# 11/04/2025
+- **BREAKING CHANGE** for **URL**: /api/chat/conversations  the 'items/items/' response's property type/format changed from 'array'/'' to 'object'/'' for status '200'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'metric_metadata'
+- **CHANGE** for **URL**: /api/v2/tasks/{task_id}/metrics/{metric_id}  removed the request property 'name'
+- **CHANGE** for Component/Schema:  removed the schema 'Page_List_ConversationBaseResponse__'
+- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/id' to the response with the '200' status
+- **CHANGE** for **URL**: /api/chat/conversations  added the required property 'items/items/updated_at' to the response with the '200' status
+
 # 11/06/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'

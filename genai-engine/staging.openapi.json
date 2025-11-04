@@ -8833,7 +8833,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Page_List_ConversationBaseResponse__"
+                                    "$ref": "#/components/schemas/Page_ConversationBaseResponse_"
                                 }
                             }
                         }
@@ -13647,14 +13647,11 @@
                 ],
                 "title": "PIIEntityTypes"
             },
-            "Page_List_ConversationBaseResponse__": {
+            "Page_ConversationBaseResponse_": {
                 "properties": {
                     "items": {
                         "items": {
-                            "items": {
-                                "$ref": "#/components/schemas/ConversationBaseResponse"
-                            },
-                            "type": "array"
+                            "$ref": "#/components/schemas/ConversationBaseResponse"
                         },
                         "type": "array",
                         "title": "Items"
@@ -13688,7 +13685,7 @@
                     "size",
                     "pages"
                 ],
-                "title": "Page[List[ConversationBaseResponse]]"
+                "title": "Page[ConversationBaseResponse]"
             },
             "PaginationSortMethod": {
                 "type": "string",
@@ -16722,30 +16719,6 @@
                         "type": "boolean",
                         "title": "Enabled",
                         "description": "Boolean value to enable or disable the metric. "
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "Name of the metric. Optional."
-                    },
-                    "metric_metadata": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Metric Metadata",
-                        "description": "Metric metadata. Optional."
                     }
                 },
                 "type": "object",
