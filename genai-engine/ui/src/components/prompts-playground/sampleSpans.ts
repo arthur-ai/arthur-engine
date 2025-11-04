@@ -811,6 +811,60 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
   },
 ];
 
+const realImageSpan = {
+  kind: "SPAN_KIND_INTERNAL",
+  name: "imageAnalysisAgent",
+  spanId: "7PCzd80lZiM=",
+  status: [],
+  traceId: "rTzDGd9Me34XA7zK5KhiWQ==",
+  attributes: {
+    agent: {
+      name: "imageAnalysisAgent",
+    },
+    input: {
+      value: [
+        {
+          role: "user",
+          content: [
+            {
+              text: "what's this an image of?",
+              type: "text",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: "base64...",
+              },
+            },
+          ],
+        },
+      ],
+      mime_type: "application/json",
+    },
+    output: {
+      value: {
+        text: 'This is an image of a Finder window on a Mac computer. It shows the contents of the "Desktop" folder. There are two Python files listed: `arthur_admin_mcp.py` and `arthur_engine_mcp.py`. The sidebar includes shortcuts to Recents, Documents, Desktop, Downloads, Applications, and other locations, including Slack. The window also has options to change the view and sort items.',
+        files: [],
+      },
+      mime_type: "application/json",
+    },
+    metadata: {
+      agent: {
+        instructions: "You are a helpful image analysis assistant with vision capabilities.",
+      },
+      runId: "826fcb2b-eaea-4e78-851e-4c774945db34",
+    },
+    openinference: {
+      span: {
+        kind: "AGENT",
+      },
+    },
+  },
+  endTimeUnixNano: "1762285431614024917",
+  startTimeUnixNano: "1762285426300000000",
+  arthur_span_version: "arthur_span_v1",
+};
+
 // Export individual spans for easy access
 export const simpleLLMSpan = sampleSpans[0];
 export const toolCallSpan = sampleSpans[1];
@@ -821,3 +875,4 @@ export const errorSpan = sampleSpans[5];
 export const chainSpan = sampleSpans[6];
 export const langchainSpan = sampleSpans[7];
 export const mastraSpan = sampleSpans[8];
+export { realImageSpan };

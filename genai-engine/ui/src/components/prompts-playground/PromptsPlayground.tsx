@@ -11,7 +11,7 @@ import { useSearchParams } from "react-router-dom";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
-import { spanToPrompt } from "./utils";
+import { apiToFrontendPrompt } from "./utils";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
@@ -126,7 +126,7 @@ const PromptsPlayground = () => {
     try {
       const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
       const spanData = response.data;
-      const spanPrompt = spanToPrompt(spanData);
+      const spanPrompt = apiToFrontendPrompt(spanData);
 
       // Update the first empty prompt instead of adding a new one
       if (state.prompts.length > 0) {

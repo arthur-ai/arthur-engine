@@ -16,6 +16,26 @@ import {
   OpenAIMessageItem,
 } from "@/lib/api-client/api-client";
 
+/**
+ * Raw OpenTelemetry/OpenInference span data format
+ * This is the format received directly from OpenTelemetry collectors
+ */
+export interface RawOpenTelemetrySpan {
+  kind?: string;
+  name?: string;
+  spanId: string;
+  traceId: string;
+  parentSpanId?: string;
+  status?: unknown[] | { code?: string | number } | string;
+  attributes: Record<string, unknown>;
+  startTimeUnixNano: string | number;
+  endTimeUnixNano: string | number;
+  arthur_span_version?: string;
+  events?: unknown[];
+  links?: unknown[];
+  resource?: Record<string, unknown>;
+}
+
 export const arrayUtils = {
   moveItem: <T>(array: T[], fromIndex: number, toIndex: number): T[] => {
     const newArray = [...array];
@@ -127,24 +147,152 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
 });
 
 /**
- * Converts a span with metrics to a prompt format
+ * Converts Unix nanoseconds timestamp to ISO date string
+ */
+const timestampNsToISO = (timestampNs: string | number): string => {
+  const ns = typeof timestampNs === "string" ? BigInt(timestampNs) : BigInt(timestampNs);
+  const ms = Number(ns / BigInt(1_000_000));
+  return new Date(ms).toISOString();
+};
+
+/**
+ * Extracts status code from status field (can be array, object, or string)
+ */
+const extractStatusCode = (status: unknown[] | { code?: string | number } | string | undefined): string => {
+  if (!status) {
+    return "Unset";
+  }
+  if (typeof status === "string") {
+    return status;
+  }
+  if (Array.isArray(status)) {
+    if (status.length === 0) {
+      return "Unset";
+    }
+    const first = status[0];
+    if (typeof first === "object" && first !== null && "code" in first) {
+      const code = first.code;
+      if (typeof code === "string") return code;
+      if (typeof code === "number") {
+        // Map numeric codes: 1=Ok, 2=Error, 0/undefined=Unset
+        if (code === 1) return "Ok";
+        if (code === 2) return "Error";
+        return "Unset";
+      }
+    }
+    return "Unset";
+  }
+  if (typeof status === "object" && status !== null && "code" in status) {
+    const code = status.code;
+    if (typeof code === "string") return code;
+    if (typeof code === "number") {
+      if (code === 1) return "Ok";
+      if (code === 2) return "Error";
+      return "Unset";
+    }
+  }
+  return "Unset";
+};
+
+/**
+ * Extracts context from attributes if available (OpenInference format)
+ */
+const extractContext = (attributes: Record<string, unknown>): Record<string, unknown>[] | null => {
+  // Check for OpenInference context in attributes
+  const input = attributes.input as { value?: unknown } | undefined;
+  if (input?.value && Array.isArray(input.value)) {
+    return input.value as Record<string, unknown>[];
+  }
+  // Check for other context formats
+  if (attributes.context && Array.isArray(attributes.context)) {
+    return attributes.context as Record<string, unknown>[];
+  }
+  return null;
+};
+
+/**
+ * Converts raw OpenTelemetry/OpenInference span data to SpanWithMetricsResponse format
+ * @param rawSpan - Raw span data in OpenTelemetry/OpenInference format
+ * @returns SpanWithMetricsResponse compatible with the API
+ */
+export const openSpanToApi = (rawSpan: RawOpenTelemetrySpan): SpanWithMetricsResponse => {
+  const now = new Date().toISOString();
+  const startTime = timestampNsToISO(rawSpan.startTimeUnixNano);
+  const endTime = timestampNsToISO(rawSpan.endTimeUnixNano);
+  const statusCode = extractStatusCode(rawSpan.status);
+  const context = extractContext(rawSpan.attributes);
+
+  // Convert spanId and traceId - they might be base64 encoded, keep as-is for now
+  // The backend will handle conversion if needed
+  const spanId = rawSpan.spanId;
+  const traceId = rawSpan.traceId;
+
+  // Extract span_kind from attributes or kind field
+  const spanKind = (rawSpan.attributes["openinference.span.kind"] as string) || (rawSpan.attributes["span.kind"] as string) || rawSpan.kind || null;
+
+  // Generate a unique ID for the span
+  const id = `span-${spanId}-${Date.now()}`;
+
+  return {
+    id,
+    trace_id: traceId,
+    span_id: spanId,
+    parent_span_id: rawSpan.parentSpanId || null,
+    span_kind: spanKind,
+    span_name: rawSpan.name || null,
+    start_time: startTime,
+    end_time: endTime,
+    task_id: null,
+    session_id: (rawSpan.attributes["session.id"] as string) || null,
+    status_code: statusCode,
+    raw_data: rawSpan as unknown as Record<string, unknown>,
+    created_at: now,
+    updated_at: now,
+    context,
+    system_prompt: null,
+    user_query: null,
+    response: null,
+    metric_results: [],
+  };
+};
+
+/**
+ * Converts a SpanWithMetricsResponse (API format) to a frontend prompt format
  * Supports both OpenInference/OpenTelemetry and LiteLLM formats
- * @param spanData - The span data to convert
+ * @param spanData - The span data in API format to convert
  * @param defaultModel - Default model name to use if not found in span
  * @param defaultProvider - Default provider to use if not found in span
  * @returns A prompt object created from the span data
  */
-export const spanToPrompt = (spanData: SpanWithMetricsResponse, defaultModel: string = "gpt-4", defaultProvider: string = "openai"): PromptType => {
+export const apiToFrontendPrompt = (
+  spanData: SpanWithMetricsResponse,
+  defaultModel: string = "gpt-4",
+  defaultProvider: string = "openai"
+): PromptType => {
   // Extract model information from raw_data attributes (supports both formats)
   const extractModelInfo = (rawData: Record<string, unknown>) => {
     const attributes = (rawData.attributes as Record<string, unknown>) || {};
-    const metadataStr = attributes.metadata as string;
-    const metadata = metadataStr ? JSON.parse(metadataStr) : {};
+
+    // Handle metadata - can be either a JSON string or an object
+    let metadata: Record<string, unknown> = {};
+    if (attributes.metadata) {
+      if (typeof attributes.metadata === "string") {
+        try {
+          metadata = JSON.parse(attributes.metadata);
+        } catch {
+          // If parsing fails, treat as empty object
+          metadata = {};
+        }
+      } else if (typeof attributes.metadata === "object" && attributes.metadata !== null) {
+        metadata = attributes.metadata as Record<string, unknown>;
+      }
+    }
 
     // Try LiteLLM format first, then fall back to OpenInference format
-    const modelName = (attributes["litellm.model"] as string) || (attributes["llm.model_name"] as string) || metadata.ls_model_name || defaultModel;
+    const modelName =
+      (attributes["litellm.model"] as string) || (attributes["llm.model_name"] as string) || (metadata.ls_model_name as string) || defaultModel;
 
-    const modelProvider = (attributes["litellm.provider"] as string) || metadata.ls_provider || defaultProvider;
+    const modelProvider = ((attributes["litellm.provider"] as string) || (metadata.ls_provider as string) || defaultProvider) as ModelProvider | "";
 
     return { modelName, modelProvider };
   };
