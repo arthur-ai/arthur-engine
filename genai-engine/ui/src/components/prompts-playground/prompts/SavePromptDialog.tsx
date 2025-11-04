@@ -9,23 +9,15 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { SavePromptDialogProps } from "./types";
-import { toBackendPromptBaseConfig } from "./utils";
+import { SavePromptDialogProps } from "../types";
+import { toBackendPromptBaseConfig } from "../utils";
 
-import { SNACKBAR_AUTO_HIDE_DURATION } from "@/constants/snackbar";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
 
-const SavePromptDialog = ({
-  open,
-  setOpen,
-  prompt,
-  initialName = "",
-  onSaveSuccess,
-  onSaveError,
-}: SavePromptDialogProps) => {
+const SavePromptDialog = ({ open, setOpen, prompt, initialName = "", onSaveSuccess, onSaveError }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -58,11 +50,7 @@ const SavePromptDialog = ({
     const backendPrompt = toBackendPromptBaseConfig(prompt);
 
     apiClient.api
-      .saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(
-        nameInputValue,
-        taskId,
-        backendPrompt
-      )
+      .saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(nameInputValue, taskId, backendPrompt)
       .then((response: { data: AgenticPrompt }) => {
         const { data } = response;
         showSnackbar(`Saved prompt: ${data.name}`, "success");
@@ -74,16 +62,7 @@ const SavePromptDialog = ({
         showSnackbar(data.detail, "error");
         onSaveError?.(data.detail);
       });
-  }, [
-    nameInputValue,
-    prompt,
-    apiClient,
-    taskId,
-    showSnackbar,
-    onSaveSuccess,
-    onSaveError,
-    handleClose,
-  ]);
+  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, onSaveSuccess, onSaveError, handleClose]);
 
   return (
     <>
@@ -91,17 +70,10 @@ const SavePromptDialog = ({
         <DialogTitle>Save Prompt</DialogTitle>
         <DialogContent>
           <DialogContentText className="text-center">
-            Saving a prompt with an existing name will create a new version of
-            the prompt.
+            Saving a prompt with an existing name will create a new version of the prompt.
           </DialogContentText>
           <div className="p-2">
-            <TextField
-              label="Prompt Name"
-              value={nameInputValue}
-              onChange={(event) => setNameInputValue(event.target.value)}
-              fullWidth
-              autoFocus
-            />
+            <TextField label="Prompt Name" value={nameInputValue} onChange={(event) => setNameInputValue(event.target.value)} fullWidth autoFocus />
           </div>
         </DialogContent>
         <DialogActions>

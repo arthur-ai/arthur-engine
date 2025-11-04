@@ -15,19 +15,10 @@ const PromptContext = createContext<{
 
 export const usePromptContext = () => {
   const context = useContext(PromptContext);
-  if (!context)
-    throw new Error("usePromptContext must be used within PromptProvider");
+  if (!context) throw new Error("usePromptContext must be used within PromptProvider");
   return context;
 };
 
-export const PromptProvider = ({
-  children,
-  state,
-  dispatch,
-}: PromptProviderProps) => {
-  return (
-    <PromptContext.Provider value={{ state, dispatch }}>
-      {children}
-    </PromptContext.Provider>
-  );
+export const PromptProvider = ({ children, state, dispatch }: PromptProviderProps) => {
+  return <PromptContext.Provider value={{ state, dispatch }}>{children}</PromptContext.Provider>;
 };

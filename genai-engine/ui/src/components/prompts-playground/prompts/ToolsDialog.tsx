@@ -1,27 +1,26 @@
 import Editor from "@monaco-editor/react";
 import AddIcon from "@mui/icons-material/Add";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import {
-  Accordion,
-  AccordionSummary,
-  Collapse,
-  FormControl,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
-  SelectChangeEvent,
-} from "@mui/material";
-import { AccordionDetails } from "@mui/material";
+import Accordion from "@mui/material/Accordion";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import AccordionSummary from "@mui/material/AccordionSummary";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { PromptType } from "./types";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { PromptType } from "../types";
 
 // Helper function to render tool choice options consistently
 const renderToolChoiceOption = (value: string, toolName?: string) => {
@@ -50,17 +49,20 @@ const renderToolChoiceOption = (value: string, toolName?: string) => {
   );
 };
 
-const Tools = ({ prompt }: { prompt: PromptType }) => {
+interface ToolsDialogProps {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  prompt: PromptType;
+}
+
+const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
   const { dispatch } = usePromptContext();
-  const [toolsExpanded, setToolsExpanded] = useState<boolean>(
-    prompt.tools.length > 0
-  );
-
-  // Add state to track which accordions are expanded
   const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
-
-  // Track the previous tool count to detect new additions
   const [prevToolCount, setPrevToolCount] = useState(prompt.tools.length);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, [setOpen]);
 
   const handleAddTool = useCallback(() => {
     dispatch({
@@ -69,45 +71,18 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
     });
   }, [dispatch, prompt.id]);
 
-  const handleToggleTools = useCallback(() => {
-    // Only allow toggle if there are tools
-    if (prompt.tools.length > 0) {
-      setToolsExpanded((prev) => !prev);
-    }
-  }, [prompt.tools.length]);
-
-  useEffect(() => {
-    // Check if a new tool was added (count increased)
-    if (prompt.tools.length > prevToolCount) {
-      // Tools section auto-expand only if it was closed
-      if (!toolsExpanded) {
-        setToolsExpanded(true);
-      }
-      // Always set the newest tool as the one to expand
-      const newestTool = prompt.tools[prompt.tools.length - 1];
-      setExpandedTools((prev) => new Set(prev).add(newestTool.id));
-    }
-    // Auto-collapse when all tools are deleted
-    else if (prompt.tools.length === 0 && toolsExpanded) {
-      setToolsExpanded(false);
-    }
-    // Update the previous count
-    setPrevToolCount(prompt.tools.length);
-  }, [prompt.tools, prevToolCount, toolsExpanded]);
-
   // Handle accordion expand/collapse
-  const handleToolAccordionChange =
-    (toolId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-      setExpandedTools((prev) => {
-        const newSet = new Set(prev);
-        if (isExpanded) {
-          newSet.add(toolId);
-        } else {
-          newSet.delete(toolId);
-        }
-        return newSet;
-      });
-    };
+  const handleToolAccordionChange = (toolId: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpandedTools((prev) => {
+      const newSet = new Set(prev);
+      if (isExpanded) {
+        newSet.add(toolId);
+      } else {
+        newSet.delete(toolId);
+      }
+      return newSet;
+    });
+  };
 
   const handleDeleteTool = useCallback(
     (toolId: string) => {
@@ -151,54 +126,39 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
     [dispatch, prompt.id]
   );
 
-  const pointerClass =
-    prompt.tools.length > 0 ? "cursor-pointer" : "cursor-default";
+  // Auto-expand newly added tools when modal is open
+  useEffect(() => {
+    if (open && prompt.tools.length > prevToolCount) {
+      const newestTool = prompt.tools[prompt.tools.length - 1];
+      setExpandedTools((prev) => new Set(prev).add(newestTool.id));
+    }
+    setPrevToolCount(prompt.tools.length);
+  }, [open, prompt.tools, prevToolCount]);
+
   return (
-    <>
-      <div
-        className={`flex justify-between items-center ${pointerClass}`}
-        onClick={handleToggleTools}
-      >
-        <div className="flex items-center">
-          {toolsExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          <span className="font-medium">Tools</span>
-          {prompt.tools.length > 0 && (
-            <span className="bg-gray-300 px-2 py-1 rounded text-sm">
-              {prompt.tools.length}
-            </span>
-          )}
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
+      <DialogTitle>
+        <div className="flex justify-between items-center">
+          <span>Tools</span>
+          <Button variant="contained" onClick={handleAddTool} startIcon={<AddIcon />}>
+            Add Tool
+          </Button>
         </div>
-        <Tooltip title="Add Tool">
-          <IconButton aria-label="add_tool" onClick={handleAddTool}>
-            <AddIcon color="primary" />
-          </IconButton>
-        </Tooltip>
-      </div>
-      <Collapse in={toolsExpanded}>
-        <div className="mt-2 mb-3 px-2">
+      </DialogTitle>
+      <DialogContent>
+        <div className="mb-4 mt-3">
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={
-                typeof prompt.toolChoice === "string"
-                  ? prompt.toolChoice
-                  : prompt.toolChoice?.function?.name || "auto"
-              }
+              value={typeof prompt.toolChoice === "string" ? prompt.toolChoice : prompt.toolChoice?.function?.name || "auto"}
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
                 if (["auto", "none", "required"].includes(selected)) {
                   return renderToolChoiceOption(selected);
                 } else {
-                  const selectedTool = prompt.tools.find(
-                    (tool) => tool.id === selected
-                  );
-                  return selectedTool
-                    ? renderToolChoiceOption(
-                        selected,
-                        selectedTool.function.name
-                      )
-                    : selected;
+                  const selectedTool = prompt.tools.find((tool) => tool.id === selected);
+                  return selectedTool ? renderToolChoiceOption(selected, selectedTool.function.name) : selected;
                 }
               }}
               sx={{
@@ -210,26 +170,19 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
             >
               <MenuItem value="auto">{renderToolChoiceOption("auto")}</MenuItem>
               <MenuItem value="none">{renderToolChoiceOption("none")}</MenuItem>
-              <MenuItem value="required">
-                {renderToolChoiceOption("required")}
-              </MenuItem>
-              {prompt.tools.length > 0 && [
-                ...prompt.tools.map((tool) => (
+              <MenuItem value="required">{renderToolChoiceOption("required")}</MenuItem>
+              {prompt.tools.length > 0 &&
+                prompt.tools.map((tool) => (
                   <MenuItem key={tool.id} value={tool.id}>
                     {renderToolChoiceOption(tool.id, tool.function.name)}
                   </MenuItem>
-                )),
-              ]}
+                ))}
             </Select>
           </FormControl>
         </div>
-        <div className="space-y-2 mt-2">
+        <div className="space-y-2">
           {prompt.tools.map((tool) => (
-            <Accordion
-              key={tool.id}
-              expanded={expandedTools.has(tool.id)}
-              onChange={handleToolAccordionChange(tool.id)}
-            >
+            <Accordion key={tool.id} expanded={expandedTools.has(tool.id)} onChange={handleToolAccordionChange(tool.id)}>
               <AccordionSummary
                 expandIcon={<ExpandMoreIcon />}
                 sx={{
@@ -246,9 +199,7 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
                 }}
               >
                 <div className="flex items-center justify-between w-full mr-4">
-                  <span className="text-sm font-mono">
-                    📋 {tool.function.name}
-                  </span>
+                  <span className="text-sm font-mono">📋 {tool.function.name}</span>
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
@@ -300,9 +251,12 @@ const Tools = ({ prompt }: { prompt: PromptType }) => {
             </Accordion>
           ))}
         </div>
-      </Collapse>
-    </>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose}>Close</Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
-export default Tools;
+export default ToolsDialog;
