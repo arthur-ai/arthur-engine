@@ -115,7 +115,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
 
   const runDisabled = prompt.running || prompt.modelName === "";
   return (
-    <div className="h-full shadow-md rounded-lg p-4">
+    <div className="h-full shadow-md rounded-lg p-4 bg-gray-200">
       <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
         <div className="flex flex-wrap items-center gap-1">
           <div className="flex-1 min-w-[300px]">

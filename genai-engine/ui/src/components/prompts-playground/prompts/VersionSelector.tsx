@@ -96,7 +96,8 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
           <TextField
             {...params}
             label="Version"
-            variant="standard"
+            variant="outlined"
+            size="small"
             sx={{
               backgroundColor: "white",
             }}

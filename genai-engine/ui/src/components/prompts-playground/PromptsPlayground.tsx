@@ -200,7 +200,7 @@ const PromptsPlayground = () => {
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
-      <Box className="flex h-full bg-gray-200" sx={{ position: "relative" }}>
+      <Box className="flex h-full bg-gray-300" sx={{ position: "relative" }}>
         <Drawer
           variant="permanent"
           anchor="left"

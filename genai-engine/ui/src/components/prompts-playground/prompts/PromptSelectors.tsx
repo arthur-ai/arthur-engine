@@ -191,7 +191,6 @@ const PromptSelectors = ({
           isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}
           noOptionsText="No saved prompts"
-          sx={{ backgroundColor: "white" }}
           renderOption={(props, option) => {
             const { key, ...optionProps } = props;
             return (
@@ -214,14 +213,7 @@ const PromptSelectors = ({
             );
           }}
           renderInput={(params) => (
-            <TextField
-              {...params}
-              label={PROMPT_NAME_TEXT}
-              variant="standard"
-              sx={{
-                backgroundColor: "white",
-              }}
-            />
+            <TextField {...params} label={PROMPT_NAME_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
           )}
         />
       </div>
@@ -235,14 +227,7 @@ const PromptSelectors = ({
             onChange={handleProviderChange}
             disabled={providerDisabled}
             renderInput={(params) => (
-              <TextField
-                {...params}
-                label={PROVIDER_TEXT}
-                variant="standard"
-                sx={{
-                  backgroundColor: "white",
-                }}
-              />
+              <TextField {...params} label={PROVIDER_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
             )}
           />
         </Tooltip>
@@ -254,16 +239,7 @@ const PromptSelectors = ({
           value={prompt.modelName || ""}
           onChange={handleModelChange}
           disabled={modelDisabled}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label={MODEL_TEXT}
-              variant="standard"
-              sx={{
-                backgroundColor: "white",
-              }}
-            />
-          )}
+          renderInput={(params) => <TextField {...params} label={MODEL_TEXT} variant="outlined" size="small" sx={{ backgroundColor: "white" }} />}
         />
       </div>
       <Snackbar {...snackbarProps}>
