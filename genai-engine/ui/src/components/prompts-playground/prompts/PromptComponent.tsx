@@ -79,8 +79,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   }, [prompt.running, runPrompt]);
 
   return (
-    <div className="h-full shadow-md rounded-lg p-4 bg-gray-200">
-      <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
+    <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
+      <Container component="div" className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
         <div className="flex justify-between items-center gap-1">
           <div className="flex justify-start items-center">
             {prompt.tools.length > 0 ? (
@@ -99,16 +99,16 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
         </div>
-        <div className="flex-1 min-w-[300px]">
+        <div className="min-w-[300px] flex-shrink-0">
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
-        <div className="mt-1">
-          <Paper elevation={2} className="p-1">
+        <div className="mt-1 flex-1 min-h-0">
+          <Paper elevation={2} className="p-1 h-full">
             <MessagesSection prompt={prompt} />
           </Paper>
         </div>
-        <div className="mt-1">
-          <Paper elevation={2} className="p-1">
+        <div className="mt-1 flex-shrink-0" style={{ minHeight: "30%" }}>
+          <Paper elevation={2} className="p-1 h-full">
             <OutputField
               promptId={prompt.id}
               running={prompt.running || false}

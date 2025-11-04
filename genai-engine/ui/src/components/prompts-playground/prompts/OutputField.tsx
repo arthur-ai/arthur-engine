@@ -1,12 +1,10 @@
 import Editor from "@monaco-editor/react";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import DataObjectIcon from "@mui/icons-material/DataObject";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import GeneratingTokensIcon from "@mui/icons-material/GeneratingTokens"; // Probably change in future
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Button from "@mui/material/Button";
-import Collapse from "@mui/material/Collapse";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -36,13 +34,9 @@ const getFormatValue = (format: string | undefined) => {
 
 const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
-
-  const handleExpand = () => {
-    setIsExpanded((prev) => !prev);
-  };
 
   const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
@@ -55,6 +49,14 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
     setIsOpen(false);
   };
 
+  const handlePopoutOpen = () => {
+    setIsPopoutOpen(true);
+  };
+
+  const handlePopoutClose = () => {
+    setIsPopoutOpen(false);
+  };
+
   const handleCancel = () => {
     handleClose();
     setCopiedFormat(getFormatValue(responseFormat));
@@ -63,10 +65,6 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
   const handleChange = (value: string) => {
     setCopiedFormat(value);
   };
-
-  useEffect(() => {
-    setIsExpanded(Boolean(runResponse?.content?.length));
-  }, [runResponse]);
 
   useEffect(() => {
     setCopiedFormat(getFormatValue(responseFormat));
@@ -82,31 +80,38 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
 
   return (
     <>
-      <div onClick={handleExpand} className="flex justify-between cursor-pointer">
-        <div className="flex items-center">
-          {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          <span>Response</span>
+      <div className="flex flex-col h-full">
+        <div className="flex justify-between">
+          <div className="flex items-center">
+            <span>Response</span>
+          </div>
+          <div className="flex items-center">
+            <Tooltip title="Popout Response">
+              <IconButton aria-label="popout_response" onClick={handlePopoutOpen} size="small">
+                <OpenInNewIcon color="primary" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Format Response">
+              <IconButton aria-label="format_output" onClick={handleOpen} size="small">
+                <DataObjectIcon color="primary" />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
-        <div className="flex items-center">
-          <Tooltip title="Format Response">
-            <IconButton aria-label="format_output" onClick={handleOpen}>
-              <DataObjectIcon color="primary" />
-            </IconButton>
-          </Tooltip>
-        </div>
-      </div>
-      <Collapse in={isExpanded || running}>
-        {running ? (
-          <>
-            <Skeleton variant="text" width="92%" />
-            <Skeleton variant="text" width="99%" />
-            <Skeleton variant="text" width="96%" />
-          </>
-        ) : (
-          <div>{runResponse?.content}</div>
-        )}
         <Divider />
-        <div className="flex gap-3">
+        <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
+          {running ? (
+            <>
+              <Skeleton variant="text" width="92%" />
+              <Skeleton variant="text" width="99%" />
+              <Skeleton variant="text" width="96%" />
+            </>
+          ) : (
+            <div>{runResponse?.content}</div>
+          )}
+        </div>
+        <Divider />
+        <div className="flex gap-3 flex-shrink-0">
           {/* eslint-disable-next-line no-constant-condition */}
           {false ? (
             <div className="flex items-center">
@@ -132,7 +137,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
             <Typography variant="body1">{running ? <Skeleton variant="text" width="100px" /> : runResponse?.cost || "-"}</Typography>
           </div>
         </div>
-      </Collapse>
+      </div>
       <Dialog open={isOpen} onClose={handleClose} fullWidth>
         <DialogTitle>Format Response Output</DialogTitle>
         <DialogContent>
@@ -158,6 +163,27 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
         <DialogActions>
           <Button onClick={handleCancel}>Cancel</Button>
           <Button onClick={handleSave}>Save</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={isPopoutOpen} onClose={handlePopoutClose} fullWidth maxWidth="md">
+        <DialogTitle>Response</DialogTitle>
+        <DialogContent>
+          <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto", whiteSpace: "pre-wrap" }}>
+            {running ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <Skeleton variant="text" width="92%" />
+                <Skeleton variant="text" width="99%" />
+                <Skeleton variant="text" width="96%" />
+                <Skeleton variant="text" width="99%" />
+                <Skeleton variant="text" width="80%" />
+              </div>
+            ) : (
+              <div>{runResponse?.content || "No response yet"}</div>
+            )}
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePopoutClose}>Close</Button>
         </DialogActions>
       </Dialog>
     </>
