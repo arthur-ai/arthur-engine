@@ -8,7 +8,6 @@ class PresidioGlinerMapper:
     PRESIDIO_TO_GLINER = {
         "CREDIT_CARD": "credit card number",
         "CRYPTO": "crypto wallet",
-        "DATE_TIME": "date time",
         "EMAIL_ADDRESS": "email address",
         "IBAN_CODE": "iban",
         "IP_ADDRESS": "ip address",
