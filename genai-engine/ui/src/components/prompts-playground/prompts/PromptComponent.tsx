@@ -1,15 +1,7 @@
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DeleteIcon from "@mui/icons-material/Delete";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import SaveIcon from "@mui/icons-material/Save";
-// import SettingsIcon from "@mui/icons-material/Settings"; Use for permanent delete option
-import TuneIcon from "@mui/icons-material/Tune";
 import Alert from "@mui/material/Alert";
 import Container from "@mui/material/Container";
-import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
-import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
