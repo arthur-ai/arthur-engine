@@ -62,6 +62,12 @@ from fastapi import HTTPException
 from opentelemetry import trace
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_core import Url
+from weaviate.collections.classes.grpc import (
+    METADATA,
+    HybridFusion,
+    TargetVectorJoinType,
+)
+from weaviate.types import INCLUDE_VECTOR
 
 from db_models import (
     DatabaseApiKey,
@@ -99,12 +105,16 @@ from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVers
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
+    DatabaseRagSearchSettingConfiguration,
+    DatabaseRagSearchSettingConfigurationVersion,
 )
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
+    RagSearchKind,
     RuleDataType,
     RuleScoringMethod,
     SecretType,
@@ -117,6 +127,10 @@ from schemas.request_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
+    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
 )
 from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
@@ -129,10 +143,15 @@ from schemas.response_schemas import (
     DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
+    RagSearchSettingConfigurationResponse,
+    RagSearchSettingConfigurationVersionResponse,
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
     TraceUserMetadataResponse,
+    WeaviateHybridSearchSettingsConfigurationResponse,
+    WeaviateKeywordSearchSettingsConfigurationResponse,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -2497,3 +2516,453 @@ class RagProviderConfiguration(BaseModel):
                 status_code=404,
                 detail=f"Unsupported authentication method: {self.authentication_method}",
             )
+
+
+class WeaviateSearchCommonSettings(BaseModel):
+    collection_name: str = Field(
+        description="Name of the vector collection used for the search.",
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        description="Maximum number of objects to return.",
+    )
+    include_vector: Optional[INCLUDE_VECTOR] = Field(
+        default=False,
+        description="Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+    )
+    offset: Optional[int] = Field(
+        default=None,
+        description="Skips first N results in similarity response. Useful for pagination.",
+    )
+    auto_limit: Optional[int] = Field(
+        default=None,
+        description="Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.",
+    )
+    return_metadata: Optional[METADATA] = Field(
+        default=None,
+        description="Specify metadata fields to return.",
+    )
+    return_properties: Optional[List[str]] = Field(
+        default=None,
+        description="Specify which properties to return for each object.",
+    )
+
+
+class WeaviateVectorSimilarityTextSearchSettingsConfiguration(
+    WeaviateSearchCommonSettings,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
+    )
+
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.",
+        ge=0,
+        le=1,
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for similarity search when using named vectors.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    ) -> "WeaviateVectorSimilarityTextSearchSettingsConfiguration":
+        return WeaviateVectorSimilarityTextSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            certainty=request.certainty,
+            distance=request.distance,
+            target_vector=request.target_vector,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(
+        self,
+    ) -> WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse:
+        return WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            certainty=self.certainty,
+            distance=self.distance,
+            target_vector=self.target_vector,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateKeywordSearchSettingsConfigurationRequest,
+    ) -> "WeaviateKeywordSearchSettingsConfiguration":
+        return WeaviateKeywordSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            minimum_match_or_operator=request.minimum_match_or_operator,
+            and_operator=request.and_operator,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(self) -> WeaviateKeywordSearchSettingsConfigurationResponse:
+        return WeaviateKeywordSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            minimum_match_or_operator=self.minimum_match_or_operator,
+            and_operator=self.and_operator,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+    alpha: float = Field(
+        default=0.7,
+        description="Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
+    )
+    query_properties: Optional[list[str]] = Field(
+        default=None,
+        description="Apply keyword search to only a specified subset of object properties.",
+    )
+    fusion_type: Optional[HybridFusion] = Field(
+        default=None,
+        description="Set the fusion algorithm to use. Default is Relative Score Fusion.",
+    )
+    max_vector_distance: Optional[float] = Field(
+        default=None,
+        description="Maximum threshold for the vector search component.",
+    )
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for vector search when using named vectors.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateHybridSearchSettingsConfigurationRequest,
+    ) -> "WeaviateHybridSearchSettingsConfiguration":
+        return WeaviateHybridSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            alpha=request.alpha,
+            query_properties=request.query_properties,
+            fusion_type=request.fusion_type,
+            max_vector_distance=request.max_vector_distance,
+            minimum_match_or_operator=request.minimum_match_or_operator,
+            and_operator=request.and_operator,
+            target_vector=request.target_vector,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(self) -> WeaviateHybridSearchSettingsConfigurationResponse:
+        return WeaviateHybridSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            alpha=self.alpha,
+            query_properties=self.query_properties,
+            fusion_type=self.fusion_type,
+            max_vector_distance=self.max_vector_distance,
+            minimum_match_or_operator=self.minimum_match_or_operator,
+            and_operator=self.and_operator,
+            target_vector=self.target_vector,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+RagSearchSettingConfigurationTypes = Union[
+    WeaviateHybridSearchSettingsConfiguration,
+    WeaviateVectorSimilarityTextSearchSettingsConfiguration,
+    WeaviateKeywordSearchSettingsConfiguration,
+]
+
+
+class RagSearchSettingConfigurationVersion(BaseModel):
+    setting_configuration_id: uuid.UUID = Field(
+        description="ID of the parent search setting configuration.",
+    )
+    version_number: int = Field(
+        description="Version number of the search setting configuration.",
+    )
+    tags: Optional[list[str]] = Field(
+        default=None,
+        description="Optional list of tags configured for this version of the search settings configuration.",
+    )
+    settings: RagSearchSettingConfigurationTypes = Field(
+        description="Search settings configuration for a search request to a RAG provider.",
+    )
+    created_at: datetime = Field(
+        description="Time the RAG search settings configuration version was created.",
+    )
+    updated_at: datetime = Field(
+        description="Time the RAG search settings configuration version was updated.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: RagSearchSettingConfigurationRequest,
+        setting_config_id: uuid.UUID,
+    ) -> "RagSearchSettingConfigurationVersion":
+        curr_time = datetime.now()
+
+        if isinstance(
+            request.settings,
+            WeaviateHybridSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateHybridSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        elif isinstance(
+            request.settings,
+            WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        elif isinstance(
+            request.settings,
+            WeaviateKeywordSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateKeywordSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported settings kind: {type(request.settings)}.",
+            )
+
+        return RagSearchSettingConfigurationVersion(
+            version_number=1,
+            tags=request.tags,
+            setting_configuration_id=setting_config_id,
+            settings=settings,
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfigurationVersion:
+        return DatabaseRagSearchSettingConfigurationVersion(
+            setting_configuration_id=self.setting_configuration_id,
+            version_number=self.version_number,
+            settings=self.settings.model_dump(mode="json"),
+            tags=self.tags,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> RagSearchSettingConfigurationVersionResponse:
+        return RagSearchSettingConfigurationVersionResponse(
+            setting_configuration_id=self.setting_configuration_id,
+            version_number=self.version_number,
+            settings=self.settings.to_response_model(),
+            tags=self.tags,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_model: DatabaseRagSearchSettingConfigurationVersion,
+    ) -> "RagSearchSettingConfigurationVersion":
+        # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
+        settings_dict = db_model.settings
+        search_kind = settings_dict.get("search_kind")
+
+        # Discriminate by search_kind field (stored as string in JSON)
+        if search_kind == RagSearchKind.HYBRID_SEARCH.value:
+            settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
+                settings_dict,
+            )
+        elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
+            settings = (
+                WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            )
+        elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
+            settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
+                settings_dict,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
+            )
+
+        return RagSearchSettingConfigurationVersion(
+            setting_configuration_id=db_model.setting_configuration_id,
+            version_number=db_model.version_number,
+            settings=settings,
+            tags=db_model.tags,
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
+        )
+
+
+class RagSearchSettingConfiguration(BaseModel):
+    id: uuid.UUID = Field(description="ID of the search setting configuration.")
+    task_id: str = Field(description="ID of the parent task.")
+    rag_provider_id: Optional[uuid.UUID] = Field(
+        description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
+    )
+    all_possible_tags: Optional[list[str]] = Field(
+        defaeult=None,
+        description="Set of all tags applied for any version of the settings configuration.",
+    )
+    name: str = Field(description="Name of the search setting configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the search setting configuration.",
+    )
+    latest_version_number: int = Field(
+        description="The latest version number of the search settings configuration.",
+    )
+    latest_version: RagSearchSettingConfigurationVersion = Field(
+        description="The latest version of the search settings configuration.",
+    )
+    created_at: datetime = Field(
+        description="Time the RAG search settings configuration was created.",
+    )
+    updated_at: datetime = Field(
+        description="Time the RAG search settings configuration was updated. Will be updated if a new version of the configuration was created.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: RagSearchSettingConfigurationRequest,
+        task_id: str,
+    ) -> "RagSearchSettingConfiguration":
+        setting_config_id = uuid.uuid4()
+        curr_time = datetime.now()
+        return RagSearchSettingConfiguration(
+            id=setting_config_id,
+            task_id=task_id,
+            rag_provider_id=request.rag_provider_id,
+            all_possible_tags=(
+                list(
+                    set(request.tags),  # set() removes duplicates if needed
+                )
+                if request.tags
+                else request.tags
+            ),
+            name=request.name,
+            description=request.description,
+            latest_version_number=1,
+            latest_version=RagSearchSettingConfigurationVersion._from_request_model(
+                request,
+                setting_config_id,
+            ),
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfiguration:
+        return DatabaseRagSearchSettingConfiguration(
+            id=self.id,
+            task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
+            name=self.name,
+            description=self.description,
+            latest_version_number=self.latest_version_number,
+            latest_version=self.latest_version._to_database_model(),
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> RagSearchSettingConfigurationResponse:
+        return RagSearchSettingConfigurationResponse(
+            id=self.id,
+            task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
+            name=self.name,
+            description=self.description,
+            latest_version_number=self.latest_version_number,
+            latest_version=self.latest_version.to_response_model(),
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_model: DatabaseRagSearchSettingConfiguration,
+    ) -> "RagSearchSettingConfiguration":
+        return RagSearchSettingConfiguration(
+            id=db_model.id,
+            task_id=db_model.task_id,
+            rag_provider_id=db_model.rag_provider_id,
+            all_possible_tags=db_model.all_possible_tags,
+            name=db_model.name,
+            description=db_model.description,
+            latest_version_number=db_model.latest_version_number,
+            latest_version=RagSearchSettingConfigurationVersion._from_database_model(
+                db_model.latest_version,
+            ),
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
+        )
