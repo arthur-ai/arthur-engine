@@ -84,12 +84,25 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
 
   // When the content changes, whether by user or hydration, update the keyword values
   useEffect(() => {
-    let extractedKeywords: string[] = [];
+    const allKeywords = new Set<string>();
+
     if (typeof content === "string") {
-      extractedKeywords = extractMustacheKeywords(content).keywords;
-    } else {
-      extractedKeywords = content.map((item) => item.text || "").filter((text) => text !== null);
+      // Extract mustache keywords from string content
+      const keywords = extractMustacheKeywords(content).keywords;
+      keywords.forEach((keyword) => allKeywords.add(keyword));
+    } else if (Array.isArray(content)) {
+      // Extract mustache keywords from each OpenAIMessageItem with string text field
+      content.forEach((item) => {
+        // Only extract keywords if the item has a text field that is a string
+        if (item.text && typeof item.text === "string") {
+          const keywords = extractMustacheKeywords(item.text).keywords;
+          keywords.forEach((keyword) => allKeywords.add(keyword));
+        }
+        // Skip items without text or with non-string text (e.g., image_url items)
+      });
     }
+
+    const extractedKeywords = Array.from(allKeywords);
 
     if (extractedKeywords.length > 0) {
       dispatch({
