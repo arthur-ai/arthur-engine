@@ -1,6 +1,5 @@
 import Editor from "@monaco-editor/react";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import DataObjectIcon from "@mui/icons-material/DataObject";
 import GeneratingTokensIcon from "@mui/icons-material/GeneratingTokens"; // Probably change in future
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -92,11 +91,6 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
             <Tooltip title="Popout Response">
               <IconButton aria-label="popout_response" onClick={handlePopoutOpen} size="small">
                 <OpenInNewIcon color="primary" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Format Response">
-              <IconButton aria-label="format_output" onClick={handleOpen} size="small">
-                <DataObjectIcon color="primary" />
               </IconButton>
             </Tooltip>
           </div>

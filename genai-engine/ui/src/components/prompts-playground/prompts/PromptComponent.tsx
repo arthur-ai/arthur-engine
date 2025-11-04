@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
 import { usePromptContext } from "../PromptsPlaygroundContext";
@@ -14,6 +14,7 @@ import { toCompletionRequest } from "../utils";
 import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
+import ResizableSplitter from "./ResizableSplitter";
 import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
@@ -31,6 +32,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState<boolean>(false);
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
+  const [messagesHeightRatio, setMessagesHeightRatio] = useState<number>(0.7); // Default: 70% messages, 30% response
+  const containerRef = useRef<HTMLDivElement>(null);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { state, dispatch } = usePromptContext();
@@ -90,10 +93,14 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     }
   }, [prompt.running, runPrompt]);
 
+  const handleResize = useCallback((newRatio: number) => {
+    setMessagesHeightRatio(newRatio);
+  }, []);
+
   return (
     <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
-      <Container component="div" className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
-        <div className="flex justify-between items-center gap-1 mb-2">
+      <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
+        <div className="flex justify-between items-center gap-1 mb-2 flex-shrink-0">
           <div className="flex justify-start items-center gap-1">
             {prompt.tools.length > 0 ? (
               <Badge badgeContent={prompt.tools.length} color="primary">
@@ -120,22 +127,39 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         <div className="min-w-[300px] flex-shrink-0">
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
-        <div className="mt-1 flex-1 min-h-0">
-          <Paper elevation={2} className="p-1 h-full">
-            <MessagesSection prompt={prompt} />
-          </Paper>
-        </div>
-        <div className="mt-1 flex-shrink-0" style={{ minHeight: "30%" }}>
-          <Paper elevation={2} className="p-1 h-full">
-            <OutputField
-              promptId={prompt.id}
-              running={prompt.running || false}
-              runResponse={prompt.runResponse}
-              responseFormat={prompt.responseFormat}
-              dialogOpen={responseSchemaDialogOpen}
-              onCloseDialog={() => setResponseSchemaDialogOpen(false)}
-            />
-          </Paper>
+        <div className="mt-1 flex-1 min-h-0 flex flex-col">
+          <div
+            className="flex-shrink-0"
+            style={{
+              flexBasis: `${messagesHeightRatio * 100}%`,
+              minHeight: "30%",
+              maxHeight: "70%",
+            }}
+          >
+            <Paper elevation={2} className="p-1 h-full">
+              <MessagesSection prompt={prompt} />
+            </Paper>
+          </div>
+          <ResizableSplitter onResize={handleResize} minTopRatio={0.3} minBottomRatio={0.3} />
+          <div
+            className="flex-shrink-0"
+            style={{
+              flexBasis: `${(1 - messagesHeightRatio) * 100}%`,
+              minHeight: "30%",
+              maxHeight: "70%",
+            }}
+          >
+            <Paper elevation={2} className="p-1 h-full">
+              <OutputField
+                promptId={prompt.id}
+                running={prompt.running || false}
+                runResponse={prompt.runResponse}
+                responseFormat={prompt.responseFormat}
+                dialogOpen={responseSchemaDialogOpen}
+                onCloseDialog={() => setResponseSchemaDialogOpen(false)}
+              />
+            </Paper>
+          </div>
         </div>
       </Container>
       <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={nameInputValue} />
