@@ -250,10 +250,9 @@ const PromptsPlayground = () => {
               {state.prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
-                  className={state.prompts.length === 1 ? "flex-1 h-full" : "h-full"}
+                  className="flex-1 h-full"
                   sx={{
                     minWidth: 750,
-                    ...(state.prompts.length > 1 && { maxWidth: 1536 }), // xl breakpoint from MUI
                     flexShrink: 0,
                   }}
                 >
