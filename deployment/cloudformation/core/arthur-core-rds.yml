@@ -87,7 +87,7 @@ Resources:
       DBClusterIdentifier: !Sub "${ArthurResourceNamespace}-db-cluster${ArthurResourceNameSuffix}"
       DatabaseName: !Ref ArthurRDSDatabaseName
       Engine: 'aurora-postgresql'
-      EngineVersion: '15.3'
+      EngineVersion: '15'
       ServerlessV2ScalingConfiguration:
         MinCapacity: !Ref ArthurRDSScalingConfigurationMinCapacity
         MaxCapacity: !Ref ArthurRDSScalingConfigurationMaxCapacity
