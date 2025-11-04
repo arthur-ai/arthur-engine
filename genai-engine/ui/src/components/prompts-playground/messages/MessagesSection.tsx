@@ -1,12 +1,6 @@
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import AddIcon from "@mui/icons-material/Add";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import Collapse from "@mui/material/Collapse";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import React, { useState } from "react";
+import React from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
@@ -18,7 +12,6 @@ interface MessagesSectionProps {
 }
 
 const MessagesSection = ({ prompt }: MessagesSectionProps) => {
-  const [isExpanded, setIsExpanded] = useState(true);
   const { dispatch } = usePromptContext();
 
   const sensors = useSensors(
@@ -31,18 +24,6 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  const handleExpand = () => {
-    setIsExpanded((prev) => !prev);
-  };
-
-  const handleAddMessage = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    dispatch({
-      type: "addMessage",
-      payload: { parentId: prompt.id },
-    });
-  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -63,21 +44,11 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
   };
 
   return (
-    <div>
-      <div onClick={handleExpand} className="flex justify-between cursor-pointer">
-        <div className="flex items-center">
-          {isExpanded ? <ExpandMoreIcon /> : <ChevronRightIcon />}
-          <span>Messages</span>
-        </div>
-        <div className="flex items-center">
-          <Tooltip title="Add Message">
-            <IconButton aria-label="add_message" onClick={handleAddMessage}>
-              <AddIcon color="primary" />
-            </IconButton>
-          </Tooltip>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex justify-start items-center">
+        <span>Messages</span>
       </div>
-      <Collapse in={isExpanded}>
+      <div className="overflow-y-auto flex-1 min-h-0">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={prompt.messages.map((msg) => msg.id)} strategy={verticalListSortingStrategy}>
             {prompt.messages.map((message) => (
@@ -92,7 +63,7 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
             ))}
           </SortableContext>
         </DndContext>
-      </Collapse>
+      </div>
     </div>
   );
 };

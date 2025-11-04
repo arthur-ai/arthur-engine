@@ -30,6 +30,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState<boolean>(false);
+  const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { state, dispatch } = usePromptContext();
@@ -68,6 +69,17 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
       });
   }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
 
+  const handleAddMessage = () => {
+    dispatch({
+      type: "addMessage",
+      payload: { parentId: prompt.id },
+    });
+  };
+
+  const handleOpenResponseSchemaDialog = () => {
+    setResponseSchemaDialogOpen(true);
+  };
+
   useEffect(() => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
@@ -81,8 +93,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   return (
     <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
       <Container component="div" className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
-        <div className="flex justify-between items-center gap-1">
-          <div className="flex justify-start items-center">
+        <div className="flex justify-between items-center gap-1 mb-2">
+          <div className="flex justify-start items-center gap-1">
             {prompt.tools.length > 0 ? (
               <Badge badgeContent={prompt.tools.length} color="primary">
                 <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)}>
@@ -94,6 +106,12 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
                 Tools
               </Button>
             )}
+            <Button variant="outlined" size="small" onClick={handleAddMessage}>
+              Add Message
+            </Button>
+            <Button variant="outlined" size="small" onClick={handleOpenResponseSchemaDialog}>
+              Format Response
+            </Button>
           </div>
           <div className="flex justify-end items-center gap-1 flex-shrink-0">
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
@@ -114,6 +132,8 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
               running={prompt.running || false}
               runResponse={prompt.runResponse}
               responseFormat={prompt.responseFormat}
+              dialogOpen={responseSchemaDialogOpen}
+              onCloseDialog={() => setResponseSchemaDialogOpen(false)}
             />
           </Paper>
         </div>

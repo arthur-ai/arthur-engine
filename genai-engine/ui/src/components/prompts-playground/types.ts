@@ -179,6 +179,8 @@ interface OutputFieldProps {
   running: boolean;
   runResponse: AgenticPromptRunResponse | null;
   responseFormat: string | undefined;
+  dialogOpen: boolean;
+  onCloseDialog: () => void;
 }
 
 interface SavePromptDialogProps {

@@ -14,7 +14,7 @@ import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { OutputFieldProps } from "../types";
@@ -32,21 +32,18 @@ const getFormatValue = (format: string | undefined) => {
   return format !== undefined ? format : DEFAULT_RESPONSE_FORMAT;
 };
 
-const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputFieldProps) => {
+const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
-  const [isOpen, setIsOpen] = useState(false);
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const [copiedFormat, setCopiedFormat] = useState<string | undefined>(getFormatValue(responseFormat));
 
-  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleOpen = useCallback(() => {
     // Store the current value before opening
     setCopiedFormat(getFormatValue(responseFormat));
-    setIsOpen(true);
-  };
+  }, [responseFormat]);
 
   const handleClose = () => {
-    setIsOpen(false);
+    onCloseDialog();
   };
 
   const handlePopoutOpen = () => {
@@ -77,6 +74,12 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
       payload: { promptId, responseFormat: copiedFormat },
     });
   };
+
+  useEffect(() => {
+    if (dialogOpen) {
+      handleOpen();
+    }
+  }, [dialogOpen, handleOpen]);
 
   return (
     <>
@@ -138,7 +141,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat }: OutputF
           </div>
         </div>
       </div>
-      <Dialog open={isOpen} onClose={handleClose} fullWidth>
+      <Dialog open={dialogOpen} onClose={onCloseDialog} fullWidth>
         <DialogTitle>Format Response Output</DialogTitle>
         <DialogContent>
           <div style={{ height: "300px", width: "100%" }}>
