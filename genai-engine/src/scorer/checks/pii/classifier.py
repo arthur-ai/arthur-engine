@@ -67,7 +67,6 @@ class BinaryPIIDataClassifier:
         PIIEntityTypes.LOCATION.value: is_location,
         PIIEntityTypes.EMAIL_ADDRESS.value: is_email_address,
         PIIEntityTypes.CREDIT_CARD.value: is_credit_card,
-        # DATE_TIME uses date_spacy + pattern matching, no additional validation needed
     }
 
     def __init__(self):
