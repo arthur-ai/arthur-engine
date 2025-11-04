@@ -12,15 +12,18 @@ import Snackbar from "@mui/material/Snackbar";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import MessagesSection from "./MessagesSection";
+import MessagesSection from "../messages/MessagesSection";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { PromptComponentProps } from "../types";
+import { toCompletionRequest } from "../utils";
+
 import ModelParamsDialog from "./ModelParamsDialog";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
-import { usePromptContext } from "./PromptsPlaygroundContext";
 import SavePromptDialog from "./SavePromptDialog";
 import Tools from "./Tools";
-import { PromptComponentProps } from "./types";
-import { toCompletionRequest } from "./utils";
+
+
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";

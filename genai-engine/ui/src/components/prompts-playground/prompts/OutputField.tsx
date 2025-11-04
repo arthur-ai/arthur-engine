@@ -18,8 +18,8 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { OutputFieldProps } from "./types";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { OutputFieldProps } from "../types";
 
 const DEFAULT_RESPONSE_FORMAT = JSON.stringify(
   {

@@ -7,10 +7,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
-import VersionSelector from "./prompt-selectors/VersionSelector";
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { PromptType } from "./types";
-import { toFrontendPrompt } from "./utils";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { PromptType } from "../types";
+import { toFrontendPrompt } from "../utils";
+
+import VersionSelector from "./VersionSelector";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";

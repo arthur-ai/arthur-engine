@@ -8,9 +8,10 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { PromptType } from "../types";
+
 import SortableMessage from "./SortableMessage";
-import { PromptType } from "./types";
 
 interface MessagesSectionProps {
   prompt: PromptType;

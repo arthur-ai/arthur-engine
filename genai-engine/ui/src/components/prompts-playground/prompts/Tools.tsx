@@ -10,8 +10,8 @@ import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { PromptType } from "./types";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { PromptType } from "../types";
 
 // Helper function to render tool choice options consistently
 const renderToolChoiceOption = (value: string, toolName?: string) => {

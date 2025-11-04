@@ -10,10 +10,11 @@ import Tooltip from "@mui/material/Tooltip";
 import { debounce } from "@mui/material/utils";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
+import extractMustacheKeywords from "../mustacheExtractor";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
+
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
-import extractMustacheKeywords from "./mustacheExtractor";
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "./types";
 
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 

@@ -12,7 +12,7 @@ import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import PromptComponent from "./PromptComponent";
+import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import { spanToPrompt } from "./utils";

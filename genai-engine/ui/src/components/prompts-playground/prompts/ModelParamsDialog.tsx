@@ -11,8 +11,8 @@ import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import React, { useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { ModelParametersType } from "./types";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { ModelParametersType } from "../types";
 
 const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
 

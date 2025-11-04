@@ -9,8 +9,8 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import React, { useCallback, useEffect, useState } from "react";
 
-import { SavePromptDialogProps } from "./types";
-import { toBackendPromptBaseConfig } from "./utils";
+import { SavePromptDialogProps } from "../types";
+import { toBackendPromptBaseConfig } from "../utils";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
