@@ -179,8 +179,8 @@ const PromptSelectors = ({
   );
 
   return (
-    <div className="grid grid-cols-[auto_auto_auto_auto] gap-1">
-      <div className="">
+    <div className="flex gap-1 min-w-0">
+      <div className="flex-1 min-w-0">
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
           options={state.backendPrompts}
@@ -225,7 +225,7 @@ const PromptSelectors = ({
         />
       </div>
       <VersionSelector promptName={currentPromptName} promptId={prompt.id} currentVersion={prompt.version} onVersionSelect={handleVersionSelect} />
-      <div className="w-full">
+      <div className="flex-1 min-w-0">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
@@ -246,7 +246,7 @@ const PromptSelectors = ({
           />
         </Tooltip>
       </div>
-      <div className="w-full">
+      <div className="flex-1 min-w-0">
         <Autocomplete
           id={`model-${prompt.id}`}
           options={availableModels}

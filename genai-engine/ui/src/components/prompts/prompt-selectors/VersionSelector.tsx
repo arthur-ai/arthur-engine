@@ -65,7 +65,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
     return null;
   }
   return (
-    <div className="min-w-[200px]">
+    <div className="flex-1 min-w-0">
       <Autocomplete<AgenticPromptVersionResponse>
         id={`version-select-${promptId}`}
         options={versions}

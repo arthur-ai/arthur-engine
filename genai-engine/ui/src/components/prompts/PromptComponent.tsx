@@ -116,11 +116,11 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
-        <div className="grid grid-cols-[7fr_2fr] gap-1">
-          <div className="flex justify-start items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
+          <div className="flex-1 min-w-[300px]">
             <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
           </div>
-          <div className="flex justify-end items-center gap-1">
+          <div className="flex justify-end items-center gap-1 flex-shrink-0">
             <Tooltip title="Run Prompt" placement="top-start" arrow>
               <span>
                 <IconButton aria-label="run prompt" onClick={handleRunPrompt} disabled={runDisabled} loading={prompt.running}>
