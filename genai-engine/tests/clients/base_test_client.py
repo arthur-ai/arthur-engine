@@ -74,9 +74,13 @@ from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
+    RagSearchSettingConfigurationRequestTypes,
     RagVectorSimilarityTextSearchSettingRequest,
+    WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
     WeaviateKeywordSearchSettingsRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsRequest,
 )
 from schemas.response_schemas import (
@@ -86,6 +90,7 @@ from schemas.response_schemas import (
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
+    RagSearchSettingConfigurationResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
@@ -2811,6 +2816,176 @@ class GenaiEngineTestClientBase(httpx.Client):
             resp.status_code,
             (
                 SearchRagProviderCollectionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider_settings(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        settings: RagSearchSettingConfigurationRequestTypes,
+        description: str = None,
+        tags: list[str] = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration."""
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_provider_settings(
+        self,
+        setting_configuration_id: str,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Get a RAG provider settings configuration by ID."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_provider_settings(self, setting_configuration_id: str) -> int:
+        """Delete a RAG provider settings configuration."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_rag_provider_settings_hybrid(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        collection_name: str,
+        description: str = None,
+        tags: list[str] = None,
+        alpha: float = 0.7,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration with hybrid search."""
+        settings = WeaviateHybridSearchSettingsConfigurationRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            alpha=alpha,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+        )
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider_settings_vector_similarity(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        collection_name: str,
+        description: str = None,
+        tags: list[str] = None,
+        certainty: float = None,
+        distance: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration with vector similarity search."""
+        settings = WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            certainty=certainty,
+            distance=distance,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+        )
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
