@@ -25,6 +25,7 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
+from schemas.llm_eval_schemas import LLMEvalConfig, ScoreRange
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -653,3 +654,21 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
             )
 
         return query
+
+
+class CreateEvalRequest(BaseModel):
+    model_name: str = Field(
+        description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
+    )
+    instructions: str = Field(description="Instructions for the llm eval")
+    score_range: ScoreRange = Field(
+        default=ScoreRange(min_score=0, max_score=1),
+        description="Score range for the llm eval (defaults to boolean)",
+    )
+    config: Optional[LLMEvalConfig] = Field(
+        default=None,
+        description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
+    )

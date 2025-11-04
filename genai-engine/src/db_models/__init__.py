@@ -50,6 +50,7 @@ from db_models.telemetry_models import (
 )
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.secret_storage_models import DatabaseSecretStorage
+from db_models.llm_eval_models import DatabaseLLMEval
 
 __all__ = [
     # Base classes
@@ -103,4 +104,6 @@ __all__ = [
     # RAG provider models
     "DatabaseRagProviderConfiguration",
     "DatabaseApiKeyRagProviderConfiguration",
+    # LLM Eval models
+    "DatabaseLLMEval",
 ]
