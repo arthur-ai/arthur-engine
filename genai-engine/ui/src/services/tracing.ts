@@ -1,0 +1,169 @@
+import {
+  IncomingFilter,
+  mapFiltersToRequest,
+} from "@/components/traces/components/filtering/mapper";
+import { Api } from "@/lib/api";
+
+// Traces
+
+type GetFilteredTracesParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+  filters: IncomingFilter[];
+};
+
+export async function getFilteredTraces(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters }: GetFilteredTracesParams
+) {
+  const startTime = new Date();
+  startTime.setDate(startTime.getDate() - 30);
+
+  const response = await api.api.listTracesMetadataApiV1TracesGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+    sort: "desc",
+    start_time: startTime.toISOString(),
+    ...mapFiltersToRequest(filters),
+  });
+
+  return response.data;
+}
+
+type GetTraceParams = {
+  traceId: string;
+};
+
+export async function getTrace(api: Api<unknown>, { traceId }: GetTraceParams) {
+  const response = await api.api.getTraceByIdApiV1TracesTraceIdGet(traceId);
+
+  return response.data;
+}
+
+type GetFilteredSpansParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+  filters: IncomingFilter[];
+};
+
+export async function computeTraceMetrics(
+  api: Api<unknown>,
+  { traceId }: GetTraceParams
+) {
+  const response =
+    await api.api.computeTraceMetricsApiV1TracesTraceIdMetricsGet(traceId);
+  return response.data;
+}
+
+// Spans
+
+export async function getFilteredSpans(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters }: GetFilteredSpansParams
+) {
+  const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+    ...mapFiltersToRequest(filters),
+  });
+
+  return response.data;
+}
+
+type GetSpanParams = {
+  spanId: string;
+};
+
+export async function getSpan(api: Api<unknown>, { spanId }: GetSpanParams) {
+  const response = await api.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
+  return response.data;
+}
+
+export async function computeSpanMetrics(
+  api: Api<unknown>,
+  { spanId }: GetSpanParams
+) {
+  const response =
+    await api.api.computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet(spanId);
+  return response.data;
+}
+
+// Sessions
+
+type GetSessionsParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+  filters: IncomingFilter[];
+};
+
+export async function getFilteredSessions(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters }: GetSessionsParams
+) {
+  const response = await api.api.listSessionsMetadataApiV1TracesSessionsGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+    ...mapFiltersToRequest(filters),
+  });
+  return response.data;
+}
+
+type GetSessionParams = {
+  sessionId: string;
+};
+
+export async function getSession(
+  api: Api<unknown>,
+  { sessionId }: GetSessionParams
+) {
+  const response =
+    await api.api.getSessionTracesApiV1TracesSessionsSessionIdGet({
+      sessionId,
+    });
+  return response.data;
+}
+
+// Users
+
+type GetUsersParams = {
+  taskId: string;
+  page: number;
+  pageSize: number;
+  filters: IncomingFilter[];
+};
+
+export async function getUsers(
+  api: Api<unknown>,
+  { taskId, page, pageSize, filters }: GetUsersParams
+) {
+  const response = await api.api.listUsersMetadataApiV1TracesUsersGet({
+    task_ids: [taskId],
+    page,
+    page_size: pageSize,
+    ...mapFiltersToRequest(filters),
+  });
+
+  return response.data;
+}
+
+type GetUserParams = {
+  taskId: string;
+  userId: string;
+};
+
+export async function getUser(
+  api: Api<unknown>,
+  { taskId, userId }: GetUserParams
+) {
+  const response = await api.api.getUserDetailsApiV1TracesUsersUserIdGet({
+    userId,
+    task_ids: [taskId],
+  });
+  return response.data;
+}

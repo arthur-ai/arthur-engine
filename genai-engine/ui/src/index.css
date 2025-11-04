@@ -30,7 +30,7 @@ body {
 }
 
 /* Force custom colors for Mustache highlighting */
-.token.template-punctuation,
+/* .token.template-punctuation,
 .token.punctuation {
   color: blue !important;
 }
@@ -48,4 +48,9 @@ body {
 
 .token.attr-name {
   color: darkred !important;
+}
+*/
+
+.root {
+  isolation: isolate;
 }
