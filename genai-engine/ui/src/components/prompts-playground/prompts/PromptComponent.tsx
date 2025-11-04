@@ -17,7 +17,7 @@ import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptComponentProps } from "../types";
 import { toCompletionRequest } from "../utils";
 
-import ModelParamsDialog from "./ModelParamsDialog";
+import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
 import SavePromptDialog from "./SavePromptDialog";
@@ -34,7 +34,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
-  const [paramsModelOpen, setParamsModelOpen] = useState<boolean>(false);
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -74,35 +73,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
       });
   }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
 
-  const handleSavePromptOpen = () => {
-    setSavePromptOpen(true);
-  };
-
-  const handleDeletePrompt = useCallback(() => {
-    dispatch({
-      type: "deletePrompt",
-      payload: { id: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleDuplicatePrompt = useCallback(() => {
-    dispatch({
-      type: "duplicatePrompt",
-      payload: { id: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleRunPrompt = useCallback(() => {
-    dispatch({
-      type: "runPrompt",
-      payload: { promptId: prompt.id },
-    });
-  }, [dispatch, prompt.id]);
-
-  const handleParamsModelOpen = () => {
-    setParamsModelOpen(true);
-  };
-
   useEffect(() => {
     setNameInputValue(currentPromptName);
   }, [currentPromptName]);
@@ -113,50 +83,19 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     }
   }, [prompt.running, runPrompt]);
 
-  const runDisabled = prompt.running || prompt.modelName === "";
   return (
     <div className="h-full shadow-md rounded-lg p-4 bg-gray-200">
       <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
-        <div className="flex flex-wrap items-center gap-1">
-          <div className="flex-1 min-w-[300px]">
-            <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
+        <div className="flex justify-between items-center gap-1">
+          <div className="flex justify-start items-center">
+            <div>TOOL</div>
           </div>
           <div className="flex justify-end items-center gap-1 flex-shrink-0">
-            <Tooltip title="Run Prompt" placement="top-start" arrow>
-              <span>
-                <IconButton aria-label="run prompt" onClick={handleRunPrompt} disabled={runDisabled} loading={prompt.running}>
-                  <PlayArrowIcon color={runDisabled ? "disabled" : "success"} />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Duplicate Prompt" placement="top-start" arrow>
-              <IconButton aria-label="duplicate" onClick={handleDuplicatePrompt}>
-                <ContentCopyIcon color="secondary" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Model Parameters" placement="top-start" arrow>
-              <IconButton aria-label="model parameters" onClick={handleParamsModelOpen}>
-                <TuneIcon color="info" />
-              </IconButton>
-            </Tooltip>
-            <ModelParamsDialog
-              open={paramsModelOpen}
-              setOpen={setParamsModelOpen}
-              promptId={prompt.id}
-              name={prompt.name}
-              modelParameters={prompt.modelParameters}
-            />
-            <Tooltip title="Save Prompt" placement="top-start" arrow>
-              <IconButton aria-label="save" onClick={handleSavePromptOpen}>
-                <SaveIcon color="primary" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Delete Prompt" placement="top-start" arrow>
-              <IconButton aria-label="delete" onClick={handleDeletePrompt}>
-                <DeleteIcon color="error" />
-              </IconButton>
-            </Tooltip>
+            <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
+        </div>
+        <div className="flex-1 min-w-[300px]">
+          <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
         <div className="mt-1">
           <Paper elevation={2} className="p-1">
