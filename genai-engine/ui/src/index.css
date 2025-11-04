@@ -32,20 +32,20 @@ body {
 /* Force custom colors for Mustache highlighting */
 .token.template-punctuation,
 .token.punctuation {
-  color: #b1fa56 !important;
+  color: blue !important;
 }
 
 .token.template-string,
 .token.variable,
 .token.property,
 .token.string {
-  color: #ac37f6 !important;
+  color: darkred !important;
 }
 
 .token.tag {
-  color: #b1fa56 !important;
+  color: blue !important;
 }
 
 .token.attr-name {
-  color: #ac37f6 !important;
+  color: darkred !important;
 }

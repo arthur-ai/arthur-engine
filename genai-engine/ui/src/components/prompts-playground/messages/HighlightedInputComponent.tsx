@@ -85,34 +85,6 @@ const HiddenTextarea = styled("textarea")({
   caretColor: "black", // This makes the cursor visible
 });
 
-const customStyle = {
-  ...oneLight,
-  "token.template-punctuation": {
-    color: "#b1fa56", // Yellow-green for braces {{ }}
-  },
-  "token.template-string": {
-    color: "#ac37f6", // Purple for variable content
-  },
-  "token.variable": {
-    color: "#ac37f6", // Purple for variable content
-  },
-  "token.property": {
-    color: "#ac37f6", // Purple for property names
-  },
-  "token.punctuation": {
-    color: "#b1fa56", // Yellow-green for braces
-  },
-  "token.string": {
-    color: "#ac37f6", // Purple for string content
-  },
-  "token.tag": {
-    color: "#b1fa56", // Yellow-green for tags
-  },
-  "token.attr-name": {
-    color: "#ac37f6", // Purple for attribute names
-  },
-};
-
 export const HighlightedInputComponent = ({
   value,
   onChange,
@@ -181,7 +153,6 @@ export const HighlightedInputComponent = ({
         {label && <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>{label}</FloatingLabel>}
         <SyntaxHighlighter
           language="handlebars"
-          style={customStyle}
           customStyle={{
             margin: 0,
             padding: "16.5px 14px",
