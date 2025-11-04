@@ -1,76 +1,33 @@
+import { FormControl, InputLabel, MenuItem, Select, Stack } from "@mui/material";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-import React, { Activity, useEffect, useEffectEvent, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { v4 as uuidv4 } from "uuid";
+import React, { Activity, useState } from "react";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
+import { Level, TIME_RANGES, TimeRange } from "./traces/constants";
+import { useSyncUrlState } from "./traces/hooks/useSyncUrlState";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
-import {
-  HistoryStore,
-  TargetBase,
-  useTracesHistoryStore,
-} from "./traces/stores/history.store";
-
-const LEVELS = ["trace", "span", "session", "user"] as const;
-type Level = (typeof LEVELS)[number];
 
 export const TracesView: React.FC = () => {
   const [level, setLevel] = useState<Level>("trace");
-  const reset = useTracesHistoryStore((state) => state.reset);
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const onHistoryChange = useEffectEvent((state: HistoryStore<TargetBase>) => {
-    const current = state.current();
-
-    const searchParams = new URLSearchParams();
-    if (!current) return setSearchParams(searchParams);
-
-    searchParams.set("target", current.target.type);
-    searchParams.set("id", current.target.id.toString());
-
-    setSearchParams(searchParams);
-  });
-
-  const onInitialLoad = useEffectEvent(() => {
-    const target = searchParams.get("target") as Level;
-    const id = searchParams.get("id") as string;
-
-    if (!target || !id) return;
-    if (!LEVELS.includes(target)) return;
-
-    setLevel(target);
-    reset([
-      {
-        key: uuidv4(),
-        target: { type: target, id },
-        ts: Date.now(),
-      },
-    ]);
-  });
-
-  useEffect(() => {
-    return useTracesHistoryStore.subscribe(onHistoryChange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(onInitialLoad, []);
+  const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
 
   const handleLevelChange = (_event: React.SyntheticEvent, newValue: Level) => {
     setLevel(newValue);
   };
 
+  useSyncUrlState({ onLevelChange: setLevel });
+
   return (
     <>
       <Box
         sx={{
-          maxHeight: "calc(100vh - 88px)",
+          height: "calc(100vh - 88px)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -78,30 +35,52 @@ export const TracesView: React.FC = () => {
           gap: 2,
         }}
       >
-        <Tabs value={level} onChange={handleLevelChange}>
-          <Tab value="trace" label="Traces" />
-          <Tab value="span" label="Spans" />
-          <Tab value="session" label="Sessions" />
-          <Tab value="user" label="Users" />
-        </Tabs>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Tabs value={level} onChange={handleLevelChange}>
+            <Tab value="trace" label="Traces" />
+            <Tab value="span" label="Spans" />
+            <Tab value="session" label="Sessions" />
+            <Tab value="user" label="Users" />
+          </Tabs>
+
+          <FormControl size="small" sx={{ ml: "auto" }}>
+            <InputLabel id="time-range-label">Time range</InputLabel>
+            <Select
+              labelId="time-range-label"
+              label="Time range"
+              size="small"
+              value={timeRange}
+              onChange={(event) => setTimeRange(event.target.value as TimeRange)}
+            >
+              <MenuItem value={TIME_RANGES["5 minutes"]}>Past 5 minutes</MenuItem>
+              <MenuItem value={TIME_RANGES["30 minutes"]}>Past 30 minutes</MenuItem>
+              <MenuItem value={TIME_RANGES["1 day"]}>Past 1 day</MenuItem>
+              <MenuItem value={TIME_RANGES["1 week"]}>Past 1 week</MenuItem>
+              <MenuItem value={TIME_RANGES["1 month"]}>Past 1 month</MenuItem>
+              <MenuItem value={TIME_RANGES["3 months"]}>Past 3 months</MenuItem>
+              <MenuItem value={TIME_RANGES["1 year"]}>Past 1 year</MenuItem>
+              <MenuItem value={TIME_RANGES["all time"]}>All time</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
 
         <Activity mode={level === "trace" ? "visible" : "hidden"}>
-          <FilterStoreProvider>
+          <FilterStoreProvider timeRange={timeRange}>
             <TraceLevel />
           </FilterStoreProvider>
         </Activity>
         <Activity mode={level === "span" ? "visible" : "hidden"}>
-          <FilterStoreProvider>
+          <FilterStoreProvider timeRange={timeRange}>
             <SpanLevel />
           </FilterStoreProvider>
         </Activity>
         <Activity mode={level === "session" ? "visible" : "hidden"}>
-          <FilterStoreProvider>
+          <FilterStoreProvider timeRange={timeRange}>
             <SessionLevel />
           </FilterStoreProvider>
         </Activity>
         <Activity mode={level === "user" ? "visible" : "hidden"}>
-          <FilterStoreProvider>
+          <FilterStoreProvider timeRange={timeRange}>
             <UserLevel />
           </FilterStoreProvider>
         </Activity>
