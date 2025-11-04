@@ -1,5 +1,5 @@
-import { FormControl, InputLabel, MenuItem, Select, Stack } from "@mui/material";
 import Box from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import React, { Activity, useState } from "react";
@@ -9,6 +9,7 @@ import { SessionLevel } from "./traces/components/tables/SessionLevel";
 import { SpanLevel } from "./traces/components/tables/SpanLevel";
 import { TraceLevel } from "./traces/components/tables/TraceLevel";
 import { UserLevel } from "./traces/components/tables/UserLevel";
+import { TimeRangeSelect } from "./traces/components/TimeRangeSelect";
 import { Level, TIME_RANGES, TimeRange } from "./traces/constants";
 import { useSyncUrlState } from "./traces/hooks/useSyncUrlState";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
@@ -43,25 +44,7 @@ export const TracesView: React.FC = () => {
             <Tab value="user" label="Users" />
           </Tabs>
 
-          <FormControl size="small" sx={{ ml: "auto" }}>
-            <InputLabel id="time-range-label">Time range</InputLabel>
-            <Select
-              labelId="time-range-label"
-              label="Time range"
-              size="small"
-              value={timeRange}
-              onChange={(event) => setTimeRange(event.target.value as TimeRange)}
-            >
-              <MenuItem value={TIME_RANGES["5 minutes"]}>Past 5 minutes</MenuItem>
-              <MenuItem value={TIME_RANGES["30 minutes"]}>Past 30 minutes</MenuItem>
-              <MenuItem value={TIME_RANGES["1 day"]}>Past 1 day</MenuItem>
-              <MenuItem value={TIME_RANGES["1 week"]}>Past 1 week</MenuItem>
-              <MenuItem value={TIME_RANGES["1 month"]}>Past 1 month</MenuItem>
-              <MenuItem value={TIME_RANGES["3 months"]}>Past 3 months</MenuItem>
-              <MenuItem value={TIME_RANGES["1 year"]}>Past 1 year</MenuItem>
-              <MenuItem value={TIME_RANGES["all time"]}>All time</MenuItem>
-            </Select>
-          </FormControl>
+          <TimeRangeSelect value={timeRange} onValueChange={setTimeRange} />
         </Stack>
 
         <Activity mode={level === "trace" ? "visible" : "hidden"}>
