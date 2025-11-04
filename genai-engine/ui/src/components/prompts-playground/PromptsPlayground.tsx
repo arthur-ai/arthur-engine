@@ -3,12 +3,8 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
 import Drawer from "@mui/material/Drawer";
-import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -16,6 +12,7 @@ import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import { spanToPrompt } from "./utils";
+import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -175,11 +172,6 @@ const PromptsPlayground = () => {
     });
   };
 
-  const handleKeywordValueChange = (keyword: string, value: string) => {
-    dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
-  };
-
-  const variables = Array.from(state.keywords.keys());
   const drawerWidth = 350;
 
   return (
@@ -200,32 +192,7 @@ const PromptsPlayground = () => {
             },
           }}
         >
-          <Paper elevation={0} className="h-full p-2 overflow-y-auto">
-            <Typography variant="h5" className="text-center mb-2">
-              Variables
-            </Typography>
-            <Typography variant="body2" className="text-center mb-2">
-              Variables allow you to create reusable templates by using double curly (mustache) braces like <code>{`{{variable}}`}</code>.
-              When you define a variable below, it will automatically replace all instances of <code>{`{{variable}}`}</code> in your prompt
-              messages. This lets you quickly test different values without editing each message individually.
-            </Typography>
-            <Divider className="my-2" />
-            <Stack spacing={2}>
-              {variables.map((variable) => (
-                <TextField
-                  key={variable}
-                  id={`variable-${variable}`}
-                  label={variable}
-                  value={state.keywords.get(variable)}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    handleKeywordValueChange(variable, e.target.value);
-                  }}
-                  variant="standard"
-                  fullWidth
-                />
-              ))}
-            </Stack>
-          </Paper>
+          <VariableInputs />
         </Drawer>
         <Box component="main" className="flex-1 flex flex-col overflow-hidden">
           <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
