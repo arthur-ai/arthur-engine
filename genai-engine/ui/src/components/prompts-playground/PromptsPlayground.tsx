@@ -192,9 +192,6 @@ const PromptsPlayground = () => {
             },
           }}
         >
-          <VariableInputs />
-        </Drawer>
-        <Box component="main" className="flex-1 flex flex-col overflow-hidden">
           <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
             <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
               <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
@@ -205,6 +202,9 @@ const PromptsPlayground = () => {
               </Button>
             </Stack>
           </Container>
+          <VariableInputs />
+        </Drawer>
+        <Box component="main" className="flex-1 flex flex-col overflow-hidden">
           <Box className="flex-1 overflow-x-auto overflow-y-hidden p-1">
             <Stack direction="row" spacing={1} sx={{ minWidth: "max-content" }}>
               {state.prompts.map((prompt) => (
