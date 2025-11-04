@@ -1,7 +1,6 @@
 import { styled } from "@mui/material/styles";
 import React, { useRef, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 

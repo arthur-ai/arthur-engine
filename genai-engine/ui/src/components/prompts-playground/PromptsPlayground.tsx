@@ -173,6 +173,21 @@ const PromptsPlayground = () => {
   };
 
   const drawerWidth = 350;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // Check if Shift is held (common way to scroll horizontally)
+    // or if horizontal scroll delta is larger than vertical
+    const shouldScrollHorizontally = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
+
+    if (shouldScrollHorizontally) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaX || e.deltaY;
+    }
+  }, []);
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
@@ -181,12 +196,22 @@ const PromptsPlayground = () => {
           variant="permanent"
           anchor="left"
           sx={{
+            zIndex: 1000,
+            backgroundColor: "red",
             width: drawerWidth,
             flexShrink: 0,
+            position: "sticky",
+            top: 0,
+            left: 0,
+            alignSelf: "flex-start",
+            height: "100%",
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              position: "relative",
+              position: "sticky",
+              top: 0,
+              left: 0,
+              height: "100%",
               borderRight: "1px solid",
               borderColor: "divider",
             },
@@ -204,11 +229,19 @@ const PromptsPlayground = () => {
           </Container>
           <VariableInputs />
         </Drawer>
-        <Box component="main" className="flex-1 flex flex-col overflow-hidden">
-          <Box className="flex-1 overflow-x-auto overflow-y-hidden p-1">
+        <Box component="main" className="flex-1 flex flex-col">
+          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1" onWheel={handleWheel}>
             <Stack direction="row" spacing={1} sx={{ minWidth: "max-content" }}>
               {state.prompts.map((prompt) => (
-                <Box key={prompt.id} sx={{ minWidth: 500, flexShrink: 0 }}>
+                <Box
+                  key={prompt.id}
+                  className={state.prompts.length === 1 ? "flex-1 h-full" : "h-full"}
+                  sx={{
+                    minWidth: 750,
+                    ...(state.prompts.length > 1 && { maxWidth: 1536 }), // xl breakpoint from MUI
+                    flexShrink: 0,
+                  }}
+                >
                   <PromptComponent prompt={prompt} />
                 </Box>
               ))}
