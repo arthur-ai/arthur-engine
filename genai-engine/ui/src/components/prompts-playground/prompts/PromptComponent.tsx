@@ -1,4 +1,6 @@
 import Alert from "@mui/material/Alert";
+import Badge from "@mui/material/Badge";
+import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
@@ -13,7 +15,7 @@ import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
 import PromptSelectors from "./PromptSelectors";
 import SavePromptDialog from "./SavePromptDialog";
-import Tools from "./Tools";
+import ToolsDialog from "./ToolsDialog";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
@@ -27,6 +29,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
   const [savePromptOpen, setSavePromptOpen] = useState<boolean>(false);
+  const [toolsDialogOpen, setToolsDialogOpen] = useState<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { state, dispatch } = usePromptContext();
@@ -80,7 +83,17 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
       <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
         <div className="flex justify-between items-center gap-1">
           <div className="flex justify-start items-center">
-            <div>TOOL</div>
+            {prompt.tools.length > 0 ? (
+              <Badge badgeContent={prompt.tools.length} color="primary">
+                <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)}>
+                  Tools
+                </Button>
+              </Badge>
+            ) : (
+              <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)}>
+                Tools
+              </Button>
+            )}
           </div>
           <div className="flex justify-end items-center gap-1 flex-shrink-0">
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
@@ -96,11 +109,6 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         </div>
         <div className="mt-1">
           <Paper elevation={2} className="p-1">
-            <Tools prompt={prompt} />
-          </Paper>
-        </div>
-        <div className="mt-1">
-          <Paper elevation={2} className="p-1">
             <OutputField
               promptId={prompt.id}
               running={prompt.running || false}
@@ -111,6 +119,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
         </div>
       </Container>
       <SavePromptDialog open={savePromptOpen} setOpen={setSavePromptOpen} prompt={prompt} initialName={nameInputValue} />
+      <ToolsDialog open={toolsDialogOpen} setOpen={setToolsDialogOpen} prompt={prompt} />
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />
       </Snackbar>
