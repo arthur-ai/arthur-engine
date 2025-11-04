@@ -24,6 +24,7 @@ from schemas.internal_schemas import (
     ApplicationConfiguration,
     RagProviderConfiguration,
     RagProviderTestConfiguration,
+    RagSearchSettingConfiguration,
     User,
 )
 from schemas.request_schemas import (
@@ -32,12 +33,14 @@ from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
+    RagSearchSettingConfigurationResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
 )
@@ -252,16 +255,17 @@ def test_rag_provider_connection(
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
 ) -> ConnectionCheckResult:
-    # validate task exists - get function will raise a 404 if it doesn't exist
-    task_repo = TaskRepository(
-        db_session,
-        RuleRepository(db_session),
-        MetricRepository(db_session),
-        application_config,
-    )
-    task_repo.get_task_by_id(task_id)
-
     try:
+        # validate task exists - get function will raise a 404 if it doesn't exist
+        task_repo = TaskRepository(
+            db_session,
+            RuleRepository(db_session),
+            MetricRepository(db_session),
+            application_config,
+        )
+        task_repo.get_task_by_id(task_id)
+
+        # execute connection test
         rag_provider_config = RagProviderTestConfiguration._from_request_model(
             request,
         )
@@ -345,5 +349,96 @@ def execute_hybrid_search(
         )
         rag_client_constructor = RagClientConstructor(rag_provider_config)
         return rag_client_constructor.execute_hybrid_search(request)
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/tasks/{task_id}/rag_search_settings",
+    description="Create a new RAG search settings configuration.",
+    response_model=RagSearchSettingConfigurationResponse,
+    tags=[rag_router_tag],
+    operation_id="create_rag_search_settings",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def create_rag_search_settings(
+    request: RagSearchSettingConfigurationRequest,
+    task_id: str = Path(
+        description="ID of the task to create the search settings configuration under.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+) -> RagSearchSettingConfigurationResponse:
+    try:
+        # validate task exists - get function will raise a 404 if it doesn't exist
+        task_repo = TaskRepository(
+            db_session,
+            RuleRepository(db_session),
+            MetricRepository(db_session),
+            application_config,
+        )
+        task_repo.get_task_by_id(task_id)
+
+        # validate rag_provider_id exists
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_providers_repo.get_rag_provider_configuration(request.rag_provider_id)
+
+        # create new settings config
+        rag_providers_repo = RagProvidersRepository(db_session)
+        setting_config = RagSearchSettingConfiguration._from_request_model(
+            request,
+            task_id,
+        )
+        rag_providers_repo.create_rag_setting_configuration(setting_config)
+        return setting_config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_routes.get(
+    "/rag_search_settings/{setting_configuration_id}",
+    description="Get a single RAG setting configuration.",
+    response_model=RagSearchSettingConfigurationResponse,
+    tags=[rag_router_tag],
+    operation_id="get_rag_search_setting",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_rag_search_setting(
+    setting_configuration_id: UUID = Path(
+        description="ID of RAG search setting configuration.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        config = rag_providers_repo.get_rag_setting_configuration(
+            setting_configuration_id,
+        )
+        return config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_routes.delete(
+    "/rag_search_settings/{setting_configuration_id}",
+    description="Delete a RAG search setting configuration.",
+    tags=[rag_router_tag],
+    status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_rag_search_setting",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_rag_search_setting(
+    setting_configuration_id: UUID = Path(
+        description="ID of RAG setting configuration.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_providers_repo.delete_rag_setting_configuration(setting_configuration_id)
+        return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()
