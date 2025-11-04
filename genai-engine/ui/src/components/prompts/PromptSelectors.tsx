@@ -7,10 +7,10 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import VersionSelector from "./prompt-selectors/VersionSelector";
 import { usePromptContext } from "./PromptsPlaygroundContext";
 import { PromptType } from "./types";
 import { toFrontendPrompt } from "./utils";
-import VersionSubmenu from "./VersionSubmenu";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
@@ -74,13 +74,35 @@ const PromptSelectors = ({
   currentPromptName: string;
   onPromptNameChange: (name: string) => void;
 }) => {
-  const promptSelectorRef = useRef<HTMLDivElement>(null);
-  const [versionSubmenuOpen, setVersionSubmenuOpen] = useState(false);
-  const [selectedPromptForVersions, setSelectedPromptForVersions] = useState<string | null>(null);
   const apiClient = useApi();
   const { task } = useTask();
   const { state, dispatch } = usePromptContext();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+
+  const fetchAndLoadPromptVersion = async (promptName: string, version: number) => {
+    if (!apiClient || !task?.id) {
+      throw new Error("API client not available");
+    }
+
+    try {
+      // Fetch the specific version's full data
+      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+        promptName,
+        version.toString(),
+        task?.id
+      );
+      // Convert to frontend format and update prompt
+      const frontendPrompt = toFrontendPrompt(response.data);
+      dispatch({
+        type: "updatePrompt",
+        payload: { promptId: prompt.id, prompt: frontendPrompt },
+      });
+    } catch (error) {
+      console.error("Failed to fetch prompt version:", error);
+      showSnackbar("Failed to load prompt version", "error");
+      throw error;
+    }
+  };
 
   const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: AgenticPromptMetadataResponse | null) => {
     const selection = newValue?.name || "";
@@ -102,15 +124,8 @@ const PromptSelectors = ({
     }
 
     try {
-      if (backendPromptData.versions === 1) {
-        // Single version - fetch directly
-        await fetchAndLoadPromptVersion(selection, task.id, 1);
-        setVersionSubmenuOpen(false);
-      } else {
-        // Multiple versions - open modal
-        setSelectedPromptForVersions(selection);
-        setVersionSubmenuOpen(true);
-      }
+      // Fetch the latest version of the prompt
+      await fetchAndLoadPromptVersion(selection, backendPromptData.versions);
     } catch (error) {
       console.error("Error handling prompt selection:", error);
       showSnackbar("Failed to load prompt", "error");
@@ -118,66 +133,14 @@ const PromptSelectors = ({
     }
   };
 
-  const fetchAndLoadPromptVersion = async (promptName: string, taskId: string, version: number) => {
-    if (!apiClient) {
-      throw new Error("API client not available");
-    }
-
-    try {
-      // Fetch the specific version's full data
-      const response = await apiClient.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-        promptName,
-        version.toString(),
-        taskId
-      );
-
-      // Convert to frontend format and update prompt
-      const frontendPrompt = toFrontendPrompt(response.data);
-      dispatch({
-        type: "updatePrompt",
-        payload: { promptId: prompt.id, prompt: frontendPrompt },
-      });
-    } catch (error) {
-      console.error("Failed to fetch prompt version:", error);
-      throw error;
-    }
-  };
-
   const handleVersionSelect = async (version: number) => {
-    if (!selectedPromptForVersions || !task?.id) {
-      showSnackbar("Prompt or task not available", "error");
-      return;
-    }
-
     try {
-      await fetchAndLoadPromptVersion(selectedPromptForVersions, task.id, version);
-      setVersionSubmenuOpen(false);
-      setSelectedPromptForVersions(null);
+      await fetchAndLoadPromptVersion(currentPromptName, version);
     } catch (error) {
       console.error("Failed to load selected version:", error);
       showSnackbar("Failed to load prompt version", "error");
     }
   };
-
-  const handleSubmenuClose = () => {
-    setVersionSubmenuOpen(false);
-    setSelectedPromptForVersions(null);
-    onPromptNameChange(""); // Reset prompt selector
-  };
-
-  // Close submenu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (promptSelectorRef.current && !promptSelectorRef.current.contains(event.target as Node)) {
-        setVersionSubmenuOpen(false);
-      }
-    };
-
-    if (versionSubmenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [versionSubmenuOpen]);
 
   const handleProviderChange = (_event: SyntheticEvent<Element, Event>, newValue: ModelProvider | null) => {
     dispatch({
@@ -216,8 +179,8 @@ const PromptSelectors = ({
   );
 
   return (
-    <>
-      <div className="w-1/3" ref={promptSelectorRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+    <div className="grid grid-cols-[auto_auto_auto_auto] gap-1">
+      <div className="">
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
           options={state.backendPrompts}
@@ -227,7 +190,7 @@ const PromptSelectors = ({
           isOptionEqualToValue={(option, value) => option.name === value?.name}
           disabled={backendPromptOptions.length === 0}
           noOptionsText="No saved prompts"
-          sx={{ flex: 1 }}
+          sx={{ backgroundColor: "white" }}
           renderOption={(props, option) => {
             const { key, ...optionProps } = props;
             return (
@@ -260,17 +223,9 @@ const PromptSelectors = ({
             />
           )}
         />
-        <VersionSubmenu
-          promptName={selectedPromptForVersions || ""}
-          taskId={task?.id || ""}
-          apiClient={apiClient!}
-          onVersionSelect={handleVersionSelect}
-          onClose={handleSubmenuClose}
-          open={versionSubmenuOpen}
-          anchorEl={promptSelectorRef.current}
-        />
       </div>
-      <div className="w-1/3">
+      <VersionSelector promptName={currentPromptName} promptId={prompt.id} currentVersion={prompt.version} onVersionSelect={handleVersionSelect} />
+      <div className="w-full">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>
             id={`provider-${prompt.id}`}
@@ -291,7 +246,7 @@ const PromptSelectors = ({
           />
         </Tooltip>
       </div>
-      <div className="w-1/3">
+      <div className="w-full">
         <Autocomplete
           id={`model-${prompt.id}`}
           options={availableModels}
@@ -313,7 +268,7 @@ const PromptSelectors = ({
       <Snackbar {...snackbarProps}>
         <Alert {...alertProps} />
       </Snackbar>
-    </>
+    </div>
   );
 };
 

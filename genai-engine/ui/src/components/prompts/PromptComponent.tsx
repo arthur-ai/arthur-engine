@@ -116,7 +116,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   return (
     <div className="min-h-[500px] shadow-md rounded-lg p-4">
       <Container component="div" className="p-1 mt-1" maxWidth="xl" disableGutters>
-        <div className="grid grid-cols-[3fr_2fr] gap-1">
+        <div className="grid grid-cols-[7fr_2fr] gap-1">
           <div className="flex justify-start items-center gap-1">
             <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
           </div>
