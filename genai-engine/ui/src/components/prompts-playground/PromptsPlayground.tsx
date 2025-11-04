@@ -175,23 +175,32 @@ const PromptsPlayground = () => {
   const drawerWidth = 350;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+  useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    // Check if Shift is held (common way to scroll horizontally)
-    // or if horizontal scroll delta is larger than vertical
-    const shouldScrollHorizontally = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    const handleWheel = (e: WheelEvent) => {
+      // Only intercept when Shift is held (explicit horizontal scroll intent)
+      // This prevents conflicts with vertical scrolling in child elements
+      if (e.shiftKey) {
+        e.preventDefault();
+        // Use deltaX if available (trackpad horizontal scroll), otherwise convert deltaY to horizontal
+        container.scrollLeft += e.deltaX || e.deltaY;
+      }
+      // When Shift is NOT held, allow normal vertical scrolling to pass through to child elements
+    };
 
-    if (shouldScrollHorizontally) {
-      e.preventDefault();
-      container.scrollLeft += e.deltaX || e.deltaY;
-    }
+    // Add event listener with { passive: false } to allow preventDefault
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
   }, []);
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
-      <Box className="flex h-full bg-gray-200">
+      <Box className="flex h-full bg-gray-200" sx={{ position: "relative" }}>
         <Drawer
           variant="permanent"
           anchor="left"
@@ -200,15 +209,14 @@ const PromptsPlayground = () => {
             backgroundColor: "red",
             width: drawerWidth,
             flexShrink: 0,
-            position: "sticky",
+            position: "absolute",
             top: 0,
             left: 0,
-            alignSelf: "flex-start",
             height: "100%",
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              position: "sticky",
+              position: "absolute",
               top: 0,
               left: 0,
               height: "100%",
@@ -229,9 +237,16 @@ const PromptsPlayground = () => {
           </Container>
           <VariableInputs />
         </Drawer>
-        <Box component="main" className="flex-1 flex flex-col">
-          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1" onWheel={handleWheel}>
-            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content" }}>
+        <Box
+          component="main"
+          className="flex-1 flex flex-col"
+          sx={{
+            marginLeft: `${drawerWidth}px`,
+            width: `calc(100% - ${drawerWidth}px)`,
+          }}
+        >
+          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1">
+            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
