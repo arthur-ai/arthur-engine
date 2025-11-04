@@ -19,34 +19,36 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     session_id: "session-user-123",
     system_prompt: "You are a helpful weather assistant. Provide accurate and friendly weather information.",
     user_query: "What's the weather like in San Francisco today?",
-    response: "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
+    response:
+      "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
     context: [
       {
         role: "system",
-        content: "You are a helpful weather assistant. Provide accurate and friendly weather information."
+        content: "You are a helpful weather assistant. Provide accurate and friendly weather information.",
       },
       {
-        role: "user", 
-        content: "What's the weather like in San Francisco today?"
+        role: "user",
+        content: "What's the weather like in San Francisco today?",
       },
       {
         role: "assistant",
-        content: "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco."
-      }
+        content:
+          "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
+      },
     ],
     raw_data: {
       name: "litellm-acompletion",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a3",
         span_id: "0xd8d3476a2eb12724",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: null,
       start_time: "2024-01-15T10:30:00Z",
       end_time: "2024-01-15T10:30:02Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "LLM",
@@ -59,7 +61,8 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.input_messages.1.message.role": "user",
         "llm.input_messages.1.message.content": "What's the weather like in San Francisco today?",
         "llm.output_messages.0.message.role": "assistant",
-        "llm.output_messages.0.message.content": "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
+        "llm.output_messages.0.message.content":
+          "I don't have access to real-time weather data, but I can help you find weather information. You can check your local weather app or visit weather.com for current conditions in San Francisco.",
         "session.id": "session-user-123",
         "litellm.model": "gpt-4",
         "litellm.provider": "openai",
@@ -67,18 +70,18 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "litellm.stream": false,
         "litellm.max_tokens": 1000,
         "litellm.temperature": 0.7,
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -91,9 +94,9 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         latency_ms: 1850,
         details: '{"query_relevance": {"llm_relevance_score": 0.89}, "reason": "Query is highly relevant to weather assistance task"}',
         created_at: "2024-01-15T10:30:02Z",
-        updated_at: "2024-01-15T10:30:02Z"
-      }
-    ]
+        updated_at: "2024-01-15T10:30:02Z",
+      },
+    ],
   },
 
   // Sample 2: LLM with tool calls for weather API (LiteLLM format)
@@ -117,11 +120,11 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     context: [
       {
         role: "system",
-        content: "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions."
+        content: "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions.",
       },
       {
         role: "user",
-        content: "What's the current temperature in New York?"
+        content: "What's the current temperature in New York?",
       },
       {
         role: "assistant",
@@ -132,35 +135,35 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
             type: "function",
             function: {
               name: "get_weather",
-              arguments: '{"location": "New York", "units": "celsius"}'
-            }
-          }
-        ]
+              arguments: '{"location": "New York", "units": "celsius"}',
+            },
+          },
+        ],
       },
       {
         role: "tool",
         name: "get_weather",
         content: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
-        tool_call_id: "call_weather_nyc_001"
+        tool_call_id: "call_weather_nyc_001",
       },
       {
         role: "assistant",
-        content: "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity."
-      }
+        content: "The current temperature in New York is 22°C (72°F) with partly cloudy conditions and 68% humidity.",
+      },
     ],
     raw_data: {
       name: "litellm-acompletion",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a4",
         span_id: "0xd8d3476a2eb12725",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: null,
       start_time: "2024-01-15T11:15:00Z",
       end_time: "2024-01-15T11:15:04Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "LLM",
@@ -169,7 +172,8 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.token_count.completion": 52,
         "llm.token_count.total": 141,
         "llm.input_messages.0.message.role": "system",
-        "llm.input_messages.0.message.content": "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions.",
+        "llm.input_messages.0.message.content":
+          "You are a helpful weather assistant with access to real-time weather data. Use the get_weather tool to fetch current conditions.",
         "llm.input_messages.1.message.role": "user",
         "llm.input_messages.1.message.content": "What's the current temperature in New York?",
         "llm.input_messages.2.message.role": "assistant",
@@ -190,19 +194,20 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "litellm.stream": false,
         "litellm.max_tokens": 1000,
         "litellm.temperature": 0.7,
-        "litellm.tools": '[{"type": "function", "function": {"name": "get_weather", "description": "Get current weather information for a location", "parameters": {"type": "object", "properties": {"location": {"type": "string"}, "units": {"type": "string"}}, "required": ["location"]}}]',
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+        "litellm.tools":
+          '[{"type": "function", "function": {"name": "get_weather", "description": "Get current weather information for a location", "parameters": {"type": "object", "properties": {"location": {"type": "string"}, "units": {"type": "string"}}, "required": ["location"]}}]',
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -215,7 +220,7 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         latency_ms: 3200,
         details: '{"query_relevance": {"llm_relevance_score": 0.95}, "reason": "Query is highly relevant and tool was used correctly"}',
         created_at: "2024-01-15T11:15:04Z",
-        updated_at: "2024-01-15T11:15:04Z"
+        updated_at: "2024-01-15T11:15:04Z",
       },
       {
         id: "metric-003",
@@ -225,11 +230,12 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         prompt_tokens: 89,
         completion_tokens: 52,
         latency_ms: 3200,
-        details: '{"tool_selection": {"tool_selection": 1, "tool_usage": 1, "tool_selection_reason": "Correct weather tool was selected", "tool_usage_reason": "Tool was used correctly with proper parameters"}}',
+        details:
+          '{"tool_selection": {"tool_selection": 1, "tool_usage": 1, "tool_selection_reason": "Correct weather tool was selected", "tool_usage_reason": "Tool was used correctly with proper parameters"}}',
         created_at: "2024-01-15T11:15:04Z",
-        updated_at: "2024-01-15T11:15:04Z"
-      }
-    ]
+        updated_at: "2024-01-15T11:15:04Z",
+      },
+    ],
   },
 
   // Sample 3: Tool execution span (LiteLLM format)
@@ -254,22 +260,22 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
       {
         role: "tool",
         name: "get_weather",
-        content: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}'
-      }
+        content: '{"temperature": 22, "condition": "Partly cloudy", "humidity": 68, "location": "New York"}',
+      },
     ],
     raw_data: {
       name: "litellm-tool-call",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a4",
         span_id: "0xd8d3476a2eb12726",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: "0xd8d3476a2eb12725",
       start_time: "2024-01-15T11:15:01Z",
       end_time: "2024-01-15T11:15:02Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "TOOL",
@@ -281,20 +287,20 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "session.id": "session-user-456",
         "litellm.tool_name": "get_weather",
         "litellm.tool_call_id": "call_weather_nyc_001",
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "weather_api", "ls_model_type": "tool", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "weather_api", "ls_model_type": "tool", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
-    metric_results: []
+    metric_results: [],
   },
 
   // Sample 4: Agent span with multiple tool calls (LiteLLM format)
@@ -318,11 +324,11 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     context: [
       {
         role: "system",
-        content: "You are a travel planning agent. Help users plan trips by checking weather, finding flights, and booking hotels."
+        content: "You are a travel planning agent. Help users plan trips by checking weather, finding flights, and booking hotels.",
       },
       {
         role: "user",
-        content: "I want to plan a trip to Paris next week. Can you help me with weather and flight information?"
+        content: "I want to plan a trip to Paris next week. Can you help me with weather and flight information?",
       },
       {
         role: "assistant",
@@ -333,33 +339,33 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
             type: "function",
             function: {
               name: "get_weather_forecast",
-              arguments: '{"location": "Paris", "days": 7}'
-            }
+              arguments: '{"location": "Paris", "days": 7}',
+            },
           },
           {
             id: "call_flights_001",
-            type: "function", 
+            type: "function",
             function: {
               name: "search_flights",
-              arguments: '{"destination": "Paris", "departure_date": "2024-01-22", "return_date": "2024-01-29"}'
-            }
-          }
-        ]
-      }
+              arguments: '{"destination": "Paris", "departure_date": "2024-01-22", "return_date": "2024-01-29"}',
+            },
+          },
+        ],
+      },
     ],
     raw_data: {
       name: "litellm-agent",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a5",
         span_id: "0xd8d3476a2eb12727",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: null,
       start_time: "2024-01-15T14:20:00Z",
       end_time: "2024-01-15T14:20:08Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "AGENT",
@@ -371,18 +377,18 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "litellm.agent_type": "travel_planner",
         "litellm.model": "gpt-4",
         "litellm.provider": "openai",
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "agent_model", "ls_model_type": "agent", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "agent_model", "ls_model_type": "agent", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -393,11 +399,12 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         prompt_tokens: 156,
         completion_tokens: 78,
         latency_ms: 7500,
-        details: '{"agent_effectiveness": {"task_completion": 0.85, "tool_usage_efficiency": 0.92}, "reason": "Agent successfully initiated multiple tool calls for comprehensive trip planning"}',
+        details:
+          '{"agent_effectiveness": {"task_completion": 0.85, "tool_usage_efficiency": 0.92}, "reason": "Agent successfully initiated multiple tool calls for comprehensive trip planning"}',
         created_at: "2024-01-15T14:20:08Z",
-        updated_at: "2024-01-15T14:20:08Z"
-      }
-    ]
+        updated_at: "2024-01-15T14:20:08Z",
+      },
+    ],
   },
 
   // Sample 5: RAG retrieval span (LiteLLM format)
@@ -417,49 +424,50 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     session_id: "session-user-789",
     system_prompt: null,
     user_query: "Paris travel guide recommendations",
-    response: '{"documents": [{"title": "Paris Travel Guide", "content": "Paris is known for its art, culture, and cuisine...", "score": 0.95}], "total_results": 5}',
+    response:
+      '{"documents": [{"title": "Paris Travel Guide", "content": "Paris is known for its art, culture, and cuisine...", "score": 0.95}], "total_results": 5}',
     context: [
       {
         role: "retriever",
-        content: "Retrieved 5 relevant documents about Paris travel"
-      }
+        content: "Retrieved 5 relevant documents about Paris travel",
+      },
     ],
     raw_data: {
       name: "litellm-retriever",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a6",
         span_id: "0xd8d3476a2eb12728",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: "0xd8d3476a2eb12727",
       start_time: "2024-01-15T14:20:02Z",
       end_time: "2024-01-15T14:20:03Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "RETRIEVER",
         "retrieval.query": "Paris travel guide recommendations",
         "retrieval.documents": 5,
         "retrieval.top_k": 5,
-        "retrieval.scores": '[0.95, 0.89, 0.87, 0.85, 0.82]',
+        "retrieval.scores": "[0.95, 0.89, 0.87, 0.85, 0.82]",
         "session.id": "session-user-789",
         "litellm.retriever_type": "vector_search",
         "litellm.embedding_model": "text-embedding-ada-002",
         "litellm.vector_store": "pinecone",
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "retriever_model", "ls_model_type": "retriever", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "retriever_model", "ls_model_type": "retriever", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -470,11 +478,12 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         prompt_tokens: 0,
         completion_tokens: 0,
         latency_ms: 1200,
-        details: '{"retrieval_relevance": {"average_score": 0.89, "top_score": 0.95}, "reason": "Retrieved documents are highly relevant to Paris travel query"}',
+        details:
+          '{"retrieval_relevance": {"average_score": 0.89, "top_score": 0.95}, "reason": "Retrieved documents are highly relevant to Paris travel query"}',
         created_at: "2024-01-15T14:20:03Z",
-        updated_at: "2024-01-15T14:20:03Z"
-      }
-    ]
+        updated_at: "2024-01-15T14:20:03Z",
+      },
+    ],
   },
 
   // Sample 6: Error span (LiteLLM format)
@@ -498,26 +507,26 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     context: [
       {
         role: "system",
-        content: "You are a helpful assistant."
+        content: "You are a helpful assistant.",
       },
       {
         role: "user",
-        content: "Generate a very long response that exceeds token limits"
-      }
+        content: "Generate a very long response that exceeds token limits",
+      },
     ],
     raw_data: {
       name: "litellm-acompletion",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a7",
         span_id: "0xd8d3476a2eb12729",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: null,
       start_time: "2024-01-15T16:45:00Z",
       end_time: "2024-01-15T16:45:01Z",
       status: {
-        status_code: "ERROR"
+        status_code: "ERROR",
       },
       attributes: {
         "openinference.span.kind": "LLM",
@@ -530,18 +539,18 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "litellm.provider": "openai",
         "litellm.error": "Token limit exceeded",
         "litellm.error_type": "TokenLimitExceeded",
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "gpt-4", "ls_model_type": "chat", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -554,9 +563,9 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         latency_ms: 500,
         details: '{"error_rate": {"has_error": true, "error_type": "TokenLimitExceeded"}, "reason": "Request failed due to token limit exceeded"}',
         created_at: "2024-01-15T16:45:01Z",
-        updated_at: "2024-01-15T16:45:01Z"
-      }
-    ]
+        updated_at: "2024-01-15T16:45:01Z",
+      },
+    ],
   },
 
   // Sample 7: Chain span (LiteLLM format)
@@ -580,22 +589,22 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     context: [
       {
         role: "chain",
-        content: "Executed weather retrieval chain for multiple cities"
-      }
+        content: "Executed weather retrieval chain for multiple cities",
+      },
     ],
     raw_data: {
       name: "litellm-chain",
       context: {
         trace_id: "0x8d354e2346060032703637a0843b20a8",
         span_id: "0xd8d3476a2eb12730",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: null,
       start_time: "2024-01-15T18:30:00Z",
       end_time: "2024-01-15T18:30:05Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "CHAIN",
@@ -608,18 +617,18 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "litellm.chain_type": "parallel_execution",
         "litellm.models": '["gpt-4", "gpt-4", "gpt-4"]',
         "litellm.providers": '["openai", "openai", "openai"]',
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "chain_model", "ls_model_type": "chain", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "chain_model", "ls_model_type": "chain", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
     metric_results: [
       {
@@ -632,9 +641,9 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         latency_ms: 4800,
         details: '{"chain_efficiency": {"execution_time": 4800, "success_rate": 1.0}, "reason": "Chain executed successfully for all cities"}',
         created_at: "2024-01-15T18:30:05Z",
-        updated_at: "2024-01-15T18:30:05Z"
-      }
-    ]
+        updated_at: "2024-01-15T18:30:05Z",
+      },
+    ],
   },
 
   // Sample 8: LangChain span (LiteLLM format)
@@ -654,34 +663,37 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     session_id: "session-sql-user",
     system_prompt: "You are an expert SQL developer specializing in PostgreSQL.",
     user_query: "How many presidents has the US had",
-    response: '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
+    response:
+      '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
     context: [
       {
         role: "system",
-        content: "You are an expert SQL developer specializing in PostgreSQL. \nYour task is to convert natural language queries into valid PostgreSQL SQL statements.\n\nDo not ask the user for clarifications or schema definitions. When in doubt, assume a \nschema that would make sense for the user's query. It's more important to return plausible SQL\nthan to be completely accurate.\n\nGuidelines:\n- Always generate valid PostgreSQL syntax\n- Use appropriate data types and functions\n- Include proper WHERE clauses, JOINs, and aggregations as needed\n- Be conservative with assumptions about table/column names\n- If the query is ambiguous, make reasonable assumptions and note them\n- Always return a valid SQL statement that can be executed\n\nReturn your response in the following JSON format:\n{\n  \"sqlQuery\": \"SELECT * FROM table_name WHERE condition;\",\n  \"explanation\": \"Brief explanation of what this query does\"\n}"
+        content:
+          'You are an expert SQL developer specializing in PostgreSQL. \nYour task is to convert natural language queries into valid PostgreSQL SQL statements.\n\nDo not ask the user for clarifications or schema definitions. When in doubt, assume a \nschema that would make sense for the user\'s query. It\'s more important to return plausible SQL\nthan to be completely accurate.\n\nGuidelines:\n- Always generate valid PostgreSQL syntax\n- Use appropriate data types and functions\n- Include proper WHERE clauses, JOINs, and aggregations as needed\n- Be conservative with assumptions about table/column names\n- If the query is ambiguous, make reasonable assumptions and note them\n- Always return a valid SQL statement that can be executed\n\nReturn your response in the following JSON format:\n{\n  "sqlQuery": "SELECT * FROM table_name WHERE condition;",\n  "explanation": "Brief explanation of what this query does"\n}',
       },
       {
         role: "user",
-        content: "How many presidents has the US had"
+        content: "How many presidents has the US had",
       },
       {
         role: "assistant",
-        content: '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}'
-      }
+        content:
+          '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
+      },
     ],
     raw_data: {
       name: "litellm-acompletion",
       context: {
         trace_id: "TXekqoIXAK2WcIiyx5Utpw==",
         span_id: "F5KXVrOz6Uw=",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: "vpS65wIybfY=",
       start_time: "2024-01-15T20:00:00Z",
       end_time: "2024-01-15T20:00:01Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "LLM",
@@ -694,25 +706,26 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.output_messages.0.message.role": "assistant",
         "llm.input_messages.0.message.content": "You are an expert SQL developer specializing in PostgreSQL.",
         "llm.input_messages.1.message.content": "How many presidents has the US had",
-        "llm.output_messages.0.message.content": '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
+        "llm.output_messages.0.message.content":
+          '{"sqlQuery": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';", "explanation": "This query counts the number of presidents in the \'presidents\' table where the country is \'United States\'."}',
         "session.id": "session-sql-user",
         "litellm.model": "gpt-4.1",
         "litellm.provider": "openai",
         "litellm.temperature": 0,
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
-    metric_results: []
+    metric_results: [],
   },
 
   // Sample 9: Mastra span (LiteLLM format)
@@ -732,34 +745,37 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
     session_id: "session-db-user",
     system_prompt: "You are a database execution simulator for PostgreSQL queries.",
     user_query: "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';",
-    response: '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
+    response:
+      '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
     context: [
       {
         role: "system",
-        content: "You are a database execution simulator for PostgreSQL queries.\nYour task is to analyze the provided SQL query and return realistic mock data that would be returned by executing that query.\n\nGuidelines:\n- Analyze the SQL query to understand what data it would return\n- Generate realistic mock data that matches the expected structure and data types\n- For SELECT queries, return an array of objects with appropriate column names and values\n- For INSERT/UPDATE/DELETE queries, return appropriate affected row counts\n- Make the data realistic and contextually appropriate\n- Do not ask for clarifications or additional information\n- Always return data in the specified JSON format\n\nReturn your response in the following JSON format:\n{\n  \"data\": [{\"column1\": \"value1\", \"column2\": \"value2\"}, ...],\n  \"rowCount\": 5,\n  \"executionTime\": 150,\n  \"query\": \"SELECT * FROM table_name WHERE condition;\"\n}"
+        content:
+          'You are a database execution simulator for PostgreSQL queries.\nYour task is to analyze the provided SQL query and return realistic mock data that would be returned by executing that query.\n\nGuidelines:\n- Analyze the SQL query to understand what data it would return\n- Generate realistic mock data that matches the expected structure and data types\n- For SELECT queries, return an array of objects with appropriate column names and values\n- For INSERT/UPDATE/DELETE queries, return appropriate affected row counts\n- Make the data realistic and contextually appropriate\n- Do not ask for clarifications or additional information\n- Always return data in the specified JSON format\n\nReturn your response in the following JSON format:\n{\n  "data": [{"column1": "value1", "column2": "value2"}, ...],\n  "rowCount": 5,\n  "executionTime": 150,\n  "query": "SELECT * FROM table_name WHERE condition;"\n}',
       },
       {
         role: "user",
-        content: "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';"
+        content: "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';",
       },
       {
         role: "assistant",
-        content: '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}'
-      }
+        content:
+          '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
+      },
     ],
     raw_data: {
       name: "litellm-acompletion",
       context: {
         trace_id: "TXekqoIXAK2WcIiyx5Utpw==",
         span_id: "8cH1wGHOQck=",
-        trace_state: "[]"
+        trace_state: "[]",
       },
       kind: "SpanKind.INTERNAL",
       parent_id: "ZV0ZgnT+B4w=",
       start_time: "2024-01-15T20:30:00Z",
       end_time: "2024-01-15T20:30:01Z",
       status: {
-        status_code: "OK"
+        status_code: "OK",
       },
       attributes: {
         "openinference.span.kind": "LLM",
@@ -772,26 +788,27 @@ export const sampleSpans: SpanWithMetricsResponse[] = [
         "llm.output_messages.0.message.role": "assistant",
         "llm.input_messages.0.message.content": "You are a database execution simulator for PostgreSQL queries.",
         "llm.input_messages.1.message.content": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = 'United States';",
-        "llm.output_messages.0.message.content": '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
+        "llm.output_messages.0.message.content":
+          '{"data": [{"num_presidents": 46}], "rowCount": 1, "executionTime": 12, "query": "SELECT COUNT(*) AS num_presidents FROM presidents WHERE country = \'United States\';"}',
         "session.id": "session-db-user",
         "litellm.model": "gpt-4.1",
         "litellm.provider": "openai",
         "litellm.temperature": 0,
-        "metadata": '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}'
+        metadata: '{"ls_provider": "litellm", "ls_model_name": "gpt-4.1", "ls_model_type": "chat", "litellm_version": "1.0.0"}',
       },
       events: [],
       links: [],
       resource: {
         attributes: {
           "service.name": "litellm",
-          "service.version": "1.0.0"
+          "service.version": "1.0.0",
         },
-        schema_url: ""
+        schema_url: "",
       },
-      arthur_span_version: "arthur_span_v1"
+      arthur_span_version: "arthur_span_v1",
     },
-    metric_results: []
-  }
+    metric_results: [],
+  },
 ];
 
 // Export individual spans for easy access

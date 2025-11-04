@@ -1,7 +1,6 @@
 import { styled } from "@mui/material/styles";
 import React, { useRef, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 
@@ -85,34 +84,6 @@ const HiddenTextarea = styled("textarea")({
   caretColor: "black", // This makes the cursor visible
 });
 
-const customStyle = {
-  ...oneLight,
-  "token.template-punctuation": {
-    color: "#b1fa56", // Yellow-green for braces {{ }}
-  },
-  "token.template-string": {
-    color: "#ac37f6", // Purple for variable content
-  },
-  "token.variable": {
-    color: "#ac37f6", // Purple for variable content
-  },
-  "token.property": {
-    color: "#ac37f6", // Purple for property names
-  },
-  "token.punctuation": {
-    color: "#b1fa56", // Yellow-green for braces
-  },
-  "token.string": {
-    color: "#ac37f6", // Purple for string content
-  },
-  "token.tag": {
-    color: "#b1fa56", // Yellow-green for tags
-  },
-  "token.attr-name": {
-    color: "#ac37f6", // Purple for attribute names
-  },
-};
-
 export const HighlightedInputComponent = ({
   value,
   onChange,
@@ -178,14 +149,9 @@ export const HighlightedInputComponent = ({
   return (
     <div>
       <SyntaxHighlighterWrapper>
-        {label && (
-          <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>
-            {label}
-          </FloatingLabel>
-        )}
+        {label && <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>{label}</FloatingLabel>}
         <SyntaxHighlighter
           language="handlebars"
-          style={customStyle}
           customStyle={{
             margin: 0,
             padding: "16.5px 14px",
@@ -215,19 +181,11 @@ export const HighlightedInputComponent = ({
           className="syntax-highlighter"
           useInlineStyles={false}
         >
-          {typeof value === "string"
-            ? value || placeholder || ""
-            : value.map((item) => item.text || "").join(" ") ||
-              placeholder ||
-              ""}
+          {typeof value === "string" ? value || placeholder || "" : value.map((item) => item.text || "").join(" ") || placeholder || ""}
         </SyntaxHighlighter>
         <HiddenTextarea
           ref={textareaRef}
-          value={
-            typeof value === "string"
-              ? value
-              : value.map((item) => item.text || "").join(" ")
-          }
+          value={typeof value === "string" ? value : value.map((item) => item.text || "").join(" ")}
           onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
