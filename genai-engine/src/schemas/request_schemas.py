@@ -263,7 +263,7 @@ class WeaviateVectorSimilarityTextSearchSettingsRequest(
     def _to_client_settings_dict(self) -> dict[str, Any]:
         """Parses settings to the client parameters for the near_text function."""
         return self.model_dump(
-            exclude={"collection_name", "rag_provider"},
+            exclude={"collection_name", "rag_provider", "search_kind"},
         )
 
 
@@ -323,6 +323,7 @@ class WeaviateKeywordSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
+                "search_kind",
             },
         )
 
@@ -409,6 +410,7 @@ class WeaviateHybridSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
+                "search_kind",
             },
         )
 
@@ -431,26 +433,28 @@ class RagHybridSearchSettingRequest(BaseModel):
     )
 
 
-RagSettingConfigurationRequestTypes = Union[
+RagSearchSettingConfigurationRequestTypes = Union[
     WeaviateHybridSearchSettingsConfigurationRequest,
-    WeaviateKeywordSearchSettingsRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
 ]
 
 
-class RagSettingConfigurationRequest(BaseModel):
-    settings: RagSettingConfigurationRequestTypes = Field(
+class RagSearchSettingConfigurationRequest(BaseModel):
+    settings: RagSearchSettingConfigurationRequestTypes = Field(
         description="Settings configuration for a search request to a RAG provider.",
     )
-    name: str = Field(description="Name of the setting configuration.")
+    rag_provider_id: UUID = Field(
+        description="ID of the rag provider to use with the settings.",
+    )
+    name: str = Field(description="Name of the search setting configuration.")
     description: Optional[str] = Field(
         default=None,
-        description="Description of the setting configuration.",
+        description="Description of the search setting configuration.",
     )
     tags: Optional[list[str]] = Field(
         default=None,
-        description="Optional list of tags to configure for this version of the settings configuration.",
+        description="Optional list of tags to configure for this version of the search settings configuration.",
     )
 
 

@@ -105,8 +105,8 @@ from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVers
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
-    DatabaseRagSettingConfiguration,
-    DatabaseRagSettingConfigurationVersion,
+    DatabaseRagSearchSettingConfiguration,
+    DatabaseRagSearchSettingConfigurationVersion,
 )
 from schemas.enums import (
     ApplicationConfigurations,
@@ -127,7 +127,7 @@ from schemas.request_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
-    RagSettingConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
@@ -143,8 +143,8 @@ from schemas.response_schemas import (
     DocumentStorageConfigurationResponse,
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
-    RagSettingConfigurationResponse,
-    RagSettingConfigurationVersionResponse,
+    RagSearchSettingConfigurationResponse,
+    RagSearchSettingConfigurationVersionResponse,
     SessionMetadataResponse,
     SpanMetadataResponse,
     TraceMetadataResponse,
@@ -2733,40 +2733,39 @@ class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
         )
 
 
-RagSettingConfigurationTypes = Union[
+RagSearchSettingConfigurationTypes = Union[
     WeaviateHybridSearchSettingsConfiguration,
     WeaviateVectorSimilarityTextSearchSettingsConfiguration,
     WeaviateKeywordSearchSettingsConfiguration,
 ]
 
 
-class RagSettingConfigurationVersion(BaseModel):
+class RagSearchSettingConfigurationVersion(BaseModel):
     setting_configuration_id: uuid.UUID = Field(
-        description="ID of the parent setting configuration.",
+        description="ID of the parent search setting configuration.",
     )
     version_number: int = Field(
-        description="Version number of the setting configuration.",
+        description="Version number of the search setting configuration.",
     )
     tags: Optional[list[str]] = Field(
         default=None,
-        description="Optional list of tags configured for this version of the settings configuration.",
+        description="Optional list of tags configured for this version of the search settings configuration.",
     )
-
-    settings: RagSettingConfigurationTypes = Field(
-        description="Settings configuration for a search request to a RAG provider.",
+    settings: RagSearchSettingConfigurationTypes = Field(
+        description="Search settings configuration for a search request to a RAG provider.",
     )
     created_at: datetime = Field(
-        description="Time the RAG provider settings configuration version was created.",
+        description="Time the RAG search settings configuration version was created.",
     )
     updated_at: datetime = Field(
-        description="Time the RAG provider settings configuration version was updated.",
+        description="Time the RAG search settings configuration version was updated.",
     )
 
     @staticmethod
     def _from_request_model(
-        request: RagSettingConfigurationRequest,
+        request: RagSearchSettingConfigurationRequest,
         setting_config_id: uuid.UUID,
-    ) -> "RagSettingConfigurationVersion":
+    ) -> "RagSearchSettingConfigurationVersion":
         curr_time = datetime.now()
 
         if isinstance(
@@ -2796,7 +2795,7 @@ class RagSettingConfigurationVersion(BaseModel):
                 detail=f"Unsupported settings kind: {type(request.settings)}.",
             )
 
-        return RagSettingConfigurationVersion(
+        return RagSearchSettingConfigurationVersion(
             version_number=1,
             tags=request.tags,
             setting_configuration_id=setting_config_id,
@@ -2805,8 +2804,8 @@ class RagSettingConfigurationVersion(BaseModel):
             updated_at=curr_time,
         )
 
-    def _to_database_model(self) -> DatabaseRagSettingConfigurationVersion:
-        return DatabaseRagSettingConfigurationVersion(
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfigurationVersion:
+        return DatabaseRagSearchSettingConfigurationVersion(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
             settings=self.settings.model_dump(mode="json"),
@@ -2815,8 +2814,8 @@ class RagSettingConfigurationVersion(BaseModel):
             updated_at=self.updated_at,
         )
 
-    def to_response_model(self) -> RagSettingConfigurationVersionResponse:
-        return RagSettingConfigurationVersionResponse(
+    def to_response_model(self) -> RagSearchSettingConfigurationVersionResponse:
+        return RagSearchSettingConfigurationVersionResponse(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
             settings=self.settings.to_response_model(),
@@ -2827,8 +2826,8 @@ class RagSettingConfigurationVersion(BaseModel):
 
     @staticmethod
     def _from_database_model(
-        db_model: DatabaseRagSettingConfigurationVersion,
-    ) -> "RagSettingConfigurationVersion":
+        db_model: DatabaseRagSearchSettingConfigurationVersion,
+    ) -> "RagSearchSettingConfigurationVersion":
         # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
         settings_dict = db_model.settings
         search_kind = settings_dict.get("search_kind")
@@ -2854,7 +2853,7 @@ class RagSettingConfigurationVersion(BaseModel):
                 detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
             )
 
-        return RagSettingConfigurationVersion(
+        return RagSearchSettingConfigurationVersion(
             setting_configuration_id=db_model.setting_configuration_id,
             version_number=db_model.version_number,
             settings=settings,
@@ -2864,41 +2863,56 @@ class RagSettingConfigurationVersion(BaseModel):
         )
 
 
-class RagSettingConfiguration(BaseModel):
-    id: uuid.UUID = Field(description="ID of the setting configuration.")
+class RagSearchSettingConfiguration(BaseModel):
+    id: uuid.UUID = Field(description="ID of the search setting configuration.")
     task_id: str = Field(description="ID of the parent task.")
-    name: str = Field(description="Name of the setting configuration.")
+    rag_provider_id: Optional[uuid.UUID] = Field(
+        description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
+    )
+    all_possible_tags: Optional[list[str]] = Field(
+        defaeult=None,
+        description="Set of all tags applied for any version of the settings configuration.",
+    )
+    name: str = Field(description="Name of the search setting configuration.")
     description: Optional[str] = Field(
         default=None,
-        description="Description of the setting configuration.",
+        description="Description of the search setting configuration.",
     )
     latest_version_number: int = Field(
-        description="The latest version number of the settings configuration.",
+        description="The latest version number of the search settings configuration.",
     )
-    latest_version: RagSettingConfigurationVersion = Field(
-        description="The latest version of the settings configuration.",
+    latest_version: RagSearchSettingConfigurationVersion = Field(
+        description="The latest version of the search settings configuration.",
     )
     created_at: datetime = Field(
-        description="Time the RAG provider settings configuration was created.",
+        description="Time the RAG search settings configuration was created.",
     )
     updated_at: datetime = Field(
-        description="Time the RAG provider settings configuration was updated. Will be updated if a new version of the configuration was created.",
+        description="Time the RAG search settings configuration was updated. Will be updated if a new version of the configuration was created.",
     )
 
     @staticmethod
     def _from_request_model(
-        request: RagSettingConfigurationRequest,
+        request: RagSearchSettingConfigurationRequest,
         task_id: str,
-    ) -> "RagSettingConfiguration":
+    ) -> "RagSearchSettingConfiguration":
         setting_config_id = uuid.uuid4()
         curr_time = datetime.now()
-        return RagSettingConfiguration(
+        return RagSearchSettingConfiguration(
             id=setting_config_id,
             task_id=task_id,
+            rag_provider_id=request.rag_provider_id,
+            all_possible_tags=(
+                list(
+                    set(request.tags),  # set() removes duplicates if needed
+                )
+                if request.tags
+                else request.tags
+            ),
             name=request.name,
             description=request.description,
             latest_version_number=1,
-            latest_version=RagSettingConfigurationVersion._from_request_model(
+            latest_version=RagSearchSettingConfigurationVersion._from_request_model(
                 request,
                 setting_config_id,
             ),
@@ -2906,10 +2920,12 @@ class RagSettingConfiguration(BaseModel):
             updated_at=curr_time,
         )
 
-    def _to_database_model(self) -> DatabaseRagSettingConfiguration:
-        return DatabaseRagSettingConfiguration(
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfiguration:
+        return DatabaseRagSearchSettingConfiguration(
             id=self.id,
             task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
             name=self.name,
             description=self.description,
             latest_version_number=self.latest_version_number,
@@ -2918,10 +2934,12 @@ class RagSettingConfiguration(BaseModel):
             updated_at=self.updated_at,
         )
 
-    def to_response_model(self) -> RagSettingConfigurationResponse:
-        return RagSettingConfigurationResponse(
+    def to_response_model(self) -> RagSearchSettingConfigurationResponse:
+        return RagSearchSettingConfigurationResponse(
             id=self.id,
             task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
             name=self.name,
             description=self.description,
             latest_version_number=self.latest_version_number,
@@ -2932,15 +2950,17 @@ class RagSettingConfiguration(BaseModel):
 
     @staticmethod
     def _from_database_model(
-        db_model: DatabaseRagSettingConfiguration,
-    ) -> "RagSettingConfiguration":
-        return RagSettingConfiguration(
+        db_model: DatabaseRagSearchSettingConfiguration,
+    ) -> "RagSearchSettingConfiguration":
+        return RagSearchSettingConfiguration(
             id=db_model.id,
             task_id=db_model.task_id,
+            rag_provider_id=db_model.rag_provider_id,
+            all_possible_tags=db_model.all_possible_tags,
             name=db_model.name,
             description=db_model.description,
             latest_version_number=db_model.latest_version_number,
-            latest_version=RagSettingConfigurationVersion._from_database_model(
+            latest_version=RagSearchSettingConfigurationVersion._from_database_model(
                 db_model.latest_version,
             ),
             created_at=db_model.created_at,

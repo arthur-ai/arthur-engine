@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
@@ -505,14 +506,14 @@ class WeaviateHybridSearchSettingsConfigurationResponse(
     )
 
 
-RagSettingConfigurationResponseTypes = Union[
+RagSearchSettingConfigurationResponseTypes = Union[
     WeaviateHybridSearchSettingsConfigurationResponse,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
     WeaviateKeywordSearchSettingsConfigurationResponse,
 ]
 
 
-class RagSettingConfigurationVersionResponse(BaseModel):
+class RagSearchSettingConfigurationVersionResponse(BaseModel):
     setting_configuration_id: UUID = Field(
         description="ID of the parent setting configuration.",
     )
@@ -524,7 +525,7 @@ class RagSettingConfigurationVersionResponse(BaseModel):
         description="Optional list of tags configured for this version of the settings configuration.",
     )
 
-    settings: RagSettingConfigurationResponseTypes = Field(
+    settings: RagSearchSettingConfigurationResponseTypes = Field(
         description="Settings configuration for a search request to a RAG provider.",
     )
     created_at: int = Field(
@@ -535,9 +536,13 @@ class RagSettingConfigurationVersionResponse(BaseModel):
     )
 
 
-class RagSettingConfigurationResponse(BaseModel):
+class RagSearchSettingConfigurationResponse(BaseModel):
     id: UUID = Field(description="ID of the setting configuration.")
     task_id: str = Field(description="ID of the parent task.")
+    rag_provider_id: Optional[uuid.UUID] = Field(
+        default=None,
+        description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
+    )
     name: str = Field(description="Name of the setting configuration.")
     description: Optional[str] = Field(
         default=None,
@@ -546,14 +551,18 @@ class RagSettingConfigurationResponse(BaseModel):
     latest_version_number: int = Field(
         description="The latest version number of the settings configuration.",
     )
-    latest_version: RagSettingConfigurationVersionResponse = Field(
+    latest_version: RagSearchSettingConfigurationVersionResponse = Field(
         description="The latest version of the settings configuration.",
     )
+    all_possible_tags: Optional[list[str]] = Field(
+        defaeult=None,
+        description="Set of all tags applied for any version of the settings configuration.",
+    )
     created_at: int = Field(
-        description="Time the RAG provider settings configuration was created in unix milliseconds.",
+        description="Time the RAG settings configuration was created in unix milliseconds.",
     )
     updated_at: int = Field(
-        description="Time the RAG provider settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created.",
+        description="Time the RAG settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created.",
     )
 
 

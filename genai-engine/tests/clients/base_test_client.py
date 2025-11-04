@@ -74,8 +74,8 @@ from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagProviderTestConfigurationRequest,
-    RagSettingConfigurationRequest,
-    RagSettingConfigurationRequestTypes,
+    RagSearchSettingConfigurationRequest,
+    RagSearchSettingConfigurationRequestTypes,
     RagVectorSimilarityTextSearchSettingRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
@@ -90,7 +90,7 @@ from schemas.response_schemas import (
     ListDatasetVersionsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
-    RagSettingConfigurationResponse,
+    RagSearchSettingConfigurationResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
@@ -2824,22 +2824,24 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_rag_provider_settings(
         self,
         task_id: str,
+        rag_provider_id: str,
         name: str,
-        settings: RagSettingConfigurationRequestTypes,
+        settings: RagSearchSettingConfigurationRequestTypes,
         description: str = None,
         tags: list[str] = None,
-    ) -> tuple[int, RagSettingConfigurationResponse]:
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
         """Create a new RAG provider settings configuration."""
 
-        request = RagSettingConfigurationRequest(
+        request = RagSearchSettingConfigurationRequest(
             name=name,
             description=description,
             tags=tags,
             settings=settings,
+            rag_provider_id=rag_provider_id,
         )
 
         resp = self.base_client.post(
-            f"/api/v1/tasks/{task_id}/rag_provider_settings",
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
             data=request.model_dump_json(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -2849,7 +2851,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagSettingConfigurationResponse.model_validate(resp.json())
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -2858,10 +2860,10 @@ class GenaiEngineTestClientBase(httpx.Client):
     def get_rag_provider_settings(
         self,
         setting_configuration_id: str,
-    ) -> tuple[int, RagSettingConfigurationResponse]:
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
         """Get a RAG provider settings configuration by ID."""
         resp = self.base_client.get(
-            f"/api/v1/rag_provider_settings/{setting_configuration_id}",
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -2870,7 +2872,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagSettingConfigurationResponse.model_validate(resp.json())
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -2879,7 +2881,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def delete_rag_provider_settings(self, setting_configuration_id: str) -> int:
         """Delete a RAG provider settings configuration."""
         resp = self.base_client.delete(
-            f"/api/v1/rag_provider_settings/{setting_configuration_id}",
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
             headers=self.authorized_user_api_key_headers,
         )
 
@@ -2890,6 +2892,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_rag_provider_settings_hybrid(
         self,
         task_id: str,
+        rag_provider_id: str,
         name: str,
         collection_name: str,
         description: str = None,
@@ -2899,7 +2902,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         include_vector: bool = False,
         offset: int = None,
         auto_limit: int = None,
-    ) -> tuple[int, RagSettingConfigurationResponse]:
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
         """Create a new RAG provider settings configuration with hybrid search."""
         settings = WeaviateHybridSearchSettingsConfigurationRequest(
             rag_provider=RagProviderEnum.WEAVIATE,
@@ -2911,15 +2914,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             auto_limit=auto_limit,
         )
 
-        request = RagSettingConfigurationRequest(
+        request = RagSearchSettingConfigurationRequest(
             name=name,
             description=description,
             tags=tags,
             settings=settings,
+            rag_provider_id=rag_provider_id,
         )
 
         resp = self.base_client.post(
-            f"/api/v1/tasks/{task_id}/rag_provider_settings",
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
             data=request.model_dump_json(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -2929,7 +2933,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagSettingConfigurationResponse.model_validate(resp.json())
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),
@@ -2938,6 +2942,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     def create_rag_provider_settings_vector_similarity(
         self,
         task_id: str,
+        rag_provider_id: str,
         name: str,
         collection_name: str,
         description: str = None,
@@ -2948,7 +2953,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         include_vector: bool = False,
         offset: int = None,
         auto_limit: int = None,
-    ) -> tuple[int, RagSettingConfigurationResponse]:
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
         """Create a new RAG provider settings configuration with vector similarity search."""
         settings = WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
             rag_provider=RagProviderEnum.WEAVIATE,
@@ -2961,15 +2966,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             auto_limit=auto_limit,
         )
 
-        request = RagSettingConfigurationRequest(
+        request = RagSearchSettingConfigurationRequest(
             name=name,
             description=description,
             tags=tags,
             settings=settings,
+            rag_provider_id=rag_provider_id,
         )
 
         resp = self.base_client.post(
-            f"/api/v1/tasks/{task_id}/rag_provider_settings",
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
             data=request.model_dump_json(),
             headers=self.authorized_user_api_key_headers,
         )
@@ -2979,7 +2985,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                RagSettingConfigurationResponse.model_validate(resp.json())
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else None
             ),

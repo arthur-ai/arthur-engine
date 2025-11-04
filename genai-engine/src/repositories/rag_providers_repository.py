@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderConfiguration,
-    DatabaseRagSettingConfiguration,
+    DatabaseRagSearchSettingConfiguration,
 )
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -21,7 +21,7 @@ from schemas.enums import (
 from schemas.internal_schemas import (
     ApiKeyRagProviderSecretValue,
     RagProviderConfiguration,
-    RagSettingConfiguration,
+    RagSearchSettingConfiguration,
 )
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigUpdateRequest,
@@ -171,7 +171,7 @@ class RagProvidersRepository:
 
     def create_rag_setting_configuration(
         self,
-        rag_setting_config: RagSettingConfiguration,
+        rag_setting_config: RagSearchSettingConfiguration,
     ) -> None:
         """Create a new RAG setting configuration"""
         db_config = rag_setting_config._to_database_model()
@@ -181,10 +181,10 @@ class RagProvidersRepository:
     def _get_db_rag_setting_config(
         self,
         setting_config_id: UUID,
-    ) -> DatabaseRagSettingConfiguration:
+    ) -> DatabaseRagSearchSettingConfiguration:
         db_config = (
-            self.db_session.query(DatabaseRagSettingConfiguration)
-            .filter(DatabaseRagSettingConfiguration.id == setting_config_id)
+            self.db_session.query(DatabaseRagSearchSettingConfiguration)
+            .filter(DatabaseRagSearchSettingConfiguration.id == setting_config_id)
             .first()
         )
 
@@ -198,10 +198,10 @@ class RagProvidersRepository:
     def get_rag_setting_configuration(
         self,
         config_id: UUID,
-    ) -> RagSettingConfiguration:
+    ) -> RagSearchSettingConfiguration:
         """Get a RAG provider configuration by ID with polymorphic loading"""
         db_config = self._get_db_rag_setting_config(config_id)
-        return RagSettingConfiguration._from_database_model(db_config)
+        return RagSearchSettingConfiguration._from_database_model(db_config)
 
     def delete_rag_setting_configuration(self, config_id: UUID) -> None:
         """Delete a RAG setting configuration"""

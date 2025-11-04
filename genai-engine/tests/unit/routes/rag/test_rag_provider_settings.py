@@ -15,6 +15,15 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
     assert status_code == 200
     task_id = task.id
 
+    # Create a RAG provider first
+    status_code, rag_provider = client.create_rag_provider(
+        task_id=task_id,
+        name="Test RAG Provider",
+        description="Test RAG provider for settings CRUD",
+    )
+    assert status_code == 200
+    rag_provider_id = rag_provider.id
+
     # test rag provider settings creation
     settings_name = "My Test RAG Provider Settings"
     settings_description = "Test RAG provider settings for CRUD operations"
@@ -29,6 +38,7 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
     # test settings creation for non-existing task
     status_code, _ = client.create_rag_provider_settings(
         task_id=str(uuid4()),
+        rag_provider_id=rag_provider_id,
         name=settings_name,
         tags=tags,
         settings=WeaviateKeywordSearchSettingsConfigurationRequest(
@@ -41,6 +51,7 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
 
     status_code, created_settings = client.create_rag_provider_settings(
         task_id=task_id,
+        rag_provider_id=rag_provider_id,
         name=settings_name,
         description=settings_description,
         tags=tags,
@@ -56,11 +67,13 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 200
     assert created_settings.task_id == task_id
+    assert created_settings.rag_provider_id == rag_provider_id
     assert created_settings.name == settings_name
     assert created_settings.description == settings_description
     assert created_settings.id is not None
     assert created_settings.latest_version_number == 1
     assert created_settings.latest_version.tags == tags
+    assert set(created_settings.all_possible_tags) == set(tags)
     # Validate settings
     assert created_settings.latest_version.settings.collection_name == collection_name
     assert created_settings.latest_version.settings.rag_provider == "weaviate"
@@ -80,9 +93,11 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 200
     assert retrieved_settings.id == created_settings.id
+    assert retrieved_settings.rag_provider_id == rag_provider_id
     assert retrieved_settings.name == settings_name
     assert retrieved_settings.description == settings_description
     assert retrieved_settings.latest_version.tags == tags
+    assert set(retrieved_settings.all_possible_tags) == set(tags)
     # Validate settings in retrieved response
     assert retrieved_settings.latest_version.settings.collection_name == collection_name
     assert retrieved_settings.latest_version.settings.rag_provider == "weaviate"
@@ -96,6 +111,16 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
         == minimum_match_or_operator
     )
 
+    # deleting parent rag provider doesn't delete its settings
+    status_code = client.delete_rag_provider(rag_provider_id)
+    assert status_code == 204
+
+    status_code, retrieved_settings = client.get_rag_provider_settings(
+        created_settings.id,
+    )
+    assert status_code == 200
+    assert retrieved_settings.rag_provider_id is None
+
     # delete rag provider settings
     status_code = client.delete_rag_provider_settings(created_settings.id)
     assert status_code == 204
@@ -108,6 +133,6 @@ def test_rag_provider_settings_crud(client: GenaiEngineTestClientBase) -> None:
     status_code = client.delete_rag_provider_settings(created_settings.id)
     assert status_code == 404
 
-    # Clean up the task
+    # Clean up the task (rag_provider already deleted above)
     status_code = client.delete_task(task_id)
     assert status_code == 204

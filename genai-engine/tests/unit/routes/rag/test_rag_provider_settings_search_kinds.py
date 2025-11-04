@@ -18,9 +18,19 @@ def test_rag_provider_settings_keyword_search(
     assert status_code == 200
     task_id = task.id
 
+    # Create a RAG provider first
+    status_code, rag_provider = client.create_rag_provider(
+        task_id=task_id,
+        name="Test RAG Provider",
+        description="Test RAG provider for keyword search settings",
+    )
+    assert status_code == 200
+    rag_provider_id = rag_provider.id
+
     minimum_match_or_operator = 2
     status_code, created_settings = client.create_rag_provider_settings(
         task_id=task_id,
+        rag_provider_id=rag_provider_id,
         name="Keyword Search Settings",
         settings=WeaviateKeywordSearchSettingsConfigurationRequest(
             rag_provider=RagProviderEnum.WEAVIATE,
@@ -47,6 +57,7 @@ def test_rag_provider_settings_keyword_search(
 
     # Cleanup
     client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)
 
 
@@ -57,6 +68,15 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
     assert status_code == 200
     task_id = task.id
 
+    # Create a RAG provider first
+    status_code, rag_provider = client.create_rag_provider(
+        task_id=task_id,
+        name="Test RAG Provider",
+        description="Test RAG provider for hybrid search settings",
+    )
+    assert status_code == 200
+    rag_provider_id = rag_provider.id
+
     settings = WeaviateHybridSearchSettingsConfigurationRequest(
         rag_provider=RagProviderEnum.WEAVIATE,
         collection_name="test-collection",
@@ -64,6 +84,7 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
     )
     status_code, created_settings = client.create_rag_provider_settings(
         task_id=task_id,
+        rag_provider_id=rag_provider_id,
         name="Hybrid Search Settings",
         settings=settings,
     )
@@ -80,6 +101,7 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
 
     # Cleanup
     client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)
 
 
@@ -94,6 +116,15 @@ def test_rag_provider_settings_vector_similarity_search(
     assert status_code == 200
     task_id = task.id
 
+    # Create a RAG provider first
+    status_code, rag_provider = client.create_rag_provider(
+        task_id=task_id,
+        name="Test RAG Provider",
+        description="Test RAG provider for vector similarity search settings",
+    )
+    assert status_code == 200
+    rag_provider_id = rag_provider.id
+
     settings = WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
         rag_provider=RagProviderEnum.WEAVIATE,
         collection_name="test-collection",
@@ -101,6 +132,7 @@ def test_rag_provider_settings_vector_similarity_search(
     )
     status_code, created_settings = client.create_rag_provider_settings(
         task_id=task_id,
+        rag_provider_id=rag_provider_id,
         name="Vector Similarity Search Settings",
         settings=settings,
     )
@@ -123,4 +155,5 @@ def test_rag_provider_settings_vector_similarity_search(
 
     # Cleanup
     client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)

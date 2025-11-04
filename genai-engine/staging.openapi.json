@@ -6814,14 +6814,14 @@
                 }
             }
         },
-        "/api/v1/tasks/{task_id}/rag_provider_settings": {
+        "/api/v1/tasks/{task_id}/rag_search_settings": {
             "post": {
                 "tags": [
                     "RAG Providers"
                 ],
-                "summary": "Create Settings Configuration",
-                "description": "Create a new RAG provider settings configuration.",
-                "operationId": "create_settings_configuration_api_v1_tasks__task_id__rag_provider_settings_post",
+                "summary": "Create Rag Search Settings",
+                "description": "Create a new RAG search settings configuration.",
+                "operationId": "create_rag_search_settings",
                 "security": [
                     {
                         "API Key": []
@@ -6834,10 +6834,10 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "ID of the task to create the settings configuration under.",
+                            "description": "ID of the task to create the search settings configuration under.",
                             "title": "Task Id"
                         },
-                        "description": "ID of the task to create the settings configuration under."
+                        "description": "ID of the task to create the search settings configuration under."
                     }
                 ],
                 "requestBody": {
@@ -6845,7 +6845,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/RagSettingConfigurationRequest"
+                                "$ref": "#/components/schemas/RagSearchSettingConfigurationRequest"
                             }
                         }
                     }
@@ -6856,7 +6856,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RagSettingConfigurationResponse"
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
                                 }
                             }
                         }
@@ -6874,14 +6874,14 @@
                 }
             }
         },
-        "/api/v1/rag_provider_settings/{setting_configuration_id}": {
+        "/api/v1/rag_search_settings/{setting_configuration_id}": {
             "get": {
                 "tags": [
                     "RAG Providers"
                 ],
-                "summary": "Get Rag Provider",
+                "summary": "Get Rag Search Setting",
                 "description": "Get a single RAG setting configuration.",
-                "operationId": "get_rag_provider_api_v1_rag_provider_settings__setting_configuration_id__get",
+                "operationId": "get_rag_search_setting",
                 "security": [
                     {
                         "API Key": []
@@ -6895,10 +6895,10 @@
                         "schema": {
                             "type": "string",
                             "format": "uuid",
-                            "description": "ID of RAG setting configuration.",
+                            "description": "ID of RAG search setting configuration.",
                             "title": "Setting Configuration Id"
                         },
-                        "description": "ID of RAG setting configuration."
+                        "description": "ID of RAG search setting configuration."
                     }
                 ],
                 "responses": {
@@ -6907,7 +6907,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/RagSettingConfigurationResponse"
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
                                 }
                             }
                         }
@@ -6928,9 +6928,9 @@
                 "tags": [
                     "RAG Providers"
                 ],
-                "summary": "Delete Rag Provider",
-                "description": "Delete a RAG provider setting configuration.",
-                "operationId": "delete_rag_provider_api_v1_rag_provider_settings__setting_configuration_id__delete",
+                "summary": "Delete Rag Search Setting",
+                "description": "Delete a RAG search setting configuration.",
+                "operationId": "delete_rag_search_setting",
                 "security": [
                     {
                         "API Key": []
@@ -12520,15 +12520,12 @@
                 ],
                 "title": "RagProviderTestConfigurationRequest"
             },
-            "RagSettingConfigurationRequest": {
+            "RagSearchSettingConfigurationRequest": {
                 "properties": {
                     "settings": {
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationRequest"
-                            },
-                            {
-                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsRequest"
                             },
                             {
                                 "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationRequest"
@@ -12540,10 +12537,16 @@
                         "title": "Settings",
                         "description": "Settings configuration for a search request to a RAG provider."
                     },
+                    "rag_provider_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Rag Provider Id",
+                        "description": "ID of the rag provider to use with the settings."
+                    },
                     "name": {
                         "type": "string",
                         "title": "Name",
-                        "description": "Name of the setting configuration."
+                        "description": "Name of the search setting configuration."
                     },
                     "description": {
                         "anyOf": [
@@ -12555,7 +12558,7 @@
                             }
                         ],
                         "title": "Description",
-                        "description": "Description of the setting configuration."
+                        "description": "Description of the search setting configuration."
                     },
                     "tags": {
                         "anyOf": [
@@ -12570,17 +12573,18 @@
                             }
                         ],
                         "title": "Tags",
-                        "description": "Optional list of tags to configure for this version of the settings configuration."
+                        "description": "Optional list of tags to configure for this version of the search settings configuration."
                     }
                 },
                 "type": "object",
                 "required": [
                     "settings",
+                    "rag_provider_id",
                     "name"
                 ],
-                "title": "RagSettingConfigurationRequest"
+                "title": "RagSearchSettingConfigurationRequest"
             },
-            "RagSettingConfigurationResponse": {
+            "RagSearchSettingConfigurationResponse": {
                 "properties": {
                     "id": {
                         "type": "string",
@@ -12592,6 +12596,19 @@
                         "type": "string",
                         "title": "Task Id",
                         "description": "ID of the parent task."
+                    },
+                    "rag_provider_id": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uuid"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rag Provider Id",
+                        "description": "ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted."
                     },
                     "name": {
                         "type": "string",
@@ -12616,18 +12633,33 @@
                         "description": "The latest version number of the settings configuration."
                     },
                     "latest_version": {
-                        "$ref": "#/components/schemas/RagSettingConfigurationVersionResponse",
+                        "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse",
                         "description": "The latest version of the settings configuration."
+                    },
+                    "all_possible_tags": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "All Possible Tags",
+                        "description": "Set of all tags applied for any version of the settings configuration."
                     },
                     "created_at": {
                         "type": "integer",
                         "title": "Created At",
-                        "description": "Time the RAG provider settings configuration was created in unix milliseconds."
+                        "description": "Time the RAG settings configuration was created in unix milliseconds."
                     },
                     "updated_at": {
                         "type": "integer",
                         "title": "Updated At",
-                        "description": "Time the RAG provider settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created."
+                        "description": "Time the RAG settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created."
                     }
                 },
                 "type": "object",
@@ -12637,12 +12669,13 @@
                     "name",
                     "latest_version_number",
                     "latest_version",
+                    "all_possible_tags",
                     "created_at",
                     "updated_at"
                 ],
-                "title": "RagSettingConfigurationResponse"
+                "title": "RagSearchSettingConfigurationResponse"
             },
-            "RagSettingConfigurationVersionResponse": {
+            "RagSearchSettingConfigurationVersionResponse": {
                 "properties": {
                     "setting_configuration_id": {
                         "type": "string",
@@ -12704,7 +12737,7 @@
                     "created_at",
                     "updated_at"
                 ],
-                "title": "RagSettingConfigurationVersionResponse"
+                "title": "RagSearchSettingConfigurationVersionResponse"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {
