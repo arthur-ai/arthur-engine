@@ -21,6 +21,11 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
+import { getToolChoiceDisplayValue } from "../utils";
+
+import { ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
+
+const validToolEnumValues = ["auto", "none", "required"] as const;
 
 // Helper function to render tool choice options consistently
 const renderToolChoiceOption = (value: string, toolName?: string) => {
@@ -96,12 +101,33 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
 
   const handleToolChoiceChange = useCallback(
     (event: SelectChangeEvent<string>) => {
-      dispatch({
-        type: "updateToolChoice",
-        payload: { promptId: prompt.id, toolChoice: event.target.value },
-      });
+      const selectedValue = event.target.value;
+
+      // If it's one of the predefined selections, set as ToolChoiceEnum
+      if (validToolEnumValues.includes(selectedValue as ToolChoiceEnum)) {
+        dispatch({
+          type: "updateToolChoice",
+          payload: { promptId: prompt.id, toolChoice: selectedValue as ToolChoiceEnum },
+        });
+      } else {
+        // Otherwise, it's a tool ID - find the tool and convert to ToolChoice object
+        const selectedTool = prompt.tools.find((tool) => tool.id === selectedValue);
+        if (selectedTool) {
+          const toolChoice: ToolChoice = {
+            function: {
+              name: selectedTool.function.name,
+            },
+            type: "function",
+          };
+          console.log("toolChoice", toolChoice);
+          dispatch({
+            type: "updateToolChoice",
+            payload: { promptId: prompt.id, toolChoice },
+          });
+        }
+      }
     },
-    [dispatch, prompt.id]
+    [dispatch, prompt.id, prompt.tools]
   );
 
   const handleToolChange = useCallback(
@@ -150,11 +176,11 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
           <FormControl size="small" fullWidth sx={{ maxWidth: 400 }}>
             <InputLabel>Tool Choice</InputLabel>
             <Select
-              value={typeof prompt.toolChoice === "string" ? prompt.toolChoice : prompt.toolChoice?.function?.name || "auto"}
+              value={getToolChoiceDisplayValue(prompt.toolChoice, prompt.tools)}
               label="Tool Choice"
               onChange={handleToolChoiceChange}
               renderValue={(selected) => {
-                if (["auto", "none", "required"].includes(selected)) {
+                if (validToolEnumValues.includes(selected as ToolChoiceEnum)) {
                   return renderToolChoiceOption(selected);
                 } else {
                   const selectedTool = prompt.tools.find((tool) => tool.id === selected);

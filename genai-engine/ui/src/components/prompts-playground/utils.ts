@@ -7,6 +7,7 @@ import {
   AgenticPrompt,
   AgenticPromptBaseConfig,
   ToolChoiceEnum,
+  ToolChoice,
   ModelProvider,
   MessageRole,
   SpanWithMetricsResponse,
@@ -55,6 +56,79 @@ export const generateId = (type: "msg" | "tool") => {
   return type + "-" + uuidv4();
 };
 
+/**
+ * Converts a toolChoice value from frontend format to backend format.
+ * Handles conversion of tool ID strings to ToolChoice objects.
+ * @param toolChoice - The toolChoice value from prompt (can be ToolChoiceEnum, ToolChoice, tool ID string, or undefined)
+ * @param tools - Array of tools to lookup tool IDs from
+ * @returns ToolChoiceEnum, ToolChoice object, or null for backend API
+ */
+export const convertToolChoiceForBackend = (
+  toolChoice: ToolChoiceEnum | ToolChoice | string | undefined,
+  tools: PromptType["tools"]
+): ToolChoiceEnum | ToolChoice | null => {
+  if (!toolChoice) {
+    return null;
+  }
+
+  // If it's already a ToolChoiceEnum ("auto", "none", "required"), return as-is
+  if (toolChoice === "auto" || toolChoice === "none" || toolChoice === "required") {
+    return toolChoice as ToolChoiceEnum;
+  }
+
+  // If it's already a ToolChoice object, return as-is
+  if (typeof toolChoice === "object" && "function" in toolChoice) {
+    return toolChoice as ToolChoice;
+  }
+
+  // If it's a string (likely a tool ID), find the tool and convert to ToolChoice object
+  if (typeof toolChoice === "string") {
+    const tool = tools.find((t) => t.id === toolChoice);
+    if (tool) {
+      return {
+        function: {
+          name: tool.function.name,
+        },
+        type: "function",
+      } as ToolChoice;
+    }
+    // If tool not found, return null
+    return null;
+  }
+
+  return null;
+};
+
+/**
+ * Gets the display value for a toolChoice for UI purposes.
+ * Returns the string value for ToolChoiceEnum or the tool ID for ToolChoice objects.
+ * @param toolChoice - The toolChoice value
+ * @param tools - Array of tools to lookup tool function names
+ * @returns String value for UI display ("auto", "none", "required", or tool ID)
+ */
+export const getToolChoiceDisplayValue = (toolChoice: ToolChoiceEnum | ToolChoice | undefined, tools: PromptType["tools"]): string => {
+  if (!toolChoice) {
+    return "auto";
+  }
+
+  // If it's a ToolChoiceEnum string, return as-is
+  if (typeof toolChoice === "string") {
+    return toolChoice;
+  }
+
+  // If it's a ToolChoice object, find the tool by function name and return its ID
+  if (typeof toolChoice === "object" && "function" in toolChoice && toolChoice.function?.name) {
+    const tool = tools.find((t) => t.function.name === toolChoice.function?.name);
+    if (tool) {
+      return tool.id;
+    }
+    // If tool not found, return "auto" as fallback
+    return "auto";
+  }
+
+  return "auto";
+};
+
 export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
   model_name: prompt.modelName,
@@ -74,7 +148,7 @@ export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
     strict: tool.strict,
     type: tool.type,
   })),
-  tool_choice: prompt.toolChoice,
+  tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
   temperature: prompt.modelParameters.temperature,
   top_p: prompt.modelParameters.top_p,
   timeout: prompt.modelParameters.timeout,
@@ -122,7 +196,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     strict: tool.strict,
     type: tool.type,
   })),
-  toolChoice: (backendPrompt.tool_choice as ToolChoiceEnum) || "auto",
+  toolChoice: backendPrompt.tool_choice || "auto",
   modelParameters: {
     temperature: backendPrompt.temperature ?? 1,
     top_p: backendPrompt.top_p ?? 1,
@@ -466,7 +540,7 @@ export const toCompletionRequest = (prompt: PromptType, keywords: Map<string, st
             type: tool.type,
           }))
         : undefined,
-    tool_choice: prompt.toolChoice,
+    tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
     temperature: prompt.modelParameters.temperature,
     // top_p: prompt.modelParameters.top_p,
     max_tokens: prompt.modelParameters.max_tokens,

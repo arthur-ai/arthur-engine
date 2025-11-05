@@ -101,7 +101,7 @@ type PromptAction =
   | { type: "expandTools"; payload: { parentId: string } }
   | {
       type: "updateToolChoice";
-      payload: { promptId: string; toolChoice: string };
+      payload: { promptId: string; toolChoice: ToolChoiceEnum | ToolChoice };
     }
   | {
       type: "moveMessage";

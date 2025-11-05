@@ -10,7 +10,7 @@ import {
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
-import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum } from "@/lib/api-client/api-client";
+import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -384,15 +384,31 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, toolId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? {
-                ...prompt,
-                tools: prompt.tools.filter((tool) => tool.id !== toolId),
-                toolChoice: prompt.toolChoice === toolId ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
-              }
-            : prompt
-        ),
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id !== promptId) return prompt;
+
+          const toolToDelete = prompt.tools.find((tool) => tool.id === toolId);
+          if (!toolToDelete) return prompt;
+
+          // Check if the toolChoice references the tool being deleted
+          let shouldResetToolChoice = false;
+          if (prompt.toolChoice) {
+            if (typeof prompt.toolChoice === "object" && "function" in prompt.toolChoice) {
+              // It's a ToolChoice object - check if function name matches
+              shouldResetToolChoice = prompt.toolChoice.function?.name === toolToDelete.function.name;
+            } else if (typeof prompt.toolChoice === "string") {
+              // It's a ToolChoiceEnum or potentially an old tool ID string
+              // Check if it matches the tool ID (for backwards compatibility)
+              shouldResetToolChoice = prompt.toolChoice === toolId;
+            }
+          }
+
+          return {
+            ...prompt,
+            tools: prompt.tools.filter((tool) => tool.id !== toolId),
+            toolChoice: shouldResetToolChoice ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
+          };
+        }),
       };
     }
     case "updateTool": {
@@ -413,7 +429,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, toolChoice } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice } : prompt
+        ),
       };
     }
     case "moveMessage": {
