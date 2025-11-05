@@ -1461,7 +1461,7 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
 @pytest.mark.unit_tests
 @pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
 def test_soft_delete_prompt_by_version_success(prompt_version):
-    """Test getting a prompt with different version formats"""
+    """Test deleting a prompt with different version formats"""
     db_session = override_get_db_session()
     repo = AgenticPromptRepository(db_session)
 
