@@ -165,7 +165,9 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </DialogActions>
       </Dialog>
       <Dialog open={isPopoutOpen} onClose={handlePopoutClose} fullWidth maxWidth="md">
-        <DialogTitle><Typography variant="h6">Response</Typography></DialogTitle>
+        <DialogTitle>
+          <Typography variant="h6">Response</Typography>
+        </DialogTitle>
         <DialogContent>
           <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto", whiteSpace: "pre-wrap" }}>
             {running ? (
