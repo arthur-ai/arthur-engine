@@ -26,11 +26,17 @@ from schemas.agentic_prompt_schemas import (
 )
 from schemas.common_schemas import JsonSchema
 from schemas.enums import MessageRole, ModelProvider
+from schemas.request_schemas import (
+    PromptsGetAllFilterRequest,
+    PromptsGetVersionsFilterRequest,
+)
 from schemas.response_schemas import (
     AgenticPromptMetadataListResponse,
     AgenticPromptMetadataResponse,
     AgenticPromptRunResponse,
+    AgenticPromptVersionListResponse,
 )
+from tests.clients.base_test_client import override_get_db_session
 
 
 def to_agentic_prompt_messages(
@@ -1097,3 +1103,410 @@ async def test_stream_deleted_prompt_spawns_error(
         "event: error\ndata: Cannot stream chat completion for this prompt because it was deleted on"
         in events[0]
     )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
+def test_get_prompt_by_version_success(prompt_version):
+    """Test getting a prompt with different version formats"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # Create a database prompt with the sample data
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+        "max_tokens": 100,
+        "version": 1,
+    }
+    db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
+    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+
+    # Save to database
+    db_session.add(db_prompt)
+    db_session.commit()
+
+    try:
+        result = repo.get_prompt(task_id, prompt_name, prompt_version)
+
+        assert isinstance(result, AgenticPrompt)
+        assert result.name == prompt_name
+        assert len(result.messages) == 1
+        assert result.messages[0].role == "user"
+        assert result.messages[0].content == "Hello, world!"
+        assert result.version == 1
+    finally:
+        # Cleanup
+        db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "filter_param,filter_value,expected_count,expected_name",
+    [
+        ("model_provider", ModelProvider.OPENAI, 1, "prompt_openai"),
+        ("model_name", "gpt-4", 1, "prompt_openai"),
+        ("prompt_names", ["prompt_openai"], 1, "prompt_openai"),
+        ("created_after", datetime(2025, 1, 1), 2, None),
+        ("created_before", datetime(2025, 1, 2), 1, "prompt_openai"),
+    ],
+)
+def test_get_all_prompt_metadata_with_filters(
+    filter_param,
+    filter_value,
+    expected_count,
+    expected_name,
+):
+    """Test getting all prompt metadata with filter_request parameters"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+
+    # Create multiple prompts with different providers and models
+    prompts_data = [
+        {
+            "name": "prompt_openai",
+            "messages": [{"role": "user", "content": "OpenAI prompt"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "created_at": datetime(2025, 1, 1, 12, 0, 0),
+        },
+        {
+            "name": "prompt_anthropic",
+            "messages": [{"role": "user", "content": "Anthropic prompt"}],
+            "model_name": "claude-3-5-sonnet",
+            "model_provider": "anthropic",
+            "created_at": datetime(2025, 1, 2, 12, 0, 0),
+        },
+    ]
+
+    created_prompts = []
+    for prompt_data in prompts_data:
+        created_at = prompt_data.pop("created_at")
+        db_prompt = AgenticPrompt(**prompt_data).to_db_model(task_id)
+        db_prompt.created_at = created_at
+        db_session.add(db_prompt)
+        created_prompts.append(db_prompt)
+
+    db_session.commit()
+
+    try:
+        # Create filter request
+        filter_request = PromptsGetAllFilterRequest(**{filter_param: filter_value})
+
+        # Create pagination parameters
+        pagination_params = PaginationParameters(
+            page=0,
+            page_size=10,
+            sort=PaginationSortMethod.ASCENDING,
+        )
+
+        # Get filtered results
+        result = repo.get_all_prompt_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+            filter_request=filter_request,
+        )
+
+        # Verify filtering worked
+        assert isinstance(result, AgenticPromptMetadataListResponse)
+        assert result.count == expected_count
+        assert len(result.prompt_metadata) == expected_count
+
+        # Verify the correct prompt was returned based on the filter
+        if expected_name:
+            assert result.prompt_metadata[0].name == expected_name
+
+    finally:
+        # Cleanup
+        for db_prompt in created_prompts:
+            db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "filter_param,filter_value,expected_count",
+    [
+        ("model_provider", ModelProvider.OPENAI, 2),
+        ("model_name", "gpt-4", 2),
+        ("created_after", datetime(2025, 1, 1), 3),
+        ("created_before", datetime(2025, 1, 2), 2),
+        ("exclude_deleted", True, 2),
+        ("min_version", 2, 2),
+        ("max_version", 2, 2),
+    ],
+)
+def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_count):
+    """Test getting prompt versions with filter_request parameters"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # Create multiple versions with different properties
+    versions_data = [
+        {
+            "messages": [{"role": "user", "content": "Version 1"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "version": 1,
+            "created_at": datetime(2025, 1, 1, 12, 0, 0),
+            "deleted_at": None,
+        },
+        {
+            "messages": [{"role": "user", "content": "Version 2"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "version": 2,
+            "created_at": datetime(2025, 1, 1, 13, 0, 0),
+            "deleted_at": None,
+        },
+        {
+            "messages": [{"role": "user", "content": "Version 3"}],
+            "model_name": "claude-3-5-sonnet",
+            "model_provider": "anthropic",
+            "version": 3,
+            "created_at": datetime(2025, 1, 2, 12, 0, 0),
+            "deleted_at": datetime(2025, 1, 3, 12, 0, 0),  # deleted version
+        },
+    ]
+
+    created_prompts = []
+    for version_data in versions_data:
+        created_at = version_data.pop("created_at")
+        deleted_at = version_data.pop("deleted_at")
+        db_prompt = AgenticPrompt(name=prompt_name, **version_data).to_db_model(task_id)
+        db_prompt.created_at = created_at
+        db_prompt.deleted_at = deleted_at
+        db_session.add(db_prompt)
+        created_prompts.append(db_prompt)
+
+    db_session.commit()
+
+    try:
+        # Create filter request
+        filter_request = PromptsGetVersionsFilterRequest(**{filter_param: filter_value})
+
+        # Create pagination parameters
+        pagination_params = PaginationParameters(
+            page=0,
+            page_size=10,
+            sort=PaginationSortMethod.ASCENDING,
+        )
+
+        # Get filtered results
+        result = repo.get_prompt_versions(
+            task_id=task_id,
+            prompt_name=prompt_name,
+            pagination_parameters=pagination_params,
+            filter_request=filter_request,
+        )
+
+        # Verify filtering worked
+        assert isinstance(result, AgenticPromptVersionListResponse)
+        assert result.count == expected_count
+        assert len(result.versions) == expected_count
+
+    finally:
+        # Cleanup
+        for db_prompt in created_prompts:
+            db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "page,page_size,sort,expected_names",
+    [
+        (0, 2, PaginationSortMethod.ASCENDING, ["prompt_0", "prompt_1"]),
+        (1, 2, PaginationSortMethod.ASCENDING, ["prompt_2"]),
+        (0, 3, PaginationSortMethod.DESCENDING, ["prompt_2", "prompt_1", "prompt_0"]),
+        (0, 10, PaginationSortMethod.ASCENDING, ["prompt_0", "prompt_1", "prompt_2"]),
+        (2, 1, PaginationSortMethod.ASCENDING, ["prompt_2"]),
+    ],
+)
+def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected_names):
+    """Test getting all prompt metadata with all pagination parameters (page, page_size, sort)"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+
+    # Create multiple prompts
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Test prompt"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    created_prompts = []
+    for i in range(3):
+        db_prompt = AgenticPrompt(name=f"prompt_{i}", **prompt_data).to_db_model(
+            task_id,
+        )
+        db_session.add(db_prompt)
+        created_prompts.append(db_prompt)
+
+    db_session.commit()
+
+    try:
+        # Create pagination parameters
+        pagination_params = PaginationParameters(
+            page=page,
+            page_size=page_size,
+            sort=sort,
+        )
+
+        # Get paginated results
+        result = repo.get_all_prompt_metadata(
+            task_id=task_id,
+            pagination_parameters=pagination_params,
+        )
+
+        # Verify pagination worked
+        assert isinstance(result, AgenticPromptMetadataListResponse)
+        assert result.count == 3  # Total count should always be 3
+        assert len(result.prompt_metadata) == len(expected_names)
+
+        # Verify the order of prompts
+        for i, expected_name in enumerate(expected_names):
+            assert result.prompt_metadata[i].name == expected_name
+
+    finally:
+        # Cleanup
+        for db_prompt in created_prompts:
+            db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize(
+    "page,page_size,sort,expected_versions",
+    [
+        (0, 2, PaginationSortMethod.ASCENDING, [1, 2]),
+        (1, 2, PaginationSortMethod.ASCENDING, [3, 4]),
+        (0, 4, PaginationSortMethod.DESCENDING, [4, 3, 2, 1]),
+        (0, 10, PaginationSortMethod.ASCENDING, [1, 2, 3, 4]),
+        (3, 1, PaginationSortMethod.ASCENDING, [4]),
+    ],
+)
+def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_versions):
+    """Test getting prompt versions with all pagination parameters (page, page_size, sort)"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # Create multiple versions
+    created_prompts = []
+    for i in range(1, 5):  # Create versions 1-4
+        version_data = {
+            "messages": [{"role": "user", "content": f"Version {i}"}],
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "version": i,
+        }
+        db_prompt = AgenticPrompt(name=prompt_name, **version_data).to_db_model(task_id)
+        db_session.add(db_prompt)
+        created_prompts.append(db_prompt)
+
+    db_session.commit()
+
+    try:
+        # Create pagination parameters
+        pagination_params = PaginationParameters(
+            page=page,
+            page_size=page_size,
+            sort=sort,
+        )
+
+        # Get paginated results
+        result = repo.get_prompt_versions(
+            task_id=task_id,
+            prompt_name=prompt_name,
+            pagination_parameters=pagination_params,
+        )
+
+        # Verify pagination worked
+        assert isinstance(result, AgenticPromptVersionListResponse)
+        assert result.count == 4  # Total count should always be 4
+        assert len(result.versions) == len(expected_versions)
+
+        # Verify the order of versions
+        for i, expected_version in enumerate(expected_versions):
+            assert result.versions[i].version == expected_version
+
+    finally:
+        # Cleanup
+        for db_prompt in created_prompts:
+            db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
+def test_soft_delete_prompt_by_version_success(prompt_version):
+    """Test deleting a prompt with different version formats"""
+    db_session = override_get_db_session()
+    repo = AgenticPromptRepository(db_session)
+
+    task_id = str(uuid4())
+    prompt_name = "test_prompt"
+
+    # Create a database prompt with the sample data
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+        "max_tokens": 100,
+        "version": 1,
+    }
+    db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
+    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+
+    # Save to database
+    db_session.add(db_prompt)
+    db_session.commit()
+
+    try:
+        repo.soft_delete_prompt_version(task_id, prompt_name, prompt_version)
+        if prompt_version == "latest":
+            with pytest.raises(ValueError) as exc_info:
+                repo.get_prompt(task_id, prompt_name, prompt_version)
+            assert (
+                f"Prompt '{prompt_name}' (version 'latest') not found for task '{task_id}'"
+                in str(exc_info.value)
+            )
+        else:
+            result = repo.get_prompt(task_id, prompt_name, prompt_version)
+
+            assert isinstance(result, AgenticPrompt)
+            assert result.name == prompt_name
+            assert result.model_name == ""
+            assert result.model_provider == "openai"
+            assert len(result.messages) == 0
+            assert result.messages == []
+            assert result.version == 1
+            assert result.tools is None
+            assert result.deleted_at is not None
+    finally:
+        # Cleanup
+        db_session.delete(db_prompt)
+        db_session.commit()
+        db_session.close()

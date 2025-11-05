@@ -1295,3 +1295,110 @@ def test_run_agentic_prompt_strict_mode(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+def test_get_agentic_prompt_by_version_route(
+    client: GenaiEngineTestClientBase,
+    prompt_version,
+):
+    """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+        "max_tokens": 100,
+    }
+    if prompt_version == "datetime":
+        prompt_version = datetime.now().isoformat()
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # Get the prompt using different version formats
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    prompt_response = response.json()
+    assert prompt_response["name"] == prompt_name
+    assert prompt_response["messages"] == [{"role": "user", "content": "Hello, world!"}]
+    assert prompt_response["model_name"] == "gpt-4"
+    assert prompt_response["model_provider"] == "openai"
+    assert prompt_response["version"] == 1
+    assert prompt_response["temperature"] == 0.7
+    assert prompt_response["max_tokens"] == 100
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+def test_soft_delete_agentic_prompt_by_version_route(
+    client: GenaiEngineTestClientBase,
+    prompt_version,
+):
+    """Test soft deleting an agentic prompt with different version formats (latest, version number, datetime)"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "temperature": 0.7,
+        "max_tokens": 100,
+    }
+    if prompt_version == "datetime":
+        prompt_version = datetime.now().isoformat()
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # Get the prompt using different version formats
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    if prompt_version == "latest":
+        assert response.status_code == 404
+        assert (
+            response.json()["detail"]
+            == f"Prompt '{prompt_name}' (version 'latest') not found for task '{task.id}'"
+        )
+    else:
+        assert response.status_code == 200
+
+        prompt_response = response.json()
+        assert prompt_response["name"] == prompt_name
+        assert prompt_response["messages"] == []
+        assert prompt_response["model_name"] == ""
+        assert prompt_response["model_provider"] == "openai"
+        assert prompt_response["deleted_at"] is not None
