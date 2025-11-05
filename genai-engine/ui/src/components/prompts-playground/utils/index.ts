@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import convertToolChoiceForBackend from "./convertToolChoiceForBackend";
 import extractContext from "./extractContext";
 import extractStatusCode from "./extractStatusCode";
+import filterNullParams from "./filterNullParams";
 import getToolChoiceDisplayValue from "./getToolChoiceDisplayValue";
 import { extractMustacheKeywords, replaceKeywords } from "./mustacheExtractor";
 import openSpanToApi from "./openSpanToApi";
@@ -42,4 +43,5 @@ export {
   generateId,
   arrayUtils,
   convertToolChoiceForBackend,
+  filterNullParams,
 };

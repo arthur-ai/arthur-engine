@@ -2,7 +2,7 @@ import { PromptType } from "../types";
 
 import { replaceKeywords } from "./mustacheExtractor";
 
-import { convertToolChoiceForBackend } from ".";
+import { convertToolChoiceForBackend, filterNullParams } from ".";
 
 import { CompletionRequest, ModelProvider, OpenAIMessageItem } from "@/lib/api-client/api-client";
 
@@ -43,22 +43,24 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
           }))
         : undefined,
     tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
-    temperature: prompt.modelParameters.temperature,
-    // top_p: prompt.modelParameters.top_p,
-    max_tokens: prompt.modelParameters.max_tokens,
-    max_completion_tokens: prompt.modelParameters.max_completion_tokens,
-    // frequency_penalty: prompt.modelParameters.frequency_penalty,
-    // presence_penalty: prompt.modelParameters.presence_penalty,
-    stop: prompt.modelParameters.stop,
-    seed: prompt.modelParameters.seed,
-    // reasoning_effort: prompt.modelParameters.reasoning_effort,
     response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
-    timeout: prompt.modelParameters.timeout,
-    stream_options: prompt.modelParameters.stream_options,
-    logprobs: prompt.modelParameters.logprobs,
-    top_logprobs: prompt.modelParameters.top_logprobs,
-    logit_bias: prompt.modelParameters.logit_bias,
-    thinking: prompt.modelParameters.thinking,
+    ...filterNullParams({
+      temperature: prompt.modelParameters.temperature,
+      top_p: prompt.modelParameters.top_p,
+      max_tokens: prompt.modelParameters.max_tokens,
+      max_completion_tokens: prompt.modelParameters.max_completion_tokens,
+      frequency_penalty: prompt.modelParameters.frequency_penalty,
+      presence_penalty: prompt.modelParameters.presence_penalty,
+      stop: prompt.modelParameters.stop,
+      seed: prompt.modelParameters.seed,
+      // reasoning_effort: prompt.modelParameters.reasoning_effort,
+      timeout: prompt.modelParameters.timeout,
+      stream_options: prompt.modelParameters.stream_options,
+      logprobs: prompt.modelParameters.logprobs,
+      top_logprobs: prompt.modelParameters.top_logprobs,
+      logit_bias: prompt.modelParameters.logit_bias,
+      thinking: prompt.modelParameters.thinking,
+    }),
   };
 };
 

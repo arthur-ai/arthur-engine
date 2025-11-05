@@ -67,18 +67,18 @@ const createTool = (counter: number = 1, overrides: Partial<FrontendTool> = {}):
  * Prompt factory functions *
  ***************************/
 const createModelParameters = (overrides: Partial<ModelParametersType> = {}): ModelParametersType => ({
-  temperature: 1,
-  top_p: 1,
+  temperature: null,
+  top_p: null,
   timeout: null,
   stream: false,
   stream_options: null,
   max_tokens: null,
   max_completion_tokens: null,
-  frequency_penalty: 0,
-  presence_penalty: 0,
+  frequency_penalty: null,
+  presence_penalty: null,
   stop: null,
   seed: null,
-  reasoning_effort: "default",
+  reasoning_effort: null,
   logprobs: null,
   top_logprobs: null,
   logit_bias: null,

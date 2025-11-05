@@ -40,12 +40,50 @@ const ModelParamsDialog = ({
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const formJson = Object.fromEntries(formData.entries()) as Record<string, string>;
-    setCopiedParams((state) => ({ ...state, ...formJson }));
+
+    // Convert empty strings to null for numeric and optional fields
+    const processedParams: Partial<ModelParametersType> = {};
+
+    // Numeric fields that should be null when empty
+    const numericFields = [
+      "temperature",
+      "top_p",
+      "timeout",
+      "max_tokens",
+      "max_completion_tokens",
+      "frequency_penalty",
+      "presence_penalty",
+      "seed",
+    ] as const;
+    numericFields.forEach((field) => {
+      const value = formJson[field];
+      processedParams[field] = value === "" || value === undefined ? null : Number(value);
+    });
+
+    // Optional text fields
+    const textFields = ["stop"] as const;
+    textFields.forEach((field) => {
+      const value = formJson[field];
+      processedParams[field] = value === "" || value === undefined ? null : value;
+    });
+
+    // Boolean field (stream) - checkbox is only included when checked
+    // If not in formJson, the checkbox was unchecked, so set to false
+    processedParams.stream = formJson.stream === "on";
+
+    // Select field (reasoning_effort)
+    const reasoningEffortValue = formJson.reasoning_effort;
+    processedParams.reasoning_effort =
+      reasoningEffortValue === "" || reasoningEffortValue === undefined ? null : (reasoningEffortValue as ModelParametersType["reasoning_effort"]);
+
+    // Merge processed params with existing state and preserve other fields
+    const updatedParams = { ...copiedParams, ...processedParams };
+    setCopiedParams(updatedParams);
     handleClose();
 
     dispatch({
       type: "updateModelParameters",
-      payload: { promptId, modelParameters: copiedParams },
+      payload: { promptId, modelParameters: updatedParams },
     });
   };
 
