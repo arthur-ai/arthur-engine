@@ -18,11 +18,10 @@ from fastapi import HTTPException, Query
 from opentelemetry import context as otel_context
 from opentelemetry import trace
 from opentelemetry.sdk.trace import Tracer
-from pydantic_settings.main import T
 from sqlalchemy.orm import Session
 
 import utils.constants as constants
-from custom_types.custom_types import P
+from custom_types import P, T
 
 _root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _genai_engine_version = None

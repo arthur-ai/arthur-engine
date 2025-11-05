@@ -1,3 +1,3 @@
-from .custom_types import QueryT
+from .custom_types import FunctionT, P, QueryT, T
 
-__all__ = ["QueryT"]
+__all__ = ["QueryT", "FunctionT", "P", "T"]

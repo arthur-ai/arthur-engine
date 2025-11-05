@@ -20,7 +20,6 @@ class MetricRepository:
     def create_metric(self, metric: Metric) -> Metric:
         database_metric = metric._to_database_model()
         self.db_session.add(database_metric)
-        self.db_session.flush()
         self.db_session.commit()
         # Clear cache entry if it exists
         METRICS_CACHE.pop(metric.id, None)

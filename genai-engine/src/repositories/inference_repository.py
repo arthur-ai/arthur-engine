@@ -172,6 +172,9 @@ class InferenceRepository:
         else:
             count = -1
 
+        if count == 0:
+            return [], 0
+
         if page is not None:
             stmt = stmt.offset(page * page_size)
         stmt = stmt.limit(page_size)
@@ -285,8 +288,6 @@ class InferenceRepository:
         results: list[DatabaseInference] = inference_stmt.all()
 
         inferences = [Inference._from_database_model(di) for di in results]
-        if not inferences:
-            return [], 0
         return inferences, count
 
     def save_prompt(

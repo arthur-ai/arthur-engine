@@ -68,7 +68,6 @@ class RuleRepository:
     def create_rule(self, rule: Rule) -> Rule:
         created_rule_db = rule._to_database_model()
         self.db_session.add(created_rule_db)
-        self.db_session.flush()
         self.db_session.commit()
 
         return Rule._from_database_model(created_rule_db)
