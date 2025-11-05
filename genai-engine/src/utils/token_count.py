@@ -1,33 +1,34 @@
 import logging
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 import tiktoken
 from pydantic import BaseModel
-from tokencost import calculate_cost_by_tokens
+from tokencost import (
+    calculate_cost_by_tokens,
+    count_message_tokens,
+    count_string_tokens,
+)
 
 logger = logging.getLogger(__name__)
 
 TIKTOKEN_ENCODER = "cl100k_base"
 
 
-class TokenCount(BaseModel):
+class TokenCountCost(BaseModel):
+    """Data structure for token counts and costs."""
+
+    prompt_token_cost: Optional[float] = None
+    completion_token_cost: Optional[float] = None
+    total_token_cost: Optional[float] = None
     prompt_token_count: Optional[int] = None
     completion_token_count: Optional[int] = None
     total_token_count: Optional[int] = None
 
 
-class TokenCost(BaseModel):
-    prompt_token_cost: Optional[float] = None
-    completion_token_cost: Optional[float] = None
-    total_token_cost: Optional[float] = None
-
-
-class TokenCountCost(BaseModel):
-    token_count: Optional[TokenCount] = None
-    token_cost: Optional[TokenCost] = None
-
-
 class TokenCounter:
+    # Chunk size for processing long texts (words)
+    CHUNK_SIZE = 1000
+
     def __init__(self, model: str = TIKTOKEN_ENCODER):
         """Initializes a titoken encoder
 
@@ -36,11 +37,28 @@ class TokenCounter:
         self.encoder = tiktoken.get_encoding(model)
 
     def count(self, query: str):
-        """returns token count of the query
+        """Returns token count of the query using chunking for long texts.
 
         :param query: string query sent to LLM
         """
-        return len(self.encoder.encode(query))
+        if not query:
+            return 0
+
+        # Split into words
+        words = query.split()
+
+        # For short texts, encode directly
+        if len(words) <= self.CHUNK_SIZE:
+            return len(self.encoder.encode(query))
+
+        # For long texts, process in word-based chunks
+        total_tokens = 0
+        for i in range(0, len(words), self.CHUNK_SIZE):
+            chunk_words = words[i : i + self.CHUNK_SIZE]
+            chunk_text = " ".join(chunk_words)
+            total_tokens += len(self.encoder.encode(chunk_text))
+
+        return total_tokens
 
 
 def compute_cost_from_tokens(
@@ -86,6 +104,70 @@ def compute_cost_from_tokens(
         logger.warning(
             f"Error computing cost for model {model_name}: {e}",
         )
+        return None
+
+
+def count_tokens_from_string(
+    text: str,
+    model_name: Optional[str] = None,
+) -> Optional[int]:
+    """Calculate token count from string using tokencost or fallback to tiktoken."""
+    if not text:
+        return None
+    try:
+        if model_name:
+            return count_string_tokens(prompt=text, model=model_name)
+        else:
+            # Fallback: use default tiktoken encoder
+            counter = TokenCounter(TIKTOKEN_ENCODER)
+            return counter.count(text)
+    except Exception as e:
+        logger.warning(f"Error counting tokens from string: {e}")
+        return None
+
+
+def count_tokens_from_messages(
+    messages: List[dict],
+    model_name: Optional[str] = None,
+) -> Optional[int]:
+    """Calculate token count from messages using tokencost or fallback to tiktoken.
+
+    Expects OpenInference normalized format where each message has nested structure:
+    {"message": {"role": "user", "content": "..."}}
+    """
+    if not messages:
+        return None
+
+    try:
+        formatted = []
+        for msg in messages:
+            if not isinstance(msg, dict):
+                continue
+
+            message_data = msg.get("message", {})
+            role = message_data.get("role")
+            content = message_data.get("content")
+
+            # Only include messages with content
+            if content:
+                formatted.append(
+                    {"role": str(role) if role else "user", "content": str(content)},
+                )
+
+        if not formatted:
+            return None
+
+        if model_name:
+            # Use tokencost for model-specific counting
+            return count_message_tokens(formatted, model=model_name)
+        else:
+            # Fallback: concatenate message content and use string counter
+            combined_text = "\n".join(
+                f"{msg['role']}: {msg['content']}" for msg in formatted
+            )
+            return count_tokens_from_string(combined_text, model_name=None)
+    except Exception as e:
+        logger.warning(f"Error counting tokens from messages: {e}")
         return None
 
 

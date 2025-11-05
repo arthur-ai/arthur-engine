@@ -16,10 +16,9 @@ from openinference.semconv.trace import MessageAttributes, SpanAttributes
 
 from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
 from utils.token_count import (
-    TokenCost,
-    TokenCount,
     TokenCountCost,
     compute_cost_from_tokens,
+    count_tokens_from_messages,
 )
 
 logger = logging.getLogger(__name__)
@@ -349,17 +348,25 @@ def extract_token_cost_from_span(
 ) -> TokenCountCost:
     """
     Extract token counts and costs from span attributes.
+    Calculates missing token counts and costs from message content when needed.
 
     Returns:
         TokenCountCost object with token_count and token_cost
     """
 
     if span_kind != SPAN_KIND_LLM:
-        return TokenCountCost(token_count=TokenCount(), token_cost=TokenCost())
+        return TokenCountCost(
+            prompt_token_count=None,
+            completion_token_count=None,
+            total_token_count=None,
+            prompt_token_cost=None,
+            completion_token_cost=None,
+            total_token_cost=None,
+        )
 
     attributes = span_raw_data.get("attributes", {})
 
-    # Extract token counts
+    # Extract token counts from attributes
     prompt_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_PROMPT)
     completion_tokens = get_nested_value(
         attributes,
@@ -367,68 +374,70 @@ def extract_token_cost_from_span(
     )
     total_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_TOTAL)
 
-    token_count_result = TokenCount(
-        prompt_token_count=prompt_tokens,
-        completion_token_count=completion_tokens,
-        total_token_count=_calculate_total(
-            total_tokens,
-            prompt_tokens,
-            completion_tokens,
-        ),
-    )
-
-    # Extract costs
+    # Extract costs from attributes
     prompt_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_PROMPT)
     completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
     total_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_TOTAL)
 
-    # Compute missing costs if needed
+    # Get model name for token/cost calculation
     model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
-    if model_name:
-        # Compute prompt cost if missing
-        if prompt_tokens and prompt_cost is None:
-            prompt_cost = compute_cost_from_tokens(
-                model_name,
-                input_tokens=prompt_tokens,
-            )
 
-        # Compute completion cost if missing
-        if completion_tokens and completion_cost is None:
-            completion_cost = compute_cost_from_tokens(
-                model_name,
-                output_tokens=completion_tokens,
-            )
+    # Calculate prompt tokens if missing
+    if prompt_tokens is None:
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
+        if input_messages:
+            prompt_tokens = count_tokens_from_messages(input_messages, model_name)
+        else:
+            prompt_tokens = 0
 
-        # Compute total cost if missing
-        if total_cost is None:
-            if token_count_result.total_token_count is not None:
-                total_cost = compute_cost_from_tokens(
-                    model_name,
-                    input_tokens=token_count_result.total_token_count,
-                )
-            elif prompt_cost is not None and completion_cost is not None:
-                total_cost = prompt_cost + completion_cost
+    # Calculate completion tokens if missing
+    if completion_tokens is None:
+        output_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
+            default=[],
+        )
+        if output_messages:
+            # Use all output messages, same as input messages
+            completion_tokens = count_tokens_from_messages(output_messages, model_name)
+        else:
+            completion_tokens = 0
 
-    token_cost_result = TokenCost(
+    # Calculate prompt cost if missing (requires model_name and prompt_tokens)
+    if prompt_cost is None and (model_name and prompt_tokens is not None):
+        prompt_cost = compute_cost_from_tokens(model_name, input_tokens=prompt_tokens)
+
+    # Calculate completion cost if missing (requires model_name and completion_tokens)
+    if completion_cost is None and (model_name and completion_tokens is not None):
+        completion_cost = compute_cost_from_tokens(
+            model_name,
+            output_tokens=completion_tokens,
+        )
+
+    # Calculate total tokens if missing
+    if (
+        total_tokens is None
+        and prompt_tokens is not None
+        and completion_tokens is not None
+    ):
+        total_tokens = prompt_tokens + completion_tokens
+
+    # Calculate total cost if missing
+    if total_cost is None and prompt_cost is not None and completion_cost is not None:
+        total_cost = prompt_cost + completion_cost
+
+    return TokenCountCost(
+        prompt_token_count=prompt_tokens,
+        completion_token_count=completion_tokens,
+        total_token_count=total_tokens,
         prompt_token_cost=prompt_cost,
         completion_token_cost=completion_cost,
         total_token_cost=total_cost,
     )
-
-    return TokenCountCost(token_count=token_count_result, token_cost=token_cost_result)
-
-
-def _calculate_total(
-    total: Optional[float],
-    prompt: Optional[float],
-    completion: Optional[float],
-) -> Optional[float]:
-    """Calculate total from provided value or sum of components."""
-    if total is not None:
-        return total
-    if prompt is not None and completion is not None:
-        return prompt + completion
-    return None
 
 
 def value_to_string(value) -> Optional[str]:
