@@ -6980,7 +6980,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SearchRagSearchSettingConfigurationsResponse"
+                                    "$ref": "#/components/schemas/ListRagSearchSettingConfigurationsResponse"
                                 }
                             }
                         }
@@ -10950,6 +10950,29 @@
                 ],
                 "title": "ListDatasetVersionsResponse"
             },
+            "ListRagSearchSettingConfigurationsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG search setting configurations matching the parameters."
+                    },
+                    "rag_provider_setting_configurations": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Setting Configurations",
+                        "description": "List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_setting_configurations"
+                ],
+                "title": "ListRagSearchSettingConfigurationsResponse"
+            },
             "LogitBiasItem": {
                 "properties": {
                     "token_id": {
@@ -13330,29 +13353,6 @@
                     "rag_provider_configurations"
                 ],
                 "title": "SearchRagProviderConfigurationsResponse"
-            },
-            "SearchRagSearchSettingConfigurationsResponse": {
-                "properties": {
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "The total number of RAG search setting configurations matching the parameters."
-                    },
-                    "rag_provider_setting_configurations": {
-                        "items": {
-                            "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
-                        },
-                        "type": "array",
-                        "title": "Rag Provider Setting Configurations",
-                        "description": "List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "count",
-                    "rag_provider_setting_configurations"
-                ],
-                "title": "SearchRagSearchSettingConfigurationsResponse"
             },
             "SearchRulesRequest": {
                 "properties": {

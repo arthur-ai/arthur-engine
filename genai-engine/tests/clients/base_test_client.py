@@ -89,13 +89,13 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
+    ListRagSearchSettingConfigurationsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
-    SearchRagSearchSettingConfigurationsResponse,
     SessionListResponse,
     SessionTracesResponse,
     SpanListResponse,
@@ -2930,7 +2930,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         page_size: int = None,
         config_name: str = None,
         rag_provider_ids: list[str] = None,
-    ) -> tuple[int, SearchRagSearchSettingConfigurationsResponse]:
+    ) -> tuple[int, ListRagSearchSettingConfigurationsResponse]:
         """Search RAG search setting configurations for a task."""
         path = f"api/v1/tasks/{task_id}/rag_search_settings"
         params = get_base_pagination_parameters(
@@ -2955,7 +2955,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         return (
             resp.status_code,
             (
-                SearchRagSearchSettingConfigurationsResponse.model_validate(
+                ListRagSearchSettingConfigurationsResponse.model_validate(
                     resp.json(),
                 )
                 if resp.status_code == 200

@@ -566,7 +566,7 @@ class RagSearchSettingConfigurationResponse(BaseModel):
     )
 
 
-class SearchRagSearchSettingConfigurationsResponse(BaseModel):
+class ListRagSearchSettingConfigurationsResponse(BaseModel):
     count: int = Field(
         description="The total number of RAG search setting configurations matching the parameters.",
     )

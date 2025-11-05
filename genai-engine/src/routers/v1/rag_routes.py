@@ -39,12 +39,12 @@ from schemas.request_schemas import (
 )
 from schemas.response_schemas import (
     ConnectionCheckResult,
+    ListRagSearchSettingConfigurationsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
-    SearchRagSearchSettingConfigurationsResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -478,7 +478,7 @@ def update_rag_search_settings(
 @rag_routes.get(
     "/tasks/{task_id}/rag_search_settings",
     description="Get list of RAG search setting configurations for the task.",
-    response_model=SearchRagSearchSettingConfigurationsResponse,
+    response_model=ListRagSearchSettingConfigurationsResponse,
     tags=[rag_router_tag],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
@@ -500,7 +500,7 @@ def get_task_rag_search_settings(
         default=None,
         description="List of rag provider configuration IDs to filter for.",
     ),
-) -> SearchRagSearchSettingConfigurationsResponse:
+) -> ListRagSearchSettingConfigurationsResponse:
     try:
         rag_providers_repo = RagProvidersRepository(db_session)
         configs, total_count = (
@@ -512,7 +512,7 @@ def get_task_rag_search_settings(
             )
         )
 
-        return SearchRagSearchSettingConfigurationsResponse(
+        return ListRagSearchSettingConfigurationsResponse(
             count=total_count,
             rag_provider_setting_configurations=[
                 config.to_response_model() for config in configs
