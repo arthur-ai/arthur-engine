@@ -128,6 +128,7 @@ from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationRequest,
+    RagSearchSettingNewVersionRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
@@ -2751,8 +2752,8 @@ class RagSearchSettingConfigurationVersion(BaseModel):
         default=None,
         description="Optional list of tags configured for this version of the search settings configuration.",
     )
-    settings: RagSearchSettingConfigurationTypes = Field(
-        description="Search settings configuration for a search request to a RAG provider.",
+    settings: Optional[RagSearchSettingConfigurationTypes] = Field(
+        description="Search settings configuration for a search request to a RAG provider. None if version has been soft deleted.",
     )
     created_at: datetime = Field(
         description="Time the RAG search settings configuration version was created.",
@@ -2760,11 +2761,19 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     updated_at: datetime = Field(
         description="Time the RAG search settings configuration version was updated.",
     )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        description="Time the RAG search settings configuration version was soft-deleted.",
+    )
 
     @staticmethod
     def _from_request_model(
-        request: RagSearchSettingConfigurationRequest,
+        request: Union[
+            RagSearchSettingConfigurationRequest,
+            RagSearchSettingNewVersionRequest,
+        ],
         setting_config_id: uuid.UUID,
+        new_version_number: int,
     ) -> "RagSearchSettingConfigurationVersion":
         curr_time = datetime.now()
 
@@ -2796,32 +2805,37 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             )
 
         return RagSearchSettingConfigurationVersion(
-            version_number=1,
+            version_number=new_version_number,
             tags=request.tags,
             setting_configuration_id=setting_config_id,
             settings=settings,
             created_at=curr_time,
             updated_at=curr_time,
+            deleted_at=None,
         )
 
     def _to_database_model(self) -> DatabaseRagSearchSettingConfigurationVersion:
         return DatabaseRagSearchSettingConfigurationVersion(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
-            settings=self.settings.model_dump(mode="json"),
+            settings=self.settings.model_dump(mode="json") if self.settings else None,
             tags=self.tags,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            deleted_at=self.deleted_at,
         )
 
     def to_response_model(self) -> RagSearchSettingConfigurationVersionResponse:
         return RagSearchSettingConfigurationVersionResponse(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
-            settings=self.settings.to_response_model(),
+            settings=self.settings.to_response_model() if self.settings else None,
             tags=self.tags,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
+            deleted_at=(
+                _serialize_datetime(self.deleted_at) if self.deleted_at else None
+            ),
         )
 
     @staticmethod
@@ -2830,28 +2844,30 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     ) -> "RagSearchSettingConfigurationVersion":
         # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
         settings_dict = db_model.settings
-        search_kind = settings_dict.get("search_kind")
+        if settings_dict is None:
+            # settings were cleared by soft-delete endpoint
+            settings = None
+        else:
+            search_kind = settings_dict.get("search_kind")
 
-        # Discriminate by search_kind field (stored as string in JSON)
-        if search_kind == RagSearchKind.HYBRID_SEARCH.value:
-            settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
-                settings_dict,
-            )
-        elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
-            settings = (
-                WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+            # Discriminate by search_kind field (stored as string in JSON)
+            if search_kind == RagSearchKind.HYBRID_SEARCH.value:
+                settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
                     settings_dict,
                 )
-            )
-        elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
-            settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
-                settings_dict,
-            )
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
-            )
+            elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
+                settings = WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
+                settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
+                )
 
         return RagSearchSettingConfigurationVersion(
             setting_configuration_id=db_model.setting_configuration_id,
@@ -2860,6 +2876,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             tags=db_model.tags,
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
+            deleted_at=db_model.deleted_at,
         )
 
 
@@ -2915,6 +2932,7 @@ class RagSearchSettingConfiguration(BaseModel):
             latest_version=RagSearchSettingConfigurationVersion._from_request_model(
                 request,
                 setting_config_id,
+                1,
             ),
             created_at=curr_time,
             updated_at=curr_time,

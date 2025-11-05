@@ -25,6 +25,7 @@ from schemas.internal_schemas import (
     RagProviderConfiguration,
     RagProviderTestConfiguration,
     RagSearchSettingConfiguration,
+    RagSearchSettingConfigurationVersion,
     User,
 )
 from schemas.request_schemas import (
@@ -35,6 +36,7 @@ from schemas.request_schemas import (
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationRequest,
     RagSearchSettingConfigurationUpdateRequest,
+    RagSearchSettingNewVersionRequest,
     RagVectorSimilarityTextSearchSettingRequest,
 )
 from schemas.response_schemas import (
@@ -42,6 +44,7 @@ from schemas.response_schemas import (
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
+    RagSearchSettingConfigurationVersionResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
     SearchRagSearchSettingConfigurationsResponse,
@@ -518,5 +521,96 @@ def get_task_rag_search_settings(
                 config.to_response_model() for config in configs
             ],
         )
+    finally:
+        db_session.close()
+
+
+@rag_routes.post(
+    "/rag_search_settings/{setting_configuration_id}/versions",
+    description="Create a new version for an existing RAG search settings configuration.",
+    response_model=RagSearchSettingConfigurationVersionResponse,
+    tags=[rag_router_tag],
+    operation_id="create_rag_search_settings_version",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def create_rag_search_settings_version(
+    request: RagSearchSettingNewVersionRequest,
+    setting_configuration_id: UUID = Path(
+        description="ID of the RAG settings configuration to create the new version for.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationVersionResponse:
+    try:
+        # get parent settings config
+        rag_providers_repo = RagProvidersRepository(db_session)
+        settings_config = rag_providers_repo.get_rag_setting_configuration(
+            setting_configuration_id,
+        )
+
+        # create new settings version
+        rag_providers_repo = RagProvidersRepository(db_session)
+        setting_config = RagSearchSettingConfigurationVersion._from_request_model(
+            request,
+            setting_configuration_id,
+            settings_config.latest_version_number + 1,
+        )
+        rag_providers_repo.create_rag_setting_configuration_version(setting_config)
+
+        return setting_config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_routes.get(
+    "/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+    description="Get a single RAG setting configuration version.",
+    response_model=RagSearchSettingConfigurationVersionResponse,
+    tags=[rag_router_tag],
+    operation_id="get_rag_search_setting_version",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_rag_search_setting_version(
+    setting_configuration_id: UUID = Path(
+        description="ID of RAG search setting configuration.",
+    ),
+    version_number: int = Path(description="Version number of the version to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationVersionResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        config = rag_providers_repo.get_rag_setting_configuration_version(
+            setting_configuration_id,
+            version_number,
+        )
+        return config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_routes.delete(
+    "/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+    description="Soft delete a RAG search setting configuration version.",
+    tags=[rag_router_tag],
+    status_code=HTTP_204_NO_CONTENT,
+    operation_id="delete_rag_search_setting_version",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def delete_rag_search_setting_version(
+    setting_configuration_id: UUID = Path(
+        description="ID of RAG search setting configuration.",
+    ),
+    version_number: int = Path(description="Version number of the version to delete."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_providers_repo.soft_delete_rag_setting_configuration_version(
+            setting_configuration_id,
+            version_number,
+        )
+        return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()

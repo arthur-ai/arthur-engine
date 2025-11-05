@@ -7150,6 +7150,182 @@
                 }
             }
         },
+        "/api/v1/rag_search_settings/{setting_configuration_id}/versions": {
+            "post": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Create Rag Search Settings Version",
+                "description": "Create a new version for an existing RAG search settings configuration.",
+                "operationId": "create_rag_search_settings_version",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG settings configuration to create the new version for.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of the RAG settings configuration to create the new version for."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagSearchSettingNewVersionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}": {
+            "get": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Get Rag Search Setting Version",
+                "description": "Get a single RAG setting configuration version.",
+                "operationId": "get_rag_search_setting_version",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of RAG search setting configuration.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of RAG search setting configuration."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the version to fetch.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the version to fetch."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "RAG Providers"
+                ],
+                "summary": "Delete Rag Search Setting Version",
+                "description": "Soft delete a RAG search setting configuration version.",
+                "operationId": "delete_rag_search_setting_version",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of RAG search setting configuration.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of RAG search setting configuration."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the version to delete.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the version to delete."
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -12938,10 +13114,13 @@
                             },
                             {
                                 "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationResponse"
+                            },
+                            {
+                                "type": "null"
                             }
                         ],
                         "title": "Settings",
-                        "description": "Settings configuration for a search request to a RAG provider."
+                        "description": "Settings configuration for a search request to a RAG provider. None if version has been soft-deleted."
                     },
                     "created_at": {
                         "type": "integer",
@@ -12952,17 +13131,67 @@
                         "type": "integer",
                         "title": "Updated At",
                         "description": "Time the RAG provider settings configuration version was updated in unix milliseconds"
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Time the RAG provider settings configuration version was soft-deleted in unix milliseconds"
                     }
                 },
                 "type": "object",
                 "required": [
                     "setting_configuration_id",
                     "version_number",
-                    "settings",
                     "created_at",
                     "updated_at"
                 ],
                 "title": "RagSearchSettingConfigurationVersionResponse"
+            },
+            "RagSearchSettingNewVersionRequest": {
+                "properties": {
+                    "settings": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest"
+                            }
+                        ],
+                        "title": "Settings",
+                        "description": "Settings configuration for a search request to a RAG provider."
+                    },
+                    "tags": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tags",
+                        "description": "Optional list of tags to configure for this version of the search settings configuration."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "settings"
+                ],
+                "title": "RagSearchSettingNewVersionRequest"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {

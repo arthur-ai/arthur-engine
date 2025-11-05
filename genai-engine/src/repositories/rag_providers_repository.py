@@ -13,6 +13,7 @@ from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderConfiguration,
     DatabaseRagSearchSettingConfiguration,
+    DatabaseRagSearchSettingConfigurationVersion,
 )
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -22,6 +23,7 @@ from schemas.internal_schemas import (
     ApiKeyRagProviderSecretValue,
     RagProviderConfiguration,
     RagSearchSettingConfiguration,
+    RagSearchSettingConfigurationVersion,
 )
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigUpdateRequest,
@@ -277,3 +279,86 @@ class RagProvidersRepository:
             for db_config in db_configs
         ]
         return configs, total_count
+
+    def create_rag_setting_configuration_version(
+        self,
+        rag_setting_version: RagSearchSettingConfigurationVersion,
+    ) -> None:
+        """Create a new RAG setting configuration version. Updates parent model metadata as needed."""
+        # create new version
+        db_version = rag_setting_version._to_database_model()
+
+        # update parent model
+        db_parent_config = self._get_db_rag_setting_config(
+            rag_setting_version.setting_configuration_id,
+        )
+        db_parent_config.updated_at = db_version.created_at
+        db_parent_config.latest_version_number = db_version.version_number
+
+        # calculate new all_possible_tags field to include any newly introduced tags
+        new_tags = set(rag_setting_version.tags) if rag_setting_version.tags else {}
+        all_possible_tags = set(db_parent_config.all_possible_tags).union(new_tags)
+        db_parent_config.all_possible_tags = list(all_possible_tags)
+
+        # add objects to DB
+        self.db_session.add(db_version)
+        self.db_session.commit()
+
+    def _get_db_rag_setting_config_version(
+        self,
+        setting_config_id: UUID,
+        version_number: int,
+    ) -> DatabaseRagSearchSettingConfigurationVersion:
+        db_config = (
+            self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
+            .filter(
+                DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
+                == setting_config_id,
+            )
+            .filter(
+                DatabaseRagSearchSettingConfigurationVersion.version_number
+                == version_number,
+            )
+            .first()
+        )
+
+        if not db_config:
+            raise HTTPException(
+                status_code=404,
+                detail="RAG setting configuration version not found",
+            )
+        return db_config
+
+    def get_rag_setting_configuration_version(
+        self,
+        config_id: UUID,
+        version_number: int,
+    ) -> RagSearchSettingConfigurationVersion:
+        """Get a RAG provider configuration version by ID and version number"""
+        db_config = self._get_db_rag_setting_config_version(config_id, version_number)
+        return RagSearchSettingConfigurationVersion._from_database_model(db_config)
+
+    def soft_delete_rag_setting_configuration_version(
+        self,
+        config_id: UUID,
+        version_number: int,
+    ) -> None:
+        db_version_config = self._get_db_rag_setting_config_version(
+            config_id,
+            version_number,
+        )
+        db_version_config.deleted_at = datetime.now()
+
+        # empty out all other fields in the version except for the PK fields and the created/updated fields
+        db_version_config.settings = None
+        db_version_config.tags = None
+
+        # update all possible tags in case that was the last instance of a tag that got cleared
+        db_parent_config = self._get_db_rag_setting_config(config_id)
+        all_tags = set()
+        for version in db_parent_config.all_versions:
+            if version.tags is not None:
+                all_tags = all_tags.union(set(version.tags))
+        db_parent_config.all_possible_tags = list(all_tags)
+
+        self.db_session.commit()

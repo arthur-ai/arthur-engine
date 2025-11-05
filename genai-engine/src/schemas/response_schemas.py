@@ -525,14 +525,19 @@ class RagSearchSettingConfigurationVersionResponse(BaseModel):
         description="Optional list of tags configured for this version of the settings configuration.",
     )
 
-    settings: RagSearchSettingConfigurationResponseTypes = Field(
-        description="Settings configuration for a search request to a RAG provider.",
+    settings: Optional[RagSearchSettingConfigurationResponseTypes] = Field(
+        default=None,
+        description="Settings configuration for a search request to a RAG provider. None if version has been soft-deleted.",
     )
     created_at: int = Field(
         description="Time the RAG provider settings configuration version was created in unix milliseconds",
     )
     updated_at: int = Field(
         description="Time the RAG provider settings configuration version was updated in unix milliseconds",
+    )
+    deleted_at: Optional[int] = Field(
+        default=None,
+        description="Time the RAG provider settings configuration version was soft-deleted in unix milliseconds",
     )
 
 
