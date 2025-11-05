@@ -20,12 +20,12 @@ import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEn
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId("msg"),
   role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
-  content: "Change me",
+  content: "",
   disabled: false,
   ...overrides,
 });
 
-const newMessage = (role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole, content: string = "Change me"): MessageType =>
+const newMessage = (role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole, content: string = ""): MessageType =>
   createMessage({ role, content });
 
 const duplicateMessage = (original: MessageType): MessageType =>

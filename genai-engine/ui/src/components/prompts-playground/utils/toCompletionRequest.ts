@@ -44,6 +44,9 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
         : undefined,
     tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
     response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
+    completion_request: {
+      stream: prompt.modelParameters.stream ?? false,
+    },
     ...filterNullParams({
       temperature: prompt.modelParameters.temperature,
       top_p: prompt.modelParameters.top_p,
