@@ -188,8 +188,6 @@ interface SavePromptDialogProps {
   setOpen: (open: boolean) => void;
   prompt: PromptType;
   initialName?: string;
-  onSaveSuccess?: () => void;
-  onSaveError?: (error: string) => void;
 }
 
 interface VersionSubmenuProps {

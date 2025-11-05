@@ -8,6 +8,7 @@ import Stack from "@mui/material/Stack";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
@@ -15,46 +16,41 @@ import { apiToFrontendPrompt } from "./utils";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
   const [searchParams] = useSearchParams();
-  const hasFetchedPrompts = useRef(false);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
   const hasFetchedSpan = useRef(false);
+  const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
   const spanId = searchParams.get("spanId");
+  //   if (hasFetchedPrompts.current) {
+  //     return;
+  //   }
 
-  const fetchPrompts = useCallback(async () => {
-    if (hasFetchedPrompts.current) {
-      return;
-    }
+  //   if (!apiClient || !taskId) {
+  //     console.error("No api client or task id");
+  //     return;
+  //   }
 
-    if (!apiClient || !taskId) {
-      console.error("No api client or task id");
-      return;
-    }
+  //   hasFetchedPrompts.current = true;
+  //   try {
+  //     const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
+  //       taskId,
+  //     });
 
-    hasFetchedPrompts.current = true;
-    try {
-      const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
-        taskId,
-      });
-
-      dispatch({
-        type: "updateBackendPrompts",
-        payload: { prompts: response.data.prompt_metadata },
-      });
-    } catch (error) {
-      console.error("Failed to fetch prompt metadata:", error);
-    }
-  }, [apiClient, taskId]);
+  //     dispatch({
+  //       type: "updateBackendPrompts",
+  //       payload: { prompts: response.data.prompt_metadata },
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to fetch prompt metadata:", error);
+  //   }
+  // }, [apiClient, taskId]);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -146,13 +142,22 @@ const PromptsPlayground = () => {
   }, [spanId, apiClient, state.prompts]);
 
   useEffect(() => {
-    fetchPrompts();
-    fetchProviders();
     if (spanId) {
       fetchSpanData();
     }
-  }, [fetchPrompts, fetchProviders, fetchSpanData, spanId]);
+  }, [fetchSpanData, spanId]);
 
+  // Fetch backend prompts on mount
+  useEffect(() => {
+    fetchPrompts(dispatch);
+  }, [fetchPrompts]);
+
+  // Fetch providers on mount
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  // If providers exist, fetch available models
   useEffect(() => {
     if (state.enabledProviders.length > 0) {
       fetchAvailableModels();
