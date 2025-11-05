@@ -6,13 +6,11 @@ Create Date: 2025-11-03 10:39:04.544418
 
 """
 
-import json
 import sys
 from pathlib import Path
 
 import sqlalchemy as sa
 from sqlalchemy import text
-from tokencost import calculate_cost_by_tokens
 
 from alembic import op
 
@@ -21,13 +19,15 @@ migration_dir = Path(__file__).parent.parent.parent
 src_dir = migration_dir / "src"
 sys.path.insert(0, str(src_dir))
 
-from utils.token_count import count_tokens_from_messages
+from utils.trace import extract_token_cost_from_span, value_to_string
 
 # revision identifiers, used by Alembic.
 revision = "aa259a314eeb"
 down_revision = "9d3d34fcf6b4"
 branch_labels = None
 depends_on = None
+
+BATCH_SIZE = 1000
 
 
 def upgrade() -> None:
@@ -103,222 +103,83 @@ def upgrade() -> None:
     # ### end Alembic commands ###
 
     _backfill_spans_token_data()
-    _compute_missing_token_counts()
     _backfill_trace_metadata_token_data()
     _backfill_trace_metadata_input_output_content()
 
 
 def _backfill_spans_token_data():
-    """Backfill spans table with token counts and costs extracted from raw_data JSON."""
+    """Backfill spans table with token counts and costs in a single batch processing pass."""
     connection = op.get_bind()
 
-    # Extract token counts and costs from JSONB
-    op.execute(
-        text(
-            """
-        UPDATE spans
-        SET
-            prompt_token_count = (raw_data->'attributes'->'llm'->'token_count'->>'prompt')::integer,
-            completion_token_count = (raw_data->'attributes'->'llm'->'token_count'->>'completion')::integer,
-            total_token_count = COALESCE(
-                (raw_data->'attributes'->'llm'->'token_count'->>'total')::integer,
-                (raw_data->'attributes'->'llm'->'token_count'->>'prompt')::integer +
-                (raw_data->'attributes'->'llm'->'token_count'->>'completion')::integer
+    # Get total count for progress tracking (only LLM spans)
+    result = connection.execute(
+        text("SELECT COUNT(*) FROM spans WHERE span_kind = 'LLM'"),
+    )
+    total_spans = result.scalar()
+
+    if total_spans == 0:
+        return
+
+    offset = 0
+
+    while True:
+        # Fetch batch of LLM spans only
+        result = connection.execute(
+            text(
+                """
+                SELECT id, raw_data
+                FROM spans
+                WHERE span_kind = 'LLM'
+                ORDER BY created_at
+                LIMIT :limit OFFSET :offset
+            """,
             ),
-            prompt_token_cost = (raw_data->'attributes'->'llm'->'cost'->>'prompt')::float,
-            completion_token_cost = (raw_data->'attributes'->'llm'->'cost'->>'completion')::float,
-            total_token_cost = COALESCE(
-                (raw_data->'attributes'->'llm'->'cost'->>'total')::float,
-                (raw_data->'attributes'->'llm'->'cost'->>'prompt')::float +
-                (raw_data->'attributes'->'llm'->'cost'->>'completion')::float
-            )
-        WHERE
-            raw_data->'attributes'->'llm' IS NOT NULL
-            AND raw_data->'attributes'->'llm'->'token_count' IS NOT NULL
-    """,
-        ),
-    )
+            {"limit": BATCH_SIZE, "offset": offset},
+        )
 
-    # For spans with token counts but no costs, compute using tokencost
-    _compute_missing_costs(connection)
+        batch = result.fetchall()
+        if not batch:
+            break
 
+        # Process each span in the batch
+        for span_id, raw_data in batch:
+            try:
+                # Use existing utility to extract/compute token counts and costs
+                token_data = extract_token_cost_from_span(raw_data, "LLM")
 
-def _compute_missing_token_counts():
-    """Compute token counts from messages for LLM spans missing token count attributes."""
-    connection = op.get_bind()
-
-    # Find LLM spans with missing token counts that have input/output messages
-    result = connection.execute(
-        text(
-            """
-        SELECT id,
-               raw_data,
-               raw_data->'attributes'->'llm'->>'model_name' as model_name
-        FROM spans
-        WHERE (prompt_token_count IS NULL OR completion_token_count IS NULL OR total_token_count IS NULL)
-          AND raw_data->'attributes'->'openinference'->'span'->>'kind' = 'LLM'
-          AND (raw_data->'attributes'->'llm'->'input_messages' IS NOT NULL
-               OR raw_data->'attributes'->'llm'->'output_messages' IS NOT NULL)
-    """,
-        ),
-    )
-
-    rows = result.fetchall()
-
-    for row in rows:
-        span_id, raw_data, model_name = row
-
-        try:
-            attributes = raw_data.get("attributes", {})
-            llm_attrs = attributes.get("llm", {})
-            input_messages = llm_attrs.get("input_messages", [])
-            output_messages = llm_attrs.get("output_messages", [])
-
-            # Calculate token counts from messages
-            prompt_tokens = None
-            if input_messages:
-                prompt_tokens = count_tokens_from_messages(input_messages, model_name)
-
-            completion_tokens = None
-            if output_messages:
-                completion_tokens = count_tokens_from_messages(
-                    output_messages,
-                    model_name,
-                )
-
-            # Calculate total tokens
-            total_tokens = None
-            if prompt_tokens is not None and completion_tokens is not None:
-                total_tokens = prompt_tokens + completion_tokens
-
-            # Update the span if we calculated any token counts
-            if prompt_tokens is not None or completion_tokens is not None:
+                # Update the span with all computed values
                 connection.execute(
                     text(
                         """
                         UPDATE spans
-                        SET prompt_token_count = COALESCE(prompt_token_count, :prompt_tokens),
-                            completion_token_count = COALESCE(completion_token_count, :completion_tokens),
-                            total_token_count = COALESCE(total_token_count, :total_tokens)
-                        WHERE id = :span_id
-                    """,
-                    ),
-                    {
-                        "prompt_tokens": prompt_tokens,
-                        "completion_tokens": completion_tokens,
-                        "total_tokens": total_tokens,
-                        "span_id": span_id,
-                    },
-                )
-
-        except Exception:
-            continue
-
-
-def _compute_missing_costs(connection):
-    """Compute costs for spans that have token counts but missing costs."""
-    # Find spans with token counts but missing at least one cost field
-    # Note: We need model_name to compute costs
-    result = connection.execute(
-        text(
-            """
-        SELECT id,
-               prompt_token_count,
-               completion_token_count,
-               total_token_count,
-               prompt_token_cost,
-               completion_token_cost,
-               total_token_cost,
-               raw_data->'attributes'->'llm'->>'model_name' as model_name
-        FROM spans
-        WHERE (prompt_token_count IS NOT NULL OR completion_token_count IS NOT NULL OR total_token_count IS NOT NULL)
-          AND (prompt_token_cost IS NULL OR completion_token_cost IS NULL OR total_token_cost IS NULL)
-          AND raw_data->'attributes'->'llm'->>'model_name' IS NOT NULL
-    """,
-        ),
-    )
-
-    rows = result.fetchall()
-
-    for row in rows:
-        (
-            span_id,
-            prompt_tokens,
-            completion_tokens,
-            total_tokens,
-            existing_prompt_cost,
-            existing_completion_cost,
-            existing_total_cost,
-            model_name,
-        ) = row
-
-        try:
-            # Start with existing costs
-            prompt_cost = existing_prompt_cost
-            completion_cost = existing_completion_cost
-            total_cost = existing_total_cost
-
-            # Compute prompt cost if missing
-            if prompt_tokens and prompt_cost is None:
-                prompt_cost = float(
-                    calculate_cost_by_tokens(
-                        num_tokens=prompt_tokens,
-                        model=model_name,
-                        token_type="input",
-                    ),
-                )
-
-            # Compute completion cost if missing
-            if completion_tokens and completion_cost is None:
-                completion_cost = float(
-                    calculate_cost_by_tokens(
-                        num_tokens=completion_tokens,
-                        model=model_name,
-                        token_type="output",
-                    ),
-                )
-
-            # Compute total cost if missing
-            if total_cost is None:
-                # Prefer computing from total_token_count if available
-                if total_tokens:
-                    total_cost = float(
-                        calculate_cost_by_tokens(
-                            num_tokens=total_tokens,
-                            model=model_name,
-                            token_type="output",
-                        ),
-                    )
-                # Fallback to summing prompt_cost + completion_cost
-                elif prompt_cost is not None and completion_cost is not None:
-                    total_cost = prompt_cost + completion_cost
-
-            # Update the span if any costs changed
-            if (
-                prompt_cost != existing_prompt_cost
-                or completion_cost != existing_completion_cost
-                or total_cost != existing_total_cost
-            ):
-                connection.execute(
-                    text(
-                        """
-                        UPDATE spans
-                        SET prompt_token_cost = :prompt_cost,
+                        SET prompt_token_count = :prompt_tokens,
+                            completion_token_count = :completion_tokens,
+                            total_token_count = :total_tokens,
+                            prompt_token_cost = :prompt_cost,
                             completion_token_cost = :completion_cost,
                             total_token_cost = :total_cost
                         WHERE id = :span_id
                     """,
                     ),
                     {
-                        "prompt_cost": prompt_cost,
-                        "completion_cost": completion_cost,
-                        "total_cost": total_cost,
+                        "prompt_tokens": token_data.prompt_token_count,
+                        "completion_tokens": token_data.completion_token_count,
+                        "total_tokens": token_data.total_token_count,
+                        "prompt_cost": token_data.prompt_token_cost,
+                        "completion_cost": token_data.completion_token_cost,
+                        "total_cost": token_data.total_token_cost,
                         "span_id": span_id,
                     },
                 )
 
-        except Exception:
-            continue
+            except Exception:
+                # Skip spans that fail to process
+                pass
+
+            offset += 1
+
+        # Commit after each batch
+        connection.commit()
 
 
 def _backfill_trace_metadata_token_data():
@@ -379,9 +240,9 @@ def _backfill_trace_metadata_input_output_content():
     for row in rows:
         trace_id, input_value, output_value = row
 
-        # Convert values to strings (JSON dumps if dict/list, otherwise as-is)
-        input_content = _value_to_string(input_value)
-        output_content = _value_to_string(output_value)
+        # Convert values to strings using utility function
+        input_content = value_to_string(input_value)
+        output_content = value_to_string(output_value)
 
         # Update trace_metadata with the extracted content
         connection.execute(
@@ -399,15 +260,6 @@ def _backfill_trace_metadata_input_output_content():
                 "trace_id": trace_id,
             },
         )
-
-
-def _value_to_string(value):
-    """Convert a value to string format."""
-    if value is None:
-        return None
-    if isinstance(value, (dict, list)):
-        return json.dumps(value)
-    return str(value)
 
 
 def downgrade() -> None:
