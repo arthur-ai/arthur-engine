@@ -11,8 +11,8 @@ import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
 import React, { useState } from "react";
 
-import { usePromptContext } from "./PromptsPlaygroundContext";
-import { ModelParametersType } from "./types";
+import { usePromptContext } from "../PromptsPlaygroundContext";
+import { ModelParametersType } from "../types";
 
 const EFFORT_OPTIONS = ["none", "minimal", "low", "medium", "high", "default"];
 
@@ -30,8 +30,7 @@ const ModelParamsDialog = ({
   modelParameters: ModelParametersType;
 }) => {
   const { dispatch } = usePromptContext();
-  const [copiedParams, setCopiedParams] =
-    useState<ModelParametersType>(modelParameters);
+  const [copiedParams, setCopiedParams] = useState<ModelParametersType>(modelParameters);
 
   const handleClose = () => {
     setOpen(false);
@@ -40,10 +39,7 @@ const ModelParamsDialog = ({
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const formJson = Object.fromEntries(formData.entries()) as Record<
-      string,
-      string
-    >;
+    const formJson = Object.fromEntries(formData.entries()) as Record<string, string>;
     setCopiedParams((state) => ({ ...state, ...formJson }));
     handleClose();
 
@@ -57,15 +53,9 @@ const ModelParamsDialog = ({
     <Dialog open={open} onClose={handleClose} fullWidth>
       <DialogTitle>Model Parameters{name ? `: ${name}` : ""}</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Tune the model parameters for your prompt.
-        </DialogContentText>
+        <DialogContentText>Tune the model parameters for your prompt.</DialogContentText>
         <br />
-        <form
-          onSubmit={handleSubmit}
-          id="model-params-form"
-          className="flex flex-col gap-2"
-        >
+        <form onSubmit={handleSubmit} id="model-params-form" className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <InputLabel htmlFor="temperature" className="w-3/5">
               Temperature

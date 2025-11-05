@@ -149,6 +149,7 @@ type PromptType = {
   toolChoice?: ToolChoiceEnum | ToolChoice;
   // tags: Array<string>; // TODO
   running?: boolean; // Whether the prompt is running
+  version?: number | null; // Unsaved prompts have no version
 };
 
 interface PromptPlaygroundState {
@@ -178,6 +179,8 @@ interface OutputFieldProps {
   running: boolean;
   runResponse: AgenticPromptRunResponse | null;
   responseFormat: string | undefined;
+  dialogOpen: boolean;
+  onCloseDialog: () => void;
 }
 
 interface SavePromptDialogProps {
@@ -199,12 +202,7 @@ interface VersionSubmenuProps {
   anchorEl: HTMLElement | null;
 }
 
-const MESSAGE_ROLE_OPTIONS: MessageRole[] = [
-  "system",
-  "user",
-  "assistant",
-  "tool",
-];
+const MESSAGE_ROLE_OPTIONS: MessageRole[] = ["system", "user", "assistant", "tool"];
 
 export {
   MESSAGE_ROLE_OPTIONS,

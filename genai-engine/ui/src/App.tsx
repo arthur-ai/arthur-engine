@@ -14,7 +14,7 @@ import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
-import PromptsPlayground from "./components/prompts/PromptsPlayground";
+import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
 import { TaskLayout } from "./components/TaskLayout";

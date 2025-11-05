@@ -70,23 +70,17 @@ export const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   top_logprobs: prompt.modelParameters.top_logprobs,
   logit_bias: prompt.modelParameters.logit_bias,
   thinking: prompt.modelParameters.thinking,
-  response_format: prompt.responseFormat
-    ? JSON.parse(prompt.responseFormat)
-    : null,
+  response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
 });
 
-export const toBackendPromptBaseConfig = (
-  prompt: PromptType
-): AgenticPromptBaseConfig => {
+export const toBackendPromptBaseConfig = (prompt: PromptType): AgenticPromptBaseConfig => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { name, ...rest } = toBackendPrompt(prompt);
   return rest;
 };
 
 export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
-  id: `${backendPrompt.name}-${new Date(
-    backendPrompt.created_at ?? Date.now()
-  ).getTime()}`,
+  id: `${backendPrompt.name}-${new Date(backendPrompt.created_at ?? Date.now()).getTime()}`,
   classification: "default",
   name: backendPrompt.name,
   created_at: backendPrompt.created_at || undefined,
@@ -127,10 +121,9 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     thinking: backendPrompt.thinking,
   },
   runResponse: null,
-  responseFormat: backendPrompt.response_format
-    ? JSON.stringify(backendPrompt.response_format)
-    : undefined,
+  responseFormat: backendPrompt.response_format ? JSON.stringify(backendPrompt.response_format) : undefined,
   running: false,
+  version: backendPrompt.version || null,
 });
 
 /**
@@ -141,11 +134,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
  * @param defaultProvider - Default provider to use if not found in span
  * @returns A prompt object created from the span data
  */
-export const spanToPrompt = (
-  spanData: SpanWithMetricsResponse,
-  defaultModel: string = "gpt-4",
-  defaultProvider: string = "openai"
-): PromptType => {
+export const spanToPrompt = (spanData: SpanWithMetricsResponse, defaultModel: string = "gpt-4", defaultProvider: string = "openai"): PromptType => {
   // Extract model information from raw_data attributes (supports both formats)
   const extractModelInfo = (rawData: Record<string, unknown>) => {
     const attributes = (rawData.attributes as Record<string, unknown>) || {};
@@ -153,16 +142,9 @@ export const spanToPrompt = (
     const metadata = metadataStr ? JSON.parse(metadataStr) : {};
 
     // Try LiteLLM format first, then fall back to OpenInference format
-    const modelName =
-      (attributes["litellm.model"] as string) ||
-      (attributes["llm.model_name"] as string) ||
-      metadata.ls_model_name ||
-      defaultModel;
+    const modelName = (attributes["litellm.model"] as string) || (attributes["llm.model_name"] as string) || metadata.ls_model_name || defaultModel;
 
-    const modelProvider =
-      (attributes["litellm.provider"] as string) ||
-      metadata.ls_provider ||
-      defaultProvider;
+    const modelProvider = (attributes["litellm.provider"] as string) || metadata.ls_provider || defaultProvider;
 
     return { modelName, modelProvider };
   };
@@ -179,9 +161,7 @@ export const spanToPrompt = (
   };
 
   // Convert context messages to prompt messages
-  const convertContextToMessages = (
-    context: Record<string, unknown>[] | null | undefined
-  ) => {
+  const convertContextToMessages = (context: Record<string, unknown>[] | null | undefined) => {
     if (!context || !Array.isArray(context)) {
       return [];
     }
@@ -197,10 +177,7 @@ export const spanToPrompt = (
   };
 
   // Extract tools from context messages and LiteLLM attributes
-  const extractTools = (
-    context: Record<string, unknown>[] | null | undefined,
-    rawData: Record<string, unknown>
-  ) => {
+  const extractTools = (context: Record<string, unknown>[] | null | undefined, rawData: Record<string, unknown>) => {
     const tools: Array<{
       id: string;
       function: {
@@ -229,18 +206,13 @@ export const spanToPrompt = (
         }>;
 
         litellmTools.forEach((tool) => {
-          if (
-            tool.type === "function" &&
-            tool.function &&
-            !toolNames.has(tool.function.name)
-          ) {
+          if (tool.type === "function" && tool.function && !toolNames.has(tool.function.name)) {
             toolNames.add(tool.function.name);
             tools.push({
               id: generateId("tool"),
               function: {
                 name: tool.function.name,
-                description:
-                  tool.function.description || `Tool: ${tool.function.name}`,
+                description: tool.function.description || `Tool: ${tool.function.name}`,
                 parameters:
                   tool.function.parameters ||
                   ({
@@ -262,11 +234,7 @@ export const spanToPrompt = (
     // Fallback: extract tools from context messages
     if (context && Array.isArray(context)) {
       context.forEach((msg: Record<string, unknown>) => {
-        if (
-          msg.role === "tool" &&
-          msg.name &&
-          !toolNames.has(msg.name as string)
-        ) {
+        if (msg.role === "tool" && msg.name && !toolNames.has(msg.name as string)) {
           const toolName = msg.name as string;
           toolNames.add(toolName);
           tools.push({
@@ -314,10 +282,7 @@ export const spanToPrompt = (
   return prompt;
 };
 
-export const toCompletionRequest = (
-  prompt: PromptType,
-  keywords: Map<string, string>
-): CompletionRequest => {
+export const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>): CompletionRequest => {
   // Replace keywords in all message content
   const messages = prompt.messages.map((msg) => {
     // Handle content replacement: only replace if content is a string
@@ -363,9 +328,7 @@ export const toCompletionRequest = (
     stop: prompt.modelParameters.stop,
     seed: prompt.modelParameters.seed,
     // reasoning_effort: prompt.modelParameters.reasoning_effort,
-    response_format: prompt.responseFormat
-      ? JSON.parse(prompt.responseFormat)
-      : null,
+    response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
     timeout: prompt.modelParameters.timeout,
     stream_options: prompt.modelParameters.stream_options,
     logprobs: prompt.modelParameters.logprobs,

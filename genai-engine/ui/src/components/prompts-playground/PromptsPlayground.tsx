@@ -1,26 +1,22 @@
 import AddIcon from "@mui/icons-material/Add";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
-import Divider from "@mui/material/Divider";
-import Paper from "@mui/material/Paper";
+import Drawer from "@mui/material/Drawer";
 import Stack from "@mui/material/Stack";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import PromptComponent from "./PromptComponent";
+import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
 import { spanToPrompt } from "./utils";
+import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import {
-  ModelProvider,
-  ModelProviderResponse,
-} from "@/lib/api-client/api-client";
+import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
@@ -47,10 +43,9 @@ const PromptsPlayground = () => {
 
     hasFetchedPrompts.current = true;
     try {
-      const response =
-        await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
-          taskId,
-        });
+      const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
+        taskId,
+      });
 
       dispatch({
         type: "updateBackendPrompts",
@@ -72,8 +67,7 @@ const PromptsPlayground = () => {
     }
 
     hasFetchedProviders.current = true;
-    const response =
-      await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
+    const response = await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
 
     const { data } = response;
     const providers = data.providers
@@ -87,11 +81,7 @@ const PromptsPlayground = () => {
   }, [apiClient]);
 
   const fetchAvailableModels = useCallback(async () => {
-    if (
-      hasFetchedAvailableModels.current ||
-      !apiClient ||
-      state.enabledProviders.length === 0
-    ) {
+    if (hasFetchedAvailableModels.current || !apiClient || state.enabledProviders.length === 0) {
       return;
     }
 
@@ -100,16 +90,10 @@ const PromptsPlayground = () => {
     // Fetch models for all enabled providers in parallel
     const modelPromises = state.enabledProviders.map(async (provider) => {
       try {
-        const response =
-          await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(
-            provider as ModelProvider
-          );
+        const response = await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
         return { provider, models: response.data.available_models };
       } catch (error) {
-        console.error(
-          `Failed to fetch models for provider ${provider}:`,
-          error
-        );
+        console.error(`Failed to fetch models for provider ${provider}:`, error);
         return { provider, models: [] };
       }
     });
@@ -140,9 +124,7 @@ const PromptsPlayground = () => {
     hasFetchedSpan.current = true;
 
     try {
-      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(
-        spanId
-      );
+      const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
       const spanData = response.data;
       const spanPrompt = spanToPrompt(spanData);
 
@@ -190,94 +172,97 @@ const PromptsPlayground = () => {
     });
   };
 
-  const handleKeywordValueChange = (keyword: string, value: string) => {
-    dispatch({ type: "updateKeywordValue", payload: { keyword, value } });
-  };
+  const drawerWidth = 350;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const variables = Array.from(state.keywords.keys());
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only intercept when Shift is held (explicit horizontal scroll intent)
+      // This prevents conflicts with vertical scrolling in child elements
+      if (e.shiftKey) {
+        e.preventDefault();
+        // Use deltaX if available (trackpad horizontal scroll), otherwise convert deltaY to horizontal
+        container.scrollLeft += e.deltaX || e.deltaY;
+      }
+      // When Shift is NOT held, allow normal vertical scrolling to pass through to child elements
+    };
+
+    // Add event listener with { passive: false } to allow preventDefault
+    container.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
-      <div className="h-dvh bg-gray-200 overflow-y-auto">
-        <div className={`h-full w-full p-1 flex flex-col gap-1`}>
-          <div className={`bg-gray-300 flex-shrink-0 p-1`}>
-            <Container
-              component="div"
-              maxWidth="xl"
-              disableGutters
-              className="mb-1"
-            >
-              <Stack
-                direction="row"
-                justifyContent="flex-end"
-                alignItems="center"
-                spacing={2}
-              >
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleAddPrompt}
-                  startIcon={<AddIcon />}
-                >
-                  Add Prompt
-                </Button>
-                <Button
-                  variant="contained"
-                  size="small"
-                  onClick={handleRunAllPrompts}
-                  startIcon={<PlayArrowIcon />}
-                >
-                  Run All Prompts
-                </Button>
-              </Stack>
-            </Container>
-            <Container component="div" maxWidth="xl" disableGutters>
-              <Paper elevation={3} className="p-1">
-                <div className="grid grid-template-rows-2">
-                  <div className="flex justify-center items-center">
-                    <Typography variant="h5">Variables</Typography>
-                  </div>
-                  <div className="flex justify-center items-center">
-                    <Typography variant="body2" className="text-center">
-                      Variables allow you to create reusable templates by using
-                      double curly (mustache) braces like{" "}
-                      <code>{`{{variable}}`}</code>. When you define a variable
-                      below, it will automatically replace all instances of{" "}
-                      <code>{`{{variable}}`}</code> in your prompt messages.
-                      This lets you quickly test different values without
-                      editing each message individually.
-                    </Typography>
-                  </div>
-                </div>
-                <Divider />
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
-                  {variables.map((variable) => (
-                    <div key={variable} className="w-full">
-                      <TextField
-                        id={`variable-${variable}`}
-                        label={variable}
-                        value={state.keywords.get(variable)}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          handleKeywordValueChange(variable, e.target.value);
-                        }}
-                        variant="standard"
-                        fullWidth
-                      />
-                    </div>
-                  ))}
-                </div>
-              </Paper>
-            </Container>
-          </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(500px,1fr))] gap-1 min-h-full">
+      <Box className="flex h-full bg-gray-300" sx={{ position: "relative" }}>
+        <Drawer
+          variant="permanent"
+          anchor="left"
+          sx={{
+            zIndex: 1000,
+            backgroundColor: "red",
+            width: drawerWidth,
+            flexShrink: 0,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            height: "100%",
+            "& .MuiDrawer-paper": {
+              width: drawerWidth,
+              boxSizing: "border-box",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              height: "100%",
+              borderRight: "1px solid",
+              borderColor: "divider",
+            },
+          }}
+        >
+          <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
+            <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
+              <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
+                Add Prompt
+              </Button>
+              <Button variant="contained" size="small" onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
+                Run All Prompts
+              </Button>
+            </Stack>
+          </Container>
+          <VariableInputs />
+        </Drawer>
+        <Box
+          component="main"
+          className="flex-1 flex flex-col"
+          sx={{
+            marginLeft: `${drawerWidth}px`,
+            width: `calc(100% - ${drawerWidth}px)`,
+          }}
+        >
+          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1">
+            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
               {state.prompts.map((prompt) => (
-                <PromptComponent key={prompt.id} prompt={prompt} />
+                <Box
+                  key={prompt.id}
+                  className="flex-1 h-full"
+                  sx={{
+                    minWidth: 750,
+                    flexShrink: 0,
+                  }}
+                >
+                  <PromptComponent prompt={prompt} />
+                </Box>
               ))}
-            </div>
-          </div>
-        </div>
-      </div>
+            </Stack>
+          </Box>
+        </Box>
+      </Box>
     </PromptProvider>
   );
 };

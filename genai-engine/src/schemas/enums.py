@@ -247,3 +247,9 @@ class ConnectionCheckOutcome(str, Enum):
 
 class RagProviderEnum(str, Enum):
     WEAVIATE = "weaviate"
+
+
+class RagSearchKind(str, Enum):
+    VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
+    KEYWORD_SEARCH = "keyword_search"
+    HYBRID_SEARCH = "hybrid_search"
