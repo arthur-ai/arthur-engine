@@ -3,7 +3,11 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from arthur_common.models.response_schemas import ExternalInference, TraceResponse
+from arthur_common.models.response_schemas import (
+    ExternalInference,
+    TokenCountCostSchema,
+    TraceResponse,
+)
 from litellm.types.utils import ChatCompletionMessageToolCall
 from pydantic import BaseModel, Field
 from pydantic_core import Url
@@ -138,7 +142,7 @@ class ListDatasetVersionsResponse(BaseModel):
     )
 
 
-class TraceMetadataResponse(BaseModel):
+class TraceMetadataResponse(TokenCountCostSchema):
     """Lightweight trace metadata for list operations"""
 
     trace_id: str = Field(description="ID of the trace")
@@ -151,9 +155,17 @@ class TraceMetadataResponse(BaseModel):
     duration_ms: float = Field(description="Total trace duration in milliseconds")
     created_at: datetime = Field(description="When the trace was first created")
     updated_at: datetime = Field(description="When the trace was last updated")
+    input_content: Optional[str] = Field(
+        None,
+        description="Root span input value from trace metadata",
+    )
+    output_content: Optional[str] = Field(
+        None,
+        description="Root span output value from trace metadata",
+    )
 
 
-class SpanMetadataResponse(BaseModel):
+class SpanMetadataResponse(TokenCountCostSchema):
     """Lightweight span metadata for list operations"""
 
     id: str = Field(description="Internal database ID")
@@ -171,10 +183,18 @@ class SpanMetadataResponse(BaseModel):
     status_code: str = Field(description="Status code (Unset, Error, Ok)")
     created_at: datetime = Field(description="When the span was created")
     updated_at: datetime = Field(description="When the span was updated")
+    input_content: Optional[str] = Field(
+        None,
+        description="Span input value from raw_data.attributes.input.value",
+    )
+    output_content: Optional[str] = Field(
+        None,
+        description="Span output value from raw_data.attributes.output.value",
+    )
     # Note: Excludes raw_data, computed features, and metrics for performance
 
 
-class SessionMetadataResponse(BaseModel):
+class SessionMetadataResponse(TokenCountCostSchema):
     """Session summary metadata"""
 
     session_id: str = Field(description="Session identifier")
@@ -219,7 +239,7 @@ class SessionTracesResponse(BaseModel):
     traces: list[TraceResponse] = Field(description="List of full trace trees")
 
 
-class TraceUserMetadataResponse(BaseModel):
+class TraceUserMetadataResponse(TokenCountCostSchema):
     """User summary metadata in trace context"""
 
     user_id: str = Field(description="User identifier")

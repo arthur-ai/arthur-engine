@@ -11447,6 +11447,78 @@
             },
             "NestedSpanWithMetricsResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "id": {
                         "type": "string",
                         "title": "Id"
@@ -11544,7 +11616,7 @@
                         "type": "object",
                         "title": "Raw Data"
                     },
-                    "system_prompt": {
+                    "input_content": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -11553,9 +11625,10 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "System Prompt"
+                        "title": "Input Content",
+                        "description": "Span input value from raw_data.attributes.input.value"
                     },
-                    "user_query": {
+                    "output_content": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -11564,33 +11637,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "User Query"
-                    },
-                    "response": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Response"
-                    },
-                    "context": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Context"
+                        "title": "Output Content",
+                        "description": "Span output value from raw_data.attributes.output.value"
                     },
                     "metric_results": {
                         "items": {
@@ -13775,6 +13823,78 @@
             },
             "SessionMetadataResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "session_id": {
                         "type": "string",
                         "title": "Session Id",
@@ -13903,6 +14023,78 @@
             },
             "SpanMetadataResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "id": {
                         "type": "string",
                         "title": "Id",
@@ -14023,6 +14215,30 @@
                         "format": "date-time",
                         "title": "Updated At",
                         "description": "When the span was updated"
+                    },
+                    "input_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Content",
+                        "description": "Span input value from raw_data.attributes.input.value"
+                    },
+                    "output_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Output Content",
+                        "description": "Span output value from raw_data.attributes.output.value"
                     }
                 },
                 "type": "object",
@@ -14042,6 +14258,78 @@
             },
             "SpanWithMetricsResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "id": {
                         "type": "string",
                         "title": "Id"
@@ -14139,7 +14427,7 @@
                         "type": "object",
                         "title": "Raw Data"
                     },
-                    "system_prompt": {
+                    "input_content": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -14148,9 +14436,10 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "System Prompt"
+                        "title": "Input Content",
+                        "description": "Span input value from raw_data.attributes.input.value"
                     },
-                    "user_query": {
+                    "output_content": {
                         "anyOf": [
                             {
                                 "type": "string"
@@ -14159,33 +14448,8 @@
                                 "type": "null"
                             }
                         ],
-                        "title": "User Query"
-                    },
-                    "response": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Response"
-                    },
-                    "context": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "additionalProperties": true,
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Context"
+                        "title": "Output Content",
+                        "description": "Span output value from raw_data.attributes.output.value"
                     },
                     "metric_results": {
                         "items": {
@@ -14659,6 +14923,78 @@
             },
             "TraceMetadataResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "trace_id": {
                         "type": "string",
                         "title": "Trace Id",
@@ -14726,6 +15062,30 @@
                         "format": "date-time",
                         "title": "Updated At",
                         "description": "When the trace was last updated"
+                    },
+                    "input_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Content",
+                        "description": "Root span input value from trace metadata"
+                    },
+                    "output_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Output Content",
+                        "description": "Root span output value from trace metadata"
                     }
                 },
                 "type": "object",
@@ -14744,6 +15104,78 @@
             },
             "TraceResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "trace_id": {
                         "type": "string",
                         "title": "Trace Id",
@@ -14760,6 +15192,30 @@
                         "format": "date-time",
                         "title": "End Time",
                         "description": "End time of the latest span in this trace"
+                    },
+                    "input_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Input Content",
+                        "description": "Root span input value from trace metadata"
+                    },
+                    "output_content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Output Content",
+                        "description": "Root span output value from trace metadata"
                     },
                     "root_spans": {
                         "items": {
@@ -14806,6 +15262,78 @@
             },
             "TraceUserMetadataResponse": {
                 "properties": {
+                    "prompt_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Count",
+                        "description": "Number of prompt tokens"
+                    },
+                    "completion_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Count",
+                        "description": "Number of completion tokens"
+                    },
+                    "total_token_count": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Count",
+                        "description": "Total number of tokens"
+                    },
+                    "prompt_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Prompt Token Cost",
+                        "description": "Cost of prompt tokens in USD"
+                    },
+                    "completion_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Completion Token Cost",
+                        "description": "Cost of completion tokens in USD"
+                    },
+                    "total_token_cost": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Token Cost",
+                        "description": "Total cost in USD"
+                    },
                     "user_id": {
                         "type": "string",
                         "title": "User Id",
