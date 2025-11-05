@@ -31,6 +31,16 @@ const getFormatValue = (format: string | undefined) => {
   return format !== undefined ? format : DEFAULT_RESPONSE_FORMAT;
 };
 
+const skeletons = () => (
+  <>
+    <Skeleton variant="text" width="92%" />
+    <Skeleton variant="text" width="99%" />
+    <Skeleton variant="text" width="96%" />
+    <Skeleton variant="text" width="99%" />
+    <Skeleton variant="text" width="80%" />
+  </>
+);
+
 const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpen, onCloseDialog }: OutputFieldProps) => {
   const { dispatch } = usePromptContext();
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
@@ -80,6 +90,36 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
     }
   }, [dialogOpen, handleOpen]);
 
+  const renderContent = (
+    <>
+      {runResponse?.content && <div style={{ whiteSpace: "pre-wrap" }}>{runResponse.content}</div>}
+      {runResponse?.tool_calls && runResponse.tool_calls.length > 0 && (
+        <>
+          {runResponse?.content && <Divider />}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Tool Calls
+          </Typography>
+          <div style={{ height: "300px", width: "100%" }}>
+            <Editor
+              height="300px"
+              defaultLanguage="json"
+              theme="light"
+              value={JSON.stringify(runResponse.tool_calls, null, 2)}
+              options={{
+                readOnly: true,
+                minimap: { enabled: false },
+                lineNumbers: "on",
+                fontSize: 12,
+                tabSize: 2,
+                automaticLayout: true,
+              }}
+            />
+          </div>
+        </>
+      )}
+    </>
+  );
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -99,15 +139,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </div>
         <Divider />
         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-          {running ? (
-            <>
-              <Skeleton variant="text" width="92%" />
-              <Skeleton variant="text" width="99%" />
-              <Skeleton variant="text" width="96%" />
-            </>
-          ) : (
-            <div>{runResponse?.content}</div>
-          )}
+          {running ? <>{skeletons()}</> : <div className="flex flex-col h-full">{renderContent}</div>}
         </div>
         <Divider />
         <div className="flex gap-3 flex-shrink-0">
@@ -169,17 +201,14 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
           <Typography variant="h6">Response</Typography>
         </DialogTitle>
         <DialogContent>
-          <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto", whiteSpace: "pre-wrap" }}>
+          <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto" }}>
             {running ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <Skeleton variant="text" width="92%" />
-                <Skeleton variant="text" width="99%" />
-                <Skeleton variant="text" width="96%" />
-                <Skeleton variant="text" width="99%" />
-                <Skeleton variant="text" width="80%" />
-              </div>
+              <div className="flex flex-col items-center justify-center h-full">{skeletons()}</div>
             ) : (
-              <div>{runResponse?.content || "No response yet"}</div>
+              <div className="flex flex-col" style={{ gap: "16px" }}>
+                {renderContent}
+                {!runResponse?.content && !runResponse?.tool_calls && <div>No response yet</div>}
+              </div>
             )}
           </div>
         </DialogContent>

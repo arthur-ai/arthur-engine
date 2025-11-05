@@ -119,7 +119,6 @@ const ToolsDialog = ({ open, setOpen, prompt }: ToolsDialogProps) => {
             },
             type: "function",
           };
-          console.log("toolChoice", toolChoice);
           dispatch({
             type: "updateToolChoice",
             payload: { promptId: prompt.id, toolChoice },
