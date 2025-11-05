@@ -2870,7 +2870,7 @@ class RagSearchSettingConfiguration(BaseModel):
         description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
     )
     all_possible_tags: Optional[list[str]] = Field(
-        defaeult=None,
+        default=None,
         description="Set of all tags applied for any version of the settings configuration.",
     )
     name: str = Field(description="Name of the search setting configuration.")

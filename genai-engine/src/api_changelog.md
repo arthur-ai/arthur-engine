@@ -3,6 +3,16 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/04/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'all_possible_tags' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'all_possible_tags' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
+
+# 11/04/2025
+- **CHANGE** for **URL**: /api/v1/rag_provider_settings/{setting_configuration_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_provider_settings  endpoint added
+
+# 11/04/2025
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added

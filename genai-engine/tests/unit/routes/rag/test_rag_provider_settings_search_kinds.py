@@ -28,7 +28,7 @@ def test_rag_provider_settings_keyword_search(
     rag_provider_id = rag_provider.id
 
     minimum_match_or_operator = 2
-    status_code, created_settings = client.create_rag_provider_settings(
+    status_code, created_settings = client.create_rag_search_settings(
         task_id=task_id,
         rag_provider_id=rag_provider_id,
         name="Keyword Search Settings",
@@ -45,7 +45,7 @@ def test_rag_provider_settings_keyword_search(
         == minimum_match_or_operator
     )
 
-    status_code, retrieved_settings = client.get_rag_provider_settings(
+    status_code, retrieved_settings = client.get_rag_search_settings(
         created_settings.id,
     )
     assert status_code == 200
@@ -56,7 +56,7 @@ def test_rag_provider_settings_keyword_search(
     )
 
     # Cleanup
-    client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_search_settings(created_settings.id)
     client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)
 
@@ -82,7 +82,7 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
         collection_name="test-collection",
         alpha=0.8,
     )
-    status_code, created_settings = client.create_rag_provider_settings(
+    status_code, created_settings = client.create_rag_search_settings(
         task_id=task_id,
         rag_provider_id=rag_provider_id,
         name="Hybrid Search Settings",
@@ -92,7 +92,7 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
     assert created_settings.latest_version.settings.search_kind == "hybrid_search"
     assert created_settings.latest_version.settings.alpha == 0.8
 
-    status_code, retrieved_settings = client.get_rag_provider_settings(
+    status_code, retrieved_settings = client.get_rag_search_settings(
         created_settings.id,
     )
     assert status_code == 200
@@ -100,7 +100,7 @@ def test_rag_provider_settings_hybrid_search(client: GenaiEngineTestClientBase) 
     assert retrieved_settings.latest_version.settings.alpha == 0.8
 
     # Cleanup
-    client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_search_settings(created_settings.id)
     client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)
 
@@ -130,7 +130,7 @@ def test_rag_provider_settings_vector_similarity_search(
         collection_name="test-collection",
         certainty=0.85,
     )
-    status_code, created_settings = client.create_rag_provider_settings(
+    status_code, created_settings = client.create_rag_search_settings(
         task_id=task_id,
         rag_provider_id=rag_provider_id,
         name="Vector Similarity Search Settings",
@@ -143,7 +143,7 @@ def test_rag_provider_settings_vector_similarity_search(
     )
     assert created_settings.latest_version.settings.certainty == 0.85
 
-    status_code, retrieved_settings = client.get_rag_provider_settings(
+    status_code, retrieved_settings = client.get_rag_search_settings(
         created_settings.id,
     )
     assert status_code == 200
@@ -154,6 +154,6 @@ def test_rag_provider_settings_vector_similarity_search(
     assert retrieved_settings.latest_version.settings.certainty == 0.85
 
     # Cleanup
-    client.delete_rag_provider_settings(created_settings.id)
+    client.delete_rag_search_settings(created_settings.id)
     client.delete_rag_provider(rag_provider_id)
     client.delete_task(task_id)

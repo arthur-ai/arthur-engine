@@ -76,6 +76,7 @@ from schemas.request_schemas import (
     RagProviderTestConfigurationRequest,
     RagSearchSettingConfigurationRequest,
     RagSearchSettingConfigurationRequestTypes,
+    RagSearchSettingConfigurationUpdateRequest,
     RagVectorSimilarityTextSearchSettingRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateHybridSearchSettingsRequest,
@@ -88,6 +89,7 @@ from schemas.response_schemas import (
     DatasetResponse,
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
+    ListRagSearchSettingConfigurationsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -2821,7 +2823,7 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def create_rag_provider_settings(
+    def create_rag_search_settings(
         self,
         task_id: str,
         rag_provider_id: str,
@@ -2830,7 +2832,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         description: str = None,
         tags: list[str] = None,
     ) -> tuple[int, RagSearchSettingConfigurationResponse]:
-        """Create a new RAG provider settings configuration."""
+        """Create a new RAG search settings configuration."""
 
         request = RagSearchSettingConfigurationRequest(
             name=name,
@@ -2857,11 +2859,11 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def get_rag_provider_settings(
+    def get_rag_search_settings(
         self,
         setting_configuration_id: str,
     ) -> tuple[int, RagSearchSettingConfigurationResponse]:
-        """Get a RAG provider settings configuration by ID."""
+        """Get a RAG search settings configuration by ID."""
         resp = self.base_client.get(
             f"/api/v1/rag_search_settings/{setting_configuration_id}",
             headers=self.authorized_user_api_key_headers,
@@ -2878,8 +2880,39 @@ class GenaiEngineTestClientBase(httpx.Client):
             ),
         )
 
-    def delete_rag_provider_settings(self, setting_configuration_id: str) -> int:
-        """Delete a RAG provider settings configuration."""
+    def update_rag_search_settings(
+        self,
+        setting_configuration_id: str,
+        name: str = None,
+        description: str = None,
+        rag_provider_id: str = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Update a RAG search settings configuration."""
+        request = RagSearchSettingConfigurationUpdateRequest(
+            name=name,
+            description=description,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_search_settings(self, setting_configuration_id: str) -> int:
+        """Delete a RAG search settings configuration."""
         resp = self.base_client.delete(
             f"/api/v1/rag_search_settings/{setting_configuration_id}",
             headers=self.authorized_user_api_key_headers,
@@ -2888,6 +2921,47 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def get_task_rag_search_settings(
+        self,
+        task_id: str,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        config_name: str = None,
+        rag_provider_ids: list[str] = None,
+    ) -> tuple[int, ListRagSearchSettingConfigurationsResponse]:
+        """Search RAG search setting configurations for a task."""
+        path = f"api/v1/tasks/{task_id}/rag_search_settings"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if config_name:
+            params["config_name"] = config_name
+        if rag_provider_ids:
+            params["rag_provider_ids"] = rag_provider_ids
+
+        resp = self.base_client.get(
+            "{}{}".format(
+                path,
+                "?" + urllib.parse.urlencode(params, doseq=True) if params else "",
+            ),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListRagSearchSettingConfigurationsResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
     def create_rag_provider_settings_hybrid(
         self,
