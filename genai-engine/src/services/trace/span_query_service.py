@@ -729,9 +729,8 @@ class SpanQueryService:
             DatabaseTraceMetadata.task_id,
             DatabaseTraceMetadata.user_id,
             trace_ids_agg,
-            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
-            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
-            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+            *self._build_trace_metadata_aggregations(),
+            *self._build_token_cost_aggregations(),
         ).where(
             and_(
                 DatabaseTraceMetadata.task_id.in_(task_ids),
@@ -780,6 +779,12 @@ class SpanQueryService:
                     span_count=row.span_count,
                     earliest_start_time=row.earliest_start_time,
                     latest_end_time=row.latest_end_time,
+                    prompt_token_count=row.prompt_token_count,
+                    completion_token_count=row.completion_token_count,
+                    total_token_count=row.total_token_count,
+                    prompt_token_cost=row.prompt_token_cost,
+                    completion_token_cost=row.completion_token_cost,
+                    total_token_cost=row.total_token_cost,
                 ),
             )
 
@@ -846,9 +851,8 @@ class SpanQueryService:
             DatabaseTraceMetadata.task_id,
             session_ids_agg,
             trace_ids_agg,
-            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
-            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
-            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+            *self._build_trace_metadata_aggregations(),
+            *self._build_token_cost_aggregations(),
         ).where(
             and_(
                 DatabaseTraceMetadata.task_id.in_(task_ids),
@@ -900,7 +904,54 @@ class SpanQueryService:
                     span_count=row.span_count or 0,
                     earliest_start_time=row.earliest_start_time,
                     latest_end_time=row.latest_end_time,
+                    prompt_token_count=row.prompt_token_count,
+                    completion_token_count=row.completion_token_count,
+                    total_token_count=row.total_token_count,
+                    prompt_token_cost=row.prompt_token_cost,
+                    completion_token_cost=row.completion_token_cost,
+                    total_token_cost=row.total_token_cost,
                 ),
             )
 
         return total_count, users
+
+    def _build_trace_metadata_aggregations(self):
+        """Build aggregation expressions for common trace metadata fields.
+
+        Returns a list of labeled aggregation expressions for:
+        - span_count: Total number of spans
+        - earliest_start_time: Earliest start time across traces
+        - latest_end_time: Latest end time across traces
+        """
+        return [
+            func.sum(DatabaseTraceMetadata.span_count).label("span_count"),
+            func.min(DatabaseTraceMetadata.start_time).label("earliest_start_time"),
+            func.max(DatabaseTraceMetadata.end_time).label("latest_end_time"),
+        ]
+
+    def _build_token_cost_aggregations(self):
+        """Build aggregation expressions for token counts and costs.
+
+        Returns a list of labeled aggregation expressions for use in SELECT statements.
+        SUM returns NULL if all values are NULL, preserving the semantic meaning.
+        """
+        return [
+            func.sum(DatabaseTraceMetadata.prompt_token_count).label(
+                "prompt_token_count",
+            ),
+            func.sum(DatabaseTraceMetadata.completion_token_count).label(
+                "completion_token_count",
+            ),
+            func.sum(DatabaseTraceMetadata.total_token_count).label(
+                "total_token_count",
+            ),
+            func.sum(DatabaseTraceMetadata.prompt_token_cost).label(
+                "prompt_token_cost",
+            ),
+            func.sum(DatabaseTraceMetadata.completion_token_cost).label(
+                "completion_token_cost",
+            ),
+            func.sum(DatabaseTraceMetadata.total_token_cost).label(
+                "total_token_cost",
+            ),
+        ]

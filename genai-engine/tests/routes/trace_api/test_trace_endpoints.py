@@ -66,6 +66,53 @@ def test_list_traces_metadata_functionality(
             and isinstance(trace_metadata.span_count, int)
             and trace_metadata.span_count >= 0
         )
+        # Verify new fields are present
+        assert hasattr(trace_metadata, "input_content")
+        assert hasattr(trace_metadata, "output_content")
+        # Verify token count/cost fields are present (may be None if no LLM spans)
+        assert hasattr(trace_metadata, "prompt_token_count")
+        assert hasattr(trace_metadata, "completion_token_count")
+        assert hasattr(trace_metadata, "total_token_count")
+        assert hasattr(trace_metadata, "prompt_token_cost")
+        assert hasattr(trace_metadata, "completion_token_cost")
+        assert hasattr(trace_metadata, "total_token_cost")
+
+    # Verify specific traces have expected input/output content and token data
+    trace1 = next((t for t in data.traces if t.trace_id == "api_trace1"), None)
+    if trace1:
+        assert trace1.input_content == "What is the weather like today?"
+        assert (
+            trace1.output_content
+            == "I don't have access to real-time weather information."
+        )
+        # Trace1 has api_span1 (LLM with tokens) and api_span2 (CHAIN, no tokens)
+        # Should aggregate tokens from api_span1 only
+        assert trace1.prompt_token_count == 100
+        assert trace1.completion_token_count == 50
+        assert trace1.total_token_count == 150
+        assert trace1.prompt_token_cost == 0.001
+        assert trace1.completion_token_cost == 0.002
+        assert trace1.total_token_cost == 0.003
+
+    trace2 = next((t for t in data.traces if t.trace_id == "api_trace2"), None)
+    if trace2:
+        # Verify JSON content - should be stringified
+        import json
+
+        expected_input = {
+            "question": "Follow-up question",
+            "context": "previous conversation",
+        }
+        expected_output = {"answer": "Follow-up response", "sources": ["doc1", "doc2"]}
+        assert json.loads(trace2.input_content) == expected_input
+        assert json.loads(trace2.output_content) == expected_output
+        # Trace2 has only api_span3 (LLM with tokens)
+        assert trace2.prompt_token_count == 200
+        assert trace2.completion_token_count == 100
+        assert trace2.total_token_count == 300
+        assert trace2.prompt_token_cost == 0.002
+        assert trace2.completion_token_cost == 0.003
+        assert trace2.total_token_cost == 0.005
 
     # Test multiple tasks
     status_code, data = client.trace_api_list_traces_metadata(
@@ -184,6 +231,15 @@ def test_get_trace_by_id_with_nested_structure(
     assert status_code == 200
     assert trace_data.trace_id == "api_trace1"
 
+    # Verify trace-level input_content and output_content
+    assert hasattr(trace_data, "input_content")
+    assert hasattr(trace_data, "output_content")
+    assert trace_data.input_content == "What is the weather like today?"
+    assert (
+        trace_data.output_content
+        == "I don't have access to real-time weather information."
+    )
+
     # Verify nested structure
     assert len(trace_data.root_spans) == 1  # One root span
     root_span = trace_data.root_spans[0]
@@ -192,11 +248,24 @@ def test_get_trace_by_id_with_nested_structure(
     assert root_span.span_kind == "LLM"
     assert len(root_span.children) == 1  # Has one child
 
+    # Verify root span has input_content and output_content
+    assert hasattr(root_span, "input_content")
+    assert hasattr(root_span, "output_content")
+    assert root_span.input_content == "What is the weather like today?"
+    assert (
+        root_span.output_content
+        == "I don't have access to real-time weather information."
+    )
+
     child_span = root_span.children[0]
     assert child_span.span_id == "api_span2"
     assert child_span.span_kind == "CHAIN"
     assert child_span.parent_span_id == "api_span1"
     assert len(child_span.children) == 0  # No grandchildren
+
+    # Child spans should also have input_content/output_content fields
+    assert hasattr(child_span, "input_content")
+    assert hasattr(child_span, "output_content")
 
 
 @pytest.mark.unit_tests
@@ -257,6 +326,19 @@ def test_compute_trace_metrics_basic_functionality(
     assert status_code == 200
     assert trace_data.trace_id == "api_trace2"
 
+    # Verify trace-level input_content and output_content are present after metrics computation
+    assert hasattr(trace_data, "input_content")
+    assert hasattr(trace_data, "output_content")
+    # api_trace2 has JSON input/output - verify exact content
+    assert (
+        trace_data.input_content
+        == '{"question": "Follow-up question", "context": "previous conversation"}'
+    )
+    assert (
+        trace_data.output_content
+        == '{"answer": "Follow-up response", "sources": ["doc1", "doc2"]}'
+    )
+
     # Verify structure is the same as regular trace
     assert isinstance(trace_data.root_spans, list)
     all_spans = get_all_spans_from_trace(trace_data)
@@ -268,6 +350,10 @@ def test_compute_trace_metrics_basic_functionality(
     llm_span = llm_spans[0]
     assert hasattr(llm_span, "metric_results")  # Field exists, but may be None or list
     # Note: May or may not have metrics depending on whether they were computed or existed
+
+    # Verify LLM spans have input_content and output_content after metrics computation
+    assert hasattr(llm_span, "input_content")
+    assert hasattr(llm_span, "output_content")
 
 
 @pytest.mark.unit_tests

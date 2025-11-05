@@ -11,6 +11,7 @@ from dependencies import get_metrics_engine
 from repositories.metrics_repository import MetricRepository
 from repositories.tasks_metrics_repository import TasksMetricsRepository
 from schemas.internal_schemas import MetricResult, Span
+from utils import trace as trace_utils
 from utils.constants import SPAN_KIND_LLM
 
 logger = logging.getLogger(__name__)
@@ -239,12 +240,21 @@ class MetricsIntegrationService:
         )
 
     def _span_to_metric_request(self, span: Span) -> MetricRequest:
-        """Convert a Span to MetricRequest format for metric computation."""
-        system_prompt = span.system_prompt or ""
-        user_query = span.user_query or ""
-        context = span.context or []
+        """Convert a Span to MetricRequest format for metric computation.
+
+        Uses trace_utils.extract_span_features() to extract LLM-specific fields
+        from raw_data for internal metrics computation.
+        """
+
+        # Extract features from raw_data for metrics computation
+        span_features = trace_utils.extract_span_features(span.raw_data)
+
+        system_prompt = span_features.get("system_prompt", "")
+        user_query = span_features.get("user_query", "")
+        context = span_features.get("context", [])
+        response_data = span_features.get("response")
         response = (
-            self._extract_response_content(span.response) if span.response else ""
+            self._extract_response_content(response_data) if response_data else ""
         )
 
         return MetricRequest(

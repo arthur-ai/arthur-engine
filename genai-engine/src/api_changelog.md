@@ -35,6 +35,8 @@ The intention of this changelog is to document API changes as they happen to eff
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  endpoint added
 
 # 11/03/2025
+- Removed context, response, system_prompt, user_query from span properties
+- **CHANGE** for **URL**: Added prompt_token_cost, prompt_token_count, completion_token_cost, completion_token_count, total_token_cost, total_token_count, input_content, output_content to spans, traces, sessions and users. 
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new optional request property 'settings/search_kind'

@@ -19,6 +19,13 @@ def assert_valid_span_metadata_response(spans):
         assert span.user_id is not None  # Should have user_id
         assert span.start_time is not None
         assert span.end_time is not None
+        # Verify token count/cost fields are present (may be None for non-LLM spans)
+        assert hasattr(span, "prompt_token_count")
+        assert hasattr(span, "completion_token_count")
+        assert hasattr(span, "total_token_count")
+        assert hasattr(span, "prompt_token_cost")
+        assert hasattr(span, "completion_token_cost")
+        assert hasattr(span, "total_token_cost")
 
 
 def assert_valid_span_full_response(span):
@@ -31,6 +38,13 @@ def assert_valid_span_full_response(span):
     assert span.end_time is not None
     assert span.raw_data and isinstance(span.raw_data, dict)
     assert hasattr(span, "metric_results")  # Can be None or list
+    # Verify token count/cost fields are present (may be None for non-LLM spans)
+    assert hasattr(span, "prompt_token_count")
+    assert hasattr(span, "completion_token_count")
+    assert hasattr(span, "total_token_count")
+    assert hasattr(span, "prompt_token_cost")
+    assert hasattr(span, "completion_token_cost")
+    assert hasattr(span, "total_token_cost")
 
 
 def assert_spans_match_types(spans, expected_types):
@@ -117,6 +131,23 @@ def test_list_spans_metadata_with_span_type_filtering(
     if expected_count > 0:
         assert_spans_match_types(data.spans, span_types)
 
+        # Verify all spans have input_content and output_content fields
+        for span in data.spans:
+            assert hasattr(span, "input_content")
+            assert hasattr(span, "output_content")
+
+        # If filtering for LLM spans only, verify token counts/costs are present
+        if span_types == ["LLM"]:
+            llm_spans = data.spans
+            # api_span1 and api_span3 should both have token data
+            for span in llm_spans:
+                assert span.prompt_token_count is not None
+                assert span.completion_token_count is not None
+                assert span.total_token_count is not None
+                assert span.prompt_token_cost is not None
+                assert span.completion_token_cost is not None
+                assert span.total_token_cost is not None
+
 
 @pytest.mark.unit_tests
 def test_list_spans_metadata_pagination_sorting_and_validation(
@@ -195,7 +226,7 @@ def test_get_span_by_id_comprehensive(
     client: GenaiEngineTestClientBase,
     comprehensive_test_data,
 ):
-    """Test span retrieval with metrics, features, and error handling."""
+    """Test span retrieval with metrics, input/output content, and error handling."""
 
     # Test successful span retrieval with metrics and features
     status_code, span_data = client.trace_api_get_span_by_id("api_span1")
@@ -212,10 +243,50 @@ def test_get_span_by_id_comprehensive(
             assert hasattr(metric, "completion_tokens")
             assert hasattr(metric, "latency_ms")
 
-    # Verify LLM span features are extracted
-    assert span_data.system_prompt == "You are a helpful assistant."
-    assert span_data.user_query == "What is the weather like today?"
-    assert span_data.response == "I don't have access to real-time weather information."
+    # Verify new standardized input_content and output_content fields
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
+
+    # Verify token count/cost for LLM span
+    assert span_data.prompt_token_count == 100
+    assert span_data.completion_token_count == 50
+    assert span_data.total_token_count == 150
+    assert span_data.prompt_token_cost == 0.001
+    assert span_data.completion_token_cost == 0.002
+    assert span_data.total_token_cost == 0.003
+
+    # Test JSON format span (api_span3)
+    status_code, span_data = client.trace_api_get_span_by_id("api_span3")
+    assert status_code == 200
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    # Verify JSON content - should be stringified even if normalizer parsed it
+    import json
+
+    expected_input = {
+        "question": "Follow-up question",
+        "context": "previous conversation",
+    }
+    expected_output = {"answer": "Follow-up response", "sources": ["doc1", "doc2"]}
+    assert json.loads(span_data.input_content) == expected_input
+    assert json.loads(span_data.output_content) == expected_output
+    # Verify mime_type for JSON
+    attributes = span_data.raw_data["attributes"]
+    assert attributes["input"]["mime_type"] == "application/json"
+    assert attributes["output"]["mime_type"] == "application/json"
+
+    # Verify token count/cost for api_span3 (LLM span)
+    assert span_data.prompt_token_count == 200
+    assert span_data.completion_token_count == 100
+    assert span_data.total_token_count == 300
+    assert span_data.prompt_token_cost == 0.002
+    assert span_data.completion_token_cost == 0.003
+    assert span_data.total_token_cost == 0.005
 
     # Test non-existent span
     status_code, response_data = client.trace_api_get_span_by_id("non_existent_span")
@@ -226,10 +297,17 @@ def test_get_span_by_id_comprehensive(
     status_code, span_data = client.trace_api_get_span_by_id("api_span2")
     assert status_code == 200
     assert span_data.span_kind == "CHAIN"
-    # Non-LLM spans should not have these features
-    assert getattr(span_data, "system_prompt", None) is None
-    assert getattr(span_data, "user_query", None) is None
-    assert getattr(span_data, "response", None) is None
+    # Non-LLM spans should have input_content/output_content fields (may be None)
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+
+    # Verify that non-LLM spans have None token counts/costs
+    assert span_data.prompt_token_count is None
+    assert span_data.completion_token_count is None
+    assert span_data.total_token_count is None
+    assert span_data.prompt_token_cost is None
+    assert span_data.completion_token_cost is None
+    assert span_data.total_token_cost is None
 
 
 # ============================================================================
@@ -252,6 +330,15 @@ def test_compute_span_metrics_comprehensive(
 
     # Should have the same structure as regular span response
     assert_valid_span_full_response(span_data)
+
+    # Verify input_content and output_content are present after metrics computation
+    assert hasattr(span_data, "input_content")
+    assert hasattr(span_data, "output_content")
+    assert span_data.input_content == "What is the weather like today?"
+    assert (
+        span_data.output_content
+        == "I don't have access to real-time weather information."
+    )
 
     # Test non-existent span
     status_code, response_data = client.trace_api_compute_span_metrics(

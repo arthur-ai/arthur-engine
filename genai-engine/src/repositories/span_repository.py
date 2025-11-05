@@ -138,10 +138,19 @@ class SpanRepository:
                 compute_new_metrics,
             )
 
-        # Build trace tree structure
+        # Fetch trace metadata for input/output content
+        trace_metadata_list = self.span_query_service.get_trace_metadata_by_ids(
+            [trace_id],
+            PaginationSortMethod.DESCENDING,
+        )
+        # Convert to database models for tree building service
+        trace_metadata_db = [tm._to_database_model() for tm in trace_metadata_list]
+
+        # Build trace tree structure with trace metadata
         traces = self.tree_building_service.group_spans_into_traces(
             valid_spans,
             PaginationSortMethod.DESCENDING,
+            trace_metadata=trace_metadata_db,
         )
 
         return traces[0] if traces else None

@@ -2,9 +2,14 @@ import json
 from unittest.mock import patch
 
 import pytest
+from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Status
 
-from tests.clients.base_test_client import GenaiEngineTestClientBase
+from db_models import DatabaseSpan
+from tests.clients.base_test_client import (
+    GenaiEngineTestClientBase,
+    override_get_db_session,
+)
 from tests.routes.trace_api.conftest import _create_base_trace_request, _create_span
 
 # ============================================================================
@@ -375,3 +380,72 @@ def test_trace_api_partial_success_response(
     assert response_json["rejected_spans"] == 1
     assert response_json["status"] == "partial_success"
     assert len(response_json["rejection_reasons"]) == 1
+
+
+@pytest.mark.unit_tests
+def test_trace_api_token_count_calculation_from_messages(
+    client: GenaiEngineTestClientBase,
+):
+    """Test that token counts and costs are calculated from messages when not provided."""
+
+    # Create a trace with messages but no token count/cost attributes
+    task_id = "token_calc_test_api"
+    trace_request, resource_span, scope_span = _create_base_trace_request(
+        task_id=task_id,
+    )
+
+    span = _create_span(
+        trace_id=b"token_calc_trace_api",
+        span_id=b"token_calc_span_api",
+        name="token_calc_span",
+        span_type="LLM",
+        model_name="gpt-4-0613",
+    )
+
+    # Add input and output messages manually (no token count attributes)
+    span.attributes.extend(
+        [
+            KeyValue(
+                key="llm.input_messages.0.message.role",
+                value=AnyValue(string_value="user"),
+            ),
+            KeyValue(
+                key="llm.input_messages.0.message.content",
+                value=AnyValue(string_value="Hello, how are you?"),
+            ),
+            KeyValue(
+                key="llm.output_messages.0.message.role",
+                value=AnyValue(string_value="assistant"),
+            ),
+            KeyValue(
+                key="llm.output_messages.0.message.content",
+                value=AnyValue(string_value="I'm doing well, thank you for asking!"),
+            ),
+        ],
+    )
+
+    scope_span.spans.append(span)
+    resource_span.scope_spans.append(scope_span)
+    trace_request.resource_spans.append(resource_span)
+
+    # Send the trace
+    status_code, response_text = client.trace_api_receive_traces(
+        trace_request.SerializeToString(),
+    )
+    assert status_code == 200
+
+    db_session = override_get_db_session()
+    db_spans = (
+        db_session.query(DatabaseSpan).filter(DatabaseSpan.task_id == task_id).all()
+    )
+    assert len(db_spans) == 1
+
+    db_span = db_spans[0]
+
+    assert db_span.prompt_token_count == 13
+    assert db_span.completion_token_count == 17
+    assert db_span.total_token_count == 30
+
+    assert db_span.prompt_token_cost == 0.00039
+    assert db_span.completion_token_cost == 0.00102
+    assert db_span.total_token_cost == 0.00141

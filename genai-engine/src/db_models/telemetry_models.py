@@ -5,6 +5,7 @@ from sqlalchemy import (
     JSON,
     TIMESTAMP,
     Boolean,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -32,6 +33,18 @@ class DatabaseTraceMetadata(Base):
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     span_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    prompt_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_token_count: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    total_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    input_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    output_content: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -68,6 +81,8 @@ class DatabaseTraceMetadata(Base):
             postgresql_where=text("session_id IS NOT NULL"),
         ),
         Index("idx_traces_session_time", "session_id", "start_time"),
+        Index("idx_traces_total_token_count", "total_token_count"),
+        Index("idx_traces_total_token_cost", "total_token_cost"),
     )
 
 
@@ -103,6 +118,16 @@ class DatabaseSpan(Base):
         JSON().with_variant(postgresql.JSONB, "postgresql"),
         nullable=False,
     )
+    prompt_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    completion_token_count: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    total_token_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    prompt_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    completion_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_token_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP"),
@@ -132,6 +157,8 @@ class DatabaseSpan(Base):
             "start_time",
             postgresql_where=text("span_kind = 'LLM'"),
         ),
+        Index("idx_spans_total_token_count", "total_token_count"),
+        Index("idx_spans_total_token_cost", "total_token_cost"),
     )
 
     metric_results: Mapped[List["DatabaseMetricResult"]] = relationship(
