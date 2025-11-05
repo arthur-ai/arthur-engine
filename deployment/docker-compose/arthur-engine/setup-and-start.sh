@@ -217,6 +217,21 @@ GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$GENAI_ENGINE_OPENAI_GPT_NAMES_ENDP
     fi
 fi
 
+# Prompt for secret store key if not already set
+if [[ -z "$GENAI_ENGINE_SECRET_STORE_KEY" ]]; then
+    # Generate a secure random key using /dev/urandom
+    genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
+    echo "Generated random secret key since none was found"
+
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+else
+    echo ""
+    echo "Using existing GENAI_ENGINE_SECRET_STORE_KEY from config file..."
+    all_env_vars+="
+GENAI_ENGINE_SECRET_STORE_KEY=$GENAI_ENGINE_SECRET_STORE_KEY"
+fi
+
 echo "$all_env_vars" > "$engine_subdir/$env_file"
 echo ""
 echo "Updated $env_file file at $engine_subdir/$env_file"

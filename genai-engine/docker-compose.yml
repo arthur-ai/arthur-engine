@@ -1,15 +1,14 @@
 name: genai-engine-dev
 services:
   db:
-    image: postgres
+    image: postgres:18
     ports:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: changeme_pg_password
       POSTGRES_DB: arthur_genai_engine
-      PGDATA: /var/lib/postgresql/data
     volumes:
-      - /var/lib/postgresql
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -32,6 +31,7 @@ services:
       - GENAI_ENGINE_ENABLE_PERSISTENCE=enabled
       - GENAI_ENGINE_ENVIRONMENT=local
       - GENAI_ENGINE_ADMIN_KEY=changeme123
+      - GENAI_ENGINE_SECRET_STORE_KEY=changeme123
       - GENAI_ENGINE_INGRESS_URI=http://localhost:8000
       - GENAI_ENGINE_OPENAI_PROVIDER=Azure
       - OPENAI_API_VERSION=2023-07-01-preview
@@ -40,3 +40,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      # mount source code so devs don't have to rebuild when they make changes, just restart the app
+      - ./src:/home/nonroot/app/src
+      - ./version:/home/nonroot/app/src/version
+  changelog-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile_changelog
+    environment:
+      - GENAI_ENGINE_SECRET_STORE_KEY=changeme123
+    volumes:
+      # Mount changelog output files to local machine
+      - ./staging.openapi.json:/app/genai-engine/staging.openapi.json
+      - ./src/api_changelog.md:/app/genai-engine/src/api_changelog.md
+      - ./src:/app/genai-engine/src
+    profiles:
+      - changelog
+volumes:
+  postgres_data:

@@ -15,12 +15,13 @@ from arthur_common.models.connectors import (
     SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
 )
 from arthur_common.models.enums import SnowflakeConnectorAuthenticatorMethods
-from connectors.odbc_connector import ODBCConnector
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from pydantic import SecretStr
 from snowflake.sqlalchemy import URL
 from sqlalchemy import text
+
+from connectors.odbc_connector import ODBCConnector
 
 
 class SnowflakeConnector(ODBCConnector):
@@ -33,7 +34,10 @@ class SnowflakeConnector(ODBCConnector):
         self.logger = logger
         connector_fields = {f.key: f.value for f in connector_config.fields}
 
-        self.schema = connector_fields.get(SNOWFLAKE_CONNECTOR_SCHEMA_FIELD, "PUBLIC")
+        self.schema: str = connector_fields.get(
+            SNOWFLAKE_CONNECTOR_SCHEMA_FIELD,
+            "PUBLIC",
+        )
         self.warehouse = connector_fields.get(
             SNOWFLAKE_CONNECTOR_WAREHOUSE_FIELD,
             "COMPUTE_WH",
@@ -109,7 +113,10 @@ class SnowflakeConnector(ODBCConnector):
             == SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_KEY_PAIR
         ):
             # https://docs.snowflake.com/en/developer-guide/python-connector/sqlalchemy#key-pair-authentication-support
-
+            if not self.private_key:
+                raise ValueError(
+                    f"Private key must be specified when the authentication method is {SnowflakeConnectorAuthenticatorMethods.SNOWFLAKE_KEY_PAIR}.",
+                )
             pem_text = self.private_key.get_secret_value()
 
             p_key = serialization.load_pem_private_key(

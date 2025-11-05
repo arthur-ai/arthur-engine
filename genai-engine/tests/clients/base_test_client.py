@@ -47,13 +47,60 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TaskResponse,
     TokenUsageResponse,
+    TraceResponse,
     UserResponse,
     ValidationResult,
 )
 from pydantic import TypeAdapter
 from sqlalchemy.orm import sessionmaker
+from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
+from schemas.enums import (
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
+)
+from schemas.request_schemas import (
+    ApiKeyRagAuthenticationConfigRequest,
+    ApiKeyRagAuthenticationConfigUpdateRequest,
+    DatasetUpdateRequest,
+    NewDatasetRequest,
+    NewDatasetVersionRequest,
+    NewDatasetVersionRowRequest,
+    NewDatasetVersionUpdateRowRequest,
+    RagHybridSearchSettingRequest,
+    RagKeywordSearchSettingRequest,
+    RagProviderConfigurationRequest,
+    RagProviderConfigurationUpdateRequest,
+    RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
+    RagSearchSettingConfigurationRequestTypes,
+    RagVectorSimilarityTextSearchSettingRequest,
+    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsRequest,
+    WeaviateKeywordSearchSettingsRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsRequest,
+)
+from schemas.response_schemas import (
+    ConnectionCheckResult,
+    DatasetResponse,
+    DatasetVersionResponse,
+    ListDatasetVersionsResponse,
+    RagProviderConfigurationResponse,
+    RagProviderQueryResponse,
+    RagSearchSettingConfigurationResponse,
+    SearchDatasetsResponse,
+    SearchRagProviderCollectionsResponse,
+    SearchRagProviderConfigurationsResponse,
+    SessionListResponse,
+    SessionTracesResponse,
+    SpanListResponse,
+    TraceListResponse,
+    TraceUserListResponse,
+    TraceUserMetadataResponse,
+)
 from tests.constants import (
     DEFAULT_EXAMPLES,
     DEFAULT_KEYWORDS,
@@ -674,13 +721,16 @@ class GenaiEngineTestClientBase(httpx.Client):
             uri = f"/api/v2/tasks/{task_id}/validate_prompt"
         if prompt is None:
             prompt = random.choice(EXAMPLE_PROMPTS)
+
+        request_body = {
+            "prompt": prompt,
+            "conversation_id": conversation_id,
+            "user_id": user_id,
+        }
+
         resp = self.base_client.post(
             url=uri,
-            json={
-                "prompt": prompt,
-                "conversation_id": conversation_id,
-                "user_id": user_id,
-            },
+            json=request_body,
             headers=self.authorized_user_api_key_headers,
         )
         log_response(resp)
@@ -700,6 +750,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         response: str = None,
         task_id: str = None,
         context: str = None,
+        model_name: str = None,
     ) -> tuple[int, ValidationResult]:
         uri = "/api/v2/validate_response/"
         if task_id != None:
@@ -708,6 +759,8 @@ class GenaiEngineTestClientBase(httpx.Client):
         body = {"response": response if response else random.choice(EXAMPLE_RESPONSES)}
         if context:
             body["context"] = context
+        if model_name:
+            body["model_name"] = model_name
         resp = self.base_client.post(
             uri + inference_id,
             json=body,
@@ -857,6 +910,127 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def create_dataset(
+        self,
+        name: str,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = NewDatasetRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.post(
+            "/api/v2/datasets",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset(self, dataset_id: str) -> tuple[int, DatasetResponse]:
+        resp = self.base_client.get(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_dataset(
+        self,
+        dataset_id: str,
+        name: str = None,
+        description: str = None,
+        metadata: dict = None,
+    ) -> tuple[int, DatasetResponse]:
+        request = DatasetUpdateRequest(
+            name=name,
+            description=description,
+            metadata=metadata,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v2/datasets/{dataset_id}",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_dataset(self, dataset_id: str) -> int:
+        resp = self.base_client.delete(
+            f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def search_datasets(
+        self,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        dataset_ids: list[str] = None,
+        dataset_name: str = None,
+    ) -> tuple[int, SearchDatasetsResponse]:
+        """Search datasets with optional filters and pagination."""
+        path = "api/v2/datasets/search?"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if dataset_ids:
+            params["dataset_ids"] = dataset_ids
+        if dataset_name:
+            params["dataset_name"] = dataset_name
+
+        resp = self.base_client.get(
+            "{}{}".format(path, urllib.parse.urlencode(params, doseq=True)),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchDatasetsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
     def send_chat(
         self,
@@ -1549,6 +1723,1271 @@ class GenaiEngineTestClientBase(httpx.Client):
                 QuerySpansResponse.model_validate(resp.json())
                 if resp.status_code == 200
                 else resp.text
+            ),
+        )
+
+    # ============================================================================
+    # NEW TRACE API METHODS (/api/v1/ endpoints)
+    # ============================================================================
+
+    def trace_api_receive_traces(self, trace_data: bytes) -> tuple[int, str]:
+        """Send OpenInference trace data to the new trace API endpoint.
+
+        Args:
+            trace_data: Raw protobuf trace data in bytes
+
+        Returns:
+            tuple[int, str]: Status code and response message
+        """
+        headers = self.authorized_user_api_key_headers.copy()
+        headers["Content-Type"] = "application/x-protobuf"
+
+        resp = self.base_client.post(
+            "/api/v1/traces",
+            content=trace_data,
+            headers=headers,
+        )
+        log_response(resp)
+        return resp.status_code, resp.text
+
+    def trace_api_list_traces_metadata(
+        self,
+        task_ids: list[str],
+        trace_ids: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+        tool_name: str | None = None,
+        span_types: list | None = None,
+        user_ids: list[str] | None = None,
+        # Query relevance filters
+        query_relevance_eq: float | None = None,
+        query_relevance_gt: float | None = None,
+        query_relevance_gte: float | None = None,
+        query_relevance_lt: float | None = None,
+        query_relevance_lte: float | None = None,
+        # Response relevance filters
+        response_relevance_eq: float | None = None,
+        response_relevance_gt: float | None = None,
+        response_relevance_gte: float | None = None,
+        response_relevance_lt: float | None = None,
+        response_relevance_lte: float | None = None,
+        # Tool classification filters
+        tool_selection: int | None = None,
+        tool_usage: int | None = None,
+        # Trace duration filters
+        trace_duration_eq: float | None = None,
+        trace_duration_gt: float | None = None,
+        trace_duration_gte: float | None = None,
+        trace_duration_lt: float | None = None,
+        trace_duration_lte: float | None = None,
+    ) -> tuple[int, TraceListResponse | str]:
+        """Get lightweight trace metadata for browsing/filtering operations.
+
+        Returns:
+            tuple[int, TraceListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+        if tool_name is not None:
+            params["tool_name"] = tool_name
+        if span_types is not None:
+            params["span_types"] = span_types
+        if user_ids is not None:
+            params["user_ids"] = user_ids
+        # Query relevance filters
+        if query_relevance_eq is not None:
+            params["query_relevance_eq"] = query_relevance_eq
+        if query_relevance_gt is not None:
+            params["query_relevance_gt"] = query_relevance_gt
+        if query_relevance_gte is not None:
+            params["query_relevance_gte"] = query_relevance_gte
+        if query_relevance_lt is not None:
+            params["query_relevance_lt"] = query_relevance_lt
+        if query_relevance_lte is not None:
+            params["query_relevance_lte"] = query_relevance_lte
+        # Response relevance filters
+        if response_relevance_eq is not None:
+            params["response_relevance_eq"] = response_relevance_eq
+        if response_relevance_gt is not None:
+            params["response_relevance_gt"] = response_relevance_gt
+        if response_relevance_gte is not None:
+            params["response_relevance_gte"] = response_relevance_gte
+        if response_relevance_lt is not None:
+            params["response_relevance_lt"] = response_relevance_lt
+        if response_relevance_lte is not None:
+            params["response_relevance_lte"] = response_relevance_lte
+        # Tool classification filters
+        if tool_selection is not None:
+            params["tool_selection"] = tool_selection
+        if tool_usage is not None:
+            params["tool_usage"] = tool_usage
+        # Trace duration filters
+        if trace_duration_eq is not None:
+            params["trace_duration_eq"] = trace_duration_eq
+        if trace_duration_gt is not None:
+            params["trace_duration_gt"] = trace_duration_gt
+        if trace_duration_gte is not None:
+            params["trace_duration_gte"] = trace_duration_gte
+        if trace_duration_lt is not None:
+            params["trace_duration_lt"] = trace_duration_lt
+        if trace_duration_lte is not None:
+            params["trace_duration_lte"] = trace_duration_lte
+
+        resp = self.base_client.get(
+            f"/api/v1/traces?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        # below filled in
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_trace_by_id(
+        self,
+        trace_id: str,
+    ) -> tuple[int, TraceResponse | str]:
+        """Get complete trace tree with existing metrics (no computation).
+
+        Args:
+            trace_id: The trace ID to retrieve
+
+        Returns:
+            tuple[int, TraceResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/{trace_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_trace_metrics(
+        self,
+        trace_id: str,
+    ) -> tuple[int, TraceResponse | str]:
+        """Compute all missing metrics for trace spans on-demand.
+
+        Args:
+            trace_id: The trace ID to compute metrics for
+
+        Returns:
+            tuple[int, TraceResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/{trace_id}/metrics",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_spans_metadata(
+        self,
+        task_ids: list[str],
+        trace_ids: list[str] | None = None,
+        span_types: list[str] | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+        tool_name: str | None = None,
+        # Query relevance filters
+        query_relevance_eq: float | None = None,
+        query_relevance_gt: float | None = None,
+        query_relevance_gte: float | None = None,
+        query_relevance_lt: float | None = None,
+        query_relevance_lte: float | None = None,
+        # Response relevance filters
+        response_relevance_eq: float | None = None,
+        response_relevance_gt: float | None = None,
+        response_relevance_gte: float | None = None,
+        response_relevance_lt: float | None = None,
+        response_relevance_lte: float | None = None,
+        # Tool classification filters
+        tool_selection: int | None = None,
+        tool_usage: int | None = None,
+        # Trace duration filters
+        trace_duration_eq: float | None = None,
+        trace_duration_gt: float | None = None,
+        trace_duration_gte: float | None = None,
+        trace_duration_lt: float | None = None,
+        trace_duration_lte: float | None = None,
+    ) -> tuple[int, SpanListResponse | str]:
+        """Get lightweight span metadata with comprehensive filtering support.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            trace_ids: Trace IDs to filter on (optional)
+            span_types: Span types to filter on (optional)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+            tool_name: Return only results with this tool name
+            query_relevance_eq: Query relevance equal to this value
+            query_relevance_gt: Query relevance greater than this value
+            query_relevance_gte: Query relevance greater than or equal to this value
+            query_relevance_lt: Query relevance less than this value
+            query_relevance_lte: Query relevance less than or equal to this value
+            response_relevance_eq: Response relevance equal to this value
+            response_relevance_gt: Response relevance greater than this value
+            response_relevance_gte: Response relevance greater than or equal to this value
+            response_relevance_lt: Response relevance less than this value
+            response_relevance_lte: Response relevance less than or equal to this value
+            tool_selection: Tool selection evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            tool_usage: Tool usage evaluation result (0=INCORRECT, 1=CORRECT, 2=NA)
+            trace_duration_eq: Duration exactly equal to this value (seconds)
+            trace_duration_gt: Duration greater than this value (seconds)
+            trace_duration_gte: Duration greater than or equal to this value (seconds)
+            trace_duration_lt: Duration less than this value (seconds)
+            trace_duration_lte: Duration less than or equal to this value (seconds)
+
+        Returns:
+            tuple[int, SpanListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if trace_ids is not None:
+            params["trace_ids"] = trace_ids
+        if span_types is not None:
+            params["span_types"] = span_types
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+        if tool_name is not None:
+            params["tool_name"] = tool_name
+        # Query relevance filters
+        if query_relevance_eq is not None:
+            params["query_relevance_eq"] = query_relevance_eq
+        if query_relevance_gt is not None:
+            params["query_relevance_gt"] = query_relevance_gt
+        if query_relevance_gte is not None:
+            params["query_relevance_gte"] = query_relevance_gte
+        if query_relevance_lt is not None:
+            params["query_relevance_lt"] = query_relevance_lt
+        if query_relevance_lte is not None:
+            params["query_relevance_lte"] = query_relevance_lte
+        # Response relevance filters
+        if response_relevance_eq is not None:
+            params["response_relevance_eq"] = response_relevance_eq
+        if response_relevance_gt is not None:
+            params["response_relevance_gt"] = response_relevance_gt
+        if response_relevance_gte is not None:
+            params["response_relevance_gte"] = response_relevance_gte
+        if response_relevance_lt is not None:
+            params["response_relevance_lt"] = response_relevance_lt
+        if response_relevance_lte is not None:
+            params["response_relevance_lte"] = response_relevance_lte
+        # Tool classification filters
+        if tool_selection is not None:
+            params["tool_selection"] = tool_selection
+        if tool_usage is not None:
+            params["tool_usage"] = tool_usage
+        # Trace duration filters
+        if trace_duration_eq is not None:
+            params["trace_duration_eq"] = trace_duration_eq
+        if trace_duration_gt is not None:
+            params["trace_duration_gt"] = trace_duration_gt
+        if trace_duration_gte is not None:
+            params["trace_duration_gte"] = trace_duration_gte
+        if trace_duration_lt is not None:
+            params["trace_duration_lt"] = trace_duration_lt
+        if trace_duration_lte is not None:
+            params["trace_duration_lte"] = trace_duration_lte
+
+        resp = self.base_client.get(
+            f"/api/v1/traces/spans?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_span_by_id(
+        self,
+        span_id: str,
+    ) -> tuple[int, SpanWithMetricsResponse | str]:
+        """Get single span with existing metrics (no computation).
+
+        Args:
+            span_id: The span ID to retrieve
+
+        Returns:
+            tuple[int, SpanWithMetricsResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/spans/{span_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_span_metrics(
+        self,
+        span_id: str,
+    ) -> tuple[int, SpanWithMetricsResponse | str]:
+        """Compute all missing metrics for a single span on-demand.
+
+        Args:
+            span_id: The span ID to compute metrics for
+
+        Returns:
+            tuple[int, SpanWithMetricsResponse | str]: Status code and response
+        """
+        resp = self.base_client.get(
+            f"/api/v1/traces/spans/{span_id}/metrics",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SpanWithMetricsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_sessions_metadata(
+        self,
+        task_ids: list[str],
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+        user_ids: list[str] | None = None,
+    ) -> tuple[int, SessionListResponse | str]:
+        """Get session metadata with pagination and filtering.
+
+        Args:
+            task_ids: Task IDs to filter on (required)
+            start_time: Filter by start time
+            end_time: Filter by end time
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionListResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+        if start_time is not None:
+            params["start_time"] = str(start_time)
+        if end_time is not None:
+            params["end_time"] = str(end_time)
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+        if user_ids is not None:
+            params["user_ids"] = user_ids
+
+        resp = self.base_client.get(
+            f"/api/v1/traces/sessions?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_user_details(
+        self,
+        user_id: str,
+        task_ids: list[str],
+    ) -> tuple[int, TraceUserMetadataResponse | str]:
+        """Get detailed information for a single user.
+
+        Args:
+            user_id: User ID to get details for
+            task_ids: Task IDs to filter on (required)
+
+        Returns:
+            tuple[int, TraceUserMetadataResponse | str]: Status code and response
+        """
+        params = {"task_ids": task_ids}
+
+        resp = self.base_client.get(
+            f"/api/v1/traces/users/{user_id}?{urllib.parse.urlencode(params, doseq=True)}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceUserMetadataResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_get_session_traces(
+        self,
+        session_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SessionTracesResponse | str]:
+        """Get all traces in a session with existing metrics (no computation).
+
+        Args:
+            session_id: The session ID to retrieve traces for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionTracesResponse | str]: Status code and response
+        """
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/traces/sessions/{session_id}{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionTracesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_compute_session_metrics(
+        self,
+        session_id: str,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ) -> tuple[int, SessionTracesResponse | str]:
+        """Get all traces in a session and compute missing metrics.
+
+        Args:
+            session_id: The session ID to compute metrics for
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, SessionTracesResponse | str]: Status code and response
+        """
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/traces/sessions/{session_id}/metrics{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SessionTracesResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def trace_api_list_users_metadata(
+        self,
+        task_ids: list[str],
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        page: int | None = None,
+        page_size: int | None = None,
+        sort: str | None = None,
+    ):
+        """List user metadata via Trace API.
+
+        Args:
+            task_ids: List of task IDs to filter on
+            start_time: Optional start time filter
+            end_time: Optional end time filter
+            page: Page number for pagination
+            page_size: Number of items per page
+            sort: Sort order ("asc" or "desc")
+
+        Returns:
+            tuple[int, TraceUserListResponse | str]: Status code and response
+        """
+
+        params = {"task_ids": task_ids}
+        if start_time is not None:
+            params["start_time"] = start_time.isoformat()
+        if end_time is not None:
+            params["end_time"] = end_time.isoformat()
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if sort is not None:
+            params["sort"] = sort
+
+        query_string = (
+            f"?{urllib.parse.urlencode(params, doseq=True)}" if params else ""
+        )
+        resp = self.base_client.get(
+            f"/api/v1/traces/users{query_string}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                TraceUserListResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else resp.text
+            ),
+        )
+
+    def create_dataset_version(
+        self,
+        dataset_id: str,
+        rows_to_add: list[NewDatasetVersionRowRequest] = None,
+        rows_to_delete: list[str] = None,
+        rows_to_update: list[NewDatasetVersionUpdateRowRequest] = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Create a new dataset version."""
+        if rows_to_add is None:
+            rows_to_add = []
+        if rows_to_delete is None:
+            rows_to_delete = []
+        if rows_to_update is None:
+            rows_to_update = []
+
+        request = NewDatasetVersionRequest(
+            rows_to_add=rows_to_add,
+            rows_to_delete=rows_to_delete,
+            rows_to_update=rows_to_update,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/versions",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_version(
+        self,
+        dataset_id: str,
+        version_number: int,
+        page: int = None,
+        page_size: int = None,
+    ) -> tuple[int, DatasetVersionResponse]:
+        """Get a dataset version."""
+        path = f"/api/v2/datasets/{dataset_id}/versions/{version_number}"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetVersionResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_dataset_versions(
+        self,
+        dataset_id: str,
+        page: int = None,
+        page_size: int = None,
+        latest_version_only: bool = False,
+    ) -> tuple[int, ListDatasetVersionsResponse]:
+        """Get dataset versions for a dataset."""
+        path = f"/api/v2/datasets/{dataset_id}/versions"
+        params = {}
+        if page is not None:
+            params["page"] = page
+        if page_size is not None:
+            params["page_size"] = page_size
+        if latest_version_only:
+            params["latest_version_only"] = latest_version_only
+
+        url = path
+        if params:
+            url = f"{path}?{urllib.parse.urlencode(params)}"
+
+        resp = self.base_client.get(
+            url,
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListDatasetVersionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider(
+        self,
+        task_id: str,
+        name: str,
+        description: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+        api_key: str = "test-api-key",
+        host_url: str = "https://test-weaviate.example.com",
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = RagAPIKeyAuthenticationProviderEnum.WEAVIATE,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Create a new RAG provider configuration."""
+        auth_config = ApiKeyRagAuthenticationConfigRequest(
+            api_key=api_key,
+            host_url=host_url,
+            rag_provider=rag_provider,
+        )
+
+        request = RagProviderConfigurationRequest(
+            name=name,
+            description=description,
+            authentication_method=authentication_method,
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_providers",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_provider(
+        self,
+        provider_id: str,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Get a RAG provider configuration by ID."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_providers/{provider_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_rag_provider(
+        self,
+        provider_id: str,
+        name: str = None,
+        description: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = None,
+        api_key: str = None,
+        host_url: str = None,
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = None,
+    ) -> tuple[int, RagProviderConfigurationResponse]:
+        """Update a RAG provider configuration."""
+        auth_config = None
+        if any([api_key, host_url, rag_provider]):
+            auth_config = ApiKeyRagAuthenticationConfigUpdateRequest(
+                api_key=api_key,
+                host_url=host_url,
+                rag_provider=rag_provider,
+            )
+
+        request = RagProviderConfigurationUpdateRequest(
+            name=name,
+            description=description,
+            authentication_method=authentication_method,
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.patch(
+            f"/api/v1/rag_providers/{provider_id}",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_provider(self, provider_id: str) -> int:
+        """Delete a RAG provider configuration."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_providers/{provider_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def search_rag_providers(
+        self,
+        task_id: str,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        config_name: str = None,
+        authentication_method: RagProviderAuthenticationMethodEnum = None,
+        rag_provider_name: RagAPIKeyAuthenticationProviderEnum = None,
+    ) -> tuple[int, SearchRagProviderConfigurationsResponse]:
+        """Search RAG provider configurations for a task."""
+        path = f"api/v1/tasks/{task_id}/rag_providers"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if config_name:
+            params["config_name"] = config_name
+        if authentication_method:
+            params["authentication_method"] = authentication_method
+        if rag_provider_name:
+            params["rag_provider_name"] = rag_provider_name
+
+        resp = self.base_client.get(
+            "{}{}".format(
+                path,
+                "?" + urllib.parse.urlencode(params, doseq=True) if params else "",
+            ),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderConfigurationsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def test_rag_provider_connection(
+        self,
+        task_id: str,
+        authentication_method: RagProviderAuthenticationMethodEnum = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+        api_key: str = "test-api-key",
+        host_url: str = "https://test-weaviate.example.com",
+        rag_provider: RagAPIKeyAuthenticationProviderEnum = RagAPIKeyAuthenticationProviderEnum.WEAVIATE,
+    ) -> tuple[int, ConnectionCheckResult]:
+        """Test a RAG provider connection configuration."""
+        auth_config = ApiKeyRagAuthenticationConfigRequest(
+            api_key=api_key,
+            host_url=host_url,
+            rag_provider=rag_provider,
+            authentication_method=authentication_method,
+        )
+
+        request = RagProviderTestConfigurationRequest(
+            authentication_config=auth_config,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_providers/test_connection",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ConnectionCheckResult.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_similarity_text_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        certainty: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        distance: float = None,
+        auto_limit: int = None,
+        move_to: dict = None,
+        move_away: dict = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a similarity text search on a RAG provider."""
+        weaviate_settings = WeaviateVectorSimilarityTextSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            certainty=certainty,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            distance=distance,
+            auto_limit=auto_limit,
+            move_to=move_to,
+            move_away=move_away,
+        )
+
+        request = RagVectorSimilarityTextSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/similarity_text_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_keyword_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a keyword search on a RAG provider."""
+        weaviate_settings = WeaviateKeywordSearchSettingsRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            query=query,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+            minimum_match_or_operator=minimum_match_or_operator,
+            and_operator=and_operator,
+        )
+
+        request = RagKeywordSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/keyword_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def execute_hybrid_search(
+        self,
+        provider_id: str,
+        query: str,
+        collection_name: str,
+        alpha: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        query_properties: list[str] = None,
+        fusion_type: HybridFusion = None,
+        max_vector_distance: float = None,
+        minimum_match_or_operator: int = None,
+        and_operator: bool = None,
+        target_vector: TargetVectorJoinType = None,
+    ) -> tuple[int, RagProviderQueryResponse]:
+        """Execute a hybrid search on a RAG provider."""
+        # Build settings dict, only including non-None values
+        settings_dict = {
+            "rag_provider": RagProviderEnum.WEAVIATE,
+            "collection_name": collection_name,
+            "query": query,
+            "include_vector": include_vector,
+        }
+        if alpha is not None:
+            settings_dict["alpha"] = alpha
+        if limit is not None:
+            settings_dict["limit"] = limit
+        if offset is not None:
+            settings_dict["offset"] = offset
+        if query_properties is not None:
+            settings_dict["query_properties"] = query_properties
+        if fusion_type is not None:
+            settings_dict["fusion_type"] = fusion_type
+        if max_vector_distance is not None:
+            settings_dict["max_vector_distance"] = max_vector_distance
+        if minimum_match_or_operator is not None:
+            settings_dict["minimum_match_or_operator"] = minimum_match_or_operator
+        if and_operator is not None:
+            settings_dict["and_operator"] = and_operator
+        if target_vector is not None:
+            settings_dict["target_vector"] = target_vector
+
+        weaviate_settings = WeaviateHybridSearchSettingsRequest(**settings_dict)
+
+        request = RagHybridSearchSettingRequest(
+            settings=weaviate_settings,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_providers/{provider_id}/hybrid_search",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagProviderQueryResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def list_rag_provider_collections(
+        self,
+        provider_id: str,
+    ) -> tuple[int, SearchRagProviderCollectionsResponse]:
+        """List collections for a RAG provider."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_providers/{provider_id}/collections",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                SearchRagProviderCollectionsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider_settings(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        settings: RagSearchSettingConfigurationRequestTypes,
+        description: str = None,
+        tags: list[str] = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration."""
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_provider_settings(
+        self,
+        setting_configuration_id: str,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Get a RAG provider settings configuration by ID."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_provider_settings(self, setting_configuration_id: str) -> int:
+        """Delete a RAG provider settings configuration."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_rag_provider_settings_hybrid(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        collection_name: str,
+        description: str = None,
+        tags: list[str] = None,
+        alpha: float = 0.7,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration with hybrid search."""
+        settings = WeaviateHybridSearchSettingsConfigurationRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            alpha=alpha,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+        )
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def create_rag_provider_settings_vector_similarity(
+        self,
+        task_id: str,
+        rag_provider_id: str,
+        name: str,
+        collection_name: str,
+        description: str = None,
+        tags: list[str] = None,
+        certainty: float = None,
+        distance: float = None,
+        limit: int = None,
+        include_vector: bool = False,
+        offset: int = None,
+        auto_limit: int = None,
+    ) -> tuple[int, RagSearchSettingConfigurationResponse]:
+        """Create a new RAG provider settings configuration with vector similarity search."""
+        settings = WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+            certainty=certainty,
+            distance=distance,
+            limit=limit,
+            include_vector=include_vector,
+            offset=offset,
+            auto_limit=auto_limit,
+        )
+
+        request = RagSearchSettingConfigurationRequest(
+            name=name,
+            description=description,
+            tags=tags,
+            settings=settings,
+            rag_provider_id=rag_provider_id,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/rag_search_settings",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
             ),
         )
 

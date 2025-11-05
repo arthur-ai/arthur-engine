@@ -1,5 +1,12 @@
+import AddIcon from "@mui/icons-material/Add";
+import MenuIcon from "@mui/icons-material/Menu";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { CreateTaskForm } from "./CreateTaskForm";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
@@ -12,6 +19,7 @@ export const AllTasks: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -70,6 +78,35 @@ export const AllTasks: React.FC = () => {
     navigate(`/tasks/${taskId}/traces`);
   };
 
+  const handleTaskCreated = async (taskId: string) => {
+    // Refresh the tasks list
+    const fetchTasks = async () => {
+      try {
+        if (!api) {
+          throw new Error("API client not available");
+        }
+
+        const response = await api.api.searchTasksApiV2TasksSearchPost(
+          {
+            page_size: 50,
+            page: 0,
+          },
+          {}
+        );
+
+        setTasks(response.data.tasks || []);
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        setError("Failed to load tasks. Please check your authentication.");
+      }
+    };
+
+    await fetchTasks();
+
+    // Navigate to the new task
+    navigate(`/tasks/${taskId}/traces`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -82,41 +119,46 @@ export const AllTasks: React.FC = () => {
               </h1>
               <p className="text-gray-600">All Tasks</p>
             </div>
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
+            <div className="flex items-center space-x-4">
+              {tasks.length > 0 && (
+                <Button
+                  variant="contained"
+                  onClick={() => setShowCreateForm(true)}
+                  startIcon={<AddIcon />}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                </svg>
-              </button>
-
-              {/* Dropdown menu */}
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    Logout
-                  </button>
-                </div>
+                  Create Task
+                </Button>
               )}
+              &nbsp;
+              <div className="relative">
+                <IconButton
+                  aria-label="menu"
+                  onClick={() => setIsMenuOpen((prev) => !prev)}
+                  sx={{
+                    backgroundColor: "white",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    padding: "8px",
+                    width: "40px",
+                    height: "40px",
+                  }}
+                >
+                  <MenuIcon />
+                </IconButton>
+                {/* Dropdown menu */}
+                {isMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <Button
+                      variant="text"
+                      onClick={handleLogout}
+                      fullWidth
+                      sx={{ color: "black" }}
+                    >
+                      Logout
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -147,9 +189,14 @@ export const AllTasks: React.FC = () => {
               <div className="text-gray-500 text-lg font-medium mb-2">
                 No tasks found
               </div>
-              <p className="text-gray-400">
-                There are no tasks available at the moment.
+              <p className="text-gray-400 mb-8">
+                Get started by creating your first agent task.
               </p>
+              <CreateTaskForm
+                embedded={true}
+                onTaskCreated={handleTaskCreated}
+                onCancel={() => {}}
+              />
             </div>
           ) : (
             <>
@@ -194,6 +241,16 @@ export const AllTasks: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* Create Task Modal */}
+      <CreateTaskForm
+        open={showCreateForm}
+        onTaskCreated={(taskId) => {
+          setShowCreateForm(false);
+          handleTaskCreated(taskId);
+        }}
+        onCancel={() => setShowCreateForm(false)}
+      />
     </div>
   );
 };

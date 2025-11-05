@@ -12,6 +12,468 @@
 /** APIKeysRolesEnum */
 export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION-USER" | "ORG-AUDITOR" | "ORG-ADMIN";
 
+/** AgenticPrompt */
+export interface AgenticPrompt {
+  /**
+   * Created At
+   * Timestamp when the prompt was created.
+   */
+  created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageOutput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Name
+   * Name of the agentic prompt
+   */
+  name: string;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatOutput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolOutput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
+}
+
+/** AgenticPromptBaseConfig */
+export interface AgenticPromptBaseConfig {
+  /**
+   * Created At
+   * Timestamp when the prompt was created.
+   */
+  created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageInput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolInput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
+}
+
+/**
+ * AgenticPromptMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface AgenticPromptMessageInput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
+}
+
+/**
+ * AgenticPromptMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface AgenticPromptMessageOutput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
+}
+
+/** AgenticPromptMetadataListResponse */
+export interface AgenticPromptMetadataListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Prompt Metadata
+   * List of prompt metadata
+   */
+  prompt_metadata: AgenticPromptMetadataResponse[];
+}
+
+/** AgenticPromptMetadataResponse */
+export interface AgenticPromptMetadataResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted Versions
+   * List of deleted versions of the prompt
+   */
+  deleted_versions: number[];
+  /**
+   * Latest Version Created At
+   * Timestamp when the last version of the prompt was created
+   * @format date-time
+   */
+  latest_version_created_at: string;
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /**
+   * Versions
+   * Number of versions of the prompt
+   */
+  versions: number;
+}
+
+/** AgenticPromptRunResponse */
+export interface AgenticPromptRunResponse {
+  /** Content */
+  content?: string | null;
+  /** Cost */
+  cost: string;
+  /** Tool Calls */
+  tool_calls?: ChatCompletionMessageToolCall[] | null;
+}
+
+/** AgenticPromptVersionListResponse */
+export interface AgenticPromptVersionListResponse {
+  /**
+   * Count
+   * Total number of prompts matching filters
+   */
+  count: number;
+  /**
+   * Versions
+   * List of prompt version metadata
+   */
+  versions: AgenticPromptVersionResponse[];
+}
+
+/** AgenticPromptVersionResponse */
+export interface AgenticPromptVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the prompt version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the prompt version was deleted
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name of the prompt
+   */
+  model_name: string;
+  /** Model provider of the prompt */
+  model_provider: ModelProvider;
+  /**
+   * Num Messages
+   * Number of messages in the prompt
+   */
+  num_messages: number;
+  /**
+   * Num Tools
+   * Number of tools in the prompt
+   */
+  num_tools: number;
+  /**
+   * Version
+   * Version number of the prompt
+   */
+  version: number;
+}
+
+/** AnthropicThinkingParam */
+export interface AnthropicThinkingParam {
+  /** Budget Tokens */
+  budget_tokens?: number;
+  /** Type */
+  type?: "enabled";
+}
+
+/** ApiKeyRagAuthenticationConfigRequest */
+export interface ApiKeyRagAuthenticationConfigRequest {
+  /**
+   * Api Key
+   * API key to use for authentication.
+   * @format password
+   */
+  api_key: string;
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   * @format uri
+   * @minLength 1
+   */
+  host_url: string;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider: RagAPIKeyAuthenticationProviderEnum;
+}
+
+/** ApiKeyRagAuthenticationConfigResponse */
+export interface ApiKeyRagAuthenticationConfigResponse {
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   * @format uri
+   * @minLength 1
+   */
+  host_url: string;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider: RagAPIKeyAuthenticationProviderEnum;
+}
+
+/** ApiKeyRagAuthenticationConfigUpdateRequest */
+export interface ApiKeyRagAuthenticationConfigUpdateRequest {
+  /**
+   * Api Key
+   * API key to use for authentication.
+   */
+  api_key?: string | null;
+  /**
+   * Authentication Method
+   * @default "api_key"
+   */
+  authentication_method?: "api_key";
+  /**
+   * Host Url
+   * URL of host instance to authenticate with.
+   */
+  host_url?: string | null;
+  /** Name of RAG provider to authenticate with. */
+  rag_provider?: RagAPIKeyAuthenticationProviderEnum | null;
+}
+
 /** ApiKeyResponse */
 export interface ApiKeyResponse {
   /**
@@ -103,6 +565,9 @@ export interface BodyUploadEmbeddingsFileApiChatFilesPost {
   file: File;
 }
 
+/** ChatCompletionMessageToolCall */
+export type ChatCompletionMessageToolCall = Record<string, any>;
+
 /** ChatDefaultTaskRequest */
 export interface ChatDefaultTaskRequest {
   /** Task Id */
@@ -166,6 +631,11 @@ export interface ChatResponse {
    */
   llm_response: string;
   /**
+   * Model Name
+   * The model name and version used for this chat response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Prompt Results
    * list of rule results for the user prompt
    */
@@ -198,9 +668,175 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
   resource?: UserPermissionResource;
 }
 
+/**
+ * CompletionRequest
+ * Request schema for running an unsaved agentic prompt
+ */
+export interface CompletionRequest {
+  /**
+   * Run configuration for the unsaved prompt
+   * @default {"variables":[],"stream":false,"strict":false}
+   */
+  completion_request?: PromptCompletionRequest;
+  /**
+   * Created At
+   * Timestamp when the prompt was created.
+   */
+  created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this prompt was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: AgenticPromptMessageInput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolInput[] | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+  /**
+   * Version
+   * Version of the agentic prompt
+   * @default 1
+   */
+  version?: number;
+}
+
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
+
+export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError = HTTPValidationError;
+
+export interface ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Session Id */
+  sessionId: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData = SpanWithMetricsResponse;
+
+export type ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError = HTTPValidationError;
+
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetData = SpanWithMetricsResponse;
 
 export type ComputeSpanMetricsV1SpanSpanIdMetricsGetError = HTTPValidationError;
+
+export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData = TraceResponse;
+
+export type ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError = HTTPValidationError;
+
+/** ConnectionCheckOutcome */
+export type ConnectionCheckOutcome = "passed" | "failed";
+
+/** ConnectionCheckResult */
+export interface ConnectionCheckResult {
+  /** Result of the connection check. */
+  connection_check_outcome: ConnectionCheckOutcome;
+  /**
+   * Failure Reason
+   * Explainer of the connection check failure result.
+   */
+  failure_reason?: string | null;
+}
 
 /** ConversationBaseResponse */
 export interface ConversationBaseResponse {
@@ -217,9 +853,21 @@ export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
 
 export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
 
+export type CreateDatasetApiV2DatasetsPostData = DatasetResponse;
+
+export type CreateDatasetApiV2DatasetsPostError = HTTPValidationError;
+
+export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData = DatasetVersionResponse;
+
+export type CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError = HTTPValidationError;
+
 export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
 
 export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
+
+export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
+
+export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidationError;
 
 export type CreateTaskApiV2TasksPostData = TaskResponse;
 
@@ -256,6 +904,174 @@ export type CreateUserUsersPostData = any;
 
 export type CreateUserUsersPostError = HTTPValidationError;
 
+/** DatasetResponse */
+export interface DatasetResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of dataset creation in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Description
+   * Description of the dataset.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the dataset.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Latest Version Number
+   * Version number representing the latest version of the dataset. If unset, no versions exist for the dataset yet.
+   */
+  latest_version_number?: number | null;
+  /**
+   * Metadata
+   * Any metadata to include that describes additional information about the dataset.
+   */
+  metadata?: Record<string, any> | null;
+  /**
+   * Name
+   * Name of the dataset.
+   */
+  name: string;
+  /**
+   * Updated At
+   * Timestamp representing the time of the last dataset update in unix milliseconds.
+   */
+  updated_at: number;
+}
+
+/** DatasetUpdateRequest */
+export interface DatasetUpdateRequest {
+  /**
+   * Description
+   * Description of the dataset.
+   */
+  description?: string | null;
+  /**
+   * Metadata
+   * Any metadata to include that describes additional information about the dataset.
+   */
+  metadata?: Record<string, any> | null;
+  /**
+   * Name
+   * Name of the dataset.
+   */
+  name: string | null;
+}
+
+/** DatasetVersionMetadataResponse */
+export interface DatasetVersionMetadataResponse {
+  /**
+   * Column Names
+   * Names of all columns in the dataset version.
+   */
+  column_names: string[];
+  /**
+   * Created At
+   * Timestamp representing the time of dataset version creation in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Dataset Id
+   * ID of the dataset.
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Version Number
+   * Version number of the dataset version.
+   */
+  version_number: number;
+}
+
+/** DatasetVersionResponse */
+export interface DatasetVersionResponse {
+  /**
+   * Column Names
+   * Names of all columns in the dataset version.
+   */
+  column_names: string[];
+  /**
+   * Created At
+   * Timestamp representing the time of dataset version creation in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Dataset Id
+   * ID of the dataset.
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Page
+   * The current page number for the included rows.
+   */
+  page: number;
+  /**
+   * Page Size
+   * The number of rows per page.
+   */
+  page_size: number;
+  /**
+   * Rows
+   * list of rows in the dataset version.
+   */
+  rows: DatasetVersionRowResponse[];
+  /**
+   * Total Count
+   * The total number of rows in the dataset version.
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * The total number of pages.
+   */
+  total_pages: number;
+  /**
+   * Version Number
+   * Version number of the dataset version.
+   */
+  version_number: number;
+}
+
+/** DatasetVersionRowColumnItemResponse */
+export interface DatasetVersionRowColumnItemResponse {
+  /**
+   * Column Name
+   * Name of the column.
+   */
+  column_name: string;
+  /**
+   * Column Value
+   * Value of the column.
+   */
+  column_value: string;
+}
+
+/** DatasetVersionRowResponse */
+export interface DatasetVersionRowResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of dataset row creation in unix milliseconds. May differ within a version if a row already existed in a past version of the dataset.
+   */
+  created_at: number;
+  /**
+   * Data
+   * List of column names and values in the row.
+   */
+  data: DatasetVersionRowColumnItemResponse[];
+  /**
+   * Id
+   * ID of the version field.
+   * @format uuid
+   */
+  id: string;
+}
+
 export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData = ApiKeyResponse;
 
 export type DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError = HTTPValidationError;
@@ -268,9 +1084,26 @@ export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData = Va
 
 export type DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError = HTTPValidationError;
 
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData = any;
+
+export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HTTPValidationError;
+
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
+
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError =
+  HTTPValidationError;
+
+export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
+
+export type DeleteDatasetApiV2DatasetsDatasetIdDeleteError = HTTPValidationError;
+
 export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
 export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
+
+export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
+
+export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -310,6 +1143,15 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
+
+export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
+
+export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData =
+  RagProviderQueryResponse;
+
+export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
+
 /** ExternalDocument */
 export interface ExternalDocument {
   /** Id */
@@ -334,6 +1176,11 @@ export interface ExternalInference {
   inference_feedback: InferenceFeedbackResponse[];
   inference_prompt: ExternalInferencePrompt;
   inference_response?: ExternalInferenceResponse | null;
+  /**
+   * Model Name
+   * The model name and version used for this inference (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   result: RuleResultEnum;
   /** Task Id */
   task_id?: string | null;
@@ -376,6 +1223,11 @@ export interface ExternalInferenceResponse {
   inference_id: string;
   /** Message */
   message: string;
+  /**
+   * Model Name
+   * The model name and version used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
   /** Response Rule Results */
   response_rule_results: ExternalRuleResult[];
   result: RuleResultEnum;
@@ -450,8 +1302,137 @@ export interface FileUploadResult {
   word_count: number;
 }
 
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData = AgenticPrompt;
+
+export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError = HTTPValidationError;
+
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
+
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData =
+  AgenticPromptVersionListResponse;
+
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError = HTTPValidationError;
+
+export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Exclude Deleted
+   * Whether to exclude deleted prompt versions from the results. Default is False.
+   * @default false
+   */
+  exclude_deleted?: boolean;
+  /**
+   * Max Version
+   * Maximum version number to filter on (inclusive).
+   */
+  max_version?: number | null;
+  /**
+   * Min Version
+   * Minimum version number to filter on (inclusive).
+   */
+  min_version?: number | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Name
+   * The name of the prompt to retrieve.
+   */
+  promptName: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
+
+export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Names
+   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.
+   */
+  prompt_names?: string[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
 
 /** Response Get All Tasks Api V2 Tasks Get */
 export type GetAllTasksApiV2TasksGetData = TaskResponse[];
@@ -480,6 +1461,115 @@ export interface GetConversationsApiChatConversationsGetParams {
   size?: number;
 }
 
+export type GetDatasetApiV2DatasetsDatasetIdGetData = DatasetResponse;
+
+export type GetDatasetApiV2DatasetsDatasetIdGetError = HTTPValidationError;
+
+export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData = DatasetVersionResponse;
+
+export type GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetError = HTTPValidationError;
+
+export interface GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams {
+  /**
+   * Dataset Id
+   * ID of the dataset to fetch the version for.
+   * @format uuid
+   */
+  datasetId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Version Number
+   * Version number to fetch.
+   */
+  versionNumber: number;
+}
+
+export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData = ListDatasetVersionsResponse;
+
+export type GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError = HTTPValidationError;
+
+export interface GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams {
+  /**
+   * Dataset Id
+   * ID of the dataset to fetch versions for.
+   * @format uuid
+   */
+  datasetId: string;
+  /**
+   * Latest Version Only
+   * Whether to only include the latest version for the dataset in the response. Defaults to False.
+   * @default false
+   */
+  latest_version_only?: boolean;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetDatasetsApiV2DatasetsSearchGetData = SearchDatasetsResponse;
+
+export type GetDatasetsApiV2DatasetsSearchGetError = HTTPValidationError;
+
+export interface GetDatasetsApiV2DatasetsSearchGetParams {
+  /**
+   * Dataset Ids
+   * List of dataset ids to query for.
+   */
+  dataset_ids?: string[] | null;
+  /**
+   * Dataset Name
+   * Dataset name substring to search for.
+   */
+  dataset_name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** Response Get Default Rules Api V2 Default Rules Get */
 export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
@@ -492,6 +1582,91 @@ export type GetFilesApiChatFilesGetData = ExternalDocument[];
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDocumentContext[];
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
+
+export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
+
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
+
+export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+
+export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
+
+export type GetRagProviderApiV1RagProvidersProviderIdGetError = HTTPValidationError;
+
+export type GetRagProvidersApiV1TasksTaskIdRagProvidersGetData = SearchRagProviderConfigurationsResponse;
+
+export type GetRagProvidersApiV1TasksTaskIdRagProvidersGetError = HTTPValidationError;
+
+export interface GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams {
+  /**
+   * Authentication Method
+   * RAG Provider authentication method to filter by.
+   */
+  authentication_method?: RagProviderAuthenticationMethodEnum | null;
+  /**
+   * Config Name
+   * RAG Provider configuration name substring to search for.
+   */
+  config_name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Rag Provider Name
+   * RAG provider name to filter by.
+   */
+  rag_provider_name?: RagAPIKeyAuthenticationProviderEnum | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * ID of the task to fetch the provider connections for.
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
+
+export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
+
+export interface GetSessionTracesApiV1TracesSessionsSessionIdGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /** Session Id */
+  sessionId: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
+export type GetSpanByIdApiV1TracesSpansSpanIdGetData = SpanWithMetricsResponse;
+
+export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
@@ -521,6 +1696,25 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
    * @format date-time
    */
   start_time?: string;
+}
+
+export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
+
+export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
+
+export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
+
+export interface GetUserDetailsApiV1TracesUsersUserIdGetParams {
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /** User Id */
+  userId: string;
 }
 
 /**
@@ -564,6 +1758,15 @@ export interface HallucinationDetailsResponse {
   score?: boolean | null;
 }
 
+/** ImageURL */
+export interface ImageURL {
+  /**
+   * Url
+   * URL of the image
+   */
+  url: string;
+}
+
 /** InferenceFeedbackResponse */
 export interface InferenceFeedbackResponse {
   /**
@@ -591,6 +1794,69 @@ export interface InferenceFeedbackResponse {
 
 /** InferenceFeedbackTarget */
 export type InferenceFeedbackTarget = "context" | "response_results" | "prompt_results";
+
+/** InputAudio */
+export interface InputAudio {
+  /**
+   * Data
+   * Base64 encoded audio data
+   */
+  data: string;
+  /**
+   * Format
+   * audio format (e.g. 'mp3', 'wav', 'flac', etc.)
+   */
+  format: string;
+}
+
+/** JsonPropertySchema */
+export interface JsonPropertySchema {
+  /**
+   * Description
+   * A description of the argument
+   */
+  description?: string | null;
+  /**
+   * Enum
+   * An enum for the argument (e.g. ['celsius', 'fahrenheit'])
+   */
+  enum?: string[] | null;
+  /**
+   * Items
+   * For array types, describes the items
+   */
+  items?: null;
+  /**
+   * Type
+   * The argument's type (e.g. string, boolean, etc.)
+   * @default "string"
+   */
+  type?: string;
+}
+
+/** JsonSchema */
+export interface JsonSchema {
+  /**
+   * Additionalproperties
+   * Whether the function definition should allow additional properties
+   */
+  additionalProperties?: boolean | null;
+  /**
+   * Properties
+   * The name of the property and the property schema (e.g. {'topic': {'type': 'string', 'description': 'the topic to generate a joke for'})
+   */
+  properties: Record<string, JsonPropertySchema>;
+  /**
+   * Required
+   * The required properties of the function
+   */
+  required?: string[];
+  /**
+   * Type
+   * @default "object"
+   */
+  type?: string;
+}
 
 /** KeywordDetailsResponse */
 export interface KeywordDetailsResponse {
@@ -625,6 +1891,618 @@ export interface KeywordsConfig {
    * List of Keywords
    */
   keywords: string[];
+}
+
+/** LLMResponseFormatEnum */
+export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
+
+/** LLMResponseFormat */
+export interface LLMResponseFormatInput {
+  /** JSON schema definition (required when type is 'json_schema') */
+  json_schema?: LLMResponseSchemaInput | null;
+  /**
+   * Response format type: 'text', 'json_object', or 'json_schema'
+   * @example "json_schema"
+   */
+  type: LLMResponseFormatEnum;
+}
+
+/** LLMResponseFormat */
+export interface LLMResponseFormatOutput {
+  /** JSON schema definition (required when type is 'json_schema') */
+  json_schema?: LLMResponseSchemaOutput | null;
+  /**
+   * Response format type: 'text', 'json_object', or 'json_schema'
+   * @example "json_schema"
+   */
+  type: LLMResponseFormatEnum;
+}
+
+/** LLMResponseSchema */
+export interface LLMResponseSchemaInput {
+  /**
+   * Description
+   * Description of the schema
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the schema
+   */
+  name: string;
+  /** The JSON schema object */
+  schema: JsonSchema;
+  /**
+   * Strict
+   * Whether to enforce strict schema adherence
+   */
+  strict?: boolean | null;
+}
+
+/** LLMResponseSchema */
+export interface LLMResponseSchemaOutput {
+  /**
+   * Description
+   * Description of the schema
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the schema
+   */
+  name: string;
+  /** The JSON schema object */
+  schema: JsonSchema;
+  /**
+   * Strict
+   * Whether to enforce strict schema adherence
+   */
+  strict?: boolean | null;
+}
+
+/** LLMTool */
+export interface LLMToolInput {
+  /** The function definition */
+  function: ToolFunctionInput;
+  /**
+   * Strict
+   * Whether the function definition should use OpenAI's strict mode
+   */
+  strict?: boolean | null;
+  /**
+   * Type
+   * The type of tool. Should always be 'function'
+   * @default "function"
+   */
+  type?: string;
+}
+
+/** LLMTool */
+export interface LLMToolOutput {
+  /** The function definition */
+  function: ToolFunctionOutput;
+  /**
+   * Strict
+   * Whether the function definition should use OpenAI's strict mode
+   */
+  strict?: boolean | null;
+  /**
+   * Type
+   * The type of tool. Should always be 'function'
+   * @default "function"
+   */
+  type?: string;
+}
+
+/** ListDatasetVersionsResponse */
+export interface ListDatasetVersionsResponse {
+  /**
+   * Page
+   * The current page number for the included rows.
+   */
+  page: number;
+  /**
+   * Page Size
+   * The number of rows per page.
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * The total number of rows in the dataset version.
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * The total number of pages.
+   */
+  total_pages: number;
+  /**
+   * Versions
+   * List of existing versions for the dataset.
+   */
+  versions: DatasetVersionMetadataResponse[];
+}
+
+export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData =
+  SearchRagProviderCollectionsResponse;
+
+export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
+
+export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
+
+export type ListSessionsMetadataApiV1TracesSessionsGetError = HTTPValidationError;
+
+export interface ListSessionsMetadataApiV1TracesSessionsGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
+}
+
+export type ListSpansMetadataApiV1TracesSpansGetData = SpanListResponse;
+
+export type ListSpansMetadataApiV1TracesSpansGetError = HTTPValidationError;
+
+export interface ListSpansMetadataApiV1TracesSpansGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+}
+
+export type ListTracesMetadataApiV1TracesGetData = TraceListResponse;
+
+export type ListTracesMetadataApiV1TracesGetError = HTTPValidationError;
+
+export interface ListTracesMetadataApiV1TracesGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Query Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_eq?: number;
+  /**
+   * Query Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gt?: number;
+  /**
+   * Query Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_gte?: number;
+  /**
+   * Query Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lt?: number;
+  /**
+   * Query Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  query_relevance_lte?: number;
+  /**
+   * Response Relevance Eq
+   * Equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_eq?: number;
+  /**
+   * Response Relevance Gt
+   * Greater than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gt?: number;
+  /**
+   * Response Relevance Gte
+   * Greater than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_gte?: number;
+  /**
+   * Response Relevance Lt
+   * Less than this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lt?: number;
+  /**
+   * Response Relevance Lte
+   * Less than or equal to this value.
+   * @min 0
+   * @max 1
+   */
+  response_relevance_lte?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Span Types
+   * Span types to filter on. Optional. Valid values: AGENT, CHAIN, EMBEDDING, EVALUATOR, GUARDRAIL, LLM, RERANKER, RETRIEVER, TOOL, UNKNOWN
+   */
+  span_types?: string[];
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+  /**
+   * Tool Name
+   * Return only results with this tool name.
+   */
+  tool_name?: string;
+  /** Tool selection evaluation result. */
+  tool_selection?: ToolClassEnum;
+  /** Tool usage evaluation result. */
+  tool_usage?: ToolClassEnum;
+  /**
+   * Trace Duration Eq
+   * Duration exactly equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_eq?: number;
+  /**
+   * Trace Duration Gt
+   * Duration greater than this value (seconds).
+   * @min 0
+   */
+  trace_duration_gt?: number;
+  /**
+   * Trace Duration Gte
+   * Duration greater than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_gte?: number;
+  /**
+   * Trace Duration Lt
+   * Duration less than this value (seconds).
+   * @min 0
+   */
+  trace_duration_lt?: number;
+  /**
+   * Trace Duration Lte
+   * Duration less than or equal to this value (seconds).
+   * @min 0
+   */
+  trace_duration_lte?: number;
+  /**
+   * Trace Ids
+   * Trace IDs to filter on. Optional.
+   */
+  trace_ids?: string[];
+  /**
+   * User Ids
+   * User IDs to filter on. Optional.
+   */
+  user_ids?: string[];
+}
+
+export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
+
+export type ListUsersMetadataApiV1TracesUsersGetError = HTTPValidationError;
+
+export interface ListUsersMetadataApiV1TracesUsersGetParams {
+  /**
+   * End Time
+   * Exclusive end date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  end_time?: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Start Time
+   * Inclusive start date in ISO8601 string format. Use local time (not UTC).
+   * @format date-time
+   */
+  start_time?: string;
+  /**
+   * Task Ids
+   * Task IDs to filter on. At least one is required.
+   * @minItems 1
+   */
+  task_ids: string[];
+}
+
+/** LogitBiasItem */
+export interface LogitBiasItem {
+  /**
+   * Bias
+   * Bias value between -100 and 100
+   * @min -100
+   * @max 100
+   */
+  bias: number;
+  /**
+   * Token Id
+   * Token ID to bias
+   */
+  token_id: number;
+}
+
+/** MessageRole */
+export type MessageRole = "developer" | "system" | "user" | "assistant" | "tool";
+
+/**
+ * MetadataQuery
+ * Define which metadata should be returned in the query's results.
+ */
+export interface MetadataQuery {
+  /**
+   * Certainty
+   * @default false
+   */
+  certainty?: boolean;
+  /**
+   * Creation Time
+   * @default false
+   */
+  creation_time?: boolean;
+  /**
+   * Distance
+   * @default false
+   */
+  distance?: boolean;
+  /**
+   * Explain Score
+   * @default false
+   */
+  explain_score?: boolean;
+  /**
+   * Is Consistent
+   * @default false
+   */
+  is_consistent?: boolean;
+  /**
+   * Last Update Time
+   * @default false
+   */
+  last_update_time?: boolean;
+  /**
+   * Score
+   * @default false
+   */
+  score?: boolean;
 }
 
 /** MetricResponse */
@@ -726,6 +2604,56 @@ export interface MetricResultResponse {
 /** MetricType */
 export type MetricType = "QueryRelevance" | "ResponseRelevance" | "ToolSelection";
 
+/** ModelProvider */
+export type ModelProvider = "anthropic" | "openai" | "gemini";
+
+/** ModelProviderList */
+export interface ModelProviderList {
+  /**
+   * Providers
+   * List of model providers
+   */
+  providers: ModelProviderResponse[];
+}
+
+/** ModelProviderModelList */
+export interface ModelProviderModelList {
+  /**
+   * Available Models
+   * Available models from the provider
+   */
+  available_models: string[];
+  /** Provider of the models */
+  provider: ModelProvider;
+}
+
+/** ModelProviderResponse */
+export interface ModelProviderResponse {
+  /**
+   * Enabled
+   * Whether the provider is enabled with credentials
+   */
+  enabled: boolean;
+  /** The model provider */
+  provider: ModelProvider;
+}
+
+/** _MultiTargetVectorJoin */
+export interface MultiTargetVectorJoin {
+  /** Define how multi target vector searches should be combined. */
+  combination: MultiTargetVectorJoinEnum;
+  /** Target Vectors */
+  target_vectors: string[];
+  /** Weights */
+  weights?: Record<string, number | number[]> | null;
+}
+
+/**
+ * _MultiTargetVectorJoinEnum
+ * Define how multi target vector searches should be combined.
+ */
+export type MultiTargetVectorJoinEnum = 1 | 2 | 3 | 4 | 5;
+
 /**
  * NestedSpanWithMetricsResponse
  * Nested span response with children for building span trees
@@ -763,6 +2691,8 @@ export interface NestedSpanWithMetricsResponse {
   raw_data: Record<string, any>;
   /** Response */
   response?: string | null;
+  /** Session Id */
+  session_id?: string | null;
   /** Span Id */
   span_id: string;
   /** Span Kind */
@@ -774,6 +2704,11 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Status Code
+   * Status code for the span (Unset, Error, Ok)
+   */
+  status_code: string;
   /** System Prompt */
   system_prompt?: string | null;
   /** Task Id */
@@ -802,6 +2737,82 @@ export interface NewApiKeyRequest {
    * @default ["VALIDATION-USER"]
    */
   roles?: APIKeysRolesEnum[] | null;
+}
+
+/** NewDatasetRequest */
+export interface NewDatasetRequest {
+  /**
+   * Description
+   * Description of the dataset.
+   */
+  description?: string | null;
+  /**
+   * Metadata
+   * Any metadata to include that describes additional information about the dataset.
+   */
+  metadata?: Record<string, any> | null;
+  /**
+   * Name
+   * Name of the dataset.
+   */
+  name: string;
+}
+
+/** NewDatasetVersionRequest */
+export interface NewDatasetVersionRequest {
+  /**
+   * Rows To Add
+   * List of rows to be added to the new dataset version.
+   */
+  rows_to_add: NewDatasetVersionRowRequest[];
+  /**
+   * Rows To Delete
+   * List of IDs of rows to be deleted from the new dataset version.
+   */
+  rows_to_delete: string[];
+  /**
+   * Rows To Update
+   * List of IDs of rows to be updated in the new dataset version with their new values. Should include the value in the row for every column in the dataset, not just the updated column values.
+   */
+  rows_to_update: NewDatasetVersionUpdateRowRequest[];
+}
+
+/** NewDatasetVersionRowColumnItemRequest */
+export interface NewDatasetVersionRowColumnItemRequest {
+  /**
+   * Column Name
+   * Name of column.
+   */
+  column_name: string;
+  /**
+   * Column Value
+   * Value of column for the row.
+   */
+  column_value: string;
+}
+
+/** NewDatasetVersionRowRequest */
+export interface NewDatasetVersionRowRequest {
+  /**
+   * Data
+   * List of column-value pairs in the new dataset row.
+   */
+  data: NewDatasetVersionRowColumnItemRequest[];
+}
+
+/** NewDatasetVersionUpdateRowRequest */
+export interface NewDatasetVersionUpdateRowRequest {
+  /**
+   * Data
+   * List of column-value pairs in the updated row.
+   */
+  data: NewDatasetVersionRowColumnItemRequest[];
+  /**
+   * Id
+   * UUID of row to be updated.
+   * @format uuid
+   */
+  id: string;
 }
 
 /** NewMetricRequest */
@@ -836,9 +2847,9 @@ export interface NewRuleRequest {
   apply_to_response: boolean;
   /**
    * Config
-   * Config for the rule
+   * Config of the rule
    */
-  config?: RegexConfig | KeywordsConfig | ToxicityConfig | PIIConfig | ExamplesConfig | null;
+  config?: KeywordsConfig | RegexConfig | ExamplesConfig | ToxicityConfig | PIIConfig | null;
   /**
    * Name
    * Name of the rule
@@ -866,6 +2877,24 @@ export interface NewTaskRequest {
    */
   name: string;
 }
+
+/** OpenAIMessageItem */
+export interface OpenAIMessageItem {
+  /** Image URL content of the message if type is 'image_url' */
+  image_url?: ImageURL | null;
+  /** Input audio content of the message if type is 'input_audio' */
+  input_audio?: InputAudio | null;
+  /**
+   * Text
+   * Text content of the message if type is 'text'
+   */
+  text?: string | null;
+  /** Type of the message (either 'text', 'image_url', or 'input_audio') */
+  type: OpenAIMessageType;
+}
+
+/** OpenAIMessageType */
+export type OpenAIMessageType = "text" | "image_url" | "input_audio";
 
 /**
  * PIIConfig
@@ -979,6 +3008,31 @@ export type PostFeedbackApiV2FeedbackInferenceIdPostData = InferenceFeedbackResp
 
 export type PostFeedbackApiV2FeedbackInferenceIdPostError = HTTPValidationError;
 
+/**
+ * PromptCompletionRequest
+ * Request schema for running an agentic prompt
+ */
+export interface PromptCompletionRequest {
+  /**
+   * Stream
+   * Whether to stream the response
+   * @default false
+   */
+  stream?: boolean | null;
+  /**
+   * Strict
+   * Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.
+   * @default false
+   */
+  strict?: boolean | null;
+  /**
+   * Variables
+   * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt
+   * @default []
+   */
+  variables?: VariableTemplateValue[] | null;
+}
+
 /** PromptValidationRequest */
 export interface PromptValidationRequest {
   /**
@@ -996,6 +3050,16 @@ export interface PromptValidationRequest {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+/** PutModelProviderCredentials */
+export interface PutModelProviderCredentials {
+  /**
+   * Api Key
+   * The API key for the provider.
+   * @format password
+   */
+  api_key: string;
 }
 
 export type QueryFeedbackApiV2FeedbackQueryGetData = QueryFeedbackResponse;
@@ -1613,6 +3677,126 @@ export interface QueryTracesWithMetricsResponse {
   traces: TraceResponse[];
 }
 
+/** RagAPIKeyAuthenticationProviderEnum */
+export type RagAPIKeyAuthenticationProviderEnum = "weaviate";
+
+/** RagKeywordSearchSettingRequest */
+export interface RagKeywordSearchSettingRequest {
+  /** Settings for the keyword search request to the vector database. */
+  settings: WeaviateKeywordSearchSettingsRequest;
+}
+
+/** RagProviderAuthenticationMethodEnum */
+export type RagProviderAuthenticationMethodEnum = "api_key";
+
+/** RagProviderCollectionResponse */
+export interface RagProviderCollectionResponse {
+  /**
+   * Description
+   * Description of the collection.
+   */
+  description?: string | null;
+  /**
+   * Identifier
+   * Unique identifier of the collection.
+   */
+  identifier: string;
+}
+
+/** RagProviderConfigurationRequest */
+export interface RagProviderConfigurationRequest {
+  /** Configuration of the authentication strategy. */
+  authentication_config: ApiKeyRagAuthenticationConfigRequest;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name: string;
+}
+
+/** RagProviderConfigurationResponse */
+export interface RagProviderConfigurationResponse {
+  /** Configuration of the authentication strategy. */
+  authentication_config: ApiKeyRagAuthenticationConfigResponse;
+  /**
+   * Created At
+   * Time the RAG provider configuration was created in unix milliseconds
+   */
+  created_at: number;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * Unique identifier of the RAG provider configuration.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name: string;
+  /**
+   * Task Id
+   * ID of parent task.
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * Time the RAG provider configuration was updated in unix milliseconds
+   */
+  updated_at: number;
+}
+
+/** RagProviderConfigurationUpdateRequest */
+export interface RagProviderConfigurationUpdateRequest {
+  /** Configuration of the authentication strategy. */
+  authentication_config?: ApiKeyRagAuthenticationConfigUpdateRequest | null;
+  /**
+   * Description
+   * Description of RAG provider configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of RAG provider configuration.
+   */
+  name?: string | null;
+}
+
+/** RagProviderQueryResponse */
+export interface RagProviderQueryResponse {
+  /** Response from Weaviate similarity text search */
+  response: WeaviateQueryResults;
+}
+
+/** RagVectorSimilarityTextSearchSettingRequest */
+export interface RagVectorSimilarityTextSearchSettingRequest {
+  /** Settings for the similarity text search request to the vector database. */
+  settings: WeaviateVectorSimilarityTextSearchSettingsRequest;
+}
+
+/** ReasoningEffortEnum */
+export type ReasoningEffortEnum = "none" | "minimal" | "low" | "medium" | "high" | "default";
+
+export type ReceiveTracesApiV1TracesPostData = any;
+
+export type ReceiveTracesApiV1TracesPostError = HTTPValidationError;
+
+/**
+ * Body
+ * @format binary
+ */
+export type ReceiveTracesApiV1TracesPostPayload = File;
+
 export type ReceiveTracesV1TracesPostData = any;
 
 export type ReceiveTracesV1TracesPostError = HTTPValidationError;
@@ -1695,11 +3879,18 @@ export interface ResponseValidationRequest {
    */
   context?: string | null;
   /**
+   * Model Name
+   * The model name and version being used for this response (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Response
    * LLM Response to be validated by GenAI Engine
    */
   response: string;
 }
+
+export type RotateSecretsApiV1SecretsRotationPostData = any;
 
 /** RuleResponse */
 export interface RuleResponse {
@@ -1770,6 +3961,59 @@ export type RuleType =
   | "PromptInjectionRule"
   | "RegexRule"
   | "ToxicityRule";
+
+export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
+
+export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
+
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData =
+  AgenticPromptRunResponse;
+
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError =
+  HTTPValidationError;
+
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
+
+export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
+
+/** SearchDatasetsResponse */
+export interface SearchDatasetsResponse {
+  /**
+   * Count
+   * The total number of datasets matching the parameters.
+   */
+  count: number;
+  /**
+   * Datasets
+   * List of datasets matching the search filters. Length is less than or equal to page_size parameter
+   */
+  datasets: DatasetResponse[];
+}
+
+/** SearchRagProviderCollectionsResponse */
+export interface SearchRagProviderCollectionsResponse {
+  /**
+   * Count
+   * The total number of RAG provider collections matching the parameters.
+   */
+  count: number;
+  /** Rag Provider Collections */
+  rag_provider_collections: RagProviderCollectionResponse[];
+}
+
+/** SearchRagProviderConfigurationsResponse */
+export interface SearchRagProviderConfigurationsResponse {
+  /**
+   * Count
+   * The total number of RAG provider configurations matching the parameters.
+   */
+  count: number;
+  /**
+   * Rag Provider Configurations
+   * List of RAG provider configurations matching the search filters. Length is less than or equal to page_size parameter
+   */
+  rag_provider_configurations: RagProviderConfigurationResponse[];
+}
 
 export type SearchRulesApiV2RulesSearchPostData = SearchRulesResponse;
 
@@ -1925,6 +4169,210 @@ export interface SearchUsersUsersGetParams {
   sort?: PaginationSortMethod;
 }
 
+/**
+ * SessionListResponse
+ * Response for session list endpoint
+ */
+export interface SessionListResponse {
+  /**
+   * Count
+   * Total number of sessions matching filters
+   */
+  count: number;
+  /**
+   * Sessions
+   * List of session metadata
+   */
+  sessions: SessionMetadataResponse[];
+}
+
+/**
+ * SessionMetadataResponse
+ * Session summary metadata
+ */
+export interface SessionMetadataResponse {
+  /**
+   * Duration Ms
+   * Total session duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * Earliest Start Time
+   * Start time of earliest trace
+   * @format date-time
+   */
+  earliest_start_time: string;
+  /**
+   * Latest End Time
+   * End time of latest trace
+   * @format date-time
+   */
+  latest_end_time: string;
+  /**
+   * Session Id
+   * Session identifier
+   */
+  session_id: string;
+  /**
+   * Span Count
+   * Total number of spans in this session
+   */
+  span_count: number;
+  /**
+   * Task Id
+   * Task ID this session belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces in this session
+   */
+  trace_count: number;
+  /**
+   * Trace Ids
+   * List of trace IDs in this session
+   */
+  trace_ids: string[];
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
+}
+
+/**
+ * SessionTracesResponse
+ * Response for session traces endpoint
+ */
+export interface SessionTracesResponse {
+  /**
+   * Count
+   * Number of traces in this session
+   */
+  count: number;
+  /**
+   * Session Id
+   * Session identifier
+   */
+  session_id: string;
+  /**
+   * Traces
+   * List of full trace trees
+   */
+  traces: TraceResponse[];
+}
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
+
+export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
+
+/**
+ * SpanListResponse
+ * Response for span list endpoint
+ */
+export interface SpanListResponse {
+  /**
+   * Count
+   * Total number of spans matching filters
+   */
+  count: number;
+  /**
+   * Spans
+   * List of span metadata
+   */
+  spans: SpanMetadataResponse[];
+}
+
+/**
+ * SpanMetadataResponse
+ * Lightweight span metadata for list operations
+ */
+export interface SpanMetadataResponse {
+  /**
+   * Created At
+   * When the span was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Duration Ms
+   * Span duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * End Time
+   * Span end time
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Id
+   * Internal database ID
+   */
+  id: string;
+  /**
+   * Parent Span Id
+   * Parent span ID
+   */
+  parent_span_id?: string | null;
+  /**
+   * Session Id
+   * Session ID if available
+   */
+  session_id?: string | null;
+  /**
+   * Span Id
+   * OpenTelemetry span ID
+   */
+  span_id: string;
+  /**
+   * Span Kind
+   * Type of span (LLM, TOOL, etc.)
+   */
+  span_kind?: string | null;
+  /**
+   * Span Name
+   * Human-readable span name
+   */
+  span_name?: string | null;
+  /**
+   * Start Time
+   * Span start time
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Status Code
+   * Status code (Unset, Error, Ok)
+   */
+  status_code: string;
+  /**
+   * Task Id
+   * Task ID this span belongs to
+   */
+  task_id?: string | null;
+  /**
+   * Trace Id
+   * ID of the parent trace
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the span was updated
+   * @format date-time
+   */
+  updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
+}
+
 /** SpanWithMetricsResponse */
 export interface SpanWithMetricsResponse {
   /** Context */
@@ -1953,6 +4401,8 @@ export interface SpanWithMetricsResponse {
   raw_data: Record<string, any>;
   /** Response */
   response?: string | null;
+  /** Session Id */
+  session_id?: string | null;
   /** Span Id */
   span_id: string;
   /** Span Kind */
@@ -1964,6 +4414,11 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Status Code
+   * Status code for the span (Unset, Error, Ok)
+   */
+  status_code: string;
   /** System Prompt */
   system_prompt?: string | null;
   /** Task Id */
@@ -1977,6 +4432,15 @@ export interface SpanWithMetricsResponse {
   updated_at: string;
   /** User Query */
   user_query?: string | null;
+}
+
+/** StreamOptions */
+export interface StreamOptions {
+  /**
+   * Include Usage
+   * Whether to include usage information in the stream
+   */
+  include_usage?: boolean | null;
 }
 
 /** TaskResponse */
@@ -2017,6 +4481,10 @@ export interface TaskResponse {
    */
   updated_at: number;
 }
+
+export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
+
+export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError = HTTPValidationError;
 
 /** TokenUsageCount */
 export interface TokenUsageCount {
@@ -2067,8 +4535,95 @@ export interface TokenUsageResponse {
 /** TokenUsageScope */
 export type TokenUsageScope = "rule_type" | "task";
 
+/** ToolCall */
+export interface ToolCall {
+  /** Function details */
+  function: ToolCallFunction;
+  /**
+   * Id
+   * Unique identifier for the tool call
+   */
+  id: string;
+  /**
+   * Type
+   * The type of tool call. Currently the only type supported is 'function'.
+   * @default "function"
+   */
+  type?: string;
+}
+
+/** ToolCallFunction */
+export interface ToolCallFunction {
+  /**
+   * Arguments
+   * JSON string of function arguments
+   */
+  arguments: string;
+  /**
+   * Name
+   * Name of the function to call
+   */
+  name: string;
+}
+
+/** ToolChoice */
+export interface ToolChoice {
+  /** The tool choice fucntion name */
+  function?: ToolChoiceFunction | null;
+  /**
+   * Type
+   * The type of tool choice. Should always be 'function'
+   * @default "function"
+   */
+  type?: string;
+}
+
+/** ToolChoiceEnum */
+export type ToolChoiceEnum = "auto" | "none" | "required";
+
+/** ToolChoiceFunction */
+export interface ToolChoiceFunction {
+  /**
+   * Name
+   * The name of the function
+   */
+  name: string;
+}
+
 /** ToolClassEnum */
 export type ToolClassEnum = 0 | 1 | 2;
+
+/** ToolFunction */
+export interface ToolFunctionInput {
+  /**
+   * Description
+   * Description of what the tool does
+   */
+  description?: string | null;
+  /**
+   * Name
+   * The name of the tool/function
+   */
+  name: string;
+  /** The function's parameter schema */
+  parameters?: JsonSchema | null;
+}
+
+/** ToolFunction */
+export interface ToolFunctionOutput {
+  /**
+   * Description
+   * Description of what the tool does
+   */
+  description?: string | null;
+  /**
+   * Name
+   * The name of the tool/function
+   */
+  name: string;
+  /** The function's parameter schema */
+  parameters?: JsonSchema | null;
+}
 
 /**
  * ToxicityConfig
@@ -2096,6 +4651,84 @@ export interface ToxicityDetailsResponse {
 
 /** ToxicityViolationType */
 export type ToxicityViolationType = "benign" | "harmful_request" | "toxic_content" | "profanity" | "unknown";
+
+/**
+ * TraceListResponse
+ * Response for trace list endpoint
+ */
+export interface TraceListResponse {
+  /**
+   * Count
+   * Total number of traces matching filters
+   */
+  count: number;
+  /**
+   * Traces
+   * List of trace metadata
+   */
+  traces: TraceMetadataResponse[];
+}
+
+/**
+ * TraceMetadataResponse
+ * Lightweight trace metadata for list operations
+ */
+export interface TraceMetadataResponse {
+  /**
+   * Created At
+   * When the trace was first created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Duration Ms
+   * Total trace duration in milliseconds
+   */
+  duration_ms: number;
+  /**
+   * End Time
+   * End time of the latest span
+   * @format date-time
+   */
+  end_time: string;
+  /**
+   * Session Id
+   * Session ID if available
+   */
+  session_id?: string | null;
+  /**
+   * Span Count
+   * Number of spans in this trace
+   */
+  span_count: number;
+  /**
+   * Start Time
+   * Start time of the earliest span
+   * @format date-time
+   */
+  start_time: string;
+  /**
+   * Task Id
+   * Task ID this trace belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Id
+   * ID of the trace
+   */
+  trace_id: string;
+  /**
+   * Updated At
+   * When the trace was last updated
+   * @format date-time
+   */
+  updated_at: string;
+  /**
+   * User Id
+   * User ID if available
+   */
+  user_id?: string | null;
+}
 
 /**
  * TraceResponse
@@ -2127,6 +4760,81 @@ export interface TraceResponse {
   trace_id: string;
 }
 
+/**
+ * TraceUserListResponse
+ * Response for trace user list endpoint
+ */
+export interface TraceUserListResponse {
+  /**
+   * Count
+   * Total number of users matching filters
+   */
+  count: number;
+  /**
+   * Users
+   * List of user metadata
+   */
+  users: TraceUserMetadataResponse[];
+}
+
+/**
+ * TraceUserMetadataResponse
+ * User summary metadata in trace context
+ */
+export interface TraceUserMetadataResponse {
+  /**
+   * Earliest Start Time
+   * Start time of earliest trace
+   * @format date-time
+   */
+  earliest_start_time: string;
+  /**
+   * Latest End Time
+   * End time of latest trace
+   * @format date-time
+   */
+  latest_end_time: string;
+  /**
+   * Session Count
+   * Number of sessions for this user
+   */
+  session_count: number;
+  /**
+   * Session Ids
+   * List of session IDs for this user
+   */
+  session_ids: string[];
+  /**
+   * Span Count
+   * Total number of spans for this user
+   */
+  span_count: number;
+  /**
+   * Task Id
+   * Task ID this user belongs to
+   */
+  task_id: string;
+  /**
+   * Trace Count
+   * Number of traces for this user
+   */
+  trace_count: number;
+  /**
+   * Trace Ids
+   * List of trace IDs for this user
+   */
+  trace_ids: string[];
+  /**
+   * User Id
+   * User identifier
+   */
+  user_id: string;
+}
+
+export type UpdateDatasetApiV2DatasetsDatasetIdPatchData = DatasetResponse;
+
+export type UpdateDatasetApiV2DatasetsDatasetIdPatchError = HTTPValidationError;
+
 export type UpdateDefaultTaskApiChatDefaultTaskPutData = ChatDefaultTaskResponse;
 
 export type UpdateDefaultTaskApiChatDefaultTaskPutError = HTTPValidationError;
@@ -2139,6 +4847,10 @@ export interface UpdateMetricRequest {
    */
   enabled: boolean;
 }
+
+export type UpdateRagProviderApiV1RagProvidersProviderIdPatchData = RagProviderConfigurationResponse;
+
+export type UpdateRagProviderApiV1RagProvidersProviderIdPatchError = HTTPValidationError;
 
 /** UpdateRuleRequest */
 export interface UpdateRuleRequest {
@@ -2220,6 +4932,11 @@ export interface ValidationResult {
    */
   inference_id?: string | null;
   /**
+   * Model Name
+   * The model name and version used for this validation (e.g., 'gpt-4', 'gpt-3.5-turbo', 'claude-3-opus', 'gemini-pro').
+   */
+  model_name?: string | null;
+  /**
    * Rule Results
    * List of rule results
    */
@@ -2230,6 +4947,248 @@ export interface ValidationResult {
    */
   user_id?: string | null;
 }
+
+/** VariableTemplateValue */
+export interface VariableTemplateValue {
+  /**
+   * Name
+   * Name of the variable
+   */
+  name: string;
+  /**
+   * Value
+   * Value of the variable
+   */
+  value: string;
+}
+
+/** WeaviateKeywordSearchSettingsRequest */
+export interface WeaviateKeywordSearchSettingsRequest {
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query
+   * Input text to find objects with near vectors for.
+   */
+  query: string;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateKeywordSearchSettingsRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+}
+
+export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/**
+ * WeaviateQueryResult
+ * Individual search result from Weaviate
+ */
+export interface WeaviateQueryResult {
+  /** Search metadata including distance, score, etc. */
+  metadata?: WeaviateQueryResultMetadata | null;
+  /**
+   * Properties
+   * Properties of the result object
+   */
+  properties: Record<string, any>;
+  /**
+   * Uuid
+   * Unique identifier of the result
+   * @format uuid
+   */
+  uuid: string;
+  /**
+   * Vector
+   * Vector representation
+   */
+  vector?: Record<string, number[] | number[][]> | null;
+}
+
+/**
+ * WeaviateQueryResultMetadata
+ * Metadata from weaviate for a vector object:
+ * https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.classes.html#module-weaviate.collections.classes.internal
+ */
+export interface WeaviateQueryResultMetadata {
+  /**
+   * Certainty
+   * Similarity score measure between 0 and 1. Higher values correspond to more similar reesults.
+   */
+  certainty?: number | null;
+  /**
+   * Creation Time
+   * Vector object creation time.
+   */
+  creation_time?: string | null;
+  /**
+   * Distance
+   * Raw distance metric used in the vector search. Lower values indicate closer vectors.
+   */
+  distance?: number | null;
+  /**
+   * Explain Score
+   * Explanation of how the score was calculated.
+   */
+  explain_score?: string | null;
+  /**
+   * Is Consistent
+   * Indicates if the object is consistent across all replicates in a multi-node Weaviate cluster.
+   */
+  is_consistent?: boolean | null;
+  /**
+   * Last Update Time
+   * Vector object last update time.
+   */
+  last_update_time?: string | null;
+  /**
+   * Score
+   * Normalized relevance metric that ranks search results.
+   */
+  score?: number | null;
+}
+
+/**
+ * WeaviateQueryResults
+ * Response from Weaviate similarity text search
+ */
+export interface WeaviateQueryResults {
+  /**
+   * Objects
+   * List of search result objects
+   */
+  objects: WeaviateQueryResult[];
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+}
+
+/** WeaviateVectorSimilarityTextSearchSettingsRequest */
+export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Certainty
+   * Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.
+   */
+  certainty?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Distance
+   * Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.
+   */
+  distance?: number | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query
+   * Input text to find objects with near vectors for.
+   */
+  query: string[] | string;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Target Vector
+   * Specifies vector to use for similarity search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateVectorSimilarityTextSearchSettingsRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
 
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, HeadersDefaults, ResponseType } from "axios";
 import axios from "axios";
@@ -2367,7 +5326,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.79
+ * @version 2.1.111
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -2475,6 +5434,120 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get all traces in a session and compute missing metrics. Returns list of full trace trees with computed metrics.
+     *
+     * @tags Sessions
+     * @name ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet
+     * @summary Compute Missing Session Metrics
+     * @request GET:/api/v1/traces/sessions/{session_id}/metrics
+     * @secure
+     */
+    computeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet: (
+      { sessionId, ...query }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData,
+        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError
+      >({
+        path: `/api/v1/traces/sessions/${sessionId}/metrics`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Compute all missing metrics for a single span on-demand. Returns span with computed metrics.
+     *
+     * @tags Spans
+     * @name ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGet
+     * @summary Compute Missing Span Metrics
+     * @request GET:/api/v1/traces/spans/{span_id}/metrics
+     * @secure
+     */
+    computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData,
+        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError
+      >({
+        path: `/api/v1/traces/spans/${spanId}/metrics`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Compute all missing metrics for trace spans on-demand. Returns full trace tree with computed metrics.
+     *
+     * @tags Traces
+     * @name ComputeTraceMetricsApiV1TracesTraceIdMetricsGet
+     * @summary Compute Missing Trace Metrics
+     * @request GET:/api/v1/traces/{trace_id}/metrics
+     * @secure
+     */
+    computeTraceMetricsApiV1TracesTraceIdMetricsGet: (traceId: string, params: RequestParams = {}) =>
+      this.request<
+        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData,
+        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError
+      >({
+        path: `/api/v1/traces/${traceId}/metrics`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Register a new dataset.
+     *
+     * @tags Datasets
+     * @name CreateDatasetApiV2DatasetsPost
+     * @summary Create Dataset
+     * @request POST:/api/v2/datasets
+     * @secure
+     */
+    createDatasetApiV2DatasetsPost: (data: NewDatasetRequest, params: RequestParams = {}) =>
+      this.request<CreateDatasetApiV2DatasetsPostData, CreateDatasetApiV2DatasetsPostError>({
+        path: `/api/v2/datasets`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new dataset version.
+     *
+     * @tags Datasets
+     * @name CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPost
+     * @summary Create Dataset Version
+     * @request POST:/api/v2/datasets/{dataset_id}/versions
+     * @secure
+     */
+    createDatasetVersionApiV2DatasetsDatasetIdVersionsPost: (
+      datasetId: string,
+      data: NewDatasetVersionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData,
+        CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Create a default rule. Default rules are applied universally across existing tasks, subsequently created new tasks, and any non-task related requests. Once a rule is created, it is immutable. Available rules are 'KeywordRule', 'ModelHallucinationRuleV2', 'ModelSensitiveDataRule', 'PIIDataRule', 'PromptInjectionRule', 'RegexRule', 'ToxicityRule'. Note: The rules are cached by the validation endpoints for 60 seconds.
      *
      * @tags Rules
@@ -2486,6 +5559,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createDefaultRuleApiV2DefaultRulesPost: (data: NewRuleRequest, params: RequestParams = {}) =>
       this.request<CreateDefaultRuleApiV2DefaultRulesPostData, CreateDefaultRuleApiV2DefaultRulesPostError>({
         path: `/api/v2/default_rules`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Register a new RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name CreateRagProviderApiV1TasksTaskIdRagProvidersPost
+     * @summary Create Rag Provider
+     * @request POST:/api/v1/tasks/{task_id}/rag_providers
+     * @secure
+     */
+    createRagProviderApiV1TasksTaskIdRagProvidersPost: (
+      taskId: string,
+      data: RagProviderConfigurationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        CreateRagProviderApiV1TasksTaskIdRagProvidersPostData,
+        CreateRagProviderApiV1TasksTaskIdRagProvidersPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers`,
         method: "POST",
         body: data,
         secure: true,
@@ -2606,6 +5706,72 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Deletes an entire agentic prompt
+     *
+     * @tags Prompts
+     * @name DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete
+     * @summary Delete an agentic prompt
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}
+     * @secure
+     */
+    deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (
+      promptName: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData,
+        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Deletes a specific version of an agentic prompt
+     *
+     * @tags Prompts
+     * @name DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete
+     * @summary Delete an agentic prompt version
+     * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+     * @secure
+     */
+    deleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDelete: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
+        DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a dataset.
+     *
+     * @tags Datasets
+     * @name DeleteDatasetApiV2DatasetsDatasetIdDelete
+     * @summary Delete Dataset
+     * @request DELETE:/api/v2/datasets/{dataset_id}
+     * @secure
+     */
+    deleteDatasetApiV2DatasetsDatasetIdDelete: (datasetId: string, params: RequestParams = {}) =>
+      this.request<DeleteDatasetApiV2DatasetsDatasetIdDeleteData, DeleteDatasetApiV2DatasetsDatasetIdDeleteError>({
+        path: `/api/v2/datasets/${datasetId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Remove a file by ID. This action cannot be undone.
      *
      * @tags Chat
@@ -2617,6 +5783,156 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<DeleteFileApiChatFilesFileIdDeleteData, DeleteFileApiChatFilesFileIdDeleteError>({
         path: `/api/chat/files/${fileId}`,
         method: "DELETE",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Delete a RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name DeleteRagProviderApiV1RagProvidersProviderIdDelete
+     * @summary Delete Rag Provider
+     * @request DELETE:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    deleteRagProviderApiV1RagProvidersProviderIdDelete: (providerId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteRagProviderApiV1RagProvidersProviderIdDeleteData,
+        DeleteRagProviderApiV1RagProvidersProviderIdDeleteError
+      >({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Execute a RAG Provider Keyword (BM25/Sparse Vector) Search.
+     *
+     * @tags RAG Providers
+     * @name ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPost
+     * @summary Execute Keyword Search
+     * @request POST:/api/v1/rag_providers/{provider_id}/keyword_search
+     * @secure
+     */
+    executeKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPost: (
+      providerId: string,
+      data: RagKeywordSearchSettingRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData,
+        ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/keyword_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Execute a RAG Provider Similarity Text Search.
+     *
+     * @tags RAG Providers
+     * @name ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPost
+     * @summary Execute Similarity Text Search
+     * @request POST:/api/v1/rag_providers/{provider_id}/similarity_text_search
+     * @secure
+     */
+    executeSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPost: (
+      providerId: string,
+      data: RagVectorSimilarityTextSearchSettingRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData,
+        ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/similarity_text_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an agentic prompt by name and version
+     *
+     * @tags Prompts
+     * @name GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet
+     * @summary Get an agentic prompt
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}
+     * @secure
+     */
+    getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData,
+        GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all agentic prompts for a given task with optional filtering.
+     *
+     * @tags Prompts
+     * @name GetAllAgenticPromptsApiV1TasksTaskIdPromptsGet
+     * @summary Get all agentic prompts
+     * @request GET:/api/v1/tasks/{task_id}/prompts
+     * @secure
+     */
+    getAllAgenticPromptsApiV1TasksTaskIdPromptsGet: (
+      { taskId, ...query }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData,
+        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an agentic prompt with optional filtering.
+     *
+     * @tags Prompts
+     * @name GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet
+     * @summary List all versions of an agentic prompt
+     * @request GET:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions
+     * @secure
+     */
+    getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet: (
+      { promptName, taskId, ...query }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData,
+        GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -2656,6 +5972,93 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/conversations`,
         method: "GET",
         query: query,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a dataset.
+     *
+     * @tags Datasets
+     * @name GetDatasetApiV2DatasetsDatasetIdGet
+     * @summary Get Dataset
+     * @request GET:/api/v2/datasets/{dataset_id}
+     * @secure
+     */
+    getDatasetApiV2DatasetsDatasetIdGet: (datasetId: string, params: RequestParams = {}) =>
+      this.request<GetDatasetApiV2DatasetsDatasetIdGetData, GetDatasetApiV2DatasetsDatasetIdGetError>({
+        path: `/api/v2/datasets/${datasetId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Search datasets. Optionally can filter by dataset IDs and dataset name.
+     *
+     * @tags Datasets
+     * @name GetDatasetsApiV2DatasetsSearchGet
+     * @summary Get Datasets
+     * @request GET:/api/v2/datasets/search
+     * @secure
+     */
+    getDatasetsApiV2DatasetsSearchGet: (query: GetDatasetsApiV2DatasetsSearchGetParams, params: RequestParams = {}) =>
+      this.request<GetDatasetsApiV2DatasetsSearchGetData, GetDatasetsApiV2DatasetsSearchGetError>({
+        path: `/api/v2/datasets/search`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Fetch a dataset version.
+     *
+     * @tags Datasets
+     * @name GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet
+     * @summary Get Dataset Version
+     * @request GET:/api/v2/datasets/{dataset_id}/versions/{version_number}
+     * @secure
+     */
+    getDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet: (
+      { datasetId, versionNumber, ...query }: GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData,
+        GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions/${versionNumber}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List dataset versions.
+     *
+     * @tags Datasets
+     * @name GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGet
+     * @summary Get Dataset Versions
+     * @request GET:/api/v2/datasets/{dataset_id}/versions
+     * @secure
+     */
+    getDatasetVersionsApiV2DatasetsDatasetIdVersionsGet: (
+      { datasetId, ...query }: GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData,
+        GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError
+      >({
+        path: `/api/v2/datasets/${datasetId}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -2730,6 +6133,136 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Shows all model providers and if they're enabled.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersGet
+     * @summary List the model providers.
+     * @request GET:/api/v1/model_providers
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersGet: (params: RequestParams = {}) =>
+      this.request<GetModelProvidersApiV1ModelProvidersGetData, any>({
+        path: `/api/v1/model_providers`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns a list of the names of all available models for a provider.
+     *
+     * @tags Model Providers
+     * @name GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGet
+     * @summary List the models available from a provider.
+     * @request GET:/api/v1/model_providers/{provider}/available_models
+     * @secure
+     */
+    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (
+      provider: ModelProvider,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
+        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError
+      >({
+        path: `/api/v1/model_providers/${provider}/available_models`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a single RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name GetRagProviderApiV1RagProvidersProviderIdGet
+     * @summary Get Rag Provider
+     * @request GET:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    getRagProviderApiV1RagProvidersProviderIdGet: (providerId: string, params: RequestParams = {}) =>
+      this.request<GetRagProviderApiV1RagProvidersProviderIdGetData, GetRagProviderApiV1RagProvidersProviderIdGetError>(
+        {
+          path: `/api/v1/rag_providers/${providerId}`,
+          method: "GET",
+          secure: true,
+          format: "json",
+          ...params,
+        },
+      ),
+
+    /**
+     * @description Get list of RAG provider connection configurations for the task.
+     *
+     * @tags RAG Providers
+     * @name GetRagProvidersApiV1TasksTaskIdRagProvidersGet
+     * @summary Get Rag Providers
+     * @request GET:/api/v1/tasks/{task_id}/rag_providers
+     * @secure
+     */
+    getRagProvidersApiV1TasksTaskIdRagProvidersGet: (
+      { taskId, ...query }: GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetRagProvidersApiV1TasksTaskIdRagProvidersGetData,
+        GetRagProvidersApiV1TasksTaskIdRagProvidersGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all traces in a session. Returns list of full trace trees with existing metrics (no computation).
+     *
+     * @tags Sessions
+     * @name GetSessionTracesApiV1TracesSessionsSessionIdGet
+     * @summary Get Session Traces
+     * @request GET:/api/v1/traces/sessions/{session_id}
+     * @secure
+     */
+    getSessionTracesApiV1TracesSessionsSessionIdGet: (
+      { sessionId, ...query }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        GetSessionTracesApiV1TracesSessionsSessionIdGetData,
+        GetSessionTracesApiV1TracesSessionsSessionIdGetError
+      >({
+        path: `/api/v1/traces/sessions/${sessionId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get single span with existing metrics (no computation). Returns full span object with any existing metrics.
+     *
+     * @tags Spans
+     * @name GetSpanByIdApiV1TracesSpansSpanIdGet
+     * @summary Get Single Span
+     * @request GET:/api/v1/traces/spans/{span_id}
+     * @secure
+     */
+    getSpanByIdApiV1TracesSpansSpanIdGet: (spanId: string, params: RequestParams = {}) =>
+      this.request<GetSpanByIdApiV1TracesSpansSpanIdGetData, GetSpanByIdApiV1TracesSpansSpanIdGetError>({
+        path: `/api/v1/traces/spans/${spanId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get tasks.
      *
      * @tags Tasks
@@ -2759,6 +6292,155 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getTokenUsageApiV2UsageTokensGet: (query: GetTokenUsageApiV2UsageTokensGetParams, params: RequestParams = {}) =>
       this.request<GetTokenUsageApiV2UsageTokensGetData, GetTokenUsageApiV2UsageTokensGetError>({
         path: `/api/v2/usage/tokens`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get complete trace tree with existing metrics (no computation). Returns full trace structure with spans.
+     *
+     * @tags Traces
+     * @name GetTraceByIdApiV1TracesTraceIdGet
+     * @summary Get Single Trace
+     * @request GET:/api/v1/traces/{trace_id}
+     * @secure
+     */
+    getTraceByIdApiV1TracesTraceIdGet: (traceId: string, params: RequestParams = {}) =>
+      this.request<GetTraceByIdApiV1TracesTraceIdGetData, GetTraceByIdApiV1TracesTraceIdGetError>({
+        path: `/api/v1/traces/${traceId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information for a single user including session and trace metadata.
+     *
+     * @tags Users
+     * @name GetUserDetailsApiV1TracesUsersUserIdGet
+     * @summary Get User Details
+     * @request GET:/api/v1/traces/users/{user_id}
+     * @secure
+     */
+    getUserDetailsApiV1TracesUsersUserIdGet: (
+      { userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
+        path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Lists all available vector database collections.
+     *
+     * @tags RAG Providers
+     * @name ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet
+     * @summary List Rag Provider Collections
+     * @request GET:/api/v1/rag_providers/{provider_id}/collections
+     * @secure
+     */
+    listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet: (
+      providerId: string,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData,
+        ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/collections`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get session metadata with pagination and filtering. Returns aggregated session information.
+     *
+     * @tags Sessions
+     * @name ListSessionsMetadataApiV1TracesSessionsGet
+     * @summary List Session Metadata
+     * @request GET:/api/v1/traces/sessions
+     * @secure
+     */
+    listSessionsMetadataApiV1TracesSessionsGet: (
+      query: ListSessionsMetadataApiV1TracesSessionsGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListSessionsMetadataApiV1TracesSessionsGetData, ListSessionsMetadataApiV1TracesSessionsGetError>({
+        path: `/api/v1/traces/sessions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get lightweight span metadata with comprehensive filtering support. Returns individual spans that match filtering criteria with the same filtering capabilities as trace filtering. Supports trace-level filters, span-level filters, and metric filters.
+     *
+     * @tags Spans
+     * @name ListSpansMetadataApiV1TracesSpansGet
+     * @summary List Span Metadata with Filtering
+     * @request GET:/api/v1/traces/spans
+     * @secure
+     */
+    listSpansMetadataApiV1TracesSpansGet: (
+      query: ListSpansMetadataApiV1TracesSpansGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
+        path: `/api/v1/traces/spans`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get lightweight trace metadata for browsing/filtering operations. Returns metadata only without spans or metrics for fast performance.
+     *
+     * @tags Traces
+     * @name ListTracesMetadataApiV1TracesGet
+     * @summary List Trace Metadata
+     * @request GET:/api/v1/traces
+     * @secure
+     */
+    listTracesMetadataApiV1TracesGet: (query: ListTracesMetadataApiV1TracesGetParams, params: RequestParams = {}) =>
+      this.request<ListTracesMetadataApiV1TracesGetData, ListTracesMetadataApiV1TracesGetError>({
+        path: `/api/v1/traces`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get user metadata with pagination and filtering. Returns aggregated user information across sessions and traces.
+     *
+     * @tags Users
+     * @name ListUsersMetadataApiV1TracesUsersGet
+     * @summary List User Metadata
+     * @request GET:/api/v1/traces/users
+     * @secure
+     */
+    listUsersMetadataApiV1TracesUsersGet: (
+      query: ListUsersMetadataApiV1TracesUsersGetParams,
+      params: RequestParams = {},
+    ) =>
+      this.request<ListUsersMetadataApiV1TracesUsersGetData, ListUsersMetadataApiV1TracesUsersGetError>({
+        path: `/api/v1/traces/users`,
         method: "GET",
         query: query,
         secure: true,
@@ -2857,6 +6539,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Receiver for OpenInference trace standard.
+     *
+     * @tags Traces
+     * @name ReceiveTracesApiV1TracesPost
+     * @summary Receive Traces
+     * @request POST:/api/v1/traces
+     * @secure
+     */
+    receiveTracesApiV1TracesPost: (data: ReceiveTracesApiV1TracesPostPayload, params: RequestParams = {}) =>
+      this.request<ReceiveTracesApiV1TracesPostData, ReceiveTracesApiV1TracesPostError>({
+        path: `/api/v1/traces`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Redirect to /tasks endpoint.
      *
      * @tags Tasks
@@ -2868,6 +6570,100 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<RedirectToTasksApiV2TaskPostData, any>({
         path: `/api/v2/task`,
         method: "POST",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description This endpoint re-encrypts all the secrets in the database. The procedure calling this endpoint is as follows: First: Deploy a new version of the service with GENAI_ENGINE_SECRET_STORE_KEY set to a value like 'new-key::old-key'. Second: call this endpoint - all secrets will be re-encrypted with 'new-key'. Third: Deploy a new version of the service removing the old key from GENAI_ENGINE_SECRET_STORE_KEY, like 'new-key'. At this point all existing and new secrets will be managed by 'new-key'.
+     *
+     * @tags Secrets
+     * @name RotateSecretsApiV1SecretsRotationPost
+     * @summary Rotates secrets
+     * @request POST:/api/v1/secrets/rotation
+     * @secure
+     */
+    rotateSecretsApiV1SecretsRotationPost: (params: RequestParams = {}) =>
+      this.request<RotateSecretsApiV1SecretsRotationPostData, any>({
+        path: `/api/v1/secrets/rotation`,
+        method: "POST",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Runs or streams an unsaved agentic prompt
+     *
+     * @tags Prompts
+     * @name RunAgenticPromptApiV1CompletionsPost
+     * @summary Run/Stream an unsaved agentic prompt
+     * @request POST:/api/v1/completions
+     * @secure
+     */
+    runAgenticPromptApiV1CompletionsPost: (data: CompletionRequest, params: RequestParams = {}) =>
+      this.request<RunAgenticPromptApiV1CompletionsPostData, RunAgenticPromptApiV1CompletionsPostError>({
+        path: `/api/v1/completions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Run or stream a specific version of an existing agentic prompt
+     *
+     * @tags Prompts
+     * @name RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost
+     * @summary Run/Stream a specific version of an agentic prompt
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/completions
+     * @secure
+     */
+    runSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPost: (
+      promptName: string,
+      promptVersion: string,
+      taskId: string,
+      data: PromptCompletionRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
+        RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions/${promptVersion}/completions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Save an agentic prompt to the database
+     *
+     * @tags Prompts
+     * @name SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost
+     * @summary Save an agentic prompt
+     * @request POST:/api/v1/tasks/{task_id}/prompts/{prompt_name}
+     * @secure
+     */
+    saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost: (
+      promptName: string,
+      taskId: string,
+      data: AgenticPromptBaseConfig,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData,
+        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError
+      >({
+        path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
         format: "json",
         ...params,
       }),
@@ -2923,6 +6719,104 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Disables the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderDelete
+     * @summary Disables the configuration for a model provider.
+     * @request DELETE:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderDeleteData,
+        SetModelProviderApiV1ModelProvidersProviderDeleteError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Set the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name SetModelProviderApiV1ModelProvidersProviderPut
+     * @summary Set the configuration for a model provider.
+     * @request PUT:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    setModelProviderApiV1ModelProvidersProviderPut: (
+      provider: ModelProvider,
+      data: PutModelProviderCredentials,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        SetModelProviderApiV1ModelProvidersProviderPutData,
+        SetModelProviderApiV1ModelProvidersProviderPutError
+      >({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "PUT",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Test a new RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPost
+     * @summary Test Rag Provider Connection
+     * @request POST:/api/v1/tasks/{task_id}/rag_providers/test_connection
+     * @secure
+     */
+    testRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPost: (
+      taskId: string,
+      data: RagProviderConfigurationRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData,
+        TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_providers/test_connection`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a dataset.
+     *
+     * @tags Datasets
+     * @name UpdateDatasetApiV2DatasetsDatasetIdPatch
+     * @summary Update Dataset
+     * @request PATCH:/api/v2/datasets/{dataset_id}
+     * @secure
+     */
+    updateDatasetApiV2DatasetsDatasetIdPatch: (
+      datasetId: string,
+      data: DatasetUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<UpdateDatasetApiV2DatasetsDatasetIdPatchData, UpdateDatasetApiV2DatasetsDatasetIdPatchError>({
+        path: `/api/v2/datasets/${datasetId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update the default task for Arthur Chat.
      *
      * @tags Chat
@@ -2935,6 +6829,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/chat/default_task`,
         method: "PUT",
         body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a single RAG provider connection configuration.
+     *
+     * @tags RAG Providers
+     * @name UpdateRagProviderApiV1RagProvidersProviderIdPatch
+     * @summary Update Rag Provider
+     * @request PATCH:/api/v1/rag_providers/{provider_id}
+     * @secure
+     */
+    updateRagProviderApiV1RagProvidersProviderIdPatch: (
+      providerId: string,
+      data: RagProviderConfigurationUpdateRequest,
+      params: RequestParams = {},
+    ) =>
+      this.request<
+        UpdateRagProviderApiV1RagProvidersProviderIdPatchData,
+        UpdateRagProviderApiV1RagProvidersProviderIdPatchError
+      >({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
         type: ContentType.Json,
         format: "json",
         ...params,
@@ -3160,6 +7081,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name ComputeSpanMetricsV1SpanSpanIdMetricsGet
      * @summary Compute Metrics for Span
      * @request GET:/v1/span/{span_id}/metrics
+     * @deprecated
      * @secure
      */
     computeSpanMetricsV1SpanSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
@@ -3178,6 +7100,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansByTypeV1SpansQueryGet
      * @summary Query Spans By Type
      * @request GET:/v1/spans/query
+     * @deprecated
      * @secure
      */
     querySpansByTypeV1SpansQueryGet: (query: QuerySpansByTypeV1SpansQueryGetParams, params: RequestParams = {}) =>
@@ -3197,6 +7120,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansV1TracesQueryGet
      * @summary Query Traces
      * @request GET:/v1/traces/query
+     * @deprecated
      * @secure
      */
     querySpansV1TracesQueryGet: (query: QuerySpansV1TracesQueryGetParams, params: RequestParams = {}) =>
@@ -3216,6 +7140,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name QuerySpansWithMetricsV1TracesMetricsGet
      * @summary Compute Missing Metrics and Query Traces
      * @request GET:/v1/traces/metrics/
+     * @deprecated
      * @secure
      */
     querySpansWithMetricsV1TracesMetricsGet: (
@@ -3238,6 +7163,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @name ReceiveTracesV1TracesPost
      * @summary Receive Traces
      * @request POST:/v1/traces
+     * @deprecated
      * @secure
      */
     receiveTracesV1TracesPost: (data: ReceiveTracesV1TracesPostPayload, params: RequestParams = {}) =>

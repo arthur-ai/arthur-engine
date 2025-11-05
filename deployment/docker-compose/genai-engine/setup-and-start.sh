@@ -77,12 +77,24 @@ else
 
         all_env_vars="$genai_engine_openai_provider
 GENAI_ENGINE_OPENAI_GPT_NAMES_ENDPOINTS_KEYS=$genai_engine_openai_gpt_name::$genai_engine_openai_gpt_endpoint::$genai_engine_openai_api_key"
-        echo "$all_env_vars" > "$genai_subdir/$env_file"
     else
         echo ""
         echo "Skipping OpenAI configuration..."
-        touch "$genai_subdir/$env_file"
+        all_env_vars=""
     fi
+
+      # Generate a secure random key using /dev/urandom
+      genai_engine_secret_store_key=$(LC_ALL=C tr -dc 'A-Za-z0-9!"#$%&'\''()*+,-./:;<=>?@[\]^_`{|}~' </dev/urandom | head -c 32)
+      echo "Generated random secret key since none was found"
+
+    if [[ -n "$all_env_vars" ]]; then
+        all_env_vars="$all_env_vars
+GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+    else
+        all_env_vars="GENAI_ENGINE_SECRET_STORE_KEY=$genai_engine_secret_store_key"
+    fi
+
+    echo "$all_env_vars" > "$genai_subdir/$env_file"
 fi
 
 echo ""

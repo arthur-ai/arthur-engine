@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+
 import { SidebarNavigation } from './SidebarNavigation';
 
 interface TaskNotFoundStateProps {

@@ -141,3 +141,115 @@ class PermissionLevelsEnum(Enum):
     USAGE_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_READ = frozenset([constants.ORG_ADMIN, constants.ORG_AUDITOR])
     USER_WRITE = frozenset([constants.ORG_ADMIN])
+    DATASET_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    DATASET_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
+    ROTATE_SECRETS = frozenset(
+        [constants.ORG_ADMIN],
+    )
+    MODEL_PROVIDER_WRITE = frozenset(
+        [constants.ORG_ADMIN, constants.TASK_ADMIN],
+    )
+    MODEL_PROVIDER_READ = frozenset(
+        [constants.ORG_ADMIN, constants.ORG_AUDITOR, constants.TASK_ADMIN],
+    )
+
+
+class SecretType(str, Enum):
+    MODEL_PROVIDER = "model_provider"
+    RAG_PROVIDER = "rag_provider"
+
+
+class ModelProvider(str, Enum):
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    GEMINI = "gemini"
+
+    # not supporting for v0
+    # AZURE = "azure"
+    # BEDROCK = "bedrock"
+    # SAGEMAKER = "sagemaker"
+    # VERTEX_AI = "vertex_ai"
+    # MISTRAL = "mistral"
+    # META_LLAMA = "meta_llama"
+    # GROQ = "groq"
+    # HUGGINGFACE = "huggingface"
+    # CLOUDFLARE = "cloudflare"
+    # DEEPSEEK = "deepseek"
+    # AI21 = "ai21"
+    # BASETEN = "baseten"
+    # COHERE = "cohere"
+    # EMPOWER = "empower"
+    # FEATHERLESS_AI = "featherless_ai"
+    # FRIENDLIAI = "friendliai"
+    # GALADRIEL = "galadriel"
+    # NEBIUS = "nebius"
+    # NLP_CLOUD = "nlp_cloud"
+    # NOVITA = "novita"
+    # OPENROUTER = "openrouter"
+    # PETALS = "petals"
+    # REPLICATE = "replicate"
+    # TOGETHER_AI = "together_ai"
+    # VLLM = "vllm"
+    # WATSONX = "watsonx"
+
+
+class MessageRole(Enum):
+    DEVELOPER = "developer"
+    SYSTEM = "system"
+    USER = "user"
+    AI = "assistant"
+    TOOL = "tool"
+
+
+class OpenAIMessageType(str, Enum):
+    TEXT = "text"
+    IMAGE_URL = "image_url"
+    INPUT_AUDIO = "input_audio"
+
+
+class ReasoningEffortEnum(str, Enum):
+    NONE = "none"
+    MINIMAL = "minimal"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    DEFAULT = "default"
+
+
+class ToolChoiceEnum(str, Enum):
+    AUTO = "auto"
+    NONE = "none"
+    REQUIRED = "required"
+
+
+class LLMResponseFormatEnum(str, Enum):
+    TEXT = "text"
+    JSON_OBJECT = "json_object"
+    JSON_SCHEMA = "json_schema"
+
+
+class RagProviderAuthenticationMethodEnum(str, Enum):
+    API_KEY_AUTHENTICATION = "api_key"
+
+
+class RagAPIKeyAuthenticationProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class ConnectionCheckOutcome(str, Enum):
+    PASSED = "passed"
+    FAILED = "failed"
+
+
+class RagProviderEnum(str, Enum):
+    WEAVIATE = "weaviate"
+
+
+class RagSearchKind(str, Enum):
+    VECTOR_SIMILARITY_TEXT_SEARCH = "vector_similarity_text_search"
+    KEYWORD_SEARCH = "keyword_search"
+    HYBRID_SEARCH = "hybrid_search"

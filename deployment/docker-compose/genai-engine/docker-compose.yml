@@ -1,7 +1,7 @@
 name: arthur-genai-engine
 services:
   db:
-    image: postgres
+    image: postgres:15
     shm_size: 128mb
     environment:
       - POSTGRES_PASSWORD=changeme_pg_password
@@ -12,12 +12,19 @@ services:
       - .env
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d arthur_genai_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   genai-engine:
     # If you have GPUs, use `genai-engine-gpu` image instead
     image: arthurplatform/genai-engine-cpu:${GENAI_ENGINE_VERSION-latest}
     platform: linux/amd64
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "3030:3030"
     environment:
@@ -32,10 +39,14 @@ services:
       # The address you want to access the engine from (e.g. hostname, DNS)
       - GENAI_ENGINE_INGRESS_URI=http://localhost:3030
       - GENAI_ENGINE_ADMIN_KEY=changeme_genai_engine_admin_key
+      # Key used for encrypting secrets, generate a random string if not using
+      # the setup-and-start scripts to populate one in the .env file
+      # openssl rand -base64 32
+      # - GENAI_ENGINE_SECRET_STORE_KEY=changeme_secret_store_key
     env_file:
       - .env
     healthcheck:
-      test: [ "CMD", "lsof", "-i", ":3030" ]
+      test: ["CMD", "lsof", "-i", ":3030"]
       interval: 10s
       timeout: 10s
       retries: 10
