@@ -9,7 +9,7 @@ import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { ModelParametersType } from "../types";
@@ -31,6 +31,13 @@ const ModelParamsDialog = ({
 }) => {
   const { dispatch } = usePromptContext();
   const [copiedParams, setCopiedParams] = useState<ModelParametersType>(modelParameters);
+
+  // Sync copiedParams with modelParameters when dialog opens
+  useEffect(() => {
+    if (open) {
+      setCopiedParams(modelParameters);
+    }
+  }, [open, modelParameters]);
 
   const handleClose = () => {
     setOpen(false);
@@ -102,7 +109,7 @@ const ModelParamsDialog = ({
               key="temperature"
               id="temperature"
               name="temperature"
-              defaultValue={modelParameters.temperature}
+              defaultValue={modelParameters.temperature ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -123,7 +130,7 @@ const ModelParamsDialog = ({
               key="top_p"
               id="top_p"
               name="top_p"
-              defaultValue={modelParameters.top_p}
+              defaultValue={modelParameters.top_p ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -144,7 +151,7 @@ const ModelParamsDialog = ({
               key="timeout"
               id="timeout"
               name="timeout"
-              defaultValue={modelParameters.timeout}
+              defaultValue={modelParameters.timeout ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -164,7 +171,10 @@ const ModelParamsDialog = ({
               key="stream"
               id="stream"
               name="stream"
-              defaultChecked={modelParameters.stream} // Only appears in form when true
+              checked={copiedParams.stream ?? false}
+              onChange={(event) => {
+                setCopiedParams({ ...copiedParams, stream: event.target.checked });
+              }}
             />
           </div>
           {/* <div className="flex items-center gap-2">
@@ -180,7 +190,7 @@ const ModelParamsDialog = ({
               key="max_tokens"
               id="max_tokens"
               name="max_tokens"
-              defaultValue={modelParameters.max_tokens}
+              defaultValue={modelParameters.max_tokens ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -199,7 +209,7 @@ const ModelParamsDialog = ({
               key="max_completion_tokens"
               id="max_completion_tokens"
               name="max_completion_tokens"
-              defaultValue={modelParameters.max_completion_tokens}
+              defaultValue={modelParameters.max_completion_tokens ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -218,7 +228,7 @@ const ModelParamsDialog = ({
               key="frequency_penalty"
               id="frequency_penalty"
               name="frequency_penalty"
-              defaultValue={modelParameters.frequency_penalty}
+              defaultValue={modelParameters.frequency_penalty ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -239,7 +249,7 @@ const ModelParamsDialog = ({
               key="presence_penalty"
               id="presence_penalty"
               name="presence_penalty"
-              defaultValue={modelParameters.presence_penalty}
+              defaultValue={modelParameters.presence_penalty ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -260,7 +270,7 @@ const ModelParamsDialog = ({
               key="stop"
               id="stop"
               name="stop"
-              defaultValue={modelParameters.stop}
+              defaultValue={modelParameters.stop ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="text"
@@ -274,7 +284,7 @@ const ModelParamsDialog = ({
               key="seed"
               id="seed"
               name="seed"
-              defaultValue={modelParameters.seed}
+              defaultValue={modelParameters.seed ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="number"
@@ -288,7 +298,7 @@ const ModelParamsDialog = ({
               key="reasoning_effort"
               id="reasoning_effort"
               name="reasoning_effort"
-              defaultValue={modelParameters.reasoning_effort}
+              defaultValue={modelParameters.reasoning_effort ?? ""}
               size="small"
               className="w-2/5 border-gray-300 border-2 rounded-md"
               type="text"
