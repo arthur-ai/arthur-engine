@@ -473,7 +473,7 @@ class RagSearchSettingConfigurationUpdateRequest(BaseModel):
     )
 
 
-class RagSearchSettingNewVersionRequest(BaseModel):
+class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     settings: RagSearchSettingConfigurationRequestTypes = Field(
         description="Settings configuration for a search request to a RAG provider.",
     )

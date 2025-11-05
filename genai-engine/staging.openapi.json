@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.134"
+        "version": "2.1.138"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -6980,7 +6980,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/SearchRagSearchSettingConfigurationsResponse"
+                                    "$ref": "#/components/schemas/ListRagSearchSettingConfigurationsResponse"
                                 }
                             }
                         }
@@ -7182,7 +7182,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/RagSearchSettingNewVersionRequest"
+                                "$ref": "#/components/schemas/RagSearchSettingConfigurationNewVersionRequest"
                             }
                         }
                     }
@@ -11126,6 +11126,29 @@
                 ],
                 "title": "ListDatasetVersionsResponse"
             },
+            "ListRagSearchSettingConfigurationsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG search setting configurations matching the parameters."
+                    },
+                    "rag_provider_setting_configurations": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Setting Configurations",
+                        "description": "List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_setting_configurations"
+                ],
+                "title": "ListRagSearchSettingConfigurationsResponse"
+            },
             "LogitBiasItem": {
                 "properties": {
                     "token_id": {
@@ -12879,6 +12902,45 @@
                 ],
                 "title": "RagProviderTestConfigurationRequest"
             },
+            "RagSearchSettingConfigurationNewVersionRequest": {
+                "properties": {
+                    "settings": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationRequest"
+                            },
+                            {
+                                "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest"
+                            }
+                        ],
+                        "title": "Settings",
+                        "description": "Settings configuration for a search request to a RAG provider."
+                    },
+                    "tags": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tags",
+                        "description": "Optional list of tags to configure for this version of the search settings configuration."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "settings"
+                ],
+                "title": "RagSearchSettingConfigurationNewVersionRequest"
+            },
             "RagSearchSettingConfigurationRequest": {
                 "properties": {
                     "settings": {
@@ -13153,45 +13215,6 @@
                     "updated_at"
                 ],
                 "title": "RagSearchSettingConfigurationVersionResponse"
-            },
-            "RagSearchSettingNewVersionRequest": {
-                "properties": {
-                    "settings": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/WeaviateHybridSearchSettingsConfigurationRequest"
-                            },
-                            {
-                                "$ref": "#/components/schemas/WeaviateKeywordSearchSettingsConfigurationRequest"
-                            },
-                            {
-                                "$ref": "#/components/schemas/WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest"
-                            }
-                        ],
-                        "title": "Settings",
-                        "description": "Settings configuration for a search request to a RAG provider."
-                    },
-                    "tags": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tags",
-                        "description": "Optional list of tags to configure for this version of the search settings configuration."
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "settings"
-                ],
-                "title": "RagSearchSettingNewVersionRequest"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {
@@ -13559,29 +13582,6 @@
                     "rag_provider_configurations"
                 ],
                 "title": "SearchRagProviderConfigurationsResponse"
-            },
-            "SearchRagSearchSettingConfigurationsResponse": {
-                "properties": {
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "The total number of RAG search setting configurations matching the parameters."
-                    },
-                    "rag_provider_setting_configurations": {
-                        "items": {
-                            "$ref": "#/components/schemas/RagSearchSettingConfigurationResponse"
-                        },
-                        "type": "array",
-                        "title": "Rag Provider Setting Configurations",
-                        "description": "List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "count",
-                    "rag_provider_setting_configurations"
-                ],
-                "title": "SearchRagSearchSettingConfigurationsResponse"
             },
             "SearchRulesRequest": {
                 "properties": {

@@ -2,9 +2,18 @@ import { AlertColor, AlertProps } from "@mui/material/Alert";
 import { SnackbarProps } from "@mui/material/Snackbar";
 import { useCallback, useState } from "react";
 
-const SNACKBAR_AUTO_HIDE_DURATION = 6000;
+type SnackbarDuration = "short" | "default";
 
-const useSnackbar = () => {
+interface UseSnackbarOptions {
+  duration?: SnackbarDuration;
+}
+
+const DURATION_MAP: Record<SnackbarDuration, number> = {
+  short: 2000,
+  default: 6000,
+};
+
+const useSnackbar = (options?: UseSnackbarOptions) => {
   const [openSnackbar, setOpenSnackbar] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
   const [snackbarSeverity, setSnackbarSeverity] =
@@ -23,10 +32,12 @@ const useSnackbar = () => {
     setOpenSnackbar(false);
   };
 
+  const duration = DURATION_MAP[options?.duration ?? "default"];
+
   const snackbarProps: SnackbarProps = {
     open: openSnackbar,
     anchorOrigin: { vertical: "top", horizontal: "center" },
-    autoHideDuration: SNACKBAR_AUTO_HIDE_DURATION,
+    autoHideDuration: duration,
     onClose: hideSnackbar,
   };
 

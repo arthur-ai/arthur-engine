@@ -127,8 +127,8 @@ from schemas.request_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
-    RagSearchSettingNewVersionRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
     WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
@@ -2770,7 +2770,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     def _from_request_model(
         request: Union[
             RagSearchSettingConfigurationRequest,
-            RagSearchSettingNewVersionRequest,
+            RagSearchSettingConfigurationNewVersionRequest,
         ],
         setting_config_id: uuid.UUID,
         new_version_number: int,
