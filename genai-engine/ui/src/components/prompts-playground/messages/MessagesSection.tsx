@@ -1,5 +1,6 @@
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import Typography from "@mui/material/Typography";
 import React from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
@@ -46,7 +47,7 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-start items-center">
-        <span>Messages</span>
+        <span><Typography variant="body1">Messages</Typography></span>
       </div>
       <div className="overflow-y-auto flex-1 min-h-0">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

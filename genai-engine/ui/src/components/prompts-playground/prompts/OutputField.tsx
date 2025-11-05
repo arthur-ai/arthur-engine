@@ -85,7 +85,9 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
       <div className="flex flex-col h-full">
         <div className="flex justify-between">
           <div className="flex items-center">
-            <span>Response</span>
+            <span>
+              <Typography variant="body1">Response</Typography>
+            </span>
           </div>
           <div className="flex items-center">
             <Tooltip title="Popout Response">
@@ -163,7 +165,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </DialogActions>
       </Dialog>
       <Dialog open={isPopoutOpen} onClose={handlePopoutClose} fullWidth maxWidth="md">
-        <DialogTitle>Response</DialogTitle>
+        <DialogTitle><Typography variant="h6">Response</Typography></DialogTitle>
         <DialogContent>
           <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto", whiteSpace: "pre-wrap" }}>
             {running ? (

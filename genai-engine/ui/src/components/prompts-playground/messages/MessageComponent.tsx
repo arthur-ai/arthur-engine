@@ -155,7 +155,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
         </div>
       </div>
       <div className="mt-2">
-        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" placeholder={role} />
+        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
       </div>
     </div>
   );
