@@ -1,12 +1,14 @@
 """add_token_cost_and_input_output_content
 
 Revision ID: aa259a314eeb
-Revises: 2264832c91c0
+Revises: 9d3d34fcf6b4
 Create Date: 2025-11-03 10:39:04.544418
 
 """
 
 import json
+import sys
+from pathlib import Path
 
 import sqlalchemy as sa
 from sqlalchemy import text
@@ -14,9 +16,16 @@ from tokencost import calculate_cost_by_tokens
 
 from alembic import op
 
+# Add the src directory to path for imports
+migration_dir = Path(__file__).parent.parent.parent
+src_dir = migration_dir / "src"
+sys.path.insert(0, str(src_dir))
+
+from utils.token_count import count_tokens_from_messages
+
 # revision identifiers, used by Alembic.
 revision = "aa259a314eeb"
-down_revision = "2264832c91c0"
+down_revision = "9d3d34fcf6b4"
 branch_labels = None
 depends_on = None
 
@@ -94,6 +103,7 @@ def upgrade() -> None:
     # ### end Alembic commands ###
 
     _backfill_spans_token_data()
+    _compute_missing_token_counts()
     _backfill_trace_metadata_token_data()
     _backfill_trace_metadata_input_output_content()
 
@@ -131,6 +141,78 @@ def _backfill_spans_token_data():
 
     # For spans with token counts but no costs, compute using tokencost
     _compute_missing_costs(connection)
+
+
+def _compute_missing_token_counts():
+    """Compute token counts from messages for LLM spans missing token count attributes."""
+    connection = op.get_bind()
+
+    # Find LLM spans with missing token counts that have input/output messages
+    result = connection.execute(
+        text(
+            """
+        SELECT id,
+               raw_data,
+               raw_data->'attributes'->'llm'->>'model_name' as model_name
+        FROM spans
+        WHERE (prompt_token_count IS NULL OR completion_token_count IS NULL OR total_token_count IS NULL)
+          AND raw_data->'attributes'->'openinference'->'span'->>'kind' = 'LLM'
+          AND (raw_data->'attributes'->'llm'->'input_messages' IS NOT NULL
+               OR raw_data->'attributes'->'llm'->'output_messages' IS NOT NULL)
+    """,
+        ),
+    )
+
+    rows = result.fetchall()
+
+    for row in rows:
+        span_id, raw_data, model_name = row
+
+        try:
+            attributes = raw_data.get("attributes", {})
+            llm_attrs = attributes.get("llm", {})
+            input_messages = llm_attrs.get("input_messages", [])
+            output_messages = llm_attrs.get("output_messages", [])
+
+            # Calculate token counts from messages
+            prompt_tokens = None
+            if input_messages:
+                prompt_tokens = count_tokens_from_messages(input_messages, model_name)
+
+            completion_tokens = None
+            if output_messages:
+                completion_tokens = count_tokens_from_messages(
+                    output_messages,
+                    model_name,
+                )
+
+            # Calculate total tokens
+            total_tokens = None
+            if prompt_tokens is not None and completion_tokens is not None:
+                total_tokens = prompt_tokens + completion_tokens
+
+            # Update the span if we calculated any token counts
+            if prompt_tokens is not None or completion_tokens is not None:
+                connection.execute(
+                    text(
+                        """
+                        UPDATE spans
+                        SET prompt_token_count = COALESCE(prompt_token_count, :prompt_tokens),
+                            completion_token_count = COALESCE(completion_token_count, :completion_tokens),
+                            total_token_count = COALESCE(total_token_count, :total_tokens)
+                        WHERE id = :span_id
+                    """,
+                    ),
+                    {
+                        "prompt_tokens": prompt_tokens,
+                        "completion_tokens": completion_tokens,
+                        "total_tokens": total_tokens,
+                        "span_id": span_id,
+                    },
+                )
+
+        except Exception:
+            continue
 
 
 def _compute_missing_costs(connection):
