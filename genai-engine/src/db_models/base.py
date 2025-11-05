@@ -1,6 +1,9 @@
+from datetime import datetime
+from typing import Optional
+
 import sqlalchemy.types as types
-from sqlalchemy import Boolean, Column
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import TIMESTAMP, Boolean, Column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from utils import constants
 from utils.utils import get_env_var
@@ -29,3 +32,16 @@ class IsArchivable(object):
 # declarative base class
 class Base(DeclarativeBase):
     pass
+
+
+class SoftDeletedModel(object):
+    """Mixin that includes deleted_at field for objects that can be soft-deleted.
+    To match existing behavior for prompts and rag setting configurations, other fields should be nulled out / set to
+    empty values if this field is set.
+    """
+
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP,
+        nullable=True,
+        default=None,
+    )

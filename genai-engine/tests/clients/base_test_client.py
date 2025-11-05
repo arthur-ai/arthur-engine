@@ -74,6 +74,7 @@ from schemas.request_schemas import (
     RagProviderConfigurationRequest,
     RagProviderConfigurationUpdateRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
     RagSearchSettingConfigurationRequestTypes,
     RagSearchSettingConfigurationUpdateRequest,
@@ -93,6 +94,7 @@ from schemas.response_schemas import (
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
+    RagSearchSettingConfigurationVersionResponse,
     SearchDatasetsResponse,
     SearchRagProviderCollectionsResponse,
     SearchRagProviderConfigurationsResponse,
@@ -3064,6 +3066,76 @@ class GenaiEngineTestClientBase(httpx.Client):
                 else None
             ),
         )
+
+    def create_rag_search_settings_version(
+        self,
+        setting_configuration_id: str,
+        settings: RagSearchSettingConfigurationRequestTypes,
+        tags: list[str] = None,
+    ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
+        """Create a new version for an existing RAG search settings configuration."""
+        request = RagSearchSettingConfigurationNewVersionRequest(
+            settings=settings,
+            tags=tags,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationVersionResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_search_setting_version(
+        self,
+        setting_configuration_id: str,
+        version_number: int,
+    ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
+        """Get a single RAG search setting configuration version."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationVersionResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_rag_search_setting_version(
+        self,
+        setting_configuration_id: str,
+        version_number: int,
+    ) -> int:
+        """Soft delete a RAG search setting configuration version."""
+        resp = self.base_client.delete(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
 
 
 def get_base_pagination_parameters(
