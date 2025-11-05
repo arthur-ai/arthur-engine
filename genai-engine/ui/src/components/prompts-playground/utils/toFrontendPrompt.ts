@@ -34,6 +34,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
     temperature: backendPrompt.temperature,
     top_p: backendPrompt.top_p,
     timeout: backendPrompt.timeout,
+    stream: true, // BE doesn't store, default to true
     stream_options: backendPrompt.stream_options,
     max_tokens: backendPrompt.max_tokens,
     max_completion_tokens: backendPrompt.max_completion_tokens,
