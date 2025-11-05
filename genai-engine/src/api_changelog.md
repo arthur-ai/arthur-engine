@@ -2,6 +2,23 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/05/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'rag_provider_setting_configurations/items/latest_version/settings' became optional for the status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'latest_version/settings' became optional for the status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'rag_provider_setting_configurations/items/latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'rag_provider_setting_configurations/items/latest_version/settings' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added the optional property 'latest_version/deleted_at' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  added 'subschema #4' to the 'latest_version/settings' response property 'anyOf' list for the response status '200'
+
 # 11/04/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'all_possible_tags' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'all_possible_tags' became optional for the status '200'
