@@ -1,7 +1,9 @@
 import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import DownloadIcon from "@mui/icons-material/Download";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
+import UploadIcon from "@mui/icons-material/Upload";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import { Box, Button, IconButton, Typography } from "@mui/material";
 import React from "react";
@@ -24,6 +26,8 @@ interface DatasetHeaderProps {
   onConfigureColumns: () => void;
   onAddRow: () => void;
   onOpenVersions: () => void;
+  onExport: () => void;
+  onImport: () => void;
   searchValue: string;
   onSearchChange: (value: string) => void;
   onSearchClear: () => void;
@@ -43,6 +47,8 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
   onConfigureColumns,
   onAddRow,
   onOpenVersions,
+  onExport,
+  onImport,
   searchValue,
   onSearchChange,
   onSearchClear,
@@ -104,6 +110,16 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
         <Button
           variant="outlined"
           size="small"
+          startIcon={<DownloadIcon />}
+          onClick={onExport}
+          disabled={rowCount === 0}
+          title={rowCount === 0 ? "No data to export" : "Export to CSV"}
+        >
+          Export
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
           startIcon={<HistoryIcon />}
           onClick={onOpenVersions}
         >
@@ -138,6 +154,15 @@ export const DatasetHeader: React.FC<DatasetHeaderProps> = ({
           onClick={onConfigureColumns}
         >
           Configure Columns
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<UploadIcon />}
+          onClick={onImport}
+          title="Import data from CSV"
+        >
+          Import
         </Button>
         <Button
           variant="contained"

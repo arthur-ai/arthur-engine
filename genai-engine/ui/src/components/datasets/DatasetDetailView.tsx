@@ -9,11 +9,11 @@ import { DatasetHeader } from "./DatasetHeader";
 import { DatasetLoadingState } from "./DatasetLoadingState";
 import { DatasetTable } from "./DatasetTable";
 import { EditRowModal } from "./EditRowModal";
+import { ImportDatasetModal } from "./ImportDatasetModal";
 import { VersionDrawer } from "./VersionDrawer";
 
 import { MAX_DATASET_ROWS } from "@/constants/datasetConstants";
 import { getContentHeight } from "@/constants/layout";
-import { SNACKBAR_AUTO_HIDE_DURATION } from "@/constants/snackbar";
 import { useDatasetLocalState } from "@/hooks/datasets/useDatasetLocalState";
 import { useDatasetModalState } from "@/hooks/datasets/useDatasetModalState";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
@@ -24,7 +24,9 @@ import { useDatasetVersionSelection } from "@/hooks/datasets/useDatasetVersionSe
 import { useDataset } from "@/hooks/useDataset";
 import { useDatasetLatestVersion } from "@/hooks/useDatasetLatestVersion";
 import { useDatasetVersionData } from "@/hooks/useDatasetVersionData";
+import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
+import { exportDatasetToCSV } from "@/utils/datasetExport";
 import { convertFromApiFormat } from "@/utils/datasetRowUtils";
 import { createEmptyRow } from "@/utils/datasetUtils";
 
@@ -32,7 +34,7 @@ export const DatasetDetailView: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
   const { task } = useTask();
   const navigate = useNavigate();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [selectedVersionForSwitch, setSelectedVersionForSwitch] = useState<
     number | null
@@ -79,10 +81,12 @@ export const DatasetDetailView: React.FC = () => {
     () => {
       localState.clearChanges();
       versionSelection.resetToLatest();
+      showSnackbar("Changes saved successfully!", "success");
     },
     (error) => {
-      setErrorMessage(
-        error.message || "Failed to save changes. Please try again."
+      showSnackbar(
+        error.message || "Failed to save changes. Please try again.",
+        "error"
       );
     }
   );
@@ -137,12 +141,13 @@ export const DatasetDetailView: React.FC = () => {
         localState.addRow(rowData);
         modals.closeAddModal();
       } catch {
-        setErrorMessage(
-          `Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`
+        showSnackbar(
+          `Cannot add row: Maximum dataset size of ${MAX_DATASET_ROWS} rows reached.`,
+          "error"
         );
       }
     },
-    [localState, modals]
+    [localState, modals, showSnackbar]
   );
 
   const handleConfigureColumns = useCallback(
@@ -150,6 +155,36 @@ export const DatasetDetailView: React.FC = () => {
       localState.setColumns(columns);
     },
     [localState]
+  );
+
+  const handleExport = useCallback(() => {
+    if (!dataset || localState.localRows.length === 0) return;
+    exportDatasetToCSV(dataset.name, localState.localRows);
+  }, [dataset, localState.localRows]);
+
+  const handleImportData = useCallback(
+    (csvColumns: string[], csvRows: Record<string, string>[]) => {
+      const existingColumnsSet = new Set(localState.localColumns);
+      const newColumns = csvColumns.filter(
+        (col) => !existingColumnsSet.has(col)
+      );
+      const mergedColumns = [...localState.localColumns, ...newColumns];
+
+      if (newColumns.length > 0) {
+        localState.setColumns(mergedColumns);
+      }
+
+      csvRows.forEach((rowData) => {
+        const completeRowData: Record<string, unknown> = {};
+        mergedColumns.forEach((col) => {
+          completeRowData[col] = rowData[col] ?? "";
+        });
+        localState.addRow(completeRowData);
+      });
+
+      modals.closeImportModal();
+    },
+    [localState, modals]
   );
 
   const editRowData = useMemo(() => {
@@ -218,6 +253,8 @@ export const DatasetDetailView: React.FC = () => {
           onSave={save.saveChanges}
           onConfigureColumns={modals.openConfigureColumns}
           onAddRow={modals.openAddModal}
+          onExport={handleExport}
+          onImport={modals.openImportModal}
           onOpenVersions={modals.openVersionDrawer}
           searchValue={search.searchQuery}
           onSearchChange={search.setSearchQuery}
@@ -328,19 +365,15 @@ export const DatasetDetailView: React.FC = () => {
         currentColumns={localState.localColumns}
       />
 
-      <Snackbar
-        open={!!errorMessage}
-        autoHideDuration={SNACKBAR_AUTO_HIDE_DURATION}
-        onClose={() => setErrorMessage(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-      >
-        <Alert
-          onClose={() => setErrorMessage(null)}
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {errorMessage}
-        </Alert>
+      <ImportDatasetModal
+        open={modals.isImportModalOpen}
+        onClose={modals.closeImportModal}
+        onImport={handleImportData}
+        currentRowCount={localState.localRows.length}
+      />
+
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
       </Snackbar>
 
       <ConfirmationModal
