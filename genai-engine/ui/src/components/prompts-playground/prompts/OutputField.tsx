@@ -120,6 +120,8 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
     </>
   );
 
+  const showSkeletons = running && !runResponse?.content;
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -139,7 +141,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </div>
         <Divider />
         <div className="flex-1 overflow-y-auto" style={{ minHeight: 0 }}>
-          {running ? <>{skeletons()}</> : <div className="flex flex-col h-full">{renderContent}</div>}
+          {showSkeletons ? <>{skeletons()}</> : <div className="flex flex-col h-full">{renderContent}</div>}
         </div>
         <Divider />
         <div className="flex gap-3 flex-shrink-0">
@@ -202,7 +204,7 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
         </DialogTitle>
         <DialogContent>
           <div style={{ minHeight: "200px", maxHeight: "70vh", overflowY: "auto" }}>
-            {running ? (
+            {showSkeletons ? (
               <div className="flex flex-col items-center justify-center h-full">{skeletons()}</div>
             ) : (
               <div className="flex flex-col" style={{ gap: "16px" }}>

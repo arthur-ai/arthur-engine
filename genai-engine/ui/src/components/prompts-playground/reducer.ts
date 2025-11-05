@@ -70,7 +70,7 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
   temperature: null,
   top_p: null,
   timeout: null,
-  stream: false,
+  stream: true,
   stream_options: null,
   max_tokens: null,
   max_completion_tokens: null,
@@ -351,7 +351,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, running: true } : prompt)),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, running: true, runResponse: null } : prompt)),
       };
     }
     case "updateModelParameters": {

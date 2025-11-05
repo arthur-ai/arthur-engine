@@ -9,7 +9,6 @@ import React, { useCallback, useEffect, useState, useRef } from "react";
 import MessagesSection from "../messages/MessagesSection";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptComponentProps } from "../types";
-import toCompletionRequest from "../utils/toCompletionRequest";
 
 import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
@@ -18,9 +17,8 @@ import ResizableSplitter from "./ResizableSplitter";
 import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
-import { useApi } from "@/hooks/useApi";
+import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
 import useSnackbar from "@/hooks/useSnackbar";
-import { useTask } from "@/hooks/useTask";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
@@ -36,41 +34,13 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { state, dispatch } = usePromptContext();
-  const apiClient = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
-
-  const runPrompt = useCallback(async () => {
-    if (!apiClient || !taskId) {
-      console.error("No api client or task id");
-      return;
-    }
-    // Replace template strings with variable values before sending to API
-    const completionRequest = toCompletionRequest(prompt, state.keywords);
-    await apiClient.api
-      .runAgenticPromptApiV1CompletionsPost(completionRequest)
-      .then((response) => {
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: { running: false, runResponse: response.data },
-          },
-        });
-      })
-      .catch((error) => {
-        console.error("Error running prompt:", error);
-        showSnackbar(error.response.data.detail, "error");
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: { running: false, runResponse: null },
-          },
-        });
-      });
-  }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
+  const { dispatch } = usePromptContext();
+  const runPrompt = useRunPrompt({
+    prompt,
+    onError: (error) => {
+      showSnackbar(error, "error");
+    },
+  });
 
   const handleAddMessage = () => {
     dispatch({
