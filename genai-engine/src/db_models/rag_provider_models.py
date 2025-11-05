@@ -128,8 +128,8 @@ class DatabaseRagSearchSettingConfiguration(Base):
             cascade="all,delete",
             foreign_keys="[DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id]",
             overlaps="latest_version",
-            lazy="joined",
         )
+        # relationship exists to cascade delete
     )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)

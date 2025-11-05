@@ -338,6 +338,27 @@ class RagProvidersRepository:
         db_config = self._get_db_rag_setting_config_version(config_id, version_number)
         return RagSearchSettingConfigurationVersion._from_database_model(db_config)
 
+    def _get_db_rag_setting_configuration_versions(
+        self,
+        setting_config_id: UUID,
+    ) -> list[DatabaseRagSearchSettingConfigurationVersion]:
+        """Gets list of RAG provider configuration versions by ID"""
+        db_configs = (
+            self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
+            .filter(
+                DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
+                == setting_config_id,
+            )
+            .all()
+        )
+
+        if not db_configs:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No RAG setting configuration versions found for setting id {setting_config_id}",
+            )
+        return db_configs
+
     def soft_delete_rag_setting_configuration_version(
         self,
         config_id: UUID,
@@ -355,10 +376,12 @@ class RagProvidersRepository:
 
         # update all possible tags in case that was the last instance of a tag that got cleared
         db_parent_config = self._get_db_rag_setting_config(config_id)
+        all_db_versions = self._get_db_rag_setting_configuration_versions(config_id)
         all_tags = set()
-        for version in db_parent_config.all_versions:
+        for version in all_db_versions:
             if version.tags is not None:
                 all_tags = all_tags.union(set(version.tags))
         db_parent_config.all_possible_tags = list(all_tags)
+        db_parent_config.updated_at = datetime.now()
 
         self.db_session.commit()
