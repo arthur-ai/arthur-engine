@@ -1,22 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from arthur_common.models.enums import (
-    PaginationSortMethod,
     UserPermissionAction,
     UserPermissionResource,
 )
-from pydantic import BaseModel
-
-
-class PaginationParameters(BaseModel):
-    sort: Optional[PaginationSortMethod] = PaginationSortMethod.DESCENDING
-    page_size: int = 10
-    page: int = 0
-
-    def calculate_total_pages(self, total_items_count: int) -> int:
-        return total_items_count // self.page_size + 1
+from pydantic import BaseModel, Field
 
 
 class LLMTokenConsumption(BaseModel):
@@ -48,3 +38,38 @@ class UserPermission(BaseModel):
 
     def __eq__(self, other):
         return isinstance(other, UserPermission) and self.__hash__() == other.__hash__()
+
+
+class JsonPropertySchema(BaseModel):
+    type: str = Field(
+        default="string",
+        description="The argument's type (e.g. string, boolean, etc.)",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="A description of the argument",
+    )
+    enum: Optional[List[str]] = Field(
+        default=None,
+        description="An enum for the argument (e.g. ['celsius', 'fahrenheit'])",
+    )
+    items: Optional[Any] = Field(
+        default=None,
+        description="For array types, describes the items",
+    )
+
+
+class JsonSchema(BaseModel):
+    type: str = Field(default="object")
+    properties: Dict[str, JsonPropertySchema] = Field(
+        ...,
+        description="The name of the property and the property schema (e.g. {'topic': {'type': 'string', 'description': 'the topic to generate a joke for'})",
+    )
+    required: List[str] = Field(
+        default_factory=list,
+        description="The required properties of the function",
+    )
+    additionalProperties: Optional[bool] = Field(
+        default=None,
+        description="Whether the function definition should allow additional properties",
+    )

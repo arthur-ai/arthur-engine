@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
 from arthur_common.models.common_schemas import UserPermission
+
 from schemas.internal_schemas import User
 
 

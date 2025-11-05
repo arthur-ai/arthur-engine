@@ -1,22 +1,23 @@
 import logging
 from uuid import UUID
 
+from arthur_common.models.enums import APIKeysRolesEnum
+from arthur_common.models.request_schemas import NewApiKeyRequest
+from arthur_common.models.response_schemas import ApiKeyResponse
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.multi_validator import MultiMethodValidator
 from config.config import Config
 from dependencies import get_db_session
-from fastapi import APIRouter, Depends
 from repositories.api_key_repository import ApiKeyRepository
 from routers.route_handler import GenaiEngineRoute
-from arthur_common.models.enums import APIKeysRolesEnum
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import User
-from arthur_common.models.request_schemas import NewApiKeyRequest
-from arthur_common.models.response_schemas import ApiKeyResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
 from utils.users import permission_checker
 
 api_key_validator_creators = [APIKeyValidatorCreator(APIKeyValidatorType.MASTER)]

@@ -1,12 +1,13 @@
 # mypy: ignore-errors
+from cachetools import TTLCache
+from sqlalchemy.orm import Session
+
 from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from auth.ApiKeyValidator.MasterAPIKeyValidator import MasterAPIKeyValidator
 from auth.ApiKeyValidator.UserGenAPIKeyValidator import UserGenAPIKeyValidator
-from cachetools import TTLCache
 from config.config import Config
 from repositories.api_key_repository import ApiKeyRepository
-from sqlalchemy.orm import Session
 
 
 class APIKeyValidatorCreator:

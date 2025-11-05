@@ -382,5 +382,11 @@ EXPECTED_SPAN_VERSION = "arthur_span_v1"
 TASK_ID_KEY = "arthur.task"
 METADATA_KEY = SpanAttributes.METADATA
 SPAN_KIND_KEY = SpanAttributes.OPENINFERENCE_SPAN_KIND
+USER_ID_KEY = SpanAttributes.USER_ID
+
+##################################################################
+
+# Dataset constants
+MAX_DATASET_ROWS = 250
 
 ##################################################################

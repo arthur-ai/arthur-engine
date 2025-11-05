@@ -1,28 +1,29 @@
 from typing import Annotated
 from uuid import UUID
 
+from arthur_common.models.common_schemas import PaginationParameters
+from arthur_common.models.enums import RuleScope, RuleType
+from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
+from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
+from fastapi import APIRouter, Body, Depends
+from opentelemetry import trace
+from sqlalchemy.orm import Session
+from starlette import status
+from starlette.responses import Response
+
 from clients.telemetry.telemetry_client import (
     TelemetryEventTypes,
     send_telemetry_event,
     send_telemetry_event_for_default_rule_create_completed,
 )
 from dependencies import get_application_config, get_db_session
-from fastapi import APIRouter, Body, Depends
-from opentelemetry import trace
 from repositories.metrics_repository import MetricRepository
 from repositories.rules_repository import RuleRepository
 from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from arthur_common.models.common_schemas import PaginationParameters
-from arthur_common.models.enums import RuleScope, RuleType
-from schemas.internal_schemas import ApplicationConfiguration, Rule, User
 from schemas.enums import PermissionLevelsEnum
-from arthur_common.models.request_schemas import NewRuleRequest, SearchRulesRequest
-from arthur_common.models.response_schemas import RuleResponse, SearchRulesResponse
-from sqlalchemy.orm import Session
-from starlette import status
-from starlette.responses import Response
+from schemas.internal_schemas import ApplicationConfiguration, Rule, User
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 

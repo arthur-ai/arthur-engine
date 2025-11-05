@@ -112,6 +112,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.genaiEngineSecretOpenAIGPTModelNamesEndpointsKeysName }}
                   key: keys
+            - name: GENAI_ENGINE_SECRET_STORE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.genaiEngineSecretStoreKeyName }}
+                  key: key
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: "compute,utility"
             - name: NVIDIA_VISIBLE_DEVICES

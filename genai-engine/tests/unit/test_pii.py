@@ -1,5 +1,6 @@
 import pytest
 from arthur_common.models.enums import PIIEntityTypes, RuleResultEnum, RuleType
+
 from schemas.scorer_schemas import ScoreRequest
 from scorer.checks.pii.classifier import BinaryPIIDataClassifier
 
@@ -845,6 +846,87 @@ def test_valid_vs_invalid_entities(classifier):
 
     # Should pass since it's just descriptive text
     assert result.result == RuleResultEnum.PASS
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "The meeting is scheduled for October 15th at 2pm.",
+        "The conference starts on January 20th, 2025 in Chicago.",
+        "Let's meet on Thursday to discuss the proposal.",
+        "We can schedule the meeting on Mon or Tue next week.",
+        "The report is due by Fri EOD without exception.",
+        "The call is at 3:00 PM with the client.",
+        "Please arrive by 5 o'clock for the event.",
+        "The invoice date is 01/15/2025 as shown on the document.",
+        "The contract expiration is 12-31-2024 per our agreement.",
+        "I was born on 03/14/1990 in Seattle.",
+        "The financial report for Q3 2024 shows strong growth.",
+        "We're projecting Q1 2025 earnings to exceed expectations.",
+        "The project was completed in 2 weeks ahead of schedule.",
+        "He spent 10 years on this research project.",
+        "Our office will be closed on Christmas day.",
+        "The new program starts Jan 2025 for all employees.",
+    ],
+)
+@pytest.mark.unit_tests
+def test_datetime_should_detect(classifier, text):
+    """Test that specific datetime information IS detected."""
+    score_request = ScoreRequest(
+        scoring_text=text,
+        rule_type=RuleType.PII_DATA,
+    )
+
+    result = classifier.score(score_request)
+
+    assert result.result == RuleResultEnum.FAIL, f"Should detect DATE_TIME in: {text}"
+    assert (
+        PIIEntityTypes.DATE_TIME in result.details.pii_results
+    ), f"DATE_TIME not found in: {text}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I'll get back to you next week with an update.",
+        "We talked about this recently during our team meeting.",
+        "Our sales numbers improved last month significantly.",
+        "It will take a few days to complete the analysis.",
+        "Give me a minute to think about your proposal.",
+        "I'll see you tomorrow for our discussion.",
+        "Please call me today when you have a chance.",
+        "It happened yesterday but I don't remember details.",
+        "The system is available now for all users.",
+        "We're launching the new feature coming soon.",
+        "I prefer to work in the morning when I'm fresh.",
+        "They usually work late at night on projects.",
+        "The weather is best during the afternoon hours.",
+        "We have daily standup meetings with the team.",
+        "The reports are updated monthly by our team.",
+        "All accounts are reviewed annually for compliance.",
+        "The database is updated every day automatically.",
+        "She meets every time without fail for reviews.",
+        "Please enter your date of birth in the form.",
+    ],
+)
+@pytest.mark.unit_tests
+def test_datetime_should_not_detect(classifier, text):
+    """Test that generic temporal language and descriptive keywords are NOT detected."""
+    score_request = ScoreRequest(
+        scoring_text=text,
+        rule_type=RuleType.PII_DATA,
+    )
+
+    result = classifier.score(score_request)
+
+    # Should either pass or not contain DATE_TIME
+    if result.result == RuleResultEnum.FAIL:
+        datetime_spans = [
+            span
+            for span in result.details.pii_entities
+            if span.entity == PIIEntityTypes.DATE_TIME
+        ]
+        assert len(datetime_spans) == 0, f"DATE_TIME incorrectly detected in: {text}"
 
 
 @pytest.mark.parametrize(

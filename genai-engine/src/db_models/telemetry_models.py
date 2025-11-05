@@ -28,6 +28,7 @@ class DatabaseTraceMetadata(Base):
         index=True,
     )
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True)
     start_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     end_time: Mapped[datetime] = mapped_column(TIMESTAMP, nullable=False)
     span_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -45,12 +46,28 @@ class DatabaseTraceMetadata(Base):
     __table_args__ = (
         Index("idx_traces_task_start", "task_id", "start_time"),
         Index("idx_traces_task_time_range", "task_id", "start_time", "end_time"),
+        Index("idx_traces_user_task_time", "user_id", "task_id", "start_time"),
+        Index("idx_traces_user_session", "user_id", "session_id", "start_time"),
         Index(
             "idx_traces_covering",
             "task_id",
             "start_time",
-            postgresql_include=["trace_id", "end_time", "span_count"],
+            postgresql_include=[
+                "trace_id",
+                "end_time",
+                "span_count",
+                "user_id",
+                "session_id",
+            ],
         ),
+        Index(
+            "idx_traces_task_session_time",
+            "task_id",
+            "session_id",
+            "start_time",
+            postgresql_where=text("session_id IS NOT NULL"),
+        ),
+        Index("idx_traces_session_time", "session_id", "start_time"),
     )
 
 
@@ -76,6 +93,7 @@ class DatabaseSpan(Base):
         index=True,
     )
     session_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True)
     status_code: Mapped[str] = mapped_column(
         String,
         nullable=False,
@@ -107,6 +125,7 @@ class DatabaseSpan(Base):
             postgresql_where=text("span_name IS NOT NULL"),
         ),
         Index("idx_spans_trace_task_time", "trace_id", "task_id", "start_time"),
+        Index("idx_spans_user_task_time", "user_id", "task_id", "start_time"),
         Index(
             "idx_spans_llm_task_time",
             "task_id",

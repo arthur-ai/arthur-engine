@@ -10,6 +10,7 @@ from arthur_common.models.metrics import (
     NumericMetric,
     SketchMetric,
 )
+
 from metric_calculators.metric_calculator import MetricCalculator
 
 
@@ -27,7 +28,7 @@ class DefaultMetricCalculator(MetricCalculator):
         :param agg_function_type: The AggregationFunction to execute.
         :param agg_schema: The schema of the aggregation function to execute.
         """
-        super().__init__(conn, logger, agg_spec)
+        super().__init__(conn, logger, agg_spec, agg_schema.name)
         self.agg_schema = agg_schema
         self._agg_function_type = agg_function_type
 

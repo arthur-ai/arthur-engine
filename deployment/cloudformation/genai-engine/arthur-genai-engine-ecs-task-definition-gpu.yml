@@ -104,6 +104,10 @@ Parameters:
     Type: String
     Description: 'GenAI Engine secret app secret ARN'
     NoEcho: true
+  GenaiEngineSecretStoreKeyARN:
+    Type: String
+    Description: 'GenAI Engine secret store key ARN'
+    NoEcho: true
   GenaiEngineAPIOnlyModeEnabled:
     Type: String
     Description: 'Enable GenAI Engine API-only mode without the UI components'
@@ -330,6 +334,8 @@ Resources:
               ValueFrom: !Sub "${GenaiEngineSecretPostgresARN}:password::"
             - Name: 'APP_SECRET_KEY'
               ValueFrom: !Ref GenaiEngineAppSecretKeyARN
+            - Name: 'GENAI_ENGINE_SECRET_STORE_KEY'
+              ValueFrom: !Ref GenaiEngineSecretStoreKeyARN
             - !If
               - EnableAuthService
               - Name: 'AUTH_ADMIN_CONSOLE_PASSWORD'

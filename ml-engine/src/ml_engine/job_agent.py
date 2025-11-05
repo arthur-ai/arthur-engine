@@ -26,6 +26,7 @@ from arthur_client.auth import (
     ArthurOAuthSessionAPIConfiguration,
     ArthurOIDCMetadata,
 )
+
 from config import Config
 from health_check import MLEngineHealthCheck as HealthCheck
 from job_runner import JobRunner, ProcessJobRunner, ThreadJobRunner

@@ -1,7 +1,9 @@
 from functools import wraps
+from inspect import iscoroutinefunction
 
-from fastapi import HTTPException
 from arthur_common.models.common_schemas import AuthUserRole
+from fastapi import HTTPException
+
 from schemas.internal_schemas import User
 
 
@@ -52,6 +54,10 @@ def permission_checker(permissions: frozenset[str]):
                     status_code=403,
                     headers={"full_stacktrace": "false"},
                 )
+
+            if iscoroutinefunction(func):
+                return await func(*args, **kwargs)
+
             return func(*args, **kwargs)
 
         return wrapper

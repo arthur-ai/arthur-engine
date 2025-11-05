@@ -11,6 +11,7 @@ from db_models.base import (
 # Import all models
 from db_models.auth_models import DatabaseApiKey, DatabaseUser
 from db_models.configuration_models import DatabaseApplicationConfiguration
+from db_models.dataset_models import DatabaseDataset
 from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
@@ -23,6 +24,10 @@ from db_models.inference_models import (
     DatabaseInferencePromptContent,
     DatabaseInferenceResponse,
     DatabaseInferenceResponseContent,
+)
+from db_models.rag_provider_models import (
+    DatabaseRagProviderConfiguration,
+    DatabaseApiKeyRagProviderConfiguration,
 )
 from db_models.rule_models import DatabaseRule, DatabaseRuleData
 from db_models.rule_result_models import (
@@ -44,6 +49,7 @@ from db_models.telemetry_models import (
     DatabaseTraceMetadata,
 )
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.secret_storage_models import DatabaseSecretStorage
 
 __all__ = [
     # Base classes
@@ -90,4 +96,11 @@ __all__ = [
     "DatabaseMetricResult",
     # Agentic Prompt models
     "DatabaseAgenticPrompt",
+    # Dataset models
+    "DatabaseDataset",
+    # Secret storage models
+    "DatabaseSecretStorage",
+    # RAG provider models
+    "DatabaseRagProviderConfiguration",
+    "DatabaseApiKeyRagProviderConfiguration",
 ]

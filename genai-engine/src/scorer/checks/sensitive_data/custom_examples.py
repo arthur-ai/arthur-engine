@@ -1,6 +1,7 @@
+from arthur_common.models.enums import RuleResultEnum
 from langchain.schema import HumanMessage
 from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
-from arthur_common.models.enums import RuleResultEnum
+
 from schemas.scorer_schemas import RuleScore, ScoreRequest
 from scorer.llm_client import get_llm_executor, handle_llm_exception
 from scorer.scorer import RuleScorer

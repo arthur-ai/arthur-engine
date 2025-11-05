@@ -279,8 +279,8 @@ class TestODBCConnectorInitialization:
         # Verify custom driver is used in connection string
         mock_create_engine.assert_called_once()
         call_args = mock_create_engine.call_args[0][0]
-        assert "ODBC Driver 18 for SQL Server" in call_args[0]
-        assert "mssql+pyodbc:///?odbc_connect=" in call_args[0]
+        assert "ODBC Driver 18 for SQL Server" in call_args
+        assert "mssql+pyodbc:///?odbc_connect=" in call_args
 
     @patch("ml_engine.connectors.odbc_connector.create_engine")
     def test_connector_initialization_driver_default(self, mock_create_engine):
@@ -325,9 +325,9 @@ class TestODBCConnectorInitialization:
         # Verify default driver is used
         mock_create_engine.assert_called_once()
         call_args = mock_create_engine.call_args[0][0]
-        assert "mssql+pyodbc:///?odbc_connect=" in call_args[0]
+        assert "mssql+pyodbc:///?odbc_connect=" in call_args
         # Should not contain driver in connection string when not specified
-        assert "DRIVER=" not in call_args[0]
+        assert "DRIVER=" not in call_args
 
     @pytest.mark.parametrize(
         "dialect_config",

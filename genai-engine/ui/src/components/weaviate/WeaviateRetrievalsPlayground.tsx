@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { ConnectionForm, QueryConfiguration, ResultsDisplay } from "./index";
+
 import {
   WeaviateCollection,
   weaviateService,
   SearchSettings,
   QueryResult,
 } from "../../lib/weaviate-client";
+
+import { ConnectionForm, QueryConfiguration, ResultsDisplay } from "./index";
 
 export const WeaviateRetrievalsPlayground: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();

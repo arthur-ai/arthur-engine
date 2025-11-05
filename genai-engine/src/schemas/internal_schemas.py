@@ -2,13 +2,14 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional, Union
 
 from arthur_common.models.common_schemas import (
     AuthUserRole,
     ExampleConfig,
     ExamplesConfig,
     KeywordsConfig,
+    PaginationParameters,
     PIIConfig,
     RegexConfig,
     ToxicityConfig,
@@ -59,11 +60,19 @@ from arthur_common.models.response_schemas import (
 )
 from fastapi import HTTPException
 from opentelemetry import trace
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
+from pydantic_core import Url
+from weaviate.collections.classes.grpc import (
+    METADATA,
+    HybridFusion,
+    TargetVectorJoinType,
+)
+from weaviate.types import INCLUDE_VECTOR
 
 from db_models import (
     DatabaseApiKey,
     DatabaseApplicationConfiguration,
+    DatabaseDataset,
     DatabaseDocument,
     DatabaseEmbedding,
     DatabaseEmbeddingReference,
@@ -83,6 +92,7 @@ from db_models import (
     DatabaseResponseRuleResult,
     DatabaseRule,
     DatabaseRuleResultDetail,
+    DatabaseSecretStorage,
     DatabaseSpan,
     DatabaseTask,
     DatabaseTaskToMetrics,
@@ -91,16 +101,57 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
+from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
+from db_models.rag_provider_models import (
+    DatabaseApiKeyRagProviderConfiguration,
+    DatabaseRagProviderAuthenticationConfigurationTypes,
+    DatabaseRagSearchSettingConfiguration,
+    DatabaseRagSearchSettingConfigurationVersion,
+)
 from schemas.enums import (
     ApplicationConfigurations,
     DocumentStorageEnvironment,
+    RagAPIKeyAuthenticationProviderEnum,
+    RagProviderAuthenticationMethodEnum,
+    RagProviderEnum,
+    RagSearchKind,
     RuleDataType,
     RuleScoringMethod,
+    SecretType,
 )
 from schemas.metric_schemas import MetricScoreDetails
+from schemas.request_schemas import (
+    ApiKeyRagAuthenticationConfigRequest,
+    NewDatasetRequest,
+    NewDatasetVersionRequest,
+    NewDatasetVersionRowColumnItemRequest,
+    RagProviderConfigurationRequest,
+    RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationRequest,
+    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+)
 from schemas.response_schemas import (
+    ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
+    DatasetResponse,
+    DatasetVersionMetadataResponse,
+    DatasetVersionResponse,
+    DatasetVersionRowColumnItemResponse,
+    DatasetVersionRowResponse,
     DocumentStorageConfigurationResponse,
+    ListDatasetVersionsResponse,
+    RagProviderConfigurationResponse,
+    RagSearchSettingConfigurationResponse,
+    RagSearchSettingConfigurationVersionResponse,
+    SessionMetadataResponse,
+    SpanMetadataResponse,
+    TraceMetadataResponse,
+    TraceUserMetadataResponse,
+    WeaviateHybridSearchSettingsConfigurationResponse,
+    WeaviateKeywordSearchSettingsConfigurationResponse,
+    WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse,
 )
 from schemas.rules_schema_utils import CONFIG_CHECKERS, RuleData
 from schemas.scorer_schemas import (
@@ -114,7 +165,8 @@ from schemas.scorer_schemas import (
 )
 from utils import constants
 from utils import trace as trace_utils
-from utils.constants import SPAN_KIND_LLM
+from utils.constants import MAX_DATASET_ROWS, SPAN_KIND_LLM
+from utils.utils import calculate_duration_ms
 
 tracer = trace.get_tracer(__name__)
 logger = logging.getLogger()
@@ -519,6 +571,7 @@ class Task(BaseModel):
 class TraceMetadata(BaseModel):
     trace_id: str
     task_id: str
+    user_id: Optional[str] = None
     session_id: Optional[str] = None
     start_time: datetime
     end_time: datetime
@@ -531,6 +584,7 @@ class TraceMetadata(BaseModel):
         return TraceMetadata(
             trace_id=x.trace_id,
             task_id=x.task_id,
+            user_id=x.user_id,
             session_id=x.session_id,
             start_time=x.start_time,
             end_time=x.end_time,
@@ -543,10 +597,27 @@ class TraceMetadata(BaseModel):
         return DatabaseTraceMetadata(
             trace_id=self.trace_id,
             task_id=self.task_id,
+            user_id=self.user_id,
             session_id=self.session_id,
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def _to_metadata_response_model(self) -> TraceMetadataResponse:
+        """Convert to lightweight metadata response"""
+        duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+        return TraceMetadataResponse(
+            trace_id=self.trace_id,
+            task_id=self.task_id,
+            user_id=self.user_id,
+            session_id=self.session_id,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            span_count=self.span_count,
+            duration_ms=duration_ms,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -1007,6 +1078,7 @@ class InferenceResponse(BaseModel):
     context: Optional[str] = None
     response_rule_results: List[ResponseRuleResult] = []
     tokens: int | None = None
+    model_name: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseInferenceResponse):
@@ -1023,6 +1095,7 @@ class InferenceResponse(BaseModel):
                 for r in x.response_rule_results
             ],
             tokens=x.tokens,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1057,6 +1130,7 @@ class InferenceResponse(BaseModel):
                 r._to_database_model() for r in self.response_rule_results
             ],
             tokens=self.tokens,
+            model_name=self.model_name,
         )
 
 
@@ -1166,6 +1240,7 @@ class Inference(BaseModel):
     inference_response: Optional[InferenceResponse] = None
     inference_feedback: List[InferenceFeedback]
     user_id: Optional[str] = None
+    model_name: Optional[str] = None
 
     def has_prompt(self):
         return self.inference_prompt != None
@@ -1200,6 +1275,7 @@ class Inference(BaseModel):
                 InferenceFeedback.from_database_model(i) for i in x.inference_feedback
             ],
             user_id=x.user_id,
+            model_name=x.model_name,
         )
 
     def _to_response_model(self):
@@ -1219,6 +1295,7 @@ class Inference(BaseModel):
             ),
             inference_feedback=[i.to_response_model() for i in self.inference_feedback],
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
     def _to_database_model(self):
@@ -1236,6 +1313,7 @@ class Inference(BaseModel):
                 else None
             ),
             user_id=self.user_id,
+            model_name=self.model_name,
         )
 
 
@@ -1250,6 +1328,10 @@ class ValidationRequest(BaseModel):
     )
     context: Optional[str] = Field(
         description="Optional data provided as context for the validation.",
+        default=None,
+    )
+    model_name: Optional[str] = Field(
+        description="Model name to be used for the validation.",
         default=None,
     )
     tokens: Optional[List[str]] = Field(
@@ -1527,6 +1609,7 @@ class Span(BaseModel):
     end_time: datetime
     task_id: Optional[str] = None
     session_id: Optional[str] = None
+    user_id: Optional[str] = None
     status_code: str = "Unset"
     raw_data: dict
     created_at: datetime
@@ -1603,6 +1686,7 @@ class Span(BaseModel):
             end_time=db_span.end_time,
             task_id=db_span.task_id,
             session_id=db_span.session_id,
+            user_id=db_span.user_id,
             status_code=db_span.status_code,
             raw_data=db_span.raw_data,
             created_at=db_span.created_at,
@@ -1625,6 +1709,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1643,6 +1728,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1671,6 +1757,7 @@ class Span(BaseModel):
             end_time=self.end_time,
             task_id=self.task_id,
             session_id=self.session_id,
+            user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
             created_at=self.created_at,
@@ -1685,8 +1772,29 @@ class Span(BaseModel):
             children=children or [],
         )
 
+    def _to_metadata_response_model(self) -> SpanMetadataResponse:
+        """Convert to lightweight metadata response"""
+        duration_ms = calculate_duration_ms(self.start_time, self.end_time)
+        return SpanMetadataResponse(
+            id=self.id,
+            trace_id=self.trace_id,
+            span_id=self.span_id,
+            parent_span_id=self.parent_span_id,
+            span_kind=self.span_kind,
+            span_name=self.span_name,
+            start_time=self.start_time,
+            end_time=self.end_time,
+            duration_ms=duration_ms,
+            task_id=self.task_id,
+            session_id=self.session_id,
+            user_id=self.user_id,
+            status_code=self.status_code,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
     @staticmethod
-    def from_span_data(span_data: dict, user_id: str) -> "Span":
+    def from_span_data(span_data: dict) -> "Span":
         """Create a Span from raw span data received from OpenTelemetry"""
         return Span(
             id=str(uuid.uuid4()),
@@ -1699,6 +1807,7 @@ class Span(BaseModel):
             end_time=span_data["end_time"],
             task_id=span_data["task_id"],
             session_id=span_data.get("session_id"),
+            user_id=span_data.get("user_id"),
             status_code=span_data.get("status_code", "Unset"),
             raw_data=span_data["raw_data"],
             created_at=datetime.now(),
@@ -1713,6 +1822,62 @@ class Span(BaseModel):
 class OrderedClaim(BaseModel):
     index_number: int
     text: str
+
+
+class SessionMetadata(BaseModel):
+    """Internal session metadata representation"""
+
+    session_id: str
+    task_id: str
+    user_id: Optional[str] = None
+    trace_ids: list[str]
+    span_count: int
+    earliest_start_time: datetime
+    latest_end_time: datetime
+
+    def _to_metadata_response_model(self) -> SessionMetadataResponse:
+        """Convert to API response model"""
+        duration_ms = calculate_duration_ms(
+            self.earliest_start_time,
+            self.latest_end_time,
+        )
+        return SessionMetadataResponse(
+            session_id=self.session_id,
+            task_id=self.task_id,
+            user_id=self.user_id,
+            trace_ids=self.trace_ids,
+            trace_count=len(self.trace_ids),
+            span_count=self.span_count,
+            earliest_start_time=self.earliest_start_time,
+            latest_end_time=self.latest_end_time,
+            duration_ms=duration_ms,
+        )
+
+
+class TraceUserMetadata(BaseModel):
+    """Internal trace user metadata representation"""
+
+    user_id: str
+    task_id: str
+    session_ids: list[str]
+    trace_ids: list[str]
+    span_count: int
+    earliest_start_time: datetime
+    latest_end_time: datetime
+
+    def _to_metadata_response_model(self) -> TraceUserMetadataResponse:
+        """Convert to API response model"""
+        return TraceUserMetadataResponse(
+            user_id=self.user_id,
+            task_id=self.task_id,
+            session_ids=self.session_ids,
+            session_count=len(self.session_ids),
+            trace_ids=self.trace_ids,
+            trace_count=len(self.trace_ids),
+            span_count=self.span_count,
+            earliest_start_time=self.earliest_start_time,
+            latest_end_time=self.latest_end_time,
+        )
 
 
 def config_if_exists(key: str, configs: List[DatabaseApplicationConfiguration]):
@@ -1759,6 +1924,10 @@ class TraceQuerySchema(BaseModel):
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
     response_relevance_filters: Optional[list[FloatRangeFilter]] = None
     trace_duration_filters: Optional[list[FloatRangeFilter]] = None
+    user_ids: Optional[list[str]] = Field(
+        None,
+        description="User IDs to filter on. Optional.",
+    )
 
     @staticmethod
     def _from_request_model(request: TraceQueryRequest) -> "TraceQuerySchema":
@@ -1787,4 +1956,1013 @@ class TraceQuerySchema(BaseModel):
             query_relevance_filters=query_relevance,
             response_relevance_filters=response_relevance,
             trace_duration_filters=trace_duration,
+        )
+
+
+class Dataset(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    name: str
+    description: Optional[str]
+    metadata: Optional[dict]
+    latest_version_number: Optional[int]
+
+    def to_response_model(self) -> DatasetResponse:
+        return DatasetResponse(
+            id=self.id,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+            name=self.name,
+            description=self.description,
+            metadata=self.metadata,
+            latest_version_number=self.latest_version_number,
+        )
+
+    def _to_database_model(self) -> DatabaseDataset:
+        return DatabaseDataset(
+            id=self.id,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+            name=self.name,
+            description=self.description,
+            dataset_metadata=self.metadata,
+            latest_version_number=self.latest_version_number,
+        )
+
+    @staticmethod
+    def _from_request_model(request: NewDatasetRequest) -> "Dataset":
+        curr_time = datetime.now()
+        return Dataset(
+            id=uuid.uuid4(),
+            created_at=curr_time,
+            updated_at=curr_time,
+            name=request.name,
+            description=request.description,
+            metadata=request.metadata,
+            latest_version_number=None,
+        )
+
+    @staticmethod
+    def _from_database_model(db_dataset: DatabaseDataset) -> "Dataset":
+        return Dataset(
+            id=db_dataset.id,
+            created_at=db_dataset.created_at,
+            updated_at=db_dataset.updated_at,
+            name=db_dataset.name,
+            description=db_dataset.description,
+            metadata=db_dataset.dataset_metadata,
+            latest_version_number=db_dataset.latest_version_number,
+        )
+
+
+class DatasetVersionRowColumnItem(BaseModel):
+    column_name: str
+    column_value: str
+
+    @staticmethod
+    def _from_request_model(
+        request: NewDatasetVersionRowColumnItemRequest,
+    ) -> "DatasetVersionRowColumnItem":
+        return DatasetVersionRowColumnItem(
+            column_name=request.column_name,
+            column_value=request.column_value,
+        )
+
+
+class DatasetVersionRow(BaseModel):
+    id: uuid.UUID
+    data: list[DatasetVersionRowColumnItem]
+    created_at: datetime
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version_row: DatabaseDatasetVersionRow,
+    ) -> "DatasetVersionRow":
+        return DatasetVersionRow(
+            id=db_dataset_version_row.id,
+            data=[
+                DatasetVersionRowColumnItem(column_name=key, column_value=value)
+                for key, value in db_dataset_version_row.data.items()
+            ],
+            created_at=db_dataset_version_row.created_at,
+        )
+
+
+class DatasetVersionMetadata(BaseModel):
+    version_number: int
+    created_at: datetime
+    dataset_id: uuid.UUID
+    column_names: List[str]
+
+    @staticmethod
+    def _calculate_column_names(rows: List[DatasetVersionRow]) -> List[str]:
+        """Returns list of all column names in the dataset version.
+        :param:rows: list of all rows in the version
+        """
+        column_names = set()
+        for row in rows:
+            for col_item in row.data:
+                column_names.add(col_item.column_name)
+        return list(column_names)
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version: DatabaseDatasetVersion,
+    ) -> "DatasetVersionMetadata":
+        return DatasetVersionMetadata(
+            version_number=db_dataset_version.version_number,
+            created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
+            column_names=db_dataset_version.column_names,
+        )
+
+    def to_response_model(self) -> DatasetVersionMetadataResponse:
+        return DatasetVersionMetadataResponse(
+            version_number=self.version_number,
+            created_at=_serialize_datetime(self.created_at),
+            dataset_id=self.dataset_id,
+            column_names=self.column_names,
+        )
+
+
+class DatasetVersion(DatasetVersionMetadata):
+    rows: List[DatasetVersionRow]
+    page: int = Field(description="The current page number for the included rows.")
+    page_size: int = Field(description="The number of rows per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of rows in the dataset version.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        dataset_id: uuid.UUID,
+        latest_version: Optional[DatabaseDatasetVersion],
+        new_version: NewDatasetVersionRequest,
+    ) -> "DatasetVersion":
+        """
+        :param: dataset_id: dataset the version belongs to.
+        :param: latest_version: DatabaseBDatasetVersion of the latest version of the dataset before the new one.
+        :param: new_version: NewDatasetVersionRequest with the diff changes for the new dataset version
+        """
+        # assemble data rows
+        ids_rows_to_update = set(row.id for row in new_version.rows_to_update)
+        if latest_version is not None:
+            unchanged_rows = [
+                DatasetVersionRow._from_database_model(db_row)
+                for db_row in latest_version.version_rows
+                if db_row.id not in new_version.rows_to_delete
+                and db_row.id not in ids_rows_to_update
+            ]
+            existing_row_id_to_row = {
+                db_row.id: db_row for db_row in latest_version.version_rows
+            }
+        elif latest_version is None and new_version.rows_to_update:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot specify rows to update if there is no previous version of the dataset.",
+            )
+        else:
+            unchanged_rows = []
+            existing_row_id_to_row = {}
+
+        # validate updated rows do exist in the last version while creating updated_rows object
+        updated_rows = []
+        for updated_row in new_version.rows_to_update:
+            if updated_row.id not in existing_row_id_to_row:
+                raise HTTPException(
+                    status_code=404,
+                    detail="At least one row specified to update does not exist.",
+                )
+            else:
+                updated_rows.append(
+                    DatasetVersionRow(
+                        id=updated_row.id,
+                        data=[
+                            DatasetVersionRowColumnItem._from_request_model(row_item)
+                            for row_item in updated_row.data
+                        ],
+                        created_at=existing_row_id_to_row[updated_row.id].created_at,
+                    ),
+                )
+        curr_time = datetime.now()
+        new_rows = [
+            DatasetVersionRow(
+                id=uuid.uuid4(),
+                data=[
+                    DatasetVersionRowColumnItem._from_request_model(row_item)
+                    for row_item in new_row.data
+                ],
+                created_at=curr_time,
+            )
+            for new_row in new_version.rows_to_add
+        ]
+        all_rows = unchanged_rows + new_rows + updated_rows
+
+        if len(all_rows) > MAX_DATASET_ROWS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Total number of rows {len(all_rows)} exceeds max allowed length, {MAX_DATASET_ROWS}.",
+            )
+
+        return DatasetVersion(
+            version_number=latest_version.version_number + 1 if latest_version else 1,
+            created_at=curr_time,
+            dataset_id=dataset_id,
+            rows=all_rows,
+            page=0,
+            page_size=len(all_rows),
+            total_pages=1,
+            total_count=len(all_rows),
+            column_names=DatasetVersionMetadata._calculate_column_names(all_rows),
+        )
+
+    def _to_database_model(self) -> DatabaseDatasetVersion:
+        if self.page_size != self.total_count:
+            raise ValueError(
+                "Should not be using the database model without all version rows present.",
+            )
+
+        return DatabaseDatasetVersion(
+            version_number=self.version_number,
+            dataset_id=self.dataset_id,
+            created_at=self.created_at,
+            version_rows=[
+                DatabaseDatasetVersionRow(
+                    version_number=self.version_number,
+                    dataset_id=self.dataset_id,
+                    id=version_row.id,
+                    data={
+                        row_item.column_name: row_item.column_value
+                        for row_item in version_row.data
+                    },
+                    created_at=version_row.created_at,
+                )
+                for version_row in self.rows
+            ],
+            column_names=self.column_names,
+        )
+
+    def to_response_model(self) -> DatasetVersionResponse:
+        return DatasetVersionResponse(
+            version_number=self.version_number,
+            dataset_id=self.dataset_id,
+            created_at=_serialize_datetime(self.created_at),
+            rows=[
+                DatasetVersionRowResponse(
+                    id=row.id,
+                    data=[
+                        DatasetVersionRowColumnItemResponse(
+                            column_name=row_item.column_name,
+                            column_value=row_item.column_value,
+                        )
+                        for row_item in row.data
+                    ],
+                    created_at=_serialize_datetime(self.created_at),
+                )
+                for row in self.rows
+            ],
+            page=self.page,
+            page_size=self.page_size,
+            total_pages=self.total_pages,
+            total_count=self.total_count,
+            column_names=self.column_names,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_version: DatabaseDatasetVersion,
+        total_count: int,
+        pagination_params: PaginationParameters,
+    ) -> "DatasetVersion":
+        return DatasetVersion(
+            version_number=db_dataset_version.version_number,
+            created_at=db_dataset_version.created_at,
+            dataset_id=db_dataset_version.dataset_id,
+            rows=[
+                DatasetVersionRow._from_database_model(db_row)
+                for db_row in db_dataset_version.version_rows
+            ],
+            page=pagination_params.page,
+            page_size=pagination_params.page_size,
+            total_pages=(
+                pagination_params.calculate_total_pages(total_count)
+                if total_count > 0
+                else 0
+            ),
+            total_count=total_count,
+            column_names=db_dataset_version.column_names,
+        )
+
+
+class ListDatasetVersions(BaseModel):
+    versions: List[DatasetVersionMetadata]
+    page: int = Field(description="The current page number for the included versions.")
+    page_size: int = Field(description="The number of versions per page.")
+    total_pages: int = Field(description="The total number of pages.")
+    total_count: int = Field(
+        description="The total number of versions for the dataset.",
+    )
+
+    @staticmethod
+    def _from_database_model(
+        db_dataset_versions: List[DatabaseDatasetVersion],
+        total_count: int,
+        pagination_params: PaginationParameters,
+    ) -> "ListDatasetVersions":
+        return ListDatasetVersions(
+            versions=[
+                DatasetVersionMetadata._from_database_model(db_dataset_version)
+                for db_dataset_version in db_dataset_versions
+            ],
+            page=pagination_params.page,
+            page_size=pagination_params.page_size,
+            total_pages=(
+                pagination_params.calculate_total_pages(total_count)
+                if total_count > 0
+                else 0
+            ),
+            total_count=total_count,
+        )
+
+    def to_response_model(self) -> ListDatasetVersionsResponse:
+        return ListDatasetVersionsResponse(
+            versions=[version.to_response_model() for version in self.versions],
+            page=self.page,
+            page_size=self.page_size,
+            total_pages=self.total_pages,
+            total_count=self.total_count,
+        )
+
+
+class ApiKeyRagProviderSecretValue(BaseModel):
+    api_key: SecretStr
+
+    def _to_sensitive_dict(self) -> dict[str, str]:
+        """Returns dict with all fields in the object. Secrets will be revealed as strings.
+        WARNING: should be very infrequently used. The secret will need to be revealed in a dictionary to store
+        its value in the database.
+        """
+        model_dict = vars(self)
+        model_dict["api_key"] = model_dict["api_key"].get_secret_value()
+        return model_dict
+
+
+class ApiKeyRagProviderSecret(BaseModel):
+    id: str
+    name: str
+    value: ApiKeyRagProviderSecretValue
+    secret_type: SecretType
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _to_database_model(
+        provider_config: "RagProviderConfiguration",
+    ) -> DatabaseSecretStorage:
+        api_key_secret_id = uuid.uuid4()
+        curr_time = datetime.now()
+        secret_value = ApiKeyRagProviderSecretValue(
+            api_key=provider_config.authentication_config.api_key,
+        )
+        return DatabaseSecretStorage(
+            id=str(api_key_secret_id),
+            name=f"api_key_rag_provider_config_{provider_config.id}",
+            value=secret_value._to_sensitive_dict(),
+            secret_type=SecretType.RAG_PROVIDER,
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_secret: DatabaseSecretStorage,
+    ) -> "ApiKeyRagProviderSecret":
+        return ApiKeyRagProviderSecret(
+            id=db_secret.id,
+            name=db_secret.name,
+            value=ApiKeyRagProviderSecretValue.model_validate(db_secret.value),
+            secret_type=SecretType.RAG_PROVIDER,
+            created_at=db_secret.created_at,
+            updated_at=db_secret.updated_at,
+        )
+
+
+class ApiKeyRagAuthenticationConfig(BaseModel):
+    authentication_method: Literal[
+        RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    ] = RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+    api_key: SecretStr
+    host_url: Url
+    rag_provider: RagAPIKeyAuthenticationProviderEnum
+
+    @staticmethod
+    def _from_request_model(
+        request: ApiKeyRagAuthenticationConfigRequest,
+    ) -> "ApiKeyRagAuthenticationConfig":
+        return ApiKeyRagAuthenticationConfig(
+            authentication_method=request.authentication_method,
+            api_key=request.api_key,
+            host_url=request.host_url,
+            rag_provider=request.rag_provider,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_config: "DatabaseApiKeyRagProviderConfiguration",
+    ) -> "ApiKeyRagAuthenticationConfig":
+        api_key_secret = ApiKeyRagProviderSecret._from_database_model(db_config.api_key)
+        return ApiKeyRagAuthenticationConfig(
+            authentication_method=RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION,
+            api_key=api_key_secret.value.api_key,
+            host_url=Url(db_config.host_url),
+            rag_provider=db_config.rag_provider,
+        )
+
+    def to_response_model(self) -> ApiKeyRagAuthenticationConfigResponse:
+        return ApiKeyRagAuthenticationConfigResponse(
+            authentication_method=self.authentication_method,
+            host_url=self.host_url,
+            rag_provider=self.rag_provider,
+        )
+
+    @staticmethod
+    def _to_database_model(
+        provider_config: "RagProviderConfiguration",
+    ) -> DatabaseApiKeyRagProviderConfiguration:
+        api_key_secret_db = ApiKeyRagProviderSecret._to_database_model(provider_config)
+        return DatabaseApiKeyRagProviderConfiguration(
+            id=provider_config.id,
+            authentication_method=provider_config.authentication_config.authentication_method,
+            task_id=provider_config.task_id,
+            name=provider_config.name,
+            description=provider_config.description,
+            created_at=provider_config.created_at,
+            updated_at=provider_config.updated_at,
+            api_key=api_key_secret_db,
+            api_key_secret_id=api_key_secret_db.id,
+            host_url=str(provider_config.authentication_config.host_url),
+            rag_provider=provider_config.authentication_config.rag_provider,
+        )
+
+
+RagAuthenticationConfigTypes = Union[ApiKeyRagAuthenticationConfig]
+
+
+class RagProviderTestConfiguration(BaseModel):
+    authentication_config: RagAuthenticationConfigTypes
+
+    @staticmethod
+    def _from_request_model(
+        request: RagProviderTestConfigurationRequest,
+    ) -> "RagProviderTestConfiguration":
+        if isinstance(
+            request.authentication_config,
+            ApiKeyRagAuthenticationConfigRequest,
+        ):
+            config = ApiKeyRagAuthenticationConfig._from_request_model(
+                request.authentication_config,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Authentication method {type(request.authentication_config)} is not supported.",
+            )
+
+        return RagProviderTestConfiguration(
+            authentication_config=config,
+        )
+
+
+class RagProviderConfiguration(BaseModel):
+    id: uuid.UUID
+    task_id: str
+    authentication_config: RagAuthenticationConfigTypes
+    name: str
+    description: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    @staticmethod
+    def _from_request_model(
+        task_id: str,
+        request: RagProviderConfigurationRequest,
+    ) -> "RagProviderConfiguration":
+        if isinstance(
+            request.authentication_config,
+            ApiKeyRagAuthenticationConfigRequest,
+        ):
+            config = ApiKeyRagAuthenticationConfig._from_request_model(
+                request.authentication_config,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Authentication method {type(request.authentication_config)} is not supported.",
+            )
+
+        return RagProviderConfiguration(
+            id=uuid.uuid4(),
+            task_id=task_id,
+            authentication_config=config,
+            description=request.description,
+            name=request.name,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+    @staticmethod
+    def _from_database_model(db_config) -> "RagProviderConfiguration":
+        """Create from polymorphic database model"""
+        if (
+            db_config.authentication_method
+            == RagProviderAuthenticationMethodEnum.API_KEY_AUTHENTICATION
+        ):
+            # This should be a DatabaseApiKeyRagProviderConfiguration
+            auth_config = ApiKeyRagAuthenticationConfig._from_database_model(db_config)
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported authentication method: {db_config.authentication_method}",
+            )
+
+        return RagProviderConfiguration(
+            id=db_config.id,
+            task_id=db_config.task_id,
+            authentication_config=auth_config,
+            name=db_config.name,
+            description=db_config.description,
+            created_at=db_config.created_at,
+            updated_at=db_config.updated_at,
+        )
+
+    def to_response_model(self) -> RagProviderConfigurationResponse:
+        return RagProviderConfigurationResponse(
+            authentication_config=self.authentication_config.to_response_model(),
+            id=self.id,
+            task_id=self.task_id,
+            name=self.name,
+            description=self.description,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    def _to_database_model(self) -> DatabaseRagProviderAuthenticationConfigurationTypes:
+        if isinstance(self.authentication_config, ApiKeyRagAuthenticationConfig):
+            return ApiKeyRagAuthenticationConfig._to_database_model(self)
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported authentication method: {self.authentication_method}",
+            )
+
+
+class WeaviateSearchCommonSettings(BaseModel):
+    collection_name: str = Field(
+        description="Name of the vector collection used for the search.",
+    )
+    limit: Optional[int] = Field(
+        default=None,
+        description="Maximum number of objects to return.",
+    )
+    include_vector: Optional[INCLUDE_VECTOR] = Field(
+        default=False,
+        description="Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.",
+    )
+    offset: Optional[int] = Field(
+        default=None,
+        description="Skips first N results in similarity response. Useful for pagination.",
+    )
+    auto_limit: Optional[int] = Field(
+        default=None,
+        description="Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.",
+    )
+    return_metadata: Optional[METADATA] = Field(
+        default=None,
+        description="Specify metadata fields to return.",
+    )
+    return_properties: Optional[List[str]] = Field(
+        default=None,
+        description="Specify which properties to return for each object.",
+    )
+
+
+class WeaviateVectorSimilarityTextSearchSettingsConfiguration(
+    WeaviateSearchCommonSettings,
+):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
+    )
+
+    certainty: Optional[float] = Field(
+        default=None,
+        description="Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.",
+        ge=0,
+        le=1,
+    )
+    distance: Optional[float] = Field(
+        default=None,
+        description="Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for similarity search when using named vectors.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+    ) -> "WeaviateVectorSimilarityTextSearchSettingsConfiguration":
+        return WeaviateVectorSimilarityTextSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            certainty=request.certainty,
+            distance=request.distance,
+            target_vector=request.target_vector,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(
+        self,
+    ) -> WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse:
+        return WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            certainty=self.certainty,
+            distance=self.distance,
+            target_vector=self.target_vector,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+class WeaviateKeywordSearchSettingsConfiguration(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateKeywordSearchSettingsConfigurationRequest,
+    ) -> "WeaviateKeywordSearchSettingsConfiguration":
+        return WeaviateKeywordSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            minimum_match_or_operator=request.minimum_match_or_operator,
+            and_operator=request.and_operator,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(self) -> WeaviateKeywordSearchSettingsConfigurationResponse:
+        return WeaviateKeywordSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            minimum_match_or_operator=self.minimum_match_or_operator,
+            and_operator=self.and_operator,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+class WeaviateHybridSearchSettingsConfiguration(WeaviateSearchCommonSettings):
+    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+    alpha: float = Field(
+        default=0.7,
+        description="Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.",
+    )
+    query_properties: Optional[list[str]] = Field(
+        default=None,
+        description="Apply keyword search to only a specified subset of object properties.",
+    )
+    fusion_type: Optional[HybridFusion] = Field(
+        default=None,
+        description="Set the fusion algorithm to use. Default is Relative Score Fusion.",
+    )
+    max_vector_distance: Optional[float] = Field(
+        default=None,
+        description="Maximum threshold for the vector search component.",
+    )
+    minimum_match_or_operator: Optional[int] = Field(
+        default=None,
+        description="Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.",
+    )
+    and_operator: Optional[bool] = Field(
+        default=None,
+        description="Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.",
+    )
+    target_vector: Optional[TargetVectorJoinType] = Field(
+        default=None,
+        description="Specifies vector to use for vector search when using named vectors.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: WeaviateHybridSearchSettingsConfigurationRequest,
+    ) -> "WeaviateHybridSearchSettingsConfiguration":
+        return WeaviateHybridSearchSettingsConfiguration(
+            rag_provider=request.rag_provider,
+            search_kind=request.search_kind,
+            alpha=request.alpha,
+            query_properties=request.query_properties,
+            fusion_type=request.fusion_type,
+            max_vector_distance=request.max_vector_distance,
+            minimum_match_or_operator=request.minimum_match_or_operator,
+            and_operator=request.and_operator,
+            target_vector=request.target_vector,
+            collection_name=request.collection_name,
+            limit=request.limit,
+            include_vector=request.include_vector,
+            offset=request.offset,
+            auto_limit=request.auto_limit,
+            return_metadata=request.return_metadata,
+            return_properties=request.return_properties,
+        )
+
+    def to_response_model(self) -> WeaviateHybridSearchSettingsConfigurationResponse:
+        return WeaviateHybridSearchSettingsConfigurationResponse(
+            rag_provider=self.rag_provider,
+            search_kind=self.search_kind,
+            alpha=self.alpha,
+            query_properties=self.query_properties,
+            fusion_type=self.fusion_type,
+            max_vector_distance=self.max_vector_distance,
+            minimum_match_or_operator=self.minimum_match_or_operator,
+            and_operator=self.and_operator,
+            target_vector=self.target_vector,
+            collection_name=self.collection_name,
+            limit=self.limit,
+            include_vector=self.include_vector,
+            offset=self.offset,
+            auto_limit=self.auto_limit,
+            return_metadata=self.return_metadata,
+            return_properties=self.return_properties,
+        )
+
+
+RagSearchSettingConfigurationTypes = Union[
+    WeaviateHybridSearchSettingsConfiguration,
+    WeaviateVectorSimilarityTextSearchSettingsConfiguration,
+    WeaviateKeywordSearchSettingsConfiguration,
+]
+
+
+class RagSearchSettingConfigurationVersion(BaseModel):
+    setting_configuration_id: uuid.UUID = Field(
+        description="ID of the parent search setting configuration.",
+    )
+    version_number: int = Field(
+        description="Version number of the search setting configuration.",
+    )
+    tags: Optional[list[str]] = Field(
+        default=None,
+        description="Optional list of tags configured for this version of the search settings configuration.",
+    )
+    settings: RagSearchSettingConfigurationTypes = Field(
+        description="Search settings configuration for a search request to a RAG provider.",
+    )
+    created_at: datetime = Field(
+        description="Time the RAG search settings configuration version was created.",
+    )
+    updated_at: datetime = Field(
+        description="Time the RAG search settings configuration version was updated.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: RagSearchSettingConfigurationRequest,
+        setting_config_id: uuid.UUID,
+    ) -> "RagSearchSettingConfigurationVersion":
+        curr_time = datetime.now()
+
+        if isinstance(
+            request.settings,
+            WeaviateHybridSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateHybridSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        elif isinstance(
+            request.settings,
+            WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateVectorSimilarityTextSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        elif isinstance(
+            request.settings,
+            WeaviateKeywordSearchSettingsConfigurationRequest,
+        ):
+            settings = WeaviateKeywordSearchSettingsConfiguration._from_request_model(
+                request.settings,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported settings kind: {type(request.settings)}.",
+            )
+
+        return RagSearchSettingConfigurationVersion(
+            version_number=1,
+            tags=request.tags,
+            setting_configuration_id=setting_config_id,
+            settings=settings,
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfigurationVersion:
+        return DatabaseRagSearchSettingConfigurationVersion(
+            setting_configuration_id=self.setting_configuration_id,
+            version_number=self.version_number,
+            settings=self.settings.model_dump(mode="json"),
+            tags=self.tags,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> RagSearchSettingConfigurationVersionResponse:
+        return RagSearchSettingConfigurationVersionResponse(
+            setting_configuration_id=self.setting_configuration_id,
+            version_number=self.version_number,
+            settings=self.settings.to_response_model(),
+            tags=self.tags,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_model: DatabaseRagSearchSettingConfigurationVersion,
+    ) -> "RagSearchSettingConfigurationVersion":
+        # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
+        settings_dict = db_model.settings
+        search_kind = settings_dict.get("search_kind")
+
+        # Discriminate by search_kind field (stored as string in JSON)
+        if search_kind == RagSearchKind.HYBRID_SEARCH.value:
+            settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
+                settings_dict,
+            )
+        elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
+            settings = (
+                WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            )
+        elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
+            settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
+                settings_dict,
+            )
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
+            )
+
+        return RagSearchSettingConfigurationVersion(
+            setting_configuration_id=db_model.setting_configuration_id,
+            version_number=db_model.version_number,
+            settings=settings,
+            tags=db_model.tags,
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
+        )
+
+
+class RagSearchSettingConfiguration(BaseModel):
+    id: uuid.UUID = Field(description="ID of the search setting configuration.")
+    task_id: str = Field(description="ID of the parent task.")
+    rag_provider_id: Optional[uuid.UUID] = Field(
+        description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
+    )
+    all_possible_tags: Optional[list[str]] = Field(
+        defaeult=None,
+        description="Set of all tags applied for any version of the settings configuration.",
+    )
+    name: str = Field(description="Name of the search setting configuration.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the search setting configuration.",
+    )
+    latest_version_number: int = Field(
+        description="The latest version number of the search settings configuration.",
+    )
+    latest_version: RagSearchSettingConfigurationVersion = Field(
+        description="The latest version of the search settings configuration.",
+    )
+    created_at: datetime = Field(
+        description="Time the RAG search settings configuration was created.",
+    )
+    updated_at: datetime = Field(
+        description="Time the RAG search settings configuration was updated. Will be updated if a new version of the configuration was created.",
+    )
+
+    @staticmethod
+    def _from_request_model(
+        request: RagSearchSettingConfigurationRequest,
+        task_id: str,
+    ) -> "RagSearchSettingConfiguration":
+        setting_config_id = uuid.uuid4()
+        curr_time = datetime.now()
+        return RagSearchSettingConfiguration(
+            id=setting_config_id,
+            task_id=task_id,
+            rag_provider_id=request.rag_provider_id,
+            all_possible_tags=(
+                list(
+                    set(request.tags),  # set() removes duplicates if needed
+                )
+                if request.tags
+                else request.tags
+            ),
+            name=request.name,
+            description=request.description,
+            latest_version_number=1,
+            latest_version=RagSearchSettingConfigurationVersion._from_request_model(
+                request,
+                setting_config_id,
+            ),
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    def _to_database_model(self) -> DatabaseRagSearchSettingConfiguration:
+        return DatabaseRagSearchSettingConfiguration(
+            id=self.id,
+            task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
+            name=self.name,
+            description=self.description,
+            latest_version_number=self.latest_version_number,
+            latest_version=self.latest_version._to_database_model(),
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    def to_response_model(self) -> RagSearchSettingConfigurationResponse:
+        return RagSearchSettingConfigurationResponse(
+            id=self.id,
+            task_id=self.task_id,
+            rag_provider_id=self.rag_provider_id,
+            all_possible_tags=self.all_possible_tags,
+            name=self.name,
+            description=self.description,
+            latest_version_number=self.latest_version_number,
+            latest_version=self.latest_version.to_response_model(),
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_model: DatabaseRagSearchSettingConfiguration,
+    ) -> "RagSearchSettingConfiguration":
+        return RagSearchSettingConfiguration(
+            id=db_model.id,
+            task_id=db_model.task_id,
+            rag_provider_id=db_model.rag_provider_id,
+            all_possible_tags=db_model.all_possible_tags,
+            name=db_model.name,
+            description=db_model.description,
+            latest_version_number=db_model.latest_version_number,
+            latest_version=RagSearchSettingConfigurationVersion._from_database_model(
+                db_model.latest_version,
+            ),
+            created_at=db_model.created_at,
+            updated_at=db_model.updated_at,
         )
