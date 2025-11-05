@@ -53,10 +53,8 @@ def test_save_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: 
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "new_eval"
@@ -70,7 +68,8 @@ def test_save_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: 
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 1
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["score_range"] == eval_data["score_range"]
+    assert response.json()["min_score"] == eval_data["min_score"]
+    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -83,10 +82,8 @@ def test_save_llm_eval_duplicate(client: GenaiEngineTestClientBase, agentic_task
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "duplicate_eval"
@@ -109,7 +106,8 @@ def test_save_llm_eval_duplicate(client: GenaiEngineTestClientBase, agentic_task
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 2
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["score_range"] == eval_data["score_range"]
+    assert response.json()["min_score"] == eval_data["min_score"]
+    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -124,10 +122,8 @@ def test_save_llm_eval_with_malformed_data(
     # Missing model_name, model_provider
     eval_data = {
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     response = client.base_client.post(
@@ -146,10 +142,8 @@ def test_delete_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -188,10 +182,8 @@ def test_delete_llm_eval_errors(client: GenaiEngineTestClientBase, agentic_task:
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -231,10 +223,8 @@ def test_soft_delete_llm_eval_success(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -276,10 +266,8 @@ def test_soft_delete_llm_eval_version_errors(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "score_range": {
-            "min_score": 0,
-            "max_score": 1,
-        },
+        "min_score": 0,
+        "max_score": 1,
     }
 
     eval_name = "soft_delete_eval"

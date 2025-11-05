@@ -28,7 +28,8 @@ class DatabaseLLMEval(Base):
 
     # Prompt Content - stored as JSON for flexibility
     instructions: Mapped[str] = mapped_column(String, nullable=False)
-    score_range: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    min_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Eval configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)

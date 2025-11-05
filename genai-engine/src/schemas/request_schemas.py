@@ -17,6 +17,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
@@ -25,7 +26,6 @@ from schemas.enums import (
     RagProviderEnum,
     RagSearchKind,
 )
-from schemas.llm_eval_schemas import LLMEvalConfig, ScoreRange
 
 
 class DocumentStorageConfigurationUpdateRequest(BaseModel):
@@ -664,11 +664,9 @@ class CreateEvalRequest(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     instructions: str = Field(description="Instructions for the llm eval")
-    score_range: ScoreRange = Field(
-        default=ScoreRange(min_score=0, max_score=1),
-        description="Score range for the llm eval (defaults to boolean)",
-    )
-    config: Optional[LLMEvalConfig] = Field(
+    min_score: int = Field(default=0, description="Minimum score for the llm eval")
+    max_score: int = Field(default=1, description="Maximum score for the llm eval")
+    config: Optional[LLMConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )

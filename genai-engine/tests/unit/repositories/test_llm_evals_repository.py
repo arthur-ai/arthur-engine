@@ -7,7 +7,8 @@ from sqlalchemy.exc import IntegrityError
 
 from db_models.llm_eval_models import DatabaseLLMEval
 from repositories.llm_evals_repository import LLMEvalsRepository
-from schemas.llm_eval_schemas import LLMEval, LLMEvalConfig, ScoreRange
+from schemas.agentic_prompt_schemas import LLMConfigSettings
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateEvalRequest
 
 
@@ -28,8 +29,7 @@ def sample_llm_eval():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        score_range=ScoreRange(min_score=0, max_score=1),
-        config=LLMEvalConfig(temperature=0.5, max_tokens=100),
+        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
         version=1,
     )
 
@@ -40,8 +40,7 @@ def sample_create_eval_request():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        score_range=ScoreRange(min_score=0, max_score=1),
-        config=LLMEvalConfig(temperature=0.5, max_tokens=100),
+        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
     )
 
 
@@ -55,8 +54,9 @@ def sample_db_llm_eval():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        score_range=ScoreRange(min_score=0, max_score=1),
-        config=LLMEvalConfig(temperature=0.5, max_tokens=100),
+        min_score=0,
+        max_score=1,
+        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
         created_at=datetime.now(),
         deleted_at=None,
         version=1,
@@ -123,7 +123,8 @@ def test_save_llm_eval_with_llm_eval_object(
     assert added_eval.model_name == sample_llm_eval.model_name
     assert added_eval.model_provider == sample_llm_eval.model_provider
     assert added_eval.instructions == sample_llm_eval.instructions
-    assert added_eval.score_range == sample_llm_eval.score_range.model_dump()
+    assert added_eval.min_score == sample_llm_eval.min_score
+    assert added_eval.max_score == sample_llm_eval.max_score
     assert added_eval.config == sample_llm_eval.config.model_dump(exclude_none=True)
     assert added_eval.version == sample_llm_eval.version
     assert added_eval.deleted_at is None
@@ -141,7 +142,8 @@ def test_llm_eval_from_db_model(sample_db_llm_eval):
     assert llm_eval.model_name == sample_db_llm_eval.model_name
     assert llm_eval.model_provider == sample_db_llm_eval.model_provider
     assert llm_eval.instructions == sample_db_llm_eval.instructions
-    assert llm_eval.score_range == sample_db_llm_eval.score_range
+    assert llm_eval.min_score == sample_db_llm_eval.min_score
+    assert llm_eval.max_score == sample_db_llm_eval.max_score
     assert llm_eval.config == sample_db_llm_eval.config
     assert llm_eval.version == sample_db_llm_eval.version
     assert llm_eval.created_at == sample_db_llm_eval.created_at
@@ -158,7 +160,8 @@ def test_llm_eval_model_dump(sample_llm_eval):
     assert llm_eval_dict["model_name"] == sample_llm_eval.model_name
     assert llm_eval_dict["model_provider"] == sample_llm_eval.model_provider
     assert llm_eval_dict["instructions"] == sample_llm_eval.instructions
-    assert llm_eval_dict["score_range"] == sample_llm_eval.score_range.model_dump()
+    assert llm_eval_dict["min_score"] == sample_llm_eval.min_score
+    assert llm_eval_dict["max_score"] == sample_llm_eval.max_score
     assert "config" in llm_eval_dict
     assert llm_eval_dict["config"]["temperature"] == sample_llm_eval.config.temperature
     assert llm_eval_dict["config"]["max_tokens"] == sample_llm_eval.config.max_tokens
@@ -227,7 +230,8 @@ def test_soft_delete_eval_version_success(
     assert sample_db_llm_eval.deleted_at is not None
     assert sample_db_llm_eval.model_name == ""
     assert sample_db_llm_eval.instructions == ""
-    assert sample_db_llm_eval.score_range == ScoreRange().model_dump()
+    assert sample_db_llm_eval.min_score == 0
+    assert sample_db_llm_eval.max_score == 1
     assert sample_db_llm_eval.config is None
 
     mock_db_session.commit.assert_called_once()
@@ -245,7 +249,8 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, mock_db_session):
         model_name="",
         model_provider="openai",
         instructions="",
-        score_range=ScoreRange().model_dump(),
+        min_score=0,
+        max_score=1,
         config=None,
         created_at=datetime.now(),
         deleted_at=datetime.now(),
@@ -281,3 +286,22 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, mock_db_session):
     )
     with pytest.raises(ValueError, match="Invalid version format"):
         llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "bad_version")
+
+
+@pytest.mark.unit_tests
+def test_validate_score_range():
+    """Test max_score must be greater than min_score"""
+    with pytest.raises(
+        ValueError,
+        match="min_score must be less than max_score",
+    ):
+        LLMEval(
+            name="test_llm_eval",
+            model_name="gpt-4o",
+            model_provider="openai",
+            min_score=1,
+            max_score=1,
+            instructions="test_instructions",
+            config=LLMConfigSettings(temperature=0.5, max_tokens=100),
+            version=1,
+        )

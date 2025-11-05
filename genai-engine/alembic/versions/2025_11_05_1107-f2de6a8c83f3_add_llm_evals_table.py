@@ -1,8 +1,8 @@
-"""add llm_evals table
+"""add llm evals table
 
-Revision ID: 428b3b96deea
-Revises: 2264832c91c0
-Create Date: 2025-11-04 11:11:27.091863
+Revision ID: f2de6a8c83f3
+Revises: 9d3d34fcf6b4
+Create Date: 2025-11-05 11:07:02.009456
 
 """
 
@@ -12,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "428b3b96deea"
-down_revision = "2264832c91c0"
+revision = "f2de6a8c83f3"
+down_revision = "9d3d34fcf6b4"
 branch_labels = None
 depends_on = None
 
@@ -27,11 +27,8 @@ def upgrade() -> None:
         sa.Column("model_name", sa.String(), nullable=False),
         sa.Column("model_provider", sa.String(), nullable=False),
         sa.Column("instructions", sa.String(), nullable=False),
-        sa.Column(
-            "score_range",
-            postgresql.JSON(astext_type=sa.Text()),
-            nullable=False,
-        ),
+        sa.Column("min_score", sa.Integer(), nullable=False),
+        sa.Column("max_score", sa.Integer(), nullable=False),
         sa.Column("config", postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column("created_at", sa.TIMESTAMP(), nullable=False),
         sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),

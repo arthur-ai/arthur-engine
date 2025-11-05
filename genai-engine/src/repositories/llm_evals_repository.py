@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 
 from db_models.llm_eval_models import DatabaseLLMEval
-from schemas.llm_eval_schemas import LLMEval, ScoreRange
+from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateEvalRequest
 
 
@@ -156,7 +156,8 @@ class LLMEvalsRepository:
         db_eval.deleted_at = datetime.now()
         db_eval.model_name = ""
         db_eval.instructions = ""
-        db_eval.score_range = ScoreRange().model_dump()
+        db_eval.min_score = 0
+        db_eval.max_score = 1
         db_eval.config = None
 
         self.db_session.commit()
