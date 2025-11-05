@@ -1,7 +1,7 @@
 """add llm evals table
 
 Revision ID: d31e27429dca
-Revises: 83d01e7ad41c
+Revises: aa259a314eeb
 Create Date: 2025-11-05 17:55:39.082980
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "d31e27429dca"
-down_revision = "83d01e7ad41c"
+down_revision = "aa259a314eeb"
 branch_labels = None
 depends_on = None
 
