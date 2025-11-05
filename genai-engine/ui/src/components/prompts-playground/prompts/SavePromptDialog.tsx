@@ -63,6 +63,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       showSnackbar(`Saved prompt: ${data.name}`, "success");
       handleClose();
       fetchPrompts(dispatch);
+      dispatch({ type: "updatePromptName", payload: { promptId: prompt.id, name: nameInputValue } });
     } catch (error: unknown) {
       const apiError = error as { response: { data: { detail: string } } };
       if (apiError?.response?.data?.detail) {

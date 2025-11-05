@@ -7,7 +7,7 @@ import { generateId } from ".";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
 
 export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
-  id: `${backendPrompt.name}-${new Date(backendPrompt.created_at ?? Date.now()).getTime()}`,
+  id: `${backendPrompt.name}-${uuidv4()}`,
   classification: "default",
   name: backendPrompt.name,
   created_at: backendPrompt.created_at || undefined,

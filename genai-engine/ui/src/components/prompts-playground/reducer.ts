@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
@@ -85,7 +87,7 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: "-" + Date.now(), // New prompts get a default id
+  id: "-" + uuidv4(), // New prompts get a default id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   created_at: undefined, // created on BE
@@ -105,7 +107,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const newId = "-" + Date.now(); // TODO: overwrite on save
+  const newId = "-" + uuidv4(); // TODO: overwrite on save
 
   return createPrompt({
     ...original,
