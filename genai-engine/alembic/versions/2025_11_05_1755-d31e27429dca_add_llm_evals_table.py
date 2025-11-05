@@ -1,8 +1,8 @@
 """add llm evals table
 
-Revision ID: f2de6a8c83f3
-Revises: 9d3d34fcf6b4
-Create Date: 2025-11-05 11:07:02.009456
+Revision ID: d31e27429dca
+Revises: 83d01e7ad41c
+Create Date: 2025-11-05 17:55:39.082980
 
 """
 
@@ -12,8 +12,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "f2de6a8c83f3"
-down_revision = "9d3d34fcf6b4"
+revision = "d31e27429dca"
+down_revision = "83d01e7ad41c"
 branch_labels = None
 depends_on = None
 
