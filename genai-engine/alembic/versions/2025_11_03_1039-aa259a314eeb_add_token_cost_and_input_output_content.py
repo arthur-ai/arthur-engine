@@ -1,7 +1,7 @@
 """add_token_cost_and_input_output_content
 
 Revision ID: aa259a314eeb
-Revises: 9d3d34fcf6b4
+Revises: 83d01e7ad41c
 Create Date: 2025-11-03 10:39:04.544418
 
 """
@@ -23,7 +23,7 @@ from utils.trace import extract_token_cost_from_span, value_to_string
 
 # revision identifiers, used by Alembic.
 revision = "aa259a314eeb"
-down_revision = "9d3d34fcf6b4"
+down_revision = "83d01e7ad41c"
 branch_labels = None
 depends_on = None
 
