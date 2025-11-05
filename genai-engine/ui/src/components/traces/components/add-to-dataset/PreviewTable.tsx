@@ -10,6 +10,7 @@ import { withForm } from "../filtering/hooks/form";
 import { TracesTable } from "../TracesTable";
 
 import { addToDatasetFormOptions } from "./form/shared";
+import { usePreviewTableData } from "./hooks/usePreviewTableData";
 
 export const PreviewTable = withForm({
   ...addToDatasetFormOptions,
@@ -18,34 +19,7 @@ export const PreviewTable = withForm({
 
     const hasData = useMemo(() => field.state.value.some((entry) => !!entry.value), [field.state.value]);
 
-    const data = useMemo(
-      () => [
-        field.state.value.reduce(
-          (acc, column) => {
-            acc[column.name] = column.value;
-            return acc;
-          },
-          {} as Record<string, string>
-        ),
-      ],
-      [field.state.value]
-    );
-
-    const columns = useMemo(
-      () =>
-        Object.keys(data[0]).map((key) => ({
-          header: key,
-          accessorKey: key,
-          enableSorting: false,
-        })) as ColumnDef<Record<string, string>>[],
-      [data]
-    );
-
-    const table = useReactTable({
-      columns,
-      data,
-      getCoreRowModel: getCoreRowModel(),
-    });
+    const { table } = usePreviewTableData(field.state.value);
 
     if (!hasData) return null;
 

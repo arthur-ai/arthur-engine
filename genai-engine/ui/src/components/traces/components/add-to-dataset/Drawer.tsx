@@ -1,7 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import { Alert, Autocomplete, Button, Snackbar, Stack, TextField, Typography } from "@mui/material";
 import { useStore } from "@tanstack/react-form";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { flattenSpans } from "../../utils/spans";
 import { useAppForm } from "../filtering/hooks/form";
@@ -63,15 +63,23 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
   const datasetId = useStore(form.store, (state) => state.values.dataset);
 
-  const { data: trace } = useTrace(traceId);
-  const { datasets } = useDatasets(task?.id, {
+  const traceQuery = useTrace(traceId);
+  const datasetsQuery = useDatasets(task?.id, {
     page: 0,
     pageSize: MAX_PAGE_SIZE,
     sortOrder: "asc",
   });
-  const selectedDataset = datasets.find((dataset) => datasetId === dataset.id);
 
-  const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
+  useEffect(() => {
+    if (traceQuery.error) {
+      snackbar.showSnackbar("Failed to fetch trace", "error");
+    } else if (datasetsQuery.error) {
+      snackbar.showSnackbar("Failed to fetch datasets", "error");
+    }
+  }, [traceQuery.error, datasetsQuery.error, snackbar]);
+
+  const selectedDataset = datasetsQuery.datasets.find((dataset) => datasetId === dataset.id);
+  const flatSpans = useMemo(() => flattenSpans(traceQuery.data?.root_spans ?? []), [traceQuery.data]);
 
   return (
     <>
@@ -121,10 +129,10 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               <form.Field name="dataset">
                 {(field) => (
                   <Autocomplete
-                    options={datasets}
+                    options={datasetsQuery.datasets}
                     disablePortal
                     renderInput={(params) => <TextField {...params} label="Select Dataset" />}
-                    onChange={(event, value) => {
+                    onChange={(_event, value) => {
                       field.handleChange(value?.id ?? "");
                     }}
                     getOptionLabel={(option) => option.name}
