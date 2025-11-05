@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useFetchBackendPrompts } from "../hooks/useFetchBackendPrompts";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { SavePromptDialogProps } from "../types";
-import { toBackendPromptBaseConfig } from "../utils";
+import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";

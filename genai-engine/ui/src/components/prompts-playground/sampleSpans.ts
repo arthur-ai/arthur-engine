@@ -865,6 +865,133 @@ const realImageSpan = {
   arthur_span_version: "arthur_span_v1",
 };
 
+const apiAgentSpan = {
+  id: "afb66771-bed6-4ddd-bd8c-4a8e49565e4e",
+  trace_id: "d0be64f7c648090d861947218caba999",
+  span_id: "2a12c841af156c13",
+  parent_span_id: "3b1bb07e900a8a18",
+  span_kind: "LLM",
+  span_name: "llm: 'gpt-4.1'",
+  start_time: "2025-11-05T18:07:22.941000",
+  end_time: "2025-11-05T18:07:25.477000",
+  task_id: "ac7e04a0-2b8f-4e90-ba76-870501d14e63",
+  status_code: "Ok",
+  created_at: "2025-11-05T18:07:30.560351",
+  updated_at: "2025-11-05T18:07:30.560351",
+  raw_data: {
+    kind: "SPAN_KIND_INTERNAL",
+    name: "llm: 'gpt-4.1'",
+    spanId: "KhLIQa8VbBM=",
+    status: {
+      code: "STATUS_CODE_OK",
+    },
+    traceId: "0L5k98ZICQ2GGUchjKupmQ==",
+    attributes: {
+      llm: {
+        provider: "openai.responses",
+        model_name: "gpt-4.1",
+        token_count: {
+          total: 392,
+        },
+        input_messages: [
+          {
+            message: {
+              role: "system",
+              content:
+                "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool.",
+            },
+          },
+          {
+            message: {
+              role: "user",
+              content: "Why is the sky blue",
+            },
+          },
+        ],
+        output_messages: [
+          {
+            message: {
+              role: "assistant",
+              content:
+                '{"files":[],"reasoning":[],"sources":[],"text":"The sky appears blue because of a phenomenon called Rayleigh scattering. Here’s a simple explanation:\\n\\n- Sunlight, or white light, is made up of many colors, each with different wavelengths.\\n- As sunlight passes through the Earth\'s atmosphere, it collides with molecules and small particles in the air.\\n- Blue light has a shorter wavelength and is scattered in all directions by these particles much more than other colors with longer wavelengths (like red or yellow).\\n- Because blue light is scattered more, it is what we see when we look in any direction away from the sun.\\n\\nSo, the sky looks blue most of the time because blue light from the sun is scattered in all directions by the gases and particles in the Earth\'s atmosphere.","warnings":[]}',
+            },
+          },
+        ],
+        invocation_parameters: {
+          temperature: 0,
+        },
+      },
+      input: {
+        value: {
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool.",
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  text: "Why is the sky blue",
+                  type: "text",
+                },
+              ],
+            },
+          ],
+        },
+        mime_type: "application/json",
+      },
+      output: {
+        value: {
+          text: "The sky appears blue because of a phenomenon called Rayleigh scattering. Here’s a simple explanation:\n\n- Sunlight, or white light, is made up of many colors, each with different wavelengths.\n- As sunlight passes through the Earth's atmosphere, it collides with molecules and small particles in the air.\n- Blue light has a shorter wavelength and is scattered in all directions by these particles much more than other colors with longer wavelengths (like red or yellow).\n- Because blue light is scattered more, it is what we see when we look in any direction away from the sun.\n\nSo, the sky looks blue most of the time because blue light from the sun is scattered in all directions by the gases and particles in the Earth's atmosphere.",
+          files: [],
+          sources: [],
+          warnings: [],
+          reasoning: [],
+        },
+        mime_type: "application/json",
+      },
+      metadata: {
+        runId: "062c2b51-9233-4dc6-9b8f-d8e65d4e8733",
+        streaming: true,
+        resourceId: "ed7f1f5a-1316-49b1-9241-68e3af5ef086",
+        finish_reason: "stop",
+      },
+      openinference: {
+        span: {
+          kind: "LLM",
+        },
+      },
+    },
+    parentSpanId: "OxuwfpAKihg=",
+    endTimeUnixNano: "1762366045477000000",
+    startTimeUnixNano: "1762366042941000000",
+    arthur_span_version: "arthur_span_v1",
+  },
+  system_prompt:
+    "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool.",
+  user_query: "Why is the sky blue",
+  response:
+    '{"files":[],"reasoning":[],"sources":[],"text":"The sky appears blue because of a phenomenon called Rayleigh scattering. Here’s a simple explanation:\\n\\n- Sunlight, or white light, is made up of many colors, each with different wavelengths.\\n- As sunlight passes through the Earth\'s atmosphere, it collides with molecules and small particles in the air.\\n- Blue light has a shorter wavelength and is scattered in all directions by these particles much more than other colors with longer wavelengths (like red or yellow).\\n- Because blue light is scattered more, it is what we see when we look in any direction away from the sun.\\n\\nSo, the sky looks blue most of the time because blue light from the sun is scattered in all directions by the gases and particles in the Earth\'s atmosphere.","warnings":[]}',
+  context: [
+    {
+      message: {
+        role: "system",
+        content:
+          "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool.",
+      },
+    },
+    {
+      message: {
+        role: "user",
+        content: "Why is the sky blue",
+      },
+    },
+  ],
+  metric_results: [],
+};
+
 // Export individual spans for easy access
 export const simpleLLMSpan = sampleSpans[0];
 export const toolCallSpan = sampleSpans[1];
@@ -875,4 +1002,4 @@ export const errorSpan = sampleSpans[5];
 export const chainSpan = sampleSpans[6];
 export const langchainSpan = sampleSpans[7];
 export const mastraSpan = sampleSpans[8];
-export { realImageSpan };
+export { realImageSpan, apiAgentSpan };

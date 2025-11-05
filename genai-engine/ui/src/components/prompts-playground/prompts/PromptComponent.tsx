@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useState, useRef } from "react";
 import MessagesSection from "../messages/MessagesSection";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptComponentProps } from "../types";
-import { toCompletionRequest } from "../utils";
+import toCompletionRequest from "../utils/toCompletionRequest";
 
 import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";

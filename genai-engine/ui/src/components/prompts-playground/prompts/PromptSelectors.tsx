@@ -9,7 +9,7 @@ import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
-import { toFrontendPrompt } from "../utils";
+import toFrontendPrompt from "../utils/toFrontendPrompt";
 
 import VersionSelector from "./VersionSelector";
 

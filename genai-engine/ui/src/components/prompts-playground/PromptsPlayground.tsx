@@ -12,7 +12,7 @@ import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
-import { apiToFrontendPrompt } from "./utils";
+import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";

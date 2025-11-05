@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
-import { getToolChoiceDisplayValue } from "../utils";
+import getToolChoiceDisplayValue from "../utils/getToolChoiceDisplayValue";
 
 import { ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
