@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import Base
+from db_models.base import Base, SoftDeletedModel
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -129,12 +129,13 @@ class DatabaseRagSearchSettingConfiguration(Base):
             foreign_keys="[DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id]",
             overlaps="latest_version",
         )
-    )  # relationship exists to cascade delete
+        # relationship exists to cascade delete
+    )
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
 
 
-class DatabaseRagSearchSettingConfigurationVersion(Base):
+class DatabaseRagSearchSettingConfigurationVersion(SoftDeletedModel, Base):
     """Base model for RAG setting configuration versions
 
     We won't use polymorphic support for these classes because the number of columns would be likely to get large—
@@ -151,7 +152,10 @@ class DatabaseRagSearchSettingConfigurationVersion(Base):
         primary_key=True,
     )
     version_number: Mapped[int] = mapped_column(Integer, primary_key=True)
-    settings: Mapped[dict[str, Any]] = mapped_column(postgresql.JSON)
+    settings: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        postgresql.JSON,
+        nullable=True,
+    )
     tags: Mapped[Optional[list[str]]] = mapped_column(postgresql.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)

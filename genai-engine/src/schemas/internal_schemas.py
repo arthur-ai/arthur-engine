@@ -55,10 +55,12 @@ from arthur_common.models.response_schemas import (
     RuleResponse,
     SpanWithMetricsResponse,
     TaskResponse,
+    TokenCountCostSchema,
     ToxicityDetailsResponse,
     UserResponse,
 )
 from fastapi import HTTPException
+from openinference.semconv.trace import SpanAttributes
 from opentelemetry import trace
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_core import Url
@@ -127,6 +129,7 @@ from schemas.request_schemas import (
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
     RagProviderTestConfigurationRequest,
+    RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
     WeaviateHybridSearchSettingsConfigurationRequest,
     WeaviateKeywordSearchSettingsConfigurationRequest,
@@ -165,7 +168,7 @@ from schemas.scorer_schemas import (
 )
 from utils import constants
 from utils import trace as trace_utils
-from utils.constants import MAX_DATASET_ROWS, SPAN_KIND_LLM
+from utils.constants import MAX_DATASET_ROWS
 from utils.utils import calculate_duration_ms
 
 tracer = trace.get_tracer(__name__)
@@ -568,7 +571,7 @@ class Task(BaseModel):
         )
 
 
-class TraceMetadata(BaseModel):
+class TraceMetadata(TokenCountCostSchema):
     trace_id: str
     task_id: str
     user_id: Optional[str] = None
@@ -578,6 +581,8 @@ class TraceMetadata(BaseModel):
     span_count: int
     created_at: datetime
     updated_at: datetime
+    input_content: Optional[str] = None
+    output_content: Optional[str] = None
 
     @staticmethod
     def _from_database_model(x: DatabaseTraceMetadata):
@@ -589,8 +594,16 @@ class TraceMetadata(BaseModel):
             start_time=x.start_time,
             end_time=x.end_time,
             span_count=x.span_count,
+            prompt_token_count=x.prompt_token_count,
+            completion_token_count=x.completion_token_count,
+            total_token_count=x.total_token_count,
+            prompt_token_cost=x.prompt_token_cost,
+            completion_token_cost=x.completion_token_cost,
+            total_token_cost=x.total_token_cost,
             created_at=x.created_at,
             updated_at=x.updated_at,
+            input_content=x.input_content,
+            output_content=x.output_content,
         )
 
     def _to_database_model(self):
@@ -602,8 +615,16 @@ class TraceMetadata(BaseModel):
             start_time=self.start_time,
             end_time=self.end_time,
             span_count=self.span_count,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
     def _to_metadata_response_model(self) -> TraceMetadataResponse:
@@ -620,6 +641,14 @@ class TraceMetadata(BaseModel):
             duration_ms=duration_ms,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
+            input_content=self.input_content,
+            output_content=self.output_content,
         )
 
 
@@ -1598,7 +1627,7 @@ class ApiKey(BaseModel):
         )
 
 
-class Span(BaseModel):
+class Span(TokenCountCostSchema):
     id: str
     trace_id: str
     span_id: str
@@ -1617,61 +1646,46 @@ class Span(BaseModel):
     metric_results: Optional[List[MetricResult]] = None
 
     @property
-    def system_prompt(self) -> Optional[str]:
-        """Get system prompt from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("system_prompt")
-            except Exception:
-                return None
-        return None
+    def input_content(self) -> Optional[str]:
+        """Get input value from span attributes using OpenInference conventions.
+
+        Extracts from raw_data.attributes using SpanAttributes.INPUT_VALUE constant.
+        Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
+        """
+        attributes = self.raw_data.get("attributes", {})
+        value = trace_utils.get_nested_value(
+            attributes,
+            SpanAttributes.INPUT_VALUE,
+            default=None,
+        )
+        if value is None:
+            return None
+        try:
+            return trace_utils.value_to_string(value)
+        except Exception:
+            return None
 
     @property
-    def user_query(self) -> Optional[str]:
-        """Get user query from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("user_query")
-            except Exception:
-                return None
-        return None
+    def output_content(self) -> Optional[str]:
+        """Get output value from span attributes using OpenInference conventions.
 
-    @property
-    def response(self) -> Optional[str]:
-        """Get response from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("response")
-            except Exception:
-                return None
-        return None
-
-    @property
-    def context(self) -> Optional[List[dict]]:
-        """Get context from span features if this is an LLM span with valid version."""
-        if self._should_extract_features():
-            try:
-                span_features = self._extract_span_features()
-                return span_features.get("context")
-            except Exception:
-                return None
-        return None
-
-    def _should_extract_features(self) -> bool:
-        """Check if we should extract features for this span."""
-        # Only extract for LLM spans
-        if self.span_kind != SPAN_KIND_LLM:
-            return False
-
-        return trace_utils.validate_span_version(self.raw_data)
-
-    def _extract_span_features(self) -> dict:
-        """Extract span features from raw data."""
-
-        return trace_utils.extract_span_features(self.raw_data)
+        Extracts from raw_data.attributes using SpanAttributes.OUTPUT_VALUE constant.
+        Uses get_nested_value for safe nested dictionary access.
+        Converts dicts/lists to JSON strings to ensure string return type.
+        """
+        attributes = self.raw_data.get("attributes", {})
+        value = trace_utils.get_nested_value(
+            attributes,
+            SpanAttributes.OUTPUT_VALUE,
+            default=None,
+        )
+        if value is None:
+            return None
+        try:
+            return trace_utils.value_to_string(value)
+        except Exception:
+            return None
 
     @staticmethod
     def _from_database_model(db_span: DatabaseSpan) -> "Span":
@@ -1689,6 +1703,12 @@ class Span(BaseModel):
             user_id=db_span.user_id,
             status_code=db_span.status_code,
             raw_data=db_span.raw_data,
+            prompt_token_count=db_span.prompt_token_count,
+            completion_token_count=db_span.completion_token_count,
+            total_token_count=db_span.total_token_count,
+            prompt_token_cost=db_span.prompt_token_cost,
+            completion_token_cost=db_span.completion_token_cost,
+            total_token_cost=db_span.total_token_cost,
             created_at=db_span.created_at,
             updated_at=db_span.updated_at,
             metric_results=[
@@ -1712,6 +1732,12 @@ class Span(BaseModel):
             user_id=self.user_id,
             status_code=self.status_code,
             raw_data=self.raw_data,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -1733,10 +1759,14 @@ class Span(BaseModel):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
+            input_content=self.input_content,
+            output_content=self.output_content,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],
@@ -1762,10 +1792,14 @@ class Span(BaseModel):
             raw_data=self.raw_data,
             created_at=self.created_at,
             updated_at=self.updated_at,
-            system_prompt=self.system_prompt,
-            user_query=self.user_query,
-            response=self.response,
-            context=self.context,
+            input_content=self.input_content,
+            output_content=self.output_content,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
             metric_results=[
                 result._to_response_model() for result in (self.metric_results or [])
             ],
@@ -1791,6 +1825,14 @@ class Span(BaseModel):
             status_code=self.status_code,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            input_content=self.input_content,
+            output_content=self.output_content,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
         )
 
     @staticmethod
@@ -1810,6 +1852,12 @@ class Span(BaseModel):
             user_id=span_data.get("user_id"),
             status_code=span_data.get("status_code", "Unset"),
             raw_data=span_data["raw_data"],
+            prompt_token_count=span_data.get("prompt_token_count"),
+            completion_token_count=span_data.get("completion_token_count"),
+            total_token_count=span_data.get("total_token_count"),
+            prompt_token_cost=span_data.get("prompt_token_cost"),
+            completion_token_cost=span_data.get("completion_token_cost"),
+            total_token_cost=span_data.get("total_token_cost"),
             created_at=datetime.now(),
             updated_at=datetime.now(),
             metric_results=[
@@ -1824,7 +1872,7 @@ class OrderedClaim(BaseModel):
     text: str
 
 
-class SessionMetadata(BaseModel):
+class SessionMetadata(TokenCountCostSchema):
     """Internal session metadata representation"""
 
     session_id: str
@@ -1851,10 +1899,16 @@ class SessionMetadata(BaseModel):
             earliest_start_time=self.earliest_start_time,
             latest_end_time=self.latest_end_time,
             duration_ms=duration_ms,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
         )
 
 
-class TraceUserMetadata(BaseModel):
+class TraceUserMetadata(TokenCountCostSchema):
     """Internal trace user metadata representation"""
 
     user_id: str
@@ -1877,6 +1931,12 @@ class TraceUserMetadata(BaseModel):
             span_count=self.span_count,
             earliest_start_time=self.earliest_start_time,
             latest_end_time=self.latest_end_time,
+            prompt_token_count=self.prompt_token_count,
+            completion_token_count=self.completion_token_count,
+            total_token_count=self.total_token_count,
+            prompt_token_cost=self.prompt_token_cost,
+            completion_token_cost=self.completion_token_cost,
+            total_token_cost=self.total_token_cost,
         )
 
 
@@ -2751,8 +2811,8 @@ class RagSearchSettingConfigurationVersion(BaseModel):
         default=None,
         description="Optional list of tags configured for this version of the search settings configuration.",
     )
-    settings: RagSearchSettingConfigurationTypes = Field(
-        description="Search settings configuration for a search request to a RAG provider.",
+    settings: Optional[RagSearchSettingConfigurationTypes] = Field(
+        description="Search settings configuration for a search request to a RAG provider. None if version has been soft deleted.",
     )
     created_at: datetime = Field(
         description="Time the RAG search settings configuration version was created.",
@@ -2760,11 +2820,19 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     updated_at: datetime = Field(
         description="Time the RAG search settings configuration version was updated.",
     )
+    deleted_at: Optional[datetime] = Field(
+        default=None,
+        description="Time the RAG search settings configuration version was soft-deleted.",
+    )
 
     @staticmethod
     def _from_request_model(
-        request: RagSearchSettingConfigurationRequest,
+        request: Union[
+            RagSearchSettingConfigurationRequest,
+            RagSearchSettingConfigurationNewVersionRequest,
+        ],
         setting_config_id: uuid.UUID,
+        new_version_number: int,
     ) -> "RagSearchSettingConfigurationVersion":
         curr_time = datetime.now()
 
@@ -2796,32 +2864,37 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             )
 
         return RagSearchSettingConfigurationVersion(
-            version_number=1,
+            version_number=new_version_number,
             tags=request.tags,
             setting_configuration_id=setting_config_id,
             settings=settings,
             created_at=curr_time,
             updated_at=curr_time,
+            deleted_at=None,
         )
 
     def _to_database_model(self) -> DatabaseRagSearchSettingConfigurationVersion:
         return DatabaseRagSearchSettingConfigurationVersion(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
-            settings=self.settings.model_dump(mode="json"),
+            settings=self.settings.model_dump(mode="json") if self.settings else None,
             tags=self.tags,
             created_at=self.created_at,
             updated_at=self.updated_at,
+            deleted_at=self.deleted_at,
         )
 
     def to_response_model(self) -> RagSearchSettingConfigurationVersionResponse:
         return RagSearchSettingConfigurationVersionResponse(
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
-            settings=self.settings.to_response_model(),
+            settings=self.settings.to_response_model() if self.settings else None,
             tags=self.tags,
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
+            deleted_at=(
+                _serialize_datetime(self.deleted_at) if self.deleted_at else None
+            ),
         )
 
     @staticmethod
@@ -2830,28 +2903,30 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     ) -> "RagSearchSettingConfigurationVersion":
         # Settings are stored as dict in database (JSON), so we need to discriminate by search_kind
         settings_dict = db_model.settings
-        search_kind = settings_dict.get("search_kind")
+        if settings_dict is None:
+            # settings were cleared by soft-delete endpoint
+            settings = None
+        else:
+            search_kind = settings_dict.get("search_kind")
 
-        # Discriminate by search_kind field (stored as string in JSON)
-        if search_kind == RagSearchKind.HYBRID_SEARCH.value:
-            settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
-                settings_dict,
-            )
-        elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
-            settings = (
-                WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+            # Discriminate by search_kind field (stored as string in JSON)
+            if search_kind == RagSearchKind.HYBRID_SEARCH.value:
+                settings = WeaviateHybridSearchSettingsConfiguration.model_validate(
                     settings_dict,
                 )
-            )
-        elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
-            settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
-                settings_dict,
-            )
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
-            )
+            elif search_kind == RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH.value:
+                settings = WeaviateVectorSimilarityTextSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            elif search_kind == RagSearchKind.KEYWORD_SEARCH.value:
+                settings = WeaviateKeywordSearchSettingsConfiguration.model_validate(
+                    settings_dict,
+                )
+            else:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Unsupported settings kind: {search_kind}. Expected one of: {[e.value for e in RagSearchKind]}.",
+                )
 
         return RagSearchSettingConfigurationVersion(
             setting_configuration_id=db_model.setting_configuration_id,
@@ -2860,6 +2935,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             tags=db_model.tags,
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
+            deleted_at=db_model.deleted_at,
         )
 
 
@@ -2870,7 +2946,7 @@ class RagSearchSettingConfiguration(BaseModel):
         description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
     )
     all_possible_tags: Optional[list[str]] = Field(
-        defaeult=None,
+        default=None,
         description="Set of all tags applied for any version of the settings configuration.",
     )
     name: str = Field(description="Name of the search setting configuration.")
@@ -2915,6 +2991,7 @@ class RagSearchSettingConfiguration(BaseModel):
             latest_version=RagSearchSettingConfigurationVersion._from_request_model(
                 request,
                 setting_config_id,
+                1,
             ),
             created_at=curr_time,
             updated_at=curr_time,
