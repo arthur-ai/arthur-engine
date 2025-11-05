@@ -27,7 +27,8 @@ down_revision = "9d3d34fcf6b4"
 branch_labels = None
 depends_on = None
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 50
+TRACE_BATCH_SIZE = 10  # Smaller batch for trace metadata (loads many spans per trace)
 
 
 def upgrade() -> None:
@@ -183,83 +184,183 @@ def _backfill_spans_token_data():
 
 
 def _backfill_trace_metadata_token_data():
-    """Backfill trace_metadata by aggregating token counts and costs from spans."""
-    # Similar to how span_count was backfilled in the trace_metadata creation migration
-    # Use NULL-safe aggregation - SUM returns NULL if all values are NULL
-    op.execute(
-        text(
-            """
-        UPDATE trace_metadata tm
-        SET
-            prompt_token_count = agg.prompt_token_count,
-            completion_token_count = agg.completion_token_count,
-            total_token_count = agg.total_token_count,
-            prompt_token_cost = agg.prompt_token_cost,
-            completion_token_cost = agg.completion_token_cost,
-            total_token_cost = agg.total_token_cost
-        FROM (
-            SELECT
+    """Backfill trace_metadata by aggregating token counts and costs from spans in batches."""
+    connection = op.get_bind()
+
+    # Get total count of traces
+    result = connection.execute(text("SELECT COUNT(*) FROM trace_metadata"))
+    total_traces = result.scalar()
+
+    if total_traces == 0:
+        return
+
+    offset = 0
+
+    while True:
+        # Fetch batch of trace IDs (smaller batch size due to span aggregation)
+        result = connection.execute(
+            text(
+                """
+                SELECT trace_id
+                FROM trace_metadata
+                ORDER BY created_at
+                LIMIT :limit OFFSET :offset
+            """,
+            ),
+            {"limit": TRACE_BATCH_SIZE, "offset": offset},
+        )
+
+        batch = result.fetchall()
+        if not batch:
+            break
+
+        trace_ids = [row[0] for row in batch]
+
+        # Aggregate token data for this batch of traces
+        result = connection.execute(
+            text(
+                """
+                SELECT
+                    trace_id,
+                    SUM(prompt_token_count) as prompt_token_count,
+                    SUM(completion_token_count) as completion_token_count,
+                    SUM(total_token_count) as total_token_count,
+                    SUM(prompt_token_cost) as prompt_token_cost,
+                    SUM(completion_token_cost) as completion_token_cost,
+                    SUM(total_token_cost) as total_token_cost
+                FROM spans
+                WHERE trace_id = ANY(:trace_ids)
+                GROUP BY trace_id
+            """,
+            ),
+            {"trace_ids": trace_ids},
+        )
+
+        aggregations = result.fetchall()
+
+        # Update each trace in the batch
+        for agg_row in aggregations:
+            (
                 trace_id,
-                SUM(prompt_token_count) as prompt_token_count,
-                SUM(completion_token_count) as completion_token_count,
-                SUM(total_token_count) as total_token_count,
-                SUM(prompt_token_cost) as prompt_token_cost,
-                SUM(completion_token_cost) as completion_token_cost,
-                SUM(total_token_cost) as total_token_cost
-            FROM spans
-            GROUP BY trace_id
-        ) agg
-        WHERE tm.trace_id = agg.trace_id
-    """,
-        ),
-    )
+                prompt_count,
+                completion_count,
+                total_count,
+                prompt_cost,
+                completion_cost,
+                total_cost,
+            ) = agg_row
+
+            connection.execute(
+                text(
+                    """
+                    UPDATE trace_metadata
+                    SET prompt_token_count = :prompt_count,
+                        completion_token_count = :completion_count,
+                        total_token_count = :total_count,
+                        prompt_token_cost = :prompt_cost,
+                        completion_token_cost = :completion_cost,
+                        total_token_cost = :total_cost
+                    WHERE trace_id = :trace_id
+                """,
+                ),
+                {
+                    "prompt_count": prompt_count,
+                    "completion_count": completion_count,
+                    "total_count": total_count,
+                    "prompt_cost": prompt_cost,
+                    "completion_cost": completion_cost,
+                    "total_cost": total_cost,
+                    "trace_id": trace_id,
+                },
+            )
+
+        offset += len(batch)
+
+        # Commit after each batch
+        connection.commit()
 
 
 def _backfill_trace_metadata_input_output_content():
-    """Backfill trace_metadata input/output content from root spans."""
+    """Backfill trace_metadata input/output content from root spans in batches."""
     connection = op.get_bind()
 
-    # For each trace, find the earliest root span (no parent_span_id)
-    # and extract its input and output values
-    result = connection.execute(
-        text(
-            """
-        SELECT DISTINCT ON (trace_id)
-            trace_id,
-            raw_data->'attributes'->'input'->'value' as input_value,
-            raw_data->'attributes'->'output'->'value' as output_value
-        FROM spans
-        WHERE parent_span_id IS NULL
-        ORDER BY trace_id, start_time ASC
-    """,
-        ),
-    )
+    # Get total count of traces
+    result = connection.execute(text("SELECT COUNT(*) FROM trace_metadata"))
+    total_traces = result.scalar()
 
-    rows = result.fetchall()
+    if total_traces == 0:
+        return
 
-    for row in rows:
-        trace_id, input_value, output_value = row
+    offset = 0
 
-        # Convert values to strings using utility function
-        input_content = value_to_string(input_value)
-        output_content = value_to_string(output_value)
-
-        # Update trace_metadata with the extracted content
-        connection.execute(
+    while True:
+        # Fetch batch of trace IDs (smaller batch size due to span queries)
+        result = connection.execute(
             text(
                 """
-                UPDATE trace_metadata
-                SET input_content = :input_content,
-                    output_content = :output_content
-                WHERE trace_id = :trace_id
+                SELECT trace_id
+                FROM trace_metadata
+                ORDER BY created_at
+                LIMIT :limit OFFSET :offset
             """,
             ),
-            {
-                "input_content": input_content,
-                "output_content": output_content,
-                "trace_id": trace_id,
-            },
+            {"limit": TRACE_BATCH_SIZE, "offset": offset},
         )
+
+        batch = result.fetchall()
+        if not batch:
+            break
+
+        trace_ids = [row[0] for row in batch]
+
+        # For each trace in the batch, find the earliest root span
+        result = connection.execute(
+            text(
+                """
+                SELECT DISTINCT ON (trace_id)
+                    trace_id,
+                    raw_data->'attributes'->'input'->'value' as input_value,
+                    raw_data->'attributes'->'output'->'value' as output_value
+                FROM spans
+                WHERE parent_span_id IS NULL
+                  AND trace_id = ANY(:trace_ids)
+                ORDER BY trace_id, start_time ASC
+            """,
+            ),
+            {"trace_ids": trace_ids},
+        )
+
+        root_spans = result.fetchall()
+
+        # Update each trace with its input/output content
+        for row in root_spans:
+            trace_id, input_value, output_value = row
+
+            # Convert values to strings using utility function
+            input_content = value_to_string(input_value)
+            output_content = value_to_string(output_value)
+
+            # Update trace_metadata with the extracted content
+            connection.execute(
+                text(
+                    """
+                    UPDATE trace_metadata
+                    SET input_content = :input_content,
+                        output_content = :output_content
+                    WHERE trace_id = :trace_id
+                """,
+                ),
+                {
+                    "input_content": input_content,
+                    "output_content": output_content,
+                    "trace_id": trace_id,
+                },
+            )
+
+        offset += len(batch)
+
+        # Commit after each batch
+        connection.commit()
 
 
 def downgrade() -> None:

@@ -382,6 +382,9 @@ def extract_token_cost_from_span(
     # Get model name for token/cost calculation
     model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
 
+    # Track if we computed any token counts (to ensure total is recalculated)
+    computed_tokens = False
+
     # Calculate prompt tokens if missing
     if prompt_tokens is None:
         input_messages = get_nested_value(
@@ -391,6 +394,7 @@ def extract_token_cost_from_span(
         )
         if input_messages:
             prompt_tokens = count_tokens_from_messages(input_messages, model_name)
+            computed_tokens = True
         else:
             prompt_tokens = 0
 
@@ -404,6 +408,7 @@ def extract_token_cost_from_span(
         if output_messages:
             # Use all output messages, same as input messages
             completion_tokens = count_tokens_from_messages(output_messages, model_name)
+            computed_tokens = True
         else:
             completion_tokens = 0
 
@@ -418,13 +423,11 @@ def extract_token_cost_from_span(
             output_tokens=completion_tokens,
         )
 
-    # Calculate total tokens if missing
-    if (
-        total_tokens is None
-        and prompt_tokens is not None
-        and completion_tokens is not None
-    ):
-        total_tokens = prompt_tokens + completion_tokens
+    # Calculate total tokens: always recalculate if we computed any tokens, or if total is missing
+    # This ensures consistency when we estimate missing values
+    if computed_tokens or total_tokens is None:
+        if prompt_tokens is not None and completion_tokens is not None:
+            total_tokens = prompt_tokens + completion_tokens
 
     # Calculate total cost if missing
     if total_cost is None and prompt_cost is not None and completion_cost is not None:
