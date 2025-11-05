@@ -117,11 +117,24 @@ const ResizableSplitter = ({ onResize, minTopRatio, minBottomRatio }: ResizableS
         className="transition-all group-hover:opacity-100 group-hover:bg-gray-600"
         style={{
           position: "absolute",
-          top: "50%",
+          top: "calc(50% - 1.5px)",
           left: "50%",
-          transform: "translate(-50%, -50%)",
+          transform: "translateX(-50%)",
           width: "40px",
-          height: "5px",
+          height: "1px",
+          backgroundColor: "#4b5563",
+          opacity: 0.9,
+        }}
+      />
+      <div
+        className="transition-all group-hover:opacity-100 group-hover:bg-gray-600"
+        style={{
+          position: "absolute",
+          top: "calc(50% + 1.5px)",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "40px",
+          height: "1px",
           backgroundColor: "#4b5563",
           opacity: 0.9,
         }}

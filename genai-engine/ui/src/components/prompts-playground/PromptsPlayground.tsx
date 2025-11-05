@@ -245,7 +245,7 @@ const PromptsPlayground = () => {
             width: `calc(100% - ${drawerWidth}px)`,
           }}
         >
-          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1">
+          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box
