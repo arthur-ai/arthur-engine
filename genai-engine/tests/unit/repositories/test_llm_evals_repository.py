@@ -10,6 +10,7 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import CreateEvalRequest
+from tests.clients.base_test_client import override_get_db_session
 
 
 @pytest.fixture
@@ -305,3 +306,56 @@ def test_validate_score_range():
             config=LLMConfigSettings(temperature=0.5, max_tokens=100),
             version=1,
         )
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("eval_version", ["latest", "1", "2025-01-01T00:00:00"])
+def test_soft_delete_eval_by_version_success(eval_version):
+    """Test deleting an eval with different version formats"""
+    db_session = override_get_db_session()
+    repo = LLMEvalsRepository(db_session=db_session)
+
+    task_id = str(uuid4())
+    eval_name = "test_eval"
+
+    # Create a database eval with the sample data
+    eval_data = LLMEval(
+        name="test_eval",
+        model_name="gpt-4o",
+        model_provider="openai",
+        instructions="test_instructions",
+        min_score=0,
+        max_score=1,
+        version=1,
+    )
+    db_eval = eval_data.to_db_model(task_id)
+    db_eval.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+
+    # Save to database
+    db_session.add(db_eval)
+    db_session.commit()
+
+    try:
+        repo.soft_delete_eval_version(task_id, eval_name, eval_version)
+
+        result = (
+            db_session.query(DatabaseLLMEval)
+            .filter(DatabaseLLMEval.task_id == task_id)
+            .first()
+        )
+
+        assert isinstance(result, DatabaseLLMEval)
+        assert result.name == eval_name
+        assert result.model_name == ""
+        assert result.model_provider == "openai"
+        assert result.instructions == ""
+        assert result.min_score == 0
+        assert result.max_score == 1
+        assert result.config is None
+        assert result.version == 1
+        assert result.deleted_at is not None
+    finally:
+        # Cleanup
+        db_session.delete(db_eval)
+        db_session.commit()
+        db_session.close()
