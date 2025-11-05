@@ -14730,12 +14730,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "hybrid_search",
-                        "title": "Search Kind",
-                        "default": "hybrid_search"
-                    },
                     "alpha": {
                         "type": "number",
                         "title": "Alpha",
@@ -14824,6 +14818,12 @@
                         ],
                         "title": "Target Vector",
                         "description": "Specifies vector to use for vector search when using named vectors."
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "hybrid_search",
+                        "title": "Search Kind",
+                        "default": "hybrid_search"
                     }
                 },
                 "type": "object",
@@ -15160,12 +15160,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "hybrid_search",
-                        "title": "Search Kind",
-                        "default": "hybrid_search"
-                    },
                     "alpha": {
                         "type": "number",
                         "title": "Alpha",
@@ -15381,12 +15375,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "keyword_search",
-                        "title": "Search Kind",
-                        "default": "keyword_search"
-                    },
                     "minimum_match_or_operator": {
                         "anyOf": [
                             {
@@ -15410,6 +15398,12 @@
                         ],
                         "title": "And Operator",
                         "description": "Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator"
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "keyword_search",
+                        "title": "Search Kind",
+                        "default": "keyword_search"
                     }
                 },
                 "type": "object",
@@ -15680,12 +15674,6 @@
                         "const": "weaviate",
                         "title": "Rag Provider",
                         "default": "weaviate"
-                    },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "keyword_search",
-                        "title": "Search Kind",
-                        "default": "keyword_search"
                     },
                     "minimum_match_or_operator": {
                         "anyOf": [
@@ -16019,12 +16007,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "vector_similarity_text_search",
-                        "title": "Search Kind",
-                        "default": "vector_similarity_text_search"
-                    },
                     "certainty": {
                         "anyOf": [
                             {
@@ -16071,6 +16053,12 @@
                         ],
                         "title": "Target Vector",
                         "description": "Specifies vector to use for similarity search when using named vectors."
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "vector_similarity_text_search",
+                        "title": "Search Kind",
+                        "default": "vector_similarity_text_search"
                     }
                 },
                 "type": "object",
@@ -16364,12 +16352,6 @@
                         "const": "weaviate",
                         "title": "Rag Provider",
                         "default": "weaviate"
-                    },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "vector_similarity_text_search",
-                        "title": "Search Kind",
-                        "default": "vector_similarity_text_search"
                     },
                     "certainty": {
                         "anyOf": [

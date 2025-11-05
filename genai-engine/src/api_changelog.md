@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/05/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed the request property 'settings/search_kind'
+
 # 11/04/2025
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  endpoint added
