@@ -3,6 +3,8 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 import { CopyableChip } from "../../common";
 
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
+
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
 
@@ -23,6 +25,36 @@ export const columns = [
       );
     },
   }),
+  columnHelper.accessor("input_content", {
+    header: "Input Content",
+    cell: ({ getValue }) => getValue(),
+  }),
+  columnHelper.accessor("output_content", {
+    header: "Output Content",
+    cell: ({ getValue }) => getValue(),
+  }),
+  columnHelper.display({
+    id: "token-count",
+    header: "Token Count",
+    cell: ({ row }) => {
+      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = row.original;
+
+      if (!total_token_count) return "-";
+
+      return <TokenCountTooltip prompt={prompt_token_count ?? 0} completion={completion_token_count ?? 0} total={total_token_count} />;
+    },
+  }),
+  columnHelper.display({
+    id: "token-cost",
+    header: "Token Cost",
+    cell: ({ row }) => {
+      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = row.original;
+
+      if (!total_token_cost) return "-";
+
+      return <TokenCostTooltip prompt={prompt_token_cost ?? 0} completion={completion_token_cost ?? 0} total={total_token_cost} />;
+    },
+  }),
   columnHelper.accessor("span_count", {
     header: "Span Count",
     cell: ({ getValue }) => `${getValue()} spans`,
@@ -41,7 +73,7 @@ export const columns = [
     cell: ({ getValue }) => {
       const label = getValue();
 
-      if (!label) return null;
+      if (!label) return "-";
 
       return (
         <Tooltip title={label}>
@@ -57,7 +89,7 @@ export const columns = [
     cell: ({ getValue }) => {
       const label = getValue();
 
-      if (!label) return null;
+      if (!label) return "-";
 
       return (
         <Tooltip title={label}>
