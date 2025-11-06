@@ -27,26 +27,6 @@ export const TypeChip = ({ type, active = false }: Props) => {
   );
 };
 
-/**
- * case OpenInferenceSpanKind.CHAIN:
-      return "warning";
-    case OpenInferenceSpanKind.LLM:
-      return "primary";
-    case OpenInferenceSpanKind.TOOL:
-      return "success";
-    case OpenInferenceSpanKind.RETRIEVER:
-      return "info";
-    case OpenInferenceSpanKind.AGENT:
-      return "secondary";
-    case OpenInferenceSpanKind.EMBEDDING:
-      return "default";
-    case OpenInferenceSpanKind.RERANKER:
-      return "info";
-    case OpenInferenceSpanKind.GUARDRAIL:
-      return "error";
-    case OpenInferenceSpanKind.EVALUATOR:
-      return "default";
- */
 const TYPE_COLORS = {
   [OpenInferenceSpanKind.CHAIN]: "warning",
   [OpenInferenceSpanKind.LLM]: "primary",
