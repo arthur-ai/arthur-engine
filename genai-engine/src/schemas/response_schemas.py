@@ -602,23 +602,23 @@ class ListRagSearchSettingConfigurationsResponse(BaseModel):
     )
 
 
-class AgenticPromptMetadataResponse(BaseModel):
-    name: str = Field(description="Name of the prompt")
-    versions: int = Field(description="Number of versions of the prompt")
-    created_at: datetime = Field(description="Timestamp when the prompt was created")
+class LLMGetAllMetadataResponse(BaseModel):
+    name: str = Field(description="Name of the llm asset")
+    versions: int = Field(description="Number of versions of the llm asset")
+    created_at: datetime = Field(description="Timestamp when the llm asset was created")
     latest_version_created_at: datetime = Field(
-        description="Timestamp when the last version of the prompt was created",
+        description="Timestamp when the last version of the llm asset was created",
     )
     deleted_versions: List[int] = Field(
-        description="List of deleted versions of the prompt",
+        description="List of deleted versions of the llm asset",
     )
 
 
-class AgenticPromptMetadataListResponse(BaseModel):
-    prompt_metadata: list[AgenticPromptMetadataResponse] = Field(
-        description="List of prompt metadata",
+class LLMGetAllMetadataListResponse(BaseModel):
+    llm_metadata: list[LLMGetAllMetadataResponse] = Field(
+        description="List of llm asset metadata",
     )
-    count: int = Field(description="Total number of prompts matching filters")
+    count: int = Field(description="Total number of llm assets matching filters")
 
 
 class AgenticPromptVersionResponse(BaseModel):
@@ -640,3 +640,26 @@ class AgenticPromptVersionListResponse(BaseModel):
         description="List of prompt version metadata",
     )
     count: int = Field(description="Total number of prompts matching filters")
+
+
+class LLMEvalsVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the llm eval")
+    created_at: datetime = Field(
+        description="Timestamp when the llm eval version was created",
+    )
+    deleted_at: Optional[datetime] = Field(
+        description="Timestamp when the llm eval version was deleted (None if not deleted)",
+    )
+    model_provider: ModelProvider = Field(
+        description="Model provider chosen for this version of the llm eval",
+    )
+    model_name: str = Field(
+        description="Model name chosen for this version of the llm eval",
+    )
+
+
+class LLMEvalsVersionListResponse(BaseModel):
+    versions: list[LLMEvalsVersionResponse] = Field(
+        description="List of llm eval version metadata",
+    )
+    count: int = Field(description="Total number of llm evals matching filters")

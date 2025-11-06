@@ -1,6 +1,7 @@
 import logging
 import os
-from typing import Generator
+from datetime import datetime
+from typing import Generator, Optional
 from uuid import UUID
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
@@ -10,7 +11,7 @@ from arthur_common.models.enums import MetricType, RuleType
 from authlib.integrations.starlette_client import OAuth
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -39,6 +40,7 @@ from schemas.internal_schemas import (
     DocumentStorageConfiguration,
     Task,
 )
+from schemas.request_schemas import LLMGetAllFilterRequest, LLMGetVersionsFilterRequest
 from scorer import (
     BinaryPIIDataClassifier,
     BinaryPIIDataClassifierV1,
@@ -308,3 +310,83 @@ def get_validated_agentic_task(
         raise HTTPException(status_code=400, detail="Task is not agentic")
 
     return task
+
+
+def llm_get_versions_filter_parameters(
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    exclude_deleted: bool = Query(
+        False,
+        description="Whether to exclude deleted prompt versions from the results. Default is False.",
+    ),
+    min_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Minimum version number to filter on (inclusive).",
+    ),
+    max_version: Optional[int] = Query(
+        None,
+        ge=1,
+        description="Maximum version number to filter on (inclusive).",
+    ),
+) -> LLMGetVersionsFilterRequest:
+    """Create an LLMGetVersionsFilterRequest from query parameters."""
+    return LLMGetVersionsFilterRequest(
+        model_provider=model_provider,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+        exclude_deleted=exclude_deleted,
+        min_version=min_version,
+        max_version=max_version,
+    )
+
+
+def llm_get_all_filter_parameters(
+    llm_asset_names: Optional[list[str]] = Query(
+        None,
+        description="LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
+    ),
+    model_provider: Optional[str] = Query(
+        None,
+        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+    ),
+    model_name: Optional[str] = Query(
+        None,
+        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+    ),
+    created_after: Optional[str] = Query(
+        None,
+        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+    created_before: Optional[str] = Query(
+        None,
+        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+    ),
+) -> LLMGetAllFilterRequest:
+    """Create a LLMGetAllFilterRequest from query parameters."""
+    return LLMGetAllFilterRequest(
+        llm_asset_names=llm_asset_names,
+        model_provider=model_provider,
+        model_name=model_name,
+        created_after=datetime.fromisoformat(created_after) if created_after else None,
+        created_before=(
+            datetime.fromisoformat(created_before) if created_before else None
+        ),
+    )

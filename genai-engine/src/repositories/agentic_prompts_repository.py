@@ -11,14 +11,14 @@ from sqlalchemy.orm import Query, Session
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.request_schemas import (
-    PromptsGetAllFilterRequest,
-    PromptsGetVersionsFilterRequest,
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    AgenticPromptMetadataListResponse,
-    AgenticPromptMetadataResponse,
     AgenticPromptVersionListResponse,
     AgenticPromptVersionResponse,
+    LLMGetAllMetadataListResponse,
+    LLMGetAllMetadataResponse,
 )
 
 
@@ -167,8 +167,8 @@ class AgenticPromptRepository:
         self,
         task_id: str,
         pagination_parameters: PaginationParameters,
-        filter_request: Optional[PromptsGetAllFilterRequest] = None,
-    ) -> AgenticPromptMetadataListResponse:
+        filter_request: Optional[LLMGetAllFilterRequest] = None,
+    ) -> LLMGetAllMetadataListResponse:
         """
         Get metadata for all prompts by task_id, including:
             - name
@@ -179,9 +179,10 @@ class AgenticPromptRepository:
         Parameters:
             task_id: str - the id of the task
             pagination_parameters: PaginationParameters - pagination and sorting params
+            filter_request: LLMGetAllFilterRequest - filter request parameters
 
         Returns:
-            AgenticPromptMetadataListResponse - list of prompt metadata objects with total count
+            LLMGetAllMetadataListResponse - list of prompt metadata objects with total count
         """
         # Start with aggregated query
         base_query = self.db_session.query(
@@ -195,7 +196,10 @@ class AgenticPromptRepository:
 
         # Apply filters BEFORE grouping
         if filter_request is not None:
-            base_query = filter_request.apply_filters_to_query(base_query)
+            base_query = filter_request.apply_filters_to_query(
+                base_query,
+                DatabaseAgenticPrompt,
+            )
 
         # Apply grouping
         base_query = base_query.group_by(DatabaseAgenticPrompt.name)
@@ -210,12 +214,12 @@ class AgenticPromptRepository:
         results = base_query.all()
 
         if not results:
-            return AgenticPromptMetadataListResponse(
-                prompt_metadata=[],
+            return LLMGetAllMetadataListResponse(
+                llm_metadata=[],
                 count=total_count,
             )
 
-        prompt_metadata = []
+        llm_metadata = []
         for row in results:
             # get the deleted versions
             deleted_versions = (
@@ -231,8 +235,8 @@ class AgenticPromptRepository:
             deleted_versions = [v for (v,) in deleted_versions]
 
             # set the metadata
-            prompt_metadata.append(
-                AgenticPromptMetadataResponse(
+            llm_metadata.append(
+                LLMGetAllMetadataResponse(
                     name=row.name,
                     versions=row.versions,
                     created_at=row.created_at,
@@ -241,8 +245,8 @@ class AgenticPromptRepository:
                 ),
             )
 
-        return AgenticPromptMetadataListResponse(
-            prompt_metadata=prompt_metadata,
+        return LLMGetAllMetadataListResponse(
+            llm_metadata=llm_metadata,
             count=total_count,
         )
 
@@ -251,7 +255,7 @@ class AgenticPromptRepository:
         task_id: str,
         prompt_name: str,
         pagination_parameters: PaginationParameters,
-        filter_request: Optional[PromptsGetVersionsFilterRequest] = None,
+        filter_request: Optional[LLMGetVersionsFilterRequest] = None,
     ) -> AgenticPromptVersionListResponse:
         """
         Get all versions of a prompt by task_id and name, including metadata:
@@ -277,7 +281,10 @@ class AgenticPromptRepository:
 
         # Apply filters
         if filter_request is not None:
-            base_query = filter_request.apply_filters_to_query(base_query)
+            base_query = filter_request.apply_filters_to_query(
+                base_query,
+                DatabaseAgenticPrompt,
+            )
 
         # Apply sorting, pagination, and get count
         base_query, total_count = self._apply_sorting_pagination_and_count(
@@ -287,10 +294,6 @@ class AgenticPromptRepository:
         )
 
         db_prompts = base_query.all()
-
-        # Check if prompt exists at all
-        if total_count == 0:
-            raise ValueError(f"Prompt '{prompt_name}' not found for task '{task_id}'")
 
         # If we're past the last page, return empty list
         if not db_prompts:

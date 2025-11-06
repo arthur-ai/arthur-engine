@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 
 import pytest
 
@@ -23,11 +24,17 @@ def test_llm_eval_routes_require_authentication(
     """Test that all llm eval routes require authentication"""
     # Test all routes without authentication headers
     routes_and_methods = [
-        ("POST", f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_eval"),
-        ("DELETE", f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_eval"),
+        (
+            "GET",
+            f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_llm_eval/versions/latest",
+        ),
+        ("GET", f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_llm_eval/versions"),
+        ("GET", f"/api/v1/tasks/{agentic_task.id}/llm_evals"),
+        ("POST", f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_llm_eval"),
+        ("DELETE", f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_llm_eval"),
         (
             "DELETE",
-            f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_eval/versions/latest",
+            f"/api/v1/tasks/{agentic_task.id}/llm_evals/test_llm_eval/versions/latest",
         ),
     ]
 
@@ -301,3 +308,759 @@ def test_soft_delete_llm_eval_version_errors(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+def test_soft_delete_llm_eval_by_version_route(
+    client: GenaiEngineTestClientBase,
+    eval_version,
+):
+    """Test soft deleting an llm eval with different version formats (latest, version number, datetime)"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_llm_eval"
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+        "min_score": 0,
+        "max_score": 1,
+    }
+    if eval_version == "datetime":
+        eval_version = datetime.now().isoformat()
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # Soft-delete the eval using different version formats
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    if eval_version == "latest":
+        assert response.status_code == 404
+        assert (
+            response.json()["detail"]
+            == f"LLM eval '{eval_name}' (version 'latest') not found for task '{task.id}'"
+        )
+    else:
+        assert response.status_code == 200
+
+        eval_response = response.json()
+        assert eval_response["name"] == eval_name
+        assert eval_response["instructions"] == ""
+        assert eval_response["min_score"] == 0
+        assert eval_response["max_score"] == 1
+        assert eval_response["model_name"] == ""
+        assert eval_response["model_provider"] == "openai"
+        assert eval_response["deleted_at"] is not None
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_success(client: GenaiEngineTestClientBase):
+    """Test successfully getting an llm eval"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+    assert task.is_agentic == True
+
+    # First save an llm eval
+    eval_name = "test_llm_eval"
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+        "min_score": 0,
+        "max_score": 1,
+    }
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # Now get the llm eval
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    eval_response = response.json()
+    assert eval_response["name"] == eval_name
+    assert eval_response["instructions"] == eval_data["instructions"]
+    assert eval_response["min_score"] == eval_data["min_score"]
+    assert eval_response["max_score"] == eval_data["max_score"]
+    assert eval_response["model_name"] == eval_data["model_name"]
+    assert eval_response["model_provider"] == eval_data["model_provider"]
+    assert eval_response["version"] == 1
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_not_found(client: GenaiEngineTestClientBase):
+    """Test getting an llm eval that doesn't exist"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Try to get a non-existent llm eval
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/nonexistent_eval/versions/1",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_non_agentic_task(client: GenaiEngineTestClientBase):
+    """Test getting an llm eval from a non-agentic task should fail"""
+    # Create a non-agentic task
+    task_name = f"non_agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=False)
+    assert status_code == 200
+    assert task.is_agentic == False
+
+    # Try to get an llm eval from non-agentic task
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/test_llm_eval/versions/1",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert "not agentic" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
+    client: GenaiEngineTestClientBase,
+):
+    """
+    Test retrieving a deleted llm eval does not raise an error
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+        "min_score": 0,
+        "max_score": 1,
+    }
+    eval_name = "test_llm_eval"
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 1
+    assert response.json()["instructions"] == eval_data["instructions"]
+    assert response.json()["min_score"] == eval_data["min_score"]
+    assert response.json()["max_score"] == eval_data["max_score"]
+    assert response.json()["model_name"] == eval_data["model_name"]
+    assert response.json()["model_provider"] == eval_data["model_provider"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+    assert response.json()["instructions"] == eval_data["instructions"]
+    assert response.json()["min_score"] == eval_data["min_score"]
+    assert response.json()["max_score"] == eval_data["max_score"]
+    assert response.json()["model_name"] == eval_data["model_name"]
+    assert response.json()["model_provider"] == eval_data["model_provider"]
+
+    # should not spawn an error
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+
+    # delete version 2 of the eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # should not raise an error
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+    assert response.json()["instructions"] == ""
+    assert response.json()["min_score"] == 0
+    assert response.json()["max_score"] == 1
+    assert response.json()["model_name"] == ""
+    assert response.json()["model_provider"] == "openai"
+
+
+@pytest.mark.unit_tests
+@pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
+def test_get_llm_eval_by_version_route(
+    client: GenaiEngineTestClientBase,
+    eval_version,
+):
+    """Test getting an llm eval with different version formats (latest, version number, datetime)"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_llm_eval"
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+        "min_score": 0,
+        "max_score": 1,
+    }
+    if eval_version == "datetime":
+        eval_version = datetime.now().isoformat()
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # Get the llm eval using different version formats
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/{eval_version}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    eval_response = response.json()
+    assert eval_response["name"] == eval_name
+    assert eval_response["instructions"] == eval_data["instructions"]
+    assert eval_response["min_score"] == eval_data["min_score"]
+    assert eval_response["max_score"] == eval_data["max_score"]
+    assert eval_response["model_name"] == eval_data["model_name"]
+    assert eval_response["model_provider"] == eval_data["model_provider"]
+    assert eval_response["version"] == 1
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_versions(client: GenaiEngineTestClientBase):
+    """Test retrieving all versions of an llm eval"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Test instructions",
+        "min_score": 0,
+        "max_score": 1,
+    }
+    eval_name = "test_llm_eval"
+
+    # save 2 versions of the same llm eval
+    for i in range(2):
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+            json=eval_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["name"] == eval_name
+        assert response.json()["version"] == i + 1
+        assert response.json()["instructions"] == eval_data["instructions"]
+        assert response.json()["min_score"] == eval_data["min_score"]
+        assert response.json()["max_score"] == eval_data["max_score"]
+        assert response.json()["model_name"] == eval_data["model_name"]
+        assert response.json()["model_provider"] == eval_data["model_provider"]
+
+    # save an llm eval with a different name
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/different_eval_name",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "different_eval_name"
+    assert response.json()["version"] == 1
+    assert response.json()["instructions"] == eval_data["instructions"]
+    assert response.json()["min_score"] == eval_data["min_score"]
+    assert response.json()["max_score"] == eval_data["max_score"]
+    assert response.json()["model_name"] == eval_data["model_name"]
+    assert response.json()["model_provider"] == eval_data["model_provider"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+    assert response.json()["count"] == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert "deleted_at" not in version
+        assert version["model_provider"] == eval_data["model_provider"]
+        assert version["model_name"] == eval_data["model_name"]
+
+    # now check the different eval name
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/different_eval_name/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 1
+    assert response.json()["count"] == 1
+
+    # soft-delete version 2 of the llm eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+    assert response.json()["count"] == 2
+
+    for version in response.json()["versions"]:
+        assert version["created_at"] is not None
+        assert version["model_provider"] == "openai"
+
+        if "deleted_at" in version:
+            assert version["model_name"] == ""
+        else:
+            assert version["model_name"] == eval_data["model_name"]
+
+    # cleanup
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/different_eval_name",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_versions_pagination_and_filtering(
+    client: GenaiEngineTestClientBase,
+):
+    """Test pagination, sorting, and filtering for get_llm_eval_versions"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    eval_name = "test_llm_eval"
+
+    # Create llm evals with different versions
+    for i in range(4):
+        eval_data = {
+            "instructions": f"Version {i+1}",
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+            json=eval_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test version pagination
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 4
+    assert result["versions"][0]["version"] == 4
+
+    # Test version range filter
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"min_version": 2, "max_version": 3},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["versions"]) == 2
+    assert result["count"] == 2
+
+    # Delete a version and test deleted is included in the results
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # Test include deleted (default behavior, exclude_deleted=False)
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 4  # Includes deleted version by default
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 in versions
+
+    # Test exclude deleted
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+        params={"exclude_deleted": True},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 3  # One version excluded
+    versions = [v["version"] for v in result["versions"]]
+    assert 2 not in versions
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_evals_success(client: GenaiEngineTestClientBase):
+    """Test getting all llm evals for an agentic task"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save multiple llm evals
+    llm_evals_data = [
+        {
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "instructions": "First eval",
+        },
+        {
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "instructions": "Second eval",
+        },
+        {
+            "model_name": "gpt-4",
+            "model_provider": "openai",
+            "instructions": "Third eval",
+        },
+    ]
+
+    eval_names = ["test_llm_eval_1", "test_llm_eval_2", "test_llm_eval_2"]
+
+    for i, eval_data in enumerate(llm_evals_data):
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_names[i]}",
+            json=eval_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Get all llm evals
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "asc"},
+    )
+    assert response.status_code == 200
+
+    llm_evals_response = response.json()
+    assert "llm_metadata" in llm_evals_response
+    assert len(llm_evals_response["llm_metadata"]) == 2
+
+    metadata = llm_evals_response["llm_metadata"]
+
+    for i, llm_metadata in enumerate(metadata):
+        assert llm_metadata["name"] == eval_names[i]
+        assert llm_metadata["versions"] == i + 1
+        assert llm_metadata["created_at"] is not None
+        assert llm_metadata["latest_version_created_at"] is not None
+        assert llm_metadata["deleted_versions"] == []
+
+        created = datetime.fromisoformat(llm_metadata["created_at"])
+        latest = datetime.fromisoformat(llm_metadata["latest_version_created_at"])
+
+        if i == 0:
+            assert abs((created - latest).total_seconds()) < 1
+        else:
+            assert created != latest
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_evals_empty(client: GenaiEngineTestClientBase):
+    """Test getting all llm evals when none exist"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Get all llm evals (should be empty)
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    llm_evals_response = response.json()
+    assert "llm_metadata" in llm_evals_response
+    assert len(llm_evals_response["llm_metadata"]) == 0
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_evals_includes_deleted_evals(client: GenaiEngineTestClientBase):
+    """
+    Test retrieving all llm evals includes deleted evals
+    """
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "First eval",
+    }
+
+    eval_name = "test_llm_eval"
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 1
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+    )
+
+    metadata = response.json()["llm_metadata"]
+    created = datetime.fromisoformat(metadata[0]["created_at"])
+    latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
+
+    assert response.status_code == 200
+    assert len(metadata) == 1
+    assert metadata[0]["name"] == eval_name
+    assert metadata[0]["versions"] == 2
+    assert metadata[0]["created_at"] is not None
+    assert metadata[0]["latest_version_created_at"] is not None
+    assert abs((created - latest).total_seconds()) < 1
+    assert metadata[0]["deleted_versions"] == []
+
+    # delete version 2 of the eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["llm_metadata"]) == 1
+
+    metadata = response.json()["llm_metadata"]
+    created = datetime.fromisoformat(metadata[0]["created_at"])
+    latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
+
+    assert metadata[0]["name"] == eval_name
+    assert metadata[0]["versions"] == 2
+    assert metadata[0]["created_at"] is not None
+    assert metadata[0]["latest_version_created_at"] is not None
+    assert created != latest
+    assert metadata[0]["deleted_versions"] == [2]
+
+
+@pytest.mark.unit_tests
+def test_get_all_llm_evals_pagination_and_filtering(client: GenaiEngineTestClientBase):
+    """Test pagination, sorting, and filtering for get_all_llm_evals"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Create llm evals with different providers
+    for i, eval_name in enumerate(["alpha", "beta", "gamma"]):
+        provider = "openai" if i < 2 else "anthropic"
+        model = "gpt-4o" if provider == "openai" else "claude-3-5-sonnet"
+        eval_data = {
+            "model_name": model,
+            "model_provider": provider,
+            "instructions": f"Eval {eval_name}",
+        }
+        response = client.base_client.post(
+            f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+            json=eval_data,
+            headers=client.authorized_user_api_key_headers,
+        )
+        assert response.status_code == 200
+
+    # Test pagination on get_all_llm_evals
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"page": 0, "page_size": 2, "sort": "asc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["llm_metadata"]) == 2
+    assert result["count"] == 3
+    assert result["llm_metadata"][0]["name"] == "alpha"
+
+    # Test sorting descending
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"sort": "desc"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["llm_metadata"][0]["name"] == "gamma"
+    assert result["llm_metadata"][2]["name"] == "alpha"
+
+    # Test filtering by provider
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+        params={"model_provider": "openai"},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["llm_metadata"]) == 2
+    assert result["count"] == 2
+
+
+@pytest.mark.unit_tests
+def test_get_unique_llm_eval_names(client: GenaiEngineTestClientBase):
+    """Test retrieving all unique llm eval names"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "First eval",
+    }
+
+    eval_name = "test_llm_eval"
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 1
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2
+
+    # delete version 2 of the eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert len(response.json()["versions"]) == 2

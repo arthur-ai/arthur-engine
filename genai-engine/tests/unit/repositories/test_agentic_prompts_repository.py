@@ -27,14 +27,14 @@ from schemas.agentic_prompt_schemas import (
 from schemas.common_schemas import JsonSchema
 from schemas.enums import MessageRole, ModelProvider
 from schemas.request_schemas import (
-    PromptsGetAllFilterRequest,
-    PromptsGetVersionsFilterRequest,
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    AgenticPromptMetadataListResponse,
-    AgenticPromptMetadataResponse,
     AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
+    LLMGetAllMetadataListResponse,
+    LLMGetAllMetadataResponse,
 )
 from tests.clients.base_test_client import override_get_db_session
 
@@ -310,14 +310,13 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
     )
     result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
 
-    assert isinstance(result, AgenticPromptMetadataListResponse)
-    assert len(result.prompt_metadata) == 2
+    assert isinstance(result, LLMGetAllMetadataListResponse)
+    assert len(result.llm_metadata) == 2
     assert all(
-        isinstance(prompt, AgenticPromptMetadataResponse)
-        for prompt in result.prompt_metadata
+        isinstance(prompt, LLMGetAllMetadataResponse) for prompt in result.llm_metadata
     )
-    assert result.prompt_metadata[0].name == sample_db_prompt.name
-    assert result.prompt_metadata[1].name == prompt2.name
+    assert result.llm_metadata[0].name == sample_db_prompt.name
+    assert result.llm_metadata[1].name == prompt2.name
 
 
 @pytest.mark.unit_tests
@@ -345,8 +344,8 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
     )
     result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
 
-    assert isinstance(result, AgenticPromptMetadataListResponse)
-    assert len(result.prompt_metadata) == 0
+    assert isinstance(result, LLMGetAllMetadataListResponse)
+    assert len(result.llm_metadata) == 0
 
 
 @pytest.mark.unit_tests
@@ -1153,7 +1152,7 @@ def test_get_prompt_by_version_success(prompt_version):
     [
         ("model_provider", ModelProvider.OPENAI, 1, "prompt_openai"),
         ("model_name", "gpt-4", 1, "prompt_openai"),
-        ("prompt_names", ["prompt_openai"], 1, "prompt_openai"),
+        ("llm_asset_names", ["prompt_openai"], 1, "prompt_openai"),
         ("created_after", datetime(2025, 1, 1), 2, None),
         ("created_before", datetime(2025, 1, 2), 1, "prompt_openai"),
     ],
@@ -1200,7 +1199,7 @@ def test_get_all_prompt_metadata_with_filters(
 
     try:
         # Create filter request
-        filter_request = PromptsGetAllFilterRequest(**{filter_param: filter_value})
+        filter_request = LLMGetAllFilterRequest(**{filter_param: filter_value})
 
         # Create pagination parameters
         pagination_params = PaginationParameters(
@@ -1217,13 +1216,13 @@ def test_get_all_prompt_metadata_with_filters(
         )
 
         # Verify filtering worked
-        assert isinstance(result, AgenticPromptMetadataListResponse)
+        assert isinstance(result, LLMGetAllMetadataListResponse)
         assert result.count == expected_count
-        assert len(result.prompt_metadata) == expected_count
+        assert len(result.llm_metadata) == expected_count
 
         # Verify the correct prompt was returned based on the filter
         if expected_name:
-            assert result.prompt_metadata[0].name == expected_name
+            assert result.llm_metadata[0].name == expected_name
 
     finally:
         # Cleanup
@@ -1244,6 +1243,7 @@ def test_get_all_prompt_metadata_with_filters(
         ("exclude_deleted", True, 2),
         ("min_version", 2, 2),
         ("max_version", 2, 2),
+        ("min_version", 10, 0),  # verify no returned versions doesn't spawn an error
     ],
 )
 def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_count):
@@ -1296,7 +1296,7 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
 
     try:
         # Create filter request
-        filter_request = PromptsGetVersionsFilterRequest(**{filter_param: filter_value})
+        filter_request = LLMGetVersionsFilterRequest(**{filter_param: filter_value})
 
         # Create pagination parameters
         pagination_params = PaginationParameters(
@@ -1376,13 +1376,13 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
         )
 
         # Verify pagination worked
-        assert isinstance(result, AgenticPromptMetadataListResponse)
+        assert isinstance(result, LLMGetAllMetadataListResponse)
         assert result.count == 3  # Total count should always be 3
-        assert len(result.prompt_metadata) == len(expected_names)
+        assert len(result.llm_metadata) == len(expected_names)
 
         # Verify the order of prompts
         for i, expected_name in enumerate(expected_names):
-            assert result.prompt_metadata[i].name == expected_name
+            assert result.llm_metadata[i].name == expected_name
 
     finally:
         # Cleanup
