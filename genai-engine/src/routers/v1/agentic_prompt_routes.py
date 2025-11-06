@@ -1,14 +1,18 @@
-from datetime import datetime
-from typing import Annotated, Optional, Union
+from typing import Annotated, Union
 
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
-from dependencies import get_db_session, get_validated_agentic_task
+from dependencies import (
+    get_db_session,
+    get_validated_agentic_task,
+    llm_get_all_filter_parameters,
+    llm_get_versions_filter_parameters,
+)
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
@@ -22,13 +26,13 @@ from schemas.agentic_prompt_schemas import (
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
-    PromptsGetAllFilterRequest,
-    PromptsGetVersionsFilterRequest,
+    LLMGetAllFilterRequest,
+    LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
-    AgenticPromptMetadataListResponse,
     AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
+    LLMGetAllMetadataListResponse,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -37,86 +41,6 @@ agentic_prompt_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
-
-
-def prompts_get_all_filter_parameters(
-    prompt_names: Optional[list[str]] = Query(
-        None,
-        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
-    ),
-    model_provider: Optional[str] = Query(
-        None,
-        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
-    ),
-    model_name: Optional[str] = Query(
-        None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
-    ),
-    created_after: Optional[str] = Query(
-        None,
-        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    created_before: Optional[str] = Query(
-        None,
-        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-) -> PromptsGetAllFilterRequest:
-    """Create a PromptsGetAllFilterRequest from query parameters."""
-    return PromptsGetAllFilterRequest(
-        prompt_names=prompt_names,
-        model_provider=model_provider,
-        model_name=model_name,
-        created_after=datetime.fromisoformat(created_after) if created_after else None,
-        created_before=(
-            datetime.fromisoformat(created_before) if created_before else None
-        ),
-    )
-
-
-def prompts_get_versions_filter_parameters(
-    model_provider: Optional[str] = Query(
-        None,
-        description="Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
-    ),
-    model_name: Optional[str] = Query(
-        None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
-    ),
-    created_after: Optional[str] = Query(
-        None,
-        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    created_before: Optional[str] = Query(
-        None,
-        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    exclude_deleted: bool = Query(
-        False,
-        description="Whether to exclude deleted prompt versions from the results. Default is False.",
-    ),
-    min_version: Optional[int] = Query(
-        None,
-        ge=1,
-        description="Minimum version number to filter on (inclusive).",
-    ),
-    max_version: Optional[int] = Query(
-        None,
-        ge=1,
-        description="Maximum version number to filter on (inclusive).",
-    ),
-) -> PromptsGetVersionsFilterRequest:
-    """Create a PromptsGetVersionsFilterRequest from query parameters."""
-    return PromptsGetVersionsFilterRequest(
-        model_provider=model_provider,
-        model_name=model_name,
-        created_after=datetime.fromisoformat(created_after) if created_after else None,
-        created_before=(
-            datetime.fromisoformat(created_before) if created_before else None
-        ),
-        exclude_deleted=exclude_deleted,
-        min_version=min_version,
-        max_version=max_version,
-    )
 
 
 async def execute_prompt_completion(
@@ -170,8 +94,6 @@ def get_agentic_prompt(
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        elif "attempting to retrieve a deleted prompt" in str(e).lower():
-            raise HTTPException(status_code=400, detail=error_message)
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -182,7 +104,7 @@ def get_agentic_prompt(
     "/tasks/{task_id}/prompts",
     summary="Get all agentic prompts",
     description="Get all agentic prompts for a given task with optional filtering.",
-    response_model=AgenticPromptMetadataListResponse,
+    response_model=LLMGetAllMetadataListResponse,
     response_model_exclude_none=True,
     tags=["Prompts"],
 )
@@ -193,8 +115,8 @@ def get_all_agentic_prompts(
         Depends(common_pagination_parameters),
     ],
     filter_request: Annotated[
-        PromptsGetAllFilterRequest,
-        Depends(prompts_get_all_filter_parameters),
+        LLMGetAllFilterRequest,
+        Depends(llm_get_all_filter_parameters),
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
@@ -228,8 +150,8 @@ def get_all_agentic_prompt_versions(
         Depends(common_pagination_parameters),
     ],
     filter_request: Annotated[
-        PromptsGetVersionsFilterRequest,
-        Depends(prompts_get_versions_filter_parameters),
+        LLMGetVersionsFilterRequest,
+        Depends(llm_get_versions_filter_parameters),
     ],
     prompt_name: str = Path(
         ...,
