@@ -1,9 +1,10 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import { Paper } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { createContext, Fragment, useContext } from "react";
+import { createContext, useContext } from "react";
 
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { useTracesHistoryStore } from "../stores/history.store";
@@ -137,9 +138,11 @@ export const SpanDetailsWidgets = () => {
   const { span, strategy } = useSpanDetails();
 
   return (
-    <Stack direction="row" gap={1} flexWrap="wrap">
+    <Stack direction="row" gap={1} flexWrap="wrap" alignItems="flex-start">
       {strategy.widgets.map((widget, index) => (
-        <Fragment key={index}>{widget.render(span)}</Fragment>
+        <Paper key={index} variant="outlined" sx={{ px: 1, py: 0.5 }}>
+          {widget.render(span)}
+        </Paper>
       ))}
     </Stack>
   );

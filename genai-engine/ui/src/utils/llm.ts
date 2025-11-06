@@ -28,15 +28,31 @@ export function getOutputMessages(span: NestedSpanWithMetricsResponse) {
 }
 
 export function getInputTokens(span: NestedSpanWithMetricsResponse) {
-  return Number(getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_TOKEN_COUNT_PROMPT)) || 0;
+  return span.prompt_token_count ?? undefined;
 }
 
 export function getOutputTokens(span: NestedSpanWithMetricsResponse) {
-  return Number(getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_TOKEN_COUNT_COMPLETION)) || 0;
+  return span.completion_token_count ?? undefined;
 }
 
 export function getTotalTokens(span: NestedSpanWithMetricsResponse) {
-  return Number(getNestedValue(span.raw_data.attributes, SemanticConventions.LLM_TOKEN_COUNT_TOTAL)) || 0;
+  return span.total_token_count ?? undefined;
+}
+
+export function getTokens(span: NestedSpanWithMetricsResponse) {
+  return {
+    input: getInputTokens(span),
+    output: getOutputTokens(span),
+    total: getTotalTokens(span),
+  };
+}
+
+export function getCost(span: NestedSpanWithMetricsResponse) {
+  return {
+    prompt: span.prompt_token_cost ?? undefined,
+    completion: span.completion_token_cost ?? undefined,
+    total: span.total_token_cost ?? undefined,
+  };
 }
 
 export function getRoleAccentColor(role: Message["role"]) {

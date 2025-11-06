@@ -1,10 +1,10 @@
-import { Stack, Tooltip } from "@mui/material";
+import { Stack, Tooltip, Typography } from "@mui/material";
 
 import { formatCurrency } from "@/utils/formatters";
 
 type TokenCountProps = {
-  prompt: number;
-  completion: number;
+  prompt?: number;
+  completion?: number;
   total: number;
 };
 
@@ -13,33 +13,41 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
     <Tooltip
       title={
         <Stack direction="column" gap={0} sx={{ fontFamily: "monospace" }}>
-          <span>Prompt: {prompt} tokens</span>
-          <span>Completion: {completion} tokens</span>
+          <Typography variant="body2" fontSize={12}>
+            Prompt: {prompt ?? "N/A"} tokens
+          </Typography>
+          <Typography variant="body2" fontSize={12}>
+            Completion: {completion ?? "N/A"} tokens
+          </Typography>
         </Stack>
       }
     >
-      <span className="select-none">&sum; {total} tokens</span>
+      <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+        &sum; {total} tokens
+      </Typography>
     </Tooltip>
   );
 };
 
-type TokenCostProps = {
-  prompt: number;
-  completion: number;
-  total: number;
-};
+type TokenCostProps = TokenCountProps;
 
 export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) => {
   return (
     <Tooltip
       title={
         <Stack direction="column" gap={0} sx={{ fontFamily: "monospace" }}>
-          <span>Prompt: {formatCurrency(prompt)}</span>
-          <span>Completion: {formatCurrency(completion)}</span>
+          <Typography variant="body2" fontSize={12}>
+            Prompt: {prompt ? formatCurrency(prompt) : "N/A"}
+          </Typography>
+          <Typography variant="body2" fontSize={12}>
+            Completion: {completion ? formatCurrency(completion) : "N/A"}
+          </Typography>
         </Stack>
       }
     >
-      <span className="select-none">&sum; {formatCurrency(total)}</span>
+      <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+        &sum; {formatCurrency(total)}
+      </Typography>
     </Tooltip>
   );
 };

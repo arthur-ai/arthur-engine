@@ -1,13 +1,13 @@
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { CopyableChip } from "@/components/common";
-import { SpanMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
 import { TypeChip } from "@/components/common/span/TypeChip";
-import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import { SpanMetadataResponse } from "@/lib/api-client/api-client";
+import { formatDate, formatDuration } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 
@@ -67,7 +67,7 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("duration_ms", {
     header: "Duration",
-    cell: ({ getValue }) => `${getValue().toFixed(2)}ms`,
+    cell: ({ getValue }) => formatDuration(getValue()),
   }),
   columnHelper.accessor("trace_id", {
     header: "Trace ID",

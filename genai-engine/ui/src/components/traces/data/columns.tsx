@@ -6,7 +6,9 @@ import { CopyableChip } from "../../common";
 import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate } from "@/utils/formatters";
+import { formatDate, formatDuration } from "@/utils/formatters";
+import { Highlight } from "@/components/common/Highlight";
+import { tryFormatJson } from "@/utils/llm";
 
 const columnHelper = createColumnHelper<TraceMetadataResponse>();
 
@@ -27,11 +29,23 @@ export const columns = [
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
-    cell: ({ getValue }) => getValue(),
+    cell: ({ getValue }) => {
+      const value = getValue();
+
+      if (!value) return "-";
+
+      return <Highlight code={tryFormatJson(value).substring(0, 100)} language="json" />;
+    },
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
-    cell: ({ getValue }) => getValue(),
+    cell: ({ getValue }) => {
+      const value = getValue();
+
+      if (!value) return "-";
+
+      return <Highlight code={tryFormatJson(value).substring(0, 100)} language="json" />;
+    },
   }),
   columnHelper.display({
     id: "token-count",
@@ -66,7 +80,7 @@ export const columns = [
   }),
   columnHelper.accessor("duration_ms", {
     header: "Duration",
-    cell: ({ getValue }) => `${getValue().toFixed(2)}ms`,
+    cell: ({ getValue }) => formatDuration(getValue()),
   }),
   columnHelper.accessor("session_id", {
     header: "Session ID",

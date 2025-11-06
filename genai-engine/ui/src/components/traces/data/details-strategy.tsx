@@ -1,16 +1,16 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
-import { Box, Chip, Paper } from "@mui/material";
+import { Box, Paper } from "@mui/material";
 import Typography from "@mui/material/Typography";
 
 import { LLMMetricsPanel } from "../components/LLMMetricsPanel";
-import { TokenCountWidget } from "../components/widgets/TokenCount";
-import { getSpanCost, getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
+import { getSpanInput, getSpanInputMimeType, getSpanModel, getSpanOutput } from "../utils/spans";
+
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
 
 import { Highlight } from "@/components/common/Highlight";
 import { MessageRenderer } from "@/components/common/llm/MessageRenderer";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatCurrency } from "@/utils/formatters";
-import { getInputTokens, getMessages, getOutputMessages, getOutputTokens, getTotalTokens, tryFormatJson } from "@/utils/llm";
+import { getCost, getMessages, getOutputMessages, getTokens, tryFormatJson } from "@/utils/llm";
 
 function getHighlightType(span: NestedSpanWithMetricsResponse) {
   const mime = getSpanInputMimeType(span);
@@ -133,19 +133,45 @@ const spanDetailsStrategy = [
         render: (span: NestedSpanWithMetricsResponse) => {
           const model = getSpanModel(span);
 
-          return <Chip label={`model: ${model}`} variant="outlined" size="small" />;
+          return <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>{`model: ${model}`}</Typography>;
         },
       },
       {
         render: (span: NestedSpanWithMetricsResponse) => {
-          const cost = getSpanCost(span);
+          const cost = getCost(span);
 
-          return <Chip label={`cost: ${formatCurrency(cost)}`} variant="outlined" size="small" />;
+          const na = (
+            <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
+              Cost: N/A
+            </Typography>
+          );
+
+          if (!cost) return na;
+
+          const { prompt, completion, total } = cost;
+
+          if (!total) return na;
+
+          return <TokenCostTooltip prompt={prompt} completion={completion} total={total} />;
         },
       },
       {
         render: (span: NestedSpanWithMetricsResponse) => {
-          return <TokenCountWidget input={getInputTokens(span)} output={getOutputTokens(span)} total={getTotalTokens(span)} />;
+          const cost = getTokens(span);
+
+          const na = (
+            <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
+              Tokens: N/A
+            </Typography>
+          );
+
+          if (!cost) return na;
+
+          const { input, output, total } = cost;
+
+          if (!total) return na;
+
+          return <TokenCountTooltip prompt={input} completion={output} total={total} />;
         },
       },
     ],
