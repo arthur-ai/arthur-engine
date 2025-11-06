@@ -6,6 +6,8 @@ import { TokenCostTooltip, TokenCountTooltip } from "./common";
 import { CopyableChip } from "@/components/common";
 import { SpanMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
+import { TypeChip } from "@/components/common/span/TypeChip";
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 
@@ -29,7 +31,7 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("span_kind", {
     header: "Span Kind",
-    cell: ({ getValue }) => getValue(),
+    cell: ({ getValue }) => <TypeChip type={(getValue() as OpenInferenceSpanKind) ?? OpenInferenceSpanKind.AGENT} />,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
