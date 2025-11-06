@@ -1,24 +1,21 @@
-import {
-  IncomingFilter,
-  mapFiltersToRequest,
-} from "@/components/traces/components/filtering/mapper";
+import { getStartDate, IncomingFilter, mapFiltersToRequest } from "@/components/traces/components/filtering/mapper";
+import { TimeRange } from "@/components/traces/constants";
 import { Api } from "@/lib/api";
 
-// Traces
-
-type GetFilteredTracesParams = {
+type CommonParams = {
   taskId: string;
   page: number;
   pageSize: number;
   filters: IncomingFilter[];
+  timeRange: TimeRange;
 };
 
-export async function getFilteredTraces(
-  api: Api<unknown>,
-  { taskId, page, pageSize, filters }: GetFilteredTracesParams
-) {
-  const startTime = new Date();
-  startTime.setDate(startTime.getDate() - 30);
+// Traces
+
+export type GetFilteredTracesParams = CommonParams;
+
+export async function getFilteredTraces(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetFilteredTracesParams) {
+  const startTime = getStartDate(timeRange);
 
   const response = await api.api.listTracesMetadataApiV1TracesGet({
     task_ids: [taskId],
@@ -42,32 +39,21 @@ export async function getTrace(api: Api<unknown>, { traceId }: GetTraceParams) {
   return response.data;
 }
 
-type GetFilteredSpansParams = {
-  taskId: string;
-  page: number;
-  pageSize: number;
-  filters: IncomingFilter[];
-};
-
-export async function computeTraceMetrics(
-  api: Api<unknown>,
-  { traceId }: GetTraceParams
-) {
-  const response =
-    await api.api.computeTraceMetricsApiV1TracesTraceIdMetricsGet(traceId);
+export async function computeTraceMetrics(api: Api<unknown>, { traceId }: GetTraceParams) {
+  const response = await api.api.computeTraceMetricsApiV1TracesTraceIdMetricsGet(traceId);
   return response.data;
 }
 
 // Spans
 
-export async function getFilteredSpans(
-  api: Api<unknown>,
-  { taskId, page, pageSize, filters }: GetFilteredSpansParams
-) {
+export type GetFilteredSpansParams = CommonParams;
+
+export async function getFilteredSpans(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetFilteredSpansParams) {
   const response = await api.api.listSpansMetadataApiV1TracesSpansGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
 
@@ -83,32 +69,21 @@ export async function getSpan(api: Api<unknown>, { spanId }: GetSpanParams) {
   return response.data;
 }
 
-export async function computeSpanMetrics(
-  api: Api<unknown>,
-  { spanId }: GetSpanParams
-) {
-  const response =
-    await api.api.computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet(spanId);
+export async function computeSpanMetrics(api: Api<unknown>, { spanId }: GetSpanParams) {
+  const response = await api.api.computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet(spanId);
   return response.data;
 }
 
 // Sessions
 
-type GetSessionsParams = {
-  taskId: string;
-  page: number;
-  pageSize: number;
-  filters: IncomingFilter[];
-};
+export type GetSessionsParams = CommonParams;
 
-export async function getFilteredSessions(
-  api: Api<unknown>,
-  { taskId, page, pageSize, filters }: GetSessionsParams
-) {
+export async function getFilteredSessions(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetSessionsParams) {
   const response = await api.api.listSessionsMetadataApiV1TracesSessionsGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
   return response.data;
@@ -118,34 +93,23 @@ type GetSessionParams = {
   sessionId: string;
 };
 
-export async function getSession(
-  api: Api<unknown>,
-  { sessionId }: GetSessionParams
-) {
-  const response =
-    await api.api.getSessionTracesApiV1TracesSessionsSessionIdGet({
-      sessionId,
-    });
+export async function getSession(api: Api<unknown>, { sessionId }: GetSessionParams) {
+  const response = await api.api.getSessionTracesApiV1TracesSessionsSessionIdGet({
+    sessionId,
+  });
   return response.data;
 }
 
 // Users
 
-type GetUsersParams = {
-  taskId: string;
-  page: number;
-  pageSize: number;
-  filters: IncomingFilter[];
-};
+export type GetUsersParams = CommonParams;
 
-export async function getUsers(
-  api: Api<unknown>,
-  { taskId, page, pageSize, filters }: GetUsersParams
-) {
+export async function getUsers(api: Api<unknown>, { taskId, page, pageSize, filters, timeRange }: GetUsersParams) {
   const response = await api.api.listUsersMetadataApiV1TracesUsersGet({
     task_ids: [taskId],
     page,
     page_size: pageSize,
+    start_time: getStartDate(timeRange).toISOString(),
     ...mapFiltersToRequest(filters),
   });
 
@@ -157,10 +121,7 @@ type GetUserParams = {
   userId: string;
 };
 
-export async function getUser(
-  api: Api<unknown>,
-  { taskId, userId }: GetUserParams
-) {
+export async function getUser(api: Api<unknown>, { taskId, userId }: GetUserParams) {
   const response = await api.api.getUserDetailsApiV1TracesUsersUserIdGet({
     userId,
     task_ids: [taskId],

@@ -1,11 +1,6 @@
 import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
+import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { sessionLevelColumns } from "../../data/session-level-columns";
@@ -27,31 +22,28 @@ export const SessionLevel = () => {
   const api = useApi()!;
   const { task } = useTask();
   const filters = useFilterStore((state) => state.filters);
+  const timeRange = useFilterStore((state) => state.timeRange);
 
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const push = useTracesHistoryStore((state) => state.push);
 
+  const params = {
+    taskId: task?.id ?? "",
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters,
+    timeRange,
+  };
+
   const { data, isFetching, isPlaceholderData, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.sessions.listPaginated(
-      filters,
-      pagination.page,
-      pagination.rowsPerPage
-    ),
+    queryKey: queryKeys.sessions.listPaginated(params),
     placeholderData: keepPreviousData,
-    queryFn: () =>
-      getFilteredSessions(api, {
-        taskId: task?.id ?? "",
-        page: pagination.page,
-        pageSize: pagination.rowsPerPage,
-        filters,
-      }),
+    queryFn: () => getFilteredSessions(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "start_time", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const table = useReactTable({
     data: data?.sessions ?? [],
@@ -75,9 +67,7 @@ export const SessionLevel = () => {
   );
 
   if (error) {
-    return (
-      <Alert severity="error">There was an error fetching sessions.</Alert>
-    );
+    return <Alert severity="error">There was an error fetching sessions.</Alert>;
   }
 
   return (

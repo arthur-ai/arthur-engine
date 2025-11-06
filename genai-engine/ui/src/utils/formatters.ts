@@ -1,6 +1,9 @@
+const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
+
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "short",
-  timeStyle: "short",
+  timeStyle: "long",
+  timeZone,
 });
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {

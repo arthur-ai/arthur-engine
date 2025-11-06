@@ -1,14 +1,10 @@
 import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
+import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useState } from "react";
 
 import { userLevelColumns } from "../../data/user-level-columns";
+import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
 import { TracesEmptyState } from "../TracesEmptyState";
 import { TracesTable } from "../TracesTable";
@@ -25,27 +21,26 @@ export const UserLevel = () => {
   const { task } = useTask();
   const push = useTracesHistoryStore((state) => state.push);
 
+  const timeRange = useFilterStore((state) => state.timeRange);
+
   const pagination = useDatasetPagination(FETCH_SIZE);
+
+  const params = {
+    taskId: task?.id ?? "",
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters: [],
+    timeRange,
+  };
 
   const { data, isFetching, isPlaceholderData, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.users.listPaginated(
-      pagination.page,
-      pagination.rowsPerPage
-    ),
+    queryKey: queryKeys.users.listPaginated(params),
     placeholderData: keepPreviousData,
-    queryFn: () =>
-      getUsers(api, {
-        taskId: task?.id ?? "",
-        page: pagination.page,
-        pageSize: pagination.rowsPerPage,
-        filters: [],
-      }),
+    queryFn: () => getUsers(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "user_id", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "user_id", desc: true }]);
 
   const table = useReactTable({
     data: data?.users ?? [],

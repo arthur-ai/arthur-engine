@@ -1,6 +1,8 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { useQuery } from "@tanstack/react-query";
 
+import { useFilterStore } from "../../stores/filter.store";
+
 import { createDynamicEnumField, createPrimitiveField, Field } from "./fields";
 import { ComparisonOperators, EnumOperators } from "./types";
 import { getEnumOptionLabel } from "./utils";
@@ -59,15 +61,19 @@ export const TRACE_FIELDS = [
     operators: [EnumOperators.IN, EnumOperators.EQUALS],
     itemToStringLabel: undefined,
     useData: function useData({ taskId, api }) {
+      const timeRange = useFilterStore((state) => state.timeRange);
+
+      const params = {
+        taskId,
+        page: 0,
+        pageSize: MAX_PAGE_SIZE,
+        filters: [],
+        timeRange,
+      };
+
       const { data, isLoading } = useQuery({
-        queryKey: queryKeys.traces.listPaginated([], 0, MAX_PAGE_SIZE),
-        queryFn: () =>
-          getFilteredTraces(api, {
-            taskId,
-            page: 0,
-            pageSize: MAX_PAGE_SIZE,
-            filters: [],
-          }),
+        queryKey: queryKeys.traces.listPaginated(params),
+        queryFn: () => getFilteredTraces(api, params),
         select: (data) => data.traces.map((trace) => trace.trace_id),
       });
 
@@ -78,8 +84,7 @@ export const TRACE_FIELDS = [
       if (value.length === 0) return "Select trace IDs...";
 
       const firstValue = value[0];
-      const additionalValues =
-        value.length > 1 ? ` (+${value.length - 1} more)` : "";
+      const additionalValues = value.length > 1 ? ` (+${value.length - 1} more)` : "";
 
       return firstValue + additionalValues;
     },

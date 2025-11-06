@@ -1,11 +1,6 @@
 import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
+import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { spanLevelColumns } from "../../data/span-level-columns";
@@ -34,27 +29,24 @@ export const SpanLevel = () => {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const filters = useFilterStore((state) => state.filters);
+  const timeRange = useFilterStore((state) => state.timeRange);
+
+  const params = {
+    taskId: task?.id ?? "",
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters,
+    timeRange,
+  };
 
   const { data, isFetching, isPlaceholderData, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.spans.listPaginated(
-      filters,
-      pagination.page,
-      pagination.rowsPerPage
-    ),
+    queryKey: queryKeys.spans.listPaginated(params),
     placeholderData: keepPreviousData,
-    queryFn: () =>
-      getFilteredSpans(api, {
-        taskId: task?.id ?? "",
-        page: pagination.page,
-        pageSize: pagination.rowsPerPage,
-        filters,
-      }),
+    queryFn: () => getFilteredSpans(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "start_time", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const table = useReactTable({
     data: data?.spans ?? DEFAULT_DATA,

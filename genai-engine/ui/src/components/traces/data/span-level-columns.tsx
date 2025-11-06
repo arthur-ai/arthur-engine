@@ -25,6 +25,10 @@ export const spanLevelColumns = [
     header: "Span Name",
     cell: ({ getValue }) => getValue(),
   }),
+  columnHelper.accessor("span_kind", {
+    header: "Span Kind",
+    cell: ({ getValue }) => getValue(),
+  }),
   columnHelper.accessor("start_time", {
     header: "Start Time",
     cell: ({ getValue }) => formatDate(getValue()),
@@ -50,13 +54,13 @@ export const spanLevelColumns = [
     header: "Session ID",
     cell: ({ getValue }) => {
       const label = getValue();
+
+      if (!label) return null;
+
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip
-              label={label ?? ""}
-              sx={{ fontFamily: "monospace" }}
-            />
+            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
           </span>
         </Tooltip>
       );
@@ -66,13 +70,13 @@ export const spanLevelColumns = [
     header: "User ID",
     cell: ({ getValue }) => {
       const label = getValue();
+
+      if (!label) return null;
+
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip
-              label={label ?? ""}
-              sx={{ fontFamily: "monospace" }}
-            />
+            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
           </span>
         </Tooltip>
       );
