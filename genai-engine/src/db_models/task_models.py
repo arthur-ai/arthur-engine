@@ -26,6 +26,10 @@ class DatabaseTask(Base, IsArchivable):
         back_populates="task",
         lazy="select",
     )
+    llm_evals: Mapped[List["DatabaseLLMEval"]] = relationship(
+        back_populates="task",
+        lazy="select",
+    )
 
 
 class DatabaseTaskToRules(Base):
