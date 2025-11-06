@@ -158,7 +158,7 @@ def test_rag_provider_versions_crud(client: GenaiEngineTestClientBase) -> None:
     assert deleted_version_2.deleted_at is not None
     # assert fields that should have been cleared
     assert deleted_version_2.settings is None
-    assert deleted_version_2.tags is None
+    assert deleted_version_2.tags == []
 
     # assert fields that should still have values
     assert deleted_version_2.created_at is not None

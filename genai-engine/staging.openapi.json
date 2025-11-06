@@ -13466,19 +13466,12 @@
                         "description": "Settings configuration for a search request to a RAG provider."
                     },
                     "tags": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
                         "title": "Tags",
-                        "description": "Optional list of tags to configure for this version of the search settings configuration."
+                        "description": "List of tags to configure for this version of the search settings configuration."
                     }
                 },
                 "type": "object",
@@ -13528,19 +13521,12 @@
                         "description": "Description of the search setting configuration."
                     },
                     "tags": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
                         "title": "Tags",
-                        "description": "Optional list of tags to configure for this version of the search settings configuration."
+                        "description": "List of tags to configure for this version of the search settings configuration."
                     }
                 },
                 "type": "object",

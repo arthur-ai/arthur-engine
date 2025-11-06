@@ -295,25 +295,19 @@ class RagProvidersRepository:
         db_parent_config.updated_at = db_version.created_at
         db_parent_config.latest_version_number = db_version.version_number
 
-        # validate tags must be unique across versions
-        set_existing_tags = set(db_parent_config.all_possible_tags)
-        for new_tag in rag_setting_version.tags:
-            if new_tag in set_existing_tags:
+        # validate tags must be unique across versions - want to raise clean error instead of 5XX
+        existing_tags = db_parent_config.all_possible_tags
+        existing_tag_strings = {tag.tag for tag in existing_tags}
+        for new_tag_db in db_version.tags:
+            if new_tag_db.tag in existing_tag_strings:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"RAG setting version tag {new_tag} already exists for this configuration.",
+                    detail=f"RAG setting version tag {new_tag_db.tag} already exists for this configuration.",
                 )
-
-        # calculate new all_possible_tags field to include any newly introduced tags
-        # make sure we remove any duplicates in the new version
-        new_tags = set(rag_setting_version.tags) if rag_setting_version.tags else {}
-        existing_tags = (
-            db_parent_config.all_possible_tags
-            if db_parent_config.all_possible_tags
-            else []
-        )
-
-        db_parent_config.all_possible_tags = existing_tags + list(new_tags)
+        # update all_possible_tags to include the new tags as well
+        # reuse the tag DB objects from db_version to avoid creating duplicates
+        tags_to_add = [tag_db for tag_db in db_version.tags]
+        db_parent_config.all_possible_tags = existing_tags + tags_to_add
 
         # add objects to DB
         self.db_session.add(db_version)
@@ -383,19 +377,17 @@ class RagProvidersRepository:
             config_id,
             version_number,
         )
+        db_parent_config = self._get_db_rag_setting_config(config_id)
         db_version_config.deleted_at = datetime.now()
-        deleted_tag_set = (
-            set(db_version_config.tags) if db_version_config.tags is not None else {}
-        )
 
         # empty out all other fields in the version except for the PK fields and the created/updated fields
         db_version_config.settings = None
-        db_version_config.tags = None
+        # delete the tag records from the database and clear the relationship
+        for tag in db_version_config.tags:
+            self.db_session.delete(tag)
+        db_version_config.tags = []
 
-        # update all possible tags in case that was the last instance of a tag that got cleared
-        db_parent_config = self._get_db_rag_setting_config(config_id)
-        all_new_tags = set(db_parent_config.all_possible_tags) - deleted_tag_set
-        db_parent_config.all_possible_tags = list(all_new_tags)
+        # update db_parent_config updated_at time since one of its versions was affected
         db_parent_config.updated_at = datetime.now()
 
         self.db_session.commit()
