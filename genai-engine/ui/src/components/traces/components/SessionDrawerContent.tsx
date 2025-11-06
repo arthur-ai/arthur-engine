@@ -6,11 +6,11 @@ import { useEffect, useEffectEvent } from "react";
 import { getSessionTotals } from "../utils/sessions";
 
 import { TraceRenderer } from "./session/TraceRenderer";
-import { TokenCountWidget } from "./widgets/TokenCount";
 
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { getSession } from "@/services/tracing";
+import { TokenCountTooltip } from "../data/common";
 
 type Props = {
   id: string;
@@ -64,9 +64,9 @@ export const SessionDrawerContent = ({ id }: Props) => {
 
       <Stack gap={2} sx={{ p: 4 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <TokenCountWidget
-            input={totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]}
-            output={totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]}
+          <TokenCountTooltip
+            prompt={totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]}
+            completion={totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]}
             total={totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL]}
           />
         </Stack>
