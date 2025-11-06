@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.145"
+        "version": "2.1.146"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -6817,7 +6817,7 @@
         "/api/v1/tasks/{task_id}/rag_search_settings": {
             "post": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Create Rag Search Settings",
                 "description": "Create a new RAG search settings configuration.",
@@ -6875,7 +6875,7 @@
             },
             "get": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Get Task Rag Search Settings",
                 "description": "Get list of RAG search setting configurations for the task.",
@@ -7001,7 +7001,7 @@
         "/api/v1/rag_search_settings/{setting_configuration_id}": {
             "get": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Get Rag Search Setting",
                 "description": "Get a single RAG setting configuration.",
@@ -7050,7 +7050,7 @@
             },
             "delete": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Delete Rag Search Setting",
                 "description": "Delete a RAG search setting configuration.",
@@ -7092,7 +7092,7 @@
             },
             "patch": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Update Rag Search Settings",
                 "description": "Update a single RAG search setting configuration.",
@@ -7153,7 +7153,7 @@
         "/api/v1/rag_search_settings/{setting_configuration_id}/versions": {
             "post": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Create Rag Search Settings Version",
                 "description": "Create a new version for an existing RAG search settings configuration.",
@@ -7214,7 +7214,7 @@
         "/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}": {
             "get": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Get Rag Search Setting Version",
                 "description": "Get a single RAG setting configuration version.",
@@ -7274,7 +7274,7 @@
             },
             "delete": {
                 "tags": [
-                    "RAG Providers"
+                    "RAG Settings"
                 ],
                 "summary": "Delete Rag Search Setting Version",
                 "description": "Soft delete a RAG search setting configuration version.",
@@ -16228,12 +16228,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "hybrid_search",
-                        "title": "Search Kind",
-                        "default": "hybrid_search"
-                    },
                     "alpha": {
                         "type": "number",
                         "title": "Alpha",
@@ -16322,6 +16316,12 @@
                         ],
                         "title": "Target Vector",
                         "description": "Specifies vector to use for vector search when using named vectors."
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "hybrid_search",
+                        "title": "Search Kind",
+                        "default": "hybrid_search"
                     }
                 },
                 "type": "object",
@@ -16658,12 +16658,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "hybrid_search",
-                        "title": "Search Kind",
-                        "default": "hybrid_search"
-                    },
                     "alpha": {
                         "type": "number",
                         "title": "Alpha",
@@ -16879,12 +16873,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "keyword_search",
-                        "title": "Search Kind",
-                        "default": "keyword_search"
-                    },
                     "minimum_match_or_operator": {
                         "anyOf": [
                             {
@@ -16908,6 +16896,12 @@
                         ],
                         "title": "And Operator",
                         "description": "Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator"
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "keyword_search",
+                        "title": "Search Kind",
+                        "default": "keyword_search"
                     }
                 },
                 "type": "object",
@@ -17178,12 +17172,6 @@
                         "const": "weaviate",
                         "title": "Rag Provider",
                         "default": "weaviate"
-                    },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "keyword_search",
-                        "title": "Search Kind",
-                        "default": "keyword_search"
                     },
                     "minimum_match_or_operator": {
                         "anyOf": [
@@ -17517,12 +17505,6 @@
                         "title": "Rag Provider",
                         "default": "weaviate"
                     },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "vector_similarity_text_search",
-                        "title": "Search Kind",
-                        "default": "vector_similarity_text_search"
-                    },
                     "certainty": {
                         "anyOf": [
                             {
@@ -17569,6 +17551,12 @@
                         ],
                         "title": "Target Vector",
                         "description": "Specifies vector to use for similarity search when using named vectors."
+                    },
+                    "search_kind": {
+                        "type": "string",
+                        "const": "vector_similarity_text_search",
+                        "title": "Search Kind",
+                        "default": "vector_similarity_text_search"
                     }
                 },
                 "type": "object",
@@ -17862,12 +17850,6 @@
                         "const": "weaviate",
                         "title": "Rag Provider",
                         "default": "weaviate"
-                    },
-                    "search_kind": {
-                        "type": "string",
-                        "const": "vector_similarity_text_search",
-                        "title": "Search Kind",
-                        "default": "vector_similarity_text_search"
                     },
                     "certainty": {
                         "anyOf": [
