@@ -28,29 +28,6 @@ const PromptsPlayground = () => {
 
   const apiClient = useApi();
   const spanId = searchParams.get("spanId");
-  //   if (hasFetchedPrompts.current) {
-  //     return;
-  //   }
-
-  //   if (!apiClient || !taskId) {
-  //     console.error("No api client or task id");
-  //     return;
-  //   }
-
-  //   hasFetchedPrompts.current = true;
-  //   try {
-  //     const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
-  //       taskId,
-  //     });
-
-  //     dispatch({
-  //       type: "updateBackendPrompts",
-  //       payload: { prompts: response.data.prompt_metadata },
-  //     });
-  //   } catch (error) {
-  //     console.error("Failed to fetch prompt metadata:", error);
-  //   }
-  // }, [apiClient, taskId]);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
