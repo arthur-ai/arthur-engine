@@ -32,6 +32,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
   const [messagesHeightRatio, setMessagesHeightRatio] = useState<number>(0.7); // Default: 70% messages, 30% response
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { dispatch } = usePromptContext();
@@ -58,8 +59,11 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   }, [currentPromptName]);
 
   useEffect(() => {
-    if (prompt.running) {
+    if (prompt.running && !hasTriggeredRunRef.current) {
+      hasTriggeredRunRef.current = true;
       runPrompt();
+    } else if (!prompt.running && hasTriggeredRunRef.current) {
+      hasTriggeredRunRef.current = false;
     }
   }, [prompt.running, runPrompt]);
 

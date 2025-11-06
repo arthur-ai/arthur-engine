@@ -63,22 +63,6 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
       // Mark as running
       isRunningRef.current = true;
 
-      // Initialize streaming state
-      dispatch({
-        type: "updatePrompt",
-        payload: {
-          promptId: prompt.id,
-          prompt: {
-            running: true,
-            runResponse: {
-              content: "",
-              cost: "0.000000",
-              tool_calls: null,
-            },
-          },
-        },
-      });
-
       // Start streaming (pass token as fallback for auth headers)
       abortControllerRef.current = streamCompletions(
         completionRequest,
