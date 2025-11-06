@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Annotated, Optional, Union
-from uuid import UUID
 
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
@@ -9,12 +8,9 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from clients.llm.llm_client import LLMClient
-from dependencies import get_application_config, get_db_session
+from dependencies import get_db_session, get_validated_agentic_task
 from repositories.agentic_prompts_repository import AgenticPromptRepository
-from repositories.metrics_repository import MetricRepository
 from repositories.model_provider_repository import ModelProviderRepository
-from repositories.rules_repository import RuleRepository
-from repositories.tasks_repository import TaskRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
@@ -24,7 +20,7 @@ from schemas.agentic_prompt_schemas import (
     PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import ApplicationConfiguration, Task, User
+from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     PromptsGetAllFilterRequest,
     PromptsGetVersionsFilterRequest,
@@ -41,33 +37,6 @@ agentic_prompt_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
-
-
-def get_task_repository(
-    db_session: Session,
-    application_config: ApplicationConfiguration,
-) -> TaskRepository:
-    return TaskRepository(
-        db_session,
-        RuleRepository(db_session),
-        MetricRepository(db_session),
-        application_config,
-    )
-
-
-def get_validated_agentic_task(
-    task_id: UUID,
-    db_session: Session = Depends(get_db_session),
-    application_config: ApplicationConfiguration = Depends(get_application_config),
-) -> Task:
-    """Dependency that validates task exists and is agentic"""
-    task_repo = get_task_repository(db_session, application_config)
-    task = task_repo.get_task_by_id(str(task_id))
-
-    if not task.is_agentic:
-        raise HTTPException(status_code=400, detail="Task is not agentic")
-
-    return task
 
 
 def prompts_get_all_filter_parameters(

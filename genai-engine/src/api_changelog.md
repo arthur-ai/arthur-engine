@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/05/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  endpoint added
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  the response property 'latest_version/settings' became optional for the status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  the response property 'rag_provider_setting_configurations/items/latest_version/settings' became optional for the status '200'
