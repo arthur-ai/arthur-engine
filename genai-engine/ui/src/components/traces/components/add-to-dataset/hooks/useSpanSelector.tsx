@@ -56,13 +56,15 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
   };
 
   const handleSelectValue = (key: string) => {
+    if (!selectedSpan) return;
+
     const fullPath = getFullPath(key);
     const value = getNestedValue(selectedSpan?.raw_data, fullPath);
 
     onFieldChange({
       value: isPrimitive(value) ? String(value) : JSON.stringify(value),
       name,
-      path: isPrimitive(value) ? `${selectedSpan?.span_name}.${fullPath}` : fullPath,
+      path: isPrimitive(value) ? `${selectedSpan.span_name}.${fullPath}` : fullPath,
     });
   };
 

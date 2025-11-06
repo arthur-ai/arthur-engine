@@ -83,7 +83,7 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
   return (
     <>
-      <Drawer>
+      <Drawer onClose={() => form.reset()}>
         <Drawer.Trigger render={<Button startIcon={<AddIcon />} />}>Add to Dataset</Drawer.Trigger>
 
         <Drawer.Content

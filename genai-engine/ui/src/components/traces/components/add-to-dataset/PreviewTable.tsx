@@ -3,7 +3,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import { Button, ButtonGroup, Typography } from "@mui/material";
 import { Stack } from "@mui/material";
 import { useField } from "@tanstack/react-form";
-import { ColumnDef, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import { withForm } from "../filtering/hooks/form";
@@ -11,6 +10,8 @@ import { TracesTable } from "../TracesTable";
 
 import { addToDatasetFormOptions } from "./form/shared";
 import { usePreviewTableData } from "./hooks/usePreviewTableData";
+
+import { Drawer } from "@/components/common/Drawer";
 
 export const PreviewTable = withForm({
   ...addToDatasetFormOptions,
@@ -30,9 +31,7 @@ export const PreviewTable = withForm({
             Preview: 1 row will be added
           </Typography>
           <ButtonGroup size="small">
-            <Button variant="outlined" color="primary" startIcon={<CloseIcon />}>
-              Cancel
-            </Button>
+            <Drawer.Close render={<Button variant="outlined" color="primary" startIcon={<CloseIcon />} />}>Cancel</Drawer.Close>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} type="submit">
               Add Row
             </Button>
