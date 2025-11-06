@@ -3,6 +3,24 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/06/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+
+# 11/06/2025
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  removed the request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  removed the request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed the request property 'settings/search_kind'
