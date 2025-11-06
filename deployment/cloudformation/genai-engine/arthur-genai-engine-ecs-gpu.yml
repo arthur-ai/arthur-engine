@@ -334,6 +334,7 @@ Resources:
           SecurityGroups: !Ref GenaiEngineECSSecurityGroups
           Subnets: !Ref GenaiEngineECSServiceSubnetIDs
       TaskDefinition: !Ref GenaiEngineECSTaskDefinitionARN
+      HealthCheckGracePeriodSeconds: 300
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 
