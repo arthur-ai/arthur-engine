@@ -290,25 +290,9 @@ class ToolChoice(BaseModel):
         return "function"
 
 
-class AgenticPromptBaseConfig(BaseModel):
-    messages: List[AgenticPromptMessage] = Field(
-        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
-    )
-    model_name: str = Field(
-        description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
-    )
-    model_provider: ModelProvider = Field(
-        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
-    )
-    version: int = Field(default=1, description="Version of the agentic prompt")
-    tools: Optional[List[LLMTool]] = Field(
-        None,
-        description="Available tools/functions for the model to call, in OpenAI function calling format",
-    )
-    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
-        None,
-        description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
-    )
+class LLMConfigSettings(BaseModel):
+    model_config = {"extra": "forbid"}
+
     timeout: Optional[float] = Field(None, description="Request timeout in seconds")
     temperature: Optional[float] = Field(
         None,
@@ -321,10 +305,6 @@ class AgenticPromptBaseConfig(BaseModel):
     max_tokens: Optional[int] = Field(
         None,
         description="Maximum number of tokens to generate in the response",
-    )
-    response_format: Optional[LLMResponseFormat] = Field(
-        None,
-        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
     )
     stop: Optional[str] = Field(
         None,
@@ -365,6 +345,31 @@ class AgenticPromptBaseConfig(BaseModel):
     thinking: Optional[AnthropicThinkingParam] = Field(
         None,
         description="Anthropic-specific thinking parameter for Claude models",
+    )
+
+
+class AgenticPromptBaseConfig(LLMConfigSettings):
+    messages: List[AgenticPromptMessage] = Field(
+        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
+    )
+    version: int = Field(default=1, description="Version of the agentic prompt")
+    tools: Optional[List[LLMTool]] = Field(
+        None,
+        description="Available tools/functions for the model to call, in OpenAI function calling format",
+    )
+    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
+        None,
+        description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
+    )
+    response_format: Optional[LLMResponseFormat] = Field(
+        None,
+        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
     )
     stream_options: Optional[StreamOptions] = Field(
         None,

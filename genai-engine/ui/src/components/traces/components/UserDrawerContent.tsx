@@ -1,15 +1,9 @@
-import {
-  Box,
-  Paper,
-  Skeleton,
-  Stack,
-  TablePagination,
-  Typography,
-} from "@mui/material";
+import { Box, Paper, Skeleton, Stack, TablePagination, Typography } from "@mui/material";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { getCoreRowModel, useReactTable } from "@tanstack/react-table";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 
+import { TIME_RANGES, TimeRange } from "../constants";
 import { columns } from "../data/columns";
 import { sessionLevelColumns } from "../data/session-level-columns";
 import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
@@ -20,6 +14,7 @@ import { createFilterRow } from "./filtering/filters-row";
 import { IncomingFilter } from "./filtering/mapper";
 import { TRACE_FIELDS } from "./filtering/trace-fields";
 import { Operators } from "./filtering/types";
+import { TimeRangeSelect } from "./TimeRangeSelect";
 import { TracesEmptyState } from "./TracesEmptyState";
 import { TracesTable } from "./TracesTable";
 
@@ -27,17 +22,10 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useDatasetPagination } from "@/hooks/datasets/useDatasetPagination";
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
-import {
-  SessionMetadataResponse,
-  TraceMetadataResponse,
-} from "@/lib/api-client/api-client";
+import { SessionMetadataResponse, TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
-import {
-  getFilteredSessions,
-  getFilteredTraces,
-  getUser,
-} from "@/services/tracing";
+import { getFilteredSessions, getFilteredTraces, getUser } from "@/services/tracing";
 
 type Props = {
   id: string;
@@ -46,6 +34,8 @@ type Props = {
 export const UserDrawerContent = ({ id }: Props) => {
   const api = useApi()!;
   const { task } = useTask();
+
+  const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
 
   const { data: user } = useSuspenseQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
@@ -80,32 +70,29 @@ export const UserDrawerContent = ({ id }: Props) => {
       <Box sx={{ px: 4, py: 2 }}>
         <Paper variant="outlined">
           <Tabs.Root defaultValue="traces">
-            <Tabs.List>
-              <Tabs.Tab value="traces">Traces</Tabs.Tab>
-              <Tabs.Tab value="sessions">Sessions</Tabs.Tab>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+              <Tabs.List>
+                <Tabs.Tab value="traces">Traces</Tabs.Tab>
+                <Tabs.Tab value="sessions">Sessions</Tabs.Tab>
 
-              <Tabs.Indicator />
-            </Tabs.List>
+                <Tabs.Indicator />
+              </Tabs.List>
+              <Box sx={{ ml: "auto", py: 1, mr: 1 }}>
+                <TimeRangeSelect value={timeRange} onValueChange={setTimeRange} />
+              </Box>
+            </Stack>
             <Tabs.Panel value="traces">
-              <Suspense
-                fallback={<Skeleton variant="rectangular" height={100} />}
-              >
-                <FilterStoreProvider>
-                  <UserTracesTable
-                    ids={user.trace_ids}
-                    taskId={task?.id ?? ""}
-                  />
+              <Suspense fallback={<Skeleton variant="rectangular" height={100} />}>
+                <FilterStoreProvider timeRange={timeRange}>
+                  <UserTracesTable ids={user.trace_ids} taskId={task?.id ?? ""} />
                 </FilterStoreProvider>
               </Suspense>
             </Tabs.Panel>
             <Tabs.Panel value="sessions">
-              <Suspense
-                fallback={<Skeleton variant="rectangular" height={100} />}
-              >
-                <UserSessionsTable
-                  ids={user.session_ids}
-                  taskId={task?.id ?? ""}
-                />
+              <Suspense fallback={<Skeleton variant="rectangular" height={100} />}>
+                <FilterStoreProvider timeRange={timeRange}>
+                  <UserSessionsTable ids={user.session_ids} taskId={task?.id ?? ""} />
+                </FilterStoreProvider>
               </Suspense>
             </Tabs.Panel>
           </Tabs.Root>
@@ -131,28 +118,22 @@ const UserTracesTable = ({ ids, taskId }: UserTableProps) => {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const filters = useFilterStore((state) => state.filters);
+  const timeRange = useFilterStore((state) => state.timeRange);
 
-  const combinedFilters: IncomingFilter[] = useMemo(
-    () => [
-      ...filters,
-      { name: "trace_ids", operator: Operators.IN, value: ids },
-    ],
-    [ids, filters]
-  );
+  const combinedFilters: IncomingFilter[] = useMemo(() => [...filters, { name: "trace_ids", operator: Operators.IN, value: ids }], [ids, filters]);
+
+  const params = {
+    taskId,
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters: combinedFilters,
+    timeRange,
+  };
+
   const traces = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.traces.listPaginated(
-      combinedFilters,
-      pagination.page,
-      pagination.rowsPerPage
-    ),
-    queryFn: () =>
-      getFilteredTraces(api, {
-        taskId,
-        page: pagination.page,
-        pageSize: pagination.rowsPerPage,
-        filters: combinedFilters,
-      }),
+    queryKey: queryKeys.traces.listPaginated(params),
+    queryFn: () => getFilteredTraces(api, params),
   });
 
   const table = useReactTable({
@@ -208,30 +189,26 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
   const push = useTracesHistoryStore((state) => state.push);
   const pagination = useDatasetPagination(FETCH_SIZE);
 
-  const filters: IncomingFilter[] = useMemo(
-    () => [{ name: "session_ids", operator: Operators.IN, value: ids }],
-    [ids]
-  );
+  const timeRange = useFilterStore((state) => state.timeRange);
+
+  const filters: IncomingFilter[] = useMemo(() => [{ name: "session_ids", operator: Operators.IN, value: ids }], [ids]);
+
+  const params = {
+    taskId,
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters,
+    timeRange,
+  };
 
   const sessions = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.sessions.listPaginated(
-      filters,
-      pagination.page,
-      pagination.rowsPerPage
-    ),
-    queryFn: () =>
-      getFilteredSessions(api, {
-        taskId,
-        page: pagination.page,
-        pageSize: pagination.rowsPerPage,
-        filters,
-      }),
+    queryKey: queryKeys.sessions.listPaginated(params),
+    queryFn: () => getFilteredSessions(api, params),
   });
 
   const table = useReactTable({
-    data:
-      sessions.data?.sessions ?? (DEFAULT_DATA as SessionMetadataResponse[]),
+    data: sessions.data?.sessions ?? (DEFAULT_DATA as SessionMetadataResponse[]),
     columns: sessionLevelColumns,
     getCoreRowModel: getCoreRowModel(),
   });

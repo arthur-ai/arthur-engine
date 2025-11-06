@@ -70,7 +70,6 @@ def agentic_prompt_repo(mock_db_session):
 def sample_prompt_data():
     """Sample prompt data for testing"""
     return {
-        "name": "test_prompt",
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
@@ -85,7 +84,7 @@ def sample_prompt_data():
 @pytest.fixture
 def sample_agentic_prompt(sample_prompt_data):
     """Create sample AgenticPrompt instance"""
-    return AgenticPrompt(**sample_prompt_data)
+    return AgenticPrompt(name="test_prompt", **sample_prompt_data)
 
 
 @pytest.fixture
@@ -111,7 +110,7 @@ def sample_unsaved_run_config(sample_prompt_data):
 def sample_db_prompt(sample_prompt_data):
     """Create sample DatabaseAgenticPrompt instance"""
     task_id = str(uuid4())
-    return AgenticPrompt(**sample_prompt_data).to_db_model(task_id)
+    return AgenticPrompt(name="test_prompt", **sample_prompt_data).to_db_model(task_id)
 
 
 @pytest.fixture
@@ -140,10 +139,10 @@ def mock_completion(*args, **kwargs):
 @pytest.mark.unit_tests
 def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
     """Test creating a new AgenticPrompt instance"""
-    prompt = agentic_prompt_repo.create_prompt(**sample_prompt_data)
+    prompt = agentic_prompt_repo.create_prompt(name="test_prompt", **sample_prompt_data)
 
     assert isinstance(prompt, AgenticPrompt)
-    assert prompt.name == sample_prompt_data["name"]
+    assert prompt.name == "test_prompt"
     assert prompt.messages == to_agentic_prompt_messages(sample_prompt_data["messages"])
     assert prompt.model_name == sample_prompt_data["model_name"]
     assert prompt.model_provider == sample_prompt_data["model_provider"]
@@ -388,6 +387,7 @@ def test_save_prompt_with_dict(
 
     mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
 
+    sample_prompt_data["name"] = "test_prompt"
     agentic_prompt_repo.save_prompt(task_id, sample_prompt_data)
 
     # Verify database operations

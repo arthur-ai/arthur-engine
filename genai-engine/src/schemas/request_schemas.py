@@ -17,6 +17,7 @@ from weaviate.collections.classes.grpc import (
 from weaviate.types import INCLUDE_VECTOR
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
@@ -223,13 +224,10 @@ class WeaviateSearchCommonSettingsRequest(BaseModel):
     )
 
 
-class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+class WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
-        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
-    )
 
     certainty: Optional[float] = Field(
         default=None,
@@ -247,11 +245,17 @@ class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
     )
 
 
-class WeaviateVectorSimilarityTextSearchSettingsRequest(
-    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+    WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest,
 ):
-    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
+    )
 
+
+class WeaviateVectorSimilarityTextSearchSettingsRequest(
+    WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest,
+):
     # fields match the names of the inputs to the weaviate near_text function
     # the only exception is collection_name, which is used to fetch the vector collection used for the similarity search
     # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.grpc.html#weaviate.collections.grpc.query._QueryGRPC.near_text
@@ -263,7 +267,7 @@ class WeaviateVectorSimilarityTextSearchSettingsRequest(
     def _to_client_settings_dict(self) -> dict[str, Any]:
         """Parses settings to the client parameters for the near_text function."""
         return self.model_dump(
-            exclude={"collection_name", "rag_provider", "search_kind"},
+            exclude={"collection_name", "rag_provider"},
         )
 
 
@@ -278,11 +282,10 @@ class RagVectorSimilarityTextSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateKeywordSearchSettingsConfigurationRequest(
+class WeaviateKeywordSearchSettingsBaseConfigurationRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
 
     minimum_match_or_operator: Optional[int] = Field(
         default=None,
@@ -305,8 +308,14 @@ class WeaviateKeywordSearchSettingsConfigurationRequest(
         return self
 
 
+class WeaviateKeywordSearchSettingsConfigurationRequest(
+    WeaviateKeywordSearchSettingsBaseConfigurationRequest,
+):
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+
 class WeaviateKeywordSearchSettingsRequest(
-    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsBaseConfigurationRequest,
 ):
     # fields match the names of the inputs to the weaviate bm25 function
     # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
@@ -323,7 +332,6 @@ class WeaviateKeywordSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
-                "search_kind",
             },
         )
 
@@ -346,11 +354,10 @@ class RagKeywordSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateHybridSearchSettingsConfigurationRequest(
+class WeaviateHybridSearchSettingsBaseRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
 
     alpha: float = Field(
         default=0.7,
@@ -393,8 +400,14 @@ class WeaviateHybridSearchSettingsConfigurationRequest(
         return self
 
 
+class WeaviateHybridSearchSettingsConfigurationRequest(
+    WeaviateHybridSearchSettingsBaseRequest,
+):
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+
 class WeaviateHybridSearchSettingsRequest(
-    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsBaseRequest,
 ):
     # fields match the names of the inputs to the weaviate hybrid function
     # some are left out for now: return_references, group_by, rerank, filters, vector, target_vector
@@ -410,7 +423,6 @@ class WeaviateHybridSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
-                "search_kind",
             },
         )
 
@@ -653,3 +665,19 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
             )
 
         return query
+
+
+class CreateEvalRequest(BaseModel):
+    model_name: str = Field(
+        description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
+    )
+    instructions: str = Field(description="Instructions for the llm eval")
+    min_score: int = Field(default=0, description="Minimum score for the llm eval")
+    max_score: int = Field(default=1, description="Maximum score for the llm eval")
+    config: Optional[LLMConfigSettings] = Field(
+        default=None,
+        description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
+    )

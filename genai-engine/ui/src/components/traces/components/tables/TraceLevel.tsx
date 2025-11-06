@@ -1,11 +1,6 @@
 import { Alert, TablePagination, Typography } from "@mui/material";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  SortingState,
-  useReactTable,
-} from "@tanstack/react-table";
+import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 import { columns } from "../../data/columns";
@@ -31,31 +26,28 @@ export function TraceLevel() {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const push = useTracesHistoryStore((state) => state.push);
+  const timeRange = useFilterStore((state) => state.timeRange);
 
   const filters = useFilterStore((state) => state.filters);
 
   const api = useApi()!;
 
+  const params = {
+    taskId: task?.id ?? "",
+    page: pagination.page,
+    pageSize: pagination.rowsPerPage,
+    filters,
+    timeRange,
+  };
+
   const { data, isFetching, error } = useQuery({
     // eslint-disable-next-line @tanstack/query/exhaustive-deps
-    queryKey: queryKeys.traces.listPaginated(
-      filters,
-      pagination.page,
-      pagination.rowsPerPage
-    ),
+    queryKey: queryKeys.traces.listPaginated(params),
     placeholderData: keepPreviousData,
-    queryFn: () =>
-      getFilteredTraces(api, {
-        taskId: task?.id ?? "",
-        page: 0,
-        pageSize: FETCH_SIZE,
-        filters,
-      }),
+    queryFn: () => getFilteredTraces(api, params),
   });
 
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "start_time", desc: true },
-  ]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "start_time", desc: true }]);
 
   const table = useReactTable({
     data: data?.traces ?? DEFAULT_DATA, // Use test data to verify scrolling

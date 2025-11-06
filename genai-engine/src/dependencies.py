@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Generator
+from uuid import UUID
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -13,7 +14,7 @@ from fastapi import Depends, HTTPException
 from psycopg2 import OperationalError as Psycopg2OperationalError
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.auth_constants import OAUTH_CLIENT_NAME
@@ -29,10 +30,14 @@ from config.keycloak_config import KeyCloakSettings
 from db_models import Base
 from metrics_engine import MetricsEngine
 from repositories.configuration_repository import ConfigurationRepository
+from repositories.metrics_repository import MetricRepository
+from repositories.rules_repository import RuleRepository
+from repositories.tasks_repository import TaskRepository
 from schemas.enums import DocumentStorageEnvironment
 from schemas.internal_schemas import (
     ApplicationConfiguration,
     DocumentStorageConfiguration,
+    Task,
 )
 from scorer import (
     BinaryPIIDataClassifier,
@@ -276,3 +281,30 @@ def s3_client_from_config(doc_storage_config: DocumentStorageConfiguration):
         )
     else:
         raise NotImplementedError(doc_storage_config.document_storage_environment)
+
+
+def get_task_repository(
+    db_session: Session,
+    application_config: ApplicationConfiguration,
+) -> TaskRepository:
+    return TaskRepository(
+        db_session,
+        RuleRepository(db_session),
+        MetricRepository(db_session),
+        application_config,
+    )
+
+
+def get_validated_agentic_task(
+    task_id: UUID,
+    db_session: Session = Depends(get_db_session),
+    application_config: ApplicationConfiguration = Depends(get_application_config),
+) -> Task:
+    """Dependency that validates task exists and is agentic"""
+    task_repo = get_task_repository(db_session, application_config)
+    task = task_repo.get_task_by_id(str(task_id))
+
+    if not task.is_agentic:
+        raise HTTPException(status_code=400, detail="Task is not agentic")
+
+    return task
