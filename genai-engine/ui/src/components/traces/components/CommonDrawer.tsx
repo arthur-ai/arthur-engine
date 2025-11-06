@@ -1,4 +1,6 @@
+import CloseIcon from "@mui/icons-material/Close";
 import { Breadcrumbs, Button, IconButton, Stack } from "@mui/material";
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
@@ -8,14 +10,12 @@ import {
   TargetBase,
   useTracesHistoryStore,
 } from "../stores/history.store";
+import { useSelectionStore } from "../stores/selection.store";
 
 import { TraceContentSkeleton } from "./TraceDrawerContent";
 
-import CloseIcon from "@mui/icons-material/Close";
 import { Drawer } from "@/components/common/Drawer";
 import { ErrorFallback } from "@/components/common/ErrorFallback";
-import { useSelectionStore } from "../stores/selection.store";
-import { QueryErrorResetBoundary } from "@tanstack/react-query";
 
 const CONTENT_MAP = {
   trace: lazy(() =>

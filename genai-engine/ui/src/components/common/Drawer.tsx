@@ -1,9 +1,9 @@
-import { createContext, use, useState } from "react";
-import BaseDrawer, { DrawerProps } from "@mui/material/Drawer";
-import Button from "@mui/material/Button";
-import { useRender } from "@base-ui-components/react/use-render";
 import { mergeProps } from "@base-ui-components/react/merge-props";
+import { useRender } from "@base-ui-components/react/use-render";
+import Button from "@mui/material/Button";
+import BaseDrawer, { DrawerProps } from "@mui/material/Drawer";
 import { useControlled } from "@mui/material/utils";
+import { createContext, use } from "react";
 
 type DrawerContextType = {
   open: boolean;
@@ -35,13 +35,7 @@ type RootProps = {
   onClose?: () => void;
 };
 
-const Root = ({
-  children,
-  open: openProp,
-  defaultOpen = false,
-  onOpenChange,
-  onClose,
-}: RootProps) => {
+const Root = ({ children, open: openProp, defaultOpen = false, onOpenChange, onClose }: RootProps) => {
   const [open, setOpen] = useControlled({
     controlled: openProp,
     default: defaultOpen,
@@ -59,21 +53,13 @@ const Root = ({
     onClose?.();
   };
 
-  return (
-    <DrawerContext.Provider
-      value={{ open, onOpenChange: handleOpenChange, onClose: handleClose }}
-    >
-      {children}
-    </DrawerContext.Provider>
-  );
+  return <DrawerContext.Provider value={{ open, onOpenChange: handleOpenChange, onClose: handleClose }}>{children}</DrawerContext.Provider>;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 Root.muiName = (BaseDrawer as any).muiName;
 
-const Content = ({
-  children,
-  ...props
-}: Omit<DrawerProps, "open" | "onClose">) => {
+const Content = ({ children, ...props }: Omit<DrawerProps, "open" | "onClose">) => {
   const { open, onClose } = useDrawer();
 
   return (
@@ -82,9 +68,10 @@ const Content = ({
     </BaseDrawer>
   );
 };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 Content.muiName = (BaseDrawer as any).muiName;
 
-interface TriggerProps extends useRender.ComponentProps<typeof Button> {}
+type TriggerProps = useRender.ComponentProps<typeof Button>;
 
 const Trigger = (props: TriggerProps) => {
   const { render, ...otherProps } = props;
@@ -101,7 +88,25 @@ const Trigger = (props: TriggerProps) => {
   return element;
 };
 
+type CloseProps = useRender.ComponentProps<typeof Button>;
+
+const Close = (props: CloseProps) => {
+  const { render, ...otherProps } = props;
+  const { onClose } = useDrawer();
+
+  const element = useRender({
+    defaultTagName: "button",
+    render,
+    props: mergeProps<"button">(otherProps, {
+      onClick: onClose,
+    }),
+  });
+
+  return element;
+};
+
 export const Drawer = Object.assign(Root, {
   Trigger,
   Content,
+  Close,
 });
