@@ -83,10 +83,13 @@ class AgenticPromptRepository(BaseLLMRepository):
         try:
             target_dt = datetime.fromisoformat(prompt_version)
             target_epoch = target_dt.timestamp()
-            created_at_epoch = DatabaseAgenticPrompt.created_at.timestamp()
             return (
                 base_query.filter(
-                    sa.func.abs(created_at_epoch - target_epoch) < 1,
+                    sa.func.abs(
+                        sa.func.extract("epoch", DatabaseAgenticPrompt.created_at)
+                        - target_epoch,
+                    )
+                    < 1,
                 )
                 .order_by(DatabaseAgenticPrompt.created_at.desc())
                 .first()
