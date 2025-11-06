@@ -58,6 +58,17 @@ def test_rag_provider_versions_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 404
 
+    # test version creation fails for tags that already exist
+    status_code, _ = client.create_rag_search_settings_version(
+        setting_configuration_id=setting_configuration_id,
+        settings=WeaviateKeywordSearchSettingsConfigurationRequest(
+            rag_provider=RagProviderEnum.WEAVIATE,
+            collection_name=collection_name,
+        ),
+        tags=["tag2"],
+    )
+    assert status_code == 404
+
     # test version creation - create version 2
     tags_v2 = ["tag3", "tag4", "staging"]
     limit_v2 = 15
