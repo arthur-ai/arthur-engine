@@ -33,6 +33,13 @@ def assert_valid_user_metadata_response(users):
             and isinstance(user.trace_count, int)
             and user.trace_count >= 0
         )
+        # Verify token count/cost fields are present (may be None if no LLM spans)
+        assert hasattr(user, "prompt_token_count")
+        assert hasattr(user, "completion_token_count")
+        assert hasattr(user, "total_token_count")
+        assert hasattr(user, "prompt_token_cost")
+        assert hasattr(user, "completion_token_cost")
+        assert hasattr(user, "total_token_cost")
 
 
 def assert_valid_user_details_response(user_details):
@@ -44,6 +51,13 @@ def assert_valid_user_details_response(user_details):
         and isinstance(user_details.span_count, int)
         and user_details.span_count >= 0
     )
+    # Verify token count/cost fields are present (may be None if no LLM spans)
+    assert hasattr(user_details, "prompt_token_count")
+    assert hasattr(user_details, "completion_token_count")
+    assert hasattr(user_details, "total_token_count")
+    assert hasattr(user_details, "prompt_token_cost")
+    assert hasattr(user_details, "completion_token_cost")
+    assert hasattr(user_details, "total_token_cost")
     assert user_details.earliest_start_time is not None
     assert user_details.latest_end_time is not None
     assert isinstance(user_details.session_ids, list)
@@ -91,6 +105,17 @@ def test_list_users_metadata_functionality(
     )  # user1 has 3 traces (api_trace1, api_trace2, api_trace4)
     assert user.earliest_start_time is not None
     assert user.latest_end_time is not None
+    # User1 has traces with token data:
+    # - api_trace1: span1 (100/50/150), span2 (None)
+    # - api_trace2: span3 (200/100/300)
+    # - api_trace4: span6 (None - TOOL span)
+    # Total: 300 prompt, 150 completion, 450 total
+    assert user.prompt_token_count == 300
+    assert user.completion_token_count == 150
+    assert user.total_token_count == 450
+    assert user.prompt_token_cost == 0.003  # 0.001 + 0.002
+    assert user.completion_token_cost == 0.005  # 0.002 + 0.003
+    assert user.total_token_cost == 0.008  # 0.003 + 0.005
 
     # Test multiple tasks
     status_code, data = client.trace_api_list_users_metadata(

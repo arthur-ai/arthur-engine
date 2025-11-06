@@ -43,6 +43,7 @@ from routers.health_routes import health_router
 from routers.user_routes import user_management_routes
 from routers.v1.agentic_prompt_routes import agentic_prompt_routes
 from routers.v1.legacy_span_routes import span_routes
+from routers.v1.llm_eval_routes import llm_eval_routes
 from routers.v1.model_provider_routes import model_provider_routes
 from routers.v1.rag_routes import rag_routes
 from routers.v1.secrets_routes import secrets_routes
@@ -367,6 +368,7 @@ def get_app_with_routes() -> FastAPI:
             model_provider_routes,
             secrets_routes,
             rag_routes,
+            llm_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -396,6 +398,7 @@ def get_test_app() -> FastAPI:
             model_provider_routes,
             secrets_routes,
             rag_routes,
+            llm_eval_routes,
         ],
     )
     add_routers(app, [auth_routes, user_management_routes])
@@ -435,6 +438,7 @@ def get_app() -> FastAPI:
             model_provider_routes,
             secrets_routes,
             rag_routes,
+            llm_eval_routes,
         ],
     )
     if extra_feature_config.CHAT_ENABLED:

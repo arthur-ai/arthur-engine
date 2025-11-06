@@ -1,20 +1,5 @@
-import {
-  Box,
-  LinearProgress,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TableSortLabel,
-} from "@mui/material";
-import {
-  flexRender,
-  Row,
-  type Table as TableType,
-} from "@tanstack/react-table";
+import { Box, LinearProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel } from "@mui/material";
+import { flexRender, Row, type Table as TableType } from "@tanstack/react-table";
 
 type Props<TTable> = {
   table: TableType<TTable>;
@@ -24,20 +9,9 @@ type Props<TTable> = {
   onRowClick?: (row: Row<TTable>) => void;
 };
 
-export const TracesTable = <TTable,>({
-  table,
-  ref,
-  loading,
-  onScroll,
-  onRowClick,
-}: Props<TTable>) => {
+export const TracesTable = <TTable,>({ table, ref, loading, onScroll, onRowClick }: Props<TTable>) => {
   return (
-    <TableContainer
-      component={Paper}
-      sx={{ flexGrow: 1 }}
-      ref={ref ?? undefined}
-      onScroll={onScroll}
-    >
+    <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }} ref={ref ?? undefined} onScroll={onScroll}>
       {loading && <LinearProgress />}
       <Table stickyHeader size="small">
         <TableHead>
@@ -66,12 +40,7 @@ export const TracesTable = <TTable,>({
                     }}
                   >
                     <Box sx={{ width: header.getSize() }}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </Box>
                   </TableSortLabel>
                 </TableCell>

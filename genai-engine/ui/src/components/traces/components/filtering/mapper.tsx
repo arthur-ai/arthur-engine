@@ -1,4 +1,6 @@
-import { Operator, Operators } from "./types";
+import { TIME_RANGES, type TimeRange } from "../../constants";
+
+import { type Operator, Operators } from "./types";
 
 export type IncomingFilter = {
   name: string;
@@ -36,10 +38,38 @@ export const mapFiltersToRequest = (filters: IncomingFilter[]) => {
       key += `_${keyPart}`;
     }
 
-    request[key] = isNaN(Number(filter.value))
-      ? filter.value
-      : Number(filter.value);
+    request[key] = isNaN(Number(filter.value)) ? filter.value : Number(filter.value);
   });
 
   return request;
+};
+
+const ONE_MINUTE = 60 * 1000;
+const ONE_HOUR = 60 * ONE_MINUTE;
+const ONE_DAY = 24 * ONE_HOUR;
+
+export const getStartDate = (timeRange: TimeRange) => {
+  const now = new Date();
+  switch (timeRange) {
+    case TIME_RANGES["5 minutes"]:
+      return new Date(now.getTime() - 5 * ONE_MINUTE);
+    case TIME_RANGES["30 minutes"]:
+      return new Date(now.getTime() - 30 * ONE_MINUTE);
+    case TIME_RANGES["1 day"]:
+      return new Date(now.getTime() - 24 * ONE_HOUR);
+    case TIME_RANGES["1 week"]:
+      return new Date(now.getTime() - 7 * ONE_DAY);
+    case TIME_RANGES["1 month"]:
+      return new Date(now.getTime() - 30 * ONE_DAY);
+    case TIME_RANGES["3 months"]:
+      return new Date(now.getTime() - 90 * ONE_DAY);
+    case TIME_RANGES["1 year"]:
+      return new Date(now.getTime() - 365 * ONE_DAY);
+    case TIME_RANGES["all time"]:
+      return new Date(0);
+    default:
+      // eslint-disable-next-line no-case-declarations
+      const exhaustiveCheck: never = timeRange;
+      throw new Error(`Unhandled time range: ${exhaustiveCheck}`);
+  }
 };

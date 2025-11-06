@@ -10,9 +10,16 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from utils.constants import EXPECTED_SPAN_VERSION, SPAN_VERSION_KEY
+from openinference.semconv.trace import MessageAttributes, SpanAttributes
+
+from utils.constants import EXPECTED_SPAN_VERSION, SPAN_KIND_LLM, SPAN_VERSION_KEY
+from utils.token_count import (
+    TokenCountCost,
+    compute_cost_from_tokens,
+    count_tokens_from_messages,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -104,8 +111,16 @@ def extract_span_features(span_dict):
         attributes = span_dict.get("attributes", {})
 
         # Access already-normalized nested messages
-        input_messages = get_nested_value(attributes, "llm.input_messages") or []
-        output_messages = get_nested_value(attributes, "llm.output_messages") or []
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
+        output_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
+            default=[],
+        )
 
         # Early exit if no conversation data
         if not input_messages:
@@ -117,20 +132,21 @@ def extract_span_features(span_dict):
             }
 
         # Extract system prompt and user query (data is already normalized)
+        # Using OpenInference semantic convention constants for message attributes
         system_prompt = next(
             (
-                msg.get("message", {}).get("content", "")
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
                 for msg in input_messages
-                if msg.get("message", {}).get("role") == "system"
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "system"
             ),
             "",
         )
 
         user_query = next(
             (
-                msg.get("message", {}).get("content", "")
+                get_nested_value(msg, MessageAttributes.MESSAGE_CONTENT, "")
                 for msg in input_messages
-                if msg.get("message", {}).get("role") == "user"
+                if get_nested_value(msg, MessageAttributes.MESSAGE_ROLE) == "user"
             ),
             "",
         )
@@ -138,13 +154,23 @@ def extract_span_features(span_dict):
         # Extract response from output messages
         response = ""
         if output_messages:
-            first_output = output_messages[0].get("message", {})
-            if "content" in first_output:
-                response = first_output["content"]
-            elif "tool_calls" in first_output:
-                response = json.dumps(first_output["tool_calls"])
+            first_output_msg = output_messages[0]
+            content = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_CONTENT,
+            )
+            tool_calls = get_nested_value(
+                first_output_msg,
+                MessageAttributes.MESSAGE_TOOL_CALLS,
+            )
+
+            if content is not None:
+                response = content
+            elif tool_calls is not None:
+                response = json.dumps(tool_calls)
             else:
-                response = json.dumps(first_output)
+                # Fallback: serialize the entire message dict
+                response = json.dumps(get_nested_value(first_output_msg, "message", {}))
 
         # Fuzzy extraction fallback: only if user_query is missing or matches system_prompt
         if (not user_query or user_query == system_prompt) and system_prompt:
@@ -256,19 +282,26 @@ def clean_status_code(status_code: str) -> str:
         return status_code
 
 
-def get_nested_value(obj, path):
+def get_nested_value(obj, path, default=None):
     """
     Safely navigate nested dictionary structure using dot-separated path.
 
     Args:
         obj: Dictionary to navigate
         path: Dot-separated path (e.g., 'llm.model_name')
+        default: Default value to return if path not found (defaults to None)
 
     Returns:
-        Value at the path, or None if not found
+        Value at the path, or default if not found
+
+    Examples:
+        get_nested_value({"a": {"b": 1}}, "a.b") -> 1
+        get_nested_value({"a": {"b": 1}}, "a.c") -> None
+        get_nested_value({"a": {"b": 1}}, "a.c", default=0) -> 0
+        get_nested_value(None, "a.b", default="missing") -> "missing"
     """
     if not isinstance(obj, dict):
-        return None
+        return default
 
     keys = path.split(".")
     current = obj
@@ -277,7 +310,7 @@ def get_nested_value(obj, path):
         if isinstance(current, dict) and key in current:
             current = current[key]
         else:
-            return None
+            return default
 
     return current
 
@@ -304,3 +337,128 @@ def validate_span_version(raw_data: Dict[str, Any]) -> bool:
         return False
 
     return True
+
+
+# New functions for span processing
+
+
+def extract_token_cost_from_span(
+    span_raw_data: dict,
+    span_kind: str,
+) -> TokenCountCost:
+    """
+    Extract token counts and costs from span attributes.
+    Calculates missing token counts and costs from message content when needed.
+
+    Returns:
+        TokenCountCost object with token_count and token_cost
+    """
+
+    if span_kind != SPAN_KIND_LLM:
+        return TokenCountCost(
+            prompt_token_count=None,
+            completion_token_count=None,
+            total_token_count=None,
+            prompt_token_cost=None,
+            completion_token_cost=None,
+            total_token_cost=None,
+        )
+
+    attributes = span_raw_data.get("attributes", {})
+
+    # Extract token counts from attributes
+    prompt_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_PROMPT)
+    completion_tokens = get_nested_value(
+        attributes,
+        SpanAttributes.LLM_TOKEN_COUNT_COMPLETION,
+    )
+    total_tokens = get_nested_value(attributes, SpanAttributes.LLM_TOKEN_COUNT_TOTAL)
+
+    # Extract costs from attributes
+    prompt_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_PROMPT)
+    completion_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_COMPLETION)
+    total_cost = get_nested_value(attributes, SpanAttributes.LLM_COST_TOTAL)
+
+    # Get model name for token/cost calculation
+    model_name = get_nested_value(attributes, SpanAttributes.LLM_MODEL_NAME)
+
+    # Track if we computed any token counts (to ensure total is recalculated)
+    computed_tokens = False
+
+    # Calculate prompt tokens if missing
+    if prompt_tokens is None:
+        input_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_INPUT_MESSAGES,
+            default=[],
+        )
+        if input_messages:
+            prompt_tokens = count_tokens_from_messages(input_messages, model_name)
+            computed_tokens = True
+        else:
+            prompt_tokens = 0
+
+    # Calculate completion tokens if missing
+    if completion_tokens is None:
+        output_messages = get_nested_value(
+            attributes,
+            SpanAttributes.LLM_OUTPUT_MESSAGES,
+            default=[],
+        )
+        if output_messages:
+            # Use all output messages, same as input messages
+            completion_tokens = count_tokens_from_messages(output_messages, model_name)
+            computed_tokens = True
+        else:
+            completion_tokens = 0
+
+    # Calculate prompt cost if missing (requires model_name and prompt_tokens)
+    if prompt_cost is None and (model_name and prompt_tokens is not None):
+        prompt_cost = compute_cost_from_tokens(model_name, input_tokens=prompt_tokens)
+
+    # Calculate completion cost if missing (requires model_name and completion_tokens)
+    if completion_cost is None and (model_name and completion_tokens is not None):
+        completion_cost = compute_cost_from_tokens(
+            model_name,
+            output_tokens=completion_tokens,
+        )
+
+    # Calculate total tokens: always recalculate if we computed any tokens, or if total is missing
+    # This ensures consistency when we estimate missing values
+    if computed_tokens or total_tokens is None:
+        if prompt_tokens is not None and completion_tokens is not None:
+            total_tokens = prompt_tokens + completion_tokens
+
+    # Calculate total cost if missing
+    if total_cost is None and prompt_cost is not None and completion_cost is not None:
+        total_cost = prompt_cost + completion_cost
+
+    return TokenCountCost(
+        prompt_token_count=prompt_tokens,
+        completion_token_count=completion_tokens,
+        total_token_count=total_tokens,
+        prompt_token_cost=prompt_cost,
+        completion_token_cost=completion_cost,
+        total_token_cost=total_cost,
+    )
+
+
+def value_to_string(value) -> Optional[str]:
+    """Convert a value to string, handling dicts/lists by JSON serialization.
+
+    This is used to ensure consistent string representation for input/output
+    content across spans and trace metadata. The normalizer may parse JSON
+    strings into dicts/lists based on mime_type, and this function converts
+    them back to strings for storage and API responses.
+
+    Args:
+        value: Any value to convert to string
+
+    Returns:
+        String representation of the value, or None if value is None
+    """
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return str(value)

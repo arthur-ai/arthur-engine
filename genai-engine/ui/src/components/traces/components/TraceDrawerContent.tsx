@@ -14,6 +14,7 @@ import { useEffect, useEffectEvent, useMemo } from "react";
 import { useSelectionStore } from "../stores/selection.store";
 import { flattenSpans } from "../utils/spans";
 
+import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import {
   SpanDetails,
   SpanDetailsHeader,
@@ -126,6 +127,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
             >
               Refresh Metrics
             </Button>
+            <AddToDatasetDrawer traceId={id} />
           </ButtonGroup>
         </Stack>
       </Stack>

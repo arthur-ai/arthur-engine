@@ -19,6 +19,10 @@ export interface UseDatasetModalStateReturn {
   isVersionDrawerOpen: boolean;
   openVersionDrawer: () => void;
   closeVersionDrawer: () => void;
+
+  isImportModalOpen: boolean;
+  openImportModal: () => void;
+  closeImportModal: () => void;
 }
 
 export function useDatasetModalState(): UseDatasetModalStateReturn {
@@ -28,6 +32,7 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isConfigureColumnsOpen, setIsConfigureColumnsOpen] = useState(false);
   const [isVersionDrawerOpen, setIsVersionDrawerOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const openEditModal = useCallback((row: DatasetVersionRowResponse) => {
     setEditingRow(row);
@@ -48,6 +53,9 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
   const openVersionDrawer = () => setIsVersionDrawerOpen(true);
   const closeVersionDrawer = () => setIsVersionDrawerOpen(false);
 
+  const openImportModal = () => setIsImportModalOpen(true);
+  const closeImportModal = () => setIsImportModalOpen(false);
+
   return {
     isEditModalOpen,
     editingRow,
@@ -62,5 +70,8 @@ export function useDatasetModalState(): UseDatasetModalStateReturn {
     isVersionDrawerOpen,
     openVersionDrawer,
     closeVersionDrawer,
+    isImportModalOpen,
+    openImportModal,
+    closeImportModal,
   };
 }

@@ -177,6 +177,13 @@ def _create_database_span(
     parent_span_id: str = None,
     span_kind: str = "LLM",
     session_id: str = None,
+    user_id: str = None,
+    prompt_token_count: int = None,
+    completion_token_count: int = None,
+    total_token_count: int = None,
+    prompt_token_cost: float = None,
+    completion_token_cost: float = None,
+    total_token_cost: float = None,
 ) -> DatabaseSpan:
     """Helper to create a test DatabaseSpan for trace metadata testing."""
     return DatabaseSpan(
@@ -189,6 +196,8 @@ def _create_database_span(
         end_time=end_time,
         task_id=task_id,
         session_id=session_id,
+        user_id=user_id,
+        status_code="Ok",
         raw_data={
             "name": f"Test Span {span_id}",
             "spanId": span_id,
@@ -196,6 +205,12 @@ def _create_database_span(
             "attributes": {"openinference.span.kind": span_kind},
             "arthur_span_version": "arthur_span_v1",
         },
+        prompt_token_count=prompt_token_count,
+        completion_token_count=completion_token_count,
+        total_token_count=total_token_count,
+        prompt_token_cost=prompt_token_cost,
+        completion_token_cost=completion_token_cost,
+        total_token_cost=total_token_cost,
     )
 
 
@@ -250,7 +265,7 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
     spans = []
     base_time = datetime.now()
 
-    # Session 1, Task1, Trace1 - LLM span with features
+    # Session 1, Task1, Trace1 - LLM span with text input/output
     span1_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
@@ -266,6 +281,10 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.1.message.content": "What is the weather like today?",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "I don't have access to real-time weather information.",
+                "input.value": "What is the weather like today?",
+                "input.mime_type": "text/plain",
+                "output.value": "I don't have access to real-time weather information.",
+                "output.mime_type": "text/plain",
                 "session.id": "session1",
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-4", "ls_model_type": "chat"}',
@@ -288,6 +307,12 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span1_raw_data,
         created_at=base_time - timedelta(days=2) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=2) + timedelta(seconds=1),
+        prompt_token_count=100,
+        completion_token_count=50,
+        total_token_count=150,
+        prompt_token_cost=0.001,
+        completion_token_cost=0.002,
+        total_token_cost=0.003,
     )
     spans.append(span1)
 
@@ -322,10 +347,16 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span2_raw_data,
         created_at=base_time - timedelta(days=1) + timedelta(seconds=1),
         updated_at=base_time - timedelta(days=1) + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span2)
 
-    # Session 1, Task1, Trace2 - Another LLM span in same session
+    # Session 1, Task1, Trace2 - LLM span with JSON input/output
     span3_raw_data = span_normalizer.normalize_span_to_nested_dict(
         {
             "kind": "SPAN_KIND_INTERNAL",
@@ -339,6 +370,10 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
                 "llm.input_messages.0.message.content": "Follow-up question",
                 "llm.output_messages.0.message.role": "assistant",
                 "llm.output_messages.0.message.content": "Follow-up response",
+                "input.value": '{"question": "Follow-up question", "context": "previous conversation"}',
+                "input.mime_type": "application/json",
+                "output.value": '{"answer": "Follow-up response", "sources": ["doc1", "doc2"]}',
+                "output.mime_type": "application/json",
                 "session.id": "session1",
                 "user.id": "user1",
                 "metadata": '{"ls_provider": "openai", "ls_model_name": "gpt-3.5-turbo", "ls_model_type": "chat"}',
@@ -361,6 +396,12 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span3_raw_data,
         created_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
         updated_at=base_time - timedelta(hours=12) + timedelta(seconds=2),
+        prompt_token_count=200,
+        completion_token_count=100,
+        total_token_count=300,
+        prompt_token_cost=0.002,
+        completion_token_cost=0.003,
+        total_token_cost=0.005,
     )
     spans.append(span3)
 
@@ -395,6 +436,12 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span4_raw_data,
         created_at=base_time + timedelta(seconds=1),
         updated_at=base_time + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span4)
 
@@ -429,6 +476,12 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span5_raw_data,
         created_at=base_time + timedelta(seconds=31),
         updated_at=base_time + timedelta(seconds=31),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span5)
 
@@ -463,6 +516,12 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         raw_data=span6_raw_data,
         created_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
         updated_at=base_time + timedelta(hours=1) + timedelta(seconds=1),
+        prompt_token_count=None,
+        completion_token_count=None,
+        total_token_count=None,
+        prompt_token_cost=None,
+        completion_token_cost=None,
+        total_token_cost=None,
     )
     spans.append(span6)
 
@@ -481,9 +540,16 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             task_id=span.task_id,
             session_id=span.session_id,
             user_id=span.user_id,
+            status_code="Ok",
             raw_data=span.raw_data,
             created_at=span.created_at,
             updated_at=span.updated_at,
+            prompt_token_count=span.prompt_token_count,
+            completion_token_count=span.completion_token_count,
+            total_token_count=span.total_token_count,
+            prompt_token_cost=span.prompt_token_cost,
+            completion_token_cost=span.completion_token_cost,
+            total_token_cost=span.total_token_cost,
         )
         database_spans.append(database_span)
 
@@ -498,6 +564,51 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
         trace_start_time = min(span.start_time for span in trace_spans)
         trace_end_time = max(span.end_time for span in trace_spans)
 
+        # Extract input/output from root span (earliest span without parent)
+        root_spans = [span for span in trace_spans if span.parent_span_id is None]
+        input_content = None
+        output_content = None
+        if root_spans:
+            # Find the earliest root span
+            earliest_root = min(root_spans, key=lambda s: s.start_time)
+            # Extract using same logic as TraceIngestionService
+            from utils import trace as trace_utils
+
+            input_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.input.value",
+            )
+            output_value = trace_utils.get_nested_value(
+                earliest_root.raw_data,
+                "attributes.output.value",
+            )
+            input_content = trace_utils.value_to_string(input_value)
+            output_content = trace_utils.value_to_string(output_value)
+
+        # Aggregate token counts/costs from all spans in this trace
+        from utils.token_count import safe_add
+
+        prompt_token_count = None
+        completion_token_count = None
+        total_token_count = None
+        prompt_token_cost = None
+        completion_token_cost = None
+        total_token_cost = None
+
+        for span in trace_spans:
+            prompt_token_count = safe_add(prompt_token_count, span.prompt_token_count)
+            completion_token_count = safe_add(
+                completion_token_count,
+                span.completion_token_count,
+            )
+            total_token_count = safe_add(total_token_count, span.total_token_count)
+            prompt_token_cost = safe_add(prompt_token_cost, span.prompt_token_cost)
+            completion_token_cost = safe_add(
+                completion_token_cost,
+                span.completion_token_cost,
+            )
+            total_token_cost = safe_add(total_token_cost, span.total_token_cost)
+
         trace_metadata = DatabaseTraceMetadata(
             task_id=trace_spans[0].task_id,
             trace_id=trace_id,
@@ -508,6 +619,14 @@ def comprehensive_test_data() -> Generator[List[InternalSpan], None, None]:
             end_time=trace_end_time,
             created_at=trace_start_time,
             updated_at=trace_end_time,
+            input_content=input_content,
+            output_content=output_content,
+            prompt_token_count=prompt_token_count,
+            completion_token_count=completion_token_count,
+            total_token_count=total_token_count,
+            prompt_token_cost=prompt_token_cost,
+            completion_token_cost=completion_token_cost,
+            total_token_cost=total_token_cost,
         )
         trace_metadatas.append(trace_metadata)
 

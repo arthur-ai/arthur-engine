@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useFilterStore } from "../../stores/filter.store";
+
 import { createDynamicEnumField, Field } from "./fields";
 import { EnumOperators } from "./types";
 
@@ -17,15 +19,19 @@ export const SESSION_FIELDS = [
     operators: [EnumOperators.EQUALS, EnumOperators.IN],
     itemToStringLabel: undefined,
     useData: function useData({ taskId, api }) {
+      const timeRange = useFilterStore((state) => state.timeRange);
+
+      const params = {
+        taskId,
+        page: 0,
+        pageSize: MAX_PAGE_SIZE,
+        filters: [],
+        timeRange,
+      };
+
       const { data, isLoading } = useQuery({
-        queryKey: queryKeys.users.listPaginated(0, MAX_PAGE_SIZE),
-        queryFn: () =>
-          getUsers(api, {
-            taskId,
-            page: 0,
-            pageSize: MAX_PAGE_SIZE,
-            filters: [],
-          }),
+        queryKey: queryKeys.users.listPaginated(params),
+        queryFn: () => getUsers(api, params),
         select: (data) => data.users.map((user) => user.user_id),
       });
 

@@ -5,10 +5,10 @@ from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from db_models.base import Base
+from db_models.base import Base, SoftDeletedModel
 
 
-class DatabaseAgenticPrompt(Base):
+class DatabaseAgenticPrompt(SoftDeletedModel, Base):
     """Database model for storing agentic prompts associated with tasks"""
 
     __tablename__ = "agentic_prompts"
@@ -27,12 +27,6 @@ class DatabaseAgenticPrompt(Base):
         TIMESTAMP,
         default=datetime.now,
         nullable=False,
-    )
-
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP,
-        nullable=True,
-        default=None,
     )
 
     # LLM Configuration
