@@ -331,8 +331,6 @@ def test_soft_delete_llm_eval_by_version_route(
         "min_score": 0,
         "max_score": 1,
     }
-    if eval_version == "datetime":
-        eval_version = datetime.now().isoformat()
 
     save_response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
@@ -340,6 +338,9 @@ def test_soft_delete_llm_eval_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    if eval_version == "datetime":
+        eval_version = save_response.json()["created_at"]
 
     # Soft-delete the eval using different version formats
     response = client.base_client.delete(
