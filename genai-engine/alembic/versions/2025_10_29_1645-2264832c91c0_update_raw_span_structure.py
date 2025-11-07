@@ -28,7 +28,7 @@ down_revision = "5a02e38003af"
 branch_labels = None
 depends_on = None
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 50
 
 
 def is_already_normalized(attributes: dict) -> bool:
@@ -108,9 +108,6 @@ def upgrade() -> None:
             )
 
             offset += 1
-
-        # Commit after each batch
-        connection.commit()
 
 
 def downgrade() -> None:
