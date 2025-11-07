@@ -6,8 +6,11 @@ from sqlalchemy import (
     TIMESTAMP,
     UUID,
     ForeignKey,
+    ForeignKeyConstraint,
+    Index,
     Integer,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -106,9 +109,8 @@ class DatabaseRagSearchSettingConfiguration(Base):
         "DatabaseRagProviderConfiguration",
         back_populates="search_setting_configurations",
     )
-    all_possible_tags: Mapped[Optional[list[str]]] = mapped_column(
-        postgresql.JSON,
-        nullable=True,
+    all_possible_tags: Mapped[Optional[List["DatabaseRagSearchVersionTag"]]] = (
+        relationship(lazy="select")
     )
     name: Mapped[str] = mapped_column(String)
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -156,6 +158,41 @@ class DatabaseRagSearchSettingConfigurationVersion(SoftDeletedModel, Base):
         postgresql.JSON,
         nullable=True,
     )
-    tags: Mapped[Optional[list[str]]] = mapped_column(postgresql.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP)
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP)
+    tags: Mapped[Optional[List["DatabaseRagSearchVersionTag"]]] = relationship(
+        cascade="all,delete",
+        lazy="select",
+    )
+
+
+class DatabaseRagSearchVersionTag(Base):
+    __tablename__ = "rag_search_setting_tags"
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True)
+    setting_configuration_id: Mapped[uuid.UUID] = mapped_column(
+        UUID,
+        ForeignKey("rag_search_setting_configurations.id"),
+        index=True,
+    )
+    version_number: Mapped[int] = mapped_column(Integer)
+    tag: Mapped[str] = mapped_column(String)
+
+    __table_args__ = (
+        Index(
+            "rag_search_setting_configurations_versions_tags",
+            "setting_configuration_id",
+            "version_number",
+        ),
+        ForeignKeyConstraint(
+            ["setting_configuration_id", "version_number"],
+            [
+                "rag_search_setting_configuration_versions.setting_configuration_id",
+                "rag_search_setting_configuration_versions.version_number",
+            ],
+        ),
+        UniqueConstraint(
+            "setting_configuration_id",
+            "tag",
+            name="uix_unique_setting_configuration_id_tag",
+        ),
+    )
