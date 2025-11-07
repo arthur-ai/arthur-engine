@@ -60,7 +60,7 @@ def get_llm_eval(
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval = llm_eval_service.get_eval(
+        llm_eval = llm_eval_service.get_llm_item(
             task.id,
             eval_name,
             eval_version,
@@ -105,7 +105,7 @@ def get_all_llm_eval_versions(
     try:
 
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.get_eval_versions(
+        return llm_eval_service.get_llm_item_versions(
             task.id,
             eval_name,
             pagination_parameters,
@@ -141,7 +141,7 @@ def get_all_llm_evals(
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.get_all_llm_eval_metadata(
+        return llm_eval_service.get_all_llm_item_metadata(
             task.id,
             pagination_parameters,
             filter_request,
@@ -174,7 +174,8 @@ def save_llm_eval(
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        return llm_eval_service.save_eval(task.id, eval_name, eval_config)
+        full_eval = LLMEval(name=eval_name, **eval_config.model_dump())
+        return llm_eval_service.save_llm_item(task.id, full_eval)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -202,7 +203,7 @@ def delete_llm_eval(
 ) -> Response:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.delete_eval(task.id, eval_name)
+        llm_eval_service.delete_llm_item(task.id, eval_name)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -241,7 +242,7 @@ def soft_delete_llm_eval_version(
 ) -> Response:
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        llm_eval_service.soft_delete_eval_version(
+        llm_eval_service.soft_delete_llm_item_version(
             task.id,
             eval_name,
             eval_version,
@@ -249,7 +250,7 @@ def soft_delete_llm_eval_version(
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
-        if "not found" in str(e).lower():
+        if "no matching version" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))

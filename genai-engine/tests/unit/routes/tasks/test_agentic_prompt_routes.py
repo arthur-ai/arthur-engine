@@ -1396,7 +1396,7 @@ def test_soft_delete_agentic_prompt_by_version_route(
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"Prompt '{prompt_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{prompt_name}' (version 'latest') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200

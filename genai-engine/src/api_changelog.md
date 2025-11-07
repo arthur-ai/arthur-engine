@@ -2,6 +2,9 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/07/2025
+- **CHANGE** for Component/Schema:  removed the schema 'LLMEvalsVersionResponse'
+
 # 11/06/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  request property 'tags' list-of-types was narrowed by removing types 'null' from media type 'application/json'
