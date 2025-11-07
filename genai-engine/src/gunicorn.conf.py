@@ -9,11 +9,12 @@ timeout = environ.get("TIMEOUT", 120)
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Graceful shutdown configuration
-# Time to wait for workers to finish handling requests before forcefully terminating
+# Timeout for graceful workers restart.
 graceful_timeout = int(environ.get("GRACEFUL_TIMEOUT", 30))
-
-# Max time for graceful worker restart
+# Following parameters relates to multiworkers rotation (GPU)
+# The maximum number of requests a worker will process before restarting.
 max_requests = int(environ.get("MAX_REQUESTS", 0))  # 0 = disabled
+# The maximum jitter to add to the max_requests setting.
 max_requests_jitter = int(environ.get("MAX_REQUESTS_JITTER", 0))
 
 

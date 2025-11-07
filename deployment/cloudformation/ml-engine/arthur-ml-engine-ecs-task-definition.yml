@@ -121,7 +121,7 @@ Resources:
             Interval: 30
             Timeout: 5
             Retries: 3
-            StartPeriod: 300
+            StartPeriod: 60
 Outputs:
   MLEngineECSTaskDefinitionOutput:
     Description: 'The task definition for Arthur ML Engine'
