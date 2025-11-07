@@ -8,7 +8,6 @@
   "inputSpec": "genai-engine/staging.openapi.json",
   "outputDir": "ml-engine/src/genai_client",
   "validateSpec": false,
-  "generateSourceCodeOnly": true,
   "configOptions": {
     "packageName": "genai_client",
     "packageVersion": "{{info.version}}"
