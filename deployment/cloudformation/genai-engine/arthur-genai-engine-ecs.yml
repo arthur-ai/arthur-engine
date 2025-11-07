@@ -58,6 +58,7 @@ Resources:
           Subnets: !Ref GenaiEngineECSServiceSubnetIDs
       ServiceName: 'arthur-genai-engine'
       TaskDefinition: !Ref GenaiEngineECSTaskDefinitionARN
+      HealthCheckGracePeriodSeconds: 300
   GenaiEngineECSAutoscalingTarget:
     Type: 'AWS::ApplicationAutoScaling::ScalableTarget'
     Properties:

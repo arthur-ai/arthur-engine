@@ -116,4 +116,4 @@ WORKDIR /home/nonroot/app
 # Expose the necessary ports
 EXPOSE 3030
 
-ENTRYPOINT ["bash", "-c", "src/docker-entrypoint.sh"]
+ENTRYPOINT ["bash", "src/docker-entrypoint.sh"]
