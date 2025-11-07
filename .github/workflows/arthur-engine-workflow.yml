@@ -92,10 +92,7 @@ jobs:
       - name: Generate GenAI Client
         run: |
           pip install openapi-generator-cli[jdk4py]
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
+          openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
       - name: Run isort
         id: isort
         continue-on-error: true
@@ -136,10 +133,7 @@ jobs:
       - name: Generate GenAI Client
         run: |
           pip install 'openapi-generator-cli[jdk4py]==7.12'
-          openapi-generator-cli generate -g python \
-            -i ./genai-engine/staging.openapi.json \
-            -o ./ml-engine/src/genai_client \
-            --skip-validate-spec --package-name genai_client
+          openapi-generator-cli generate -c ml-engine/scripts/openapitools.json
           sed -i 's/license = "NoLicense"/license = "Unlicense"/g' ./ml-engine/src/genai_client/pyproject.toml
           pip install ./ml-engine/src/genai_client
 

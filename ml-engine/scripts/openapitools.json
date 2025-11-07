@@ -1,7 +1,16 @@
 {
-  "$schema": "./node_modules/@openapitools/openapi-generator-cli/config.schema.json",
+  "$schema": "node_modules/@openapitools/openapi-generator-cli/config.schema.json",
   "spaces": 2,
   "generator-cli": {
     "version": "7.12.0"
+  },
+  "generatorName": "python",
+  "inputSpec": "genai-engine/staging.openapi.json",
+  "outputDir": "ml-engine/src/genai_client",
+  "validateSpec": false,
+  "generateSourceCodeOnly": true,
+  "configOptions": {
+    "packageName": "genai_client",
+    "packageVersion": "{{info.version}}"
   }
 }
