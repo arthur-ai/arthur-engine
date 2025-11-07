@@ -23,8 +23,8 @@ from schemas.agentic_prompt_schemas import (
     CompletionRequest,
     PromptCompletionRequest,
 )
-from schemas.enums import ModelProvider, PermissionLevelsEnum
-from schemas.internal_schemas import ApplicationConfiguration, Task, User
+from schemas.enums import PermissionLevelsEnum
+from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
@@ -41,113 +41,6 @@ agentic_prompt_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
-
-
-def get_task_repository(
-    db_session: Session,
-    application_config: ApplicationConfiguration,
-) -> TaskRepository:
-    return TaskRepository(
-        db_session,
-        RuleRepository(db_session),
-        MetricRepository(db_session),
-        application_config,
-    )
-
-
-def get_validated_agentic_task(
-    task_id: UUID,
-    db_session: Session = Depends(get_db_session),
-    application_config: ApplicationConfiguration = Depends(get_application_config),
-) -> Task:
-    """Dependency that validates task exists and is agentic"""
-    task_repo = get_task_repository(db_session, application_config)
-    task = task_repo.get_task_by_id(str(task_id))
-
-    if not task.is_agentic:
-        raise HTTPException(status_code=400, detail="Task is not agentic")
-
-    return task
-
-
-def prompts_get_all_filter_parameters(
-    prompt_names: Optional[list[str]] = Query(
-        None,
-        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
-    ),
-    model_provider: Optional[ModelProvider] = Query(
-        None,
-        description=f"Filter by model provider. Allowed values: {', '.join(sorted([p.value for p in ModelProvider]))}",  # type: ignore[name-defined]
-    ),
-    model_name: Optional[str] = Query(
-        None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
-    ),
-    created_after: Optional[str] = Query(
-        None,
-        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    created_before: Optional[str] = Query(
-        None,
-        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-) -> PromptsGetAllFilterRequest:
-    """Create a PromptsGetAllFilterRequest from query parameters."""
-    return PromptsGetAllFilterRequest(
-        prompt_names=prompt_names,
-        model_provider=model_provider,
-        model_name=model_name,
-        created_after=datetime.fromisoformat(created_after) if created_after else None,
-        created_before=(
-            datetime.fromisoformat(created_before) if created_before else None
-        ),
-    )
-
-
-def prompts_get_versions_filter_parameters(
-    model_provider: Optional[ModelProvider] = Query(
-        None,
-        description=f"Filter by model provider. Allowed values: {', '.join(sorted([p.value for p in ModelProvider]))}",  # type: ignore[name-defined]
-    ),
-    model_name: Optional[str] = Query(
-        None,
-        description="Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
-    ),
-    created_after: Optional[str] = Query(
-        None,
-        description="Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    created_before: Optional[str] = Query(
-        None,
-        description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
-    ),
-    exclude_deleted: bool = Query(
-        False,
-        description="Whether to exclude deleted prompt versions from the results. Default is False.",
-    ),
-    min_version: Optional[int] = Query(
-        None,
-        ge=1,
-        description="Minimum version number to filter on (inclusive).",
-    ),
-    max_version: Optional[int] = Query(
-        None,
-        ge=1,
-        description="Maximum version number to filter on (inclusive).",
-    ),
-) -> PromptsGetVersionsFilterRequest:
-    """Create a PromptsGetVersionsFilterRequest from query parameters."""
-    return PromptsGetVersionsFilterRequest(
-        model_provider=model_provider,
-        model_name=model_name,
-        created_after=datetime.fromisoformat(created_after) if created_after else None,
-        created_before=(
-            datetime.fromisoformat(created_before) if created_before else None
-        ),
-        exclude_deleted=exclude_deleted,
-        min_version=min_version,
-        max_version=max_version,
-    )
 
 
 async def execute_prompt_completion(
@@ -233,7 +126,7 @@ def get_all_agentic_prompts(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-) -> AgenticPromptMetadataListResponse:
+) -> LLMGetAllMetadataListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.get_all_llm_item_metadata(

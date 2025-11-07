@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Optional
 
 import sqlalchemy.types as types
 from sqlalchemy import TIMESTAMP, Boolean

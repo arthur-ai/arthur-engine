@@ -3,8 +3,10 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.response_schemas import TaskResponse
 from litellm.exceptions import BadRequestError
 
+from src.schemas.agentic_prompt_schemas import AgenticPrompt
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -1306,6 +1308,8 @@ def test_run_agentic_prompt_strict_mode(
 @pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
 def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
+    create_agentic_task: TaskResponse,
+    create_agentic_prompt: AgenticPrompt,
     prompt_version,
 ):
     """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
@@ -1339,16 +1343,16 @@ def test_get_agentic_prompt_by_version_route(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
         headers=client.authorized_user_api_key_headers,
     )
-    assert response.status_code == 200
-
-    prompt_response = response.json()
-    assert prompt_response["name"] == prompt_name
-    assert prompt_response["messages"] == [{"role": "user", "content": "Hello, world!"}]
-    assert prompt_response["model_name"] == "gpt-4"
-    assert prompt_response["model_provider"] == "openai"
-    assert prompt_response["version"] == 1
-    assert prompt_response["temperature"] == 0.7
-    assert prompt_response["max_tokens"] == 100
+    assert status_code == 200
+    assert prompt_response.name == prompt.name
+    assert [
+        message.model_dump(exclude_none=True) for message in prompt_response.messages
+    ] == [{"role": "user", "content": "Hello, world!"}]
+    assert prompt_response.model_name == "gpt-4"
+    assert prompt_response.model_provider == "openai"
+    assert prompt_response.version == 1
+    assert prompt_response.temperature == 0.7
+    assert prompt_response.max_tokens == 100
 
 
 @pytest.mark.unit_tests

@@ -1072,7 +1072,7 @@ async def test_stream_deleted_prompt_spawns_error(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:01"])
 def test_get_prompt_by_version_success(prompt_version):
     """Test getting a prompt with different version formats"""
     db_session = override_get_db_session()
@@ -1091,7 +1091,7 @@ def test_get_prompt_by_version_success(prompt_version):
         "version": 1,
     }
     db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
-    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+    db_prompt.created_at = datetime(2025, 1, 1, 0, 0, 1)
 
     # Save to database
     db_session.add(db_prompt)
@@ -1426,7 +1426,7 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:01"])
 def test_soft_delete_prompt_by_version_success(prompt_version):
     """Test deleting a prompt with different version formats"""
     db_session = override_get_db_session()
@@ -1445,7 +1445,7 @@ def test_soft_delete_prompt_by_version_success(prompt_version):
         "version": 1,
     }
     db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
-    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+    db_prompt.created_at = datetime(2025, 1, 1, 0, 0, 1)
 
     # Save to database
     db_session.add(db_prompt)

@@ -10,6 +10,7 @@ from db_models.base import Base, IsArchivable
 
 if TYPE_CHECKING:
     from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+    from db_models.llm_eval_models import DatabaseLLMEval
     from db_models.rule_models import DatabaseRule
     from db_models.telemetry_models import DatabaseTaskToMetrics
 
@@ -33,7 +34,7 @@ class DatabaseTask(Base, IsArchivable):
         back_populates="task",
         lazy="select",
     )
-    llm_evals: Mapped[List["DatabaseLLMEval"]] = relationship(
+    llm_evals: Mapped[list["DatabaseLLMEval"]] = relationship(
         back_populates="task",
         lazy="select",
     )

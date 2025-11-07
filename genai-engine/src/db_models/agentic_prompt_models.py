@@ -8,7 +8,6 @@ from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base, SoftDeletedModel
-from db_models.base import Base
 from schemas.enums import ModelProvider
 
 if TYPE_CHECKING:
