@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.148"
+        "version": "2.1.149"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -10214,12 +10214,7 @@
                     },
                     "completion_request": {
                         "$ref": "#/components/schemas/PromptCompletionRequest",
-                        "description": "Run configuration for the unsaved prompt",
-                        "default": {
-                            "variables": [],
-                            "stream": false,
-                            "strict": false
-                        }
+                        "description": "Run configuration for the unsaved prompt"
                     }
                 },
                 "additionalProperties": false,
