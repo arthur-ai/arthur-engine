@@ -464,9 +464,9 @@ class RagSearchSettingConfigurationRequest(BaseModel):
         default=None,
         description="Description of the search setting configuration.",
     )
-    tags: Optional[list[str]] = Field(
-        default=None,
-        description="Optional list of tags to configure for this version of the search settings configuration.",
+    tags: list[str] = Field(
+        default_factory=list,
+        description="List of tags to configure for this version of the search settings configuration.",
     )
 
 
@@ -489,9 +489,9 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     settings: RagSearchSettingConfigurationRequestTypes = Field(
         description="Settings configuration for a search request to a RAG provider.",
     )
-    tags: Optional[list[str]] = Field(
-        default=None,
-        description="Optional list of tags to configure for this version of the search settings configuration.",
+    tags: list[str] = Field(
+        default_factory=list,
+        description="List of tags to configure for this version of the search settings configuration.",
     )
 
 
