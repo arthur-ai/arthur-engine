@@ -495,6 +495,12 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     )
 
 
+class RagSearchSettingConfigurationVersionUpdateRequest(BaseModel):
+    tags: list[str] = Field(
+        description="List of tags to update this version of the search settings configuration with.",
+    )
+
+
 class BaseFilterRequest(BaseModel, ABC):
     """Abstract Pydantic base class enforcing apply_filters_to_query implementation."""
 

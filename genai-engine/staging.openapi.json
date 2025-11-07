@@ -7209,6 +7209,132 @@
                         }
                     }
                 }
+            },
+            "get": {
+                "tags": [
+                    "RAG Settings"
+                ],
+                "summary": "Get Rag Search Setting Configuration Versions",
+                "description": "Get list of versions for the RAG search setting configuration.",
+                "operationId": "get_rag_search_setting_configuration_versions_api_v1_rag_search_settings__setting_configuration_id__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG search setting configuration to get versions for.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of the RAG search setting configuration to get versions for."
+                    },
+                    {
+                        "name": "tags",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of tags to filter for versions tagged with any matching tag.",
+                            "title": "Tags"
+                        },
+                        "description": "List of tags to filter for versions tagged with any matching tag."
+                    },
+                    {
+                        "name": "version_numbers",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "integer"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "List of version numbers to filter for.",
+                            "title": "Version Numbers"
+                        },
+                        "description": "List of version numbers to filter for."
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ListRagSearchSettingConfigurationVersionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}": {
@@ -7312,6 +7438,138 @@
                 "responses": {
                     "204": {
                         "description": "Successful Response"
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "RAG Settings"
+                ],
+                "summary": "Update Rag Search Settings Version",
+                "description": "Update a single RAG search setting configuration version metadata.",
+                "operationId": "update_rag_search_settings_version_api_v1_rag_search_settings__setting_configuration_id__versions__version_number__patch",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of the RAG search setting configuration to update.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of the RAG search setting configuration to update."
+                    },
+                    {
+                        "name": "version_number",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Version number of the version to update.",
+                            "title": "Version Number"
+                        },
+                        "description": "Version number of the version to update."
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/rag_search_settings/{setting_configuration_id}/tags/{tag}": {
+            "get": {
+                "tags": [
+                    "RAG Settings"
+                ],
+                "summary": "Get Rag Search Setting Version By Tag",
+                "description": "Get a single RAG setting configuration version by tag.",
+                "operationId": "get_rag_search_setting_version_by_tag",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "setting_configuration_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "description": "ID of RAG search setting configuration.",
+                            "title": "Setting Configuration Id"
+                        },
+                        "description": "ID of RAG search setting configuration."
+                    },
+                    {
+                        "name": "tag",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Tag to fetch the version by.",
+                            "title": "Tag"
+                        },
+                        "description": "Tag to fetch the version by."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation Error",
@@ -12151,6 +12409,29 @@
                 ],
                 "title": "ListDatasetVersionsResponse"
             },
+            "ListRagSearchSettingConfigurationVersionsResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "The total number of RAG search setting configuration versions matching the parameters."
+                    },
+                    "rag_provider_setting_configurations": {
+                        "items": {
+                            "$ref": "#/components/schemas/RagSearchSettingConfigurationVersionResponse"
+                        },
+                        "type": "array",
+                        "title": "Rag Provider Setting Configurations",
+                        "description": "List of RAG search setting configuration versions matching the search filters. Length is less than or equal to page_size parameter"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "rag_provider_setting_configurations"
+                ],
+                "title": "ListRagSearchSettingConfigurationVersionsResponse"
+            },
             "ListRagSearchSettingConfigurationsResponse": {
                 "properties": {
                     "count": {
@@ -14274,6 +14555,23 @@
                     "updated_at"
                 ],
                 "title": "RagSearchSettingConfigurationVersionResponse"
+            },
+            "RagSearchSettingConfigurationVersionUpdateRequest": {
+                "properties": {
+                    "tags": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Tags",
+                        "description": "List of tags to update this version of the search settings configuration with."
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "tags"
+                ],
+                "title": "RagSearchSettingConfigurationVersionUpdateRequest"
             },
             "RagVectorSimilarityTextSearchSettingRequest": {
                 "properties": {

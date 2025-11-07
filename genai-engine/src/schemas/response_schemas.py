@@ -602,6 +602,23 @@ class ListRagSearchSettingConfigurationsResponse(BaseModel):
     )
 
 
+class ListRagSearchSettingConfigurationVersionsResponse(BaseModel):
+    count: int = Field(
+        description="The total number of RAG search setting configuration versions matching the parameters.",
+    )
+    rag_provider_setting_configurations: list[
+        RagSearchSettingConfigurationVersionResponse
+    ] = Field(
+        description="List of RAG search setting configuration versions matching the search filters. Length is less than or equal to page_size parameter",
+    )
+
+
+class AgenticPromptMetadataResponse(BaseModel):
+    name: str = Field(description="Name of the prompt")
+    versions: int = Field(description="Number of versions of the prompt")
+    created_at: datetime = Field(description="Timestamp when the prompt was created")
+
+
 class LLMGetAllMetadataResponse(BaseModel):
     name: str = Field(description="Name of the llm asset")
     versions: int = Field(description="Number of versions of the llm asset")
