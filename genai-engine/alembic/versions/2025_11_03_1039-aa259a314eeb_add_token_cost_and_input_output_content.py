@@ -179,9 +179,6 @@ def _backfill_spans_token_data():
 
             offset += 1
 
-        # Commit after each batch
-        connection.commit()
-
 
 def _backfill_trace_metadata_token_data():
     """Backfill trace_metadata by aggregating token counts and costs from spans in batches."""
@@ -276,9 +273,6 @@ def _backfill_trace_metadata_token_data():
 
         offset += len(batch)
 
-        # Commit after each batch
-        connection.commit()
-
 
 def _backfill_trace_metadata_input_output_content():
     """Backfill trace_metadata input/output content from root spans in batches."""
@@ -358,9 +352,6 @@ def _backfill_trace_metadata_input_output_content():
             )
 
         offset += len(batch)
-
-        # Commit after each batch
-        connection.commit()
 
 
 def downgrade() -> None:
