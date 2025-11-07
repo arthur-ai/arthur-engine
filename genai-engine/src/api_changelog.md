@@ -2,6 +2,40 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/06/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  removed the required property 'prompt_metadata' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  deleted the 'query' request parameter 'prompt_names'
+- **CHANGE** in components/schemas
+- **CHANGE** in components/schemas
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+
+# 11/06/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Settings' added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/rag_search_settings  api tag 'RAG Providers' removed
+
+# 11/06/2025
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  removed the request property 'settings/search_kind'
+- **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  removed the request property 'settings/search_kind'
+
 # 11/05/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  endpoint added
@@ -39,7 +73,7 @@ The intention of this changelog is to document API changes as they happen to eff
 
 # 11/03/2025
 - Removed context, response, system_prompt, user_query from span properties
-- **CHANGE** for **URL**: Added prompt_token_cost, prompt_token_count, completion_token_cost, completion_token_count, total_token_cost, total_token_count, input_content, output_content to spans, traces, sessions and users. 
+- **CHANGE** for **URL**: Added prompt_token_cost, prompt_token_count, completion_token_cost, completion_token_count, total_token_cost, total_token_count, input_content, output_content to spans, traces, sessions and users.
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/hybrid_search  added the new optional request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/keyword_search  added the new optional request property 'settings/search_kind'
 - **CHANGE** for **URL**: /api/v1/rag_providers/{provider_id}/similarity_text_search  added the new optional request property 'settings/search_kind'

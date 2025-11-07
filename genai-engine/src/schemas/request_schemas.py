@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Type, Union
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -16,7 +16,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.base import Base
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -224,13 +224,10 @@ class WeaviateSearchCommonSettingsRequest(BaseModel):
     )
 
 
-class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+class WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
-        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
-    )
 
     certainty: Optional[float] = Field(
         default=None,
@@ -248,11 +245,17 @@ class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
     )
 
 
-class WeaviateVectorSimilarityTextSearchSettingsRequest(
-    WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest,
+class WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest(
+    WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest,
 ):
-    rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
+    search_kind: Literal[RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH] = (
+        RagSearchKind.VECTOR_SIMILARITY_TEXT_SEARCH
+    )
 
+
+class WeaviateVectorSimilarityTextSearchSettingsRequest(
+    WeaviateVectorSimilarityTextSearchSettingsBaseConfigurationRequest,
+):
     # fields match the names of the inputs to the weaviate near_text function
     # the only exception is collection_name, which is used to fetch the vector collection used for the similarity search
     # https://weaviate-python-client.readthedocs.io/en/latest/weaviate.collections.grpc.html#weaviate.collections.grpc.query._QueryGRPC.near_text
@@ -264,7 +267,7 @@ class WeaviateVectorSimilarityTextSearchSettingsRequest(
     def _to_client_settings_dict(self) -> dict[str, Any]:
         """Parses settings to the client parameters for the near_text function."""
         return self.model_dump(
-            exclude={"collection_name", "rag_provider", "search_kind"},
+            exclude={"collection_name", "rag_provider"},
         )
 
 
@@ -279,11 +282,10 @@ class RagVectorSimilarityTextSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateKeywordSearchSettingsConfigurationRequest(
+class WeaviateKeywordSearchSettingsBaseConfigurationRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
 
     minimum_match_or_operator: Optional[int] = Field(
         default=None,
@@ -306,8 +308,14 @@ class WeaviateKeywordSearchSettingsConfigurationRequest(
         return self
 
 
+class WeaviateKeywordSearchSettingsConfigurationRequest(
+    WeaviateKeywordSearchSettingsBaseConfigurationRequest,
+):
+    search_kind: Literal[RagSearchKind.KEYWORD_SEARCH] = RagSearchKind.KEYWORD_SEARCH
+
+
 class WeaviateKeywordSearchSettingsRequest(
-    WeaviateKeywordSearchSettingsConfigurationRequest,
+    WeaviateKeywordSearchSettingsBaseConfigurationRequest,
 ):
     # fields match the names of the inputs to the weaviate bm25 function
     # https://weaviate-python-client.readthedocs.io/en/stable/weaviate-agents-python-client/docs/weaviate_agents.personalization.classes.html#weaviate_agents.personalization.classes.BM25QueryParameters
@@ -324,7 +332,6 @@ class WeaviateKeywordSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
-                "search_kind",
             },
         )
 
@@ -347,11 +354,10 @@ class RagKeywordSearchSettingRequest(BaseModel):
     )
 
 
-class WeaviateHybridSearchSettingsConfigurationRequest(
+class WeaviateHybridSearchSettingsBaseRequest(
     WeaviateSearchCommonSettingsRequest,
 ):
     rag_provider: Literal[RagProviderEnum.WEAVIATE] = RagProviderEnum.WEAVIATE
-    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
 
     alpha: float = Field(
         default=0.7,
@@ -394,8 +400,14 @@ class WeaviateHybridSearchSettingsConfigurationRequest(
         return self
 
 
+class WeaviateHybridSearchSettingsConfigurationRequest(
+    WeaviateHybridSearchSettingsBaseRequest,
+):
+    search_kind: Literal[RagSearchKind.HYBRID_SEARCH] = RagSearchKind.HYBRID_SEARCH
+
+
 class WeaviateHybridSearchSettingsRequest(
-    WeaviateHybridSearchSettingsConfigurationRequest,
+    WeaviateHybridSearchSettingsBaseRequest,
 ):
     # fields match the names of the inputs to the weaviate hybrid function
     # some are left out for now: return_references, group_by, rerank, filters, vector, target_vector
@@ -411,7 +423,6 @@ class WeaviateHybridSearchSettingsRequest(
                 "rag_provider",
                 "minimum_match_or_operator",
                 "and_operator",
-                "search_kind",
             },
         )
 
@@ -484,16 +495,16 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     )
 
 
-class BasePromptFilterRequest(BaseModel, ABC):
+class BaseFilterRequest(BaseModel, ABC):
     """Abstract Pydantic base class enforcing apply_filters_to_query implementation."""
 
     @abstractmethod
-    def apply_filters_to_query(self, query: Query) -> Query:
+    def apply_filters_to_query(self, query: Query, db_model: Type[Base]) -> Query:
         """Apply filters to a SQLAlchemy query."""
 
 
-class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
-    """Request schema for filtering agentic prompts with comprehensive filtering options."""
+class LLMGetVersionsFilterRequest(BaseFilterRequest):
+    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
     model_provider: Optional[ModelProvider] = Field(
@@ -530,6 +541,7 @@ class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
     def apply_filters_to_query(
         self,
         query: Query,
+        db_model: Type[Base],
     ) -> Query:
         """
         Apply filters to a query based on the filter request.
@@ -543,53 +555,53 @@ class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
         # Filter by model provider
         if self.model_provider:
             query = query.filter(
-                DatabaseAgenticPrompt.model_provider == self.model_provider,
+                db_model.model_provider == self.model_provider,
             )
 
         # Filter by model name using LIKE for partial matching
         if self.model_name:
             query = query.filter(
-                DatabaseAgenticPrompt.model_name.like(f"%{self.model_name}%"),
+                db_model.model_name.like(f"%{self.model_name}%"),
             )
 
         # Filter by start time (inclusive)
         if self.created_after:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at >= self.created_after,
+                db_model.created_at >= self.created_after,
             )
 
         # Filter by end time (exclusive)
         if self.created_before:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at < self.created_before,
+                db_model.created_at < self.created_before,
             )
 
         # Filter by deleted status
         if self.exclude_deleted == True:
-            query = query.filter(DatabaseAgenticPrompt.deleted_at.is_(None))
+            query = query.filter(db_model.deleted_at.is_(None))
 
         # Filter by min version
         if self.min_version is not None:
             query = query.filter(
-                DatabaseAgenticPrompt.version >= self.min_version,
+                db_model.version >= self.min_version,
             )
 
         # Filter by max version
         if self.max_version is not None:
             query = query.filter(
-                DatabaseAgenticPrompt.version <= self.max_version,
+                db_model.version <= self.max_version,
             )
 
         return query
 
 
-class PromptsGetAllFilterRequest(BasePromptFilterRequest):
-    """Request schema for filtering agentic prompts with comprehensive filtering options."""
+class LLMGetAllFilterRequest(BaseFilterRequest):
+    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
-    prompt_names: Optional[list[str]] = Field(
+    llm_asset_names: Optional[list[str]] = Field(
         None,
-        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
+        description="LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
     )
     model_provider: Optional[ModelProvider] = Field(
         None,
@@ -597,7 +609,7 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
     )
     model_name: Optional[str] = Field(
         None,
-        description="Filter by model name using partial matching (e.g., 'gpt-4', 'claude'). Supports SQL LIKE pattern matching with % wildcards.",
+        description="Filter by model name using partial matching (e.g., 'gpt-4o', 'claude-3-5-sonnet').",
     )
     created_after: Optional[datetime] = Field(
         None,
@@ -611,6 +623,7 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
     def apply_filters_to_query(
         self,
         query: Query,
+        db_model: Type[Base],
     ) -> Query:
         """
         Apply filters to a query based on the filter request.
@@ -622,35 +635,34 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
             Query - the query with filters applied
         """
         # Filter by prompt names using LIKE for partial matching
-        if self.prompt_names:
+        if self.llm_asset_names:
             name_conditions = [
-                DatabaseAgenticPrompt.name.like(f"%{name}%")
-                for name in self.prompt_names
+                db_model.name.like(f"%{name}%") for name in self.llm_asset_names
             ]
             query = query.filter(or_(*name_conditions))
 
         # Filter by model provider
         if self.model_provider:
             query = query.filter(
-                DatabaseAgenticPrompt.model_provider == self.model_provider,
+                db_model.model_provider == self.model_provider,
             )
 
         # Filter by model name using LIKE for partial matching
         if self.model_name:
             query = query.filter(
-                DatabaseAgenticPrompt.model_name.like(f"%{self.model_name}%"),
+                db_model.model_name.like(f"%{self.model_name}%"),
             )
 
         # Filter by start time (inclusive)
         if self.created_after:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at >= self.created_after,
+                db_model.created_at >= self.created_after,
             )
 
         # Filter by end time (exclusive)
         if self.created_before:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at < self.created_before,
+                db_model.created_at < self.created_before,
             )
 
         return query
