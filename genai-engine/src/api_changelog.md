@@ -3,6 +3,17 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/06/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  removed the required property 'prompt_metadata' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts  deleted the 'query' request parameter 'prompt_names'
+- **CHANGE** in components/schemas
+- **CHANGE** in components/schemas
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+- **CHANGE** in API GET /api/v1/tasks/{task_id}/prompts
+
+# 11/06/2025
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Providers' removed
 - **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}  api tag 'RAG Settings' added

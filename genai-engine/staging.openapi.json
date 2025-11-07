@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.146"
+        "version": "2.1.147"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -4817,7 +4817,7 @@
                         "description": "Page number"
                     },
                     {
-                        "name": "prompt_names",
+                        "name": "llm_asset_names",
                         "in": "query",
                         "required": false,
                         "schema": {
@@ -4832,10 +4832,10 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.",
-                            "title": "Prompt Names"
+                            "description": "LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
+                            "title": "Llm Asset Names"
                         },
-                        "description": "Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned."
+                        "description": "LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned"
                     },
                     {
                         "name": "model_provider",
@@ -4916,7 +4916,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/AgenticPromptMetadataListResponse"
+                                    "$ref": "#/components/schemas/LLMGetAllMetadataListResponse"
                                 }
                             }
                         }
@@ -7326,6 +7326,533 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}": {
+            "get": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Get an llm eval",
+                "description": "Get an llm eval by name and version",
+                "operationId": "get_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to retrieve."
+                        },
+                        "description": "The name of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the llm eval to retrieve. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMEval"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Delete an llm eval version",
+                "description": "Deletes a specific version of an llm eval",
+                "operationId": "soft_delete_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to delete."
+                        },
+                        "description": "The name of the llm eval to delete."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "LLM eval version deleted."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions": {
+            "get": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "List all versions of an llm eval",
+                "description": "List all versions of an llm eval with optional filtering.",
+                "operationId": "get_all_llm_eval_versions_api_v1_tasks__task_id__llm_evals__eval_name__versions_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to retrieve."
+                        },
+                        "description": "The name of the llm eval to retrieve."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "model_provider",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "title": "Model Provider"
+                        },
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "title": "Model Name"
+                        },
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "exclude_deleted",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "boolean",
+                            "description": "Whether to exclude deleted prompt versions from the results. Default is False.",
+                            "default": false,
+                            "title": "Exclude Deleted"
+                        },
+                        "description": "Whether to exclude deleted prompt versions from the results. Default is False."
+                    },
+                    {
+                        "name": "min_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Minimum version number to filter on (inclusive).",
+                            "title": "Min Version"
+                        },
+                        "description": "Minimum version number to filter on (inclusive)."
+                    },
+                    {
+                        "name": "max_version",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Maximum version number to filter on (inclusive).",
+                            "title": "Max Version"
+                        },
+                        "description": "Maximum version number to filter on (inclusive)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMEvalsVersionListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/llm_evals": {
+            "get": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Get all llm evals",
+                "description": "Get all llm evals for a given task with optional filtering.",
+                "operationId": "get_all_llm_evals_api_v1_tasks__task_id__llm_evals_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    },
+                    {
+                        "name": "llm_asset_names",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
+                            "title": "Llm Asset Names"
+                        },
+                        "description": "LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned"
+                    },
+                    {
+                        "name": "model_provider",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
+                            "title": "Model Provider"
+                        },
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
+                    },
+                    {
+                        "name": "model_name",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').",
+                            "title": "Model Name"
+                        },
+                        "description": "Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet')."
+                    },
+                    {
+                        "name": "created_after",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created After"
+                        },
+                        "description": "Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    },
+                    {
+                        "name": "created_before",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
+                            "title": "Created Before"
+                        },
+                        "description": "Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC)."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMGetAllMetadataListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tasks/{task_id}/llm_evals/{eval_name}": {
             "post": {
                 "tags": [
@@ -7433,70 +7960,6 @@
                 "responses": {
                     "204": {
                         "description": "LLM eval deleted."
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}": {
-            "delete": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Delete an llm eval version",
-                "description": "Deletes a specific version of an llm eval",
-                "operationId": "soft_delete_llm_eval_version_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__delete",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to delete."
-                        },
-                        "description": "The name of the llm eval to delete."
-                    },
-                    {
-                        "name": "eval_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
-                        },
-                        "description": "The version of the llm eval to delete. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "LLM eval version deleted."
                     },
                     "422": {
                         "description": "Validation Error",
@@ -8913,72 +9376,6 @@
                 ],
                 "title": "AgenticPromptMessage",
                 "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
-            },
-            "AgenticPromptMetadataListResponse": {
-                "properties": {
-                    "prompt_metadata": {
-                        "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMetadataResponse"
-                        },
-                        "type": "array",
-                        "title": "Prompt Metadata",
-                        "description": "List of prompt metadata"
-                    },
-                    "count": {
-                        "type": "integer",
-                        "title": "Count",
-                        "description": "Total number of prompts matching filters"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "prompt_metadata",
-                    "count"
-                ],
-                "title": "AgenticPromptMetadataListResponse"
-            },
-            "AgenticPromptMetadataResponse": {
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the prompt"
-                    },
-                    "versions": {
-                        "type": "integer",
-                        "title": "Versions",
-                        "description": "Number of versions of the prompt"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created"
-                    },
-                    "latest_version_created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Latest Version Created At",
-                        "description": "Timestamp when the last version of the prompt was created"
-                    },
-                    "deleted_versions": {
-                        "items": {
-                            "type": "integer"
-                        },
-                        "type": "array",
-                        "title": "Deleted Versions",
-                        "description": "List of deleted versions of the prompt"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "name",
-                    "versions",
-                    "created_at",
-                    "latest_version_created_at",
-                    "deleted_versions"
-                ],
-                "title": "AgenticPromptMetadataResponse"
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -11370,6 +11767,141 @@
                     "instructions"
                 ],
                 "title": "LLMEval"
+            },
+            "LLMEvalsVersionListResponse": {
+                "properties": {
+                    "versions": {
+                        "items": {
+                            "$ref": "#/components/schemas/LLMEvalsVersionResponse"
+                        },
+                        "type": "array",
+                        "title": "Versions",
+                        "description": "List of llm eval version metadata"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of llm evals matching filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "versions",
+                    "count"
+                ],
+                "title": "LLMEvalsVersionListResponse"
+            },
+            "LLMEvalsVersionResponse": {
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version number of the llm eval"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the llm eval version was created"
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Model provider chosen for this version of the llm eval"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model name chosen for this version of the llm eval"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "created_at",
+                    "deleted_at",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "LLMEvalsVersionResponse"
+            },
+            "LLMGetAllMetadataListResponse": {
+                "properties": {
+                    "llm_metadata": {
+                        "items": {
+                            "$ref": "#/components/schemas/LLMGetAllMetadataResponse"
+                        },
+                        "type": "array",
+                        "title": "Llm Metadata",
+                        "description": "List of llm asset metadata"
+                    },
+                    "count": {
+                        "type": "integer",
+                        "title": "Count",
+                        "description": "Total number of llm assets matching filters"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "llm_metadata",
+                    "count"
+                ],
+                "title": "LLMGetAllMetadataListResponse"
+            },
+            "LLMGetAllMetadataResponse": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the llm asset"
+                    },
+                    "versions": {
+                        "type": "integer",
+                        "title": "Versions",
+                        "description": "Number of versions of the llm asset"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the llm asset was created"
+                    },
+                    "latest_version_created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Latest Version Created At",
+                        "description": "Timestamp when the last version of the llm asset was created"
+                    },
+                    "deleted_versions": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Deleted Versions",
+                        "description": "List of deleted versions of the llm asset"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "versions",
+                    "created_at",
+                    "latest_version_created_at",
+                    "deleted_versions"
+                ],
+                "title": "LLMGetAllMetadataResponse"
             },
             "LLMResponseFormat-Input": {
                 "properties": {
