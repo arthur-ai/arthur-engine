@@ -568,7 +568,7 @@ class CompletionRequest(AgenticPromptBaseConfig):
     """Request schema for running an unsaved agentic prompt"""
 
     completion_request: PromptCompletionRequest = Field(
-        default=PromptCompletionRequest(),
+        default_factory=PromptCompletionRequest,
         description="Run configuration for the unsaved prompt",
     )
 
