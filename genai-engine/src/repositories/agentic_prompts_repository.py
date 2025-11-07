@@ -7,6 +7,7 @@ from arthur_common.models.enums import PaginationSortMethod
 from sqlalchemy import asc, desc
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
+from sqlalchemy.sql import or_
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -126,6 +127,110 @@ class AgenticPromptRepository:
 
         return query, total_count
 
+    def _apply_versions_filters_to_query(
+        self,
+        query: Query,
+        filter_request: LLMGetVersionsFilterRequest,
+    ) -> Query:
+        """
+        Apply filters to a query based on the filter request.
+
+        Parameters:
+            query: Query - the SQLAlchemy query to filter
+
+        Returns:
+            Query - the query with filters applied
+        """
+        # Filter by model provider
+        if filter_request.model_provider:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_provider == filter_request.model_provider,
+            )
+
+        # Filter by model name using LIKE for partial matching
+        if filter_request.model_name:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_name.like(f"%{filter_request.model_name}%"),
+            )
+
+        # Filter by start time (inclusive)
+        if filter_request.created_after:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at >= filter_request.created_after,
+            )
+
+        # Filter by end time (exclusive)
+        if filter_request.created_before:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at < filter_request.created_before,
+            )
+
+        # Filter by deleted status
+        if filter_request.exclude_deleted == True:
+            query = query.filter(DatabaseAgenticPrompt.deleted_at.is_(None))
+
+        # Filter by min version
+        if filter_request.min_version is not None:
+            query = query.filter(
+                DatabaseAgenticPrompt.version >= filter_request.min_version,
+            )
+
+        # Filter by max version
+        if filter_request.max_version is not None:
+            query = query.filter(
+                DatabaseAgenticPrompt.version <= filter_request.max_version,
+            )
+
+        return query
+
+    def _apply_get_all_filters_to_query(
+        self,
+        query: Query,
+        filter_request: LLMGetAllFilterRequest,
+    ) -> Query:
+        """
+        Apply filters to a query based on the filter request.
+
+        Parameters:
+            query: Query - the SQLAlchemy query to filter
+
+        Returns:
+            Query - the query with filters applied
+        """
+        # Filter by prompt names using LIKE for partial matching
+        if filter_request.llm_asset_names:
+            name_conditions = [
+                DatabaseAgenticPrompt.name.like(f"%{name}%")
+                for name in filter_request.llm_asset_names
+            ]
+            query = query.filter(or_(*name_conditions))
+
+        # Filter by model provider
+        if filter_request.model_provider:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_provider == filter_request.model_provider,
+            )
+
+        # Filter by model name using LIKE for partial matching
+        if filter_request.model_name:
+            query = query.filter(
+                DatabaseAgenticPrompt.model_name.like(f"%{filter_request.model_name}%"),
+            )
+
+        # Filter by start time (inclusive)
+        if filter_request.created_after:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at >= filter_request.created_after,
+            )
+
+        # Filter by end time (exclusive)
+        if filter_request.created_before:
+            query = query.filter(
+                DatabaseAgenticPrompt.created_at < filter_request.created_before,
+            )
+
+        return query
+
     def get_prompt(
         self,
         task_id: str,
@@ -196,9 +301,9 @@ class AgenticPromptRepository:
 
         # Apply filters BEFORE grouping
         if filter_request is not None:
-            base_query = filter_request.apply_filters_to_query(
+            base_query = self._apply_get_all_filters_to_query(
                 base_query,
-                DatabaseAgenticPrompt,
+                filter_request,
             )
 
         # Apply grouping
@@ -281,9 +386,9 @@ class AgenticPromptRepository:
 
         # Apply filters
         if filter_request is not None:
-            base_query = filter_request.apply_filters_to_query(
+            base_query = self._apply_versions_filters_to_query(
                 base_query,
-                DatabaseAgenticPrompt,
+                filter_request,
             )
 
         # Apply sorting, pagination, and get count
