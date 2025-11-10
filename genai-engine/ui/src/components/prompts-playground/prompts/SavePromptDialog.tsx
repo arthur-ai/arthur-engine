@@ -9,17 +9,21 @@ import Snackbar from "@mui/material/Snackbar";
 import TextField from "@mui/material/TextField";
 import React, { useCallback, useEffect, useState } from "react";
 
+import { useFetchBackendPrompts } from "../hooks/useFetchBackendPrompts";
+import { usePromptContext } from "../PromptsPlaygroundContext";
 import { SavePromptDialogProps } from "../types";
-import { toBackendPromptBaseConfig } from "../utils";
+import { toBackendPromptBaseConfig } from "../utils/toBackendPrompt";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPrompt } from "@/lib/api-client/api-client";
 
-const SavePromptDialog = ({ open, setOpen, prompt, initialName = "", onSaveSuccess, onSaveError }: SavePromptDialogProps) => {
+const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromptDialogProps) => {
   const [nameInputValue, setNameInputValue] = useState("");
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
+  const { dispatch } = usePromptContext();
+  const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
   const { task } = useTask();
@@ -34,7 +38,7 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "", onSaveSucce
     setOpen(false);
   }, [setOpen]);
 
-  const handleSavePrompt = useCallback(() => {
+  const handleSavePrompt = useCallback(async () => {
     if (nameInputValue === "") {
       showSnackbar("Prompt name is required", "error");
       return;
@@ -49,20 +53,26 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "", onSaveSucce
     // We remove the name because the endpoint signature expects it as a standalone parameter
     const backendPrompt = toBackendPromptBaseConfig(prompt);
 
-    apiClient.api
-      .saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(nameInputValue, taskId, backendPrompt)
-      .then((response: { data: AgenticPrompt }) => {
-        const { data } = response;
-        showSnackbar(`Saved prompt: ${data.name}`, "success");
-        onSaveSuccess?.();
-        handleClose();
-      })
-      .catch((error: { response: { data: { detail: string } } }) => {
-        const { data } = error.response;
-        showSnackbar(data.detail, "error");
-        onSaveError?.(data.detail);
-      });
-  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, onSaveSuccess, onSaveError, handleClose]);
+    try {
+      const response: { data: AgenticPrompt } = await apiClient.api.saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost(
+        nameInputValue,
+        taskId,
+        backendPrompt
+      );
+      const { data } = response;
+      showSnackbar(`Saved prompt: ${data.name}`, "success");
+      handleClose();
+      fetchPrompts(dispatch);
+      dispatch({ type: "updatePromptName", payload: { promptId: prompt.id, name: nameInputValue } });
+    } catch (error: unknown) {
+      const apiError = error as { response: { data: { detail: string } } };
+      if (apiError?.response?.data?.detail) {
+        showSnackbar(apiError.response.data.detail, "error");
+      } else {
+        showSnackbar("Failed to save prompt", "error");
+      }
+    }
+  }, [nameInputValue, prompt, apiClient, taskId, showSnackbar, handleClose, fetchPrompts, dispatch]);
 
   return (
     <>
