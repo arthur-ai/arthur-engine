@@ -9,14 +9,14 @@ import { SyntheticEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptType } from "../types";
-import { toFrontendPrompt } from "../utils";
+import toFrontendPrompt from "../utils/toFrontendPrompt";
 
 import VersionSelector from "./VersionSelector";
 
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import { useTask } from "@/hooks/useTask";
-import { ModelProvider, AgenticPromptMetadataResponse } from "@/lib/api-client/api-client";
+import { ModelProvider, LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
 
 const PROVIDER_TEXT = "Select Provider";
 const PROMPT_NAME_TEXT = "Select Prompt";
@@ -105,7 +105,7 @@ const PromptSelectors = ({
     }
   };
 
-  const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: AgenticPromptMetadataResponse | null) => {
+  const handleSelectPrompt = async (_event: SyntheticEvent<Element, Event>, newValue: LLMGetAllMetadataResponse | null) => {
     const selection = newValue?.name || "";
     if (selection === "") {
       return;

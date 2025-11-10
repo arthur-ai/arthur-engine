@@ -2,6 +2,7 @@ import { styled } from "@mui/material/styles";
 import React, { useRef, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 
+import { vsTheme } from "@/components/prompts-playground/prismTheme";
 import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 
 const SyntaxHighlighterWrapper = styled("div")({
@@ -152,6 +153,7 @@ export const HighlightedInputComponent = ({
         {label && <FloatingLabel className={shouldFloatLabel ? "floating" : ""}>{label}</FloatingLabel>}
         <SyntaxHighlighter
           language="handlebars"
+          style={vsTheme}
           customStyle={{
             margin: 0,
             padding: "16.5px 14px",
@@ -179,7 +181,7 @@ export const HighlightedInputComponent = ({
             },
           }}
           className="syntax-highlighter"
-          useInlineStyles={false}
+          useInlineStyles={true}
         >
           {typeof value === "string" ? value || placeholder || "" : value.map((item) => item.text || "").join(" ") || placeholder || ""}
         </SyntaxHighlighter>

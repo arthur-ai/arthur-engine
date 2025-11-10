@@ -8,53 +8,26 @@ import Stack from "@mui/material/Stack";
 import React, { useCallback, useReducer, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useFetchBackendPrompts } from "./hooks/useFetchBackendPrompts";
 import PromptComponent from "./prompts/PromptComponent";
 import { PromptProvider } from "./PromptsPlaygroundContext";
 import { promptsReducer, initialState } from "./reducer";
-import { spanToPrompt } from "./utils";
+import apiToFrontendPrompt from "./utils/apiToFrontendPrompt";
 import VariableInputs from "./VariableInputs";
 
 import { useApi } from "@/hooks/useApi";
-import { useTask } from "@/hooks/useTask";
 import { ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const PromptsPlayground = () => {
   const [state, dispatch] = useReducer(promptsReducer, initialState);
   const [searchParams] = useSearchParams();
-  const hasFetchedPrompts = useRef(false);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
   const hasFetchedSpan = useRef(false);
+  const fetchPrompts = useFetchBackendPrompts();
 
   const apiClient = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
   const spanId = searchParams.get("spanId");
-
-  const fetchPrompts = useCallback(async () => {
-    if (hasFetchedPrompts.current) {
-      return;
-    }
-
-    if (!apiClient || !taskId) {
-      console.error("No api client or task id");
-      return;
-    }
-
-    hasFetchedPrompts.current = true;
-    try {
-      const response = await apiClient.api.getAllAgenticPromptsApiV1TasksTaskIdPromptsGet({
-        taskId,
-      });
-
-      dispatch({
-        type: "updateBackendPrompts",
-        payload: { prompts: response.data.prompt_metadata },
-      });
-    } catch (error) {
-      console.error("Failed to fetch prompt metadata:", error);
-    }
-  }, [apiClient, taskId]);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -126,7 +99,7 @@ const PromptsPlayground = () => {
     try {
       const response = await apiClient.api.getSpanByIdApiV1TracesSpansSpanIdGet(spanId);
       const spanData = response.data;
-      const spanPrompt = spanToPrompt(spanData);
+      const spanPrompt = apiToFrontendPrompt(spanData);
 
       // Update the first empty prompt instead of adding a new one
       if (state.prompts.length > 0) {
@@ -146,13 +119,22 @@ const PromptsPlayground = () => {
   }, [spanId, apiClient, state.prompts]);
 
   useEffect(() => {
-    fetchPrompts();
-    fetchProviders();
     if (spanId) {
       fetchSpanData();
     }
-  }, [fetchPrompts, fetchProviders, fetchSpanData, spanId]);
+  }, [fetchSpanData, spanId]);
 
+  // Fetch backend prompts on mount
+  useEffect(() => {
+    fetchPrompts(dispatch);
+  }, [fetchPrompts]);
+
+  // Fetch providers on mount
+  useEffect(() => {
+    fetchProviders();
+  }, [fetchProviders]);
+
+  // If providers exist, fetch available models
   useEffect(() => {
     if (state.enabledProviders.length > 0) {
       fetchAvailableModels();
@@ -245,7 +227,7 @@ const PromptsPlayground = () => {
             width: `calc(100% - ${drawerWidth}px)`,
           }}
         >
-          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-hidden p-1">
+          <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box

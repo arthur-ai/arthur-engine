@@ -10,9 +10,9 @@ import Tooltip from "@mui/material/Tooltip";
 import { debounce } from "@mui/material/utils";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 
-import extractMustacheKeywords from "../mustacheExtractor";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { MESSAGE_ROLE_OPTIONS, MessageComponentProps } from "../types";
+import extractMustacheKeywords from "../utils/mustacheExtractor";
 
 import { HighlightedInputComponent } from "./HighlightedInputComponent";
 
@@ -84,12 +84,25 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
 
   // When the content changes, whether by user or hydration, update the keyword values
   useEffect(() => {
-    let extractedKeywords: string[] = [];
+    const allKeywords = new Set<string>();
+
     if (typeof content === "string") {
-      extractedKeywords = extractMustacheKeywords(content).keywords;
-    } else {
-      extractedKeywords = content.map((item) => item.text || "").filter((text) => text !== null);
+      // Extract mustache keywords from string content
+      const keywords = extractMustacheKeywords(content).keywords;
+      keywords.forEach((keyword) => allKeywords.add(keyword));
+    } else if (Array.isArray(content)) {
+      // Extract mustache keywords from each OpenAIMessageItem with string text field
+      content.forEach((item) => {
+        // Only extract keywords if the item has a text field that is a string
+        if (item.text && typeof item.text === "string") {
+          const keywords = extractMustacheKeywords(item.text).keywords;
+          keywords.forEach((keyword) => allKeywords.add(keyword));
+        }
+        // Skip items without text or with non-string text (e.g., image_url items)
+      });
     }
+
+    const extractedKeywords = Array.from(allKeywords);
 
     if (extractedKeywords.length > 0) {
       dispatch({
@@ -142,7 +155,7 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
         </div>
       </div>
       <div className="mt-2">
-        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" placeholder={role} />
+        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
       </div>
     </div>
   );

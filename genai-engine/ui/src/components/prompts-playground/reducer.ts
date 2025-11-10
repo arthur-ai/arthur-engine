@@ -1,3 +1,5 @@
+import { v4 as uuidv4 } from "uuid";
+
 import {
   MessageType,
   MESSAGE_ROLE_OPTIONS,
@@ -10,7 +12,7 @@ import {
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
-import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -18,12 +20,12 @@ import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEn
 const createMessage = (overrides: Partial<MessageType> = {}): MessageType => ({
   id: generateId("msg"),
   role: MESSAGE_ROLE_OPTIONS[1] as MessageRole,
-  content: "Change me",
+  content: "",
   disabled: false,
   ...overrides,
 });
 
-const newMessage = (role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole, content: string = "Change me"): MessageType =>
+const newMessage = (role: MessageRole = MESSAGE_ROLE_OPTIONS[1] as MessageRole, content: string = ""): MessageType =>
   createMessage({ role, content });
 
 const duplicateMessage = (original: MessageType): MessageType =>
@@ -65,18 +67,18 @@ const createTool = (counter: number = 1, overrides: Partial<FrontendTool> = {}):
  * Prompt factory functions *
  ***************************/
 const createModelParameters = (overrides: Partial<ModelParametersType> = {}): ModelParametersType => ({
-  temperature: 1,
-  top_p: 1,
+  temperature: null,
+  top_p: null,
   timeout: null,
-  stream: false,
+  stream: true,
   stream_options: null,
   max_tokens: null,
   max_completion_tokens: null,
-  frequency_penalty: 0,
-  presence_penalty: 0,
+  frequency_penalty: null,
+  presence_penalty: null,
   stop: null,
   seed: null,
-  reasoning_effort: "default",
+  reasoning_effort: null,
   logprobs: null,
   top_logprobs: null,
   logit_bias: null,
@@ -85,7 +87,7 @@ const createModelParameters = (overrides: Partial<ModelParametersType> = {}): Mo
 });
 
 const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
-  id: "-" + Date.now(), // New prompts get a default id
+  id: "-" + uuidv4(), // New prompts get a default id
   classification: promptClassificationEnum.DEFAULT,
   name: "",
   created_at: undefined, // created on BE
@@ -105,7 +107,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
 const newPrompt = (): PromptType => createPrompt();
 
 const duplicatePrompt = (original: PromptType): PromptType => {
-  const newId = "-" + Date.now(); // TODO: overwrite on save
+  const newId = "-" + uuidv4(); // TODO: overwrite on save
 
   return createPrompt({
     ...original,
@@ -128,7 +130,7 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
-  backendPrompts: new Array<AgenticPromptMetadataResponse>(),
+  backendPrompts: new Array<LLMGetAllMetadataResponse>(),
   enabledProviders: new Array<ModelProvider>(),
   availableModels: new Map<ModelProvider, string[]>(),
 };
@@ -349,7 +351,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, running: true } : prompt)),
+        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, running: true, runResponse: null } : prompt)),
       };
     }
     case "updateModelParameters": {
@@ -384,15 +386,31 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, toolId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? {
-                ...prompt,
-                tools: prompt.tools.filter((tool) => tool.id !== toolId),
-                toolChoice: prompt.toolChoice === toolId ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
-              }
-            : prompt
-        ),
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id !== promptId) return prompt;
+
+          const toolToDelete = prompt.tools.find((tool) => tool.id === toolId);
+          if (!toolToDelete) return prompt;
+
+          // Check if the toolChoice references the tool being deleted
+          let shouldResetToolChoice = false;
+          if (prompt.toolChoice) {
+            if (typeof prompt.toolChoice === "object" && "function" in prompt.toolChoice) {
+              // It's a ToolChoice object - check if function name matches
+              shouldResetToolChoice = prompt.toolChoice.function?.name === toolToDelete.function.name;
+            } else if (typeof prompt.toolChoice === "string") {
+              // It's a ToolChoiceEnum or potentially an old tool ID string
+              // Check if it matches the tool ID (for backwards compatibility)
+              shouldResetToolChoice = prompt.toolChoice === toolId;
+            }
+          }
+
+          return {
+            ...prompt,
+            tools: prompt.tools.filter((tool) => tool.id !== toolId),
+            toolChoice: shouldResetToolChoice ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
+          };
+        }),
       };
     }
     case "updateTool": {
@@ -413,7 +431,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, toolChoice } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice } : prompt
+        ),
       };
     }
     case "moveMessage": {

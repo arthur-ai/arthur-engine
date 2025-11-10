@@ -9,7 +9,6 @@ import React, { useCallback, useEffect, useState, useRef } from "react";
 import MessagesSection from "../messages/MessagesSection";
 import { usePromptContext } from "../PromptsPlaygroundContext";
 import { PromptComponentProps } from "../types";
-import { toCompletionRequest } from "../utils";
 
 import ManagementButtons from "./ManagementButtons";
 import OutputField from "./OutputField";
@@ -18,9 +17,8 @@ import ResizableSplitter from "./ResizableSplitter";
 import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
-import { useApi } from "@/hooks/useApi";
+import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
 import useSnackbar from "@/hooks/useSnackbar";
-import { useTask } from "@/hooks/useTask";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
@@ -34,43 +32,16 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
   const [messagesHeightRatio, setMessagesHeightRatio] = useState<number>(0.7); // Default: 70% messages, 30% response
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
-  const { state, dispatch } = usePromptContext();
-  const apiClient = useApi();
-  const { task } = useTask();
-  const taskId = task?.id;
-
-  const runPrompt = useCallback(async () => {
-    if (!apiClient || !taskId) {
-      console.error("No api client or task id");
-      return;
-    }
-    // Replace template strings with variable values before sending to API
-    const completionRequest = toCompletionRequest(prompt, state.keywords);
-    await apiClient.api
-      .runAgenticPromptApiV1CompletionsPost(completionRequest)
-      .then((response) => {
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: { running: false, runResponse: response.data },
-          },
-        });
-      })
-      .catch((error) => {
-        console.error("Error running prompt:", error);
-        showSnackbar(error.response.data.detail, "error");
-        dispatch({
-          type: "updatePrompt",
-          payload: {
-            promptId: prompt.id,
-            prompt: { running: false, runResponse: null },
-          },
-        });
-      });
-  }, [apiClient, taskId, prompt, state.keywords, dispatch, showSnackbar]);
+  const { dispatch } = usePromptContext();
+  const runPrompt = useRunPrompt({
+    prompt,
+    onError: (error) => {
+      showSnackbar(error, "error");
+    },
+  });
 
   const handleAddMessage = () => {
     dispatch({
@@ -88,8 +59,11 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   }, [currentPromptName]);
 
   useEffect(() => {
-    if (prompt.running) {
+    if (prompt.running && !hasTriggeredRunRef.current) {
+      hasTriggeredRunRef.current = true;
       runPrompt();
+    } else if (!prompt.running && hasTriggeredRunRef.current) {
+      hasTriggeredRunRef.current = false;
     }
   }, [prompt.running, runPrompt]);
 

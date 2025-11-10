@@ -4,6 +4,8 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { usePromptContext } from "../PromptsPlaygroundContext";
+
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
 import { AgenticPromptVersionResponse } from "@/lib/api-client/api-client";
@@ -18,6 +20,8 @@ interface VersionSelectorProps {
 const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect }: VersionSelectorProps) => {
   const [versions, setVersions] = useState<AgenticPromptVersionResponse[]>([]);
   const isFetchingVersions = useRef<boolean>(false);
+
+  const { state } = usePromptContext();
   const apiClient = useApi();
   const { task } = useTask();
   const taskId = task?.id;
@@ -27,6 +31,12 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
       return;
     }
     if (isFetchingVersions.current) {
+      return;
+    }
+
+    // This case usually happens when duplicating a backend prompt
+    const backendPrompt = state.backendPrompts.find((bp) => bp.name === promptName);
+    if (typeof backendPrompt === "undefined") {
       return;
     }
 
@@ -45,7 +55,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
     } finally {
       isFetchingVersions.current = false;
     }
-  }, [apiClient, promptName, taskId]);
+  }, [apiClient, promptName, taskId, state.backendPrompts]);
 
   const handleAutocompleteChange = (_event: SyntheticEvent<Element, Event>, newValue: AgenticPromptVersionResponse | null) => {
     if (newValue) {
