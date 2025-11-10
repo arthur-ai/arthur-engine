@@ -6,7 +6,6 @@ import extractStatusCode from "./extractStatusCode";
 import filterNullParams from "./filterNullParams";
 import getToolChoiceDisplayValue from "./getToolChoiceDisplayValue";
 import { extractMustacheKeywords, replaceKeywords } from "./mustacheExtractor";
-import openSpanToApi from "./openSpanToApi";
 import toBackendPrompt from "./toBackendPrompt";
 import toCompletionRequest from "./toCompletionRequest";
 import toFrontendPrompt from "./toFrontendPrompt";
@@ -35,7 +34,6 @@ export {
   replaceKeywords,
   extractStatusCode,
   extractContext,
-  openSpanToApi,
   getToolChoiceDisplayValue,
   toBackendPrompt,
   toCompletionRequest,

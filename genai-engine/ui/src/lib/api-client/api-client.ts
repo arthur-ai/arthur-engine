@@ -297,51 +297,6 @@ export interface AgenticPromptMessageOutput {
   tool_calls?: ToolCall[] | null;
 }
 
-/** AgenticPromptMetadataListResponse */
-export interface AgenticPromptMetadataListResponse {
-  /**
-   * Count
-   * Total number of prompts matching filters
-   */
-  count: number;
-  /**
-   * Prompt Metadata
-   * List of prompt metadata
-   */
-  prompt_metadata: AgenticPromptMetadataResponse[];
-}
-
-/** AgenticPromptMetadataResponse */
-export interface AgenticPromptMetadataResponse {
-  /**
-   * Created At
-   * Timestamp when the prompt was created
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted Versions
-   * List of deleted versions of the prompt
-   */
-  deleted_versions: number[];
-  /**
-   * Latest Version Created At
-   * Timestamp when the last version of the prompt was created
-   * @format date-time
-   */
-  latest_version_created_at: string;
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Versions
-   * Number of versions of the prompt
-   */
-  versions: number;
-}
-
 /** AgenticPromptRunResponse */
 export interface AgenticPromptRunResponse {
   /** Content */
@@ -673,10 +628,7 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
  * Request schema for running an unsaved agentic prompt
  */
 export interface CompletionRequest {
-  /**
-   * Run configuration for the unsaved prompt
-   * @default {"variables":[],"stream":false,"strict":false}
-   */
+  /** Run configuration for the unsaved prompt */
   completion_request?: PromptCompletionRequest;
   /**
    * Created At
@@ -865,6 +817,36 @@ export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
 
 export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
 
+/** CreateEvalRequest */
+export interface CreateEvalRequest {
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
+  /**
+   * Instructions
+   * Instructions for the llm eval
+   */
+  instructions: string;
+  /**
+   * Max Score
+   * Maximum score for the llm eval
+   * @default 1
+   */
+  max_score?: number;
+  /**
+   * Min Score
+   * Minimum score for the llm eval
+   * @default 0
+   */
+  min_score?: number;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+}
+
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidationError;
@@ -872,6 +854,10 @@ export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidat
 export type CreateRagSearchSettingsData = RagSearchSettingConfigurationResponse;
 
 export type CreateRagSearchSettingsError = HTTPValidationError;
+
+export type CreateRagSearchSettingsVersionData = RagSearchSettingConfigurationVersionResponse;
+
+export type CreateRagSearchSettingsVersionError = HTTPValidationError;
 
 export type CreateTaskApiV2TasksPostData = TaskResponse;
 
@@ -1104,6 +1090,10 @@ export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
 export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
 
+export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData = any;
+
+export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValidationError;
+
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
 
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
@@ -1111,6 +1101,10 @@ export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValida
 export type DeleteRagSearchSettingData = any;
 
 export type DeleteRagSearchSettingError = HTTPValidationError;
+
+export type DeleteRagSearchSettingVersionData = any;
+
+export type DeleteRagSearchSettingVersionError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1389,7 +1383,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
   taskId: string;
 }
 
-export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = LLMGetAllMetadataListResponse;
 
 export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
 
@@ -1404,6 +1398,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
+  /**
+   * Llm Asset Names
+   * LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned
+   */
+  llm_asset_names?: string[] | null;
   /**
    * Model Name
    * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
@@ -1427,10 +1426,129 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   page_size?: number;
   /**
-   * Prompt Names
-   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.
+   * Sort the results (asc/desc)
+   * @default "desc"
    */
-  prompt_names?: string[] | null;
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetData = LLMEvalsVersionListResponse;
+
+export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetError = HTTPValidationError;
+
+export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * LLM Eval Name
+   * The name of the llm eval to retrieve.
+   */
+  evalName: string;
+  /**
+   * Exclude Deleted
+   * Whether to exclude deleted prompt versions from the results. Default is False.
+   * @default false
+   */
+  exclude_deleted?: boolean;
+  /**
+   * Max Version
+   * Maximum version number to filter on (inclusive).
+   */
+  max_version?: number | null;
+  /**
+   * Min Version
+   * Minimum version number to filter on (inclusive).
+   */
+  min_version?: number | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetData = LLMGetAllMetadataListResponse;
+
+export type GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetError = HTTPValidationError;
+
+export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Llm Asset Names
+   * LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned
+   */
+  llm_asset_names?: string[] | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -1592,6 +1710,10 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
+
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
+
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
 export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
@@ -1651,6 +1773,10 @@ export type GetRagSearchSettingData = RagSearchSettingConfigurationResponse;
 
 export type GetRagSearchSettingError = HTTPValidationError;
 
+export type GetRagSearchSettingVersionData = RagSearchSettingConfigurationVersionResponse;
+
+export type GetRagSearchSettingVersionError = HTTPValidationError;
+
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
 
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
@@ -1684,6 +1810,46 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
+
+export type GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetData = ListRagSearchSettingConfigurationsResponse;
+
+export type GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError = HTTPValidationError;
+
+export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetParams {
+  /**
+   * Config Name
+   * Rag search setting configuration name substring to search for.
+   */
+  config_name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Rag Provider Ids
+   * List of rag provider configuration IDs to filter for.
+   */
+  rag_provider_ids?: string[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * ID of the task to fetch the provider connections for.
+   * @format uuid
+   */
+  taskId: string;
+}
 
 /** Response Get Token Usage Api V2 Usage Tokens Get */
 export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
@@ -1912,6 +2078,211 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
+/** LLMConfigSettings */
+export interface LLMConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** LLMEval */
+export interface LLMEval {
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
+  /**
+   * Created At
+   * Timestamp when the llm eval was created.
+   */
+  created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this llm eval was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Instructions
+   * Instructions for the llm eval
+   */
+  instructions: string;
+  /**
+   * Max Score
+   * Maximum score for the llm eval
+   * @default 1
+   */
+  max_score?: number;
+  /**
+   * Min Score
+   * Minimum score for the llm eval
+   * @default 0
+   */
+  min_score?: number;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Name
+   * Name of the llm eval
+   */
+  name: string;
+  /**
+   * Version
+   * Version of the llm eval
+   * @default 1
+   */
+  version?: number;
+}
+
+/** LLMEvalsVersionListResponse */
+export interface LLMEvalsVersionListResponse {
+  /**
+   * Count
+   * Total number of llm evals matching filters
+   */
+  count: number;
+  /**
+   * Versions
+   * List of llm eval version metadata
+   */
+  versions: LLMEvalsVersionResponse[];
+}
+
+/** LLMEvalsVersionResponse */
+export interface LLMEvalsVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the llm eval version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the llm eval version was deleted (None if not deleted)
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name chosen for this version of the llm eval
+   */
+  model_name: string;
+  /** Model provider chosen for this version of the llm eval */
+  model_provider: ModelProvider;
+  /**
+   * Version
+   * Version number of the llm eval
+   */
+  version: number;
+}
+
+/** LLMGetAllMetadataListResponse */
+export interface LLMGetAllMetadataListResponse {
+  /**
+   * Count
+   * Total number of llm assets matching filters
+   */
+  count: number;
+  /**
+   * Llm Metadata
+   * List of llm asset metadata
+   */
+  llm_metadata: LLMGetAllMetadataResponse[];
+}
+
+/** LLMGetAllMetadataResponse */
+export interface LLMGetAllMetadataResponse {
+  /**
+   * Created At
+   * Timestamp when the llm asset was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted Versions
+   * List of deleted versions of the llm asset
+   */
+  deleted_versions: number[];
+  /**
+   * Latest Version Created At
+   * Timestamp when the last version of the llm asset was created
+   * @format date-time
+   */
+  latest_version_created_at: string;
+  /**
+   * Name
+   * Name of the llm asset
+   */
+  name: string;
+  /**
+   * Versions
+   * Number of versions of the llm asset
+   */
+  versions: number;
+}
+
 /** LLMResponseFormatEnum */
 export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
 
@@ -2045,6 +2416,20 @@ export interface ListDatasetVersionsResponse {
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData = SearchRagProviderCollectionsResponse;
 
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
+
+/** ListRagSearchSettingConfigurationsResponse */
+export interface ListRagSearchSettingConfigurationsResponse {
+  /**
+   * Count
+   * The total number of RAG search setting configurations matching the parameters.
+   */
+  count: number;
+  /**
+   * Rag Provider Setting Configurations
+   * List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter
+   */
+  rag_provider_setting_configurations: RagSearchSettingConfigurationResponse[];
+}
 
 export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
 
@@ -2683,8 +3068,16 @@ export interface NestedSpanWithMetricsResponse {
    * @default []
    */
   children?: NestedSpanWithMetricsResponse[];
-  /** Context */
-  context?: Record<string, any>[] | null;
+  /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
   /**
    * Created At
    * @format date-time
@@ -2698,17 +3091,35 @@ export interface NestedSpanWithMetricsResponse {
   /** Id */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
    * Metric Results
    * List of metric results for this span
    * @default []
    */
   metric_results?: MetricResultResponse[];
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /** Raw Data */
   raw_data: Record<string, any>;
-  /** Response */
-  response?: string | null;
   /** Session Id */
   session_id?: string | null;
   /** Span Id */
@@ -2727,10 +3138,18 @@ export interface NestedSpanWithMetricsResponse {
    * Status code for the span (Unset, Error, Ok)
    */
   status_code: string;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
   /**
@@ -2738,8 +3157,6 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
-  /** User Query */
-  user_query?: string | null;
 }
 
 /** NewApiKeyRequest */
@@ -3808,6 +4225,23 @@ export interface RagProviderTestConfigurationRequest {
   authentication_config: ApiKeyRagAuthenticationConfigRequest;
 }
 
+/** RagSearchSettingConfigurationNewVersionRequest */
+export interface RagSearchSettingConfigurationNewVersionRequest {
+  /**
+   * Settings
+   * Settings configuration for a search request to a RAG provider.
+   */
+  settings:
+    | WeaviateHybridSearchSettingsConfigurationRequest
+    | WeaviateKeywordSearchSettingsConfigurationRequest
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
+  /**
+   * Tags
+   * List of tags to configure for this version of the search settings configuration.
+   */
+  tags?: string[];
+}
+
 /** RagSearchSettingConfigurationRequest */
 export interface RagSearchSettingConfigurationRequest {
   /**
@@ -3836,9 +4270,9 @@ export interface RagSearchSettingConfigurationRequest {
     | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
   /**
    * Tags
-   * Optional list of tags to configure for this version of the search settings configuration.
+   * List of tags to configure for this version of the search settings configuration.
    */
-  tags?: string[] | null;
+  tags?: string[];
 }
 
 /** RagSearchSettingConfigurationResponse */
@@ -3847,7 +4281,7 @@ export interface RagSearchSettingConfigurationResponse {
    * All Possible Tags
    * Set of all tags applied for any version of the settings configuration.
    */
-  all_possible_tags: string[] | null;
+  all_possible_tags?: string[] | null;
   /**
    * Created At
    * Time the RAG settings configuration was created in unix milliseconds.
@@ -3893,6 +4327,25 @@ export interface RagSearchSettingConfigurationResponse {
   updated_at: number;
 }
 
+/** RagSearchSettingConfigurationUpdateRequest */
+export interface RagSearchSettingConfigurationUpdateRequest {
+  /**
+   * Description
+   * Description of the setting configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the setting configuration.
+   */
+  name?: string | null;
+  /**
+   * Rag Provider Id
+   * ID of the rag provider configuration to use the settings with.
+   */
+  rag_provider_id?: string | null;
+}
+
 /** RagSearchSettingConfigurationVersionResponse */
 export interface RagSearchSettingConfigurationVersionResponse {
   /**
@@ -3901,6 +4354,11 @@ export interface RagSearchSettingConfigurationVersionResponse {
    */
   created_at: number;
   /**
+   * Deleted At
+   * Time the RAG provider settings configuration version was soft-deleted in unix milliseconds
+   */
+  deleted_at?: number | null;
+  /**
    * Setting Configuration Id
    * ID of the parent setting configuration.
    * @format uuid
@@ -3908,12 +4366,13 @@ export interface RagSearchSettingConfigurationVersionResponse {
   setting_configuration_id: string;
   /**
    * Settings
-   * Settings configuration for a search request to a RAG provider.
+   * Settings configuration for a search request to a RAG provider. None if version has been soft-deleted.
    */
-  settings:
+  settings?:
     | WeaviateHybridSearchSettingsConfigurationResponse
     | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
-    | WeaviateKeywordSearchSettingsConfigurationResponse;
+    | WeaviateKeywordSearchSettingsConfigurationResponse
+    | null;
   /**
    * Tags
    * Optional list of tags configured for this version of the settings configuration.
@@ -4120,6 +4579,10 @@ export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPrompt
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
+
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
+
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -4337,6 +4800,16 @@ export interface SessionListResponse {
  */
 export interface SessionMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Duration Ms
    * Total session duration in milliseconds
    */
@@ -4354,6 +4827,16 @@ export interface SessionMetadataResponse {
    */
   latest_end_time: string;
   /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -4368,6 +4851,16 @@ export interface SessionMetadataResponse {
    * Task ID this session belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Count
    * Number of traces in this session
@@ -4415,6 +4908,10 @@ export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
+export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData = any;
+
+export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError = HTTPValidationError;
+
 /**
  * SpanListResponse
  * Response for span list endpoint
@@ -4438,6 +4935,16 @@ export interface SpanListResponse {
  */
 export interface SpanMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Created At
    * When the span was created
    * @format date-time
@@ -4460,10 +4967,30 @@ export interface SpanMetadataResponse {
    */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
+  /**
    * Parent Span Id
    * Parent span ID
    */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Id
    * Session ID if available
@@ -4501,6 +5028,16 @@ export interface SpanMetadataResponse {
    */
   task_id?: string | null;
   /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
+  /**
    * Trace Id
    * ID of the parent trace
    */
@@ -4520,8 +5057,16 @@ export interface SpanMetadataResponse {
 
 /** SpanWithMetricsResponse */
 export interface SpanWithMetricsResponse {
-  /** Context */
-  context?: Record<string, any>[] | null;
+  /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
   /**
    * Created At
    * @format date-time
@@ -4535,17 +5080,35 @@ export interface SpanWithMetricsResponse {
   /** Id */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
    * Metric Results
    * List of metric results for this span
    * @default []
    */
   metric_results?: MetricResultResponse[];
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /** Raw Data */
   raw_data: Record<string, any>;
-  /** Response */
-  response?: string | null;
   /** Session Id */
   session_id?: string | null;
   /** Span Id */
@@ -4564,10 +5127,18 @@ export interface SpanWithMetricsResponse {
    * Status code for the span (Unset, Error, Ok)
    */
   status_code: string;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
   /**
@@ -4575,8 +5146,6 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
-  /** User Query */
-  user_query?: string | null;
 }
 
 /** StreamOptions */
@@ -4820,6 +5389,16 @@ export interface TraceListResponse {
  */
 export interface TraceMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Created At
    * When the trace was first created
    * @format date-time
@@ -4836,6 +5415,26 @@ export interface TraceMetadataResponse {
    * @format date-time
    */
   end_time: string;
+  /**
+   * Input Content
+   * Root span input value from trace metadata
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Root span output value from trace metadata
+   */
+  output_content?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Id
    * Session ID if available
@@ -4857,6 +5456,16 @@ export interface TraceMetadataResponse {
    * Task ID this trace belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Id
    * ID of the trace
@@ -4881,11 +5490,41 @@ export interface TraceMetadataResponse {
  */
 export interface TraceResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * End Time
    * End time of the latest span in this trace
    * @format date-time
    */
   end_time: string;
+  /**
+   * Input Content
+   * Root span input value from trace metadata
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Root span output value from trace metadata
+   */
+  output_content?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Root Spans
    * Root spans (spans with no parent) in this trace, with children nested
@@ -4898,6 +5537,16 @@ export interface TraceResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Id
    * ID of the trace
@@ -4928,6 +5577,16 @@ export interface TraceUserListResponse {
  */
 export interface TraceUserMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Earliest Start Time
    * Start time of earliest trace
    * @format date-time
@@ -4939,6 +5598,16 @@ export interface TraceUserMetadataResponse {
    * @format date-time
    */
   latest_end_time: string;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Count
    * Number of sessions for this user
@@ -4959,6 +5628,16 @@ export interface TraceUserMetadataResponse {
    * Task ID this user belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Count
    * Number of traces for this user
@@ -4996,6 +5675,10 @@ export interface UpdateMetricRequest {
 export type UpdateRagProviderApiV1RagProvidersProviderIdPatchData = RagProviderConfigurationResponse;
 
 export type UpdateRagProviderApiV1RagProvidersProviderIdPatchError = HTTPValidationError;
+
+export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchData = RagSearchSettingConfigurationResponse;
+
+export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchError = HTTPValidationError;
 
 /** UpdateRuleRequest */
 export interface UpdateRuleRequest {
@@ -5366,11 +6049,6 @@ export interface WeaviateHybridSearchSettingsRequest {
    */
   return_properties?: string[] | null;
   /**
-   * Search Kind
-   * @default "hybrid_search"
-   */
-  search_kind?: "hybrid_search";
-  /**
    * Target Vector
    * Specifies vector to use for vector search when using named vectors.
    */
@@ -5582,11 +6260,6 @@ export interface WeaviateKeywordSearchSettingsRequest {
    * Specify which properties to return for each object.
    */
   return_properties?: string[] | null;
-  /**
-   * Search Kind
-   * @default "keyword_search"
-   */
-  search_kind?: "keyword_search";
 }
 
 export type WeaviateKeywordSearchSettingsRequestReturnMetadataEnum =
@@ -5890,11 +6563,6 @@ export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
    */
   return_properties?: string[] | null;
   /**
-   * Search Kind
-   * @default "vector_similarity_text_search"
-   */
-  search_kind?: "vector_similarity_text_search";
-  /**
    * Target Vector
    * Specifies vector to use for similarity search when using named vectors.
    */
@@ -6041,7 +6709,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.135
+ * @version 2.1.154
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -6278,7 +6946,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Create a new RAG search settings configuration.
      *
-     * @tags RAG Providers
+     * @tags RAG Settings
      * @name CreateRagSearchSettings
      * @summary Create Rag Search Settings
      * @request POST:/api/v1/tasks/{task_id}/rag_search_settings
@@ -6287,6 +6955,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     createRagSearchSettings: (taskId: string, data: RagSearchSettingConfigurationRequest, params: RequestParams = {}) =>
       this.request<CreateRagSearchSettingsData, CreateRagSearchSettingsError>({
         path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new version for an existing RAG search settings configuration.
+     *
+     * @tags RAG Settings
+     * @name CreateRagSearchSettingsVersion
+     * @summary Create Rag Search Settings Version
+     * @request POST:/api/v1/rag_search_settings/{setting_configuration_id}/versions
+     * @secure
+     */
+    createRagSearchSettingsVersion: (
+      settingConfigurationId: string,
+      data: RagSearchSettingConfigurationNewVersionRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<CreateRagSearchSettingsVersionData, CreateRagSearchSettingsVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions`,
         method: "POST",
         body: data,
         secure: true,
@@ -6475,6 +7167,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Deletes an entire llm eval
+     *
+     * @tags LLMEvals
+     * @name DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete
+     * @summary Delete an llm eval
+     * @request DELETE:/api/v1/tasks/{task_id}/llm_evals/{eval_name}
+     * @secure
+     */
+    deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete: (evalName: string, taskId: string, params: RequestParams = {}) =>
+      this.request<DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData, DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Delete a RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -6494,7 +7203,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Delete a RAG search setting configuration.
      *
-     * @tags RAG Providers
+     * @tags RAG Settings
      * @name DeleteRagSearchSetting
      * @summary Delete Rag Search Setting
      * @request DELETE:/api/v1/rag_search_settings/{setting_configuration_id}
@@ -6503,6 +7212,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteRagSearchSetting: (settingConfigurationId: string, params: RequestParams = {}) =>
       this.request<DeleteRagSearchSettingData, DeleteRagSearchSettingError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Soft delete a RAG search setting configuration version.
+     *
+     * @tags RAG Settings
+     * @name DeleteRagSearchSettingVersion
+     * @summary Delete Rag Search Setting Version
+     * @request DELETE:/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
+     * @secure
+     */
+    deleteRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
+      this.request<DeleteRagSearchSettingVersionData, DeleteRagSearchSettingVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -6655,6 +7381,50 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all llm evals for a given task with optional filtering.
+     *
+     * @tags LLMEvals
+     * @name GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet
+     * @summary Get all llm evals
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals
+     * @secure
+     */
+    getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet: ({ taskId, ...query }: GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams, params: RequestParams = {}) =>
+      this.request<GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetData, GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an llm eval with optional filtering.
+     *
+     * @tags LLMEvals
+     * @name GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet
+     * @summary List all versions of an llm eval
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+     * @secure
+     */
+    getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet: (
+      { evalName, taskId, ...query }: GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetData,
+        GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions`,
         method: "GET",
         query: query,
         secure: true,
@@ -6849,6 +7619,32 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get an llm eval by name and version
+     *
+     * @tags LLMEvals
+     * @name GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet
+     * @summary Get an llm eval
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+     * @secure
+     */
+    getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData,
+        GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Shows all model providers and if they're enabled.
      *
      * @tags Model Providers
@@ -6930,7 +7726,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     /**
      * @description Get a single RAG setting configuration.
      *
-     * @tags RAG Providers
+     * @tags RAG Settings
      * @name GetRagSearchSetting
      * @summary Get Rag Search Setting
      * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}
@@ -6939,6 +7735,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getRagSearchSetting: (settingConfigurationId: string, params: RequestParams = {}) =>
       this.request<GetRagSearchSettingData, GetRagSearchSettingError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a single RAG setting configuration version.
+     *
+     * @tags RAG Settings
+     * @name GetRagSearchSettingVersion
+     * @summary Get Rag Search Setting Version
+     * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
+     * @secure
+     */
+    getRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
+      this.request<GetRagSearchSettingVersionData, GetRagSearchSettingVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -6998,6 +7812,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<GetTaskApiV2TasksTaskIdGetData, GetTaskApiV2TasksTaskIdGetError>({
         path: `/api/v2/tasks/${taskId}`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get list of RAG search setting configurations for the task.
+     *
+     * @tags RAG Settings
+     * @name GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGet
+     * @summary Get Task Rag Search Settings
+     * @request GET:/api/v1/tasks/{task_id}/rag_search_settings
+     * @secure
+     */
+    getTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGet: (
+      { taskId, ...query }: GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetData,
+        GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -7360,6 +8199,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Save an llm eval to the database
+     *
+     * @tags LLMEvals
+     * @name SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost
+     * @summary Save an llm eval
+     * @request POST:/api/v1/tasks/{task_id}/llm_evals/{eval_name}
+     * @secure
+     */
+    saveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateEvalRequest, params: RequestParams = {}) =>
+      this.request<SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData, SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Search default and/or task rules.
      *
      * @tags Rules
@@ -7435,6 +8294,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Deletes a specific version of an llm eval
+     *
+     * @tags LLMEvals
+     * @name SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete
+     * @summary Delete an llm eval version
+     * @request DELETE:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+     * @secure
+     */
+    softDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData,
+        SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
+        method: "DELETE",
+        secure: true,
         ...params,
       }),
 
@@ -7519,6 +8403,33 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     ) =>
       this.request<UpdateRagProviderApiV1RagProvidersProviderIdPatchData, UpdateRagProviderApiV1RagProvidersProviderIdPatchError>({
         path: `/api/v1/rag_providers/${providerId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a single RAG search setting configuration.
+     *
+     * @tags RAG Settings
+     * @name UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatch
+     * @summary Update Rag Search Settings
+     * @request PATCH:/api/v1/rag_search_settings/{setting_configuration_id}
+     * @secure
+     */
+    updateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatch: (
+      settingConfigurationId: string,
+      data: RagSearchSettingConfigurationUpdateRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchData,
+        UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchError
+      >({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
         method: "PATCH",
         body: data,
         secure: true,

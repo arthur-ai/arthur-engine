@@ -12,7 +12,7 @@ import {
 } from "./types";
 import { generateId, arrayUtils } from "./utils";
 
-import { AgenticPromptMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, MessageRole, ModelProvider, ToolChoiceEnum, ToolChoice } from "@/lib/api-client/api-client";
 
 /****************************
  * Message factory functions *
@@ -130,7 +130,7 @@ const initialState: PromptPlaygroundState = {
   keywords: new Map<string, string>(),
   keywordTracker: new Map<string, Array<string>>(),
   prompts: [newPrompt()],
-  backendPrompts: new Array<AgenticPromptMetadataResponse>(),
+  backendPrompts: new Array<LLMGetAllMetadataResponse>(),
   enabledProviders: new Array<ModelProvider>(),
   availableModels: new Map<ModelProvider, string[]>(),
 };

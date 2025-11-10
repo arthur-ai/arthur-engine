@@ -9,7 +9,7 @@ import {
   LLMToolInput,
   ToolChoice,
   ModelProvider,
-  AgenticPromptMetadataResponse,
+  LLMGetAllMetadataResponse,
   Api,
   AgenticPromptRunResponse,
   OpenAIMessageItem,
@@ -43,7 +43,7 @@ type PromptAction =
     }
   | {
       type: "updateBackendPrompts";
-      payload: { prompts: AgenticPromptMetadataResponse[] };
+      payload: { prompts: LLMGetAllMetadataResponse[] };
     }
   | {
       type: "updateProviders";
@@ -156,7 +156,7 @@ interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
-  backendPrompts: AgenticPromptMetadataResponse[]; // prompt metadata
+  backendPrompts: LLMGetAllMetadataResponse[]; // prompt metadata
   enabledProviders: ModelProvider[];
   availableModels: Map<ModelProvider, string[]>; // provider -> models
 }

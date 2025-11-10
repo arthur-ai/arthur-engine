@@ -30,7 +30,7 @@ export const useFetchBackendPrompts = () => {
 
         dispatch({
           type: "updateBackendPrompts",
-          payload: { prompts: response.data.prompt_metadata },
+          payload: { prompts: response.data.llm_metadata },
         });
       } catch (error) {
         console.error("Failed to fetch prompt metadata:", error);

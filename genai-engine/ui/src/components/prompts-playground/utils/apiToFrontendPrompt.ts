@@ -263,11 +263,11 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
 
   const { modelName, modelProvider } = extractModelInfo(spanData.raw_data);
   const modelParameters = extractModelParameters(spanData.raw_data);
-  const inputMessages = convertContextToMessages(spanData.context);
+  const inputMessages = convertContextToMessages(spanData.raw_data.attributes.input.context);
   const outputMessages = extractOutputMessages(spanData.raw_data);
   // Combine input and output messages
   const messages = [...inputMessages, ...outputMessages];
-  const tools = extractTools(spanData.context, spanData.raw_data);
+  const tools = extractTools(spanData.raw_data.attributes.input.context, spanData.raw_data);
 
   // Create the prompt object
   const prompt: PromptType = {
