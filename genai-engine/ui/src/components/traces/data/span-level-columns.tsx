@@ -2,7 +2,7 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
-import { TokenCostTooltip, TokenCountTooltip } from "./common";
+import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { CopyableChip } from "@/components/common";
 import { TypeChip } from "@/components/common/span/TypeChip";
@@ -35,9 +35,21 @@ export const spanLevelColumns = [
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
+    cell: ({ getValue }) => {
+      const value = getValue()?.substring(0, 100);
+      if (!value) return "-";
+      return <TruncatedText text={value} />;
+    },
+    size: 200,
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
+    cell: ({ getValue }) => {
+      const value = getValue()?.substring(0, 100);
+      if (!value) return "-";
+      return <TruncatedText text={value} />;
+    },
+    size: 200,
   }),
   columnHelper.display({
     id: "token-count",

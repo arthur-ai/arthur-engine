@@ -3,12 +3,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 import { CopyableChip } from "../../common";
 
-import { TokenCostTooltip, TokenCountTooltip } from "./common";
+import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate, formatDuration } from "@/utils/formatters";
-import { Highlight } from "@/components/common/Highlight";
-import { tryFormatJson } from "@/utils/llm";
 
 const columnHelper = createColumnHelper<TraceMetadataResponse>();
 
@@ -30,22 +28,24 @@ export const columns = [
   columnHelper.accessor("input_content", {
     header: "Input Content",
     cell: ({ getValue }) => {
-      const value = getValue();
+      const value = getValue()?.substring(0, 100);
 
       if (!value) return "-";
 
-      return <Highlight code={tryFormatJson(value).substring(0, 100)} language="json" />;
+      return <TruncatedText text={value} />;
     },
+    size: 200,
   }),
   columnHelper.accessor("output_content", {
     header: "Output Content",
     cell: ({ getValue }) => {
-      const value = getValue();
+      const value = getValue()?.substring(0, 100);
 
       if (!value) return "-";
 
-      return <Highlight code={tryFormatJson(value).substring(0, 100)} language="json" />;
+      return <TruncatedText text={value} />;
     },
+    size: 200,
   }),
   columnHelper.display({
     id: "token-count",
