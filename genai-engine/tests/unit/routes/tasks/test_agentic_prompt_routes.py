@@ -131,20 +131,20 @@ def test_get_all_agentic_prompts_success(client: GenaiEngineTestClientBase):
     assert response.status_code == 200
 
     prompts_response = response.json()
-    assert "prompt_metadata" in prompts_response
-    assert len(prompts_response["prompt_metadata"]) == 2
+    assert "llm_metadata" in prompts_response
+    assert len(prompts_response["llm_metadata"]) == 2
 
-    metadata = prompts_response["prompt_metadata"]
+    metadata = prompts_response["llm_metadata"]
 
-    for i, prompt_metadata in enumerate(metadata):
-        assert prompt_metadata["name"] == prompt_names[i]
-        assert prompt_metadata["versions"] == i + 1
-        assert prompt_metadata["created_at"] is not None
-        assert prompt_metadata["latest_version_created_at"] is not None
-        assert prompt_metadata["deleted_versions"] == []
+    for i, llm_metadata in enumerate(metadata):
+        assert llm_metadata["name"] == prompt_names[i]
+        assert llm_metadata["versions"] == i + 1
+        assert llm_metadata["created_at"] is not None
+        assert llm_metadata["latest_version_created_at"] is not None
+        assert llm_metadata["deleted_versions"] == []
 
-        created = datetime.fromisoformat(prompt_metadata["created_at"])
-        latest = datetime.fromisoformat(prompt_metadata["latest_version_created_at"])
+        created = datetime.fromisoformat(llm_metadata["created_at"])
+        latest = datetime.fromisoformat(llm_metadata["latest_version_created_at"])
 
         if i == 0:
             assert abs((created - latest).total_seconds()) < 1
@@ -168,8 +168,8 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
     assert response.status_code == 200
 
     prompts_response = response.json()
-    assert "prompt_metadata" in prompts_response
-    assert len(prompts_response["prompt_metadata"]) == 0
+    assert "llm_metadata" in prompts_response
+    assert len(prompts_response["llm_metadata"]) == 0
 
 
 @pytest.mark.unit_tests
@@ -755,7 +755,7 @@ def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientB
         headers=client.authorized_user_api_key_headers,
     )
 
-    metadata = response.json()["prompt_metadata"]
+    metadata = response.json()["llm_metadata"]
     created = datetime.fromisoformat(metadata[0]["created_at"])
     latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
 
@@ -780,9 +780,9 @@ def test_get_all_prompts_includes_deleted_prompts(client: GenaiEngineTestClientB
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["prompt_metadata"]) == 1
+    assert len(response.json()["llm_metadata"]) == 1
 
-    metadata = response.json()["prompt_metadata"]
+    metadata = response.json()["llm_metadata"]
     created = datetime.fromisoformat(metadata[0]["created_at"])
     latest = datetime.fromisoformat(metadata[0]["latest_version_created_at"])
 
@@ -927,11 +927,11 @@ def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
     assert response.status_code == 204
 
     response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions",
+        f"/api/v1/tasks/{task.id}/prompts",
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
-    assert len(response.json()["versions"]) == 2
+    assert response.json()["count"] == 1
 
     response = client.base_client.get(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions",
@@ -1029,7 +1029,7 @@ def test_run_deleted_prompt_spawns_error(
 
 @pytest.mark.unit_tests
 def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientBase):
-    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    """Test pagination, sorting, and filtering for get_all_agentic_prompts"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)
@@ -1059,9 +1059,9 @@ def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientB
     )
     assert response.status_code == 200
     result = response.json()
-    assert len(result["prompt_metadata"]) == 2
+    assert len(result["llm_metadata"]) == 2
     assert result["count"] == 3
-    assert result["prompt_metadata"][0]["name"] == "alpha"
+    assert result["llm_metadata"][0]["name"] == "alpha"
 
     # Test sorting descending
     response = client.base_client.get(
@@ -1071,8 +1071,8 @@ def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientB
     )
     assert response.status_code == 200
     result = response.json()
-    assert result["prompt_metadata"][0]["name"] == "gamma"
-    assert result["prompt_metadata"][2]["name"] == "alpha"
+    assert result["llm_metadata"][0]["name"] == "gamma"
+    assert result["llm_metadata"][2]["name"] == "alpha"
 
     # Test filtering by provider
     response = client.base_client.get(
@@ -1082,7 +1082,7 @@ def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientB
     )
     assert response.status_code == 200
     result = response.json()
-    assert len(result["prompt_metadata"]) == 2
+    assert len(result["llm_metadata"]) == 2
     assert result["count"] == 2
 
 
@@ -1090,7 +1090,7 @@ def test_get_all_prompts_pagination_and_filtering(client: GenaiEngineTestClientB
 def test_get_prompt_versions_pagination_and_filtering(
     client: GenaiEngineTestClientBase,
 ):
-    """Test pagination, sorting, and filtering for both get_all_prompts and get_prompt_versions"""
+    """Test pagination, sorting, and filtering for get_prompt_versions"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
     status_code, task = client.create_task(task_name, is_agentic=True)

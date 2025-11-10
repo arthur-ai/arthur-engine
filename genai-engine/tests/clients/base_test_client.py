@@ -2836,13 +2836,15 @@ class GenaiEngineTestClientBase(httpx.Client):
     ) -> tuple[int, RagSearchSettingConfigurationResponse]:
         """Create a new RAG search settings configuration."""
 
-        request = RagSearchSettingConfigurationRequest(
-            name=name,
-            description=description,
-            tags=tags,
-            settings=settings,
-            rag_provider_id=rag_provider_id,
-        )
+        request_data = {
+            "name": name,
+            "description": description,
+            "settings": settings,
+            "rag_provider_id": rag_provider_id,
+        }
+        if tags is not None:
+            request_data["tags"] = tags
+        request = RagSearchSettingConfigurationRequest(**request_data)
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
@@ -2990,13 +2992,15 @@ class GenaiEngineTestClientBase(httpx.Client):
             auto_limit=auto_limit,
         )
 
-        request = RagSearchSettingConfigurationRequest(
-            name=name,
-            description=description,
-            tags=tags,
-            settings=settings,
-            rag_provider_id=rag_provider_id,
-        )
+        request_data = {
+            "name": name,
+            "description": description,
+            "settings": settings,
+            "rag_provider_id": rag_provider_id,
+        }
+        if tags is not None:
+            request_data["tags"] = tags
+        request = RagSearchSettingConfigurationRequest(**request_data)
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
@@ -3042,13 +3046,15 @@ class GenaiEngineTestClientBase(httpx.Client):
             auto_limit=auto_limit,
         )
 
-        request = RagSearchSettingConfigurationRequest(
-            name=name,
-            description=description,
-            tags=tags,
-            settings=settings,
-            rag_provider_id=rag_provider_id,
-        )
+        request_data = {
+            "name": name,
+            "description": description,
+            "settings": settings,
+            "rag_provider_id": rag_provider_id,
+        }
+        if tags is not None:
+            request_data["tags"] = tags
+        request = RagSearchSettingConfigurationRequest(**request_data)
 
         resp = self.base_client.post(
             f"/api/v1/tasks/{task_id}/rag_search_settings",
@@ -3074,10 +3080,10 @@ class GenaiEngineTestClientBase(httpx.Client):
         tags: list[str] = None,
     ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
         """Create a new version for an existing RAG search settings configuration."""
-        request = RagSearchSettingConfigurationNewVersionRequest(
-            settings=settings,
-            tags=tags,
-        )
+        request_data = {"settings": settings}
+        if tags is not None:
+            request_data["tags"] = tags
+        request = RagSearchSettingConfigurationNewVersionRequest(**request_data)
 
         resp = self.base_client.post(
             f"/api/v1/rag_search_settings/{setting_configuration_id}/versions",

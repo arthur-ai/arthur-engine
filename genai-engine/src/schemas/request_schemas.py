@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, List, Literal, Optional, Type, Union
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -16,7 +16,7 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.base import Base
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -464,9 +464,9 @@ class RagSearchSettingConfigurationRequest(BaseModel):
         default=None,
         description="Description of the search setting configuration.",
     )
-    tags: Optional[list[str]] = Field(
-        default=None,
-        description="Optional list of tags to configure for this version of the search settings configuration.",
+    tags: list[str] = Field(
+        default_factory=list,
+        description="List of tags to configure for this version of the search settings configuration.",
     )
 
 
@@ -489,22 +489,22 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     settings: RagSearchSettingConfigurationRequestTypes = Field(
         description="Settings configuration for a search request to a RAG provider.",
     )
-    tags: Optional[list[str]] = Field(
-        default=None,
-        description="Optional list of tags to configure for this version of the search settings configuration.",
+    tags: list[str] = Field(
+        default_factory=list,
+        description="List of tags to configure for this version of the search settings configuration.",
     )
 
 
-class BasePromptFilterRequest(BaseModel, ABC):
+class BaseFilterRequest(BaseModel, ABC):
     """Abstract Pydantic base class enforcing apply_filters_to_query implementation."""
 
     @abstractmethod
-    def apply_filters_to_query(self, query: Query) -> Query:
+    def apply_filters_to_query(self, query: Query, db_model: Type[Base]) -> Query:
         """Apply filters to a SQLAlchemy query."""
 
 
-class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
-    """Request schema for filtering agentic prompts with comprehensive filtering options."""
+class LLMGetVersionsFilterRequest(BaseFilterRequest):
+    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
     model_provider: Optional[ModelProvider] = Field(
@@ -541,6 +541,7 @@ class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
     def apply_filters_to_query(
         self,
         query: Query,
+        db_model: Type[Base],
     ) -> Query:
         """
         Apply filters to a query based on the filter request.
@@ -554,53 +555,53 @@ class PromptsGetVersionsFilterRequest(BasePromptFilterRequest):
         # Filter by model provider
         if self.model_provider:
             query = query.filter(
-                DatabaseAgenticPrompt.model_provider == self.model_provider,
+                db_model.model_provider == self.model_provider,
             )
 
         # Filter by model name using LIKE for partial matching
         if self.model_name:
             query = query.filter(
-                DatabaseAgenticPrompt.model_name.like(f"%{self.model_name}%"),
+                db_model.model_name.like(f"%{self.model_name}%"),
             )
 
         # Filter by start time (inclusive)
         if self.created_after:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at >= self.created_after,
+                db_model.created_at >= self.created_after,
             )
 
         # Filter by end time (exclusive)
         if self.created_before:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at < self.created_before,
+                db_model.created_at < self.created_before,
             )
 
         # Filter by deleted status
         if self.exclude_deleted == True:
-            query = query.filter(DatabaseAgenticPrompt.deleted_at.is_(None))
+            query = query.filter(db_model.deleted_at.is_(None))
 
         # Filter by min version
         if self.min_version is not None:
             query = query.filter(
-                DatabaseAgenticPrompt.version >= self.min_version,
+                db_model.version >= self.min_version,
             )
 
         # Filter by max version
         if self.max_version is not None:
             query = query.filter(
-                DatabaseAgenticPrompt.version <= self.max_version,
+                db_model.version <= self.max_version,
             )
 
         return query
 
 
-class PromptsGetAllFilterRequest(BasePromptFilterRequest):
-    """Request schema for filtering agentic prompts with comprehensive filtering options."""
+class LLMGetAllFilterRequest(BaseFilterRequest):
+    """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
-    prompt_names: Optional[list[str]] = Field(
+    llm_asset_names: Optional[list[str]] = Field(
         None,
-        description="Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned. Supports SQL LIKE pattern matching with % wildcards.",
+        description="LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned",
     )
     model_provider: Optional[ModelProvider] = Field(
         None,
@@ -608,7 +609,7 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
     )
     model_name: Optional[str] = Field(
         None,
-        description="Filter by model name using partial matching (e.g., 'gpt-4', 'claude'). Supports SQL LIKE pattern matching with % wildcards.",
+        description="Filter by model name using partial matching (e.g., 'gpt-4o', 'claude-3-5-sonnet').",
     )
     created_after: Optional[datetime] = Field(
         None,
@@ -622,6 +623,7 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
     def apply_filters_to_query(
         self,
         query: Query,
+        db_model: Type[Base],
     ) -> Query:
         """
         Apply filters to a query based on the filter request.
@@ -633,35 +635,34 @@ class PromptsGetAllFilterRequest(BasePromptFilterRequest):
             Query - the query with filters applied
         """
         # Filter by prompt names using LIKE for partial matching
-        if self.prompt_names:
+        if self.llm_asset_names:
             name_conditions = [
-                DatabaseAgenticPrompt.name.like(f"%{name}%")
-                for name in self.prompt_names
+                db_model.name.like(f"%{name}%") for name in self.llm_asset_names
             ]
             query = query.filter(or_(*name_conditions))
 
         # Filter by model provider
         if self.model_provider:
             query = query.filter(
-                DatabaseAgenticPrompt.model_provider == self.model_provider,
+                db_model.model_provider == self.model_provider,
             )
 
         # Filter by model name using LIKE for partial matching
         if self.model_name:
             query = query.filter(
-                DatabaseAgenticPrompt.model_name.like(f"%{self.model_name}%"),
+                db_model.model_name.like(f"%{self.model_name}%"),
             )
 
         # Filter by start time (inclusive)
         if self.created_after:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at >= self.created_after,
+                db_model.created_at >= self.created_after,
             )
 
         # Filter by end time (exclusive)
         if self.created_before:
             query = query.filter(
-                DatabaseAgenticPrompt.created_at < self.created_before,
+                db_model.created_at < self.created_before,
             )
 
         return query

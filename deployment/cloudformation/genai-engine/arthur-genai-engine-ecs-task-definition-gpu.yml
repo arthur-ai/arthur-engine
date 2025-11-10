@@ -359,7 +359,7 @@ Resources:
             Interval: 30
             Timeout: 5
             Retries: 3
-            StartPeriod: 60
+            StartPeriod: 300
 Outputs:
   GenaiEngineECSGPUTaskDefinitionOutput:
     Description: 'The task definition for Arthur GenAI Engine with GPUs'

@@ -109,6 +109,7 @@ from db_models.rag_provider_models import (
     DatabaseRagProviderAuthenticationConfigurationTypes,
     DatabaseRagSearchSettingConfiguration,
     DatabaseRagSearchSettingConfigurationVersion,
+    DatabaseRagSearchVersionTag,
 )
 from schemas.enums import (
     ApplicationConfigurations,
@@ -2800,6 +2801,48 @@ RagSearchSettingConfigurationTypes = Union[
 ]
 
 
+class RagSearchSettingTag(BaseModel):
+    id: uuid.UUID
+    tag: str
+    setting_configuration_id: uuid.UUID
+    version_number: int
+
+    @staticmethod
+    def _from_request_model(
+        setting_config_id: uuid.UUID,
+        new_version_number: int,
+        tag: str,
+    ) -> "RagSearchSettingTag":
+        return RagSearchSettingTag(
+            id=uuid.uuid4(),
+            tag=tag,
+            setting_configuration_id=setting_config_id,
+            version_number=new_version_number,
+        )
+
+    def _to_database_model(self) -> DatabaseRagSearchVersionTag:
+        return DatabaseRagSearchVersionTag(
+            id=self.id,
+            tag=self.tag,
+            setting_configuration_id=self.setting_configuration_id,
+            version_number=self.version_number,
+        )
+
+    def to_response_model(self) -> str:
+        return self.tag
+
+    @staticmethod
+    def _from_database_model(
+        db_model: DatabaseRagSearchVersionTag,
+    ) -> "RagSearchSettingTag":
+        return RagSearchSettingTag(
+            id=db_model.id,
+            tag=db_model.tag,
+            setting_configuration_id=db_model.setting_configuration_id,
+            version_number=db_model.version_number,
+        )
+
+
 class RagSearchSettingConfigurationVersion(BaseModel):
     setting_configuration_id: uuid.UUID = Field(
         description="ID of the parent search setting configuration.",
@@ -2807,9 +2850,9 @@ class RagSearchSettingConfigurationVersion(BaseModel):
     version_number: int = Field(
         description="Version number of the search setting configuration.",
     )
-    tags: Optional[list[str]] = Field(
-        default=None,
-        description="Optional list of tags configured for this version of the search settings configuration.",
+    tags: List[RagSearchSettingTag] = Field(
+        default_factory=list,
+        description="Tags configured for this version of the search settings configuration.",
     )
     settings: Optional[RagSearchSettingConfigurationTypes] = Field(
         description="Search settings configuration for a search request to a RAG provider. None if version has been soft deleted.",
@@ -2865,7 +2908,14 @@ class RagSearchSettingConfigurationVersion(BaseModel):
 
         return RagSearchSettingConfigurationVersion(
             version_number=new_version_number,
-            tags=request.tags,
+            tags=[
+                RagSearchSettingTag._from_request_model(
+                    setting_config_id,
+                    new_version_number,
+                    tag,
+                )
+                for tag in request.tags
+            ],
             setting_configuration_id=setting_config_id,
             settings=settings,
             created_at=curr_time,
@@ -2878,7 +2928,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
             settings=self.settings.model_dump(mode="json") if self.settings else None,
-            tags=self.tags,
+            tags=[tag_obj._to_database_model() for tag_obj in self.tags],
             created_at=self.created_at,
             updated_at=self.updated_at,
             deleted_at=self.deleted_at,
@@ -2889,7 +2939,7 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             setting_configuration_id=self.setting_configuration_id,
             version_number=self.version_number,
             settings=self.settings.to_response_model() if self.settings else None,
-            tags=self.tags,
+            tags=[tag_obj.to_response_model() for tag_obj in self.tags],
             created_at=_serialize_datetime(self.created_at),
             updated_at=_serialize_datetime(self.updated_at),
             deleted_at=(
@@ -2932,7 +2982,10 @@ class RagSearchSettingConfigurationVersion(BaseModel):
             setting_configuration_id=db_model.setting_configuration_id,
             version_number=db_model.version_number,
             settings=settings,
-            tags=db_model.tags,
+            tags=[
+                RagSearchSettingTag._from_database_model(db_tag)
+                for db_tag in db_model.tags
+            ],
             created_at=db_model.created_at,
             updated_at=db_model.updated_at,
             deleted_at=db_model.deleted_at,
@@ -2945,8 +2998,8 @@ class RagSearchSettingConfiguration(BaseModel):
     rag_provider_id: Optional[uuid.UUID] = Field(
         description="ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.",
     )
-    all_possible_tags: Optional[list[str]] = Field(
-        default=None,
+    all_possible_tags: List[RagSearchSettingTag] = Field(
+        default_factory=list,
         description="Set of all tags applied for any version of the settings configuration.",
     )
     name: str = Field(description="Name of the search setting configuration.")
@@ -2974,39 +3027,41 @@ class RagSearchSettingConfiguration(BaseModel):
     ) -> "RagSearchSettingConfiguration":
         setting_config_id = uuid.uuid4()
         curr_time = datetime.now()
+        version = RagSearchSettingConfigurationVersion._from_request_model(
+            request,
+            setting_config_id,
+            1,
+        )
         return RagSearchSettingConfiguration(
             id=setting_config_id,
             task_id=task_id,
             rag_provider_id=request.rag_provider_id,
-            all_possible_tags=(
-                list(
-                    set(request.tags),  # set() removes duplicates if needed
-                )
-                if request.tags
-                else request.tags
-            ),
+            all_possible_tags=version.tags,
             name=request.name,
             description=request.description,
             latest_version_number=1,
-            latest_version=RagSearchSettingConfigurationVersion._from_request_model(
-                request,
-                setting_config_id,
-                1,
-            ),
+            latest_version=version,
             created_at=curr_time,
             updated_at=curr_time,
         )
 
     def _to_database_model(self) -> DatabaseRagSearchSettingConfiguration:
+        # Convert latest_version first to get the tag DB model instances -
+        # need to reuse the same object or SQLalchemy will have uniqueness issues and submit
+        # the same object twice
+        db_latest_version = self.latest_version._to_database_model()
+        # Reuse the same tag DB model instances from latest_version for all_possible_tags
+        # to avoid creating duplicate instances that would violate the unique constraint
+        db_all_possible_tags = db_latest_version.tags
         return DatabaseRagSearchSettingConfiguration(
             id=self.id,
             task_id=self.task_id,
             rag_provider_id=self.rag_provider_id,
-            all_possible_tags=self.all_possible_tags,
+            all_possible_tags=db_all_possible_tags,
             name=self.name,
             description=self.description,
             latest_version_number=self.latest_version_number,
-            latest_version=self.latest_version._to_database_model(),
+            latest_version=db_latest_version,
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
@@ -3016,7 +3071,9 @@ class RagSearchSettingConfiguration(BaseModel):
             id=self.id,
             task_id=self.task_id,
             rag_provider_id=self.rag_provider_id,
-            all_possible_tags=self.all_possible_tags,
+            all_possible_tags=[
+                tag.to_response_model() for tag in self.all_possible_tags
+            ],
             name=self.name,
             description=self.description,
             latest_version_number=self.latest_version_number,
@@ -3033,7 +3090,10 @@ class RagSearchSettingConfiguration(BaseModel):
             id=db_model.id,
             task_id=db_model.task_id,
             rag_provider_id=db_model.rag_provider_id,
-            all_possible_tags=db_model.all_possible_tags,
+            all_possible_tags=[
+                RagSearchSettingTag._from_database_model(db_tag)
+                for db_tag in db_model.all_possible_tags
+            ],
             name=db_model.name,
             description=db_model.description,
             latest_version_number=db_model.latest_version_number,
