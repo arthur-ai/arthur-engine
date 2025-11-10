@@ -1663,7 +1663,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/pacer@npm:0.15.4, @tanstack/pacer@npm:^0.15.3":
+"@tanstack/pacer@npm:0.16.0":
+  version: 0.16.0
+  resolution: "@tanstack/pacer@npm:0.16.0"
+  dependencies:
+    "@tanstack/devtools-event-client": "npm:^0.3.2"
+    "@tanstack/store": "npm:^0.7.7"
+  checksum: 10c0/457ec7521b289d5b7c7947bda63ff27649dda3e646565f660dbb660b0e3b2e2d545108215f960ec8febd6c6d091406d6ca7cde67b52e34675287a4d17f5239d8
+  languageName: node
+  linkType: hard
+
+"@tanstack/pacer@npm:^0.15.3":
   version: 0.15.4
   resolution: "@tanstack/pacer@npm:0.15.4"
   dependencies:
@@ -1705,16 +1715,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-pacer@npm:^0.16.4":
-  version: 0.16.4
-  resolution: "@tanstack/react-pacer@npm:0.16.4"
+"@tanstack/react-pacer@npm:^0.17.0":
+  version: 0.17.0
+  resolution: "@tanstack/react-pacer@npm:0.17.0"
   dependencies:
-    "@tanstack/pacer": "npm:0.15.4"
-    "@tanstack/react-store": "npm:^0.7.5"
+    "@tanstack/pacer": "npm:0.16.0"
+    "@tanstack/react-store": "npm:^0.7.7"
   peerDependencies:
     react: ">=16.8"
     react-dom: ">=16.8"
-  checksum: 10c0/0204f60505215cba9729de13de5ca2b11a46bcbf349162bbf543ce618125dfca0e16a89da550d86dd3b4a2f360a92edd6d28216afc6ce88a2c4e90d47e559e93
+  checksum: 10c0/5eb86543a0771987b4955e90fd935fcac552d9e4526b16d66687d4a92d7bfdb62404f308085f53b313fe19c542febeb83805b7d9333316d6c8777df6d9a922e0
   languageName: node
   linkType: hard
 
@@ -1741,7 +1751,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-store@npm:^0.7.5, @tanstack/react-store@npm:^0.7.7":
+"@tanstack/react-store@npm:^0.7.7":
   version: 0.7.7
   resolution: "@tanstack/react-store@npm:0.7.7"
   dependencies:
@@ -7409,7 +7419,7 @@ __metadata:
     "@tailwindcss/vite": "npm:^4.1.13"
     "@tanstack/eslint-plugin-query": "npm:^5.91.2"
     "@tanstack/react-form": "npm:^1.23.7"
-    "@tanstack/react-pacer": "npm:^0.16.4"
+    "@tanstack/react-pacer": "npm:^0.17.0"
     "@tanstack/react-query": "npm:^5.90.5"
     "@tanstack/react-query-devtools": "npm:^5.90.2"
     "@tanstack/react-table": "npm:^8.21.3"
