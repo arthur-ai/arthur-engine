@@ -85,7 +85,7 @@ def get_agentic_prompt(
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(
+        prompt = agentic_prompt_service.get_llm_item(
             task.id,
             prompt_name,
             prompt_version,
@@ -124,7 +124,7 @@ def get_all_agentic_prompts(
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_all_prompt_metadata(
+        return agentic_prompt_service.get_all_llm_item_metadata(
             task.id,
             pagination_parameters,
             filter_request,
@@ -164,7 +164,7 @@ def get_all_agentic_prompt_versions(
 ):
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        return agentic_prompt_service.get_prompt_versions(
+        return agentic_prompt_service.get_llm_item_versions(
             task.id,
             prompt_name,
             pagination_parameters,
@@ -362,7 +362,11 @@ async def run_saved_agentic_prompt(
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_prompt(task.id, prompt_name, prompt_version)
+        prompt = agentic_prompt_service.get_llm_item(
+            task.id,
+            prompt_name,
+            prompt_version,
+        )
         repo = ModelProviderRepository(db_session)
         llm_client = repo.get_model_provider_client(provider=prompt.model_provider)
         return await execute_prompt_completion(
@@ -404,7 +408,7 @@ def save_agentic_prompt(
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())
-        return agentic_prompt_service.save_prompt(task.id, full_prompt)
+        return agentic_prompt_service.save_llm_item(task.id, full_prompt)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -432,7 +436,7 @@ def delete_agentic_prompt(
 ) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.delete_prompt(task.id, prompt_name)
+        agentic_prompt_service.delete_llm_item(task.id, prompt_name)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -469,7 +473,7 @@ def delete_agentic_prompt_version(
 ) -> Response:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        agentic_prompt_service.soft_delete_prompt_version(
+        agentic_prompt_service.soft_delete_llm_item_version(
             task.id,
             prompt_name,
             prompt_version,
@@ -477,7 +481,7 @@ def delete_agentic_prompt_version(
 
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
-        if "not found" in str(e).lower():
+        if "no matching version" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
         else:
             raise HTTPException(status_code=400, detail=str(e))

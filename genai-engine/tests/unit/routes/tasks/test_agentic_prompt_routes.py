@@ -1323,8 +1323,6 @@ def test_get_agentic_prompt_by_version_route(
         "temperature": 0.7,
         "max_tokens": 100,
     }
-    if prompt_version == "datetime":
-        prompt_version = datetime.now().isoformat()
 
     save_response = client.base_client.post(
         f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
@@ -1332,6 +1330,9 @@ def test_get_agentic_prompt_by_version_route(
         headers=client.authorized_user_api_key_headers,
     )
     assert save_response.status_code == 200
+
+    if prompt_version == "datetime":
+        prompt_version = save_response.json()["created_at"]
 
     # Get the prompt using different version formats
     response = client.base_client.get(
@@ -1396,7 +1397,7 @@ def test_soft_delete_agentic_prompt_by_version_route(
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"Prompt '{prompt_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{prompt_name}' (version 'latest') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200

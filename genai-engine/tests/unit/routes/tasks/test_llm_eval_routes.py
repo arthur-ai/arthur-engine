@@ -266,7 +266,10 @@ def test_soft_delete_llm_eval_version_errors(
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
+    assert (
+        f"no matching version of '{nonexistent_eval}' found for task '{agentic_task.id}'"
+        in response.json()["detail"].lower()
+    )
 
     # --- Case 2: Already soft-deleted version (400) ---
     eval_data = {
@@ -357,7 +360,7 @@ def test_soft_delete_llm_eval_by_version_route(
         assert response.status_code == 404
         assert (
             response.json()["detail"]
-            == f"LLM eval '{eval_name}' (version 'latest') not found for task '{task.id}'"
+            == f"'{eval_name}' (version 'latest') not found for task '{task.id}'"
         )
     else:
         assert response.status_code == 200

@@ -137,20 +137,6 @@ def mock_completion(*args, **kwargs):
 
 
 @pytest.mark.unit_tests
-def test_create_prompt(agentic_prompt_repo, sample_prompt_data):
-    """Test creating a new AgenticPrompt instance"""
-    prompt = agentic_prompt_repo.create_prompt(name="test_prompt", **sample_prompt_data)
-
-    assert isinstance(prompt, AgenticPrompt)
-    assert prompt.name == "test_prompt"
-    assert prompt.messages == to_agentic_prompt_messages(sample_prompt_data["messages"])
-    assert prompt.model_name == sample_prompt_data["model_name"]
-    assert prompt.model_provider == sample_prompt_data["model_provider"]
-    assert prompt.temperature == sample_prompt_data["temperature"]
-    assert prompt.max_tokens == sample_prompt_data["max_tokens"]
-
-
-@pytest.mark.unit_tests
 @patch("clients.llm.llm_client.litellm.completion")
 @patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_prompt(
@@ -216,7 +202,7 @@ def test_get_prompt_success(
     mock_filter.order_by.return_value = mock_filter
     mock_filter.first.return_value = sample_db_prompt
 
-    result = agentic_prompt_repo.get_prompt(task_id, prompt_name)
+    result = agentic_prompt_repo.get_llm_item(task_id, prompt_name)
 
     assert isinstance(result, AgenticPrompt)
     assert result.name == sample_db_prompt.name
@@ -243,11 +229,11 @@ def test_get_prompt_not_found(agentic_prompt_repo, mock_db_session):
     mock_filter.first.return_value = None
 
     with pytest.raises(ValueError) as exc_info:
-        agentic_prompt_repo.get_prompt(task_id, prompt_name)
+        agentic_prompt_repo.get_llm_item(task_id, prompt_name)
 
     assert (
         str(exc_info.value)
-        == "Prompt 'nonexistent_prompt' (version 'latest') not found for task 'nonexistent_task'"
+        == "'nonexistent_prompt' (version 'latest') not found for task 'nonexistent_task'"
     )
 
 
@@ -308,7 +294,10 @@ def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt)
         page_size=10,
         sort=PaginationSortMethod.DESCENDING,
     )
-    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
+    result = agentic_prompt_repo.get_all_llm_item_metadata(
+        task_id,
+        pagination_parameters,
+    )
 
     assert isinstance(result, LLMGetAllMetadataListResponse)
     assert len(result.llm_metadata) == 2
@@ -342,7 +331,10 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
         page_size=10,
         sort=PaginationSortMethod.DESCENDING,
     )
-    result = agentic_prompt_repo.get_all_prompt_metadata(task_id, pagination_parameters)
+    result = agentic_prompt_repo.get_all_llm_item_metadata(
+        task_id,
+        pagination_parameters,
+    )
 
     assert isinstance(result, LLMGetAllMetadataListResponse)
     assert len(result.llm_metadata) == 0
@@ -359,7 +351,7 @@ def test_save_prompt_with_agentic_prompt_object(
 
     mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
 
-    agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
+    agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
 
     # Verify database operations
     mock_db_session.add.assert_called_once()
@@ -376,31 +368,6 @@ def test_save_prompt_with_agentic_prompt_object(
 
 
 @pytest.mark.unit_tests
-def test_save_prompt_with_dict(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_prompt_data,
-):
-    """Test saving a prompt from dictionary data"""
-    task_id = "test_task_id"
-
-    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
-
-    sample_prompt_data["name"] = "test_prompt"
-    agentic_prompt_repo.save_prompt(task_id, sample_prompt_data)
-
-    # Verify database operations
-    mock_db_session.add.assert_called_once()
-    mock_db_session.commit.assert_called_once()
-
-    # Check the DatabaseAgenticPrompt object that was added
-    added_prompt = mock_db_session.add.call_args[0][0]
-    assert isinstance(added_prompt, DatabaseAgenticPrompt)
-    assert added_prompt.task_id == task_id
-    assert added_prompt.name == sample_prompt_data["name"]
-
-
-@pytest.mark.unit_tests
 def test_save_prompt_integrity_error(
     agentic_prompt_repo,
     mock_db_session,
@@ -413,11 +380,11 @@ def test_save_prompt_integrity_error(
     mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
 
     with pytest.raises(ValueError) as exc_info:
-        agentic_prompt_repo.save_prompt(task_id, sample_agentic_prompt)
+        agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
 
     assert (
         str(exc_info.value)
-        == "Failed to save prompt 'test_prompt' for task 'test_task_id' — possible duplicate constraint."
+        == "Failed to save 'test_prompt' for task 'test_task_id' — possible duplicate constraint."
     )
 
     # Verify rollback was called
@@ -437,7 +404,7 @@ def test_delete_prompt_success(agentic_prompt_repo, mock_db_session, sample_db_p
     mock_query.filter.return_value = mock_filter
     mock_filter.all.return_value = [sample_db_prompt]
 
-    agentic_prompt_repo.delete_prompt(task_id, prompt_name)
+    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
 
     # Verify database operations
     mock_db_session.delete.assert_called_once_with(sample_db_prompt)
@@ -459,9 +426,9 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
     with pytest.raises(
         ValueError,
-        match="Prompt 'nonexistent_prompt' not found for task 'nonexistent_task'",
+        match="'nonexistent_prompt' not found for task 'nonexistent_task'",
     ):
-        agentic_prompt_repo.delete_prompt(task_id, prompt_name)
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
 
 
 @pytest.mark.unit_tests
@@ -498,7 +465,7 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    prompt = agentic_prompt_repo.get_prompt(task_id, prompt_name)
+    prompt = agentic_prompt_repo.get_llm_item(task_id, prompt_name)
     result = prompt.run_chat_completion(mock_llm_client)
 
     assert isinstance(result, AgenticPromptRunResponse)
@@ -1131,7 +1098,7 @@ def test_get_prompt_by_version_success(prompt_version):
     db_session.commit()
 
     try:
-        result = repo.get_prompt(task_id, prompt_name, prompt_version)
+        result = repo.get_llm_item(task_id, prompt_name, prompt_version)
 
         assert isinstance(result, AgenticPrompt)
         assert result.name == prompt_name
@@ -1209,7 +1176,7 @@ def test_get_all_prompt_metadata_with_filters(
         )
 
         # Get filtered results
-        result = repo.get_all_prompt_metadata(
+        result = repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
             filter_request=filter_request,
@@ -1306,9 +1273,9 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
         )
 
         # Get filtered results
-        result = repo.get_prompt_versions(
+        result = repo.get_llm_item_versions(
             task_id=task_id,
-            prompt_name=prompt_name,
+            item_name=prompt_name,
             pagination_parameters=pagination_params,
             filter_request=filter_request,
         )
@@ -1370,7 +1337,7 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
         )
 
         # Get paginated results
-        result = repo.get_all_prompt_metadata(
+        result = repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
         )
@@ -1435,9 +1402,9 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
         )
 
         # Get paginated results
-        result = repo.get_prompt_versions(
+        result = repo.get_llm_item_versions(
             task_id=task_id,
-            prompt_name=prompt_name,
+            item_name=prompt_name,
             pagination_parameters=pagination_params,
         )
 
@@ -1485,16 +1452,16 @@ def test_soft_delete_prompt_by_version_success(prompt_version):
     db_session.commit()
 
     try:
-        repo.soft_delete_prompt_version(task_id, prompt_name, prompt_version)
+        repo.soft_delete_llm_item_version(task_id, prompt_name, prompt_version)
         if prompt_version == "latest":
             with pytest.raises(ValueError) as exc_info:
-                repo.get_prompt(task_id, prompt_name, prompt_version)
+                repo.get_llm_item(task_id, prompt_name, prompt_version)
             assert (
-                f"Prompt '{prompt_name}' (version 'latest') not found for task '{task_id}'"
+                f"'{prompt_name}' (version 'latest') not found for task '{task_id}'"
                 in str(exc_info.value)
             )
         else:
-            result = repo.get_prompt(task_id, prompt_name, prompt_version)
+            result = repo.get_llm_item(task_id, prompt_name, prompt_version)
 
             assert isinstance(result, AgenticPrompt)
             assert result.name == prompt_name
