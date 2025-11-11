@@ -16,7 +16,7 @@ export const dataAnalystAgent = new Agent({
   tools: { textToSqlTool, executeSqlTool, generateGraphTool },
   model: openai("gpt-4.1"),
   instructions:
-    "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool.",
+    "You are a helpful data analyst assistant. Please use the textToSqlTool to convert natural language queries into PostgreSQL SQL statements and the executeSqlTool to execute the SQL query and return the results. Once you have the results, please generate a graph to visualize the results using the createGraphTool. Also always respond in english no matter the language the user speaks.",
 });
 
 export const textToSqlAgent = new Agent({
