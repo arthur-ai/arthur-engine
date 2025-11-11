@@ -23,6 +23,7 @@ export function formatDate(date: string | Date) {
 }
 
 export function formatCurrency(amount: number) {
+  if (amount < 0.00001) return `< ${currencyFormatter.format(0.00001)}`;
   return currencyFormatter.format(amount);
 }
 

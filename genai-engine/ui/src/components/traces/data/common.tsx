@@ -1,3 +1,5 @@
+import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
+import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 
 import { formatCurrency } from "@/utils/formatters";
@@ -23,7 +25,7 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
       }
     >
       <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
-        &sum; {total} tokens
+        <GeneratingTokensOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {total} tokens
       </Typography>
     </Tooltip>
   );
@@ -46,7 +48,7 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
       }
     >
       <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
-        &sum; {formatCurrency(total)}
+        <TollOutlinedIcon sx={{ fontSize: 16, mr: 0.5 }} /> {formatCurrency(total)}
       </Typography>
     </Tooltip>
   );
