@@ -621,7 +621,23 @@ class LLMGetAllMetadataListResponse(BaseModel):
     count: int = Field(description="Total number of llm assets matching filters")
 
 
-class AgenticPromptVersionResponse(BaseModel):
+class LLMVersionResponse(BaseModel):
+    version: int = Field(description="Version number of the llm eval")
+    created_at: datetime = Field(
+        description="Timestamp when the llm eval version was created",
+    )
+    deleted_at: Optional[datetime] = Field(
+        description="Timestamp when the llm eval version was deleted (None if not deleted)",
+    )
+    model_provider: ModelProvider = Field(
+        description="Model provider chosen for this version of the llm eval",
+    )
+    model_name: str = Field(
+        description="Model name chosen for this version of the llm eval",
+    )
+
+
+class AgenticPromptVersionResponse(LLMVersionResponse):
     version: int = Field(description="Version number of the prompt")
     created_at: datetime = Field(
         description="Timestamp when the prompt version was created",
@@ -642,24 +658,8 @@ class AgenticPromptVersionListResponse(BaseModel):
     count: int = Field(description="Total number of prompts matching filters")
 
 
-class LLMEvalsVersionResponse(BaseModel):
-    version: int = Field(description="Version number of the llm eval")
-    created_at: datetime = Field(
-        description="Timestamp when the llm eval version was created",
-    )
-    deleted_at: Optional[datetime] = Field(
-        description="Timestamp when the llm eval version was deleted (None if not deleted)",
-    )
-    model_provider: ModelProvider = Field(
-        description="Model provider chosen for this version of the llm eval",
-    )
-    model_name: str = Field(
-        description="Model name chosen for this version of the llm eval",
-    )
-
-
 class LLMEvalsVersionListResponse(BaseModel):
-    versions: list[LLMEvalsVersionResponse] = Field(
+    versions: list[LLMVersionResponse] = Field(
         description="List of llm eval version metadata",
     )
     count: int = Field(description="Total number of llm evals matching filters")

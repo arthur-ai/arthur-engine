@@ -86,15 +86,18 @@ def test_save_llm_eval_integrity_error(sample_create_eval_request):
     mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.save_eval(
+        full_eval = LLMEval(
+            name=sample_llm_eval.name,
+            **sample_create_eval_request.model_dump(),
+        )
+        llm_evals_repo.save_llm_item(
             task_id,
-            sample_llm_eval.name,
-            sample_create_eval_request,
+            full_eval,
         )
 
     assert (
         str(exc_info.value)
-        == f"Failed to save llm eval '{sample_llm_eval.name}' for task '{task_id}' — possible duplicate constraint."
+        == f"Failed to save '{sample_llm_eval.name}' for task '{task_id}' — possible duplicate constraint."
     )
 
     # Verify rollback was called
@@ -109,10 +112,13 @@ def test_save_llm_eval_with_llm_eval_object(
 ):
     """Test saving an LLMEval object to database"""
     task_id = "test_task_id"
-    result = llm_evals_repo.save_eval(
+    full_eval = LLMEval(
+        name=sample_llm_eval.name,
+        **sample_create_eval_request.model_dump(),
+    )
+    result = llm_evals_repo.save_llm_item(
         task_id,
-        sample_llm_eval.name,
-        sample_create_eval_request,
+        full_eval,
     )
 
     # Compare was inserted to the database correctly
@@ -128,7 +134,7 @@ def test_save_llm_eval_with_llm_eval_object(
     assert result.deleted_at is None
 
     # clean up database
-    llm_evals_repo.delete_eval(task_id, sample_llm_eval.name)
+    llm_evals_repo.delete_llm_item(task_id, sample_llm_eval.name)
 
 
 @pytest.mark.unit_tests
@@ -174,15 +180,16 @@ def test_delete_eval_success(llm_evals_repo, sample_create_eval_request):
     eval_name = "test_eval"
 
     # Mock database query
-    llm_evals_repo.save_eval(task_id, eval_name, sample_create_eval_request)
-    llm_evals_repo.delete_eval(task_id, eval_name)
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.get_eval(task_id, eval_name, "latest")
+        llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
     assert (
         str(exc_info.value)
-        == f"LLM eval '{eval_name}' (version 'latest') not found for task '{task_id}'"
+        == f"'{eval_name}' (version 'latest') not found for task '{task_id}'"
     )
 
 
@@ -194,9 +201,9 @@ def test_delete_eval_not_found(llm_evals_repo):
 
     with pytest.raises(
         ValueError,
-        match="LLM eval 'nonexistent_eval' not found for task 'nonexistent_task'",
+        match="'nonexistent_eval' not found for task 'nonexistent_task'",
     ):
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -208,9 +215,10 @@ def test_soft_delete_eval_version_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    llm_evals_repo.save_eval(task_id, eval_name, sample_create_eval_request)
-    llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "latest")
-    result = llm_evals_repo.get_eval(task_id, eval_name, "1")
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+    result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
 
     # Validate the object was soft deleted
     assert result.deleted_at is not None
@@ -221,7 +229,7 @@ def test_soft_delete_eval_version_success(
     assert result.config is None
 
     # clean up database
-    llm_evals_repo.delete_eval(task_id, eval_name)
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -230,19 +238,20 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, sample_create_eval_requ
     task_id = "test_task"
     eval_name = "test_eval"
 
-    llm_evals_repo.save_eval(task_id, eval_name, sample_create_eval_request)
-    llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "latest")
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
 
     # --- Case 1: Not found ---
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "latest")
-    assert f"llm eval '{eval_name}' not found for task '{task_id}'" in str(
+        llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+    assert f"No matching version of '{eval_name}' found for task '{task_id}'" in str(
         exc_info.value,
     )
 
     # --- Case 2: Already deleted ---
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.soft_delete_eval_version(
+        llm_evals_repo.soft_delete_llm_item_version(
             task_id,
             eval_name,
             "1",
@@ -252,14 +261,14 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, sample_create_eval_requ
 
     # --- Case 3: Invalid version format ---
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "bad_version")
+        llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "bad_version")
     assert (
-        f"Invalid eval_version format 'bad_version'. Must be 'latest', a version number, or an ISO datetime string."
+        f"Invalid version format 'bad_version'. Must be 'latest', a version number, or an ISO datetime string."
         in str(exc_info.value)
     )
 
     # clean up database
-    llm_evals_repo.delete_eval(task_id, eval_name)
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -293,27 +302,27 @@ def test_soft_delete_eval_by_version_success(
     eval_name = "test_llm_eval"
 
     try:
-        result = llm_evals_repo.save_eval(
+        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+        result = llm_evals_repo.save_llm_item(
             task_id,
-            eval_name,
-            sample_create_eval_request,
+            full_eval,
         )
         created_at_timestamp = result.created_at
 
         if eval_version == "datetime":
             eval_version = created_at_timestamp.isoformat()
 
-        llm_evals_repo.soft_delete_eval_version(task_id, eval_name, eval_version)
+        llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, eval_version)
 
         if eval_version == "latest":
             with pytest.raises(ValueError) as exc_info:
-                llm_evals_repo.get_eval(task_id, eval_name, eval_version)
+                llm_evals_repo.get_llm_item(task_id, eval_name, eval_version)
             assert (
-                f"LLM eval '{eval_name}' (version '{eval_version}') not found for task '{task_id}'"
+                f"'{eval_name}' (version '{eval_version}') not found for task '{task_id}'"
                 in str(exc_info.value)
             )
         else:
-            result = llm_evals_repo.get_eval(task_id, eval_name, eval_version)
+            result = llm_evals_repo.get_llm_item(task_id, eval_name, eval_version)
 
             assert isinstance(result, LLMEval)
             assert result.name == eval_name
@@ -328,7 +337,7 @@ def test_soft_delete_eval_by_version_success(
             assert result.deleted_at is not None
     finally:
         # Cleanup
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -341,8 +350,9 @@ def test_get_eval_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    llm_evals_repo.save_eval(task_id, eval_name, sample_create_eval_request)
-    result = llm_evals_repo.get_eval(task_id, eval_name, "latest")
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+    result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
     assert isinstance(result, LLMEval)
     assert result.name == sample_db_llm_eval.name
@@ -356,7 +366,7 @@ def test_get_eval_success(
     assert result.deleted_at is None
 
     # clean up database
-    llm_evals_repo.delete_eval(task_id, eval_name)
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -366,11 +376,11 @@ def test_get_eval_not_found(llm_evals_repo):
     eval_name = "test_llm_eval"
 
     with pytest.raises(ValueError) as exc_info:
-        llm_evals_repo.get_eval(task_id, eval_name, "latest")
+        llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
     assert (
         str(exc_info.value)
-        == "LLM eval 'test_llm_eval' (version 'latest') not found for task 'test_task_id'"
+        == "'test_llm_eval' (version 'latest') not found for task 'test_task_id'"
     )
 
 
@@ -387,17 +397,17 @@ def test_get_eval_different_version_types_success(
     eval_name = "test_llm_eval"
 
     try:
-        result = llm_evals_repo.save_eval(
+        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+        result = llm_evals_repo.save_llm_item(
             task_id,
-            eval_name,
-            sample_create_eval_request,
+            full_eval,
         )
         created_at_timestamp = result.created_at
 
         if eval_version == "datetime":
             eval_version = created_at_timestamp.isoformat()
 
-        result = llm_evals_repo.get_eval(task_id, eval_name, eval_version)
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, eval_version)
 
         assert isinstance(result, LLMEval)
         assert result.name == sample_db_llm_eval.name
@@ -412,7 +422,7 @@ def test_get_eval_different_version_types_success(
         assert result.deleted_at is None
     finally:
         # Cleanup
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -425,15 +435,15 @@ def test_get_soft_delete_eval_by_version_no_error(
     eval_name = "test_llm_eval"
 
     try:
-        result = llm_evals_repo.save_eval(
+        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+        result = llm_evals_repo.save_llm_item(
             task_id,
-            eval_name,
-            sample_create_eval_request,
+            full_eval,
         )
         created_at_timestamp = result.created_at
 
-        llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "latest")
-        result = llm_evals_repo.get_eval(task_id, eval_name, "1")
+        llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+        result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
 
         assert isinstance(result, LLMEval)
         assert result.deleted_at is not None
@@ -446,7 +456,7 @@ def test_get_soft_delete_eval_by_version_no_error(
         assert result.created_at == created_at_timestamp
     finally:
         # Cleanup
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -497,7 +507,8 @@ def test_get_eval_versions_with_filters(
     try:
         results = []
         for version_data in versions_data:
-            result = llm_evals_repo.save_eval(task_id, eval_name, version_data)
+            full_eval = LLMEval(name=eval_name, **version_data.model_dump())
+            result = llm_evals_repo.save_llm_item(task_id, full_eval)
             results.append(result)
 
         if filter_param == "created_after":
@@ -505,7 +516,7 @@ def test_get_eval_versions_with_filters(
         elif filter_param == "created_before":
             filter_value = results[-1].created_at.isoformat()
         elif filter_param == "exclude_deleted":
-            llm_evals_repo.soft_delete_eval_version(task_id, eval_name, "latest")
+            llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
 
         # Create filter request
         filter_request = LLMGetVersionsFilterRequest(**{filter_param: filter_value})
@@ -518,9 +529,9 @@ def test_get_eval_versions_with_filters(
         )
 
         # Get filtered results
-        result = llm_evals_repo.get_eval_versions(
+        result = llm_evals_repo.get_llm_item_versions(
             task_id=task_id,
-            eval_name=eval_name,
+            item_name=eval_name,
             pagination_parameters=pagination_params,
             filter_request=filter_request,
         )
@@ -532,7 +543,7 @@ def test_get_eval_versions_with_filters(
 
     finally:
         # Cleanup
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -566,7 +577,8 @@ def test_get_llm_eval_versions_with_pagination(
                 model_name="gpt-4",
                 model_provider="openai",
             )
-            result = llm_evals_repo.save_eval(task_id, eval_name, version_data)
+            full_eval = LLMEval(name=eval_name, **version_data.model_dump())
+            result = llm_evals_repo.save_llm_item(task_id, full_eval)
             created_evals.append(result)
 
         # Create pagination parameters
@@ -577,9 +589,9 @@ def test_get_llm_eval_versions_with_pagination(
         )
 
         # Get paginated results
-        result = llm_evals_repo.get_eval_versions(
+        result = llm_evals_repo.get_llm_item_versions(
             task_id=task_id,
-            eval_name=eval_name,
+            item_name=eval_name,
             pagination_parameters=pagination_params,
         )
 
@@ -594,7 +606,7 @@ def test_get_llm_eval_versions_with_pagination(
 
     finally:
         # Cleanup
-        llm_evals_repo.delete_eval(task_id, eval_name)
+        llm_evals_repo.delete_llm_item(task_id, eval_name)
 
 
 @pytest.mark.unit_tests
@@ -603,10 +615,13 @@ def test_get_all_llm_evals(llm_evals_repo, sample_create_eval_request):
     task_id = "test_task_id"
 
     for i in range(2):
-        llm_evals_repo.save_eval(
+        full_eval = LLMEval(
+            name=f"test_llm_eval_{i}",
+            **sample_create_eval_request.model_dump(),
+        )
+        llm_evals_repo.save_llm_item(
             task_id,
-            f"test_llm_eval_{i}",
-            sample_create_eval_request,
+            full_eval,
         )
 
     # Use default pagination parameters
@@ -615,7 +630,7 @@ def test_get_all_llm_evals(llm_evals_repo, sample_create_eval_request):
         page_size=10,
         sort=PaginationSortMethod.DESCENDING,
     )
-    result = llm_evals_repo.get_all_llm_eval_metadata(task_id, pagination_parameters)
+    result = llm_evals_repo.get_all_llm_item_metadata(task_id, pagination_parameters)
 
     assert isinstance(result, LLMGetAllMetadataListResponse)
     assert len(result.llm_metadata) == 2
@@ -629,7 +644,7 @@ def test_get_all_llm_evals(llm_evals_repo, sample_create_eval_request):
     assert result.llm_metadata[1].name == "test_llm_eval_0"
 
     for i in range(2):
-        llm_evals_repo.delete_eval(task_id, f"test_llm_eval_{i}")
+        llm_evals_repo.delete_llm_item(task_id, f"test_llm_eval_{i}")
 
 
 @pytest.mark.unit_tests
@@ -643,7 +658,7 @@ def test_get_all_evals_empty(llm_evals_repo):
         page_size=10,
         sort=PaginationSortMethod.DESCENDING,
     )
-    result = llm_evals_repo.get_all_llm_eval_metadata(task_id, pagination_parameters)
+    result = llm_evals_repo.get_all_llm_item_metadata(task_id, pagination_parameters)
 
     assert isinstance(result, LLMGetAllMetadataListResponse)
     assert len(result.llm_metadata) == 0
@@ -685,10 +700,13 @@ def test_get_all_llm_eval_metadata_with_filters(
     ]
 
     for i, eval_data in enumerate(evals_data):
-        result = llm_evals_repo.save_eval(
+        full_eval = LLMEval(
+            name=f"eval_{eval_data.model_provider.value}",
+            **eval_data.model_dump(),
+        )
+        result = llm_evals_repo.save_llm_item(
             task_id,
-            f"eval_{eval_data.model_provider.value}",
-            eval_data,
+            full_eval,
         )
         if filter_param == "created_after" and i == 0:
             filter_value = result.created_at
@@ -707,7 +725,7 @@ def test_get_all_llm_eval_metadata_with_filters(
         )
 
         # Get filtered results
-        result = llm_evals_repo.get_all_llm_eval_metadata(
+        result = llm_evals_repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
             filter_request=filter_request,
@@ -725,7 +743,7 @@ def test_get_all_llm_eval_metadata_with_filters(
     finally:
         # Cleanup
         for eval_data in evals_data:
-            llm_evals_repo.delete_eval(
+            llm_evals_repo.delete_llm_item(
                 task_id,
                 f"eval_{eval_data.model_provider.value}",
             )
@@ -755,7 +773,8 @@ def test_get_all_llm_eval_metadata_with_pagination(
 
     # Create multiple evals
     for i in range(3):
-        llm_evals_repo.save_eval(task_id, f"eval_{i}", sample_create_eval_request)
+        full_eval = LLMEval(name=f"eval_{i}", **sample_create_eval_request.model_dump())
+        llm_evals_repo.save_llm_item(task_id, full_eval)
 
     try:
         # Create pagination parameters
@@ -766,7 +785,7 @@ def test_get_all_llm_eval_metadata_with_pagination(
         )
 
         # Get paginated results
-        result = llm_evals_repo.get_all_llm_eval_metadata(
+        result = llm_evals_repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
         )
@@ -783,4 +802,4 @@ def test_get_all_llm_eval_metadata_with_pagination(
     finally:
         # Cleanup
         for i in range(3):
-            llm_evals_repo.delete_eval(task_id, f"eval_{i}")
+            llm_evals_repo.delete_llm_item(task_id, f"eval_{i}")
