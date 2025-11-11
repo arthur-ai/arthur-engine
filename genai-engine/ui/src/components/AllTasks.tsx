@@ -10,6 +10,7 @@ import { CreateTaskForm } from "./CreateTaskForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApi } from "@/hooks/useApi";
 import { TaskResponse } from "@/lib/api";
+import { CopyableChip } from "./common";
 
 export const AllTasks: React.FC = () => {
   const navigate = useNavigate();
@@ -114,18 +115,12 @@ export const AllTasks: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Arthur GenAI Engine
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Arthur GenAI Engine</h1>
               <p className="text-gray-600">All Tasks</p>
             </div>
             <div className="flex items-center space-x-4">
               {tasks.length > 0 && (
-                <Button
-                  variant="contained"
-                  onClick={() => setShowCreateForm(true)}
-                  startIcon={<AddIcon />}
-                >
+                <Button variant="contained" onClick={() => setShowCreateForm(true)} startIcon={<AddIcon />}>
                   Create Task
                 </Button>
               )}
@@ -148,12 +143,7 @@ export const AllTasks: React.FC = () => {
                 {/* Dropdown menu */}
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                    <Button
-                      variant="text"
-                      onClick={handleLogout}
-                      fullWidth
-                      sx={{ color: "black" }}
-                    >
+                    <Button variant="text" onClick={handleLogout} fullWidth sx={{ color: "black" }}>
                       Logout
                     </Button>
                   </div>
@@ -175,9 +165,7 @@ export const AllTasks: React.FC = () => {
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">
                 <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Error loading tasks
-                  </h3>
+                  <h3 className="text-sm font-medium text-red-800">Error loading tasks</h3>
                   <div className="mt-2 text-sm text-red-700">
                     <p>{error}</p>
                   </div>
@@ -186,27 +174,15 @@ export const AllTasks: React.FC = () => {
             </div>
           ) : tasks.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg font-medium mb-2">
-                No tasks found
-              </div>
-              <p className="text-gray-400 mb-8">
-                Get started by creating your first agent task.
-              </p>
-              <CreateTaskForm
-                embedded={true}
-                onTaskCreated={handleTaskCreated}
-                onCancel={() => {}}
-              />
+              <div className="text-gray-500 text-lg font-medium mb-2">No tasks found</div>
+              <p className="text-gray-400 mb-8">Get started by creating your first agent task.</p>
+              <CreateTaskForm embedded={true} onTaskCreated={handleTaskCreated} onCancel={() => {}} />
             </div>
           ) : (
             <>
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">
-                  Tasks ({tasks.length})
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Click on any task to view details
-                </p>
+                <h2 className="text-lg font-medium text-gray-900">Tasks ({tasks.length})</h2>
+                <p className="text-sm text-gray-500">Click on any task to view details</p>
               </div>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {tasks.map((task) => (
@@ -215,23 +191,18 @@ export const AllTasks: React.FC = () => {
                     onClick={() => handleTaskClick(task.id)}
                     className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-md transition-shadow duration-200 hover:bg-gray-50"
                   >
-                    <div className="px-4 py-5 sm:p-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {task.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Created:{" "}
-                        {new Date(task.created_at).toLocaleDateString()}
-                      </p>
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          ID: {task.id}
-                        </span>
+                    <div className="px-4 py-5 sm:p-6 h-full flex flex-col">
+                      <div className="flex items-start">
+                        <h3 className="text-lg font-medium text-gray-900 leading-none">{task.name}</h3>
                         {task.is_agentic && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ml-auto">
                             Agentic
                           </span>
                         )}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-4">Created: {new Date(task.created_at).toLocaleDateString()}</p>
+                      <div className="flex items-center mt-auto">
+                        <CopyableChip label={task.id} />
                       </div>
                     </div>
                   </div>
