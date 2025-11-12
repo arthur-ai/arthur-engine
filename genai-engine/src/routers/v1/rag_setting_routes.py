@@ -309,7 +309,7 @@ def delete_rag_search_setting_version(
 
 
 @rag_setting_routes.get(
-    "/rag_search_settings/{setting_configuration_id}/tags/{tag}",
+    "/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}",
     description="Get a single RAG setting configuration version by tag.",
     response_model=RagSearchSettingConfigurationVersionResponse,
     tags=[rag_settings_router_tag],

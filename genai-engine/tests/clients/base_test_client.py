@@ -3151,7 +3151,7 @@ class GenaiEngineTestClientBase(httpx.Client):
     ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
         """Get a single RAG search setting configuration version by tag."""
         resp = self.base_client.get(
-            f"/api/v1/rag_search_settings/{setting_configuration_id}/tags/{tag}",
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}",
             headers=self.authorized_user_api_key_headers,
         )
 
