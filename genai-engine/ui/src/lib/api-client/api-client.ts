@@ -297,51 +297,6 @@ export interface AgenticPromptMessageOutput {
   tool_calls?: ToolCall[] | null;
 }
 
-/** AgenticPromptMetadataListResponse */
-export interface AgenticPromptMetadataListResponse {
-  /**
-   * Count
-   * Total number of prompts matching filters
-   */
-  count: number;
-  /**
-   * Prompt Metadata
-   * List of prompt metadata
-   */
-  prompt_metadata: AgenticPromptMetadataResponse[];
-}
-
-/** AgenticPromptMetadataResponse */
-export interface AgenticPromptMetadataResponse {
-  /**
-   * Created At
-   * Timestamp when the prompt was created
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted Versions
-   * List of deleted versions of the prompt
-   */
-  deleted_versions: number[];
-  /**
-   * Latest Version Created At
-   * Timestamp when the last version of the prompt was created
-   * @format date-time
-   */
-  latest_version_created_at: string;
-  /**
-   * Name
-   * Name of the prompt
-   */
-  name: string;
-  /**
-   * Versions
-   * Number of versions of the prompt
-   */
-  versions: number;
-}
-
 /** AgenticPromptRunResponse */
 export interface AgenticPromptRunResponse {
   /** Content */
@@ -673,10 +628,7 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
  * Request schema for running an unsaved agentic prompt
  */
 export interface CompletionRequest {
-  /**
-   * Run configuration for the unsaved prompt
-   * @default {"variables":[],"stream":false,"strict":false}
-   */
+  /** Run configuration for the unsaved prompt */
   completion_request?: PromptCompletionRequest;
   /**
    * Created At
@@ -865,9 +817,47 @@ export type CreateDefaultRuleApiV2DefaultRulesPostData = RuleResponse;
 
 export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
 
+/** CreateEvalRequest */
+export interface CreateEvalRequest {
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
+  /**
+   * Instructions
+   * Instructions for the llm eval
+   */
+  instructions: string;
+  /**
+   * Max Score
+   * Maximum score for the llm eval
+   * @default 1
+   */
+  max_score?: number;
+  /**
+   * Min Score
+   * Minimum score for the llm eval
+   * @default 0
+   */
+  min_score?: number;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+}
+
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidationError;
+
+export type CreateRagSearchSettingsData = RagSearchSettingConfigurationResponse;
+
+export type CreateRagSearchSettingsError = HTTPValidationError;
+
+export type CreateRagSearchSettingsVersionData = RagSearchSettingConfigurationVersionResponse;
+
+export type CreateRagSearchSettingsVersionError = HTTPValidationError;
 
 export type CreateTaskApiV2TasksPostData = TaskResponse;
 
@@ -1090,8 +1080,7 @@ export type DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError = HT
 
 export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData = any;
 
-export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError =
-  HTTPValidationError;
+export type DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteError = HTTPValidationError;
 
 export type DeleteDatasetApiV2DatasetsDatasetIdDeleteData = any;
 
@@ -1101,9 +1090,21 @@ export type DeleteFileApiChatFilesFileIdDeleteData = any;
 
 export type DeleteFileApiChatFilesFileIdDeleteError = HTTPValidationError;
 
+export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData = any;
+
+export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValidationError;
+
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
 
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
+
+export type DeleteRagSearchSettingData = any;
+
+export type DeleteRagSearchSettingError = HTTPValidationError;
+
+export type DeleteRagSearchSettingVersionData = any;
+
+export type DeleteRagSearchSettingVersionError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1143,12 +1144,15 @@ export interface ExamplesConfig {
   hint?: string | null;
 }
 
+export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData = RagProviderQueryResponse;
+
+export type ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError = HTTPValidationError;
+
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostError = HTTPValidationError;
 
-export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData =
-  RagProviderQueryResponse;
+export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
 
@@ -1309,8 +1313,7 @@ export type GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersi
 /** Response Get All Active Api Keys Auth Api Keys  Get */
 export type GetAllActiveApiKeysAuthApiKeysGetData = ApiKeyResponse[];
 
-export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData =
-  AgenticPromptVersionListResponse;
+export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData = AgenticPromptVersionListResponse;
 
 export type GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError = HTTPValidationError;
 
@@ -1380,7 +1383,7 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
   taskId: string;
 }
 
-export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = AgenticPromptMetadataListResponse;
+export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData = LLMGetAllMetadataListResponse;
 
 export type GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError = HTTPValidationError;
 
@@ -1395,6 +1398,11 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
    */
   created_before?: string | null;
+  /**
+   * Llm Asset Names
+   * LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned
+   */
+  llm_asset_names?: string[] | null;
   /**
    * Model Name
    * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
@@ -1418,10 +1426,129 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
    */
   page_size?: number;
   /**
-   * Prompt Names
-   * Prompt names to filter on using partial matching. If provided, prompts matching any of these name patterns will be returned.
+   * Sort the results (asc/desc)
+   * @default "desc"
    */
-  prompt_names?: string[] | null;
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetData = LLMEvalsVersionListResponse;
+
+export type GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetError = HTTPValidationError;
+
+export interface GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * LLM Eval Name
+   * The name of the llm eval to retrieve.
+   */
+  evalName: string;
+  /**
+   * Exclude Deleted
+   * Whether to exclude deleted prompt versions from the results. Default is False.
+   * @default false
+   */
+  exclude_deleted?: boolean;
+  /**
+   * Max Version
+   * Maximum version number to filter on (inclusive).
+   */
+  max_version?: number | null;
+  /**
+   * Min Version
+   * Minimum version number to filter on (inclusive).
+   */
+  min_version?: number | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
+}
+
+export type GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetData = LLMGetAllMetadataListResponse;
+
+export type GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetError = HTTPValidationError;
+
+export interface GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams {
+  /**
+   * Created After
+   * Inclusive start date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_after?: string | null;
+  /**
+   * Created Before
+   * Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).
+   */
+  created_before?: string | null;
+  /**
+   * Llm Asset Names
+   * LLM asset names to filter on using partial matching. If provided, llm assets matching any of these name patterns will be returned
+   */
+  llm_asset_names?: string[] | null;
+  /**
+   * Model Name
+   * Filter by model name (e.g., 'gpt-4', 'claude-3-5-sonnet').
+   */
+  model_name?: string | null;
+  /**
+   * Model Provider
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
+   */
+  model_provider?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
   /**
    * Sort the results (asc/desc)
    * @default "desc"
@@ -1583,6 +1710,10 @@ export type GetInferenceDocumentContextApiChatContextInferenceIdGetData = ChatDo
 
 export type GetInferenceDocumentContextApiChatContextInferenceIdGetError = HTTPValidationError;
 
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData = LLMEval;
+
+export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError = HTTPValidationError;
+
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
 export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
@@ -1638,6 +1769,14 @@ export interface GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams {
   taskId: string;
 }
 
+export type GetRagSearchSettingData = RagSearchSettingConfigurationResponse;
+
+export type GetRagSearchSettingError = HTTPValidationError;
+
+export type GetRagSearchSettingVersionData = RagSearchSettingConfigurationVersionResponse;
+
+export type GetRagSearchSettingVersionError = HTTPValidationError;
+
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetData = SessionTracesResponse;
 
 export type GetSessionTracesApiV1TracesSessionsSessionIdGetError = HTTPValidationError;
@@ -1671,6 +1810,46 @@ export type GetSpanByIdApiV1TracesSpansSpanIdGetError = HTTPValidationError;
 export type GetTaskApiV2TasksTaskIdGetData = TaskResponse;
 
 export type GetTaskApiV2TasksTaskIdGetError = HTTPValidationError;
+
+export type GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetData = ListRagSearchSettingConfigurationsResponse;
+
+export type GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError = HTTPValidationError;
+
+export interface GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetParams {
+  /**
+   * Config Name
+   * Rag search setting configuration name substring to search for.
+   */
+  config_name?: string | null;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Rag Provider Ids
+   * List of rag provider configuration IDs to filter for.
+   */
+  rag_provider_ids?: string[] | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * ID of the task to fetch the provider connections for.
+   * @format uuid
+   */
+  taskId: string;
+}
 
 /** Response Get Token Usage Api V2 Usage Tokens Get */
 export type GetTokenUsageApiV2UsageTokensGetData = TokenUsageResponse[];
@@ -1757,6 +1936,12 @@ export interface HallucinationDetailsResponse {
   /** Score */
   score?: boolean | null;
 }
+
+/**
+ * HybridFusion
+ * Define how the query's hybrid fusion operation should be performed.
+ */
+export type HybridFusion = "FUSION_TYPE_RANKED" | "FUSION_TYPE_RELATIVE_SCORE";
 
 /** ImageURL */
 export interface ImageURL {
@@ -1893,6 +2078,211 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
+/** LLMConfigSettings */
+export interface LLMConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** LLMEval */
+export interface LLMEval {
+  /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
+  /**
+   * Created At
+   * Timestamp when the llm eval was created.
+   */
+  created_at?: string | null;
+  /**
+   * Deleted At
+   * Time that this llm eval was deleted
+   */
+  deleted_at?: string | null;
+  /**
+   * Instructions
+   * Instructions for the llm eval
+   */
+  instructions: string;
+  /**
+   * Max Score
+   * Maximum score for the llm eval
+   * @default 1
+   */
+  max_score?: number;
+  /**
+   * Min Score
+   * Minimum score for the llm eval
+   * @default 0
+   */
+  min_score?: number;
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Name
+   * Name of the llm eval
+   */
+  name: string;
+  /**
+   * Version
+   * Version of the llm eval
+   * @default 1
+   */
+  version?: number;
+}
+
+/** LLMEvalsVersionListResponse */
+export interface LLMEvalsVersionListResponse {
+  /**
+   * Count
+   * Total number of llm evals matching filters
+   */
+  count: number;
+  /**
+   * Versions
+   * List of llm eval version metadata
+   */
+  versions: LLMEvalsVersionResponse[];
+}
+
+/** LLMEvalsVersionResponse */
+export interface LLMEvalsVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the llm eval version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the llm eval version was deleted (None if not deleted)
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name chosen for this version of the llm eval
+   */
+  model_name: string;
+  /** Model provider chosen for this version of the llm eval */
+  model_provider: ModelProvider;
+  /**
+   * Version
+   * Version number of the llm eval
+   */
+  version: number;
+}
+
+/** LLMGetAllMetadataListResponse */
+export interface LLMGetAllMetadataListResponse {
+  /**
+   * Count
+   * Total number of llm assets matching filters
+   */
+  count: number;
+  /**
+   * Llm Metadata
+   * List of llm asset metadata
+   */
+  llm_metadata: LLMGetAllMetadataResponse[];
+}
+
+/** LLMGetAllMetadataResponse */
+export interface LLMGetAllMetadataResponse {
+  /**
+   * Created At
+   * Timestamp when the llm asset was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted Versions
+   * List of deleted versions of the llm asset
+   */
+  deleted_versions: number[];
+  /**
+   * Latest Version Created At
+   * Timestamp when the last version of the llm asset was created
+   * @format date-time
+   */
+  latest_version_created_at: string;
+  /**
+   * Name
+   * Name of the llm asset
+   */
+  name: string;
+  /**
+   * Versions
+   * Number of versions of the llm asset
+   */
+  versions: number;
+}
+
 /** LLMResponseFormatEnum */
 export type LLMResponseFormatEnum = "text" | "json_object" | "json_schema";
 
@@ -2023,10 +2413,23 @@ export interface ListDatasetVersionsResponse {
   versions: DatasetVersionMetadataResponse[];
 }
 
-export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData =
-  SearchRagProviderCollectionsResponse;
+export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData = SearchRagProviderCollectionsResponse;
 
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
+
+/** ListRagSearchSettingConfigurationsResponse */
+export interface ListRagSearchSettingConfigurationsResponse {
+  /**
+   * Count
+   * The total number of RAG search setting configurations matching the parameters.
+   */
+  count: number;
+  /**
+   * Rag Provider Setting Configurations
+   * List of RAG search setting configurations matching the search filters. Length is less than or equal to page_size parameter
+   */
+  rag_provider_setting_configurations: RagSearchSettingConfigurationResponse[];
+}
 
 export type ListSessionsMetadataApiV1TracesSessionsGetData = SessionListResponse;
 
@@ -2665,8 +3068,16 @@ export interface NestedSpanWithMetricsResponse {
    * @default []
    */
   children?: NestedSpanWithMetricsResponse[];
-  /** Context */
-  context?: Record<string, any>[] | null;
+  /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
   /**
    * Created At
    * @format date-time
@@ -2680,17 +3091,35 @@ export interface NestedSpanWithMetricsResponse {
   /** Id */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
    * Metric Results
    * List of metric results for this span
    * @default []
    */
   metric_results?: MetricResultResponse[];
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /** Raw Data */
   raw_data: Record<string, any>;
-  /** Response */
-  response?: string | null;
   /** Session Id */
   session_id?: string | null;
   /** Span Id */
@@ -2709,10 +3138,18 @@ export interface NestedSpanWithMetricsResponse {
    * Status code for the span (Unset, Error, Ok)
    */
   status_code: string;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
   /**
@@ -2720,8 +3157,6 @@ export interface NestedSpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
-  /** User Query */
-  user_query?: string | null;
 }
 
 /** NewApiKeyRequest */
@@ -3680,6 +4115,12 @@ export interface QueryTracesWithMetricsResponse {
 /** RagAPIKeyAuthenticationProviderEnum */
 export type RagAPIKeyAuthenticationProviderEnum = "weaviate";
 
+/** RagHybridSearchSettingRequest */
+export interface RagHybridSearchSettingRequest {
+  /** Settings for the hybrid search request to the vector database. */
+  settings: WeaviateHybridSearchSettingsRequest;
+}
+
 /** RagKeywordSearchSettingRequest */
 export interface RagKeywordSearchSettingRequest {
   /** Settings for the keyword search request to the vector database. */
@@ -3776,6 +4217,177 @@ export interface RagProviderConfigurationUpdateRequest {
 export interface RagProviderQueryResponse {
   /** Response from Weaviate similarity text search */
   response: WeaviateQueryResults;
+}
+
+/** RagProviderTestConfigurationRequest */
+export interface RagProviderTestConfigurationRequest {
+  /** Configuration of the authentication strategy. */
+  authentication_config: ApiKeyRagAuthenticationConfigRequest;
+}
+
+/** RagSearchSettingConfigurationNewVersionRequest */
+export interface RagSearchSettingConfigurationNewVersionRequest {
+  /**
+   * Settings
+   * Settings configuration for a search request to a RAG provider.
+   */
+  settings:
+    | WeaviateHybridSearchSettingsConfigurationRequest
+    | WeaviateKeywordSearchSettingsConfigurationRequest
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
+  /**
+   * Tags
+   * List of tags to configure for this version of the search settings configuration.
+   */
+  tags?: string[];
+}
+
+/** RagSearchSettingConfigurationRequest */
+export interface RagSearchSettingConfigurationRequest {
+  /**
+   * Description
+   * Description of the search setting configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the search setting configuration.
+   */
+  name: string;
+  /**
+   * Rag Provider Id
+   * ID of the rag provider to use with the settings.
+   * @format uuid
+   */
+  rag_provider_id: string;
+  /**
+   * Settings
+   * Settings configuration for a search request to a RAG provider.
+   */
+  settings:
+    | WeaviateHybridSearchSettingsConfigurationRequest
+    | WeaviateKeywordSearchSettingsConfigurationRequest
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest;
+  /**
+   * Tags
+   * List of tags to configure for this version of the search settings configuration.
+   */
+  tags?: string[];
+}
+
+/** RagSearchSettingConfigurationResponse */
+export interface RagSearchSettingConfigurationResponse {
+  /**
+   * All Possible Tags
+   * Set of all tags applied for any version of the settings configuration.
+   */
+  all_possible_tags?: string[] | null;
+  /**
+   * Created At
+   * Time the RAG settings configuration was created in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Description
+   * Description of the setting configuration.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the setting configuration.
+   * @format uuid
+   */
+  id: string;
+  /** The latest version of the settings configuration. */
+  latest_version: RagSearchSettingConfigurationVersionResponse;
+  /**
+   * Latest Version Number
+   * The latest version number of the settings configuration.
+   */
+  latest_version_number: number;
+  /**
+   * Name
+   * Name of the setting configuration.
+   */
+  name: string;
+  /**
+   * Rag Provider Id
+   * ID of the rag provider to use with the settings. None if initial rag provider configuration was deleted.
+   */
+  rag_provider_id?: string | null;
+  /**
+   * Task Id
+   * ID of the parent task.
+   */
+  task_id: string;
+  /**
+   * Updated At
+   * Time the RAG settings configuration was updated in unix milliseconds. Will be updated if a new version of the configuration was created.
+   */
+  updated_at: number;
+}
+
+/** RagSearchSettingConfigurationUpdateRequest */
+export interface RagSearchSettingConfigurationUpdateRequest {
+  /**
+   * Description
+   * Description of the setting configuration.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the setting configuration.
+   */
+  name?: string | null;
+  /**
+   * Rag Provider Id
+   * ID of the rag provider configuration to use the settings with.
+   */
+  rag_provider_id?: string | null;
+}
+
+/** RagSearchSettingConfigurationVersionResponse */
+export interface RagSearchSettingConfigurationVersionResponse {
+  /**
+   * Created At
+   * Time the RAG provider settings configuration version was created in unix milliseconds
+   */
+  created_at: number;
+  /**
+   * Deleted At
+   * Time the RAG provider settings configuration version was soft-deleted in unix milliseconds
+   */
+  deleted_at?: number | null;
+  /**
+   * Setting Configuration Id
+   * ID of the parent setting configuration.
+   * @format uuid
+   */
+  setting_configuration_id: string;
+  /**
+   * Settings
+   * Settings configuration for a search request to a RAG provider. None if version has been soft-deleted.
+   */
+  settings?:
+    | WeaviateHybridSearchSettingsConfigurationResponse
+    | WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse
+    | WeaviateKeywordSearchSettingsConfigurationResponse
+    | null;
+  /**
+   * Tags
+   * Optional list of tags configured for this version of the settings configuration.
+   */
+  tags?: string[] | null;
+  /**
+   * Updated At
+   * Time the RAG provider settings configuration version was updated in unix milliseconds
+   */
+  updated_at: number;
+  /**
+   * Version Number
+   * Version number of the setting configuration.
+   */
+  version_number: number;
 }
 
 /** RagVectorSimilarityTextSearchSettingRequest */
@@ -3941,13 +4553,7 @@ export interface RuleResponse {
 }
 
 /** RuleResultEnum */
-export type RuleResultEnum =
-  | "Pass"
-  | "Fail"
-  | "Skipped"
-  | "Unavailable"
-  | "Partially Unavailable"
-  | "Model Not Available";
+export type RuleResultEnum = "Pass" | "Fail" | "Skipped" | "Unavailable" | "Partially Unavailable" | "Model Not Available";
 
 /** RuleScope */
 export type RuleScope = "default" | "task";
@@ -3966,15 +4572,17 @@ export type RunAgenticPromptApiV1CompletionsPostData = AgenticPromptRunResponse;
 
 export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
 
-export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData =
-  AgenticPromptRunResponse;
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData = AgenticPromptRunResponse;
 
-export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError =
-  HTTPValidationError;
+export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError = HTTPValidationError;
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError = HTTPValidationError;
+
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData = LLMEval;
+
+export type SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError = HTTPValidationError;
 
 /** SearchDatasetsResponse */
 export interface SearchDatasetsResponse {
@@ -4192,6 +4800,16 @@ export interface SessionListResponse {
  */
 export interface SessionMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Duration Ms
    * Total session duration in milliseconds
    */
@@ -4209,6 +4827,16 @@ export interface SessionMetadataResponse {
    */
   latest_end_time: string;
   /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
+  /**
    * Session Id
    * Session identifier
    */
@@ -4223,6 +4851,16 @@ export interface SessionMetadataResponse {
    * Task ID this session belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Count
    * Number of traces in this session
@@ -4270,6 +4908,10 @@ export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutError = HTTPValidationError;
 
+export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData = any;
+
+export type SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError = HTTPValidationError;
+
 /**
  * SpanListResponse
  * Response for span list endpoint
@@ -4293,6 +4935,16 @@ export interface SpanListResponse {
  */
 export interface SpanMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Created At
    * When the span was created
    * @format date-time
@@ -4315,10 +4967,30 @@ export interface SpanMetadataResponse {
    */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
+  /**
    * Parent Span Id
    * Parent span ID
    */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Id
    * Session ID if available
@@ -4356,6 +5028,16 @@ export interface SpanMetadataResponse {
    */
   task_id?: string | null;
   /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
+  /**
    * Trace Id
    * ID of the parent trace
    */
@@ -4375,8 +5057,16 @@ export interface SpanMetadataResponse {
 
 /** SpanWithMetricsResponse */
 export interface SpanWithMetricsResponse {
-  /** Context */
-  context?: Record<string, any>[] | null;
+  /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
   /**
    * Created At
    * @format date-time
@@ -4390,17 +5080,35 @@ export interface SpanWithMetricsResponse {
   /** Id */
   id: string;
   /**
+   * Input Content
+   * Span input value from raw_data.attributes.input.value
+   */
+  input_content?: string | null;
+  /**
    * Metric Results
    * List of metric results for this span
    * @default []
    */
   metric_results?: MetricResultResponse[];
+  /**
+   * Output Content
+   * Span output value from raw_data.attributes.output.value
+   */
+  output_content?: string | null;
   /** Parent Span Id */
   parent_span_id?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /** Raw Data */
   raw_data: Record<string, any>;
-  /** Response */
-  response?: string | null;
   /** Session Id */
   session_id?: string | null;
   /** Span Id */
@@ -4419,10 +5127,18 @@ export interface SpanWithMetricsResponse {
    * Status code for the span (Unset, Error, Ok)
    */
   status_code: string;
-  /** System Prompt */
-  system_prompt?: string | null;
   /** Task Id */
   task_id?: string | null;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /** Trace Id */
   trace_id: string;
   /**
@@ -4430,8 +5146,6 @@ export interface SpanWithMetricsResponse {
    * @format date-time
    */
   updated_at: string;
-  /** User Query */
-  user_query?: string | null;
 }
 
 /** StreamOptions */
@@ -4675,6 +5389,16 @@ export interface TraceListResponse {
  */
 export interface TraceMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Created At
    * When the trace was first created
    * @format date-time
@@ -4691,6 +5415,26 @@ export interface TraceMetadataResponse {
    * @format date-time
    */
   end_time: string;
+  /**
+   * Input Content
+   * Root span input value from trace metadata
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Root span output value from trace metadata
+   */
+  output_content?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Id
    * Session ID if available
@@ -4712,6 +5456,16 @@ export interface TraceMetadataResponse {
    * Task ID this trace belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Id
    * ID of the trace
@@ -4736,11 +5490,41 @@ export interface TraceMetadataResponse {
  */
 export interface TraceResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * End Time
    * End time of the latest span in this trace
    * @format date-time
    */
   end_time: string;
+  /**
+   * Input Content
+   * Root span input value from trace metadata
+   */
+  input_content?: string | null;
+  /**
+   * Output Content
+   * Root span output value from trace metadata
+   */
+  output_content?: string | null;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Root Spans
    * Root spans (spans with no parent) in this trace, with children nested
@@ -4753,6 +5537,16 @@ export interface TraceResponse {
    * @format date-time
    */
   start_time: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Id
    * ID of the trace
@@ -4783,6 +5577,16 @@ export interface TraceUserListResponse {
  */
 export interface TraceUserMetadataResponse {
   /**
+   * Completion Token Cost
+   * Cost of completion tokens in USD
+   */
+  completion_token_cost?: number | null;
+  /**
+   * Completion Token Count
+   * Number of completion tokens
+   */
+  completion_token_count?: number | null;
+  /**
    * Earliest Start Time
    * Start time of earliest trace
    * @format date-time
@@ -4794,6 +5598,16 @@ export interface TraceUserMetadataResponse {
    * @format date-time
    */
   latest_end_time: string;
+  /**
+   * Prompt Token Cost
+   * Cost of prompt tokens in USD
+   */
+  prompt_token_cost?: number | null;
+  /**
+   * Prompt Token Count
+   * Number of prompt tokens
+   */
+  prompt_token_count?: number | null;
   /**
    * Session Count
    * Number of sessions for this user
@@ -4814,6 +5628,16 @@ export interface TraceUserMetadataResponse {
    * Task ID this user belongs to
    */
   task_id: string;
+  /**
+   * Total Token Cost
+   * Total cost in USD
+   */
+  total_token_cost?: number | null;
+  /**
+   * Total Token Count
+   * Total number of tokens
+   */
+  total_token_count?: number | null;
   /**
    * Trace Count
    * Number of traces for this user
@@ -4851,6 +5675,10 @@ export interface UpdateMetricRequest {
 export type UpdateRagProviderApiV1RagProvidersProviderIdPatchData = RagProviderConfigurationResponse;
 
 export type UpdateRagProviderApiV1RagProvidersProviderIdPatchError = HTTPValidationError;
+
+export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchData = RagSearchSettingConfigurationResponse;
+
+export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchError = HTTPValidationError;
 
 /** UpdateRuleRequest */
 export interface UpdateRuleRequest {
@@ -4907,9 +5735,7 @@ export type ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError = HTTP
 
 export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData = ValidationResult;
 
-export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError =
-  | HTTPError
-  | HTTPValidationError;
+export type ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostError = HTTPError | HTTPValidationError;
 
 /** ValidationError */
 export interface ValidationError {
@@ -4962,6 +5788,420 @@ export interface VariableTemplateValue {
   value: string;
 }
 
+/** WeaviateHybridSearchSettingsConfigurationRequest */
+export interface WeaviateHybridSearchSettingsConfigurationRequest {
+  /**
+   * Alpha
+   * Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.
+   * @default 0.7
+   */
+  alpha?: number;
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /** Set the fusion algorithm to use. Default is Relative Score Fusion. */
+  fusion_type?: HybridFusion | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Max Vector Distance
+   * Maximum threshold for the vector search component.
+   */
+  max_vector_distance?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query Properties
+   * Apply keyword search to only a specified subset of object properties.
+   */
+  query_properties?: string[] | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "hybrid_search"
+   */
+  search_kind?: "hybrid_search";
+  /**
+   * Target Vector
+   * Specifies vector to use for vector search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateHybridSearchSettingsConfigurationRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/** WeaviateHybridSearchSettingsConfigurationResponse */
+export interface WeaviateHybridSearchSettingsConfigurationResponse {
+  /**
+   * Alpha
+   * Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.
+   * @default 0.7
+   */
+  alpha?: number;
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /** Set the fusion algorithm to use. Default is Relative Score Fusion. */
+  fusion_type?: HybridFusion | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Max Vector Distance
+   * Maximum threshold for the vector search component.
+   */
+  max_vector_distance?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query Properties
+   * Apply keyword search to only a specified subset of object properties.
+   */
+  query_properties?: string[] | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "hybrid_search"
+   */
+  search_kind?: "hybrid_search";
+  /**
+   * Target Vector
+   * Specifies vector to use for vector search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateHybridSearchSettingsConfigurationResponseReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/** WeaviateHybridSearchSettingsRequest */
+export interface WeaviateHybridSearchSettingsRequest {
+  /**
+   * Alpha
+   * Balance between the relative weights of the keyword and vector search. 1 is pure vector search, 0 is pure keyword search.
+   * @default 0.7
+   */
+  alpha?: number;
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator. Applies to keyword search only.
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /** Set the fusion algorithm to use. Default is Relative Score Fusion. */
+  fusion_type?: HybridFusion | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Max Vector Distance
+   * Maximum threshold for the vector search component.
+   */
+  max_vector_distance?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches. Applies to keyword search only.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Query
+   * Input text to find objects with near vectors or keyword matches.
+   */
+  query: string;
+  /**
+   * Query Properties
+   * Apply keyword search to only a specified subset of object properties.
+   */
+  query_properties?: string[] | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateHybridSearchSettingsRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Target Vector
+   * Specifies vector to use for vector search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateHybridSearchSettingsRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/** WeaviateKeywordSearchSettingsConfigurationRequest */
+export interface WeaviateKeywordSearchSettingsConfigurationRequest {
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "keyword_search"
+   */
+  search_kind?: "keyword_search";
+}
+
+export type WeaviateKeywordSearchSettingsConfigurationRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/** WeaviateKeywordSearchSettingsConfigurationResponse */
+export interface WeaviateKeywordSearchSettingsConfigurationResponse {
+  /**
+   * And Operator
+   * Search returns objects that contain all tokens in the search string. Cannot be used with minimum_match_or_operator
+   */
+  and_operator?: boolean | null;
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Minimum Match Or Operator
+   * Minimum number of keywords that define a match. Objects returned will have to have at least this many matches.
+   */
+  minimum_match_or_operator?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "keyword_search"
+   */
+  search_kind?: "keyword_search";
+}
+
+export type WeaviateKeywordSearchSettingsConfigurationResponseReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
 /** WeaviateKeywordSearchSettingsRequest */
 export interface WeaviateKeywordSearchSettingsRequest {
   /**
@@ -5002,7 +6242,7 @@ export interface WeaviateKeywordSearchSettingsRequest {
   offset?: number | null;
   /**
    * Query
-   * Input text to find objects with near vectors for.
+   * Input text to find objects with keyword matches.
    */
   query: string;
   /**
@@ -5116,6 +6356,154 @@ export interface WeaviateQueryResults {
   rag_provider?: "weaviate";
 }
 
+/** WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest */
+export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationRequest {
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Certainty
+   * Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.
+   */
+  certainty?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Distance
+   * Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.
+   */
+  distance?: number | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "vector_similarity_text_search"
+   */
+  search_kind?: "vector_similarity_text_search";
+  /**
+   * Target Vector
+   * Specifies vector to use for similarity search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateVectorSimilarityTextSearchSettingsConfigurationRequestReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
+/** WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse */
+export interface WeaviateVectorSimilarityTextSearchSettingsConfigurationResponse {
+  /**
+   * Auto Limit
+   * Automatically limit search results to groups of objects with similar distances, stopping after auto_limit number of significant jumps.
+   */
+  auto_limit?: number | null;
+  /**
+   * Certainty
+   * Minimum similarity score to return. Higher values correspond to more similar results. Only one of distance and certainty can be specified.
+   */
+  certainty?: number | null;
+  /**
+   * Collection Name
+   * Name of the vector collection used for the search.
+   */
+  collection_name: string;
+  /**
+   * Distance
+   * Maximum allowed distance between the query and result vectors. Lower values corresponds to more similar results. Only one of distance and certainty can be specified.
+   */
+  distance?: number | null;
+  /**
+   * Include Vector
+   * Boolean value whether to include vector embeddings in the response or can be used to specify the names of the vectors to include in the response if your collection uses named vectors. Will be included as a dictionary in the vector property in the response.
+   * @default false
+   */
+  include_vector?: boolean | string | string[] | null;
+  /**
+   * Limit
+   * Maximum number of objects to return.
+   */
+  limit?: number | null;
+  /**
+   * Offset
+   * Skips first N results in similarity response. Useful for pagination.
+   */
+  offset?: number | null;
+  /**
+   * Rag Provider
+   * @default "weaviate"
+   */
+  rag_provider?: "weaviate";
+  /**
+   * Return Metadata
+   * Specify metadata fields to return.
+   */
+  return_metadata?: WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseReturnMetadataEnum[] | MetadataQuery | null;
+  /**
+   * Return Properties
+   * Specify which properties to return for each object.
+   */
+  return_properties?: string[] | null;
+  /**
+   * Search Kind
+   * @default "vector_similarity_text_search"
+   */
+  search_kind?: "vector_similarity_text_search";
+  /**
+   * Target Vector
+   * Specifies vector to use for similarity search when using named vectors.
+   */
+  target_vector?: string | string[] | MultiTargetVectorJoin | null;
+}
+
+export type WeaviateVectorSimilarityTextSearchSettingsConfigurationResponseReturnMetadataEnum =
+  | "creation_time"
+  | "last_update_time"
+  | "distance"
+  | "certainty"
+  | "score"
+  | "explain_score"
+  | "is_consistent";
+
 /** WeaviateVectorSimilarityTextSearchSettingsRequest */
 export interface WeaviateVectorSimilarityTextSearchSettingsRequest {
   /**
@@ -5213,9 +6601,7 @@ export interface FullRequestParams extends Omit<AxiosRequestConfig, "data" | "pa
 export type RequestParams = Omit<FullRequestParams, "body" | "method" | "query" | "path">;
 
 export interface ApiConfig<SecurityDataType = unknown> extends Omit<AxiosRequestConfig, "data" | "cancelToken"> {
-  securityWorker?: (
-    securityData: SecurityDataType | null,
-  ) => Promise<AxiosRequestConfig | void> | AxiosRequestConfig | void;
+  securityWorker?: (securityData: SecurityDataType | null) => Promise<AxiosRequestConfig | void> | AxiosRequestConfig | void;
   secure?: boolean;
   format?: ResponseType;
 }
@@ -5295,10 +6681,7 @@ export class HttpClient<SecurityDataType = unknown> {
     ...params
   }: FullRequestParams): Promise<AxiosResponse<T>> => {
     const secureParams =
-      ((typeof secure === "boolean" ? secure : this.secure) &&
-        this.securityWorker &&
-        (await this.securityWorker(this.securityData))) ||
-      {};
+      ((typeof secure === "boolean" ? secure : this.secure) && this.securityWorker && (await this.securityWorker(this.securityData))) || {};
     const requestParams = this.mergeRequestParams(params, secureParams);
     const responseFormat = format || this.format || undefined;
 
@@ -5326,7 +6709,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.111
+ * @version 2.1.154
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -5340,10 +6723,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     archiveDefaultRuleApiV2DefaultRulesRuleIdDelete: (ruleId: string, params: RequestParams = {}) =>
-      this.request<
-        ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData,
-        ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError
-      >({
+      this.request<ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteData, ArchiveDefaultRuleApiV2DefaultRulesRuleIdDeleteError>({
         path: `/api/v2/default_rules/${ruleId}`,
         method: "DELETE",
         secure: true,
@@ -5378,15 +6758,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v2/tasks/{task_id}/metrics/{metric_id}
      * @secure
      */
-    archiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete: (
-      taskId: string,
-      metricId: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData,
-        ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError
-      >({
+    archiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDelete: (taskId: string, metricId: string, params: RequestParams = {}) =>
+      this.request<ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteData, ArchiveTaskMetricApiV2TasksTaskIdMetricsMetricIdDeleteError>({
         path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
         method: "DELETE",
         secure: true,
@@ -5404,10 +6777,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     archiveTaskRuleApiV2TasksTaskIdRulesRuleIdDelete: (taskId: string, ruleId: string, params: RequestParams = {}) =>
-      this.request<
-        ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData,
-        ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError
-      >({
+      this.request<ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteData, ArchiveTaskRuleApiV2TasksTaskIdRulesRuleIdDeleteError>({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "DELETE",
         secure: true,
@@ -5444,19 +6814,18 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     computeSessionMetricsApiV1TracesSessionsSessionIdMetricsGet: (
       { sessionId, ...query }: ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData,
-        ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError
-      >({
-        path: `/api/v1/traces/sessions/${sessionId}/metrics`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
+      this.request<ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData, ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetError>(
+        {
+          path: `/api/v1/traces/sessions/${sessionId}/metrics`,
+          method: "GET",
+          query: query,
+          secure: true,
+          format: "json",
+          ...params,
+        }
+      ),
 
     /**
      * @description Compute all missing metrics for a single span on-demand. Returns span with computed metrics.
@@ -5468,10 +6837,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     computeSpanMetricsApiV1TracesSpansSpanIdMetricsGet: (spanId: string, params: RequestParams = {}) =>
-      this.request<
-        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData,
-        ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError
-      >({
+      this.request<ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetData, ComputeSpanMetricsApiV1TracesSpansSpanIdMetricsGetError>({
         path: `/api/v1/traces/spans/${spanId}/metrics`,
         method: "GET",
         secure: true,
@@ -5489,10 +6855,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     computeTraceMetricsApiV1TracesTraceIdMetricsGet: (traceId: string, params: RequestParams = {}) =>
-      this.request<
-        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData,
-        ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError
-      >({
+      this.request<ComputeTraceMetricsApiV1TracesTraceIdMetricsGetData, ComputeTraceMetricsApiV1TracesTraceIdMetricsGetError>({
         path: `/api/v1/traces/${traceId}/metrics`,
         method: "GET",
         secure: true,
@@ -5529,15 +6892,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/datasets/{dataset_id}/versions
      * @secure
      */
-    createDatasetVersionApiV2DatasetsDatasetIdVersionsPost: (
-      datasetId: string,
-      data: NewDatasetVersionRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData,
-        CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError
-      >({
+    createDatasetVersionApiV2DatasetsDatasetIdVersionsPost: (datasetId: string, data: NewDatasetVersionRequest, params: RequestParams = {}) =>
+      this.request<CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostData, CreateDatasetVersionApiV2DatasetsDatasetIdVersionsPostError>({
         path: `/api/v2/datasets/${datasetId}/versions`,
         method: "POST",
         body: data,
@@ -5576,16 +6932,53 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v1/tasks/{task_id}/rag_providers
      * @secure
      */
-    createRagProviderApiV1TasksTaskIdRagProvidersPost: (
-      taskId: string,
-      data: RagProviderConfigurationRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        CreateRagProviderApiV1TasksTaskIdRagProvidersPostData,
-        CreateRagProviderApiV1TasksTaskIdRagProvidersPostError
-      >({
+    createRagProviderApiV1TasksTaskIdRagProvidersPost: (taskId: string, data: RagProviderConfigurationRequest, params: RequestParams = {}) =>
+      this.request<CreateRagProviderApiV1TasksTaskIdRagProvidersPostData, CreateRagProviderApiV1TasksTaskIdRagProvidersPostError>({
         path: `/api/v1/tasks/${taskId}/rag_providers`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new RAG search settings configuration.
+     *
+     * @tags RAG Settings
+     * @name CreateRagSearchSettings
+     * @summary Create Rag Search Settings
+     * @request POST:/api/v1/tasks/{task_id}/rag_search_settings
+     * @secure
+     */
+    createRagSearchSettings: (taskId: string, data: RagSearchSettingConfigurationRequest, params: RequestParams = {}) =>
+      this.request<CreateRagSearchSettingsData, CreateRagSearchSettingsError>({
+        path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Create a new version for an existing RAG search settings configuration.
+     *
+     * @tags RAG Settings
+     * @name CreateRagSearchSettingsVersion
+     * @summary Create Rag Search Settings Version
+     * @request POST:/api/v1/rag_search_settings/{setting_configuration_id}/versions
+     * @secure
+     */
+    createRagSearchSettingsVersion: (
+      settingConfigurationId: string,
+      data: RagSearchSettingConfigurationNewVersionRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<CreateRagSearchSettingsVersionData, CreateRagSearchSettingsVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions`,
         method: "POST",
         body: data,
         secure: true,
@@ -5665,17 +7058,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     defaultValidatePromptApiV2ValidatePromptPost: (data: PromptValidationRequest, params: RequestParams = {}) =>
-      this.request<DefaultValidatePromptApiV2ValidatePromptPostData, DefaultValidatePromptApiV2ValidatePromptPostError>(
-        {
-          path: `/api/v2/validate_prompt`,
-          method: "POST",
-          body: data,
-          secure: true,
-          type: ContentType.Json,
-          format: "json",
-          ...params,
-        },
-      ),
+      this.request<DefaultValidatePromptApiV2ValidatePromptPostData, DefaultValidatePromptApiV2ValidatePromptPostError>({
+        path: `/api/v2/validate_prompt`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description [Deprecated] Validate a non-task related generated response based on the configured default rules. Inference ID corresponds to the previously validated associated prompt’s inference ID. Must provide context if a Hallucination Rule is an enabled default rule.
@@ -5687,23 +7078,18 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    defaultValidateResponseApiV2ValidateResponseInferenceIdPost: (
-      inferenceId: string,
-      data: ResponseValidationRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData,
-        DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError
-      >({
-        path: `/api/v2/validate_response/${inferenceId}`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
+    defaultValidateResponseApiV2ValidateResponseInferenceIdPost: (inferenceId: string, data: ResponseValidationRequest, params: RequestParams = {}) =>
+      this.request<DefaultValidateResponseApiV2ValidateResponseInferenceIdPostData, DefaultValidateResponseApiV2ValidateResponseInferenceIdPostError>(
+        {
+          path: `/api/v2/validate_response/${inferenceId}`,
+          method: "POST",
+          body: data,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        }
+      ),
 
     /**
      * @description Deletes an entire agentic prompt
@@ -5714,15 +7100,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request DELETE:/api/v1/tasks/{task_id}/prompts/{prompt_name}
      * @secure
      */
-    deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (
-      promptName: string,
-      taskId: string,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData,
-        DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError
-      >({
+    deleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDelete: (promptName: string, taskId: string, params: RequestParams = {}) =>
+      this.request<DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteData, DeleteAgenticPromptApiV1TasksTaskIdPromptsPromptNameDeleteError>({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
         method: "DELETE",
         secure: true,
@@ -5742,7 +7121,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptName: string,
       promptVersion: string,
       taskId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         DeleteAgenticPromptVersionApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionDeleteData,
@@ -5788,6 +7167,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Deletes an entire llm eval
+     *
+     * @tags LLMEvals
+     * @name DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete
+     * @summary Delete an llm eval
+     * @request DELETE:/api/v1/tasks/{task_id}/llm_evals/{eval_name}
+     * @secure
+     */
+    deleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDelete: (evalName: string, taskId: string, params: RequestParams = {}) =>
+      this.request<DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData, DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Delete a RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -5797,13 +7193,71 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deleteRagProviderApiV1RagProvidersProviderIdDelete: (providerId: string, params: RequestParams = {}) =>
-      this.request<
-        DeleteRagProviderApiV1RagProvidersProviderIdDeleteData,
-        DeleteRagProviderApiV1RagProvidersProviderIdDeleteError
-      >({
+      this.request<DeleteRagProviderApiV1RagProvidersProviderIdDeleteData, DeleteRagProviderApiV1RagProvidersProviderIdDeleteError>({
         path: `/api/v1/rag_providers/${providerId}`,
         method: "DELETE",
         secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a RAG search setting configuration.
+     *
+     * @tags RAG Settings
+     * @name DeleteRagSearchSetting
+     * @summary Delete Rag Search Setting
+     * @request DELETE:/api/v1/rag_search_settings/{setting_configuration_id}
+     * @secure
+     */
+    deleteRagSearchSetting: (settingConfigurationId: string, params: RequestParams = {}) =>
+      this.request<DeleteRagSearchSettingData, DeleteRagSearchSettingError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Soft delete a RAG search setting configuration version.
+     *
+     * @tags RAG Settings
+     * @name DeleteRagSearchSettingVersion
+     * @summary Delete Rag Search Setting Version
+     * @request DELETE:/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
+     * @secure
+     */
+    deleteRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
+      this.request<DeleteRagSearchSettingVersionData, DeleteRagSearchSettingVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Execute a RAG provider hybrid (keyword and vector similarity) search.
+     *
+     * @tags RAG Providers
+     * @name ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPost
+     * @summary Execute Hybrid Search
+     * @request POST:/api/v1/rag_providers/{provider_id}/hybrid_search
+     * @secure
+     */
+    executeHybridSearchApiV1RagProvidersProviderIdHybridSearchPost: (
+      providerId: string,
+      data: RagHybridSearchSettingRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostData,
+        ExecuteHybridSearchApiV1RagProvidersProviderIdHybridSearchPostError
+      >({
+        path: `/api/v1/rag_providers/${providerId}/hybrid_search`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
         ...params,
       }),
 
@@ -5819,7 +7273,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     executeKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPost: (
       providerId: string,
       data: RagKeywordSearchSettingRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostData,
@@ -5846,7 +7300,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     executeSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPost: (
       providerId: string,
       data: RagVectorSimilarityTextSearchSettingRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData,
@@ -5874,7 +7328,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptName: string,
       promptVersion: string,
       taskId: string,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         GetAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGetData,
@@ -5898,12 +7352,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getAllAgenticPromptsApiV1TasksTaskIdPromptsGet: (
       { taskId, ...query }: GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData,
-        GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError
-      >({
+      this.request<GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetData, GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetError>({
         path: `/api/v1/tasks/${taskId}/prompts`,
         method: "GET",
         query: query,
@@ -5923,13 +7374,57 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGet: (
       { promptName, taskId, ...query }: GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetData,
         GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVersionsGetError
       >({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get all llm evals for a given task with optional filtering.
+     *
+     * @tags LLMEvals
+     * @name GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet
+     * @summary Get all llm evals
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals
+     * @secure
+     */
+    getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet: ({ taskId, ...query }: GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetParams, params: RequestParams = {}) =>
+      this.request<GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetData, GetAllLlmEvalsApiV1TasksTaskIdLlmEvalsGetError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all versions of an llm eval with optional filtering.
+     *
+     * @tags LLMEvals
+     * @name GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet
+     * @summary List all versions of an llm eval
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions
+     * @secure
+     */
+    getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet: (
+      { evalName, taskId, ...query }: GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetData,
+        GetAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions`,
         method: "GET",
         query: query,
         secure: true,
@@ -5964,10 +7459,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Get Conversations
      * @request GET:/api/chat/conversations
      */
-    getConversationsApiChatConversationsGet: (
-      query: GetConversationsApiChatConversationsGetParams,
-      params: RequestParams = {},
-    ) =>
+    getConversationsApiChatConversationsGet: (query: GetConversationsApiChatConversationsGetParams, params: RequestParams = {}) =>
       this.request<GetConversationsApiChatConversationsGetData, GetConversationsApiChatConversationsGetError>({
         path: `/api/chat/conversations`,
         method: "GET",
@@ -6024,7 +7516,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGet: (
       { datasetId, versionNumber, ...query }: GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         GetDatasetVersionApiV2DatasetsDatasetIdVersionsVersionNumberGetData,
@@ -6049,12 +7541,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getDatasetVersionsApiV2DatasetsDatasetIdVersionsGet: (
       { datasetId, ...query }: GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData,
-        GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError
-      >({
+      this.request<GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetData, GetDatasetVersionsApiV2DatasetsDatasetIdVersionsGetError>({
         path: `/api/v2/datasets/${datasetId}/versions`,
         method: "GET",
         query: query,
@@ -6122,12 +7611,35 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/chat/context/{inference_id}
      */
     getInferenceDocumentContextApiChatContextInferenceIdGet: (inferenceId: string, params: RequestParams = {}) =>
-      this.request<
-        GetInferenceDocumentContextApiChatContextInferenceIdGetData,
-        GetInferenceDocumentContextApiChatContextInferenceIdGetError
-      >({
+      this.request<GetInferenceDocumentContextApiChatContextInferenceIdGetData, GetInferenceDocumentContextApiChatContextInferenceIdGetError>({
         path: `/api/chat/context/${inferenceId}`,
         method: "GET",
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get an llm eval by name and version
+     *
+     * @tags LLMEvals
+     * @name GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet
+     * @summary Get an llm eval
+     * @request GET:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+     * @secure
+     */
+    getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetData,
+        GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
+        method: "GET",
+        secure: true,
         format: "json",
         ...params,
       }),
@@ -6159,10 +7671,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/model_providers/{provider}/available_models
      * @secure
      */
-    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (
-      provider: ModelProvider,
-      params: RequestParams = {},
-    ) =>
+    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (provider: ModelProvider, params: RequestParams = {}) =>
       this.request<
         GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
         GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError
@@ -6184,15 +7693,13 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     getRagProviderApiV1RagProvidersProviderIdGet: (providerId: string, params: RequestParams = {}) =>
-      this.request<GetRagProviderApiV1RagProvidersProviderIdGetData, GetRagProviderApiV1RagProvidersProviderIdGetError>(
-        {
-          path: `/api/v1/rag_providers/${providerId}`,
-          method: "GET",
-          secure: true,
-          format: "json",
-          ...params,
-        },
-      ),
+      this.request<GetRagProviderApiV1RagProvidersProviderIdGetData, GetRagProviderApiV1RagProvidersProviderIdGetError>({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
 
     /**
      * @description Get list of RAG provider connection configurations for the task.
@@ -6205,15 +7712,48 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getRagProvidersApiV1TasksTaskIdRagProvidersGet: (
       { taskId, ...query }: GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        GetRagProvidersApiV1TasksTaskIdRagProvidersGetData,
-        GetRagProvidersApiV1TasksTaskIdRagProvidersGetError
-      >({
+      this.request<GetRagProvidersApiV1TasksTaskIdRagProvidersGetData, GetRagProvidersApiV1TasksTaskIdRagProvidersGetError>({
         path: `/api/v1/tasks/${taskId}/rag_providers`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a single RAG setting configuration.
+     *
+     * @tags RAG Settings
+     * @name GetRagSearchSetting
+     * @summary Get Rag Search Setting
+     * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}
+     * @secure
+     */
+    getRagSearchSetting: (settingConfigurationId: string, params: RequestParams = {}) =>
+      this.request<GetRagSearchSettingData, GetRagSearchSettingError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a single RAG setting configuration version.
+     *
+     * @tags RAG Settings
+     * @name GetRagSearchSettingVersion
+     * @summary Get Rag Search Setting Version
+     * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
+     * @secure
+     */
+    getRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
+      this.request<GetRagSearchSettingVersionData, GetRagSearchSettingVersionError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -6230,12 +7770,9 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     getSessionTracesApiV1TracesSessionsSessionIdGet: (
       { sessionId, ...query }: GetSessionTracesApiV1TracesSessionsSessionIdGetParams,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        GetSessionTracesApiV1TracesSessionsSessionIdGetData,
-        GetSessionTracesApiV1TracesSessionsSessionIdGetError
-      >({
+      this.request<GetSessionTracesApiV1TracesSessionsSessionIdGetData, GetSessionTracesApiV1TracesSessionsSessionIdGetError>({
         path: `/api/v1/traces/sessions/${sessionId}`,
         method: "GET",
         query: query,
@@ -6275,6 +7812,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<GetTaskApiV2TasksTaskIdGetData, GetTaskApiV2TasksTaskIdGetError>({
         path: `/api/v2/tasks/${taskId}`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get list of RAG search setting configurations for the task.
+     *
+     * @tags RAG Settings
+     * @name GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGet
+     * @summary Get Task Rag Search Settings
+     * @request GET:/api/v1/tasks/{task_id}/rag_search_settings
+     * @secure
+     */
+    getTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGet: (
+      { taskId, ...query }: GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetData,
+        GetTaskRagSearchSettingsApiV1TasksTaskIdRagSearchSettingsGetError
+      >({
+        path: `/api/v1/tasks/${taskId}/rag_search_settings`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -6326,10 +7888,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/users/{user_id}
      * @secure
      */
-    getUserDetailsApiV1TracesUsersUserIdGet: (
-      { userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams,
-      params: RequestParams = {},
-    ) =>
+    getUserDetailsApiV1TracesUsersUserIdGet: ({ userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams, params: RequestParams = {}) =>
       this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
         path: `/api/v1/traces/users/${userId}`,
         method: "GET",
@@ -6348,10 +7907,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/rag_providers/{provider_id}/collections
      * @secure
      */
-    listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet: (
-      providerId: string,
-      params: RequestParams = {},
-    ) =>
+    listRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGet: (providerId: string, params: RequestParams = {}) =>
       this.request<
         ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData,
         ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError
@@ -6372,10 +7928,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/sessions
      * @secure
      */
-    listSessionsMetadataApiV1TracesSessionsGet: (
-      query: ListSessionsMetadataApiV1TracesSessionsGetParams,
-      params: RequestParams = {},
-    ) =>
+    listSessionsMetadataApiV1TracesSessionsGet: (query: ListSessionsMetadataApiV1TracesSessionsGetParams, params: RequestParams = {}) =>
       this.request<ListSessionsMetadataApiV1TracesSessionsGetData, ListSessionsMetadataApiV1TracesSessionsGetError>({
         path: `/api/v1/traces/sessions`,
         method: "GET",
@@ -6394,10 +7947,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/spans
      * @secure
      */
-    listSpansMetadataApiV1TracesSpansGet: (
-      query: ListSpansMetadataApiV1TracesSpansGetParams,
-      params: RequestParams = {},
-    ) =>
+    listSpansMetadataApiV1TracesSpansGet: (query: ListSpansMetadataApiV1TracesSpansGetParams, params: RequestParams = {}) =>
       this.request<ListSpansMetadataApiV1TracesSpansGetData, ListSpansMetadataApiV1TracesSpansGetError>({
         path: `/api/v1/traces/spans`,
         method: "GET",
@@ -6435,10 +7985,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v1/traces/users
      * @secure
      */
-    listUsersMetadataApiV1TracesUsersGet: (
-      query: ListUsersMetadataApiV1TracesUsersGetParams,
-      params: RequestParams = {},
-    ) =>
+    listUsersMetadataApiV1TracesUsersGet: (query: ListUsersMetadataApiV1TracesUsersGetParams, params: RequestParams = {}) =>
       this.request<ListUsersMetadataApiV1TracesUsersGetData, ListUsersMetadataApiV1TracesUsersGetError>({
         path: `/api/v1/traces/users`,
         method: "GET",
@@ -6456,15 +8003,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Post Chat Feedback
      * @request POST:/api/chat/feedback/{inference_id}
      */
-    postChatFeedbackApiChatFeedbackInferenceIdPost: (
-      inferenceId: string,
-      data: FeedbackRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        PostChatFeedbackApiChatFeedbackInferenceIdPostData,
-        PostChatFeedbackApiChatFeedbackInferenceIdPostError
-      >({
+    postChatFeedbackApiChatFeedbackInferenceIdPost: (inferenceId: string, data: FeedbackRequest, params: RequestParams = {}) =>
+      this.request<PostChatFeedbackApiChatFeedbackInferenceIdPostData, PostChatFeedbackApiChatFeedbackInferenceIdPostError>({
         path: `/api/chat/feedback/${inferenceId}`,
         method: "POST",
         body: data,
@@ -6482,11 +8022,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/feedback/{inference_id}
      * @secure
      */
-    postFeedbackApiV2FeedbackInferenceIdPost: (
-      inferenceId: string,
-      data: FeedbackRequest,
-      params: RequestParams = {},
-    ) =>
+    postFeedbackApiV2FeedbackInferenceIdPost: (inferenceId: string, data: FeedbackRequest, params: RequestParams = {}) =>
       this.request<PostFeedbackApiV2FeedbackInferenceIdPostData, PostFeedbackApiV2FeedbackInferenceIdPostError>({
         path: `/api/v2/feedback/${inferenceId}`,
         method: "POST",
@@ -6525,10 +8061,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/api/v2/inferences/query
      * @secure
      */
-    queryInferencesApiV2InferencesQueryGet: (
-      query: QueryInferencesApiV2InferencesQueryGetParams,
-      params: RequestParams = {},
-    ) =>
+    queryInferencesApiV2InferencesQueryGet: (query: QueryInferencesApiV2InferencesQueryGetParams, params: RequestParams = {}) =>
       this.request<QueryInferencesApiV2InferencesQueryGetData, QueryInferencesApiV2InferencesQueryGetError>({
         path: `/api/v2/inferences/query`,
         method: "GET",
@@ -6625,7 +8158,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptVersion: string,
       taskId: string,
       data: PromptCompletionRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData,
@@ -6653,13 +8186,30 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       promptName: string,
       taskId: string,
       data: AgenticPromptBaseConfig,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
-      this.request<
-        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData,
-        SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError
-      >({
+      this.request<SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData, SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError>({
         path: `/api/v1/tasks/${taskId}/prompts/${promptName}`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Save an llm eval to the database
+     *
+     * @tags LLMEvals
+     * @name SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost
+     * @summary Save an llm eval
+     * @request POST:/api/v1/tasks/{task_id}/llm_evals/{eval_name}
+     * @secure
+     */
+    saveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePost: (evalName: string, taskId: string, data: CreateEvalRequest, params: RequestParams = {}) =>
+      this.request<SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostData, SaveLlmEvalApiV1TasksTaskIdLlmEvalsEvalNamePostError>({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}`,
         method: "POST",
         body: data,
         secure: true,
@@ -6677,11 +8227,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/rules/search
      * @secure
      */
-    searchRulesApiV2RulesSearchPost: (
-      query: SearchRulesApiV2RulesSearchPostParams,
-      data: SearchRulesRequest,
-      params: RequestParams = {},
-    ) =>
+    searchRulesApiV2RulesSearchPost: (query: SearchRulesApiV2RulesSearchPostParams, data: SearchRulesRequest, params: RequestParams = {}) =>
       this.request<SearchRulesApiV2RulesSearchPostData, SearchRulesApiV2RulesSearchPostError>({
         path: `/api/v2/rules/search`,
         method: "POST",
@@ -6702,11 +8248,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/tasks/search
      * @secure
      */
-    searchTasksApiV2TasksSearchPost: (
-      query: SearchTasksApiV2TasksSearchPostParams,
-      data: SearchTasksRequest,
-      params: RequestParams = {},
-    ) =>
+    searchTasksApiV2TasksSearchPost: (query: SearchTasksApiV2TasksSearchPostParams, data: SearchTasksRequest, params: RequestParams = {}) =>
       this.request<SearchTasksApiV2TasksSearchPostData, SearchTasksApiV2TasksSearchPostError>({
         path: `/api/v2/tasks/search`,
         method: "POST",
@@ -6728,10 +8270,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
-      this.request<
-        SetModelProviderApiV1ModelProvidersProviderDeleteData,
-        SetModelProviderApiV1ModelProvidersProviderDeleteError
-      >({
+      this.request<SetModelProviderApiV1ModelProvidersProviderDeleteData, SetModelProviderApiV1ModelProvidersProviderDeleteError>({
         path: `/api/v1/model_providers/${provider}`,
         method: "DELETE",
         secure: true,
@@ -6747,21 +8286,39 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PUT:/api/v1/model_providers/{provider}
      * @secure
      */
-    setModelProviderApiV1ModelProvidersProviderPut: (
-      provider: ModelProvider,
-      data: PutModelProviderCredentials,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        SetModelProviderApiV1ModelProvidersProviderPutData,
-        SetModelProviderApiV1ModelProvidersProviderPutError
-      >({
+    setModelProviderApiV1ModelProvidersProviderPut: (provider: ModelProvider, data: PutModelProviderCredentials, params: RequestParams = {}) =>
+      this.request<SetModelProviderApiV1ModelProvidersProviderPutData, SetModelProviderApiV1ModelProvidersProviderPutError>({
         path: `/api/v1/model_providers/${provider}`,
         method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,
         format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Deletes a specific version of an llm eval
+     *
+     * @tags LLMEvals
+     * @name SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete
+     * @summary Delete an llm eval version
+     * @request DELETE:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}
+     * @secure
+     */
+    softDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDelete: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteData,
+        SoftDeleteLlmEvalVersionApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionDeleteError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}`,
+        method: "DELETE",
+        secure: true,
         ...params,
       }),
 
@@ -6776,8 +8333,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      */
     testRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPost: (
       taskId: string,
-      data: RagProviderConfigurationRequest,
-      params: RequestParams = {},
+      data: RagProviderTestConfigurationRequest,
+      params: RequestParams = {}
     ) =>
       this.request<
         TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData,
@@ -6801,11 +8358,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/api/v2/datasets/{dataset_id}
      * @secure
      */
-    updateDatasetApiV2DatasetsDatasetIdPatch: (
-      datasetId: string,
-      data: DatasetUpdateRequest,
-      params: RequestParams = {},
-    ) =>
+    updateDatasetApiV2DatasetsDatasetIdPatch: (datasetId: string, data: DatasetUpdateRequest, params: RequestParams = {}) =>
       this.request<UpdateDatasetApiV2DatasetsDatasetIdPatchData, UpdateDatasetApiV2DatasetsDatasetIdPatchError>({
         path: `/api/v2/datasets/${datasetId}`,
         method: "PATCH",
@@ -6846,13 +8399,37 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     updateRagProviderApiV1RagProvidersProviderIdPatch: (
       providerId: string,
       data: RagProviderConfigurationUpdateRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
+    ) =>
+      this.request<UpdateRagProviderApiV1RagProvidersProviderIdPatchData, UpdateRagProviderApiV1RagProvidersProviderIdPatchError>({
+        path: `/api/v1/rag_providers/${providerId}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a single RAG search setting configuration.
+     *
+     * @tags RAG Settings
+     * @name UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatch
+     * @summary Update Rag Search Settings
+     * @request PATCH:/api/v1/rag_search_settings/{setting_configuration_id}
+     * @secure
+     */
+    updateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatch: (
+      settingConfigurationId: string,
+      data: RagSearchSettingConfigurationUpdateRequest,
+      params: RequestParams = {}
     ) =>
       this.request<
-        UpdateRagProviderApiV1RagProvidersProviderIdPatchData,
-        UpdateRagProviderApiV1RagProvidersProviderIdPatchError
+        UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchData,
+        UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchError
       >({
-        path: `/api/v1/rag_providers/${providerId}`,
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}`,
         method: "PATCH",
         body: data,
         secure: true,
@@ -6870,16 +8447,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/api/v2/tasks/{task_id}/metrics/{metric_id}
      * @secure
      */
-    updateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch: (
-      taskId: string,
-      metricId: string,
-      data: UpdateMetricRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData,
-        UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError
-      >({
+    updateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatch: (taskId: string, metricId: string, data: UpdateMetricRequest, params: RequestParams = {}) =>
+      this.request<UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData, UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError>({
         path: `/api/v2/tasks/${taskId}/metrics/${metricId}`,
         method: "PATCH",
         body: data,
@@ -6898,16 +8467,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request PATCH:/api/v2/tasks/{task_id}/rules/{rule_id}
      * @secure
      */
-    updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch: (
-      taskId: string,
-      ruleId: string,
-      data: UpdateRuleRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData,
-        UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError
-      >({
+    updateTaskRulesApiV2TasksTaskIdRulesRuleIdPatch: (taskId: string, ruleId: string, data: UpdateRuleRequest, params: RequestParams = {}) =>
+      this.request<UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData, UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError>({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "PATCH",
         body: data,
@@ -6928,7 +8489,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     uploadEmbeddingsFileApiChatFilesPost: (
       query: UploadEmbeddingsFileApiChatFilesPostParams,
       data: BodyUploadEmbeddingsFileApiChatFilesPost,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<UploadEmbeddingsFileApiChatFilesPostData, UploadEmbeddingsFileApiChatFilesPostError>({
         path: `/api/chat/files`,
@@ -6949,15 +8510,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request POST:/api/v2/tasks/{task_id}/validate_prompt
      * @secure
      */
-    validatePromptEndpointApiV2TasksTaskIdValidatePromptPost: (
-      taskId: string,
-      data: PromptValidationRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData,
-        ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError
-      >({
+    validatePromptEndpointApiV2TasksTaskIdValidatePromptPost: (taskId: string, data: PromptValidationRequest, params: RequestParams = {}) =>
+      this.request<ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostData, ValidatePromptEndpointApiV2TasksTaskIdValidatePromptPostError>({
         path: `/api/v2/tasks/${taskId}/validate_prompt`,
         method: "POST",
         body: data,
@@ -6980,7 +8534,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       inferenceId: string,
       taskId: string,
       data: ResponseValidationRequest,
-      params: RequestParams = {},
+      params: RequestParams = {}
     ) =>
       this.request<
         ValidateResponseEndpointApiV2TasksTaskIdValidateResponseInferenceIdPostData,
@@ -7026,10 +8580,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @secure
      */
     deactivateApiKeyAuthApiKeysDeactivateApiKeyIdDelete: (apiKeyId: string, params: RequestParams = {}) =>
-      this.request<
-        DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData,
-        DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError
-      >({
+      this.request<DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteData, DeactivateApiKeyAuthApiKeysDeactivateApiKeyIdDeleteError>({
         path: `/auth/api_keys/deactivate/${apiKeyId}`,
         method: "DELETE",
         secure: true,
@@ -7143,10 +8694,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @deprecated
      * @secure
      */
-    querySpansWithMetricsV1TracesMetricsGet: (
-      query: QuerySpansWithMetricsV1TracesMetricsGetParams,
-      params: RequestParams = {},
-    ) =>
+    querySpansWithMetricsV1TracesMetricsGet: (query: QuerySpansWithMetricsV1TracesMetricsGetParams, params: RequestParams = {}) =>
       this.request<QuerySpansWithMetricsV1TracesMetricsGetData, QuerySpansWithMetricsV1TracesMetricsGetError>({
         path: `/v1/traces/metrics/`,
         method: "GET",
@@ -7187,10 +8735,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @request GET:/users/permissions/check
      * @secure
      */
-    checkUserPermissionUsersPermissionsCheckGet: (
-      query: CheckUserPermissionUsersPermissionsCheckGetParams,
-      params: RequestParams = {},
-    ) =>
+    checkUserPermissionUsersPermissionsCheckGet: (query: CheckUserPermissionUsersPermissionsCheckGetParams, params: RequestParams = {}) =>
       this.request<CheckUserPermissionUsersPermissionsCheckGetData, CheckUserPermissionUsersPermissionsCheckGetError>({
         path: `/users/permissions/check`,
         method: "GET",
@@ -7246,15 +8791,8 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @summary Reset User Password
      * @request POST:/users/{user_id}/reset_password
      */
-    resetUserPasswordUsersUserIdResetPasswordPost: (
-      userId: string,
-      data: PasswordResetRequest,
-      params: RequestParams = {},
-    ) =>
-      this.request<
-        ResetUserPasswordUsersUserIdResetPasswordPostData,
-        ResetUserPasswordUsersUserIdResetPasswordPostError
-      >({
+    resetUserPasswordUsersUserIdResetPasswordPost: (userId: string, data: PasswordResetRequest, params: RequestParams = {}) =>
+      this.request<ResetUserPasswordUsersUserIdResetPasswordPostData, ResetUserPasswordUsersUserIdResetPasswordPostError>({
         path: `/users/${userId}/reset_password`,
         method: "POST",
         body: data,

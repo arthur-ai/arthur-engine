@@ -9,7 +9,7 @@ import {
   LLMToolInput,
   ToolChoice,
   ModelProvider,
-  AgenticPromptMetadataResponse,
+  LLMGetAllMetadataResponse,
   Api,
   AgenticPromptRunResponse,
   OpenAIMessageItem,
@@ -43,7 +43,7 @@ type PromptAction =
     }
   | {
       type: "updateBackendPrompts";
-      payload: { prompts: AgenticPromptMetadataResponse[] };
+      payload: { prompts: LLMGetAllMetadataResponse[] };
     }
   | {
       type: "updateProviders";
@@ -101,7 +101,7 @@ type PromptAction =
   | { type: "expandTools"; payload: { parentId: string } }
   | {
       type: "updateToolChoice";
-      payload: { promptId: string; toolChoice: string };
+      payload: { promptId: string; toolChoice: ToolChoiceEnum | ToolChoice };
     }
   | {
       type: "moveMessage";
@@ -156,7 +156,7 @@ interface PromptPlaygroundState {
   keywords: Map<string, string>;
   keywordTracker: Map<string, Array<string>>;
   prompts: PromptType[];
-  backendPrompts: AgenticPromptMetadataResponse[]; // prompt metadata
+  backendPrompts: LLMGetAllMetadataResponse[]; // prompt metadata
   enabledProviders: ModelProvider[];
   availableModels: Map<ModelProvider, string[]>; // provider -> models
 }
@@ -188,8 +188,6 @@ interface SavePromptDialogProps {
   setOpen: (open: boolean) => void;
   prompt: PromptType;
   initialName?: string;
-  onSaveSuccess?: () => void;
-  onSaveError?: (error: string) => void;
 }
 
 interface VersionSubmenuProps {

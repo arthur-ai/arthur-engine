@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.153"
+        "version": "2.1.158"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -7522,7 +7522,7 @@
                 }
             }
         },
-        "/api/v1/rag_search_settings/{setting_configuration_id}/tags/{tag}": {
+        "/api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}": {
             "get": {
                 "tags": [
                     "RAG Settings"
@@ -12030,7 +12030,7 @@
                 "properties": {
                     "versions": {
                         "items": {
-                            "$ref": "#/components/schemas/LLMEvalsVersionResponse"
+                            "$ref": "#/components/schemas/LLMVersionResponse"
                         },
                         "type": "array",
                         "title": "Versions",
@@ -12048,52 +12048,6 @@
                     "count"
                 ],
                 "title": "LLMEvalsVersionListResponse"
-            },
-            "LLMEvalsVersionResponse": {
-                "properties": {
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version number of the llm eval"
-                    },
-                    "created_at": {
-                        "type": "string",
-                        "format": "date-time",
-                        "title": "Created At",
-                        "description": "Timestamp when the llm eval version was created"
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
-                    },
-                    "model_provider": {
-                        "$ref": "#/components/schemas/ModelProvider",
-                        "description": "Model provider chosen for this version of the llm eval"
-                    },
-                    "model_name": {
-                        "type": "string",
-                        "title": "Model Name",
-                        "description": "Model name chosen for this version of the llm eval"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "version",
-                    "created_at",
-                    "deleted_at",
-                    "model_provider",
-                    "model_name"
-                ],
-                "title": "LLMEvalsVersionResponse"
             },
             "LLMGetAllMetadataListResponse": {
                 "properties": {
@@ -12367,6 +12321,52 @@
                     "function"
                 ],
                 "title": "LLMTool"
+            },
+            "LLMVersionResponse": {
+                "properties": {
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version number of the llm eval"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "title": "Created At",
+                        "description": "Timestamp when the llm eval version was created"
+                    },
+                    "deleted_at": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Deleted At",
+                        "description": "Timestamp when the llm eval version was deleted (None if not deleted)"
+                    },
+                    "model_provider": {
+                        "$ref": "#/components/schemas/ModelProvider",
+                        "description": "Model provider chosen for this version of the llm eval"
+                    },
+                    "model_name": {
+                        "type": "string",
+                        "title": "Model Name",
+                        "description": "Model name chosen for this version of the llm eval"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "version",
+                    "created_at",
+                    "deleted_at",
+                    "model_provider",
+                    "model_name"
+                ],
+                "title": "LLMVersionResponse"
             },
             "ListDatasetVersionsResponse": {
                 "properties": {
