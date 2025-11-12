@@ -16,23 +16,24 @@ export const useSyncUrlState = ({ onLevelChange }: Opts) => {
   const onHistoryChange = useEffectEvent((state: HistoryStore<TargetBase>) => {
     const current = state.current();
 
-    const searchParams = new URLSearchParams();
-    if (!current) return setSearchParams(searchParams);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete("id");
+    if (!current) return setSearchParams(newSearchParams);
 
-    searchParams.set("target", current.target.type);
-    searchParams.set("id", current.target.id.toString());
+    newSearchParams.set("id", current.target.id.toString());
+    newSearchParams.set("target", current.target.type);
 
-    setSearchParams(searchParams);
+    setSearchParams(newSearchParams);
   });
 
   const onInitialLoad = useEffectEvent(() => {
-    const target = searchParams.get("target") as Level;
+    const target = (searchParams.get("target") ?? "trace") as Level;
     const id = searchParams.get("id") as string;
 
-    if (!target || !id) return;
     if (!LEVELS.includes(target)) return;
-
     onLevelChange(target);
+
+    if (!id) return;
 
     reset([
       {

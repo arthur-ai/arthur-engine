@@ -1,20 +1,17 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Chip } from "@mui/material";
+import { Paper } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import dayjs from "dayjs";
-import { createContext, Fragment, useContext } from "react";
+import { createContext, useContext } from "react";
 
-import {
-  getSpanDetailsStrategy,
-  SpanDetailsStrategy,
-} from "../data/details-strategy";
+import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { useTracesHistoryStore } from "../stores/history.store";
 import { getSpanDuration } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
+import { Tabs } from "@/components/ui/Tabs";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
 import { formatDate } from "@/utils/formatters";
 
@@ -37,9 +34,7 @@ type Props = {
 };
 
 export const SpanDetails = ({ span, children }: Props) => {
-  const strategy = getSpanDetailsStrategy(
-    span.span_kind as OpenInferenceSpanKind
-  );
+  const strategy = getSpanDetailsStrategy(span.span_kind as OpenInferenceSpanKind);
 
   if (!strategy) {
     return null;
@@ -70,12 +65,7 @@ export const SpanDetailsHeader = () => {
 
   return (
     <Stack direction="column" spacing={1} justifyContent="center">
-      <Stack
-        direction="row"
-        spacing={2}
-        justifyContent="space-between"
-        alignItems="center"
-      >
+      <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
         <Stack
           component="button"
           direction="row"
@@ -85,11 +75,7 @@ export const SpanDetailsHeader = () => {
           className="group cursor-pointer"
           onClick={onOpenSpanDrawer}
         >
-          <Typography
-            variant="h6"
-            fontWeight={700}
-            className="group-hover:underline"
-          >
+          <Typography variant="h6" fontWeight={700} className="group-hover:underline">
             {span.span_name}
           </Typography>
         </Stack>
@@ -110,35 +96,40 @@ export const SpanDetailsHeader = () => {
 export const SpanDetailsPanels = () => {
   const { span, strategy } = useSpanDetails();
 
+  const rawStrategy = strategy?.raw;
+
   return (
     <Stack direction="column" spacing={2}>
-      {strategy?.panels.map((panel) => (
-        <Collapsible.Root
-          render={<Stack direction="column" spacing={1} />}
-          key={panel.label}
-          defaultOpen={panel.defaultOpen}
-        >
-          <Collapsible.Trigger className="group">
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{
-                color: "text.primary",
-              }}
-            >
-              <KeyboardArrowRightIcon
-                fontSize="small"
-                className="group-data-panel-open:rotate-90 transition-transform duration-75"
-              />
-              <Typography variant="body2" color="text.primary" fontWeight={700}>
-                {panel.label}
-              </Typography>
-            </Stack>
-          </Collapsible.Trigger>
-          <Collapsible.Panel>{panel.render(span)}</Collapsible.Panel>
-        </Collapsible.Root>
-      ))}
+      <Tabs.Root defaultValue="formatted">
+        <Tabs.List>
+          <Tabs.Tab value="formatted">Formatted</Tabs.Tab>
+          <Tabs.Tab value="raw">Raw</Tabs.Tab>
+          <Tabs.Indicator />
+        </Tabs.List>
+        <Tabs.Panel value="formatted" render={<Stack direction="column" gap={1} />}>
+          {strategy?.panels.map((panel) => (
+            <Collapsible.Root render={<Stack direction="column" spacing={1} />} key={panel.label} defaultOpen={panel.defaultOpen}>
+              <Collapsible.Trigger className="group">
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{
+                    color: "text.primary",
+                  }}
+                >
+                  <KeyboardArrowRightIcon fontSize="small" className="group-data-panel-open:rotate-90 transition-transform duration-75" />
+                  <Typography variant="body2" color="text.primary" fontWeight={700}>
+                    {panel.label}
+                  </Typography>
+                </Stack>
+              </Collapsible.Trigger>
+              <Collapsible.Panel>{panel.render(span)}</Collapsible.Panel>
+            </Collapsible.Root>
+          ))}
+        </Tabs.Panel>
+        <Tabs.Panel value="raw">{rawStrategy?.render(span)}</Tabs.Panel>
+      </Tabs.Root>
     </Stack>
   );
 };
@@ -147,9 +138,11 @@ export const SpanDetailsWidgets = () => {
   const { span, strategy } = useSpanDetails();
 
   return (
-    <Stack direction="row" gap={1} flexWrap="wrap">
+    <Stack direction="row" gap={1} flexWrap="wrap" alignItems="flex-start">
       {strategy.widgets.map((widget, index) => (
-        <Fragment key={index}>{widget.render(span)}</Fragment>
+        <Paper key={index} variant="outlined" sx={{ px: 1, py: 0.5 }}>
+          {widget.render(span)}
+        </Paper>
       ))}
     </Stack>
   );

@@ -1,6 +1,8 @@
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
+import { TokenCostTooltip, TokenCountTooltip } from "./common";
+
 import { CopyableChip } from "@/components/common";
 import { SessionMetadataResponse } from "@/lib/api-client/api-client";
 import { formatDate } from "@/utils/formatters";
@@ -29,6 +31,28 @@ export const sessionLevelColumns = [
     header: "Span Count",
     cell: ({ getValue }) => `${getValue()} spans`,
   }),
+  columnHelper.display({
+    id: "token-count",
+    header: "Token Count",
+    cell: ({ row }) => {
+      const { total_token_count = 0, prompt_token_count = 0, completion_token_count = 0 } = row.original;
+
+      if (!total_token_count) return "-";
+
+      return <TokenCountTooltip prompt={prompt_token_count ?? 0} completion={completion_token_count ?? 0} total={total_token_count} />;
+    },
+  }),
+  columnHelper.display({
+    id: "token-cost",
+    header: "Token Cost",
+    cell: ({ row }) => {
+      const { total_token_cost = 0, prompt_token_cost = 0, completion_token_cost = 0 } = row.original;
+
+      if (!total_token_cost) return "-";
+
+      return <TokenCostTooltip prompt={prompt_token_cost ?? 0} completion={completion_token_cost ?? 0} total={total_token_cost} />;
+    },
+  }),
   columnHelper.accessor("earliest_start_time", {
     header: "Earliest Start Time",
     cell: ({ getValue }) => formatDate(getValue()),
@@ -44,10 +68,7 @@ export const sessionLevelColumns = [
       return (
         <Tooltip title={label}>
           <span>
-            <CopyableChip
-              label={label ?? ""}
-              sx={{ fontFamily: "monospace" }}
-            />
+            <CopyableChip label={label ?? ""} sx={{ fontFamily: "monospace" }} />
           </span>
         </Tooltip>
       );

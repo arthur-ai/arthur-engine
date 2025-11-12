@@ -1,15 +1,15 @@
+import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Accordion } from "@base-ui-components/react/accordion";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { cloneElement } from "react";
 
 import { useSelectionStore } from "../../stores/selection.store";
-import { getSpanDuration, getSpanIcon, getSpanType } from "../../utils/spans";
+import { getSpanDuration, getSpanType } from "../../utils/spans";
 
+import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { cn } from "@/utils/cn";
 
 type Props = {
   level?: number;
@@ -17,11 +17,7 @@ type Props = {
   ancestors?: Set<string>;
 };
 
-export const SpanTree = ({
-  level = 0,
-  spans,
-  ancestors = new Set(),
-}: Props) => {
+export const SpanTree = ({ level = 0, spans, ancestors = new Set() }: Props) => {
   const selectedSpanId = useSelectionStore((state) => state.selection.span);
   const select = useSelectionStore((state) => state.select);
 
@@ -46,11 +42,7 @@ export const SpanTree = ({
               <Box className="h-(--accordion-panel-height) overflow-hidden text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b" />
             }
           >
-            <SpanTree
-              spans={span.children ?? []}
-              level={level + 1}
-              ancestors={new Set(ancestors).add(span.span_id)}
-            />
+            <SpanTree spans={span.children ?? []} level={level + 1} ancestors={new Set(ancestors).add(span.span_id)} />
           </Accordion.Panel>
         </Accordion.Item>
       ))}
@@ -58,23 +50,13 @@ export const SpanTree = ({
   );
 };
 
-const SpanTreeItem = ({
-  span,
-  level,
-}: {
-  span: NestedSpanWithMetricsResponse;
-  level: number;
-}) => {
+const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; level: number }) => {
   const selectedSpanId = useSelectionStore((state) => state.selection.span);
 
   const isSelected = span.span_id === selectedSpanId;
   const hasChildren = span.children && span.children.length > 0;
 
-  const icon = cloneElement(getSpanIcon(span), {
-    sx: {
-      fontSize: 16,
-    },
-  });
+  const chip = <TypeChip type={getSpanType(span) ?? OpenInferenceSpanKind.AGENT} active={isSelected} />;
 
   return (
     <Accordion.Header
@@ -101,8 +83,7 @@ const SpanTreeItem = ({
           color="inherit"
           sx={{
             outline: "none",
-            visibility:
-              span.children && span.children.length > 0 ? "visible" : "hidden",
+            visibility: span.children && span.children.length > 0 ? "visible" : "hidden",
           }}
           fontSize="small"
           className="group-data-panel-open:rotate-90"
@@ -118,15 +99,7 @@ const SpanTreeItem = ({
           pr: 1,
         }}
       >
-        {icon && (
-          <div
-            className={cn(
-              "flex items-center justify-center p-1 border border-gray-300 rounded-full"
-            )}
-          >
-            {icon}
-          </div>
-        )}
+        {chip}
         <Stack direction="column" alignItems="flex-start" gap={0} ml={1}>
           <Typography variant="body2" fontWeight={500} fontSize={12}>
             {span.span_name}
@@ -134,9 +107,6 @@ const SpanTreeItem = ({
           <Stack direction="row" alignItems="center" gap={1}>
             <Typography variant="caption" color="inherit" fontSize={10}>
               {getSpanDuration(span)}ms
-            </Typography>
-            <Typography variant="caption" color="inherit" fontSize={10}>
-              {getSpanType(span)}
             </Typography>
           </Stack>
         </Stack>

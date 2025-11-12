@@ -1,13 +1,14 @@
-import { TraceResponse } from "@/lib/api";
-import { getMessages, getOutputMessages, tryFormatJson } from "@/utils/llm";
 import { Box, Paper, Stack, Typography } from "@mui/material";
-import { flattenSpans, getSpanInput, getSpanOutput } from "../../utils/spans";
-import { Tabs } from "@/components/ui/Tabs";
-import { Highlight } from "@/components/common/Highlight";
+import { green } from "@mui/material/colors";
+
 import { useTracesHistoryStore } from "../../stores/history.store";
-import dayjs from "dayjs";
+import { getSpanInput, getSpanOutput } from "../../utils/spans";
+
+import { Highlight } from "@/components/common/Highlight";
+import { Tabs } from "@/components/ui/Tabs";
+import { TraceResponse } from "@/lib/api";
 import { formatDate } from "@/utils/formatters";
-import { TraceDrawerContent } from "../TraceDrawerContent";
+import { tryFormatJson } from "@/utils/llm";
 
 type Props = {
   trace: TraceResponse;
@@ -26,10 +27,10 @@ export const TraceRenderer = ({ trace }: Props) => {
     });
   }
 
-  const { children: _, ...rootSpan } = root;
+  const { ...rootSpan } = root;
 
   return (
-    <Paper variant="outlined" className="grid grid-cols-2">
+    <Paper variant="outlined" className="grid grid-cols-[1fr_max-content]">
       <Tabs.Root defaultValue="formatted">
         <Tabs.List>
           <Tabs.Tab value="formatted">Formatted</Tabs.Tab>
@@ -48,18 +49,9 @@ export const TraceRenderer = ({ trace }: Props) => {
       </Tabs.Root>
 
       <Box className="bg-gray-100 border-l p-2" sx={{ borderColor: "divider" }}>
-        <Stack gap={1} alignItems="flex-start">
-          <Stack
-            component="button"
-            color="primary.main"
-            className="group cursor-pointer"
-            onClick={onOpenTraceDrawer}
-          >
-            <Typography
-              variant="body2"
-              fontWeight={700}
-              className="group-hover:underline"
-            >
+        <Stack gap={1} alignItems="flex-start" className="sticky top-2">
+          <Stack component="button" color="primary.main" className="group cursor-pointer" onClick={onOpenTraceDrawer}>
+            <Typography variant="body2" fontWeight={700} className="group-hover:underline">
               Trace: {rootSpan.span_name} ({trace.trace_id})
             </Typography>
           </Stack>
@@ -88,24 +80,16 @@ const FormattedTrace = ({ trace }: { trace: TraceResponse }) => {
   );
 };
 
-const MessageBubble = ({
-  label,
-  content,
-  align,
-}: {
-  label: string;
-  content: string;
-  align: "left" | "right";
-}) => {
+const MessageBubble = ({ label, content, align }: { label: string; content: string; align: "left" | "right" }) => {
   return (
     <Stack
       component={Paper}
       variant="outlined"
-      sx={{ p: 1, maxWidth: "75%" }}
+      sx={{ p: 1, maxWidth: "75%", backgroundColor: align === "left" ? green[50] : undefined }}
       alignSelf={align === "left" ? "flex-start" : "flex-end"}
       gap={1}
     >
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color={align === "left" ? "text.primary" : "text.secondary"} textAlign={align}>
         {label}
       </Typography>
       <Highlight code={tryFormatJson(content)} language="json" />

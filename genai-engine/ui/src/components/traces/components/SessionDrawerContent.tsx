@@ -1,15 +1,16 @@
-import { CopyableChip } from "@/components/common";
+import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
+import { Stack, Typography } from "@mui/material";
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useEffect, useEffectEvent } from "react";
+
+import { getSessionTotals } from "../utils/sessions";
+
+import { TraceRenderer } from "./session/TraceRenderer";
+
 import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { getSession } from "@/services/tracing";
-import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { Suspense, useEffect } from "react";
-import { TraceContentSkeleton, TraceDrawerContent } from "./TraceDrawerContent";
-import { TraceRenderer } from "./session/TraceRenderer";
-import { getSessionTotals } from "../utils/sessions";
-import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
-import { TokenCountWidget } from "./widgets/TokenCount";
+import { TokenCountTooltip } from "../data/common";
 
 type Props = {
   id: string;
@@ -20,14 +21,19 @@ export const SessionDrawerContent = ({ id }: Props) => {
   const queryClient = useQueryClient();
 
   const { data: session } = useSuspenseQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: queryKeys.sessions.byId(id),
     queryFn: () => getSession(api, { sessionId: id }),
   });
 
-  useEffect(() => {
+  const initOnTraces = useEffectEvent(() => {
     session.traces.forEach((trace) => {
       queryClient.setQueryData(queryKeys.traces.byId(trace.trace_id), trace);
     });
+  });
+
+  useEffect(() => {
+    initOnTraces();
   }, [session.traces]);
 
   const totals = getSessionTotals(session);
@@ -57,14 +63,10 @@ export const SessionDrawerContent = ({ id }: Props) => {
       </Stack>
 
       <Stack gap={2} sx={{ p: 4 }}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <TokenCountWidget
-            input={totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]}
-            output={totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]}
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <TokenCountTooltip
+            prompt={totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT]}
+            completion={totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]}
             total={totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL]}
           />
         </Stack>

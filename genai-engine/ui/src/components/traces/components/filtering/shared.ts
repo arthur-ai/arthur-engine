@@ -4,6 +4,7 @@ import z from "zod";
 import { Operator, Operators } from "./types";
 
 type Config = {
+  id: string;
   name: string;
   operator: Operator | "";
   value: string | string[];

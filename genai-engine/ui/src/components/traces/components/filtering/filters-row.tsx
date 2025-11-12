@@ -1,8 +1,9 @@
 import { ScrollArea } from "@base-ui-components/react/scroll-area";
-import { Close, FilterList } from "@mui/icons-material";
-import { Button, IconButton, Paper, Stack, TextField } from "@mui/material";
+import { Close, Search } from "@mui/icons-material";
+import { Button, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useMemo, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 import { useFilterStore } from "../../stores/filter.store";
 
@@ -18,45 +19,33 @@ import { NumberField } from "@/components/common/form/NumberField";
 
 const ROW_SCROLL_OFFSET = 100;
 
-type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> =
-  Field extends DynamicEnumField<infer Arg> ? Arg : never;
+type InferDynamicEnumArg<Field extends DynamicEnumField<unknown>> = Field extends DynamicEnumField<infer Arg> ? Arg : never;
 
-type ExtractFieldsByType<
-  Fields extends Field[],
-  Type extends Field["type"]
-> = Extract<Fields[number], { type: Type }>;
+type ExtractFieldsByType<Fields extends Field[], Type extends Field["type"]> = Extract<Fields[number], { type: Type }>;
 
 type DynamicEnumArgMap<
   Fields extends Field[],
-  Dynamic extends ExtractFieldsByType<
-    Fields,
-    "dynamic_enum"
-  > = ExtractFieldsByType<Fields, "dynamic_enum">
+  Dynamic extends ExtractFieldsByType<Fields, "dynamic_enum"> = ExtractFieldsByType<Fields, "dynamic_enum">,
 > = {
   [K in Dynamic["name"]]: InferDynamicEnumArg<Dynamic>;
 };
 
-export function createFilterRow<TFields extends Field[]>(
-  fields: TFields,
-  dynamicEnumArgMap: DynamicEnumArgMap<TFields>
-) {
+export function createFilterRow<TFields extends Field[]>(fields: TFields, dynamicEnumArgMap: DynamicEnumArgMap<TFields>) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
-    const filterStore = useFilterStore((state) => state.setFilters);
+    const setFilters = useFilterStore((state) => state.setFilters);
 
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        filterStore(value.config as IncomingFilter[]);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        setFilters(value.config.map(({ id: _, ...item }) => item) as IncomingFilter[]);
       },
     });
 
     const handleClose = () => {
       if (!scrollableRef.current) return;
-      const offsetToEnd =
-        scrollableRef.current.scrollWidth -
-        scrollableRef.current.clientWidth -
-        ROW_SCROLL_OFFSET;
+      const offsetToEnd = scrollableRef.current.scrollWidth - scrollableRef.current.clientWidth - ROW_SCROLL_OFFSET;
 
       scrollableRef.current.scrollTo({ left: offsetToEnd, behavior: "smooth" });
     };
@@ -73,7 +62,7 @@ export function createFilterRow<TFields extends Field[]>(
               }}
             />
           }
-          className="grid grid-cols-[1fr_min-content] gap-2"
+          className="grid grid-cols-[1fr_max-content] gap-2"
         >
           <ScrollArea.Viewport
             ref={scrollableRef}
@@ -83,13 +72,7 @@ export function createFilterRow<TFields extends Field[]>(
               <form.Field mode="array" name="config">
                 {(field) =>
                   field.state.value.map((item, index) => (
-                    <FilterItem
-                      key={index}
-                      index={index}
-                      onRemove={() => field.removeValue(index)}
-                      onClose={handleClose}
-                      form={form}
-                    />
+                    <FilterItem key={item.id} index={index} onRemove={() => field.removeValue(index)} onClose={handleClose} form={form} />
                   ))
                 }
               </form.Field>
@@ -97,15 +80,9 @@ export function createFilterRow<TFields extends Field[]>(
               <form.Field mode="array" name="config">
                 {(field) => (
                   <input
-                    placeholder={
-                      !field.state.value.length
-                        ? `Add filters to narrow down the results...`
-                        : undefined
-                    }
+                    placeholder={!field.state.value.length ? `Add filters to narrow down the results...` : undefined}
                     className="min-w-[200px] flex-1 outline-none placeholder:text-gray-600 text-xs h-full"
-                    onFocus={() =>
-                      field.pushValue({ name: "", operator: "", value: "" })
-                    }
+                    onFocus={() => field.pushValue({ name: "", operator: "", value: "", id: uuidv4() })}
                   />
                 )}
               </form.Field>
@@ -113,15 +90,17 @@ export function createFilterRow<TFields extends Field[]>(
           </ScrollArea.Viewport>
           <form.Subscribe selector={(state) => state.canSubmit}>
             {(canSubmit) => (
-              <IconButton
+              <Button
                 type="submit"
                 disabled={!canSubmit}
+                variant="outlined"
                 sx={{
                   alignSelf: "center",
                 }}
+                startIcon={<Search />}
               >
-                <FilterList />
-              </IconButton>
+                Filter
+              </Button>
             )}
           </form.Subscribe>
         </ScrollArea.Root>
@@ -137,20 +116,12 @@ export function createFilterRow<TFields extends Field[]>(
       onClose: () => void;
     },
     render: function Render({ form, index, onRemove, onClose }) {
-      const allMetrics = useStore(form.store, (state) =>
-        state.values.config.slice(0, index)
-      );
+      const allMetrics = useStore(form.store, (state) => state.values.config.slice(0, index));
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
 
-      const operatorItems = useMemo(
-        () =>
-          getAvailableOperators(allMetrics, config.name)?.map(
-            (operator) => operator
-          ),
-        [allMetrics, config.name]
-      );
+      const operatorItems = useMemo(() => getAvailableOperators(allMetrics, config.name)?.map((operator) => operator), [allMetrics, config.name]);
 
       const stage = (() => {
         switch (true) {
@@ -182,6 +153,7 @@ export function createFilterRow<TFields extends Field[]>(
                 size="small"
                 onClose={() => {
                   field.handleBlur();
+                  onClose();
                 }}
                 sx={{
                   width: 200,
@@ -193,9 +165,7 @@ export function createFilterRow<TFields extends Field[]>(
                     },
                   },
                 }}
-                renderInput={(params) => (
-                  <TextField {...params} variant="filled" label="Field" />
-                )}
+                renderInput={(params) => <TextField {...params} variant="filled" label="Field" />}
               />
             )}
           </form.AppField>
@@ -222,10 +192,7 @@ export function createFilterRow<TFields extends Field[]>(
                     const isMultiple = value === EnumOperators.IN;
 
                     form.resetField(`config[${index}].value`);
-                    form.setFieldValue(
-                      `config[${index}].value`,
-                      isMultiple ? [] : ""
-                    );
+                    form.setFieldValue(`config[${index}].value`, isMultiple ? [] : "");
                   }}
                   size="small"
                   sx={{
@@ -237,22 +204,13 @@ export function createFilterRow<TFields extends Field[]>(
                       },
                     },
                   }}
-                  renderInput={(params) => (
-                    <TextField {...params} variant="filled" label="Operator" />
-                  )}
+                  renderInput={(params) => <TextField {...params} variant="filled" label="Operator" />}
                 />
               )}
             </form.AppField>
           )}
-          {stage >= 2 && <ValueInput form={form} index={index} />}
-          <Button
-            size="small"
-            variant="outlined"
-            color="error"
-            disableElevation
-            onClick={onRemove}
-            className="rounded-l-none!"
-          >
+          {stage >= 2 && <ValueInput form={form} index={index} onClose={onClose} />}
+          <Button size="small" variant="outlined" color="error" disableElevation onClick={onRemove} className="rounded-l-none!">
             <Close sx={{ fontSize: 16 }} />
           </Button>
         </Stack>
@@ -264,8 +222,9 @@ export function createFilterRow<TFields extends Field[]>(
     ...sharedFormOptions,
     props: {} as {
       index: number;
+      onClose: () => void;
     },
-    render: function Render({ form, index }) {
+    render: function Render({ form, index, onClose }) {
       const field = useField({ form, name: `config[${index}]` as const });
 
       const config = useStore(field.store, (state) => state.value);
@@ -285,23 +244,13 @@ export function createFilterRow<TFields extends Field[]>(
         };
       } else if (fieldConfig.type === "numeric") {
         fieldValidators = {
-          onMount: validators.numeric(
-            fieldConfig.min ?? -Infinity,
-            fieldConfig.max ?? Infinity
-          ),
-          onChange: validators.numeric(
-            fieldConfig.min ?? -Infinity,
-            fieldConfig.max ?? Infinity
-          ),
+          onMount: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
+          onChange: validators.numeric(fieldConfig.min ?? -Infinity, fieldConfig.max ?? Infinity),
         };
       }
 
       return (
-        <form.AppField
-          key={index}
-          name={`config[${index}].value` as const}
-          validators={fieldValidators}
-        >
+        <form.AppField key={index} name={`config[${index}].value` as const} validators={fieldValidators}>
           {(field) => {
             if (fieldConfig.type === "enum") {
               const multiple = config.operator === EnumOperators.IN;
@@ -309,10 +258,9 @@ export function createFilterRow<TFields extends Field[]>(
                 <field.MaterialAutocompleteField
                   disablePortal
                   options={fieldConfig.options}
-                  getOptionLabel={(option) =>
-                    fieldConfig.itemToStringLabel?.(option) ?? option
-                  }
+                  getOptionLabel={(option) => fieldConfig.itemToStringLabel?.(option) ?? option}
                   multiple={multiple}
+                  onClose={onClose}
                   size="small"
                   sx={{
                     width: multiple ? "max-content" : 200,
@@ -325,9 +273,7 @@ export function createFilterRow<TFields extends Field[]>(
                     },
                   }}
                   limitTags={1}
-                  renderInput={(params) => (
-                    <TextField {...params} variant="filled" label="Value" />
-                  )}
+                  renderInput={(params) => <TextField {...params} variant="filled" label="Value" />}
                 />
               );
             }
@@ -336,13 +282,9 @@ export function createFilterRow<TFields extends Field[]>(
               return (
                 <DynamicEnumInput
                   form={form}
-                  config={
-                    fieldConfig as Extract<
-                      TFields[number],
-                      { type: "dynamic_enum" }
-                    >
-                  }
+                  config={fieldConfig as Extract<TFields[number], { type: "dynamic_enum" }>}
                   index={index}
+                  onClose={onClose}
                 />
               );
             }
@@ -350,21 +292,16 @@ export function createFilterRow<TFields extends Field[]>(
             if (fieldConfig.type === "numeric") {
               return (
                 <field.NumberField
+                  onBlur={() => {
+                    field.handleBlur();
+                    onClose();
+                  }}
                   min={fieldConfig.min}
                   max={fieldConfig.max}
                   className=" overflow-hidden"
                 >
                   <NumberField.Group className="flex h-full">
-                    <NumberField.Input
-                      className="h-full"
-                      render={
-                        <TextField
-                          variant="filled"
-                          label="Value"
-                          size="small"
-                        />
-                      }
-                    />
+                    <NumberField.Input className="h-full" render={<TextField variant="filled" label="Value" size="small" />} />
                   </NumberField.Group>
                 </field.NumberField>
               );
@@ -380,10 +317,10 @@ export function createFilterRow<TFields extends Field[]>(
     props: {} as {
       config: Extract<TFields[number], { type: "dynamic_enum" }>;
       index: number;
+      onClose: () => void;
     },
-    render: function Render({ config, form, index }) {
-      const ctx =
-        dynamicEnumArgMap[config.name as keyof typeof dynamicEnumArgMap];
+    render: function Render({ config, form, index, onClose }) {
+      const ctx = dynamicEnumArgMap[config.name as keyof typeof dynamicEnumArgMap];
       const { data, loading } = config.useData(ctx);
 
       const field = useField({ form, name: `config[${index}]` as const });
@@ -397,6 +334,7 @@ export function createFilterRow<TFields extends Field[]>(
           {(field) => (
             <field.MaterialAutocompleteField
               disablePortal
+              onClose={onClose}
               options={data}
               multiple={multiple}
               limitTags={1}
@@ -415,9 +353,7 @@ export function createFilterRow<TFields extends Field[]>(
                   },
                 },
               }}
-              renderInput={(params) => (
-                <TextField {...params} variant="filled" label="Value" />
-              )}
+              renderInput={(params) => <TextField {...params} variant="filled" label="Value" />}
             />
           )}
         </form.AppField>
@@ -425,10 +361,7 @@ export function createFilterRow<TFields extends Field[]>(
     },
   });
 
-  const getAvailableOperators = (
-    metrics: { name: string; operator: string }[],
-    key: string
-  ): Operator[] => {
+  const getAvailableOperators = (metrics: { name: string; operator: string }[], key: string): Operator[] => {
     if (!key || key === "") return [];
 
     const field = fields.find((field) => field.name === key);
@@ -439,12 +372,7 @@ export function createFilterRow<TFields extends Field[]>(
 
     return field.operators
       .filter((operator) => !used.some((m) => m.operator === operator))
-      .filter((operator) =>
-        used.every(
-          (m) =>
-            m.operator && canBeCombinedWith(operator, m.operator as Operator)
-        )
-      );
+      .filter((operator) => used.every((m) => m.operator && canBeCombinedWith(operator, m.operator as Operator)));
   };
 
   return { FiltersRow, FilterItem, ValueInput, DynamicEnumInput };
