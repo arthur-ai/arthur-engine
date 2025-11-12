@@ -27,9 +27,11 @@ from schemas.request_schemas import (
     RagSearchSettingConfigurationNewVersionRequest,
     RagSearchSettingConfigurationRequest,
     RagSearchSettingConfigurationUpdateRequest,
+    RagSearchSettingConfigurationVersionUpdateRequest,
 )
 from schemas.response_schemas import (
     ListRagSearchSettingConfigurationsResponse,
+    ListRagSearchSettingConfigurationVersionsResponse,
     RagSearchSettingConfigurationResponse,
     RagSearchSettingConfigurationVersionResponse,
 )
@@ -272,6 +274,7 @@ def get_rag_search_setting_version(
         config = rag_providers_repo.get_rag_setting_configuration_version(
             setting_configuration_id,
             version_number,
+            include_deleted_versions=True,
         )
         return config.to_response_model()
     finally:
@@ -301,5 +304,114 @@ def delete_rag_search_setting_version(
             version_number,
         )
         return Response(status_code=HTTP_204_NO_CONTENT)
+    finally:
+        db_session.close()
+
+
+@rag_setting_routes.get(
+    "/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}",
+    description="Get a single RAG setting configuration version by tag.",
+    response_model=RagSearchSettingConfigurationVersionResponse,
+    tags=[rag_settings_router_tag],
+    operation_id="get_rag_search_setting_version_by_tag",
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_rag_search_setting_version_by_tag(
+    setting_configuration_id: UUID = Path(
+        description="ID of RAG search setting configuration.",
+    ),
+    tag: str = Path(description="Tag to fetch the version by."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationVersionResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        config = rag_providers_repo.get_rag_setting_configuration_version_by_tag(
+            setting_configuration_id,
+            tag,
+        )
+        return config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_setting_routes.patch(
+    "/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+    description="Update a single RAG search setting configuration version metadata.",
+    response_model=RagSearchSettingConfigurationVersionResponse,
+    tags=[rag_settings_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
+def update_rag_search_settings_version(
+    request: RagSearchSettingConfigurationVersionUpdateRequest,
+    setting_configuration_id: UUID = Path(
+        description="ID of the RAG search setting configuration to update.",
+    ),
+    version_number: int = Path(description="Version number of the version to update."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> RagSearchSettingConfigurationVersionResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        rag_providers_repo.update_rag_provider_setting_configuration_version(
+            setting_configuration_id,
+            version_number,
+            request,
+        )
+        config = rag_providers_repo.get_rag_setting_configuration_version(
+            setting_configuration_id,
+            version_number,
+        )
+        return config.to_response_model()
+    finally:
+        db_session.close()
+
+
+@rag_setting_routes.get(
+    "/rag_search_settings/{setting_configuration_id}/versions",
+    description="Get list of versions for the RAG search setting configuration.",
+    response_model=ListRagSearchSettingConfigurationVersionsResponse,
+    tags=[rag_settings_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_rag_search_setting_configuration_versions(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    setting_configuration_id: UUID = Path(
+        description="ID of the RAG search setting configuration to get versions for.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+    tags: Optional[list[str]] = Query(
+        default=None,
+        description="List of tags to filter for versions tagged with any matching tag.",
+    ),
+    version_numbers: Optional[list[int]] = Query(
+        default=None,
+        description="List of version numbers to filter for.",
+    ),
+) -> ListRagSearchSettingConfigurationVersionsResponse:
+    try:
+        rag_providers_repo = RagProvidersRepository(db_session)
+        # check setting config ID exists
+        rag_providers_repo.get_rag_setting_configuration(setting_configuration_id)
+
+        configs, total_count = (
+            rag_providers_repo.get_rag_setting_configuration_versions(
+                setting_configuration_id,
+                pagination_parameters,
+                tags=tags,
+                version_numbers=version_numbers,
+            )
+        )
+
+        return ListRagSearchSettingConfigurationVersionsResponse(
+            count=total_count,
+            rag_provider_setting_configurations=[
+                config.to_response_model() for config in configs
+            ],
+        )
     finally:
         db_session.close()

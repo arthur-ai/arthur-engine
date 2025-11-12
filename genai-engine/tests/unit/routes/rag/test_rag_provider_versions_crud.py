@@ -142,6 +142,48 @@ def test_rag_provider_versions_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 404
 
+    # test get version by tag
+    status_code, version_by_tag = client.get_rag_search_setting_version_by_tag(
+        setting_configuration_id=created_settings.id,
+        tag="tag1",
+    )
+    assert status_code == 200
+    assert version_by_tag.version_number == 1
+    assert "tag1" in version_by_tag.tags
+    # check all tags were still returned on the version object, not just the one filtered for
+    assert "tag2" in version_by_tag.tags
+    assert version_by_tag.settings.collection_name == collection_name
+
+    # test update version
+    updated_tags = ["updated_tag1", "updated_tag2"]
+    status_code, updated_version = client.update_rag_search_setting_version(
+        setting_configuration_id=created_settings.id,
+        version_number=1,
+        tags=updated_tags,
+    )
+    assert status_code == 200
+    assert updated_version.version_number == 1
+    assert set(updated_version.tags) == set(updated_tags)
+    # Settings should remain unchanged
+    assert updated_version.settings.collection_name == collection_name
+    assert updated_version.updated_at > updated_version.created_at
+
+    # verify updated tags persisted
+    status_code, retrieved_version = client.get_rag_search_setting_version(
+        setting_configuration_id=created_settings.id,
+        version_number=1,
+    )
+    assert status_code == 200
+    assert set(retrieved_version.tags) == set(updated_tags)
+
+    # verify all possible tags persisted and parent time was updated
+    status_code, retrieved_settings = client.get_rag_search_settings(
+        setting_configuration_id=created_settings.id,
+    )
+    assert status_code == 200
+    assert set(retrieved_settings.all_possible_tags) == set(updated_tags).union(tags_v2)
+    assert retrieved_settings.updated_at == updated_version.updated_at
+
     # test soft delete version 2
     status_code = client.delete_rag_search_setting_version(
         setting_configuration_id,
@@ -173,7 +215,8 @@ def test_rag_provider_versions_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 200
     assert version_1_after_delete.deleted_at is None
-    assert version_1_after_delete.tags == tags_v1
+    # Version 1 tags were updated, so check against updated version 1 tags
+    assert set(version_1_after_delete.tags) == set(updated_tags)
 
     # verify parent settings can still be fetched
     # max version will still be the soft-deleted version, in line with prompts functionality
@@ -182,8 +225,8 @@ def test_rag_provider_versions_crud(client: GenaiEngineTestClientBase) -> None:
     )
     assert status_code == 200
     assert updated_settings.latest_version_number == 2
-    # version 2 tags should be removed
-    assert set(updated_settings.all_possible_tags) == set(tags_v1)
+    # version 2 tags should be removed, version 1 tags were updated
+    assert set(updated_settings.all_possible_tags) == set(updated_tags)
 
     # test delete non-existing version
     status_code = client.delete_rag_search_setting_version(
