@@ -1,6 +1,6 @@
 import warnings
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Type, Union
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
@@ -28,6 +28,7 @@ from schemas.enums import (
     ReasoningEffortEnum,
     ToolChoiceEnum,
 )
+from schemas.internal_llm_schemas import LLMModelResponse
 from schemas.response_schemas import AgenticPromptRunResponse
 
 warnings.filterwarnings(
@@ -140,13 +141,16 @@ class AgenticPromptMessage(BaseModel):
         use_enum_values = True
 
 
-class PromptCompletionRequest(BaseModel):
-    """Request schema for running an agentic prompt"""
-
+class BaseCompletionRequest(BaseModel):
     variables: Optional[List[VariableTemplateValue]] = Field(
         description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
         default=[],
     )
+
+
+class PromptCompletionRequest(BaseCompletionRequest):
+    """Request schema for running an agentic prompt"""
+
     stream: Optional[bool] = Field(
         description="Whether to stream the response",
         default=False,
@@ -367,9 +371,9 @@ class AgenticPromptBaseConfig(LLMConfigSettings):
         None,
         description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
     )
-    response_format: Optional[LLMResponseFormat] = Field(
+    response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = Field(
         None,
-        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
+        description="Either a structured json_schema or a Pydantic model to enforce structured outputs.",
     )
     stream_options: Optional[StreamOptions] = Field(
         None,
@@ -409,9 +413,18 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 "version",
                 "deleted_at",
                 "messages",
+                "response_format",
             },
             exclude_none=True,
         )
+
+        if self.response_format:
+            if isinstance(self.response_format, LLMResponseFormat):
+                completion_params["response_format"] = self.response_format.model_dump(
+                    exclude_none=True,
+                )
+            else:
+                completion_params["response_format"] = self.response_format
 
         # validate all variables are passed in to the prompt if strict mode is enabled
         if completion_request.strict == True:
@@ -443,6 +456,14 @@ class AgenticPrompt(AgenticPromptBaseConfig):
 
         return model, completion_params
 
+    def run_chat_completion_raw_response(
+        self,
+        llm_client: LLMClient,
+        completion_request: PromptCompletionRequest = PromptCompletionRequest(),
+    ) -> LLMModelResponse:
+        model, completion_params = self._get_completion_params(completion_request)
+        return llm_client.completion(model=model, **completion_params)
+
     def run_chat_completion(
         self,
         llm_client: LLMClient,
@@ -453,16 +474,16 @@ class AgenticPrompt(AgenticPromptBaseConfig):
                 f"Cannot run chat completion for this prompt because it was deleted on: {self.deleted_at}",
             )
 
-        model, completion_params = self._get_completion_params(completion_request)
-        response = llm_client.completion(model=model, **completion_params)
-
-        cost = completion_cost(response)
-        msg = response.choices[0].message
+        llm_model_response = self.run_chat_completion_raw_response(
+            llm_client,
+            completion_request,
+        )
+        msg = llm_model_response.response.choices[0].message
 
         return AgenticPromptRunResponse(
             content=msg.get("content"),
             tool_calls=msg.get("tool_calls"),
-            cost=f"{cost:.6f}",
+            cost=f"{llm_model_response.cost:.6f}",
         )
 
     async def stream_chat_completion(

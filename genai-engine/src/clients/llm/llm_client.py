@@ -4,11 +4,13 @@ import time
 from typing import Any, List
 
 import litellm
-from litellm import get_model_cost_map, model_cost_map_url
+from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
+from pydantic import BaseModel
 
 from schemas.enums import ModelProvider
+from schemas.internal_llm_schemas import LLMModelResponse
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +63,24 @@ class LLMClient:
         self,
         *args: Any,
         **kwargs: Any,
-    ) -> ModelResponse | CustomStreamWrapper:
+    ) -> LLMModelResponse:
         # Delegate to the top-level function
-        response: ModelResponse | CustomStreamWrapper = litellm.completion(
-            *args,
-            api_key=self.api_key,
-            **kwargs,
-        )
-        return response
+        response = litellm.completion(*args, api_key=self.api_key, **kwargs)
+        cost = completion_cost(response)
+
+        llm_model_response = LLMModelResponse(response=response, cost=cost)
+
+        if (
+            "response_format" in kwargs
+            and isinstance(kwargs["response_format"], type)
+            and issubclass(kwargs["response_format"], BaseModel)
+            and response.choices[0].message.get("content") is not None
+        ):
+            llm_model_response.structured_output_response = kwargs[
+                "response_format"
+            ].model_validate_json(response.choices[0].message.get("content"))
+
+        return llm_model_response
 
     async def acompletion(
         self,

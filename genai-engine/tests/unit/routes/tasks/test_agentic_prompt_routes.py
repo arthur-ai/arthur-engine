@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from arthur_common.models.response_schemas import TaskResponse
 from litellm.exceptions import BadRequestError
+from litellm.types.utils import ModelResponse
 
 from src.schemas.agentic_prompt_schemas import AgenticPrompt
 from tests.clients.base_test_client import GenaiEngineTestClientBase
@@ -175,15 +176,15 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_agentic_prompt_success(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running an agentic prompt"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -226,15 +227,15 @@ def test_run_agentic_prompt_success(
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_agentic_prompt_success(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running a saved agentic prompt"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Saved prompt response",
@@ -944,15 +945,15 @@ def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_deleted_prompt_spawns_error(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running a deleted version of a saved prompt spawns an error"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -1167,8 +1168,8 @@ def test_get_prompt_versions_pagination_and_filtering(
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 @pytest.mark.parametrize(
     "messages,variables,expected_error",
     [
@@ -1209,8 +1210,8 @@ def test_get_prompt_versions_pagination_and_filtering(
     ],
 )
 def test_run_agentic_prompt_strict_mode(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
     messages,
     variables,
@@ -1221,7 +1222,7 @@ def test_run_agentic_prompt_strict_mode(
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -1284,8 +1285,6 @@ def test_run_agentic_prompt_strict_mode(
     # set strict=False
     completion_request["strict"] = False
     prompt_data["completion_request"] = completion_request
-
-    print(prompt_data)
 
     # run unsaved prompt with strict=False (should never raise an err for missing variables)
     response = client.base_client.post(

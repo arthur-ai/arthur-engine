@@ -19,13 +19,13 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
-    AgenticPromptBaseConfig,
     CompletionRequest,
     PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
+    CreateAgenticPromptRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
 )
@@ -395,7 +395,7 @@ async def run_saved_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
-    prompt_config: AgenticPromptBaseConfig,
+    prompt_config: CreateAgenticPromptRequest,
     prompt_name: str = Path(
         ...,
         description="The name of the prompt to save.",
