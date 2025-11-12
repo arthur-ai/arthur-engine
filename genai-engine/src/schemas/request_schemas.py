@@ -1,13 +1,10 @@
-from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, List, Literal, Optional, Type, Union
+from typing import Any, List, Literal, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException
 from pydantic import BaseModel, Field, SecretStr, model_validator
 from pydantic_core import Url
-from sqlalchemy import or_
-from sqlalchemy.orm import Query
 from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import (
     METADATA,
@@ -16,7 +13,6 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from db_models.base import Base
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import (
     DocumentStorageEnvironment,
@@ -495,15 +491,13 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     )
 
 
-class BaseFilterRequest(BaseModel, ABC):
-    """Abstract Pydantic base class enforcing apply_filters_to_query implementation."""
-
-    @abstractmethod
-    def apply_filters_to_query(self, query: Query, db_model: Type[Base]) -> Query:
-        """Apply filters to a SQLAlchemy query."""
+class RagSearchSettingConfigurationVersionUpdateRequest(BaseModel):
+    tags: list[str] = Field(
+        description="List of tags to update this version of the search settings configuration with.",
+    )
 
 
-class LLMGetVersionsFilterRequest(BaseFilterRequest):
+class LLMGetVersionsFilterRequest(BaseModel):
     """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
@@ -538,64 +532,8 @@ class LLMGetVersionsFilterRequest(BaseFilterRequest):
         description="Maximum version number to filter on (inclusive).",
     )
 
-    def apply_filters_to_query(
-        self,
-        query: Query,
-        db_model: Type[Base],
-    ) -> Query:
-        """
-        Apply filters to a query based on the filter request.
 
-        Parameters:
-            query: Query - the SQLAlchemy query to filter
-
-        Returns:
-            Query - the query with filters applied
-        """
-        # Filter by model provider
-        if self.model_provider:
-            query = query.filter(
-                db_model.model_provider == self.model_provider,
-            )
-
-        # Filter by model name using LIKE for partial matching
-        if self.model_name:
-            query = query.filter(
-                db_model.model_name.like(f"%{self.model_name}%"),
-            )
-
-        # Filter by start time (inclusive)
-        if self.created_after:
-            query = query.filter(
-                db_model.created_at >= self.created_after,
-            )
-
-        # Filter by end time (exclusive)
-        if self.created_before:
-            query = query.filter(
-                db_model.created_at < self.created_before,
-            )
-
-        # Filter by deleted status
-        if self.exclude_deleted == True:
-            query = query.filter(db_model.deleted_at.is_(None))
-
-        # Filter by min version
-        if self.min_version is not None:
-            query = query.filter(
-                db_model.version >= self.min_version,
-            )
-
-        # Filter by max version
-        if self.max_version is not None:
-            query = query.filter(
-                db_model.version <= self.max_version,
-            )
-
-        return query
-
-
-class LLMGetAllFilterRequest(BaseFilterRequest):
+class LLMGetAllFilterRequest(BaseModel):
     """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
     # Optional filters
@@ -619,53 +557,6 @@ class LLMGetAllFilterRequest(BaseFilterRequest):
         None,
         description="Exclusive end date for prompt creation in ISO8601 string format. Use local time (not UTC).",
     )
-
-    def apply_filters_to_query(
-        self,
-        query: Query,
-        db_model: Type[Base],
-    ) -> Query:
-        """
-        Apply filters to a query based on the filter request.
-
-        Parameters:
-            query: Query - the SQLAlchemy query to filter
-
-        Returns:
-            Query - the query with filters applied
-        """
-        # Filter by prompt names using LIKE for partial matching
-        if self.llm_asset_names:
-            name_conditions = [
-                db_model.name.like(f"%{name}%") for name in self.llm_asset_names
-            ]
-            query = query.filter(or_(*name_conditions))
-
-        # Filter by model provider
-        if self.model_provider:
-            query = query.filter(
-                db_model.model_provider == self.model_provider,
-            )
-
-        # Filter by model name using LIKE for partial matching
-        if self.model_name:
-            query = query.filter(
-                db_model.model_name.like(f"%{self.model_name}%"),
-            )
-
-        # Filter by start time (inclusive)
-        if self.created_after:
-            query = query.filter(
-                db_model.created_at >= self.created_after,
-            )
-
-        # Filter by end time (exclusive)
-        if self.created_before:
-            query = query.filter(
-                db_model.created_at < self.created_before,
-            )
-
-        return query
 
 
 class CreateEvalRequest(BaseModel):

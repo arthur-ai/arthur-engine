@@ -96,6 +96,7 @@ type GetSessionParams = {
 export async function getSession(api: Api<unknown>, { sessionId }: GetSessionParams) {
   const response = await api.api.getSessionTracesApiV1TracesSessionsSessionIdGet({
     sessionId,
+    sort: "asc",
   });
   return response.data;
 }
