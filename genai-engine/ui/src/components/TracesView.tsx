@@ -3,6 +3,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import React, { Activity, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { CommonDrawer } from "./traces/components/CommonDrawer";
 import { SessionLevel } from "./traces/components/tables/SessionLevel";
@@ -15,14 +16,16 @@ import { useSyncUrlState } from "./traces/hooks/useSyncUrlState";
 import { FilterStoreProvider } from "./traces/stores/filter.store";
 
 export const TracesView: React.FC = () => {
-  const [level, setLevel] = useState<Level>("trace");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [timeRange, setTimeRange] = useState<TimeRange>(TIME_RANGES["1 month"]);
 
-  const handleLevelChange = (_event: React.SyntheticEvent, newValue: Level) => {
-    setLevel(newValue);
+  const level = (searchParams.get("target") as Level) ?? "trace";
+
+  const handleLevelChange = (newValue: Level) => {
+    setSearchParams({ target: newValue });
   };
 
-  useSyncUrlState({ onLevelChange: setLevel });
+  useSyncUrlState({ onLevelChange: handleLevelChange });
 
   return (
     <>
@@ -37,7 +40,7 @@ export const TracesView: React.FC = () => {
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Tabs value={level} onChange={handleLevelChange}>
+          <Tabs value={level} onChange={(_, newValue) => handleLevelChange(newValue as Level)}>
             <Tab value="trace" label="Traces" />
             <Tab value="span" label="Spans" />
             <Tab value="session" label="Sessions" />

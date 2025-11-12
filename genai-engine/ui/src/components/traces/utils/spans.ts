@@ -1,49 +1,27 @@
-import {
-  OpenInferenceSpanKind,
-  SemanticConventions,
-} from "@arizeai/openinference-semantic-conventions";
+import { OpenInferenceSpanKind, SemanticConventions } from "@arizeai/openinference-semantic-conventions";
 import dayjs from "dayjs";
 
 import { SPAN_TYPE_ICONS } from "../constants";
 
-import { NestedSpanWithMetricsResponse, TraceResponse } from "@/lib/api";
+import { NestedSpanWithMetricsResponse } from "@/lib/api";
 
 export function getSpanInput(span?: NestedSpanWithMetricsResponse) {
-  return (
-    getNestedValue<string>(
-      span?.raw_data.attributes,
-      SemanticConventions.INPUT_VALUE
-    ) || null
-  );
+  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.INPUT_VALUE) || null;
 }
 
 export function getSpanOutput(span?: NestedSpanWithMetricsResponse) {
-  return (
-    getNestedValue<string>(
-      span?.raw_data.attributes,
-      SemanticConventions.OUTPUT_VALUE
-    ) || null
-  );
+  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.OUTPUT_VALUE) || null;
 }
 
 export function getSpanInputMimeType(span?: NestedSpanWithMetricsResponse) {
-  return (
-    getNestedValue<"text/plain" | "application/json">(
-      span?.raw_data.attributes,
-      SemanticConventions.INPUT_MIME_TYPE
-    ) || null
-  );
+  return getNestedValue<"text/plain" | "application/json">(span?.raw_data.attributes, SemanticConventions.INPUT_MIME_TYPE) || null;
 }
 
 export function getSpanDuration(span?: NestedSpanWithMetricsResponse) {
-  return span?.start_time && span?.end_time
-    ? dayjs(span.end_time).diff(dayjs(span.start_time), "ms")
-    : null;
+  return span?.start_time && span?.end_time ? dayjs(span.end_time).diff(dayjs(span.start_time), "ms") : null;
 }
 
-export function flattenSpans(
-  rootSpans: NestedSpanWithMetricsResponse[]
-): NestedSpanWithMetricsResponse[] {
+export function flattenSpans(rootSpans: NestedSpanWithMetricsResponse[]): NestedSpanWithMetricsResponse[] {
   const result: NestedSpanWithMetricsResponse[] = [];
 
   function flattenRecursive(spans: NestedSpanWithMetricsResponse[]) {
@@ -60,52 +38,26 @@ export function flattenSpans(
 }
 
 export function getSpanModel(span?: NestedSpanWithMetricsResponse) {
-  return (
-    getNestedValue<string>(
-      span?.raw_data.attributes,
-      SemanticConventions.LLM_MODEL_NAME
-    ) || null
-  );
-}
-
-export function getSpanCost(span?: NestedSpanWithMetricsResponse) {
-  return (
-    Number(
-      getNestedValue<number>(
-        span?.raw_data.attributes,
-        SemanticConventions.LLM_COST
-      )
-    ) || 0
-  );
+  return getNestedValue<string>(span?.raw_data.attributes, SemanticConventions.LLM_MODEL_NAME) || null;
 }
 
 export function getSpanType(span?: NestedSpanWithMetricsResponse) {
-  return getNestedValue<OpenInferenceSpanKind>(
-    span?.raw_data.attributes,
-    SemanticConventions.OPENINFERENCE_SPAN_KIND
-  );
+  return getNestedValue<OpenInferenceSpanKind>(span?.raw_data.attributes, SemanticConventions.OPENINFERENCE_SPAN_KIND);
 }
 
 export function getSpanIcon(span?: NestedSpanWithMetricsResponse) {
   const type = getSpanType(span) ?? OpenInferenceSpanKind.AGENT;
 
-  const icon =
-    SPAN_TYPE_ICONS[type] ?? SPAN_TYPE_ICONS[OpenInferenceSpanKind.AGENT];
+  const icon = SPAN_TYPE_ICONS[type] ?? SPAN_TYPE_ICONS[OpenInferenceSpanKind.AGENT];
 
   return icon;
 }
 
-export function isSpanOfType(
-  span: NestedSpanWithMetricsResponse,
-  type: OpenInferenceSpanKind
-) {
+export function isSpanOfType(span: NestedSpanWithMetricsResponse, type: OpenInferenceSpanKind) {
   return getSpanType(span) === type;
 }
 
-export function getNestedValue<Return>(
-  obj: unknown,
-  path: string
-): Return | undefined {
+export function getNestedValue<Return>(obj: unknown, path: string): Return | undefined {
   if (typeof obj !== "object" || obj === null) return undefined;
 
   const keys = path.split(".");
