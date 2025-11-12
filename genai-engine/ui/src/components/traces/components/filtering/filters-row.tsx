@@ -3,6 +3,7 @@ import { Close, Search } from "@mui/icons-material";
 import { Button, Paper, Stack, TextField } from "@mui/material";
 import { useField, useStore } from "@tanstack/react-form";
 import { useMemo, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 import { useFilterStore } from "../../stores/filter.store";
 
@@ -32,12 +33,13 @@ type DynamicEnumArgMap<
 export function createFilterRow<TFields extends Field[]>(fields: TFields, dynamicEnumArgMap: DynamicEnumArgMap<TFields>) {
   const FiltersRow = () => {
     const scrollableRef = useRef<HTMLDivElement>(null);
-    const filterStore = useFilterStore((state) => state.setFilters);
+    const setFilters = useFilterStore((state) => state.setFilters);
 
     const form = useAppForm({
       ...sharedFormOptions,
       onSubmit: async ({ value }) => {
-        filterStore(value.config as IncomingFilter[]);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        setFilters(value.config.map(({ id: _, ...item }) => item) as IncomingFilter[]);
       },
     });
 
@@ -70,7 +72,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
               <form.Field mode="array" name="config">
                 {(field) =>
                   field.state.value.map((item, index) => (
-                    <FilterItem key={index} index={index} onRemove={() => field.removeValue(index)} onClose={handleClose} form={form} />
+                    <FilterItem key={item.id} index={index} onRemove={() => field.removeValue(index)} onClose={handleClose} form={form} />
                   ))
                 }
               </form.Field>
@@ -80,7 +82,7 @@ export function createFilterRow<TFields extends Field[]>(fields: TFields, dynami
                   <input
                     placeholder={!field.state.value.length ? `Add filters to narrow down the results...` : undefined}
                     className="min-w-[200px] flex-1 outline-none placeholder:text-gray-600 text-xs h-full"
-                    onFocus={() => field.pushValue({ name: "", operator: "", value: "" })}
+                    onFocus={() => field.pushValue({ name: "", operator: "", value: "", id: uuidv4() })}
                   />
                 )}
               </form.Field>

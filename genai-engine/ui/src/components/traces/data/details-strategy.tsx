@@ -157,7 +157,7 @@ const spanDetailsStrategy = [
       },
       {
         render: (span: NestedSpanWithMetricsResponse) => {
-          const cost = getTokens(span);
+          const tokens = getTokens(span);
 
           const na = (
             <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
@@ -165,9 +165,9 @@ const spanDetailsStrategy = [
             </Typography>
           );
 
-          if (!cost) return na;
+          if (!tokens) return na;
 
-          const { input, output, total } = cost;
+          const { input, output, total } = tokens;
 
           if (!total) return na;
 
