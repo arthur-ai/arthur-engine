@@ -1,7 +1,9 @@
-import { SessionTracesResponse } from "@/lib/api-client/api-client";
-import { flattenSpans } from "./spans";
 import { SemanticConventions } from "@arizeai/openinference-semantic-conventions";
-import { getInputTokens, getOutputTokens, getTotalTokens } from "@/utils/llm";
+
+import { flattenSpans } from "./spans";
+
+import { SessionTracesResponse } from "@/lib/api-client/api-client";
+import { getTokens } from "@/utils/llm";
 
 export function getSessionTotals(session: SessionTracesResponse) {
   const traces = session.traces;
@@ -14,10 +16,11 @@ export function getSessionTotals(session: SessionTracesResponse) {
   };
 
   for (const span of spans) {
-    totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL] += getTotalTokens(span);
-    totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT] += getInputTokens(span);
-    totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION] +=
-      getOutputTokens(span);
+    const tokens = getTokens(span);
+
+    totals[SemanticConventions.LLM_TOKEN_COUNT_TOTAL] += tokens.total ?? 0;
+    totals[SemanticConventions.LLM_TOKEN_COUNT_PROMPT] += tokens.input ?? 0;
+    totals[SemanticConventions.LLM_TOKEN_COUNT_COMPLETION] += tokens.output ?? 0;
   }
 
   return totals;

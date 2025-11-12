@@ -64,7 +64,7 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
     onFieldChange({
       value: isPrimitive(value) ? String(value) : JSON.stringify(value),
       name,
-      path: isPrimitive(value) ? `${selectedSpan.span_name}.${fullPath}` : fullPath,
+      path: `${selectedSpan.span_name}.${fullPath}`,
     });
   };
 
