@@ -1,3 +1,8 @@
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+
+dayjs.extend(duration);
+
 const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -18,5 +23,10 @@ export function formatDate(date: string | Date) {
 }
 
 export function formatCurrency(amount: number) {
+  if (amount < 0.00001) return `< ${currencyFormatter.format(0.00001)}`;
   return currencyFormatter.format(amount);
+}
+
+export function formatDuration(duration: number) {
+  return dayjs.duration(duration).format("HH:mm:ss");
 }
