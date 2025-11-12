@@ -3,10 +3,10 @@ import { createColumnHelper } from "@tanstack/react-table";
 
 import { CopyableChip } from "../../common";
 
-import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
+import { DurationCell, TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { TraceMetadataResponse } from "@/lib/api-client/api-client";
-import { formatDate, formatDuration } from "@/utils/formatters";
+import { formatDate } from "@/utils/formatters";
 
 const columnHelper = createColumnHelper<TraceMetadataResponse>();
 
@@ -79,8 +79,8 @@ export const columns = [
     sortingFn: "datetime",
   }),
   columnHelper.accessor("duration_ms", {
-    header: "Duration",
-    cell: ({ getValue }) => formatDuration(getValue()),
+    header: "Latency",
+    cell: ({ getValue }) => <DurationCell duration={getValue()} />,
   }),
   columnHelper.accessor("session_id", {
     header: "Session ID",

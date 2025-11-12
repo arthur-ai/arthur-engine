@@ -1,8 +1,9 @@
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOutlined";
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, formatDuration } from "@/utils/formatters";
 
 type TokenCountProps = {
   prompt?: number;
@@ -56,4 +57,15 @@ export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) 
 
 export const TruncatedText = ({ text }: { text: string }) => {
   return <span className="truncate p-2 bg-gray-100 rounded-md">{text}</span>;
+};
+
+export const DurationCell = ({ duration }: { duration: number }) => {
+  return (
+    <Stack gap={0.5} direction="row" alignItems="center">
+      <AccessTimeOutlinedIcon sx={{ fontSize: 16 }} />
+      <Typography variant="body2" color="text.primary" fontWeight={500} className="select-none leading-none">
+        {formatDuration(duration)}
+      </Typography>
+    </Stack>
+  );
 };

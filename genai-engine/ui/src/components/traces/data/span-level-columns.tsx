@@ -2,6 +2,8 @@ import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventio
 import { Tooltip } from "@mui/material";
 import { createColumnHelper } from "@tanstack/react-table";
 
+import { isValidStatusCode, StatusCode } from "../components/StatusCode";
+
 import { TokenCostTooltip, TokenCountTooltip, TruncatedText } from "./common";
 
 import { CopyableChip } from "@/components/common";
@@ -12,26 +14,22 @@ import { formatDate, formatDuration } from "@/utils/formatters";
 const columnHelper = createColumnHelper<SpanMetadataResponse>();
 
 export const spanLevelColumns = [
-  columnHelper.accessor("span_id", {
-    header: "Span ID",
+  columnHelper.accessor("span_kind", {
+    header: "Span Kind",
+    cell: ({ getValue }) => <TypeChip type={(getValue() as OpenInferenceSpanKind) ?? OpenInferenceSpanKind.AGENT} />,
+    size: 80,
+  }),
+  columnHelper.accessor("status_code", {
+    header: "Status",
     cell: ({ getValue }) => {
-      const label = getValue();
-      return (
-        <Tooltip title={label}>
-          <span>
-            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
-          </span>
-        </Tooltip>
-      );
+      const statusCode = getValue();
+      return <StatusCode statusCode={isValidStatusCode(statusCode) ? statusCode : "Unset"} />;
     },
+    size: 20,
   }),
   columnHelper.accessor("span_name", {
     header: "Span Name",
     cell: ({ getValue }) => getValue(),
-  }),
-  columnHelper.accessor("span_kind", {
-    header: "Span Kind",
-    cell: ({ getValue }) => <TypeChip type={(getValue() as OpenInferenceSpanKind) ?? OpenInferenceSpanKind.AGENT} />,
   }),
   columnHelper.accessor("input_content", {
     header: "Input Content",
@@ -73,12 +71,26 @@ export const spanLevelColumns = [
       return <TokenCostTooltip prompt={prompt_token_cost ?? 0} completion={completion_token_cost ?? 0} total={total_token_cost} />;
     },
   }),
+  columnHelper.accessor("span_id", {
+    header: "Span ID",
+    cell: ({ getValue }) => {
+      const label = getValue();
+      return (
+        <Tooltip title={label}>
+          <span>
+            <CopyableChip label={label} sx={{ fontFamily: "monospace" }} />
+          </span>
+        </Tooltip>
+      );
+    },
+  }),
+
   columnHelper.accessor("start_time", {
     header: "Start Time",
     cell: ({ getValue }) => formatDate(getValue()),
   }),
   columnHelper.accessor("duration_ms", {
-    header: "Duration",
+    header: "Latency",
     cell: ({ getValue }) => formatDuration(getValue()),
   }),
   columnHelper.accessor("trace_id", {
