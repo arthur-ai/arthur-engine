@@ -583,19 +583,3 @@ class AgenticPrompt(AgenticPromptBaseConfig):
             **base_fields,
             config=config or None,
         )
-
-
-class CompletionRequest(AgenticPromptBaseConfig):
-    """Request schema for running an unsaved agentic prompt"""
-
-    completion_request: PromptCompletionRequest = Field(
-        default_factory=PromptCompletionRequest,
-        description="Run configuration for the unsaved prompt",
-    )
-
-    def to_prompt_and_request(self) -> Tuple[AgenticPrompt, PromptCompletionRequest]:
-        prompt = AgenticPrompt(
-            name="test_unsaved_prompt",
-            **self.model_dump(exclude={"completion_request"}),
-        )
-        return prompt, self.completion_request

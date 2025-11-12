@@ -18,6 +18,7 @@ from schemas.agentic_prompt_schemas import (
     LLMConfigSettings,
     LLMResponseFormat,
     LLMTool,
+    PromptCompletionRequest,
     StreamOptions,
     ToolChoice,
     ToolChoiceEnum,
@@ -621,3 +622,12 @@ class CreateAgenticPromptRequest(LLMConfigSettings):
 
     class Config:
         use_enum_values = True
+
+
+class CompletionRequest(CreateAgenticPromptRequest):
+    """Request schema for running an unsaved agentic prompt"""
+
+    completion_request: PromptCompletionRequest = Field(
+        default_factory=PromptCompletionRequest,
+        description="Run configuration for the unsaved prompt",
+    )

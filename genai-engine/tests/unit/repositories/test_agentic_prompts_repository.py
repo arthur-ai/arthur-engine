@@ -17,7 +17,6 @@ from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptMessage,
-    CompletionRequest,
     LLMResponseFormat,
     LLMResponseSchema,
     PromptCompletionRequest,
@@ -28,6 +27,7 @@ from schemas.agentic_prompt_schemas import (
 from schemas.common_schemas import JsonSchema
 from schemas.enums import MessageRole, ModelProvider
 from schemas.request_schemas import (
+    CompletionRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
 )
@@ -158,7 +158,9 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    prompt, request = sample_unsaved_run_config.to_prompt_and_request()
+    prompt, request = AgenticPromptRepository.to_prompt_and_request(
+        sample_unsaved_run_config,
+    )
     result = prompt.run_chat_completion(mock_llm_client, request)
 
     assert isinstance(result, AgenticPromptRunResponse)
@@ -972,7 +974,7 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost.return_value = 0.000123
 
     # Run the unsaved prompt
-    prompt, request = completion_request.to_prompt_and_request()
+    prompt, request = AgenticPromptRepository.to_prompt_and_request(completion_request)
     result = prompt.run_chat_completion(mock_llm_client, request)
     call_args = mock_completion.call_args[1]
 
@@ -1493,7 +1495,9 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
     task_id = "test_task_id"
     prompt_name = "test_prompt"
 
-    full_prompt, request = sample_unsaved_run_config.to_prompt_and_request()
+    full_prompt, request = AgenticPromptRepository.to_prompt_and_request(
+        sample_unsaved_run_config,
+    )
     full_prompt.response_format = create_model(
         "GetWeatherResponse",
         city=(str, Field(..., description="The city to get the weather for.")),
