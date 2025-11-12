@@ -74,7 +74,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   return (
     <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
-        <div className="flex justify-between items-center gap-1 mb-2 flex-shrink-0">
+        <div className="flex justify-between items-center gap-1 mb-2 shrink-0">
           <div className="flex justify-start items-center gap-1">
             {prompt.tools.length > 0 ? (
               <Badge badgeContent={prompt.tools.length} color="primary">
@@ -94,16 +94,16 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
               Format Response
             </Button>
           </div>
-          <div className="flex justify-end items-center gap-1 flex-shrink-0">
+          <div className="flex justify-end items-center gap-1 shrink-0">
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
         </div>
-        <div className="min-w-[300px] flex-shrink-0">
+        <div className="min-w-[300px] shrink-0">
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">
           <div
-            className="flex-shrink-0"
+            className="shrink-0"
             style={{
               flexBasis: `${messagesHeightRatio * 100}%`,
               minHeight: "30%",
@@ -116,7 +116,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
           </div>
           <ResizableSplitter onResize={handleResize} minTopRatio={0.3} minBottomRatio={0.3} />
           <div
-            className="flex-shrink-0"
+            className="shrink-0"
             style={{
               flexBasis: `${(1 - messagesHeightRatio) * 100}%`,
               minHeight: "30%",

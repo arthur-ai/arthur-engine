@@ -207,7 +207,7 @@ const PromptsPlayground = () => {
             },
           }}
         >
-          <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 flex-shrink-0">
+          <Container component="div" maxWidth={false} disableGutters className="p-2 bg-gray-300 shrink-0">
             <Stack direction="row" justifyContent="flex-end" alignItems="center" spacing={2}>
               <Button variant="contained" size="small" onClick={handleAddPrompt} startIcon={<AddIcon />}>
                 Add Prompt
@@ -228,14 +228,13 @@ const PromptsPlayground = () => {
           }}
         >
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
-            <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
+            <Stack direction="row" spacing={1} sx={{ height: "100%" }}>
               {state.prompts.map((prompt) => (
                 <Box
                   key={prompt.id}
                   className="flex-1 h-full"
                   sx={{
-                    minWidth: 750,
-                    flexShrink: 0,
+                    minWidth: 600,
                   }}
                 >
                   <PromptComponent prompt={prompt} />
