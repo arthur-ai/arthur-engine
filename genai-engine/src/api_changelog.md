@@ -2,6 +2,11 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/12/2025
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}  endpoint added
+-
 # 11/07/2025
 - **CHANGE** for Component/Schema:  removed the schema 'LLMEvalsVersionResponse'
 
