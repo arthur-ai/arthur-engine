@@ -195,23 +195,19 @@ function setMetadataAttributes(
   otelSpan: OISpan,
   metadata: AnyExportedAISpan["metadata"]
 ): void {
-  // set metadata based attributes
   const { userId, sessionId, ...remainingMetadata } = metadata ?? {};
 
-  // set sessionId
   if (sessionId) {
     otelSpan.setAttributes({
       [SemanticConventions.SESSION_ID]: sessionId,
     });
   }
-  // set userId
   if (userId) {
     otelSpan.setAttributes({
       [SemanticConventions.USER_ID]: userId,
     });
   }
-  // set metadata
-  if (remainingMetadata) {
+  if (remainingMetadata && Object.keys(remainingMetadata).length > 0) {
     otelSpan.setAttributes({
       [SemanticConventions.METADATA]: JSON.stringify(remainingMetadata),
     });

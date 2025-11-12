@@ -23,6 +23,7 @@ import {
   TraceConfigOptions,
 } from "@arizeai/openinference-core";
 import { setSpanAttributes, setSpanErrorInfo } from "./attribute-utils";
+import { getTelemetryContext } from "../telemetry-context";
 
 export interface ArthurExporterConfig {
   url: string;
@@ -111,11 +112,14 @@ export class ArthurExporter implements AITracingExporter {
   }
 
   private async handleSpanStarted(span: AnyExportedAISpan): Promise<void> {
+    this.injectTelemetryContext(span);
     const otelSpan = this.createOtelSpan(span);
     this.spanMap.set(span.id, otelSpan);
   }
 
   private async handleSpanUpdate(span: AnyExportedAISpan): Promise<void> {
+    // Ensure telemetry context is injected (in case it wasn't at start)
+    this.injectTelemetryContext(span);
     const existingSpan = this.spanMap.get(span.id);
     if (existingSpan) {
       this.updateOtelSpan(existingSpan, span);
@@ -164,6 +168,25 @@ export class ArthurExporter implements AITracingExporter {
     this.updateOtelSpan(otelSpan, span);
 
     return otelSpan;
+  }
+
+  /**
+   * Injects telemetry context (userId, sessionId) into span metadata if not already present
+   */
+  private injectTelemetryContext(span: AnyExportedAISpan): void {
+    // Only inject if not already present
+    if (span.metadata?.userId && span.metadata?.sessionId) {
+      return;
+    }
+
+    const telemetryContext = getTelemetryContext();
+    if (telemetryContext && (telemetryContext.userId || telemetryContext.sessionId)) {
+      span.metadata = {
+        ...span.metadata,
+        ...(telemetryContext.userId && !span.metadata?.userId && { userId: telemetryContext.userId }),
+        ...(telemetryContext.sessionId && !span.metadata?.sessionId && { sessionId: telemetryContext.sessionId }),
+      };
+    }
   }
 
   private updateOtelSpan(otelSpan: OISpan, span: AnyExportedAISpan): void {
