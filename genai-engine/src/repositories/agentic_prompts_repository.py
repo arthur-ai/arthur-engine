@@ -81,18 +81,12 @@ class AgenticPromptRepository(BaseLLMRepository):
         prompt_version: str,
     ) -> Optional[DatabaseAgenticPrompt]:
         try:
-            from datetime import timezone
-
             target_dt = datetime.fromisoformat(prompt_version)
-            # Treat the datetime as UTC
-            if target_dt.tzinfo is None:
-                target_dt = target_dt.replace(tzinfo=timezone.utc)
-            target_epoch = target_dt.timestamp()
             return (
                 base_query.filter(
                     sa.func.abs(
                         sa.func.extract("epoch", DatabaseAgenticPrompt.created_at)
-                        - target_epoch,
+                        - sa.func.extract("epoch", target_dt),  # type: ignore[arg-type]
                     )
                     < 1,
                 )
