@@ -491,6 +491,12 @@ class RagSearchSettingConfigurationNewVersionRequest(BaseModel):
     )
 
 
+class RagSearchSettingConfigurationVersionUpdateRequest(BaseModel):
+    tags: list[str] = Field(
+        description="List of tags to update this version of the search settings configuration with.",
+    )
+
+
 class LLMGetVersionsFilterRequest(BaseModel):
     """Request schema for filtering agentic prompts and llm evals with comprehensive filtering options."""
 
