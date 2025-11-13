@@ -6,6 +6,7 @@ import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
 // import PromptsManagement from "./components/prompts-management/PromptsManagement";
@@ -109,7 +110,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <ComingSoon featureName="Evaluators" description="Manage and configure evaluation methods for your tasks." />
+                      <Evaluators />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
