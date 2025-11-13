@@ -13,6 +13,8 @@ import React, { useMemo, useState, useCallback } from "react";
 
 import { useEvalVersions } from "./hooks/useEvalVersions";
 
+import { formatDate } from "@/utils/formatters";
+
 interface EvalVersionDrawerProps {
   open: boolean;
   onClose: () => void;
@@ -30,22 +32,6 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({ open, onCl
     sort: sortOrder,
     exclude_deleted: false,
   });
-
-  const formatDate = useCallback((dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return dateString;
-    }
-  }, []);
 
   const sortedAndFilteredVersions = useMemo(() => {
     let filtered = versions;
@@ -68,14 +54,14 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({ open, onCl
       const bTime = new Date(b.created_at).getTime();
       return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
     });
-  }, [versions, searchQuery, sortOrder, formatDate]);
+  }, [versions, searchQuery, sortOrder]);
 
   const autocompleteOptions = useMemo(() => {
     return versions.map((v) => ({
       label: `Version ${v.version} - ${v.model_provider}/${v.model_name} (${formatDate(v.created_at)})`,
       version: v.version,
     }));
-  }, [versions, formatDate]);
+  }, [versions]);
 
   const handleVersionClick = useCallback(
     (version: number) => {
