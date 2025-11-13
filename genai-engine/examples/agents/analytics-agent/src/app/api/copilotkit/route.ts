@@ -3,7 +3,7 @@ import {
   ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
-import { MastraAgent } from "@ag-ui/mastra";
+import { MastraAgent } from "@/app/lib/ag-ui/mastra";
 import { NextRequest } from "next/server";
 import { mastra } from "@/mastra";
 

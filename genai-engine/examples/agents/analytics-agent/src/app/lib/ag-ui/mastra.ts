@@ -277,7 +277,7 @@ export class MastraAgent extends AbstractAgent {
       // Local agent - use the agent's stream method directly
       try {
         console.log("streaming local agent with tracing metadata");
-        const response = await this.agent.streamLegacy(convertedMessages, {
+        const response = await this.agent.stream(convertedMessages, {
           threadId,
           resourceId,
           runId,
