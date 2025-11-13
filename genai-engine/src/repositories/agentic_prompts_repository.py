@@ -1,10 +1,11 @@
-from typing import Type
+from typing import Tuple, Type
 
 from pydantic import BaseModel
 
 from db_models.agentic_prompt_models import Base, DatabaseAgenticPrompt
 from repositories.base_llm_repository import BaseLLMRepository
-from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.agentic_prompt_schemas import AgenticPrompt, PromptCompletionRequest
+from schemas.request_schemas import CompletionRequest
 from schemas.response_schemas import (
     AgenticPromptVersionListResponse,
     AgenticPromptVersionResponse,
@@ -37,3 +38,16 @@ class AgenticPromptRepository(BaseLLMRepository):
         db_item.messages = []
         db_item.tools = None
         db_item.config = None
+
+    @staticmethod
+    def to_prompt_and_request(
+        unsaved_prompt: CompletionRequest,
+    ) -> Tuple[AgenticPrompt, PromptCompletionRequest]:
+        """
+        Convert an unsaved run request into its corresponding AgenticPrompt and PromptCompletionRequest
+        """
+        prompt = AgenticPrompt(
+            name="test_unsaved_prompt",
+            **unsaved_prompt.model_dump(exclude={"completion_request"}),
+        )
+        return prompt, unsaved_prompt.completion_request

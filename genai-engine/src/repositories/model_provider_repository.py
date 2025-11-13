@@ -92,7 +92,7 @@ class ModelProviderRepository:
         if not secret:
             raise HTTPException(
                 status_code=400,
-                detail=f"model provider {provider.value} is not configured",
+                detail=f"model provider {provider} is not configured",
             )
 
         api_key = self._retrieve_api_key_from_secret(provider, secret.value)

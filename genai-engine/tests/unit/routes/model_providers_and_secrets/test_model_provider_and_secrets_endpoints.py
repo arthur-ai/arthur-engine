@@ -2,16 +2,18 @@ import os
 from unittest.mock import MagicMock, patch
 
 import pytest
+from litellm.types.utils import ModelResponse
 
-from schemas.enums import ModelProvider
 from clients.llm.llm_client import SUPPORTED_TEXT_MODELS
+from schemas.enums import ModelProvider
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion_cost")
+@patch("clients.llm.llm_client.completion_cost")
 def test_model_provider_lifecycle(
-    mock_completion_cost, client: GenaiEngineTestClientBase
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
 ):
     mock_completion_cost.return_value = 0.001234
 
@@ -122,7 +124,7 @@ def test_model_provider_lifecycle(
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion_cost")
+@patch("clients.llm.llm_client.completion_cost")
 def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase):
     mock_completion_cost.return_value = 0.001234
     # set the encryption key to key1
@@ -141,7 +143,7 @@ def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase
         # Mock litellm.completion to verify the API key is passed correctly
         with patch("litellm.completion") as mock_litellm_completion:
             # Configure the mock to return a successful response
-            mock_response = MagicMock()
+            mock_response = MagicMock(spec=ModelResponse)
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message = {"content": "test response"}
             mock_litellm_completion.return_value = mock_response
@@ -193,10 +195,10 @@ def test_secret_rotation(mock_completion_cost, client: GenaiEngineTestClientBase
         # Mock litellm.completion to verify the API key is still correctly retrieved
         with patch("litellm.completion") as mock_litellm_completion_after_rotation:
             # Configure the mock to return a successful response
-            mock_response = MagicMock()
+            mock_response = MagicMock(spec=ModelResponse)
             mock_response.choices = [MagicMock()]
             mock_response.choices[0].message = {
-                "content": "test response after rotation"
+                "content": "test response after rotation",
             }
             mock_litellm_completion_after_rotation.return_value = mock_response
 
