@@ -134,7 +134,6 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
 
     // all map to LLM in OpenInference
     case AISpanType.MODEL_GENERATION:
-    case AISpanType.MODEL_CHUNK:
       return OpenInferenceSpanKind.LLM;
 
     // all map to TOOL in OpenInference
