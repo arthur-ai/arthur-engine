@@ -5,6 +5,7 @@ import { Suspense, useMemo, useRef, useState } from "react";
 
 import { TIME_RANGES, TimeRange } from "../constants";
 import { columns } from "../data/columns";
+import { TokenCostTooltip, TokenCountTooltip } from "../data/common";
 import { sessionLevelColumns } from "../data/session-level-columns";
 import { FilterStoreProvider, useFilterStore } from "../stores/filter.store";
 import { useTracesHistoryStore } from "../stores/history.store";
@@ -43,6 +44,10 @@ export const UserDrawerContent = ({ id }: Props) => {
     queryFn: () => getUser(api, { taskId: task?.id ?? "", userId: id }),
   });
 
+  // prompt, completion, total
+  const tokens = [user.prompt_token_count, user.completion_token_count, user.total_token_count] as const;
+  const costs = [user.prompt_token_cost, user.completion_token_cost, user.total_token_cost] as const;
+
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
       <Stack
@@ -65,6 +70,11 @@ export const UserDrawerContent = ({ id }: Props) => {
             {user.user_id}
           </Typography>
         </Stack>
+      </Stack>
+
+      <Stack direction="row" alignItems="center" gap={2} sx={{ px: 4, py: 2 }}>
+        <TokenCountTooltip prompt={tokens[0] ?? 0} completion={tokens[1] ?? 0} total={tokens[2] ?? 0} />
+        <TokenCostTooltip prompt={costs[0] ?? 0} completion={costs[1] ?? 0} total={costs[2] ?? 0} />
       </Stack>
 
       <Box sx={{ px: 4, py: 2 }}>

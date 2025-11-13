@@ -12,6 +12,15 @@ type TokenCountProps = {
 };
 
 export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps) => {
+  if (!total)
+    return (
+      <Stack direction="row" alignItems="center" gap={0.5}>
+        <GeneratingTokensOutlinedIcon sx={{ fontSize: 16 }} />
+        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+          N/A
+        </Typography>
+      </Stack>
+    );
   return (
     <Tooltip
       title={
@@ -35,6 +44,16 @@ export const TokenCountTooltip = ({ prompt, completion, total }: TokenCountProps
 type TokenCostProps = TokenCountProps;
 
 export const TokenCostTooltip = ({ prompt, completion, total }: TokenCostProps) => {
+  if (!total)
+    return (
+      <Stack direction="row" alignItems="center" gap={0.5}>
+        <TollOutlinedIcon sx={{ fontSize: 16 }} />
+        <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12} className="select-none">
+          N/A
+        </Typography>
+      </Stack>
+    );
+
   return (
     <Tooltip
       title={
