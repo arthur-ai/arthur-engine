@@ -8,7 +8,7 @@ from arthur_common.models.response_schemas import (
     SpanWithMetricsResponse,
     TraceResponse,
 )
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from google.protobuf.message import DecodeError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -64,7 +64,7 @@ def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -104,7 +104,7 @@ def list_traces_metadata(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TraceListResponse:
     """Get lightweight trace metadata for browsing/filtering operations."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -155,7 +155,7 @@ def list_spans_metadata(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SpanListResponse:
     """Get lightweight span metadata for browsing/filtering operations."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -199,7 +199,7 @@ def get_span_by_id(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SpanWithMetricsResponse:
     """Get single span with existing metrics (no computation)."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -235,7 +235,7 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SpanWithMetricsResponse:
     """Compute all missing metrics for a single span on-demand."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -293,7 +293,7 @@ def list_sessions_metadata(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SessionListResponse:
     """Get session metadata with pagination and filtering."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -340,7 +340,7 @@ def get_session_traces(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SessionTracesResponse:
     """Get all traces in a session with existing metrics (no computation)."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -386,7 +386,7 @@ def compute_session_metrics(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SessionTracesResponse:
     """Get all traces in a session and compute missing metrics."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -447,7 +447,7 @@ def list_users_metadata(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TraceUserListResponse:
     """Get user metadata with pagination and filtering."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -494,7 +494,7 @@ def get_user_details(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TraceUserMetadataResponse:
     """Get detailed information for a single user."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -535,7 +535,7 @@ def get_trace_by_id(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TraceResponse:
     """Get complete trace tree with existing metrics (no computation)."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -571,7 +571,7 @@ def compute_trace_metrics(
     trace_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> TraceResponse:
     """Compute all missing metrics for trace spans on-demand."""
     try:
         span_repo = _get_span_repository(db_session)

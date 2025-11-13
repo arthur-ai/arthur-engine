@@ -1,5 +1,5 @@
 from datetime import datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -7,8 +7,10 @@ from arthur_common.models.common_schemas import (
     PaginationParameters,
     PaginationSortMethod,
 )
+from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
 
+from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval
 from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.agentic_prompt_schemas import LLMConfigSettings
@@ -20,6 +22,7 @@ from schemas.request_schemas import (
     LLMGetVersionsFilterRequest,
 )
 from schemas.response_schemas import (
+    LLMEvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
@@ -71,6 +74,15 @@ def sample_db_llm_eval():
         created_at=datetime.now(),
         deleted_at=None,
         version=1,
+    )
+
+
+@pytest.fixture
+def mock_llm_client():
+    """Mock LiteLLM client for testing"""
+    return LLMClient(
+        provider=ModelProvider.OPENAI,
+        api_key="api_key",
     )
 
 
@@ -682,10 +694,10 @@ def test_get_all_llm_eval_metadata_with_filters(
     expected_count,
     expected_name,
 ):
-    """Test getting all prompt metadata with filter_request parameters"""
+    """Test getting all eval metadata with filter_request parameters"""
     task_id = "test_task_id"
 
-    # Create multiple prompts with different providers and models
+    # Create multiple evals with different providers and models
     evals_data = [
         CreateEvalRequest(
             model_name="gpt-4",
@@ -803,3 +815,118 @@ def test_get_all_llm_eval_metadata_with_pagination(
         # Cleanup
         for i in range(3):
             llm_evals_repo.delete_llm_item(task_id, f"eval_{i}")
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_saved_llm_eval(
+    mock_completion,
+    mock_completion_cost,
+    mock_llm_client,
+    llm_evals_repo,
+    sample_create_eval_request,
+):
+    """Test running a saved llm eval from database"""
+    task_id = "test_task_id"
+    eval_name = "test_llm_eval"
+
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+
+    # Mock completion response
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "This answer is true because it is supported by the ground truth.", "score": 1}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+
+    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
+        return_value=mock_llm_client,
+    )
+
+    result = llm_evals_repo.run_llm_eval(task_id, eval_name)
+
+    assert isinstance(result, LLMEvalRunResponse)
+    assert (
+        result.reason
+        == "This answer is true because it is supported by the ground truth."
+    )
+    assert result.score == 1
+    assert result.cost == "0.002345"
+
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+def test_run_deleted_llm_eval_spawns_error(
+    llm_evals_repo,
+    sample_create_eval_request,
+    mock_llm_client,
+):
+    """Test running a deleted llm eval spawns an error"""
+    task_id = "test_task_id"
+    eval_name = "test_llm_eval"
+
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
+
+    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
+        return_value=mock_llm_client,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+    assert f"Cannot run this llm eval because it was deleted on" in str(exc_info.value)
+
+    llm_evals_repo.delete_llm_item(task_id, eval_name)
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.LLMClient.completion")
+def test_run_saved_llm_eval_malformed_response_errors(
+    mock_completion,
+    llm_evals_repo,
+    sample_create_eval_request,
+    mock_llm_client,
+):
+    """Test running a saved llm eval with a malformed response from the llm client raises errors"""
+    task_id = "test_task_id"
+    eval_name = "test_llm_eval"
+
+    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
+    llm_evals_repo.save_llm_item(task_id, full_eval)
+
+    # check if the structured output response is None it raises the appropriate error
+    mock_response = MagicMock(spec=LLMModelResponse)
+    mock_response.structured_output_response = None
+    mock_completion.return_value = mock_response
+
+    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
+        return_value=mock_llm_client,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+    assert (
+        f"No structured output response from model {full_eval.model_name} with provider {full_eval.model_provider}"
+        in str(exc_info.value)
+    )
+
+    # check if the structured output response is not the correct type it raises the appropriate error
+    mock_response = MagicMock(spec=LLMModelResponse)
+    mock_response.structured_output_response = full_eval
+    mock_completion.return_value = mock_response
+
+    llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
+        return_value=mock_llm_client,
+    )
+
+    with pytest.raises(TypeError) as exc_info:
+        llm_evals_repo.run_llm_eval(task_id, eval_name, version="1")
+    assert f"Structured output is not a ReasonedScore instance" in str(exc_info.value)
+
+    llm_evals_repo.delete_llm_item(task_id, eval_name)

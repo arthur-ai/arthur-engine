@@ -56,6 +56,7 @@ from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
+from schemas.agentic_prompt_schemas import AgenticPrompt, AgenticPromptBaseConfig
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -3239,6 +3240,41 @@ class GenaiEngineTestClientBase(httpx.Client):
                 if resp.status_code == 200
                 else None
             ),
+        )
+
+    def create_agentic_prompt(
+        self,
+        task_id: str,
+        prompt_name: str,
+        prompt_data: AgenticPromptBaseConfig,
+    ) -> tuple[int, AgenticPrompt]:
+        """Create an agentic prompt."""
+        resp = self.base_client.post(
+            f"/api/v1/tasks/{task_id}/prompts/{prompt_name}",
+            json=prompt_data.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            AgenticPrompt.model_validate(resp.json()),
+        )
+
+    def get_agentic_prompt(
+        self,
+        task_id: str,
+        prompt_name: str,
+        version: str,
+    ) -> tuple[int, AgenticPrompt]:
+        """Get an agentic prompt."""
+        resp = self.base_client.get(
+            f"/api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{version}",
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+        return (
+            resp.status_code,
+            AgenticPrompt.model_validate(resp.json()),
         )
 
 

@@ -1,6 +1,7 @@
 import logging
 from base64 import b64encode
 
+from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from starlette.responses import RedirectResponse
@@ -25,18 +26,25 @@ auth_routes = APIRouter(
 
 @auth_routes.get("/login")
 @public_endpoint
-async def login(request: Request, oauth_client=Depends(get_oauth_client)):
+async def login(
+    request: Request,
+    oauth_client: OAuth = Depends(get_oauth_client),
+) -> RedirectResponse:
     redirect_uri = request.url_for("callback")
-    return await oauth_client.authorize_redirect(request, redirect_uri)
+    result: RedirectResponse = await oauth_client.authorize_redirect(
+        request,
+        redirect_uri,
+    )
+    return result
 
 
 @auth_routes.get("/config")
 @public_endpoint
-async def get_auth_config():
+async def get_auth_config() -> dict[str, str]:
     return {
-        "url": get_env_var(constants.GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR),
-        "realm": get_env_var(constants.GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR),
-        "clientId": get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR),
+        "url": get_env_var(constants.GENAI_ENGINE_KEYCLOAK_HOST_URI_ENV_VAR) or "",
+        "realm": get_env_var(constants.GENAI_ENGINE_KEYCLOAK_REALM_ENV_VAR) or "",
+        "clientId": get_env_var(constants.GENAI_ENGINE_AUTH_CLIENT_ID_ENV_VAR) or "",
     }
 
 
@@ -44,8 +52,8 @@ async def get_auth_config():
 @public_endpoint
 async def callback(
     request: Request,
-    oauth_client=Depends(get_oauth_client),
-):
+    oauth_client: OAuth = Depends(get_oauth_client),
+) -> RedirectResponse:
     token = await oauth_client.authorize_access_token(request)
 
     # removing old unused session persisted as cookies
@@ -85,7 +93,7 @@ async def callback(
 
 @auth_routes.get("/logout")
 @public_endpoint
-def logout(request: Request):
+def logout(request: Request) -> RedirectResponse:
     redirect_uri = request.url_for("logout_callback")
     id_bearer_token = request.cookies.get(auth_constants.ID_TOKEN_COOKIE_NAME)
     id_token = None
@@ -96,13 +104,13 @@ def logout(request: Request):
             "Can't extract ID token, will execute two step logout flow",
             exc_info=True,
         )
-    logout_uri = get_auth_logout_uri(str(redirect_uri), id_token)
+    logout_uri = get_auth_logout_uri(str(redirect_uri), id_token or "")
     return RedirectResponse(logout_uri, status_code=302)
 
 
 @auth_routes.get("/logout/callback")
 @public_endpoint
-def logout_callback(request: Request):
+def logout_callback(request: Request) -> RedirectResponse:
     response = RedirectResponse("/login", status_code=302)
     response.delete_cookie(auth_constants.ACCESS_TOKEN_COOKIE_NAME)
     response.delete_cookie(auth_constants.ACCESS_TOKEN_COOKIE_NAME)
