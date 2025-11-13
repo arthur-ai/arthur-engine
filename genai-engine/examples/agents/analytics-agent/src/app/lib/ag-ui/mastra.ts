@@ -280,7 +280,23 @@ export class MastraAgent extends AbstractAgent {
     if (this.isLocalMastraAgent(this.agent)) {
       // Local agent - use the agent's stream method directly
       try {
-        console.log("streaming local agent with tracing metadata");
+        // Extract telemetry data from runtime context
+        const telemetry = this.runtimeContext?.get("telemetry") as { 
+          userId?: string | null; 
+          sessionId?: string | null; 
+        } | undefined;
+        
+        // Build metadata object conditionally - only include fields that are provided
+        const metadata: Record<string, string> = {};
+        if (telemetry?.userId) {
+          metadata.userId = telemetry.userId;
+        }
+        if (telemetry?.sessionId) {
+          metadata.sessionId = telemetry.sessionId;
+        }
+        
+        console.log("streaming local agent with tracing metadata", metadata);
+        
         const response = await this.agent.stream(convertedMessages, {
           threadId,
           resourceId,
@@ -288,10 +304,7 @@ export class MastraAgent extends AbstractAgent {
           clientTools,
           runtimeContext,
           tracingOptions: {
-            metadata: {
-              userId: "123",
-              sessionId: "456",
-            },
+            metadata,
           },
         });
 

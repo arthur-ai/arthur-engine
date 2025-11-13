@@ -2569,10 +2569,29 @@
   resolved "https://registry.yarnpkg.com/@mastra/server/-/server-0.24.0.tgz#3b8a137485e1cd69760ce4ae51c3bdf812eeedb0"
   integrity sha512-/p26002D8Lpg4bztazSJZxVtoAmi7cwHLkhgEdFf352ePxn44JOLLdBq/3Jk2EJ0xjfPwsDs8ByqpKBOOrybYw==
 
-"@modelcontextprotocol/sdk@^1.17.2", "@modelcontextprotocol/sdk@^1.17.5":
+"@modelcontextprotocol/sdk@^1.17.2":
   version "1.21.1"
   resolved "https://registry.yarnpkg.com/@modelcontextprotocol/sdk/-/sdk-1.21.1.tgz#8fba02e7581d49cc9b047aab0cfd334043321fe5"
   integrity sha512-UyLFcJLDvUuZbGnaQqXFT32CpPpGj7VS19roLut6gkQVhb439xUzYWbsUvdI3ZPL+2hnFosuugtYWE0Mcs1rmQ==
+  dependencies:
+    ajv "^8.17.1"
+    ajv-formats "^3.0.1"
+    content-type "^1.0.5"
+    cors "^2.8.5"
+    cross-spawn "^7.0.5"
+    eventsource "^3.0.2"
+    eventsource-parser "^3.0.0"
+    express "^5.0.1"
+    express-rate-limit "^7.5.0"
+    pkce-challenge "^5.0.0"
+    raw-body "^3.0.0"
+    zod "^3.23.8"
+    zod-to-json-schema "^3.24.1"
+
+"@modelcontextprotocol/sdk@^1.17.5":
+  version "1.22.0"
+  resolved "https://registry.yarnpkg.com/@modelcontextprotocol/sdk/-/sdk-1.22.0.tgz#b982143dfd36ef096b311d8ffadb2f91aabbbb1d"
+  integrity sha512-VUpl106XVTCpDmTBil2ehgJZjhyLY2QZikzF8NvTXtLRF1CvO5iEE2UNZdVIUer35vFOwMKYeUGbjJtvPWan3g==
   dependencies:
     ajv "^8.17.1"
     ajv-formats "^3.0.1"
@@ -5500,9 +5519,9 @@ base64-js@^1.3.0, base64-js@^1.3.1, base64-js@^1.5.1:
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
 
 baseline-browser-mapping@^2.8.25:
-  version "2.8.27"
-  resolved "https://registry.yarnpkg.com/baseline-browser-mapping/-/baseline-browser-mapping-2.8.27.tgz#d15ab8face053137f8eb4c028455024787515d5d"
-  integrity sha512-2CXFpkjVnY2FT+B6GrSYxzYf65BJWEqz5tIRHCvNsZZ2F3CmsCB37h8SpYgKG7y9C4YAeTipIPWG7EmFmhAeXA==
+  version "2.8.28"
+  resolved "https://registry.yarnpkg.com/baseline-browser-mapping/-/baseline-browser-mapping-2.8.28.tgz#9ef511f5a7c19d74a94cafcbf951608398e9bdb3"
+  integrity sha512-gYjt7OIqdM0PcttNYP2aVrr2G0bMALkBaoehD4BuRGjAOtipg0b6wHg1yNL+s5zSnLZZrGHOw4IrND8CD+3oIQ==
 
 basic-ftp@^5.0.2:
   version "5.0.5"
@@ -12276,9 +12295,9 @@ yoctocolors@^2.1.1:
     zod "^3.24.2"
 
 zod-from-json-schema@^0.5.0:
-  version "0.5.1"
-  resolved "https://registry.yarnpkg.com/zod-from-json-schema/-/zod-from-json-schema-0.5.1.tgz#fc3257b1b7a0ac0cf75aefbdda9542460b4a2975"
-  integrity sha512-HZH5mnA6oasGU2mYknkhfZ2LbP2UaRk5cXmgDyc5AZdKvwq/4RY5P/yexPq8vl9rw/3OYvpwMXcDwLag3Tb6DQ==
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/zod-from-json-schema/-/zod-from-json-schema-0.5.2.tgz#0d56e1a3d3a0f15b6bf22d1aa9653bbf85600eb4"
+  integrity sha512-/dNaicfdhJTOuUd4RImbLUE2g5yrSzzDjI/S6C2vO2ecAGZzn9UcRVgtyLSnENSmAOBRiSpUdzDS6fDWX3Z35g==
   dependencies:
     zod "^4.0.17"
 
