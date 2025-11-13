@@ -47,7 +47,7 @@ export function SqlResultsCard({
               className="language-sql"
               dangerouslySetInnerHTML={{
                 __html: Prism.highlight(
-                  result.query,
+                  result.query || "",
                   Prism.languages.sql,
                   "sql"
                 ),
@@ -59,12 +59,12 @@ export function SqlResultsCard({
         <div className="grid grid-cols-3 gap-4 mb-3">
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-white text-sm">Rows Returned</p>
-            <p className="text-white font-bold text-lg">{result.rowCount}</p>
+            <p className="text-white font-bold text-lg">{result.rowCount ?? 0}</p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-white text-sm">Execution Time</p>
             <p className="text-white font-bold text-lg">
-              {result.executionTime}ms
+              {result.executionTime ?? 0}ms
             </p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
