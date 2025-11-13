@@ -1,14 +1,11 @@
 import CloseIcon from "@mui/icons-material/Close";
-import {
-  Box,
-  Typography,
-  Paper,
-  Chip,
-  Divider,
-  CircularProgress,
-  Alert,
-  IconButton,
-} from "@mui/material";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 import React from "react";
 
 import type { LLMEval } from "@/lib/api-client/api-client";
@@ -22,14 +19,7 @@ interface EvalDetailViewProps {
   onClose?: () => void;
 }
 
-export const EvalDetailView: React.FC<EvalDetailViewProps> = ({
-  eval: evalData,
-  isLoading,
-  error,
-  evalName,
-  version,
-  onClose,
-}) => {
+export const EvalDetailView: React.FC<EvalDetailViewProps> = ({ eval: evalData, isLoading, error, evalName, version, onClose }) => {
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "—";
     try {
@@ -65,9 +55,7 @@ export const EvalDetailView: React.FC<EvalDetailViewProps> = ({
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          Error loading eval: {error.message}
-        </Alert>
+        <Alert severity="error">Error loading eval: {error.message}</Alert>
       </Box>
     );
   }
@@ -85,13 +73,7 @@ export const EvalDetailView: React.FC<EvalDetailViewProps> = ({
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 600 }}>
           {evalName}
-          {version !== null && (
-            <Chip
-              label={`Version ${version}`}
-              size="small"
-              sx={{ ml: 2, height: 24 }}
-            />
-          )}
+          {version !== null && <Chip label={`Version ${version}`} size="small" sx={{ ml: 2, height: 24 }} />}
         </Typography>
         {onClose && (
           <IconButton onClick={onClose} aria-label="Close">
@@ -192,4 +174,3 @@ export const EvalDetailView: React.FC<EvalDetailViewProps> = ({
     </Box>
   );
 };
-

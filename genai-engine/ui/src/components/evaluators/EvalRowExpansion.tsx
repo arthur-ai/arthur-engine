@@ -1,5 +1,8 @@
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { Box, Button, Typography, Chip } from "@mui/material";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
 import React from "react";
 
 import type { LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
@@ -9,10 +12,7 @@ interface EvalRowExpansionProps {
   onExpandToFullScreen: () => void;
 }
 
-export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({
-  eval: evalMetadata,
-  onExpandToFullScreen,
-}) => {
+export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({ eval: evalMetadata, onExpandToFullScreen }) => {
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
@@ -64,25 +64,14 @@ export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({
               </Typography>
               <Box sx={{ display: "flex", gap: 0.5, mt: 0.5 }}>
                 {evalMetadata.deleted_versions.map((version) => (
-                  <Chip
-                    key={version}
-                    label={`v${version}`}
-                    size="small"
-                    color="error"
-                    sx={{ height: 20, fontSize: "0.75rem" }}
-                  />
+                  <Chip key={version} label={`v${version}`} size="small" color="error" sx={{ height: 20, fontSize: "0.75rem" }} />
                 ))}
               </Box>
             </Box>
           )}
         </Box>
         <Box>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<OpenInFullIcon />}
-            onClick={onExpandToFullScreen}
-          >
+          <Button variant="outlined" size="small" startIcon={<OpenInFullIcon />} onClick={onExpandToFullScreen}>
             Expand to Full Screen
           </Button>
         </Box>
@@ -90,4 +79,3 @@ export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({
     </Box>
   );
 };
-

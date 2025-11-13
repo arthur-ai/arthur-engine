@@ -1,19 +1,17 @@
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormLabel,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Box,
-  Typography,
-  Alert,
-} from "@mui/material";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import InputLabel from "@mui/material/InputLabel";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 
 import type { CreateEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
@@ -27,12 +25,7 @@ interface EvalFormModalProps {
 
 const MODEL_PROVIDERS: ModelProvider[] = ["openai", "anthropic", "gemini"];
 
-export const EvalFormModal: React.FC<EvalFormModalProps> = ({
-  open,
-  onClose,
-  onSubmit,
-  isLoading = false,
-}) => {
+export const EvalFormModal: React.FC<EvalFormModalProps> = ({ open, onClose, onSubmit, isLoading = false }) => {
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider>("openai");
@@ -237,4 +230,3 @@ export const EvalFormModal: React.FC<EvalFormModalProps> = ({
     </Dialog>
   );
 };
-

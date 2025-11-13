@@ -144,4 +144,3 @@ const HorizontalResizableSplitter = ({ onResize, minLeftRatio, minRightRatio }: 
 };
 
 export default HorizontalResizableSplitter;
-

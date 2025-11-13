@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
 import { EvalDetailView } from "./EvalDetailView";
@@ -14,15 +14,9 @@ interface EvalFullScreenViewProps {
   onClose: () => void;
 }
 
-export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({
-  evalName,
-  initialVersion,
-  onClose,
-}) => {
+export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({ evalName, initialVersion, onClose }) => {
   const { task } = useTask();
-  const [selectedVersion, setSelectedVersion] = useState<number | null>(
-    initialVersion ?? null
-  );
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
   // Fetch versions to get the latest if no version is selected
   const { versions } = useEvalVersions(task?.id, evalName, {
@@ -36,11 +30,7 @@ export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({
     }
   }, [versions, selectedVersion]);
 
-  const { eval: evalData, isLoading, error } = useEval(
-    task?.id,
-    evalName,
-    selectedVersion !== null ? selectedVersion.toString() : undefined
-  );
+  const { eval: evalData, isLoading, error } = useEval(task?.id, evalName, selectedVersion !== null ? selectedVersion.toString() : undefined);
 
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
@@ -72,16 +62,8 @@ export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({
           minWidth: 0,
         }}
       >
-        <EvalDetailView
-          eval={evalData}
-          isLoading={isLoading}
-          error={error}
-          evalName={evalName}
-          version={selectedVersion}
-          onClose={onClose}
-        />
+        <EvalDetailView eval={evalData} isLoading={isLoading} error={error} evalName={evalName} version={selectedVersion} onClose={onClose} />
       </Box>
     </Box>
   );
 };
-

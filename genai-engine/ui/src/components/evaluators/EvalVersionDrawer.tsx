@@ -1,20 +1,17 @@
-import {
-  Box,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
-  Typography,
-  Autocomplete,
-  TextField,
-  Chip,
-  Divider,
-} from "@mui/material";
+import Autocomplete from "@mui/material/Autocomplete";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import Drawer from "@mui/material/Drawer";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import React, { useMemo, useState, useCallback } from "react";
 
 import { useEvalVersions } from "./hooks/useEvalVersions";
-
 
 interface EvalVersionDrawerProps {
   open: boolean;
@@ -25,14 +22,7 @@ interface EvalVersionDrawerProps {
   onSelectVersion: (version: number) => void;
 }
 
-export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({
-  open,
-  onClose,
-  taskId,
-  evalName,
-  selectedVersion,
-  onSelectVersion,
-}) => {
+export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({ open, onClose, taskId, evalName, selectedVersion, onSelectVersion }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -134,21 +124,11 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({
         <Autocomplete
           freeSolo
           options={autocompleteOptions}
-          getOptionLabel={(option) =>
-            typeof option === "string" ? option : option.label
-          }
+          getOptionLabel={(option) => (typeof option === "string" ? option : option.label)}
           onChange={handleAutocompleteChange}
           onInputChange={(_event, value) => setSearchQuery(value)}
           inputValue={searchQuery}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Search versions"
-              variant="outlined"
-              size="small"
-              sx={{ mb: 2 }}
-            />
-          )}
+          renderInput={(params) => <TextField {...params} label="Search versions" variant="outlined" size="small" sx={{ mb: 2 }} />}
         />
 
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
@@ -210,26 +190,15 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
                             Version {version.version}
                           </Typography>
-                          {isDeleted && (
-                            <Chip
-                              label="Deleted"
-                              size="small"
-                              color="error"
-                              sx={{ height: 18, fontSize: "0.7rem" }}
-                            />
-                          )}
+                          {isDeleted && <Chip label="Deleted" size="small" color="error" sx={{ height: 18, fontSize: "0.7rem" }} />}
                         </Box>
                       }
                       secondary={
-                        <Box sx={{ mt: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary">
+                        <Box component="span" sx={{ mt: 0.5, display: "block" }}>
+                          <Typography variant="caption" color="text.secondary" component="span">
                             {version.model_provider} / {version.model_name}
                           </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block", mt: 0.5 }}
-                          >
+                          <Typography variant="caption" color="text.secondary" component="span" sx={{ display: "block", mt: 0.5 }}>
                             {formatDate(version.created_at)}
                           </Typography>
                         </Box>
@@ -245,4 +214,3 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({
     </Drawer>
   );
 };
-

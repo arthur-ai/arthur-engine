@@ -1,4 +1,8 @@
-import { Alert, Box, TablePagination, CircularProgress, Button } from "@mui/material";
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { EvalFormModal } from "./EvalFormModal";
@@ -65,34 +69,31 @@ const Evaluators: React.FC = () => {
     setFullScreenEval(null);
   }, []);
 
-  const handleSort = useCallback((column: string) => {
-    if (sortColumn === column) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(column);
-      setSortDirection("desc");
-    }
-  }, [sortColumn]);
+  const handleSort = useCallback(
+    (column: string) => {
+      if (sortColumn === column) {
+        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      } else {
+        setSortColumn(column);
+        setSortDirection("desc");
+      }
+    },
+    [sortColumn]
+  );
 
   const handlePageChange = useCallback((_event: unknown, newPage: number) => {
     setPage(newPage);
   }, []);
 
-  const handlePageSizeChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      setPageSize(parseInt(event.target.value, 10));
-      setPage(0);
-    },
-    []
-  );
+  const handlePageSizeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setPageSize(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
 
   if (fullScreenEval) {
     return (
       <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
-        <EvalFullScreenView
-          evalName={fullScreenEval}
-          onClose={handleCloseFullScreen}
-        />
+        <EvalFullScreenView evalName={fullScreenEval} onClose={handleCloseFullScreen} />
       </Box>
     );
   }
@@ -165,14 +166,8 @@ const Evaluators: React.FC = () => {
               >
                 No evals found
               </Box>
-              <Box sx={{ color: "text.secondary", mb: 2 }}>
-                Create your first eval to get started.
-              </Box>
-              <Button
-                variant="contained"
-                onClick={() => setIsCreateModalOpen(true)}
-                sx={{ mt: 1 }}
-              >
+              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first eval to get started.</Box>
+              <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
                 Create Eval
               </Button>
             </Box>

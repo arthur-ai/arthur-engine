@@ -1,16 +1,14 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TableSortLabel,
-  Paper,
-  Box,
-  Collapse,
-  Chip,
-} from "@mui/material";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Collapse from "@mui/material/Collapse";
+import Paper from "@mui/material/Paper";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TableSortLabel from "@mui/material/TableSortLabel";
 import React, { useCallback, useMemo } from "react";
 
 import { EvalRowExpansion } from "./EvalRowExpansion";
@@ -129,9 +127,7 @@ export const EvalsTable: React.FC<EvalsTableProps> = ({
             <TableCell>
               <TableSortLabel
                 active={sortColumn === "latest_version_created_at"}
-                direction={
-                  sortColumn === "latest_version_created_at" ? sortDirection : "asc"
-                }
+                direction={sortColumn === "latest_version_created_at" ? sortDirection : "asc"}
                 onClick={() => handleSort("latest_version_created_at")}
               >
                 <Box component="span" sx={{ fontWeight: 600 }}>
@@ -178,23 +174,13 @@ export const EvalsTable: React.FC<EvalsTableProps> = ({
                     </Box>
                   </TableCell>
                   <TableCell>{formatDate(evalMetadata.created_at)}</TableCell>
-                  <TableCell>
-                    {formatDate(evalMetadata.latest_version_created_at)}
-                  </TableCell>
+                  <TableCell>{formatDate(evalMetadata.latest_version_created_at)}</TableCell>
                   <TableCell>{evalMetadata.versions}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell
-                    style={{ paddingBottom: 0, paddingTop: 0 }}
-                    colSpan={4}
-                  >
+                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={4}>
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                      <EvalRowExpansion
-                        eval={evalMetadata}
-                        onExpandToFullScreen={() =>
-                          onExpandToFullScreen(evalMetadata.name)
-                        }
-                      />
+                      <EvalRowExpansion eval={evalMetadata} onExpandToFullScreen={() => onExpandToFullScreen(evalMetadata.name)} />
                     </Collapse>
                   </TableCell>
                 </TableRow>
@@ -206,4 +192,3 @@ export const EvalsTable: React.FC<EvalsTableProps> = ({
     </TableContainer>
   );
 };
-
