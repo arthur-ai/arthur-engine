@@ -1,3 +1,7 @@
+//
+// this file is forked from https://github.com/ag-ui-protocol/ag-ui/blob/58665c4ff9c82709f30b7bebaa7b21c0f6118895/integrations/mastra/typescript/src/mastra.ts
+// and modified to support passing metadata to the tracingOptions of agent.stream
+
 import type {
   AgentConfig,
   BaseEvent,
