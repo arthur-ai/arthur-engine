@@ -59,7 +59,9 @@ export function SqlResultsCard({
         <div className="grid grid-cols-3 gap-4 mb-3">
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-white text-sm">Rows Returned</p>
-            <p className="text-white font-bold text-lg">{result.rowCount ?? 0}</p>
+            <p className="text-white font-bold text-lg">
+              {result.rowCount ?? 0}
+            </p>
           </div>
           <div className="bg-white/10 rounded-lg p-3 text-center">
             <p className="text-white text-sm">Execution Time</p>
@@ -73,48 +75,53 @@ export function SqlResultsCard({
           </div>
         </div>
 
-        {result.data && result.data.length > 0 && (
-          <div className="bg-white/10 rounded-lg p-3">
-            <h4 className="text-white font-semibold mb-2">Query Results:</h4>
-            <div className="bg-gray-900 rounded overflow-hidden max-h-64 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-800 sticky top-0">
-                  <tr>
-                    {Object.keys(result.data[0]).map((column, index) => (
-                      <th
-                        key={index}
-                        className="px-3 py-2 text-left text-blue-300 font-semibold border-b border-gray-700"
-                      >
-                        {column}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.data.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className={`${
-                        rowIndex % 2 === 0 ? "bg-gray-900" : "bg-gray-850"
-                      } hover:bg-gray-700 transition-colors`}
-                    >
-                      {Object.values(row).map((value, colIndex) => (
-                        <td
-                          key={colIndex}
-                          className="px-3 py-2 text-white border-b border-gray-700"
+        {result.data &&
+          result.data.columns &&
+          result.data.rows &&
+          result.data.rows.length > 0 && (
+            <div className="bg-white/10 rounded-lg p-3">
+              <h4 className="text-white font-semibold mb-2">Query Results:</h4>
+              <div className="bg-gray-900 rounded overflow-hidden max-h-64 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-800 sticky top-0">
+                    <tr>
+                      {result.data.columns.map((column, index) => (
+                        <th
+                          key={index}
+                          className="px-3 py-2 text-left text-blue-300 font-semibold border-b border-gray-700"
                         >
-                          {typeof value === "object" && value !== null
-                            ? JSON.stringify(value)
-                            : String(value)}
-                        </td>
+                          {column}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {result.data.rows.map((row, rowIndex) => (
+                      <tr
+                        key={rowIndex}
+                        className={`${
+                          rowIndex % 2 === 0 ? "bg-gray-900" : "bg-gray-850"
+                        } hover:bg-gray-700 transition-colors`}
+                      >
+                        {row.map((value, colIndex) => (
+                          <td
+                            key={colIndex}
+                            className="px-3 py-2 text-white border-b border-gray-700"
+                          >
+                            {value === null || value === undefined
+                              ? "NULL"
+                              : typeof value === "object"
+                                ? JSON.stringify(value)
+                                : String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
   );

@@ -5,16 +5,14 @@ import { TracingContext } from "@mastra/core/ai-tracing";
 export type ExecuteSqlToolResult = z.infer<typeof ExecuteSqlToolResultSchema>;
 
 const ExecuteSqlToolResultSchema = z.object({
-  data: z
-    .array(
-      z.object({
-        column_name: z.string().describe("The name of the column"),
-        value: z
-          .union([z.string(), z.number(), z.boolean(), z.null()])
-          .describe("The value of the column"),
-      })
-    )
-    .describe("The query results as an array of objects"),
+  data: z.object({
+    columns: z.array(z.string()).describe("The names of the columns"),
+    rows: z
+      .array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+      .describe(
+        "The query results as an array of arrays, where each inner array represents a row and the values are in the order of the columns"
+      ),
+  }),
   rowCount: z.number().describe("The number of rows returned"),
   executionTime: z.number().describe("The execution time in milliseconds"),
   query: z.string().describe("The SQL query that was executed"),

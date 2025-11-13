@@ -13,16 +13,14 @@ const GenerateGraphToolResultSchema = z.object({
   title: z.string().describe("The title of the graph"),
   xAxis: z.string().describe("The field to use for the x-axis"),
   yAxis: z.string().describe("The field to use for the y-axis"),
-  data: z
-    .array(
-      z.object({
-        column_name: z.string().describe("The name of the column"),
-        value: z
-          .union([z.string(), z.number(), z.boolean(), z.null()])
-          .describe("The value of the column"),
-      })
-    )
-    .describe("The processed data for the graph"),
+  data: z.object({
+    columns: z.array(z.string()).describe("The names of the columns"),
+    rows: z
+      .array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+      .describe(
+        "The query results as an array of arrays, where each inner array represents a row and the values are in the order of the columns"
+      ),
+  }),
   description: z.string().describe("Brief description of what the graph shows"),
 });
 
@@ -31,18 +29,16 @@ export const generateGraphTool = createTool({
   description:
     "Generate a graph visualization from SQL query results. Make sure to include both the sqlResults and sqlQuery in the arguments.",
   inputSchema: z.object({
-    sqlResults: z
-      .array(
-        z.object({
-          column_name: z.string().describe("The name of the column"),
-          value: z
-            .union([z.string(), z.number(), z.boolean(), z.null()])
-            .describe("The value of the column"),
-        })
-      )
-      .describe(
-        "The SQL query results to visualize. This should be the output of the executeSqlTool."
-      ),
+    sqlResults: z.object({
+      columns: z.array(z.string()).describe("The names of the columns"),
+      rows: z
+        .array(
+          z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+        )
+        .describe(
+          "The query results as an array of arrays, where each inner array represents a row and the values are in the order of the columns"
+        ),
+    }),
     sqlQuery: z
       .string()
       .describe("The original SQL query that generated the results"),
