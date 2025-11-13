@@ -11,8 +11,8 @@ class AzureBlobStorageClient(FileClient):
         self,
         storage_account_connection_string: str,
         container_name: str,
-        prefix="arthur_chat_assets",
-    ):
+        prefix: str = "arthur_chat_assets",
+    ) -> None:
         self.prefix = prefix
 
         blob_service_client = BlobServiceClient.from_connection_string(
@@ -20,15 +20,15 @@ class AzureBlobStorageClient(FileClient):
         )
         self.container_client = blob_service_client.get_container_client(container_name)
 
-    def save_file(self, file_id: str, file: UploadFile):
-        file_path = self.get_file_path(self.prefix, file_id, file.filename)
+    def save_file(self, file_id: str, file: UploadFile) -> str:
+        file_path = self.get_file_path(self.prefix, file_id, file.filename or "")
         blob_client = self.container_client.get_blob_client(file_path)
 
         with file.file as f:
             blob_client.upload_blob(f, overwrite=True)
         return file_path
 
-    def read_file(self, file_path: str):
+    def read_file(self, file_path: str) -> UploadFile:
         blob_client = self.container_client.get_blob_client(file_path)
         data = blob_client.download_blob()
 

@@ -42,12 +42,12 @@ def create_api_key(
     new_api_key: NewApiKeyRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ApiKeyResponse:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.create_api_key(
-            description=new_api_key.description,
-            roles=new_api_key.roles,
+            description=new_api_key.description or "",
+            roles=new_api_key.roles or [],
         )
         return api_key._to_response_model(
             message="The provided key is only available for display now. "
@@ -72,7 +72,7 @@ def get_api_key(
     api_key_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ApiKeyResponse:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key = api_key_repo.get_api_key_by_id(str(api_key_id))
@@ -92,7 +92,7 @@ def get_api_key(
 def get_all_active_api_keys(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[ApiKeyResponse]:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         active_api_keys = api_key_repo.get_all_active_api_keys()
@@ -113,7 +113,7 @@ def deactivate_api_key(
     api_key_id: UUID,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         api_key_repo = ApiKeyRepository(db_session)
         api_key_repo.deactivate_api_key(str(api_key_id))

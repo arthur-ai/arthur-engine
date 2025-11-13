@@ -105,14 +105,27 @@ pytest = "8.4.2"
 pytest-asyncio = "1.2.0"
 pytest-cov = "6.3.0"
 pre-commit = "4.3.0"
+
+
+[tool.poetry.group.performance.dependencies]
+locust = "2.41.6"
 black = "25.9.0"
 mypy = "^1.13.0"
 isort = "^7.0.0"
 autoflake = "^2.3.1"
 
 
-[tool.poetry.group.performance.dependencies]
-locust = "2.41.6"
+[tool.poetry.group.linters.dependencies]
+types-cachetools = "^6.2.0.20251022"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+implicit_reexport = true
+explicit_package_bases = true
+mypy_path = "src"
+namespace_packages = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -135,13 +148,6 @@ markers = [
 serve = "src.server:start"
 generate_changelog = "changelog:main"
 routes_security_check = "routes_security_check:main"
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-ignore_missing_imports = true
-implicit_reexport = true
-explicit_package_bases = false
 
 [tool.black]
 target-version = ['py312']
