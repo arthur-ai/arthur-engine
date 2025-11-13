@@ -1,12 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import {
-  Navigate,
-  Route,
-  BrowserRouter as Router,
-  Routes,
-  useParams,
-} from "react-router-dom";
+import { Navigate, Route, BrowserRouter as Router, Routes, useParams } from "react-router-dom";
 
 import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
@@ -14,6 +8,7 @@ import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
+// import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -81,10 +76,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <ComingSoon
-                        featureName="Agent Experiments"
-                        description="Test and optimize agent-based task execution strategies."
-                      />
+                      <ComingSoon featureName="Agent Experiments" description="Test and optimize agent-based task execution strategies." />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
@@ -117,10 +109,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <ComingSoon
-                        featureName="Evaluators"
-                        description="Manage and configure evaluation methods for your tasks."
-                      />
+                      <ComingSoon featureName="Evaluators" description="Manage and configure evaluation methods for your tasks." />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
@@ -181,10 +170,7 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <ComingSoon
-                        featureName="Retrievals"
-                        description="Monitor and analyze retrieval operations and their performance."
-                      />
+                      <ComingSoon featureName="Retrievals" description="Monitor and analyze retrieval operations and their performance." />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
