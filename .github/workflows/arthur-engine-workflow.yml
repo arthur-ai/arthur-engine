@@ -41,7 +41,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-          with-groups: dev
+          with-groups: dev,linters
       - name: Run isort
         id: isort
         continue-on-error: true

@@ -13,5 +13,5 @@ health_router = APIRouter()
     responses={200: {"model": HealthResponse}},
 )
 @public_endpoint
-def health():
+def health() -> HealthResponse:
     return HealthResponse(message="ok", build_version=utils.get_genai_engine_version())

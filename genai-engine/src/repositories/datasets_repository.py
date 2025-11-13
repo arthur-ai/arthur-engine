@@ -94,7 +94,7 @@ class DatasetRepository:
             Dataset._from_database_model(db_dataset) for db_dataset in db_datasets
         ], count
 
-    def delete_dataset(self, dataset_id: UUID):
+    def delete_dataset(self, dataset_id: UUID) -> None:
         db_dataset = self._get_db_dataset(dataset_id)
         self.db_session.delete(db_dataset)
         self.db_session.commit()
@@ -201,14 +201,14 @@ class DatasetRepository:
             # no version exists for this dataset yet
             latest_version = None
 
-        dataset_version = DatasetVersion._from_request_model(
+        internal_dataset_version = DatasetVersion._from_request_model(
             dataset_id,
             latest_version,
             dataset_version,
         )
-        self.db_session.add(dataset_version._to_database_model())
+        self.db_session.add(internal_dataset_version._to_database_model())
         db_dataset.updated_at = datetime.now()
-        db_dataset.latest_version_number = dataset_version.version_number
+        db_dataset.latest_version_number = internal_dataset_version.version_number
         self.db_session.commit()
 
     def get_dataset_versions(

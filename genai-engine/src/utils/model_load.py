@@ -2,6 +2,7 @@ import os
 from functools import wraps
 from logging import getLogger
 from multiprocessing import Pool
+from typing import Optional
 
 # Disable tokenizers parallelism to avoid fork warnings in threaded environments
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -55,7 +56,7 @@ PII_GLINER_TOKENIZER = None
 PII_PRESIDIO_ANALYZER = None
 
 
-def log_model_loading(model_name: str, global_var_name: str = None):
+def log_model_loading(model_name: str, global_var_name: Optional[str] = None):
     """Decorator to add logging around model loading functions"""
 
     def decorator(func):

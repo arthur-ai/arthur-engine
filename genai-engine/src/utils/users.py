@@ -1,9 +1,12 @@
+from collections.abc import Callable
 from functools import wraps
 from inspect import iscoroutinefunction
+from typing import Any, cast
 
 from arthur_common.models.common_schemas import AuthUserRole
 from fastapi import HTTPException
 
+from custom_types.custom_types import FunctionT
 from schemas.internal_schemas import User
 
 
@@ -23,16 +26,16 @@ def get_user_info_from_payload(payload: dict) -> User:
     return user
 
 
-def permission_checker(permissions: frozenset[str]):
+def permission_checker(permissions: frozenset[str]) -> Callable[[FunctionT], FunctionT]:
     """Function that check if users permissions are in given set of permissions.
 
     Args:
         permissions (Set): Set of permissions
     """
 
-    def auth_required(func):
+    def auth_required(func: FunctionT) -> FunctionT:
         @wraps(func)
-        async def wrapper(*args, **kwargs):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             """Function that decorates given functions. Check if user has proper permissions
             and raises proper error message.
 
@@ -60,6 +63,6 @@ def permission_checker(permissions: frozenset[str]):
 
             return func(*args, **kwargs)
 
-        return wrapper
+        return cast(FunctionT, wrapper)
 
     return auth_required

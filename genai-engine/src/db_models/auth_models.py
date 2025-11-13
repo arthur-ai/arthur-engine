@@ -30,6 +30,6 @@ class DatabaseApiKey(Base):
         nullable=False,
     )
 
-    def deactivate(self):
+    def deactivate(self) -> None:
         self.is_active = False
         self.deactivated_at = datetime.now()

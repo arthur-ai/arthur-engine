@@ -21,11 +21,13 @@ class ArthurChat:
     MAX_HISTORY_CONTEXT: int = constants.MAX_CHAT_HISTORY_CONTEXT
     MAX_CONTEXT_LIMIT: int = constants.MAX_CHAT_CONTEXT_LIMIT
 
-    def _sanitize_text(self, text: str) -> str:
+    def _sanitize_text(self, text: str | None) -> str:
         """Replaces single curly braces with double curly braces, as single brackets are treated as placeholders by LangChain
 
         :param text: text to clean
         """
+        if text is None:
+            return ""
         return re.sub(r"(?<!})}(?!})", "}}", re.sub(r"(?<!{){(?!{)", "{{", text))
 
     def __init__(
@@ -34,7 +36,7 @@ class ArthurChat:
         embeddings_repository: EmbeddingRepository,
         conversation_id: str,
         file_ids: List[str],
-    ):
+    ) -> None:
         """Initializes Arthur Chat object
 
         :param inference_repository: class to query inference table
@@ -57,7 +59,7 @@ class ArthurChat:
         self,
         inference_repository: InferenceRepository,
         conversation_id: str,
-    ):
+    ) -> None:
         """loads the template for the memory context with old inferences
 
         :param inference_repository: class to query inference table
@@ -75,7 +77,7 @@ class ArthurChat:
             SystemMessage(content="Provided below are previous messages: "),
         ]
 
-        self.total_token_count += self.token_counter.count(messages[0].content)
+        self.total_token_count += self.token_counter.count(messages[0].text())
         index = 0
         total_count = 0
 
@@ -163,14 +165,16 @@ class ArthurChat:
         return retrieval_info
 
     @tracer.start_as_current_span("chat")
-    def chat(self, user_query: str):
+    def chat(self, user_query: str) -> str:
         """chat"""
         if not self.retrieval_info:
-            self.retrieve_augmented_context(query=user_query)
+            retrieval_info = self.retrieve_augmented_context(query=user_query)
+        else:
+            retrieval_info = self.retrieval_info
 
         all_prompts = (
             self.previous_message_history
-            + self.retrieval_info.messages
+            + retrieval_info.messages
             + [HumanMessage(content=user_query)]
         )
 
@@ -181,4 +185,4 @@ class ArthurChat:
         # Tokens used for chat not recorded
         output, _ = executor.execute(call, "chat response")
 
-        return output
+        return str(output)

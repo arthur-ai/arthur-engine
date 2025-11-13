@@ -31,7 +31,7 @@ class MultiMethodValidator:
         ),
         db_session: Session = Depends(get_db_session),
         creds: HTTPAuthorizationCredentials = Depends(http_bearer_scheme),
-    ) -> User:
+    ) -> User | None:
         """Method responsible to check if user has a proper authentication token (header or cookie).
 
         Args:
@@ -67,3 +67,5 @@ class MultiMethodValidator:
                 return user
         except Exception as oauth_error:
             raise oauth_error
+
+        return None

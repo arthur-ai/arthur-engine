@@ -1,4 +1,5 @@
 import base64
+import binascii
 import logging
 import secrets
 import uuid
@@ -16,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 class ApiKeyRepository:
-    def __init__(self, db_session: Session):
+    def __init__(self, db_session: Session) -> None:
         self.db_session = db_session
 
-    def create_api_key(self, description: str, roles: list[APIKeysRolesEnum]):
+    def create_api_key(self, description: str, roles: list[APIKeysRolesEnum]) -> ApiKey:
         # Check the number of active keys
         active_keys_count = (
             self.db_session.query(DatabaseApiKey)
@@ -53,7 +54,7 @@ class ApiKeyRepository:
 
         return api_key
 
-    def get_api_key_by_id(self, api_key_id):
+    def get_api_key_by_id(self, api_key_id: str) -> ApiKey:
         db_api_key = (
             self.db_session.query(DatabaseApiKey)
             .filter(DatabaseApiKey.id == api_key_id)
@@ -71,7 +72,7 @@ class ApiKeyRepository:
         )
         return [ApiKey._from_database_model(key) for key in db_api_keys]
 
-    def deactivate_api_key(self, api_key_id):
+    def deactivate_api_key(self, api_key_id: str) -> ApiKey:
         db_api_key = (
             self.db_session.query(DatabaseApiKey)
             .filter(DatabaseApiKey.id == api_key_id)
@@ -84,7 +85,7 @@ class ApiKeyRepository:
         self.db_session.commit()
         return ApiKey._from_database_model(db_api_key)
 
-    def __get_key_hash(self, key: str):
+    def __get_key_hash(self, key: str) -> str:
         # Setting number of rounds to 9, which translates to 2^9=512 rounds of hashing. The default is 12 which
         # takes around a quarter of a second to process, reducing to 9 rounds still keeps the hashing secure but
         # improves the speed of checking hash for every api from a quarter of a second to around 0.09 seconds
@@ -97,7 +98,7 @@ class ApiKeyRepository:
             api_key_id, api_key_value = (
                 base64.b64decode(api_key).decode("utf-8").split(":")
             )
-        except (UnicodeEncodeError, base64.binascii.Error, ValueError):
+        except (UnicodeEncodeError, binascii.Error, ValueError):
             logger.debug(f"Invalid API key: {api_key}")
             raise AttributeError("Invalid API key")
         db_api_key = (

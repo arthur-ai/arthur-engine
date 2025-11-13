@@ -16,40 +16,39 @@ AMPLITUDE_CLIENT = Amplitude("ae623bd644a045706785eb01fd21945d")
 TELEMETRY_CONFIG = TelemetryConfig()
 
 
-def get_public_ip():
+def get_public_ip() -> str | None:
     try:
         response = requests.get("https://api.ipify.org?format=json", timeout=5)
         response.raise_for_status()
-        return response.json().get("ip")
+        if ip := response.json().get("ip"):
+            return str(ip)
     except requests.RequestException:
         return None
     except ValueError:
         return None
+    return None
 
 
-TELEMETRY_IP = get_public_ip()
+TELEMETRY_IP: str | None = get_public_ip()
+TELEMETRY_USER_ID: str | None = None
+TELEMETRY_DEVICE_ID: str | None = None
+TELEMETRY_PLATFORM: str | None = None
+TELEMETRY_OS_NAME: str | None = None
+TELEMETRY_OS_VERSION: str | None = None
+TELEMETRY_APP_VERSION: str | None = None
 try:
     TELEMETRY_USER_ID = ":".join(
         ["{:02x}".format((uuid.getnode() >> ele) & 0xFF) for ele in range(0, 8 * 6, 8)][
             ::-1
         ],
     )
-except Exception:
-    TELEMETRY_USER_ID = None
-try:
     TELEMETRY_DEVICE_ID = platform.node()
     TELEMETRY_PLATFORM = platform.machine()
     TELEMETRY_OS_NAME = platform.system()
     TELEMETRY_OS_VERSION = platform.version()
-except Exception:
-    TELEMETRY_DEVICE_ID = None
-    TELEMETRY_PLATFORM = None
-    TELEMETRY_OS_NAME = None
-    TELEMETRY_OS_VERSION = None
-try:
     TELEMETRY_APP_VERSION = utils.get_genai_engine_version()
 except Exception:
-    TELEMETRY_APP_VERSION = None
+    pass
 
 
 class TelemetryEventTypes(str, Enum):
@@ -94,7 +93,7 @@ class TelemetryEventTypes(str, Enum):
     TASK_RULE_FOR_TOXICITY_CREATE_COMPLETED = "task_rule_for_toxicity_create_completed"
 
 
-def send_telemetry_event_for_task_rule_create_completed(rule_type: RuleType):
+def send_telemetry_event_for_task_rule_create_completed(rule_type: RuleType) -> None:
     try:
         event_type_map = {
             RuleType.REGEX: TelemetryEventTypes.TASK_RULE_FOR_REGEX_CREATE_COMPLETED,
@@ -111,7 +110,7 @@ def send_telemetry_event_for_task_rule_create_completed(rule_type: RuleType):
         return
 
 
-def send_telemetry_event_for_default_rule_create_completed(rule_type: RuleType):
+def send_telemetry_event_for_default_rule_create_completed(rule_type: RuleType) -> None:
     try:
         event_type_map = {
             RuleType.REGEX: TelemetryEventTypes.DEFAULT_RULE_FOR_REGEX_CREATE_COMPLETED,
@@ -128,7 +127,7 @@ def send_telemetry_event_for_default_rule_create_completed(rule_type: RuleType):
         return
 
 
-def send_telemetry_event(event_type: TelemetryEventTypes):
+def send_telemetry_event(event_type: TelemetryEventTypes) -> None:
     if not TELEMETRY_CONFIG.ENABLED:
         return
 

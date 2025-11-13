@@ -7,7 +7,7 @@ from schemas.internal_schemas import User
 
 class ABCAuthClient(ABC):
     @abstractmethod
-    def create_user(self, email: str) -> None:
+    def create_user(self, email: str) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -23,7 +23,7 @@ class ABCAuthClient(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def delete_user(self, user_id: str):
+    def delete_user(self, user_id: str) -> None:
         raise NotImplementedError
 
     @abstractmethod

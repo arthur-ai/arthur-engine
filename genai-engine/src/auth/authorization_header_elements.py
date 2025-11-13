@@ -8,7 +8,10 @@ from schemas.custom_exceptions import (
 from . import auth_constants
 
 
-def get_token_from_bearer(authorization_header: str) -> str:
+def get_token_from_bearer(authorization_header: str | None) -> str:
+    if authorization_header is None:
+        raise BadCredentialsException
+
     try:
         authorization_scheme, token = authorization_header.split()
     except ValueError:

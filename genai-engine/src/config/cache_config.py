@@ -19,5 +19,5 @@ class CacheConfig(BaseSettings):
 
 
 cache_config = CacheConfig(
-    _env_file=os.environ.get("GENAI_ENGINE_CACHE_CONFIG_PATH", ".env"),
+    _env_file=os.environ.get("GENAI_ENGINE_CACHE_CONFIG_PATH", ".env"),  # type: ignore[call-arg]
 )

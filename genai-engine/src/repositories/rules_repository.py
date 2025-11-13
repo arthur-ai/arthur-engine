@@ -1,3 +1,5 @@
+from typing import Optional
+
 from arthur_common.models.enums import PaginationSortMethod, RuleScope, RuleType
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
@@ -23,16 +25,16 @@ class RuleRepository:
 
     def query_rules(
         self,
-        rule_ids: list[str] = None,
-        prompt_enabled: bool = None,
-        response_enabled: bool = None,
+        rule_ids: Optional[list[str]] = None,
+        prompt_enabled: Optional[bool] = None,
+        response_enabled: Optional[bool] = None,
         include_archived: bool = False,
-        rule_scopes: list[RuleScope] = None,
-        rule_types: list[RuleType] = None,
+        rule_scopes: Optional[list[RuleScope]] = None,
+        rule_types: Optional[list[RuleType]] = None,
         sort: PaginationSortMethod = PaginationSortMethod.DESCENDING,
-        page_size: int = None,
+        page_size: Optional[int] = None,
         page: int = 0,
-    ):
+    ) -> tuple[list[Rule], int]:
         query = self.db_session.query(DatabaseRule)
         if rule_ids is not None:
             query = query.where(DatabaseRule.id.in_(rule_ids))
@@ -63,13 +65,14 @@ class RuleRepository:
         rules = [Rule._from_database_model(op) for op in results]
         return rules, count
 
-    def create_rule(self, rule: Rule):
-        self.db_session.add(rule._to_database_model())
+    def create_rule(self, rule: Rule) -> Rule:
+        created_rule_db = rule._to_database_model()
+        self.db_session.add(created_rule_db)
         self.db_session.commit()
 
-        return Rule._from_database_model(rule)
+        return Rule._from_database_model(created_rule_db)
 
-    def archive_rule(self, rule_id: str):
+    def archive_rule(self, rule_id: str) -> None:
         rule = self.db_session.get(DatabaseRule, rule_id)
         if not rule:
             raise HTTPException(
@@ -79,6 +82,6 @@ class RuleRepository:
         rule.archived = True
         self.db_session.commit()
 
-    def delete_rule(self, rule_id: str):
+    def delete_rule(self, rule_id: str) -> None:
         self.db_session.query(DatabaseRule).filter(DatabaseRule.id == rule_id).delete()
         self.db_session.commit()

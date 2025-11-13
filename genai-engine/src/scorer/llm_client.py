@@ -3,6 +3,7 @@ import logging
 import os
 import random
 from datetime import datetime as dt
+from typing import Any, Callable
 
 import openai
 from arthur_common.models.common_schemas import LLMTokenConsumption
@@ -208,13 +209,17 @@ class LLMExecutor:
         return model
 
     @tracer.start_as_current_span("OpenAI")
-    def execute(self, f, operation_name: str):
+    def execute(
+        self,
+        f: Callable[[], Any],
+        operation_name: str,
+    ) -> tuple[Any, LLMTokenConsumption]:
         if not self.requests.request_allowed():
             # Throw an error, delay, what do?
             pass
         with get_openai_callback() as cb:
             try:
-                result = f()
+                result: Any = f()
                 token_consumption = utils.log_llm_metrics(operation_name, cb)
                 self.requests.add_request(token_consumption)
                 return result, token_consumption
@@ -268,7 +273,7 @@ class LLMExecutor:
                     )
 
 
-def get_llm_executor():
+def get_llm_executor() -> LLMExecutor:
     global llm_executor
     openai_config = OpenAISettings(
         _env_file=os.environ.get("OPENAI_CONFIG_FILE", ".env"),
@@ -278,7 +283,7 @@ def get_llm_executor():
     return llm_executor
 
 
-def validate_llm_connection():
+def validate_llm_connection() -> None:
     get_llm_executor().get_gpt_model().invoke("Return 1")
 
 

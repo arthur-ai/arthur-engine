@@ -42,14 +42,14 @@ def default_validate_prompt(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         rules_repo = RuleRepository(db_session)
         default_rules, _ = rules_repo.query_rules(
             prompt_enabled=True,
             rule_scopes=[RuleScope.DEFAULT],
         )
-        if not body.user_id:
+        if not body.user_id and current_user:
             body.user_id = current_user.id
         return validate_prompt(
             body=body,
@@ -80,7 +80,7 @@ def default_validate_response(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         rules_repo = RuleRepository(db_session)
 
@@ -120,7 +120,7 @@ def validate_prompt_endpoint(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))
@@ -162,7 +162,7 @@ def validate_response_endpoint(
     db_session: Session = Depends(get_db_session),
     scorer_client: ScorerClient = Depends(get_scorer_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> ValidationResult:
     try:
         tasks_rules_repo = TasksRulesRepository(db_session)
         task_rules = tasks_rules_repo.get_task_rules_ids_cached(str(task_id))

@@ -82,7 +82,7 @@ def get_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.get_llm_item(
@@ -121,7 +121,7 @@ def get_all_agentic_prompts(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> LLMGetAllMetadataListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.get_all_llm_item_metadata(
@@ -161,7 +161,7 @@ def get_all_agentic_prompt_versions(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPromptVersionListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.get_llm_item_versions(
@@ -238,7 +238,7 @@ async def run_agentic_prompt(
     unsaved_prompt: CompletionRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticPromptRunResponse | StreamingResponse:
     """
     Run and/or stream an unsaved agentic prompt.
     Note: For streaming, the response will be a StreamingResponse object.
@@ -345,7 +345,7 @@ async def run_saved_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPromptRunResponse | StreamingResponse:
     """
     Run and/or stream an unsaved agentic prompt.
     Note: For streaming, the response will be a StreamingResponse object.
@@ -404,7 +404,7 @@ def save_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())

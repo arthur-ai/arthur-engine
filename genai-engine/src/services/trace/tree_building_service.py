@@ -19,7 +19,7 @@ class TreeBuildingService:
         spans: list[Span],
         sort: PaginationSortMethod,
         trace_metadata: Optional[list[DatabaseTraceMetadata]] = None,
-    ) -> list:
+    ) -> list[TraceResponse]:
         """Group spans into a nested trace structure."""
         if not spans:
             return []

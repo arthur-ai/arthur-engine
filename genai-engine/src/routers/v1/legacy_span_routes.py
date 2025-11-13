@@ -100,7 +100,7 @@ def trace_query_parameters(
     ),
     span_types: list[str] = Query(
         None,
-        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([kind.value for kind in OpenInferenceSpanKindValues]))}",
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([k.value for k in OpenInferenceSpanKindValues]))}",  # type: ignore[name-defined]
     ),
     # Query relevance filters
     query_relevance_eq: float = Query(
@@ -242,7 +242,7 @@ def receive_traces(
     body: bytes = Body(...),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     """Receive and process OpenInference trace data."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -279,7 +279,7 @@ def query_spans(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> QueryTracesWithMetricsResponse:
     """Query traces with comprehensive filtering. Returns traces containing spans that match the filters, not just the spans themselves."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -324,7 +324,7 @@ def query_spans_with_metrics(
     ],
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> QueryTracesWithMetricsResponse:
     """Query traces with comprehensive filtering and compute metrics. Returns traces containing spans that match the filters with computed metrics."""
     try:
         span_repo = _get_span_repository(db_session)
@@ -374,7 +374,7 @@ def query_spans_by_type(
     ),
     span_types: list[str] = Query(
         None,
-        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([kind.value for kind in OpenInferenceSpanKindValues]))}",
+        description=f"Span types to filter on. Optional. Valid values: {', '.join(sorted([k.value for k in OpenInferenceSpanKindValues]))}",
     ),
     start_time: datetime = Query(
         None,
@@ -386,7 +386,7 @@ def query_spans_by_type(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> QuerySpansResponse:
     """Query spans filtered by span type. Task IDs are required. Returns spans with any existing metrics but does not compute new ones."""
     try:
         # Validate span_types using our Pydantic model
@@ -403,6 +403,10 @@ def query_spans_by_type(
             span_types=query_request.span_types,
             start_time=query_request.start_time,
             end_time=query_request.end_time,
+            trace_duration_gt=None,
+            trace_duration_gte=None,
+            trace_duration_lt=None,
+            trace_duration_lte=None,
         )
 
         span_repo = _get_span_repository(db_session)
@@ -447,7 +451,7 @@ def compute_span_metrics(
     span_id: str,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SpanWithMetricsResponse:
     """Compute metrics for a single span. Validates that the span is an LLM span."""
     try:
         span_repo = _get_span_repository(db_session)

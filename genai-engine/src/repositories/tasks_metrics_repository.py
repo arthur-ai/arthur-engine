@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session, joinedload
 from config.cache_config import cache_config
 from db_models import DatabaseTaskToMetrics
 
-CACHED_TASK_METRICS = TTLCache(maxsize=1000, ttl=cache_config.TASK_METRICS_CACHE_TTL)
+CACHED_TASK_METRICS: TTLCache[str, list[str]] = TTLCache(
+    maxsize=1000,
+    ttl=cache_config.TASK_METRICS_CACHE_TTL,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -46,5 +49,5 @@ class TasksMetricsRepository:
         result = self.db_session.execute(statement).unique().scalars().all()
         return [metric.metric_id for metric in result]
 
-    def clear_cache(self):
+    def clear_cache(self) -> None:
         CACHED_TASK_METRICS.clear()

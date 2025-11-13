@@ -1,8 +1,8 @@
 import random
 
 import pytest
-
 from arthur_common.models.enums import PaginationSortMethod
+
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -36,6 +36,8 @@ def test_search_tasks(
     assert len(task_resp_base.tasks) == expected_count
 
     # Verify all tasks have is_agentic field (should default to False)
+    # TODO: this test fails when running tests in parallel with xdist
+    # modify how we create tasks to ensure that tests are independent/properly cleaned up
     for task in task_resp_base.tasks:
         assert hasattr(task, "is_agentic")
         # Since we didn't specify is_agentic in create_task, they should all be False

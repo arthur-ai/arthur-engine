@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Optional, Tuple
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from arthur_common.models.request_schemas import TraceQueryRequest
+from arthur_common.models.response_schemas import TraceResponse
 from google.protobuf.message import DecodeError
 from opentelemetry import trace
 from sqlalchemy.orm import Session
@@ -67,19 +68,21 @@ class SpanRepository:
         Returns metadata only without spans or metrics for fast performance.
         """
         # Convert to internal schema format
-        filters = TraceQuerySchema._from_request_model(filters)
+        internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
+            filters,
+        )
 
         # Add user_ids to filters if provided
         if user_ids:
-            filters.user_ids = user_ids
+            internal_filters.user_ids = user_ids
 
-        if not filters.task_ids:
+        if not internal_filters.task_ids:
             raise ValueError("task_ids are required for trace queries")
 
         # Get trace metadata without loading spans
         paginated_trace_ids, total_count = (
             self.span_query_service.get_paginated_trace_ids_with_filters(
-                filters=filters,
+                filters=internal_filters,
                 pagination_parameters=pagination_parameters,
             )
         )
@@ -117,7 +120,7 @@ class SpanRepository:
         trace_id: str,
         include_metrics: bool = False,
         compute_new_metrics: bool = False,
-    ):
+    ) -> Optional[TraceResponse]:
         """Get complete trace tree with existing metrics (no computation).
 
         Returns full trace structure with spans.
@@ -158,7 +161,7 @@ class SpanRepository:
     def compute_trace_metrics(
         self,
         trace_id: str,
-    ):
+    ) -> Optional[TraceResponse]:
         """Compute all missing metrics for trace spans on-demand.
 
         Returns full trace tree with computed metrics.
@@ -258,7 +261,7 @@ class SpanRepository:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Get all trace trees in a session.
 
         Returns list of full trace trees with existing metrics (no computation).
@@ -298,7 +301,7 @@ class SpanRepository:
         self,
         session_id: str,
         pagination_parameters: PaginationParameters,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Get all traces in a session and compute missing metrics.
 
         Returns list of full trace trees with computed metrics.
@@ -472,18 +475,20 @@ class SpanRepository:
         pagination_parameters: PaginationParameters,
         include_metrics: bool = False,
         compute_new_metrics: bool = True,
-    ) -> tuple[int, list]:
+    ) -> tuple[int, list[TraceResponse]]:
         """Query traces with comprehensive filtering and optional metrics computation."""
         # Validate parameters
 
-        filters = TraceQuerySchema._from_request_model(filters)
+        internal_filters: TraceQuerySchema = TraceQuerySchema._from_request_model(
+            filters,
+        )
 
         if not filters.task_ids:
             raise ValueError("task_ids are required for trace queries")
 
         # Trace-level pagination: get paginated trace IDs using optimized two-phase filtering
         result = self.span_query_service.get_paginated_trace_ids_with_filters(
-            filters=filters,
+            filters=internal_filters,
             pagination_parameters=pagination_parameters,
         )
 
@@ -517,7 +522,7 @@ class SpanRepository:
     # Testing/Utility Methods
     # ============================================================================
 
-    def _store_spans(self, spans: list[dict], commit: bool = True):
+    def _store_spans(self, spans: list[dict[str, Any]], commit: bool = True) -> None:
         """Store spans in the database with optional commit control.
 
         This method is primarily used for testing and direct span insertion.

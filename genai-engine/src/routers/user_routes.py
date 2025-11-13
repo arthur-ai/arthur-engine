@@ -46,8 +46,8 @@ def create_user(
     request: CreateUserRequest,
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
-    kc_client.create_user(request)
+) -> Response:
+    kc_client.create_user(request)  # type: ignore[arg-type]
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -70,9 +70,9 @@ def search_users(
     ] = None,
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[UserResponse]:
     users = kc_client.search_users(
-        search_string=search_string,
+        search_string=search_string or "",
         page=pagination_parameters.page,
         page_size=pagination_parameters.page_size,
     )
@@ -95,7 +95,7 @@ def check_user_permission(
         description="Resource to check permissions of.",
     ),
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
-):
+) -> Response:
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,7 +125,7 @@ def delete_user(
     ],
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     kc_client.delete_user(user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -140,7 +140,7 @@ def reset_user_password(
     request_body: PasswordResetRequest,
     current_user: Annotated[User, Depends(validate_token)],
     kc_client: ABCAuthClient = Depends(get_keycloak_client),
-):
+) -> None:
     if (
         constants.ORG_ADMIN in [role.name for role in current_user.roles]
         or user_id == current_user.id

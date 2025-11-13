@@ -4,7 +4,7 @@ from utils import constants
 
 
 class BadCredentialsException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Bad credentials",
@@ -12,7 +12,7 @@ class BadCredentialsException(HTTPException):
 
 
 class PermissionDeniedException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied",
@@ -20,7 +20,7 @@ class PermissionDeniedException(HTTPException):
 
 
 class RequiresAuthenticationException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Requires authentication",
@@ -28,7 +28,7 @@ class RequiresAuthenticationException(HTTPException):
 
 
 class UnableCredentialsException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to verify credentials",
@@ -36,7 +36,7 @@ class UnableCredentialsException(HTTPException):
 
 
 class AlreadyValidatedException(HTTPException):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=constants.ERROR_CANNOT_VALIDATE_INFERENCE_TWICE,
