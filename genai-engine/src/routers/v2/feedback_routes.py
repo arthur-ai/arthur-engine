@@ -48,7 +48,7 @@ def post_feedback(
         str(inference_id),
         body.target,
         body.score,
-        body.reason,
+        body.reason or "",
         body.user_id,
         db_session,
     )
@@ -83,7 +83,7 @@ def query_feedback(
         None,
         description="Inference ID to filter on",
     ),
-    target: str | list[str] | None = Query(
+    target: InferenceFeedbackTarget | list[InferenceFeedbackTarget] | None = Query(
         None,
         description=f"Target of the feedback. Must be one of {[x.value for x in InferenceFeedbackTarget]}",
     ),

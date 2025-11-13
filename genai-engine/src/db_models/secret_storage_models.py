@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import TIMESTAMP, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -12,7 +13,7 @@ class DatabaseSecretStorage(Base):
     __tablename__ = "secret_storage"
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
-    value: Mapped[dict] = mapped_column(EncryptedJSON)
+    value: Mapped[Any] = mapped_column(EncryptedJSON)
     secret_type: Mapped[SecretType] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, default=datetime.now())

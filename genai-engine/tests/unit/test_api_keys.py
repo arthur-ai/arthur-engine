@@ -2,13 +2,14 @@ from typing import Generator
 from unittest.mock import patch
 
 import pytest
+from arthur_common.models.response_schemas import ApiKeyResponse
+
 from auth.api_key_validator_client import APIKeyValidatorClient
 from auth.ApiKeyValidator.APIKeyValidator import APIKeyValidator
 from auth.ApiKeyValidator.APIKeyvalidatorCreator import APIKeyValidatorCreator
 from auth.ApiKeyValidator.enums import APIKeyValidatorType
 from config.config import Config
 from schemas.custom_exceptions import UnableCredentialsException
-from arthur_common.models.response_schemas import ApiKeyResponse
 from tests.clients.base_test_client import (
     GenaiEngineTestClientBase,
     override_get_db_session,
@@ -65,7 +66,7 @@ def test_create_api_key_no_description():
     assert api_key is not None
     assert api_key.id is not None
     assert api_key.is_active is not None
-    assert api_key.description is None
+    assert api_key.description == ""
     assert api_key.is_active is True
     assert api_key.created_at is not None
     assert api_key.message is not None

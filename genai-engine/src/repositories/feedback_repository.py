@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from arthur_common.models.enums import InferenceFeedbackTarget, PaginationSortMethod
 from arthur_common.models.response_schemas import InferenceFeedbackResponse
@@ -59,7 +60,7 @@ class FeedbackRepository:
         conversation_id: str | list[str] | None = None,
         task_id: str | list[str] | None = None,
         inference_user_id: str | None = None,
-    ) -> (list[DatabaseInferenceFeedback], int):
+    ) -> tuple[list[DatabaseInferenceFeedback], int]:
         # query for all columns of the feedback table
         stmt = self.db_session.query(DatabaseInferenceFeedback)
 
@@ -81,6 +82,8 @@ class FeedbackRepository:
         if target:
             stmt = stmt.where(DatabaseInferenceFeedback.target.in_(target))
         if score:
+            if isinstance(score, int):
+                score = [score]
             stmt = stmt.where(DatabaseInferenceFeedback.score.in_(score))
         if feedback_user_id:
             stmt = stmt.where(DatabaseInferenceFeedback.user_id.ilike(feedback_user_id))
@@ -104,7 +107,7 @@ class FeedbackRepository:
         count = stmt.count()
 
         # apply pagination
-        if page is not None:
+        if page is not None and page_size is not None:
             stmt = stmt.offset(page * page_size)
         stmt = stmt.limit(page_size)
 
@@ -118,8 +121,8 @@ def save_feedback(
     inference_id: str,
     target: InferenceFeedbackTarget,
     score: int,
-    reason: str | None,
-    user_id: str | None,
+    reason: str = "",
+    user_id: Optional[str] = None,
     db_session: Session = Depends(get_db_session),
 ) -> InferenceFeedbackResponse:
     """
