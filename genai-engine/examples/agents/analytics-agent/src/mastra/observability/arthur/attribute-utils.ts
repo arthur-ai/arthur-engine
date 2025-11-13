@@ -4,9 +4,9 @@
 
 import type {
   AnyExportedAISpan,
-  LLMGenerationAttributes,
+  ModelGenerationAttributes,
   AgentRunAttributes,
-  LLMChunkAttributes,
+  ModelChunkAttributes,
   ToolCallAttributes,
   MCPToolCallAttributes,
   WorkflowRunAttributes,
@@ -66,11 +66,11 @@ export function setSpanAttributes(
     case AISpanType.AGENT_RUN:
       additionalAttributes = setAgentRunAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_GENERATION:
-      additionalAttributes = setLLMGenerationAttributes(otelSpan, span);
+    case AISpanType.MODEL_GENERATION:
+      additionalAttributes = setModelGenerationAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_CHUNK:
-      additionalAttributes = setLLMChunkAttributes(otelSpan, span);
+    case AISpanType.MODEL_CHUNK:
+      additionalAttributes = setModelChunkAttributes(otelSpan, span);
       break;
     case AISpanType.TOOL_CALL:
       additionalAttributes = setToolCallAttributes(otelSpan, span);
@@ -133,8 +133,8 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
       return OpenInferenceSpanKind.AGENT;
 
     // all map to LLM in OpenInference
-    case AISpanType.LLM_GENERATION:
-    case AISpanType.LLM_CHUNK:
+    case AISpanType.MODEL_GENERATION:
+    case AISpanType.MODEL_CHUNK:
       return OpenInferenceSpanKind.LLM;
 
     // all map to TOOL in OpenInference
@@ -465,12 +465,12 @@ function setAgentRunAttributes(
   return additionalAttributes;
 }
 
-function setLLMGenerationAttributes(
+function setModelGenerationAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const llmAttr = span.attributes as LLMGenerationAttributes;
+  const llmAttr = span.attributes as ModelGenerationAttributes;
   if (llmAttr) {
     if (llmAttr.model) {
       otelSpan.setAttributes({
@@ -536,12 +536,12 @@ function setLLMGenerationAttributes(
   return additionalAttributes;
 }
 
-function setLLMChunkAttributes(
+function setModelChunkAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const attr = span.attributes as LLMChunkAttributes;
+  const attr = span.attributes as ModelChunkAttributes;
   if (attr) {
     if (attr.chunkType) {
       additionalAttributes["chunk_type"] = attr.chunkType;
