@@ -1315,33 +1315,18 @@ def test_get_agentic_prompt_by_version_route(
     """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
+    task = create_agentic_task
 
-    # Save a prompt
-    prompt_name = "test_prompt"
-    prompt_data = {
-        "messages": [{"role": "user", "content": "Hello, world!"}],
-        "model_name": "gpt-4",
-        "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
-    }
-
-    save_response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
-        json=prompt_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert save_response.status_code == 200
+    prompt = create_agentic_prompt
 
     if prompt_version == "datetime":
-        prompt_version = save_response.json()["created_at"]
+        prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
 
     # Get the prompt using different version formats
-    response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
-        headers=client.authorized_user_api_key_headers,
+    status_code, prompt_response = client.get_agentic_prompt(
+        task_id=task.id,
+        prompt_name=prompt.name,
+        version=prompt_version,
     )
     assert status_code == 200
     assert prompt_response.name == prompt.name

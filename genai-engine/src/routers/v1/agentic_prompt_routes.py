@@ -94,11 +94,6 @@ def get_agentic_prompt(
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
-        elif "attempting to retrieve a deleted prompt" in str(e).lower():
-            raise HTTPException(
-                status_code=400,
-                detail="Attempting to retrieve a deleted prompt",
-            )
         else:
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
