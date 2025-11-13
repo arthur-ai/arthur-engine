@@ -1,7 +1,9 @@
 import random
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pytest
+from litellm.types.utils import ModelResponse
 
 from schemas.internal_schemas import Task
 from tests.clients.base_test_client import GenaiEngineTestClientBase
@@ -1068,3 +1070,268 @@ def test_get_unique_llm_eval_names(client: GenaiEngineTestClientBase):
     )
     assert response.status_code == 200
     assert len(response.json()["versions"]) == 2
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_saved_llm_eval_success(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test running a saved llm eval"""
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "This answer is true because it is supported by the ground truth.", "score": 1}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # configure a provider
+    response = client.base_client.put(
+        f"/api/v1/model_providers/openai",
+        json={"api_key": "test-key"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 201
+
+    # First save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Assess the following answer based on ground truth",
+    }
+
+    eval_name = "test_llm_eval"
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # Now run the saved eval
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    run_response = response.json()
+    assert (
+        run_response["reason"]
+        == "This answer is true because it is supported by the ground truth."
+    )
+    assert run_response["score"] == 1
+    assert run_response["cost"] == "0.002345"
+
+
+@pytest.mark.unit_tests
+def test_run_saved_llm_eval_not_found(client: GenaiEngineTestClientBase):
+    """Test running a saved llm eval that doesn't exist"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Try to run a non-existent saved llm eval
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/nonexistent_eval/versions/latest/completions",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert "not found" in response.json()["detail"].lower()
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_deleted_llm_eval_spawns_error(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+):
+    """Test running a deleted version of a saved llm eval spawns an error"""
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "This answer is true because it is supported by the ground truth.", "score": 1}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001234
+
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_data = {
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+        "instructions": "Assess the following answer based on ground truth",
+    }
+
+    eval_name = "test_llm_eval"
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 1
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    # save 2 versions to have a deleted and non-deleted version
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == eval_name
+    assert response.json()["version"] == 2
+    assert response.json()["instructions"] == eval_data["instructions"]
+
+    # soft delete version 2 of the eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2/completions",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        "cannot run this llm eval because it was deleted on"
+        in response.json()["detail"].lower()
+    )
+
+    # running latest should run the latest non-deleted version of an eval
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json={},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+    assert (
+        response.json()["reason"]
+        == "This answer is true because it is supported by the ground truth."
+    )
+    assert response.json()["score"] == 1
+    assert response.json()["cost"] == "0.001234"
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+@pytest.mark.parametrize(
+    "instructions,variables,expected_error",
+    [
+        ("Hello, {{name}}!", {"name": "John"}, None),
+        ("Hello, {{name}}!", {"name": ""}, None),
+        (
+            "Hello, {{name}}!",
+            None,
+            "Missing values for the following variables: name",
+        ),
+        ("Hello, name!", {"name": "John"}, None),
+        ("Hello, name!", {"first_name": "John"}, None),
+        (
+            "Hello, {{ first_name }} {{ last_name }}!",
+            {"first_name": "John", "last_name": "Doe"},
+            None,
+        ),
+        (
+            "Hello, {{ first_name }} {{ last_name }}!",
+            {"first_name": "John", "name": "Doe"},
+            "Missing values for the following variables: last_name",
+        ),
+        (
+            "Hello, {{ first_name }} {{ last_name }}!",
+            {"name1": "John", "name2": "Doe"},
+            "Missing values for the following variables: first_name, last_name",
+        ),
+        (
+            "Hello, {{ first_name }} {last_name}!",
+            {"first_name": "John", "name": "Doe"},
+            None,
+        ),
+        (
+            "Hello, {{ first_name }} {{ last_name }}!",
+            {"first_name": "", "last_name": ""},
+            None,
+        ),
+    ],
+)
+def test_run_saved_llm_eval_strict_mode(
+    mock_completion,
+    mock_completion_cost,
+    client: GenaiEngineTestClientBase,
+    instructions,
+    variables,
+    expected_error,
+):
+    """Test running a saved llm eval with strict mode"""
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"reason": "This answer is true because it is supported by the ground truth.", "score": 1}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.001234
+
+    eval_name = "test_llm_eval"
+
+    eval_data = {
+        "instructions": instructions,
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    completion_request = {}
+
+    if variables:
+        completion_request["variables"] = [
+            {"name": name, "value": value} for name, value in variables.items()
+        ]
+
+    # Save llm eval
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    # verify running saved llm eval enforces strict=True
+    response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json=completion_request,
+        headers=client.authorized_user_api_key_headers,
+    )
+    if expected_error:
+        assert response.status_code == 400
+        assert response.json()["detail"] == expected_error
+    else:
+        assert response.status_code == 200

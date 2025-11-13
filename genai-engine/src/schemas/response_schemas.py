@@ -680,3 +680,12 @@ class LLMEvalsVersionListResponse(BaseModel):
         description="List of llm eval version metadata",
     )
     count: int = Field(description="Total number of llm evals matching filters")
+
+
+class LLMEvalRunResponse(BaseModel):
+    reason: str = Field(
+        ...,
+        description="Explanation for how the llm arrived at this answer.",
+    )
+    score: int = Field(..., description="Score for this llm eval")
+    cost: str = Field(..., description="Cost of this llm completion")

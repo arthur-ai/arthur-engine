@@ -7,7 +7,8 @@ from uuid import uuid4
 import pytest
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
-from litellm.types.utils import ChatCompletionMessageToolCall, Function
+from litellm.types.utils import ChatCompletionMessageToolCall, Function, ModelResponse
+from pydantic import Field, create_model
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient
@@ -16,7 +17,6 @@ from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
     AgenticPromptMessage,
-    CompletionRequest,
     LLMResponseFormat,
     LLMResponseSchema,
     PromptCompletionRequest,
@@ -27,6 +27,7 @@ from schemas.agentic_prompt_schemas import (
 from schemas.common_schemas import JsonSchema
 from schemas.enums import MessageRole, ModelProvider
 from schemas.request_schemas import (
+    CompletionRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
 )
@@ -103,7 +104,8 @@ def sample_deleted_prompt(sample_db_prompt):
 @pytest.fixture
 def sample_unsaved_run_config(sample_prompt_data):
     """Create sample AgenticPrompt instance"""
-    return CompletionRequest(**sample_prompt_data)
+    unsaved_run_data = {k: v for k, v in sample_prompt_data.items() if k != "version"}
+    return CompletionRequest(**unsaved_run_data)
 
 
 @pytest.fixture
@@ -130,25 +132,25 @@ def mock_completion(*args, **kwargs):
             "In context=(), 'additionalProperties' is required to be supplied and to be false.",
         )
 
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {"content": "ok", "tool_calls": None}
     return mock_response
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_prompt(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     mock_llm_client,
     agentic_prompt_repo,
     sample_unsaved_run_config,
 ):
     """Test running a prompt and getting response"""
     # Mock completion response
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test response",
@@ -157,7 +159,9 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    prompt, request = sample_unsaved_run_config.to_prompt_and_request()
+    prompt, request = AgenticPromptRepository.to_prompt_and_request(
+        sample_unsaved_run_config,
+    )
     result = prompt.run_chat_completion(mock_llm_client, request)
 
     assert isinstance(result, AgenticPromptRunResponse)
@@ -432,11 +436,11 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_prompt(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     mock_llm_client,
     agentic_prompt_repo,
     mock_db_session,
@@ -456,7 +460,7 @@ def test_run_saved_prompt(
     mock_filter.first.return_value = sample_db_prompt
 
     # Mock completion response
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Saved prompt response",
@@ -503,17 +507,17 @@ def test_agentic_prompt_model_dump(sample_agentic_prompt):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_agentic_prompt_run_chat_completion(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     mock_llm_client,
     sample_agentic_prompt,
 ):
     """Test running chat completion directly on AgenticPrompt"""
     # Mock completion response
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Direct completion response",
@@ -922,11 +926,11 @@ def test_agentic_prompt_response_format_serialization():
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_agentic_prompt_tool_call_message_serialization(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     mock_llm_client,
 ):
     """Test that assistant tool_call messages are still serialized correctly when set with an invalid type"""
@@ -961,7 +965,7 @@ def test_agentic_prompt_tool_call_message_serialization(
     )
 
     # Mock LiteLLM completion response
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Got it!",
@@ -971,7 +975,7 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost.return_value = 0.000123
 
     # Run the unsaved prompt
-    prompt, request = completion_request.to_prompt_and_request()
+    prompt, request = AgenticPromptRepository.to_prompt_and_request(completion_request)
     result = prompt.run_chat_completion(mock_llm_client, request)
     call_args = mock_completion.call_args[1]
 
@@ -998,7 +1002,7 @@ def test_agentic_prompt_tool_call_message_serialization(
     assert result.cost == "0.000123"
 
 
-@patch("schemas.agentic_prompt_schemas.completion_cost", return_value=0.0)
+@patch("clients.llm.llm_client.completion_cost", return_value=0.0)
 @patch("clients.llm.llm_client.litellm.completion", side_effect=mock_completion)
 @pytest.mark.parametrize("has_additional_props", [True, False])
 def test_run_chat_completion_strict_additional_properties_validation(
@@ -1477,3 +1481,44 @@ def test_soft_delete_prompt_by_version_success(prompt_version):
         db_session.delete(db_prompt)
         db_session.commit()
         db_session.close()
+
+
+@pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
+@patch("clients.llm.llm_client.litellm.completion")
+def test_run_saved_agentic_prompt_with_pydantic_response_format(
+    mock_completion,
+    mock_completion_cost,
+    mock_llm_client,
+    sample_unsaved_run_config,
+):
+    """Test running a saved agentic prompt with a BaseModel response format returns a jsonified version of that model"""
+    task_id = "test_task_id"
+    prompt_name = "test_prompt"
+
+    full_prompt, request = AgenticPromptRepository.to_prompt_and_request(
+        sample_unsaved_run_config,
+    )
+    full_prompt.response_format = create_model(
+        "GetWeatherResponse",
+        city=(str, Field(..., description="The city to get the weather for.")),
+        temperature=(
+            int,
+            Field(..., description="The temperature in farenheit for the city."),
+        ),
+    )
+
+    # Mock completion response
+    mock_response = MagicMock(spec=ModelResponse)
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message = {
+        "content": '{"city": "New York", "temperature": 70}',
+    }
+    mock_completion.return_value = mock_response
+    mock_completion_cost.return_value = 0.002345
+
+    result = full_prompt.run_chat_completion(mock_llm_client, request)
+
+    assert isinstance(result, AgenticPromptRunResponse)
+    assert result.content == '{"city": "New York", "temperature": 70}'
+    assert result.cost == "0.002345"
