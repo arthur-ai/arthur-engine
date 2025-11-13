@@ -33,10 +33,10 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   // Initialize from localStorage after mount to avoid hydration mismatch
   useEffect(() => {
     // Get or create session ID
-    let storedSessionId = localStorage.getItem('analytics-agent-session-id');
+    let storedSessionId = sessionStorage.getItem('analytics-agent-session-id');
     if (!storedSessionId) {
       storedSessionId = generateSessionId();
-      localStorage.setItem('analytics-agent-session-id', storedSessionId);
+      sessionStorage.setItem('analytics-agent-session-id', storedSessionId);
     }
     setSessionId(storedSessionId);
 
@@ -55,7 +55,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
     const newSessionId = generateSessionId();
     setSessionId(newSessionId);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('analytics-agent-session-id', newSessionId);
+      sessionStorage.setItem('analytics-agent-session-id', newSessionId);
     }
   };
 
