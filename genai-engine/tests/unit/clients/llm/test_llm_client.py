@@ -4,8 +4,7 @@ import pytest
 from litellm.types.utils import ModelResponse
 from pydantic import BaseModel, Field
 
-from clients.llm.llm_client import LLMClient
-from schemas.internal_llm_schemas import LLMModelResponse
+from clients.llm.llm_client import LLMClient, LLMModelResponse
 
 
 class TestGetWeatherResponseClass(BaseModel):

@@ -594,7 +594,6 @@ class CreateAgenticPromptRequest(LLMConfigSettings):
     model_provider: ModelProvider = Field(
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
-    version: int = Field(default=1, description="Version of the agentic prompt")
     tools: Optional[List[LLMTool]] = Field(
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
@@ -610,14 +609,6 @@ class CreateAgenticPromptRequest(LLMConfigSettings):
     stream_options: Optional[StreamOptions] = Field(
         None,
         description="Additional streaming configuration options",
-    )
-    created_at: Optional[datetime] = Field(
-        default=None,
-        description="Timestamp when the prompt was created.",
-    )
-    deleted_at: Optional[datetime] = Field(
-        None,
-        description="Time that this prompt was deleted",
     )
 
     class Config:

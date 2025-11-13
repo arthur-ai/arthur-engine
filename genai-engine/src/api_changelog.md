@@ -2,6 +2,15 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/13/2025
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'created_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'deleted_at'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'version'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions  endpoint added
+
 # 11/12/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/completions  removed 'subschema #2' from the 'response_format' request property 'anyOf' list
 

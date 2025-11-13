@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 from arthur_common.models.common_schemas import PaginationParameters
 from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
@@ -155,7 +155,7 @@ def get_all_llm_evals(
 
 
 @llm_eval_routes.post(
-    "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}",
+    "/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions",
     summary="Run a saved llm eval",
     description="Run a saved llm eval",
     response_model=LLMEvalRunResponse,
@@ -164,6 +164,7 @@ def get_all_llm_evals(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def run_saved_llm_eval(
+    completion_request: BaseCompletionRequest,
     eval_name: str = Path(
         ...,
         description="The name of the llm eval to run.",
@@ -174,7 +175,6 @@ def run_saved_llm_eval(
         description="The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00').",
         title="LLM Eval Version",
     ),
-    completion_request: Optional[BaseCompletionRequest] = None,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),

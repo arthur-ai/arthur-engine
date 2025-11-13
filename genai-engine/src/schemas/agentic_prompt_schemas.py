@@ -17,7 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.common_schemas import JsonSchema
 from schemas.enums import (
@@ -28,7 +28,6 @@ from schemas.enums import (
     ReasoningEffortEnum,
     ToolChoiceEnum,
 )
-from schemas.internal_llm_schemas import LLMModelResponse
 from schemas.response_schemas import AgenticPromptRunResponse
 
 warnings.filterwarnings(

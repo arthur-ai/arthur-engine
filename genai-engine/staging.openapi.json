@@ -4848,16 +4848,16 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "$ref": "#/components/schemas/ModelProvider"
+                                    "type": "string"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model provider. Allowed values: anthropic, gemini, openai",
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
                             "title": "Model Provider"
                         },
-                        "description": "Filter by model provider. Allowed values: anthropic, gemini, openai"
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
                     },
                     {
                         "name": "model_name",
@@ -5015,16 +5015,16 @@
                         "schema": {
                             "anyOf": [
                                 {
-                                    "$ref": "#/components/schemas/ModelProvider"
+                                    "type": "string"
                                 },
                                 {
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by model provider. Allowed values: anthropic, gemini, openai",
+                            "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure').",
                             "title": "Model Provider"
                         },
-                        "description": "Filter by model provider. Allowed values: anthropic, gemini, openai"
+                        "description": "Filter by model provider (e.g., 'openai', 'anthropic', 'azure')."
                     },
                     {
                         "name": "model_name",
@@ -7658,92 +7658,6 @@
                     }
                 }
             },
-            "post": {
-                "tags": [
-                    "LLMEvals"
-                ],
-                "summary": "Run a saved llm eval",
-                "description": "Run a saved llm eval",
-                "operationId": "run_saved_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__post",
-                "security": [
-                    {
-                        "API Key": []
-                    }
-                ],
-                "parameters": [
-                    {
-                        "name": "eval_name",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Name",
-                            "description": "The name of the llm eval to run."
-                        },
-                        "description": "The name of the llm eval to run."
-                    },
-                    {
-                        "name": "eval_version",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "title": "LLM Eval Version",
-                            "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
-                        },
-                        "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
-                    },
-                    {
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "uuid",
-                            "title": "Task Id"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "anyOf": [
-                                    {
-                                        "$ref": "#/components/schemas/BaseCompletionRequest"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ],
-                                "title": "Completion Request"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LLMEvalRunResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
             "delete": {
                 "tags": [
                     "LLMEvals"
@@ -8184,6 +8098,87 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/LLMGetAllMetadataListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions": {
+            "post": {
+                "tags": [
+                    "LLMEvals"
+                ],
+                "summary": "Run a saved llm eval",
+                "description": "Run a saved llm eval",
+                "operationId": "run_saved_llm_eval_api_v1_tasks__task_id__llm_evals__eval_name__versions__eval_version__completions_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "eval_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Name",
+                            "description": "The name of the llm eval to run."
+                        },
+                        "description": "The name of the llm eval to run."
+                    },
+                    {
+                        "name": "eval_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "LLM Eval Version",
+                            "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                        },
+                        "description": "The version of the llm eval to run. Can be 'latest', a version number (e.g. '1', '2', etc.), or an ISO datetime string (e.g. '2025-01-01T00:00:00')."
+                    },
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BaseCompletionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LLMEvalRunResponse"
                                 }
                             }
                         }
@@ -10218,12 +10213,6 @@
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the agentic prompt",
-                        "default": 1
-                    },
                     "tools": {
                         "anyOf": [
                             {
@@ -10275,32 +10264,6 @@
                             }
                         ],
                         "description": "Additional streaming configuration options"
-                    },
-                    "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
                     },
                     "completion_request": {
                         "$ref": "#/components/schemas/PromptCompletionRequest",
@@ -10557,12 +10520,6 @@
                         "$ref": "#/components/schemas/ModelProvider",
                         "description": "Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')"
                     },
-                    "version": {
-                        "type": "integer",
-                        "title": "Version",
-                        "description": "Version of the agentic prompt",
-                        "default": 1
-                    },
                     "tools": {
                         "anyOf": [
                             {
@@ -10614,32 +10571,6 @@
                             }
                         ],
                         "description": "Additional streaming configuration options"
-                    },
-                    "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Created At",
-                        "description": "Timestamp when the prompt was created."
-                    },
-                    "deleted_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Deleted At",
-                        "description": "Time that this prompt was deleted"
                     }
                 },
                 "additionalProperties": false,

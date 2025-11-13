@@ -5,7 +5,8 @@ from typing import Generator
 import pytest
 from arthur_common.models.response_schemas import TaskResponse
 
-from src.schemas.agentic_prompt_schemas import AgenticPrompt, AgenticPromptBaseConfig
+from src.schemas.agentic_prompt_schemas import AgenticPrompt
+from src.schemas.request_schemas import CreateAgenticPromptRequest
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -47,7 +48,7 @@ def create_agentic_prompt(
     create_agentic_task: TaskResponse,
 ) -> Generator[AgenticPrompt, None, None]:
     prompt_name = "test_prompt"
-    prompt_data = AgenticPromptBaseConfig(
+    prompt_data = CreateAgenticPromptRequest(
         messages=[{"role": "user", "content": "Hello, world!"}],
         model_name="gpt-4",
         model_provider="openai",

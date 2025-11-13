@@ -81,6 +81,7 @@ class LLMEvalsRepository(BaseLLMRepository):
             )
 
         # create the structured output response schema
+        # NOTE: We use create_model instead of a global BaseModel to so the score range can be set dynamically
         llm_eval_response_schema = create_model(
             "ReasonedScore",
             reason=(

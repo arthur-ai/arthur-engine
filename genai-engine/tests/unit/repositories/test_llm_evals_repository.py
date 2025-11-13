@@ -10,12 +10,11 @@ from arthur_common.models.common_schemas import (
 from litellm.types.utils import ModelResponse
 from sqlalchemy.exc import IntegrityError
 
-from clients.llm.llm_client import LLMClient
+from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval
 from repositories.llm_evals_repository import LLMEvalsRepository
 from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import ModelProvider
-from schemas.internal_llm_schemas import LLMModelResponse
 from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
     CreateEvalRequest,

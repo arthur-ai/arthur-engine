@@ -1,18 +1,32 @@
 import logging
 import threading
 import time
-from typing import Any, List
+from typing import Any, List, Optional, Type, Union
 
 import litellm
 from litellm import completion_cost, get_model_cost_map, model_cost_map_url
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.utils import ModelResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.enums import ModelProvider
-from schemas.internal_llm_schemas import LLMModelResponse
 
 logger = logging.getLogger(__name__)
+
+
+class LLMModelResponse(BaseModel):
+    # NOTE: We use arbitrary_types_allowed=True here to allow the response parameter to be the non-pydantic types ModelResponse/CustomStreamWrapper
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    response: Union[ModelResponse, CustomStreamWrapper] = Field(
+        ...,
+        description="The raw response from litellm",
+    )
+    structured_output_response: Optional[Type[BaseModel]] = Field(
+        None,
+        description="The structured output base model response from the model",
+    )
+    cost: Optional[float] = Field(None, description="The cost of the model response")
 
 
 def supported_models() -> dict[str, list[str]]:

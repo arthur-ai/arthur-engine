@@ -1120,7 +1120,8 @@ def test_run_saved_llm_eval_success(
 
     # Now run the saved eval
     response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest",
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -1144,7 +1145,8 @@ def test_run_saved_llm_eval_not_found(client: GenaiEngineTestClientBase):
 
     # Try to run a non-existent saved llm eval
     response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/nonexistent_eval/versions/latest",
+        f"/api/v1/tasks/{task.id}/llm_evals/nonexistent_eval/versions/latest/completions",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -1211,7 +1213,8 @@ def test_run_deleted_llm_eval_spawns_error(
     assert response.status_code == 204
 
     response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2",
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/2/completions",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 400
@@ -1222,7 +1225,8 @@ def test_run_deleted_llm_eval_spawns_error(
 
     # running latest should run the latest non-deleted version of an eval
     response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest",
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
+        json={},
         headers=client.authorized_user_api_key_headers,
     )
     assert response.status_code == 200
@@ -1322,7 +1326,7 @@ def test_run_saved_llm_eval_strict_mode(
 
     # verify running saved llm eval enforces strict=True
     response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest",
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/completions",
         json=completion_request,
         headers=client.authorized_user_api_key_headers,
     )

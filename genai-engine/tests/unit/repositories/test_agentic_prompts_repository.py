@@ -104,7 +104,8 @@ def sample_deleted_prompt(sample_db_prompt):
 @pytest.fixture
 def sample_unsaved_run_config(sample_prompt_data):
     """Create sample AgenticPrompt instance"""
-    return CompletionRequest(**sample_prompt_data)
+    unsaved_run_data = {k: v for k, v in sample_prompt_data.items() if k != "version"}
+    return CompletionRequest(**unsaved_run_data)
 
 
 @pytest.fixture
