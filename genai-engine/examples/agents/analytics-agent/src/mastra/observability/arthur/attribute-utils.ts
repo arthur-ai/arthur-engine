@@ -195,8 +195,6 @@ function setMetadataAttributes(
   otelSpan: OISpan,
   metadata: AnyExportedAISpan["metadata"]
 ): void {
-  console.log("metadata", metadata);
-
   // set metadata based attributes
   const { userId, sessionId, ...remainingMetadata } = metadata ?? {};
 
