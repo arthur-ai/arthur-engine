@@ -91,6 +91,7 @@ from schemas.response_schemas import (
     DatasetVersionResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
+    ListRagSearchSettingConfigurationVersionsResponse,
     RagProviderConfigurationResponse,
     RagProviderQueryResponse,
     RagSearchSettingConfigurationResponse,
@@ -3142,6 +3143,103 @@ class GenaiEngineTestClientBase(httpx.Client):
         log_response(resp)
 
         return resp.status_code
+
+    def get_rag_search_setting_version_by_tag(
+        self,
+        setting_configuration_id: str,
+        tag: str,
+    ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
+        """Get a single RAG search setting configuration version by tag."""
+        resp = self.base_client.get(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationVersionResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_rag_search_setting_version(
+        self,
+        setting_configuration_id: str,
+        version_number: int,
+        tags: list[str],
+    ) -> tuple[int, RagSearchSettingConfigurationVersionResponse]:
+        """Update a single RAG search setting configuration version metadata."""
+        from schemas.request_schemas import (
+            RagSearchSettingConfigurationVersionUpdateRequest,
+        )
+
+        request = RagSearchSettingConfigurationVersionUpdateRequest(tags=tags)
+
+        resp = self.base_client.patch(
+            f"/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}",
+            data=request.model_dump_json(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                RagSearchSettingConfigurationVersionResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_rag_search_setting_configuration_versions(
+        self,
+        setting_configuration_id: str,
+        sort: PaginationSortMethod = None,
+        page: int = None,
+        page_size: int = None,
+        tags: list[str] = None,
+        version_numbers: list[int] = None,
+    ) -> tuple[int, ListRagSearchSettingConfigurationVersionsResponse]:
+        """Get list of versions for the RAG search setting configuration."""
+        path = f"api/v1/rag_search_settings/{setting_configuration_id}/versions"
+        params = get_base_pagination_parameters(
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+        if tags:
+            params["tags"] = tags
+        if version_numbers:
+            params["version_numbers"] = version_numbers
+
+        resp = self.base_client.get(
+            "{}{}".format(
+                path,
+                "?" + urllib.parse.urlencode(params, doseq=True) if params else "",
+            ),
+            headers=self.authorized_user_api_key_headers,
+        )
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListRagSearchSettingConfigurationVersionsResponse.model_validate(
+                    resp.json(),
+                )
+                if resp.status_code == 200
+                else None
+            ),
+        )
 
 
 def get_base_pagination_parameters(

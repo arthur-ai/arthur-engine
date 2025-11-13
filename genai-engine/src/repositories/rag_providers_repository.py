@@ -6,7 +6,7 @@ from uuid import UUID
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
 from db_models.rag_provider_models import (
@@ -14,6 +14,7 @@ from db_models.rag_provider_models import (
     DatabaseRagProviderConfiguration,
     DatabaseRagSearchSettingConfiguration,
     DatabaseRagSearchSettingConfigurationVersion,
+    DatabaseRagSearchVersionTag,
 )
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
@@ -24,11 +25,13 @@ from schemas.internal_schemas import (
     RagProviderConfiguration,
     RagSearchSettingConfiguration,
     RagSearchSettingConfigurationVersion,
+    RagSearchSettingTag,
 )
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigUpdateRequest,
     RagProviderConfigurationUpdateRequest,
     RagSearchSettingConfigurationUpdateRequest,
+    RagSearchSettingConfigurationVersionUpdateRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -317,8 +320,9 @@ class RagProvidersRepository:
         self,
         setting_config_id: UUID,
         version_number: int,
+        include_deleted_versions: bool = False,
     ) -> DatabaseRagSearchSettingConfigurationVersion:
-        db_config = (
+        query = (
             self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
             .filter(
                 DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
@@ -328,8 +332,13 @@ class RagProvidersRepository:
                 DatabaseRagSearchSettingConfigurationVersion.version_number
                 == version_number,
             )
-            .first()
         )
+        if not include_deleted_versions:
+            query.filter(
+                DatabaseRagSearchSettingConfigurationVersion.deleted_at is None,
+            )
+
+        db_config = query.first()
 
         if not db_config:
             raise HTTPException(
@@ -342,31 +351,86 @@ class RagProvidersRepository:
         self,
         config_id: UUID,
         version_number: int,
+        include_deleted_versions: bool = False,
     ) -> RagSearchSettingConfigurationVersion:
         """Get a RAG provider configuration version by ID and version number"""
-        db_config = self._get_db_rag_setting_config_version(config_id, version_number)
+        db_config = self._get_db_rag_setting_config_version(
+            config_id,
+            version_number,
+            include_deleted_versions=include_deleted_versions,
+        )
         return RagSearchSettingConfigurationVersion._from_database_model(db_config)
 
     def _get_db_rag_setting_configuration_versions(
         self,
         setting_config_id: UUID,
-    ) -> list[DatabaseRagSearchSettingConfigurationVersion]:
-        """Gets list of RAG provider configuration versions by ID"""
-        db_configs = (
-            self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
-            .filter(
-                DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
-                == setting_config_id,
-            )
-            .all()
+        pagination_params: PaginationParameters,
+        tags: Optional[list[str]] = None,
+        version_numbers: Optional[list[int]] = None,
+    ) -> Tuple[list[DatabaseRagSearchSettingConfigurationVersion], int]:
+        """Gets list of DB RAG search configuration versions by ID"""
+        # filters out soft-deleted versions
+        base_query = self.db_session.query(
+            DatabaseRagSearchSettingConfigurationVersion,
+        ).filter(
+            DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
+            == setting_config_id,
+            DatabaseRagSearchSettingConfigurationVersion.deleted_at.is_(None),
         )
 
-        if not db_configs:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No RAG setting configuration versions found for setting id {setting_config_id}",
+        # join with tags if we're filtering by tags - otherwise relationship will handle returning them
+        if tags:
+            # case-insensitive in_ search - force list of tags and tags in the DB to be lowercase
+            lowercase_tag_search = [tag.lower() for tag in tags]
+            base_query = base_query.join(
+                DatabaseRagSearchSettingConfigurationVersion.tags,
+            ).filter(
+                func.lower(DatabaseRagSearchVersionTag.tag).in_(lowercase_tag_search),
             )
-        return db_configs
+
+        if version_numbers:
+            base_query = base_query.filter(
+                DatabaseRagSearchSettingConfigurationVersion.version_number.in_(
+                    version_numbers,
+                ),
+            )
+
+        # get count of versions before applying sorting/pagination
+        total_count = base_query.count()
+
+        # apply sorting
+        if pagination_params.sort == PaginationSortMethod.DESCENDING:
+            base_query = base_query.order_by(
+                desc(DatabaseRagSearchSettingConfigurationVersion.version_number),
+            )
+        elif pagination_params.sort == PaginationSortMethod.ASCENDING:
+            base_query = base_query.order_by(
+                asc(DatabaseRagSearchSettingConfigurationVersion.version_number),
+            )
+
+        # Apply pagination
+        offset = pagination_params.page * pagination_params.page_size
+        db_configs = base_query.offset(offset).limit(pagination_params.page_size).all()
+
+        return db_configs, total_count
+
+    def get_rag_setting_configuration_versions(
+        self,
+        setting_config_id: UUID,
+        pagination_params: PaginationParameters,
+        tags: Optional[list[str]] = None,
+        version_numbers: Optional[list[int]] = None,
+    ) -> Tuple[list[RagSearchSettingConfigurationVersion], int]:
+        db_configs, count = self._get_db_rag_setting_configuration_versions(
+            setting_config_id,
+            pagination_params,
+            tags=tags,
+            version_numbers=version_numbers,
+        )
+        return [
+            RagSearchSettingConfigurationVersion._from_database_model(db_config)
+            for db_config in db_configs
+        ], count
 
     def soft_delete_rag_setting_configuration_version(
         self,
@@ -389,5 +453,75 @@ class RagProvidersRepository:
 
         # update db_parent_config updated_at time since one of its versions was affected
         db_parent_config.updated_at = datetime.now()
+
+        self.db_session.commit()
+
+    def _get_db_rag_setting_config_version_by_tag(
+        self,
+        setting_config_id: UUID,
+        tag: str,
+    ) -> DatabaseRagSearchSettingConfigurationVersion:
+        db_config = (
+            self.db_session.query(DatabaseRagSearchSettingConfigurationVersion)
+            .join(DatabaseRagSearchSettingConfigurationVersion.tags)
+            .filter(
+                DatabaseRagSearchSettingConfigurationVersion.setting_configuration_id
+                == setting_config_id,
+            )
+            # do case-insensitive tag search
+            .filter(DatabaseRagSearchVersionTag.tag.ilike(tag))
+            .first()
+        )
+        # we don't need to handle soft-deletes here because if a version was soft-deleted, the tags will be
+        # cleared and the version won't be returned
+
+        if not db_config:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RAG setting configuration version with tag {tag} not found",
+            )
+        return db_config
+
+    def get_rag_setting_configuration_version_by_tag(
+        self,
+        config_id: UUID,
+        tag: str,
+    ) -> RagSearchSettingConfigurationVersion:
+        """Get a RAG provider configuration version by ID and version number"""
+        db_config = self._get_db_rag_setting_config_version_by_tag(config_id, tag)
+        return RagSearchSettingConfigurationVersion._from_database_model(db_config)
+
+    def update_rag_provider_setting_configuration_version(
+        self,
+        config_id: UUID,
+        version_number: int,
+        update_config: RagSearchSettingConfigurationVersionUpdateRequest,
+    ) -> None:
+        """Update a RAG provider setting configuration version metadata"""
+        db_setting_version = self._get_db_rag_setting_config_version(
+            config_id,
+            version_number,
+        )
+        curr_time = datetime.now()
+
+        # delete old tag objects
+        for tag_db in db_setting_version.tags:
+            self.db_session.delete(tag_db)
+
+        # create new tag objects from the string list
+        new_tags = [
+            RagSearchSettingTag._from_request_model(config_id, version_number, tag)
+            for tag in update_config.tags
+        ]
+        new_db_tags = [tag._to_database_model() for tag in new_tags]
+
+        # adding the tags to the version object will also create them in the DB on commit
+        db_setting_version.tags = new_db_tags
+        db_setting_version.updated_at = curr_time
+
+        # parent config all_possible_tags will be updated via the join condition
+        # just update the updated_at time to indicate something about its versions changed
+        db_parent_config = self._get_db_rag_setting_config(config_id)
+        db_parent_config.updated_at = curr_time
 
         self.db_session.commit()
