@@ -58,6 +58,10 @@ interface EvalVersionsFilters extends FiltersBase {
   max_version?: number | null;
 }
 
+interface EvaluatorsHeaderProps {
+  onCreateEval: () => void;
+}
+
 export type {
   EvalRowExpansionProps,
   EvalsTableProps,
@@ -66,4 +70,5 @@ export type {
   EvalDetailViewProps,
   EvalsFilters,
   EvalVersionsFilters,
+  EvaluatorsHeaderProps,
 };

@@ -6,6 +6,7 @@ import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { EvalFormModal } from "./EvalFormModal";
+import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useEvals } from "./hooks/useEvals";
@@ -129,10 +130,12 @@ const Evaluators: React.FC = () => {
         width: "100%",
         height: getContentHeight(),
         display: "grid",
-        gridTemplateRows: "1fr auto",
+        gridTemplateRows: "auto 1fr",
         overflow: "hidden",
       }}
     >
+      <EvaluatorsHeader onCreateEval={() => setIsCreateModalOpen(true)} />
+
       {error && evals.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
           <Alert severity="error">{error.message || "An error occurred"}</Alert>
