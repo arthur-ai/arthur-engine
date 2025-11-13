@@ -11,20 +11,12 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useMemo, useState, useCallback } from "react";
 
-import { useEvalVersions } from "./hooks/useEvalVersions";
+import { useEvalVersions } from "../hooks/useEvalVersions";
+import type { EvalVersionDrawerProps } from "../types";
 
 import { formatDate } from "@/utils/formatters";
 
-interface EvalVersionDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  taskId: string;
-  evalName: string;
-  selectedVersion: number | null;
-  onSelectVersion: (version: number) => void;
-}
-
-export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({ open, onClose, taskId, evalName, selectedVersion, onSelectVersion }) => {
+const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, onSelectVersion }: EvalVersionDrawerProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -200,3 +192,5 @@ export const EvalVersionDrawer: React.FC<EvalVersionDrawerProps> = ({ open, onCl
     </Drawer>
   );
 };
+
+export default EvalVersionDrawer;

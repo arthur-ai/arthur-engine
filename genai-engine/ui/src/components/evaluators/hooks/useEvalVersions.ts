@@ -1,18 +1,7 @@
+import type { EvalVersionsFilters } from "../types";
+
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { LLMEvalsVersionListResponse } from "@/lib/api-client/api-client";
-
-export interface EvalVersionsFilters {
-  page?: number;
-  pageSize?: number;
-  sort?: "asc" | "desc";
-  created_after?: string | null;
-  created_before?: string | null;
-  model_provider?: string | null;
-  model_name?: string | null;
-  exclude_deleted?: boolean;
-  min_version?: number | null;
-  max_version?: number | null;
-}
 
 export function useEvalVersions(taskId: string | undefined, evalName: string | undefined, filters: EvalVersionsFilters = {}) {
   const { data, error, isLoading, refetch } = useApiQuery<"getAllLlmEvalVersionsApiV1TasksTaskIdLlmEvalsEvalNameVersionsGet">({

@@ -6,10 +6,10 @@ import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
 import { EvalFormModal } from "./EvalFormModal";
-import { EvalFullScreenView } from "./EvalFullScreenView";
-import { EvalsTable } from "./EvalsTable";
+import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
 import { useEvals } from "./hooks/useEvals";
+import EvalsTable from "./table/EvalsTable";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";

@@ -5,14 +5,9 @@ import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import React from "react";
 
-import type { LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
+import type { EvalRowExpansionProps } from "../types";
 
-interface EvalRowExpansionProps {
-  eval: LLMGetAllMetadataResponse;
-  onExpandToFullScreen: () => void;
-}
-
-export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({ eval: evalMetadata, onExpandToFullScreen }) => {
+const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({ eval: evalMetadata, onExpandToFullScreen }) => {
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
@@ -79,3 +74,5 @@ export const EvalRowExpansion: React.FC<EvalRowExpansionProps> = ({ eval: evalMe
     </Box>
   );
 };
+
+export default EvalRowExpansion;

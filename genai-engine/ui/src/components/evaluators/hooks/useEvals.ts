@@ -1,16 +1,7 @@
+import type { EvalsFilters } from "../types";
+
 import { useApiQuery } from "@/hooks/useApiQuery";
 import type { LLMGetAllMetadataListResponse } from "@/lib/api-client/api-client";
-
-export interface EvalsFilters {
-  page?: number;
-  pageSize?: number;
-  sort?: "asc" | "desc";
-  created_after?: string | null;
-  created_before?: string | null;
-  model_provider?: string | null;
-  model_name?: string | null;
-  llm_asset_names?: string[] | null;
-}
 
 export function useEvals(taskId: string | undefined, filters: EvalsFilters) {
   const { data, error, isLoading, refetch } = useApiQuery<"getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet">({

@@ -6,37 +6,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import React from "react";
 
-import type { LLMEval } from "@/lib/api-client/api-client";
+import type { EvalDetailViewProps } from "../types";
 
-interface EvalDetailViewProps {
-  eval: LLMEval | undefined;
-  isLoading: boolean;
-  error: Error | null;
-  evalName: string;
-  version: number | null;
-  onClose?: () => void;
-}
+import { formatDate } from "@/utils/formatters";
 
-export const EvalDetailView: React.FC<EvalDetailViewProps> = ({ eval: evalData, isLoading, error, evalName, version, onClose }) => {
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "—";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return dateString;
-    }
-  };
-
+const EvalDetailView = ({ eval: evalData, isLoading, error, evalName, version, onClose }: EvalDetailViewProps) => {
   if (isLoading) {
     return (
       <Box
@@ -116,7 +91,7 @@ export const EvalDetailView: React.FC<EvalDetailViewProps> = ({ eval: evalData, 
               Created At
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {formatDate(evalData.created_at)}
+              {evalData.created_at ? formatDate(evalData.created_at) : "N/A"}
             </Typography>
           </Box>
           {evalData.deleted_at && (
@@ -174,3 +149,5 @@ export const EvalDetailView: React.FC<EvalDetailViewProps> = ({ eval: evalData, 
     </Box>
   );
 };
+
+export default EvalDetailView;

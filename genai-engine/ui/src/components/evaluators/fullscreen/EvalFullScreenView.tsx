@@ -1,20 +1,16 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
-import { EvalDetailView } from "./EvalDetailView";
-import { EvalVersionDrawer } from "./EvalVersionDrawer";
-import { useEval } from "./hooks/useEval";
-import { useEvalVersions } from "./hooks/useEvalVersions";
+import { useEval } from "../hooks/useEval";
+import { useEvalVersions } from "../hooks/useEvalVersions";
+import type { EvalFullScreenViewProps } from "../types";
+
+import EvalDetailView from "./EvalDetailView";
+import EvalVersionDrawer from "./EvalVersionDrawer";
 
 import { useTask } from "@/hooks/useTask";
 
-interface EvalFullScreenViewProps {
-  evalName: string;
-  initialVersion?: number | null;
-  onClose: () => void;
-}
-
-export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({ evalName, initialVersion, onClose }) => {
+const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScreenViewProps) => {
   const { task } = useTask();
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
@@ -67,3 +63,5 @@ export const EvalFullScreenView: React.FC<EvalFullScreenViewProps> = ({ evalName
     </Box>
   );
 };
+
+export default EvalFullScreenView;

@@ -11,47 +11,15 @@ import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
 import React, { useCallback, useMemo } from "react";
 
-import { EvalRowExpansion } from "./EvalRowExpansion";
+import type { EvalsTableProps } from "../types";
 
-import type { LLMGetAllMetadataResponse } from "@/lib/api-client/api-client";
+import EvalRowExpansion from "./EvalRowExpansion";
 
-interface EvalsTableProps {
-  evals: LLMGetAllMetadataResponse[];
-  sortColumn: string | null;
-  sortDirection: "asc" | "desc";
-  onSort: (column: string) => void;
-  expandedRows: Set<string>;
-  onToggleRow: (evalName: string) => void;
-  onExpandToFullScreen: (evalName: string) => void;
-}
+import { formatDate } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
-export const EvalsTable: React.FC<EvalsTableProps> = ({
-  evals,
-  sortColumn,
-  sortDirection,
-  onSort,
-  expandedRows,
-  onToggleRow,
-  onExpandToFullScreen,
-}) => {
-  const formatDate = useCallback((dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return dateString;
-    }
-  }, []);
-
+const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, expandedRows, onToggleRow, onExpandToFullScreen }: EvalsTableProps) => {
   const handleSort = useCallback(
     (column: SortableColumn) => {
       onSort(column);
@@ -192,3 +160,5 @@ export const EvalsTable: React.FC<EvalsTableProps> = ({
     </TableContainer>
   );
 };
+
+export default EvalsTable;
