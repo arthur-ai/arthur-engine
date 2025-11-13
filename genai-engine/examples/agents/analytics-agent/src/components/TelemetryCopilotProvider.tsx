@@ -32,15 +32,11 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize from localStorage after mount to avoid hydration mismatch
   useEffect(() => {
-    // Get or create session ID
-    let storedSessionId = sessionStorage.getItem('analytics-agent-session-id');
-    if (!storedSessionId) {
-      storedSessionId = generateSessionId();
-      sessionStorage.setItem('analytics-agent-session-id', storedSessionId);
-    }
-    setSessionId(storedSessionId);
+    // Always generate a new session ID on mount (don't persist it)
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
 
-    // Get or create user ID
+    // Get or create user ID (use localStorage - persists across sessions)
     let storedUserId = localStorage.getItem('analytics-agent-user-id');
     if (!storedUserId) {
       storedUserId = generateUserId();
@@ -54,9 +50,7 @@ export function TelemetryProvider({ children }: { children: React.ReactNode }) {
   const newSession = () => {
     const newSessionId = generateSessionId();
     setSessionId(newSessionId);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('analytics-agent-session-id', newSessionId);
-    }
+    // No need to store it anywhere since we generate fresh on every mount
   };
 
   const getTelemetryHeaders = () => {
