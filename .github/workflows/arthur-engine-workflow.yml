@@ -23,7 +23,9 @@ jobs:
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     env:
@@ -39,7 +41,7 @@ jobs:
       - uses: ./.github/workflows/composite-actions/setup-poetry
         with:
           working-directory: genai-engine
-          with-groups: dev
+          with-groups: dev,linters
       - name: Run isort
         id: isort
         continue-on-error: true
@@ -72,7 +74,9 @@ jobs:
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -164,7 +168,9 @@ jobs:
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.12.9-bullseye
     steps:
@@ -248,7 +254,9 @@ jobs:
       (
         github.event_name == 'pull_request' ||
         (github.event_name == 'push' && github.ref_type == 'branch')
-      )
+      ) &&
+      github.ref != 'refs/heads/main' &&
+      github.ref != 'refs/heads/dev'
     runs-on: ubuntu-latest
     container: python:3.13-bullseye
     env:
@@ -276,12 +284,6 @@ jobs:
           poetry -C ml-engine run pytest
 
   build-genai-engine-docker-images:
-    needs:
-      [
-        run-genai-engine-linter,
-        run-genai-engine-changelog-cop,
-        run-genai-engine-unit-tests,
-      ]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&
@@ -325,7 +327,6 @@ jobs:
           platforms: linux/amd64
 
   build-ml-engine-docker-images:
-    needs: [run-ml-engine-linter, run-ml-engine-unit-tests]
     environment: shared-protected-branch-secrets
     if: |
       contains(github.event.head_commit.message, 'Increment arthur-engine version to') &&

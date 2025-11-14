@@ -2,6 +2,7 @@ import csv
 import logging
 import re
 from io import BytesIO, TextIOWrapper
+from typing import BinaryIO
 
 from pypdf import PdfReader
 
@@ -11,7 +12,7 @@ from schemas.internal_schemas import Document
 logger = logging.getLogger()
 
 
-def parse_file_words(document: Document, file_content: BytesIO):
+def parse_file_words(document: Document, file_content: BytesIO | BinaryIO):
     if document.type == DocumentType.CSV:
         return parse_csv(file_content)
     elif document.type == DocumentType.PDF:
@@ -36,7 +37,7 @@ def parse_pdf(pdf_file):
     return words
 
 
-def parse_csv(csv_file):
+def parse_csv(csv_file) -> list[str]:
     words = []
     try:
         csv_text = TextIOWrapper(csv_file, encoding="utf-8")
@@ -52,7 +53,7 @@ def parse_csv(csv_file):
     return words
 
 
-def parse_txt(txt_file: BytesIO):
+def parse_txt(txt_file: BytesIO | BinaryIO) -> list[str]:
     words = []
     try:
         text = txt_file.read().decode(encoding="utf-8")

@@ -19,13 +19,13 @@ from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
-    AgenticPromptBaseConfig,
-    CompletionRequest,
     PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.request_schemas import (
+    CompletionRequest,
+    CreateAgenticPromptRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
 )
@@ -82,7 +82,7 @@ def get_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         prompt = agentic_prompt_service.get_llm_item(
@@ -121,7 +121,7 @@ def get_all_agentic_prompts(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> LLMGetAllMetadataListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.get_all_llm_item_metadata(
@@ -161,7 +161,7 @@ def get_all_agentic_prompt_versions(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPromptVersionListResponse:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         return agentic_prompt_service.get_llm_item_versions(
@@ -238,7 +238,7 @@ async def run_agentic_prompt(
     unsaved_prompt: CompletionRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> AgenticPromptRunResponse | StreamingResponse:
     """
     Run and/or stream an unsaved agentic prompt.
     Note: For streaming, the response will be a StreamingResponse object.
@@ -255,7 +255,9 @@ async def run_agentic_prompt(
         llm_client = repo.get_model_provider_client(
             provider=unsaved_prompt.model_provider,
         )
-        prompt, completion_request = unsaved_prompt.to_prompt_and_request()
+        prompt, completion_request = AgenticPromptRepository.to_prompt_and_request(
+            unsaved_prompt,
+        )
         return await execute_prompt_completion(
             llm_client,
             prompt,
@@ -345,7 +347,7 @@ async def run_saved_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPromptRunResponse | StreamingResponse:
     """
     Run and/or stream an unsaved agentic prompt.
     Note: For streaming, the response will be a StreamingResponse object.
@@ -395,7 +397,7 @@ async def run_saved_agentic_prompt(
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def save_agentic_prompt(
-    prompt_config: AgenticPromptBaseConfig,
+    prompt_config: CreateAgenticPromptRequest,
     prompt_name: str = Path(
         ...,
         description="The name of the prompt to save.",
@@ -404,7 +406,7 @@ def save_agentic_prompt(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
-):
+) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
         full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())

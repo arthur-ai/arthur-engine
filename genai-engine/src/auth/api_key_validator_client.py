@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class APIKeyValidatorClient:
-    def __init__(self, api_key_cache: TTLCache):
+    def __init__(self, api_key_cache: TTLCache[str, User]):
         self.api_key_cache = api_key_cache
 
     def validate(

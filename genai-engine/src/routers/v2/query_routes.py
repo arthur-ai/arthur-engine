@@ -73,7 +73,7 @@ def query_inferences(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> QueryInferencesResponse:
     try:
         valid_stage_results = {RuleResultEnum.PASS, RuleResultEnum.FAIL}
 

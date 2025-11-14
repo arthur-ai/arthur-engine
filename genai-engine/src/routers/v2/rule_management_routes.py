@@ -53,17 +53,20 @@ tracer = trace.get_tracer(__name__)
 def create_default_rule(
     request: NewRuleRequest = Body(
         None,
-        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],
+        openapi_examples=NewRuleRequest.model_config["json_schema_extra"],  # type: ignore[arg-type]
     ),
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> RuleResponse:
     try:
         send_telemetry_event(TelemetryEventTypes.DEFAULT_RULE_CREATE_INITIATED)
         rules_repo = RuleRepository(db_session)
         tasks_repo = TaskRepository(
-            db_session, rules_repo, MetricRepository(db_session), application_config
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
         )
         rule = Rule._from_request_model(request, scope=RuleScope.DEFAULT)
         rule = rules_repo.create_rule(rule)
@@ -87,7 +90,7 @@ def create_default_rule(
 def get_default_rules(
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> list[RuleResponse]:
     try:
         rules_repo = RuleRepository(db_session)
         rules, _ = rules_repo.query_rules(rule_scopes=[RuleScope.DEFAULT])
@@ -110,11 +113,14 @@ def archive_default_rule(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> Response:
     try:
         rules_repo = RuleRepository(db_session)
         task_repo = TaskRepository(
-            db_session, rules_repo, MetricRepository(db_session), application_config
+            db_session,
+            rules_repo,
+            MetricRepository(db_session),
+            application_config,
         )
         rules_repo.archive_rule(rule_id=str(rule_id))
         task_repo.update_all_tasks_remove_default_rule(str(rule_id))
@@ -143,7 +149,7 @@ def search_rules(
     db_session: Session = Depends(get_db_session),
     application_config: ApplicationConfiguration = Depends(get_application_config),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-):
+) -> SearchRulesResponse:
     try:
         rules_repo = RuleRepository(db_session)
         rules, count = rules_repo.query_rules(
