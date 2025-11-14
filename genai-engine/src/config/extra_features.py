@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +15,7 @@ class ExtraFeaturesSettings(BaseSettings):
     )
 
     @field_validator("CHAT_ENABLED", mode="before")
-    def validate_chat_enabled(cls, v):
+    def validate_chat_enabled(cls, v: Any) -> bool:
         if not v:
             return False
         if isinstance(v, str):

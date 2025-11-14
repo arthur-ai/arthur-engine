@@ -13,7 +13,16 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from schemas.agentic_prompt_schemas import LLMConfigSettings
+from schemas.agentic_prompt_schemas import (
+    AgenticPromptMessage,
+    LLMConfigSettings,
+    LLMResponseFormat,
+    LLMTool,
+    PromptCompletionRequest,
+    StreamOptions,
+    ToolChoice,
+    ToolChoiceEnum,
+)
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
@@ -572,4 +581,44 @@ class CreateEvalRequest(BaseModel):
     config: Optional[LLMConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
+    )
+
+
+class CreateAgenticPromptRequest(LLMConfigSettings):
+    messages: List[AgenticPromptMessage] = Field(
+        description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
+    )
+    model_name: str = Field(
+        description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
+    )
+    model_provider: ModelProvider = Field(
+        description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
+    )
+    tools: Optional[List[LLMTool]] = Field(
+        None,
+        description="Available tools/functions for the model to call, in OpenAI function calling format",
+    )
+    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
+        None,
+        description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
+    )
+    response_format: Optional[LLMResponseFormat] = Field(
+        None,
+        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
+    )
+    stream_options: Optional[StreamOptions] = Field(
+        None,
+        description="Additional streaming configuration options",
+    )
+
+    class Config:
+        use_enum_values = True
+
+
+class CompletionRequest(CreateAgenticPromptRequest):
+    """Request schema for running an unsaved agentic prompt"""
+
+    completion_request: PromptCompletionRequest = Field(
+        default_factory=PromptCompletionRequest,
+        description="Run configuration for the unsaved prompt",
     )

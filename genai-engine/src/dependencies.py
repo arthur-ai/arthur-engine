@@ -77,10 +77,10 @@ SINGLETON_DB_ENGINE = None
 SINGLETON_SCORER_CLIENT = None
 SINGLETON_METRICS_ENGINE = None
 SINGLETON_JWK_CLIENT = None
-SINGLETON_OAUTH_CLIENT = None
+SINGLETON_OAUTH_CLIENT: OAuth | None = None
 API_KEY_CACHE = None
 API_KEY_VALIDATOR_CLIENT = None
-KEYCLOAK_CLIENT = None
+KEYCLOAK_CLIENT: ABCAuthClient | None = None
 
 load_dotenv()
 
@@ -204,7 +204,7 @@ def get_jwk_client():
     return SINGLETON_JWK_CLIENT
 
 
-def get_oauth_client():
+def get_oauth_client() -> OAuth:
     global SINGLETON_OAUTH_CLIENT
     if not SINGLETON_OAUTH_CLIENT:
         oauth = OAuth()

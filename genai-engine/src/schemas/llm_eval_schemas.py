@@ -1,10 +1,14 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Type, Union
 
 from pydantic import BaseModel, Field, model_validator
 
 from db_models.llm_eval_models import DatabaseLLMEval
-from schemas.agentic_prompt_schemas import LLMConfigSettings
+from schemas.agentic_prompt_schemas import (
+    AgenticPrompt,
+    LLMConfigSettings,
+    LLMResponseFormat,
+)
 from schemas.enums import ModelProvider
 
 
@@ -53,4 +57,24 @@ class LLMEval(BaseModel):
         return DatabaseLLMEval(
             task_id=task_id,
             **self.model_dump(mode="python", exclude_none=True),
+        )
+
+    def to_agentic_prompt(
+        self,
+        response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
+    ) -> AgenticPrompt:
+        messages = [
+            {"role": "system", "content": self.instructions},
+        ]
+
+        return AgenticPrompt(
+            name=self.name,
+            model_name=self.model_name,
+            model_provider=self.model_provider,
+            messages=messages,
+            response_format=response_format,
+            version=self.version,
+            created_at=self.created_at,
+            deleted_at=self.deleted_at,
+            **self.config.model_dump(exclude_none=True) if self.config else {},
         )

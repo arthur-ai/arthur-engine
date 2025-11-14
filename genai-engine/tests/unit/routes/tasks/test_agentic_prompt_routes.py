@@ -3,8 +3,11 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from arthur_common.models.response_schemas import TaskResponse
 from litellm.exceptions import BadRequestError
+from litellm.types.utils import ModelResponse
 
+from src.schemas.agentic_prompt_schemas import AgenticPrompt
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 
 
@@ -173,15 +176,15 @@ def test_get_all_agentic_prompts_empty(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_agentic_prompt_success(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running an agentic prompt"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -224,15 +227,15 @@ def test_run_agentic_prompt_success(
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_saved_agentic_prompt_success(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running a saved agentic prompt"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Saved prompt response",
@@ -942,15 +945,15 @@ def test_get_unique_prompt_names(client: GenaiEngineTestClientBase):
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 def test_run_deleted_prompt_spawns_error(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
 ):
     """Test running a deleted version of a saved prompt spawns an error"""
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -1165,8 +1168,8 @@ def test_get_prompt_versions_pagination_and_filtering(
 
 
 @pytest.mark.unit_tests
+@patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-@patch("schemas.agentic_prompt_schemas.completion_cost")
 @pytest.mark.parametrize(
     "messages,variables,expected_error",
     [
@@ -1207,8 +1210,8 @@ def test_get_prompt_versions_pagination_and_filtering(
     ],
 )
 def test_run_agentic_prompt_strict_mode(
-    mock_completion_cost,
     mock_completion,
+    mock_completion_cost,
     client: GenaiEngineTestClientBase,
     messages,
     variables,
@@ -1219,7 +1222,7 @@ def test_run_agentic_prompt_strict_mode(
     status_code, task = client.create_task(task_name, is_agentic=True)
     assert status_code == 200
 
-    mock_response = MagicMock()
+    mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Test LLM response",
@@ -1283,8 +1286,6 @@ def test_run_agentic_prompt_strict_mode(
     completion_request["strict"] = False
     prompt_data["completion_request"] = completion_request
 
-    print(prompt_data)
-
     # run unsaved prompt with strict=False (should never raise an err for missing variables)
     response = client.base_client.post(
         f"/api/v1/completions",
@@ -1306,49 +1307,36 @@ def test_run_agentic_prompt_strict_mode(
 @pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
 def test_get_agentic_prompt_by_version_route(
     client: GenaiEngineTestClientBase,
+    create_agentic_task: TaskResponse,
+    create_agentic_prompt: AgenticPrompt,
     prompt_version,
 ):
     """Test getting an agentic prompt with different version formats (latest, version number, datetime)"""
     # Create an agentic task
     task_name = f"agentic_task_{random.random()}"
-    status_code, task = client.create_task(task_name, is_agentic=True)
-    assert status_code == 200
+    task = create_agentic_task
 
-    # Save a prompt
-    prompt_name = "test_prompt"
-    prompt_data = {
-        "messages": [{"role": "user", "content": "Hello, world!"}],
-        "model_name": "gpt-4",
-        "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
-    }
-
-    save_response = client.base_client.post(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
-        json=prompt_data,
-        headers=client.authorized_user_api_key_headers,
-    )
-    assert save_response.status_code == 200
+    prompt = create_agentic_prompt
 
     if prompt_version == "datetime":
-        prompt_version = save_response.json()["created_at"]
+        prompt_version = prompt.created_at.strftime("%Y-%m-%dT%H:%M:%S")
 
     # Get the prompt using different version formats
-    response = client.base_client.get(
-        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/{prompt_version}",
-        headers=client.authorized_user_api_key_headers,
+    status_code, prompt_response = client.get_agentic_prompt(
+        task_id=task.id,
+        prompt_name=prompt.name,
+        version=prompt_version,
     )
-    assert response.status_code == 200
-
-    prompt_response = response.json()
-    assert prompt_response["name"] == prompt_name
-    assert prompt_response["messages"] == [{"role": "user", "content": "Hello, world!"}]
-    assert prompt_response["model_name"] == "gpt-4"
-    assert prompt_response["model_provider"] == "openai"
-    assert prompt_response["version"] == 1
-    assert prompt_response["temperature"] == 0.7
-    assert prompt_response["max_tokens"] == 100
+    assert status_code == 200
+    assert prompt_response.name == prompt.name
+    assert [
+        message.model_dump(exclude_none=True) for message in prompt_response.messages
+    ] == [{"role": "user", "content": "Hello, world!"}]
+    assert prompt_response.model_name == "gpt-4"
+    assert prompt_response.model_provider == "openai"
+    assert prompt_response.version == 1
+    assert prompt_response.temperature == 0.7
+    assert prompt_response.max_tokens == 100
 
 
 @pytest.mark.unit_tests
