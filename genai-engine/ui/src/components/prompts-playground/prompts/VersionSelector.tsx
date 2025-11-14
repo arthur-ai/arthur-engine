@@ -81,7 +81,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
         options={versions}
         value={versions.find((v) => v.version === currentVersion) || null}
         onChange={handleAutocompleteChange}
-        getOptionLabel={(option) => `Version ${option.version}`}
+        getOptionLabel={(option) => `${option.version}`}
         isOptionEqualToValue={(option, value) => option.version === value?.version}
         disabled={!promptName || isFetchingVersions.current || versions.length === 0}
         loading={isFetchingVersions.current}
@@ -93,7 +93,7 @@ const VersionSelector = ({ promptName, promptId, currentVersion, onVersionSelect
             <Box key={key} component="li" {...optionProps}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body1" color="text.primary">
-                  Version {option.version}
+                  {option.version}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   {new Date(option.created_at).toLocaleString()}

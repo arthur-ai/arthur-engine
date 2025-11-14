@@ -200,7 +200,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 messages: prompt.messages ?? p.messages,
                 tools: prompt.tools ?? p.tools,
                 modelParameters: prompt.modelParameters ?? p.modelParameters,
-                responseFormat: prompt.responseFormat,
+                responseFormat: prompt.responseFormat ?? p.responseFormat,
               }
             : p
         ),
