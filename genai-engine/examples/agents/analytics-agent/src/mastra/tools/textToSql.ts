@@ -98,7 +98,7 @@ export const textToSqlTool = createTool({
       }
 
       const messages = [{ role: "user" as const, content: context.userQuery }];
-      const response = await agent.generateVNext(messages, {
+      const response = await agent.generate(messages, {
         output: TextToSqlToolResultSchema,
         runtimeContext,
         tracingContext: tracingContext as TracingContext,

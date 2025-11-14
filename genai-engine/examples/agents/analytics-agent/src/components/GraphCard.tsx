@@ -106,7 +106,7 @@ export function GraphCard({ themeColor, result, status }: GraphCardProps) {
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-xl font-bold text-white">Data Visualization</h3>
-            <p className="text-white/80 text-sm">{result.title}</p>
+            <p className="text-white/80 text-sm">{result.title || "Chart"}</p>
           </div>
           <ChartIcon />
         </div>
@@ -114,18 +114,18 @@ export function GraphCard({ themeColor, result, status }: GraphCardProps) {
         <div className="bg-white/10 rounded-lg p-3 mb-3">
           <p className="text-white text-sm">
             <span className="font-semibold">Description:</span>{" "}
-            {result.description}
+            {result.description || "No description available."}
           </p>
         </div>
 
         <div className="bg-white rounded-lg p-4 mb-3">
           <h4 className="text-gray-800 font-semibold mb-3 text-center">
-            {result.title}
+            {result.title || "Chart"}
           </h4>
           <div className="h-64 flex items-center justify-center">
             <SimpleChart
               graphType={result.graphType}
-              data={result.data}
+              data={result.data || { columns: [], rows: [] }}
               xAxis={result.xAxis}
               yAxis={result.yAxis}
             />
@@ -164,6 +164,33 @@ function ErrorIcon() {
   );
 }
 
+// Transform columns/rows format into record objects
+// Example: {columns: ["month", "sales"], rows: [["Jan", 100], ["Feb", 200]]}
+// Becomes: [{month: "Jan", sales: 100}, {month: "Feb", sales: 200}]
+function transformDataToRows(data: {
+  columns: string[];
+  rows: Array<Array<string | number | boolean | null>>;
+}): Record<string, unknown>[] {
+  if (!data || !data.columns || !data.rows) {
+    return [];
+  }
+
+  const { columns, rows } = data;
+
+  if (columns.length === 0 || rows.length === 0) {
+    return [];
+  }
+
+  // Transform rows into record objects
+  return rows.map((row) => {
+    const record: Record<string, unknown> = {};
+    columns.forEach((columnName, index) => {
+      record[columnName] = row[index] ?? null;
+    });
+    return record;
+  });
+}
+
 // Simple SVG-based chart component
 function SimpleChart({
   graphType,
@@ -172,7 +199,10 @@ function SimpleChart({
   yAxis,
 }: {
   graphType: string;
-  data: Record<string, unknown>[];
+  data: {
+    columns: string[];
+    rows: Array<Array<string | number | boolean | null>>;
+  };
   xAxis: string;
   yAxis: string;
 }) {
@@ -181,7 +211,7 @@ function SimpleChart({
   const padding = 40;
   const labelSpace = 50; // More space for x-axis labels
 
-  if (!data || data.length === 0) {
+  if (!data || !data.columns || !data.rows || data.rows.length === 0) {
     return (
       <div className="text-gray-500 text-center">
         No data available for visualization
@@ -189,8 +219,22 @@ function SimpleChart({
     );
   }
 
+  // Transform columns/rows format into record objects
+  const transformedData = transformDataToRows(data);
+
+  if (!transformedData || transformedData.length === 0) {
+    return (
+      <div className="text-gray-500 text-center">
+        Unable to transform data for visualization
+      </div>
+    );
+  }
+
   // Extract values for y axis
-  const yValues = data.map((d) => Number(d[yAxis]) || 0);
+  const yValues = transformedData.map((d) => {
+    const val = d[yAxis];
+    return Number(val) || 0;
+  });
 
   const maxY = Math.max(...yValues);
   const minY = Math.min(...yValues);
@@ -200,8 +244,8 @@ function SimpleChart({
   const chartHeight = height - 2 * padding - labelSpace; // Account for label space
 
   if (graphType === "bar") {
-    const barWidth = (chartWidth / data.length) * 0.8;
-    const barSpacing = chartWidth / data.length;
+    const barWidth = (chartWidth / transformedData.length) * 0.8;
+    const barSpacing = chartWidth / transformedData.length;
 
     return (
       <svg
@@ -229,9 +273,9 @@ function SimpleChart({
         />
 
         {/* Bars */}
-        {data.map((item, index) => {
-          const barHeight =
-            ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
+        {transformedData.map((item, index) => {
+          const yValue = Number(item[yAxis]) || 0;
+          const barHeight = ((yValue - minY) / yRange) * chartHeight;
           const x = padding + index * barSpacing + (barSpacing - barWidth) / 2;
           const y = height - padding - labelSpace - barHeight;
 
@@ -252,7 +296,7 @@ function SimpleChart({
                 className="text-xs fill-gray-600"
                 transform={`rotate(-45 ${x + barWidth / 2} ${height - padding - labelSpace + 35})`}
               >
-                {String(item[xAxis]).substring(0, 10)}
+                {String(item[xAxis] ?? "").substring(0, 10)}
               </text>
             </g>
           );
@@ -262,15 +306,16 @@ function SimpleChart({
   }
 
   if (graphType === "line") {
-    const pointSpacing = chartWidth / (data.length - 1);
-    const points = data
+    const pointSpacing = chartWidth / (transformedData.length - 1 || 1);
+    const points = transformedData
       .map((item, index) => {
         const x = padding + index * pointSpacing;
+        const yValue = Number(item[yAxis]) || 0;
         const y =
           height -
           padding -
           labelSpace -
-          ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
+          ((yValue - minY) / yRange) * chartHeight;
         return `${x},${y}`;
       })
       .join(" ");
@@ -309,13 +354,14 @@ function SimpleChart({
         />
 
         {/* Points */}
-        {data.map((item, index) => {
+        {transformedData.map((item, index) => {
           const x = padding + index * pointSpacing;
+          const yValue = Number(item[yAxis]) || 0;
           const y =
             height -
             padding -
             labelSpace -
-            ((Number(item[yAxis]) - minY) / yRange) * chartHeight;
+            ((yValue - minY) / yRange) * chartHeight;
 
           return (
             <g key={index}>
@@ -327,7 +373,7 @@ function SimpleChart({
                 className="text-xs fill-gray-600"
                 transform={`rotate(-45 ${x} ${height - padding - labelSpace + 35})`}
               >
-                {String(item[xAxis]).substring(0, 10)}
+                {String(item[xAxis] ?? "").substring(0, 10)}
               </text>
             </g>
           );
@@ -358,8 +404,9 @@ function SimpleChart({
         height={height}
         className="border border-gray-200 rounded"
       >
-        {data.map((item, index) => {
-          const angle = (Number(item[yAxis]) / total) * 360;
+        {transformedData.map((item, index) => {
+          const yValue = Number(item[yAxis]) || 0;
+          const angle = (yValue / total) * 360;
           const startAngle = currentAngle;
           const endAngle = currentAngle + angle;
 
@@ -403,7 +450,7 @@ function SimpleChart({
                 textAnchor="middle"
                 className="text-xs fill-gray-700"
               >
-                {String(item[xAxis]).substring(0, 8)}
+                {String(item[xAxis] ?? "").substring(0, 8)}
               </text>
             </g>
           );

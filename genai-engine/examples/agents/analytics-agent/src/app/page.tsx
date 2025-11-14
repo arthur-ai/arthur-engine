@@ -3,11 +3,13 @@
 import { useCopilotAction, useCopilotChat } from "@copilotkit/react-core";
 import { CopilotKitCSSProperties, CopilotChat } from "@copilotkit/react-ui";
 import { useState } from "react";
-import { WeatherCard, SqlCard, SqlResultsCard, GraphCard } from "@/components";
+import { WeatherCard, SqlCard, SqlResultsCard, GraphCard, useTelemetry } from "@/components";
+
 
 export default function CopilotKitPage() {
   const [themeColor, setThemeColor] = useState("#6366f1");
   const { reset } = useCopilotChat();
+  const { newSession } = useTelemetry();
 
   // 🪁 Frontend Actions: https://docs.copilotkit.ai/guides/frontend-actions
   useCopilotAction({
@@ -144,7 +146,10 @@ export default function CopilotKitPage() {
             </div>
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => reset()}
+                onClick={() => {
+                  reset();
+                  newSession();
+                }}
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors duration-200 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 style={{ backgroundColor: themeColor }}
                 title="Start a new conversation thread"

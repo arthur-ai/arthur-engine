@@ -55,7 +55,7 @@ export function SqlCard({
               className="language-sql"
               dangerouslySetInnerHTML={{
                 __html: Prism.highlight(
-                  result.sqlQuery,
+                  result.sqlQuery || "",
                   Prism.languages.sql,
                   "sql"
                 ),
@@ -67,7 +67,7 @@ export function SqlCard({
         <div className="bg-white/10 rounded-lg p-3">
           <p className="text-white text-sm">
             <span className="font-semibold">Explanation:</span>{" "}
-            {result.explanation}
+            {result.explanation || "No explanation available."}
           </p>
         </div>
       </div>

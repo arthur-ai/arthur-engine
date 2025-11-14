@@ -4,9 +4,9 @@
 
 import type {
   AnyExportedAISpan,
-  LLMGenerationAttributes,
+  ModelGenerationAttributes,
   AgentRunAttributes,
-  LLMChunkAttributes,
+  ModelChunkAttributes,
   ToolCallAttributes,
   MCPToolCallAttributes,
   WorkflowRunAttributes,
@@ -66,11 +66,11 @@ export function setSpanAttributes(
     case AISpanType.AGENT_RUN:
       additionalAttributes = setAgentRunAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_GENERATION:
-      additionalAttributes = setLLMGenerationAttributes(otelSpan, span);
+    case AISpanType.MODEL_GENERATION:
+      additionalAttributes = setModelGenerationAttributes(otelSpan, span);
       break;
-    case AISpanType.LLM_CHUNK:
-      additionalAttributes = setLLMChunkAttributes(otelSpan, span);
+    case AISpanType.MODEL_CHUNK:
+      additionalAttributes = setModelChunkAttributes(otelSpan, span);
       break;
     case AISpanType.TOOL_CALL:
       additionalAttributes = setToolCallAttributes(otelSpan, span);
@@ -133,8 +133,7 @@ export function getOpenInferenceSpanKind(span: AnyExportedAISpan): string {
       return OpenInferenceSpanKind.AGENT;
 
     // all map to LLM in OpenInference
-    case AISpanType.LLM_GENERATION:
-    case AISpanType.LLM_CHUNK:
+    case AISpanType.MODEL_GENERATION:
       return OpenInferenceSpanKind.LLM;
 
     // all map to TOOL in OpenInference
@@ -378,12 +377,19 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
   if (item.content !== undefined) {
     if (typeof item.content === "string") {
       message[SemanticConventions.MESSAGE_CONTENT] = item.content;
-    } else if (Array.isArray(item.content) && item.content.length === 1 && isObject(item.content[0]) && typeof item.content[0].text === "string") {
+    } else if (
+      Array.isArray(item.content) &&
+      item.content.length === 1 &&
+      isObject(item.content[0]) &&
+      typeof item.content[0].text === "string"
+    ) {
       // if there is a single text content incorrectly formatted as an array, extract just the text string to adhere to open inference formatting
       message[SemanticConventions.MESSAGE_CONTENT] = item.content[0].text;
     } else {
       // fail safe if content doesn't match any expected formatting
-      message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(item.content);
+      message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(
+        item.content
+      );
     }
   } else if (item.contents !== undefined) {
     // Handle contents array (multimodal content)
@@ -458,12 +464,12 @@ function setAgentRunAttributes(
   return additionalAttributes;
 }
 
-function setLLMGenerationAttributes(
+function setModelGenerationAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const llmAttr = span.attributes as LLMGenerationAttributes;
+  const llmAttr = span.attributes as ModelGenerationAttributes;
   if (llmAttr) {
     if (llmAttr.model) {
       otelSpan.setAttributes({
@@ -529,12 +535,12 @@ function setLLMGenerationAttributes(
   return additionalAttributes;
 }
 
-function setLLMChunkAttributes(
+function setModelChunkAttributes(
   otelSpan: OISpan,
   span: AnyExportedAISpan
 ): Record<string, unknown> {
   const additionalAttributes: Record<string, unknown> = {};
-  const attr = span.attributes as LLMChunkAttributes;
+  const attr = span.attributes as ModelChunkAttributes;
   if (attr) {
     if (attr.chunkType) {
       additionalAttributes["chunk_type"] = attr.chunkType;
