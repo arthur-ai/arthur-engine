@@ -7,16 +7,17 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import Base, DatabaseLLMEval
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
-from schemas.agentic_prompt_schemas import (
+from schemas.llm_eval_schemas import LLMEval
+from schemas.request_schemas import (
     BaseCompletionRequest,
     PromptCompletionRequest,
 )
-from schemas.llm_eval_schemas import LLMEval
 from schemas.response_schemas import (
     LLMEvalRunResponse,
     LLMEvalsVersionListResponse,
     LLMVersionResponse,
 )
+from services.prompt.chat_completion_service import ChatCompletionService
 
 
 class LLMEvalsRepository(BaseLLMRepository):
@@ -26,6 +27,7 @@ class LLMEvalsRepository(BaseLLMRepository):
     def __init__(self, db_session: Session):
         super().__init__(db_session)
         self.model_provider_repo = ModelProviderRepository(db_session)
+        self.chat_completion_service = ChatCompletionService()
 
     def _from_db_model(self, db_item: Base) -> BaseModel:
         return LLMEval.from_db_model(db_item)
@@ -117,9 +119,13 @@ class LLMEvalsRepository(BaseLLMRepository):
         agentic_prompt = llm_eval.to_agentic_prompt(
             response_format=llm_eval_response_schema,
         )
-        llm_model_response = agentic_prompt.run_chat_completion_raw_response(
-            llm_client,
-            prompt_completion_request,
+
+        llm_model_response = (
+            self.chat_completion_service.run_chat_completion_raw_response(
+                agentic_prompt,
+                llm_client,
+                prompt_completion_request,
+            )
         )
 
         if llm_model_response.structured_output_response is None:

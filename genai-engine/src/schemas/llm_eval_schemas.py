@@ -4,12 +4,13 @@ from typing import Optional, Type, Union
 from pydantic import BaseModel, Field, model_validator
 
 from db_models.llm_eval_models import DatabaseLLMEval
-from schemas.agentic_prompt_schemas import (
-    AgenticPrompt,
+from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.enums import ModelProvider
+from schemas.llm_schemas import (
+    LLMBaseConfigSettings,
     LLMConfigSettings,
     LLMResponseFormat,
 )
-from schemas.enums import ModelProvider
 
 
 class LLMEval(BaseModel):
@@ -23,7 +24,7 @@ class LLMEval(BaseModel):
     instructions: str = Field(description="Instructions for the llm eval")
     min_score: int = Field(default=0, description="Minimum score for the llm eval")
     max_score: int = Field(default=1, description="Maximum score for the llm eval")
-    config: Optional[LLMConfigSettings] = Field(
+    config: Optional[LLMBaseConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
@@ -67,14 +68,20 @@ class LLMEval(BaseModel):
             {"role": "system", "content": self.instructions},
         ]
 
+        config_dict = {}
+        if self.config:
+            config_dict = self.config.model_dump(exclude_none=True)
+
+        if response_format is not None:
+            config_dict["response_format"] = response_format
+
         return AgenticPrompt(
             name=self.name,
             model_name=self.model_name,
             model_provider=self.model_provider,
             messages=messages,
-            response_format=response_format,
             version=self.version,
             created_at=self.created_at,
             deleted_at=self.deleted_at,
-            **self.config.model_dump(exclude_none=True) if self.config else {},
+            config=LLMConfigSettings(**config_dict),
         )

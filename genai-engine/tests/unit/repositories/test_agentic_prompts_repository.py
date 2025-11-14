@@ -14,22 +14,23 @@ from sqlalchemy.exc import IntegrityError
 from clients.llm.llm_client import LLMClient
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from repositories.agentic_prompts_repository import AgenticPromptRepository
-from schemas.agentic_prompt_schemas import (
-    AgenticPrompt,
-    AgenticPromptMessage,
-    LLMResponseFormat,
-    LLMResponseSchema,
-    PromptCompletionRequest,
-    ToolChoice,
-    ToolChoiceFunction,
-    VariableTemplateValue,
-)
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.common_schemas import JsonSchema
 from schemas.enums import MessageRole, ModelProvider
+from schemas.llm_schemas import (
+    LLMConfigSettings,
+    LLMResponseFormat,
+    LLMResponseSchema,
+    OpenAIMessage,
+    ToolChoice,
+    ToolChoiceFunction,
+)
 from schemas.request_schemas import (
     CompletionRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
+    PromptCompletionRequest,
+    VariableTemplateValue,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
@@ -37,13 +38,14 @@ from schemas.response_schemas import (
     LLMGetAllMetadataListResponse,
     LLMGetAllMetadataResponse,
 )
+from services.prompt.chat_completion_service import ChatCompletionService
 from tests.clients.base_test_client import override_get_db_session
 
 
-def to_agentic_prompt_messages(
+def to_openai_messages(
     messages: List[Dict[str, Any]],
-) -> List[AgenticPromptMessage]:
-    return [AgenticPromptMessage(**message) for message in messages]
+) -> List[OpenAIMessage]:
+    return [OpenAIMessage(**message) for message in messages]
 
 
 @pytest.fixture
@@ -74,11 +76,13 @@ def sample_prompt_data():
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
         "tools": [{"type": "function", "function": {"name": "test_tool"}}],
-        "tool_choice": "auto",
         "version": 1,
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+            "tool_choice": "auto",
+        },
     }
 
 
@@ -118,7 +122,7 @@ def sample_db_prompt(sample_prompt_data):
 @pytest.fixture
 def expected_db_prompt_messages(sample_db_prompt):
     """Create expected DatabaseAgenticPrompt messages"""
-    return to_agentic_prompt_messages(sample_db_prompt.messages)
+    return to_openai_messages(sample_db_prompt.messages)
 
 
 def mock_completion(*args, **kwargs):
@@ -139,9 +143,10 @@ def mock_completion(*args, **kwargs):
 
 
 @pytest.mark.unit_tests
+@pytest.mark.asyncio
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-def test_run_prompt(
+async def test_run_prompt(
     mock_completion,
     mock_completion_cost,
     mock_llm_client,
@@ -159,10 +164,7 @@ def test_run_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.001234
 
-    prompt, request = AgenticPromptRepository.to_prompt_and_request(
-        sample_unsaved_run_config,
-    )
-    result = prompt.run_chat_completion(mock_llm_client, request)
+    result = await agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Test response"
@@ -180,10 +182,9 @@ def test_run_prompt(
     call_args = mock_completion.call_args[1]
     assert call_args["model"] == "openai/gpt-4"
     assert (
-        to_agentic_prompt_messages(call_args["messages"])
-        == sample_unsaved_run_config.messages
+        to_openai_messages(call_args["messages"]) == sample_unsaved_run_config.messages
     )
-    assert call_args["temperature"] == sample_unsaved_run_config.temperature
+    assert call_args["temperature"] == sample_unsaved_run_config.config.temperature
 
 
 @pytest.mark.unit_tests
@@ -363,7 +364,7 @@ def test_save_prompt_with_agentic_prompt_object(
 
     # Check the DatabaseAgenticPrompt object that was added
     added_prompt = mock_db_session.add.call_args[0][0]
-    messages = to_agentic_prompt_messages(added_prompt.messages)
+    messages = to_openai_messages(added_prompt.messages)
 
     assert isinstance(added_prompt, DatabaseAgenticPrompt)
     assert added_prompt.task_id == task_id
@@ -436,9 +437,10 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 
 @pytest.mark.unit_tests
+@pytest.mark.asyncio
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-def test_run_saved_prompt(
+async def test_run_saved_prompt(
     mock_completion,
     mock_completion_cost,
     mock_llm_client,
@@ -469,8 +471,12 @@ def test_run_saved_prompt(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    prompt = agentic_prompt_repo.get_llm_item(task_id, prompt_name)
-    result = prompt.run_chat_completion(mock_llm_client)
+    result = await agentic_prompt_repo.run_saved_prompt(
+        task_id,
+        prompt_name,
+        "1",
+        PromptCompletionRequest(variables=[]),
+    )
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == "Saved prompt response"
@@ -509,7 +515,7 @@ def test_agentic_prompt_model_dump(sample_agentic_prompt):
 @pytest.mark.unit_tests
 @patch("clients.llm.llm_client.completion_cost")
 @patch("clients.llm.llm_client.litellm.completion")
-def test_agentic_prompt_run_chat_completion(
+def test_chat_completion_service_run_chat_completion(
     mock_completion,
     mock_completion_cost,
     mock_llm_client,
@@ -526,7 +532,12 @@ def test_agentic_prompt_run_chat_completion(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.003456
 
-    result = sample_agentic_prompt.run_chat_completion(mock_llm_client)
+    chat_completion_service = ChatCompletionService()
+    result = chat_completion_service.run_chat_completion(
+        sample_agentic_prompt,
+        mock_llm_client,
+        PromptCompletionRequest(variables=[]),
+    )
 
     assert result.content == "Direct completion response"
     assert result.tool_calls == [
@@ -676,11 +687,12 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
         variables = []
 
     completion_request = PromptCompletionRequest(variables=variables)
-    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
+    messages = [OpenAIMessage(role=MessageRole.USER, content=message)]
 
-    result = completion_request.replace_variables(messages)
+    chat_completion_service = ChatCompletionService()
+    result = chat_completion_service._replace_variables(completion_request, messages)
     expected_result = [
-        AgenticPromptMessage(role=MessageRole.USER, content=expected_message),
+        OpenAIMessage(role=MessageRole.USER, content=expected_message),
     ]
     assert result == expected_result
 
@@ -690,7 +702,10 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
         model_name="gpt-4o",
         model_provider="openai",
     )
-    _, completion_params = prompt._get_completion_params(completion_request)
+    _, completion_params = chat_completion_service._get_completion_params(
+        prompt,
+        completion_request,
+    )
 
     assert completion_params["messages"][0]["content"] == expected_message
 
@@ -783,9 +798,13 @@ def test_agentic_prompt_find_missing_variables(message, variables, missing_varia
     else:
         variables = []
 
-    messages = [AgenticPromptMessage(role=MessageRole.USER, content=message)]
+    messages = [OpenAIMessage(role=MessageRole.USER, content=message)]
     completion_request = PromptCompletionRequest(variables=variables)
-    results = completion_request.find_missing_variables(messages)
+    chat_completion_service = ChatCompletionService()
+    results = chat_completion_service._find_missing_variables(
+        completion_request,
+        messages,
+    )
     assert results == missing_variables
 
 
@@ -814,9 +833,11 @@ def test_agentic_prompt_tools_serialization():
                 "strict": True,
             },
         ],
-        "tool_choice": {
-            "type": "function",
-            "function": {"name": "get_weather"},
+        "config": {
+            "tool_choice": {
+                "type": "function",
+                "function": {"name": "get_weather"},
+            },
         },
     }
 
@@ -855,7 +876,7 @@ def test_agentic_prompt_tools_serialization():
     assert reconstructed_prompt.tools[0].function.parameters.required == ["location"]
 
     # Verify tool_choice is deserialized correctly (should be function name string)
-    assert reconstructed_prompt.tool_choice == ToolChoice(
+    assert reconstructed_prompt.config.tool_choice == ToolChoice(
         type="function",
         function=ToolChoiceFunction(name="get_weather"),
     )
@@ -869,17 +890,19 @@ def test_agentic_prompt_response_format_serialization():
         "messages": [{"role": "user", "content": "Test"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "user_schema",
-                "description": "User information",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {"type": "string", "description": "User's name"},
+        "config": {
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "user_schema",
+                    "description": "User information",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "User's name"},
+                        },
+                        "required": ["name"],
                     },
-                    "required": ["name"],
                 },
             },
         },
@@ -914,15 +937,20 @@ def test_agentic_prompt_response_format_serialization():
     reconstructed_prompt = AgenticPrompt.from_db_model(db_model)
 
     # Verify response_format is deserialized correctly
-    assert reconstructed_prompt.response_format.type == "json_schema"
-    assert reconstructed_prompt.response_format.json_schema.name == "user_schema"
+    assert reconstructed_prompt.config.response_format.type == "json_schema"
+    assert reconstructed_prompt.config.response_format.json_schema.name == "user_schema"
     assert (
-        reconstructed_prompt.response_format.json_schema.description
+        reconstructed_prompt.config.response_format.json_schema.description
         == "User information"
     )
-    assert reconstructed_prompt.response_format.json_schema.strict == None
-    assert len(reconstructed_prompt.response_format.json_schema.schema.properties) == 1
-    assert reconstructed_prompt.response_format.json_schema.schema.required == ["name"]
+    assert reconstructed_prompt.config.response_format.json_schema.strict == None
+    assert (
+        len(reconstructed_prompt.config.response_format.json_schema.schema.properties)
+        == 1
+    )
+    assert reconstructed_prompt.config.response_format.json_schema.schema.required == [
+        "name",
+    ]
 
 
 @pytest.mark.unit_tests
@@ -975,8 +1003,13 @@ def test_agentic_prompt_tool_call_message_serialization(
     mock_completion_cost.return_value = 0.000123
 
     # Run the unsaved prompt
-    prompt, request = AgenticPromptRepository.to_prompt_and_request(completion_request)
-    result = prompt.run_chat_completion(mock_llm_client, request)
+    chat_completion_service = ChatCompletionService()
+    prompt, request = ChatCompletionService.to_prompt_and_request(completion_request)
+    result = chat_completion_service.run_chat_completion(
+        prompt,
+        mock_llm_client,
+        request,
+    )
     call_args = mock_completion.call_args[1]
 
     # Extract messages sent to LiteLLM
@@ -1005,7 +1038,7 @@ def test_agentic_prompt_tool_call_message_serialization(
 @patch("clients.llm.llm_client.completion_cost", return_value=0.0)
 @patch("clients.llm.llm_client.litellm.completion", side_effect=mock_completion)
 @pytest.mark.parametrize("has_additional_props", [True, False])
-def test_run_chat_completion_strict_additional_properties_validation(
+def test_chat_completion_service_run_chat_completion_strict_additional_properties_validation(
     mock_completion,
     mock_cost,
     mock_llm_client,
@@ -1036,17 +1069,28 @@ def test_run_chat_completion_strict_additional_properties_validation(
         messages=[{"role": "user", "content": "tell me a joke"}],
         model_name="gpt-4o",
         model_provider="openai",
-        response_format=response_format,
+        config=LLMConfigSettings(
+            response_format=response_format,
+        ),
     )
 
     completion_request = PromptCompletionRequest()
+    chat_completion_service = ChatCompletionService()
 
     if has_additional_props:
-        result = prompt.run_chat_completion(mock_llm_client, completion_request)
+        result = chat_completion_service.run_chat_completion(
+            prompt,
+            mock_llm_client,
+            completion_request,
+        )
         assert result.content == "ok"
     else:
         with pytest.raises(ValueError, match="additionalProperties"):
-            prompt.run_chat_completion(mock_llm_client, completion_request)
+            chat_completion_service.run_chat_completion(
+                prompt,
+                mock_llm_client,
+                completion_request,
+            )
 
 
 @pytest.mark.unit_tests
@@ -1056,7 +1100,12 @@ def test_run_deleted_prompt_spawns_error(sample_deleted_prompt, mock_llm_client)
         ValueError,
         match="Cannot run chat completion for this prompt because it was deleted on",
     ):
-        sample_deleted_prompt.run_chat_completion(mock_llm_client)
+        chat_completion_service = ChatCompletionService()
+        chat_completion_service.run_chat_completion(
+            sample_deleted_prompt,
+            mock_llm_client,
+            PromptCompletionRequest(),
+        )
 
 
 @pytest.mark.unit_tests
@@ -1066,7 +1115,12 @@ async def test_stream_deleted_prompt_spawns_error(
     mock_llm_client,
 ):
     """Test stream chat completion raises an error if the prompt has been deleted"""
-    stream = sample_deleted_prompt.stream_chat_completion(mock_llm_client)
+    chat_completion_service = ChatCompletionService()
+    stream = chat_completion_service.stream_chat_completion(
+        sample_deleted_prompt,
+        mock_llm_client,
+        PromptCompletionRequest(),
+    )
     events = [event async for event in stream]
     assert len(events) == 1
     assert (
@@ -1496,10 +1550,10 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
     task_id = "test_task_id"
     prompt_name = "test_prompt"
 
-    full_prompt, request = AgenticPromptRepository.to_prompt_and_request(
+    prompt, completion_request = ChatCompletionService.to_prompt_and_request(
         sample_unsaved_run_config,
     )
-    full_prompt.response_format = create_model(
+    prompt.config.response_format = create_model(
         "GetWeatherResponse",
         city=(str, Field(..., description="The city to get the weather for.")),
         temperature=(
@@ -1517,7 +1571,12 @@ def test_run_saved_agentic_prompt_with_pydantic_response_format(
     mock_completion.return_value = mock_response
     mock_completion_cost.return_value = 0.002345
 
-    result = full_prompt.run_chat_completion(mock_llm_client, request)
+    chat_completion_service = ChatCompletionService()
+    result = chat_completion_service.run_chat_completion(
+        prompt,
+        mock_llm_client,
+        completion_request,
+    )
 
     assert isinstance(result, AgenticPromptRunResponse)
     assert result.content == '{"city": "New York", "temperature": 70}'

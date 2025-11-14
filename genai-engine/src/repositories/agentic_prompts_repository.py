@@ -1,20 +1,29 @@
-from typing import Tuple, Type
+from typing import Type
 
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from db_models.agentic_prompt_models import Base, DatabaseAgenticPrompt
 from repositories.base_llm_repository import BaseLLMRepository
-from schemas.agentic_prompt_schemas import AgenticPrompt, PromptCompletionRequest
-from schemas.request_schemas import CompletionRequest
+from repositories.model_provider_repository import ModelProviderRepository
+from schemas.agentic_prompt_schemas import AgenticPrompt
+from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import (
+    AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
     AgenticPromptVersionResponse,
 )
+from services.prompt.chat_completion_service import ChatCompletionService
 
 
 class AgenticPromptRepository(BaseLLMRepository):
     db_model: Type[Base] = DatabaseAgenticPrompt
     version_list_response_model: Type[BaseModel] = AgenticPromptVersionListResponse
+
+    def __init__(self, db_session: Session):
+        super().__init__(db_session)
+        self.model_provider_repo = ModelProviderRepository(db_session)
+        self.chat_completion_service = ChatCompletionService()
 
     def _from_db_model(self, db_item: Base) -> BaseModel:
         return AgenticPrompt.from_db_model(db_item)
@@ -39,15 +48,39 @@ class AgenticPromptRepository(BaseLLMRepository):
         db_item.tools = None
         db_item.config = None
 
-    @staticmethod
-    def to_prompt_and_request(
+    async def run_unsaved_prompt(
+        self,
         unsaved_prompt: CompletionRequest,
-    ) -> Tuple[AgenticPrompt, PromptCompletionRequest]:
-        """
-        Convert an unsaved run request into its corresponding AgenticPrompt and PromptCompletionRequest
-        """
-        prompt = AgenticPrompt(
-            name="test_unsaved_prompt",
-            **unsaved_prompt.model_dump(exclude={"completion_request"}),
+    ) -> AgenticPromptRunResponse:
+        llm_client = self.model_provider_repo.get_model_provider_client(
+            provider=unsaved_prompt.model_provider,
         )
-        return prompt, unsaved_prompt.completion_request
+        prompt, completion_request = ChatCompletionService.to_prompt_and_request(
+            unsaved_prompt,
+        )
+        return await self.chat_completion_service.execute_prompt_completion(
+            llm_client,
+            prompt,
+            completion_request,
+        )
+
+    async def run_saved_prompt(
+        self,
+        task_id: str,
+        prompt_name: str,
+        prompt_version: str,
+        completion_request: PromptCompletionRequest,
+    ) -> AgenticPromptRunResponse:
+        prompt = self.get_llm_item(
+            task_id,
+            prompt_name,
+            prompt_version,
+        )
+        llm_client = self.model_provider_repo.get_model_provider_client(
+            provider=prompt.model_provider,
+        )
+        return await self.chat_completion_service.execute_prompt_completion(
+            llm_client,
+            prompt,
+            completion_request,
+        )
