@@ -4,23 +4,14 @@ import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import {
-  useMutation,
-  useQueryClient,
-  useSuspenseQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { useSelectionStore } from "../stores/selection.store";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
-import {
-  SpanDetails,
-  SpanDetailsHeader,
-  SpanDetailsPanels,
-  SpanDetailsWidgets,
-} from "./SpanDetails";
+import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 import { SpanTree } from "./SpanTree";
 
 import { CopyableChip } from "@/components/common";
@@ -28,6 +19,8 @@ import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
+import { buildThresholdsFromSample } from "../utils/duration";
+import dayjs from "dayjs";
 
 type Props = {
   id: string;
@@ -48,10 +41,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   const refreshMetrics = useMutation({
     mutationFn: async () => {
-      const [, data] = await Promise.all([
-        wait(1000),
-        computeTraceMetrics(api!, { traceId: id! }),
-      ]);
+      const [, data] = await Promise.all([wait(1000), computeTraceMetrics(api!, { traceId: id! })]);
 
       return data;
     },
@@ -63,10 +53,16 @@ export const TraceDrawerContent = ({ id }: Props) => {
   const name = trace?.root_spans?.[0]?.span_name;
 
   // Flatten nested spans recursively
-  const flatSpans = useMemo(
-    () => flattenSpans(trace?.root_spans ?? []),
-    [trace]
-  );
+  const flatSpans = useMemo(() => flattenSpans(trace?.root_spans ?? []), [trace]);
+
+  const percentiles = useMemo(() => {
+    return buildThresholdsFromSample(
+      flatSpans.map((span) => {
+        const duration = dayjs(span.end_time).diff(dayjs(span.start_time), "ms");
+        return duration;
+      })
+    );
+  }, [flatSpans]);
 
   const rootSpan = trace?.root_spans?.[0];
 
@@ -82,9 +78,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   if (!trace) return null;
 
-  const selectedSpan = flatSpans.find(
-    (span) => span.span_id === selectedSpanId
-  );
+  const selectedSpan = flatSpans.find((span) => span.span_id === selectedSpanId);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -120,11 +114,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
         <Stack gap={2} alignItems="flex-end">
           <ButtonGroup variant="outlined" size="small" disableElevation>
-            <Button
-              loading={refreshMetrics.isPending}
-              onClick={() => refreshMetrics.mutate()}
-              startIcon={<RefreshIcon />}
-            >
+            <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
               Refresh Metrics
             </Button>
             <AddToDatasetDrawer traceId={id} />
@@ -151,7 +141,7 @@ export const TraceDrawerContent = ({ id }: Props) => {
             maxHeight: "100%",
           }}
         >
-          {rootSpan && <SpanTree spans={[rootSpan]} />}
+          {rootSpan && <SpanTree spans={[rootSpan]} thresholds={percentiles} />}
         </Box>
         <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
           {selectedSpan && (
@@ -188,20 +178,11 @@ export const TraceContentSkeleton = () => {
           <Skeleton variant="text" width={200} height={32} />
         </Stack>
 
-        <Skeleton
-          variant="rounded"
-          width={200}
-          height={32}
-          sx={{ borderRadius: 16 }}
-        />
+        <Skeleton variant="rounded" width={200} height={32} sx={{ borderRadius: 16 }} />
       </Stack>
 
       <Box sx={{ flexGrow: 1, p: 4 }}>
-        <Skeleton
-          variant="rectangular"
-          height="100%"
-          sx={{ borderRadius: 1 }}
-        />
+        <Skeleton variant="rectangular" height="100%" sx={{ borderRadius: 1 }} />
       </Box>
     </Stack>
   );
