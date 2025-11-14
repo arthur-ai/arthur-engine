@@ -1,4 +1,4 @@
-import { LLMGetAllMetadataResponse, LLMEval } from "@/lib/api-client/api-client";
+import { LLMGetAllMetadataResponse, LLMEval, CreateEvalRequest } from "@/lib/api-client/api-client";
 
 interface EvalRowExpansionProps {
   eval: LLMGetAllMetadataResponse;
@@ -62,6 +62,13 @@ interface EvaluatorsHeaderProps {
   onCreateEval: () => void;
 }
 
+interface EvalFormModalProps {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (evalName: string, data: CreateEvalRequest) => Promise<void>;
+  isLoading?: boolean;
+}
+
 export type {
   EvalRowExpansionProps,
   EvalsTableProps,
@@ -71,4 +78,5 @@ export type {
   EvalsFilters,
   EvalVersionsFilters,
   EvaluatorsHeaderProps,
+  EvalFormModalProps,
 };

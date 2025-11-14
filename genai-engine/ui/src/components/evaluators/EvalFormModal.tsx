@@ -14,18 +14,13 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 
-import type { CreateEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
+import { EvalFormModalProps } from "./types";
 
-interface EvalFormModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (evalName: string, data: CreateEvalRequest) => Promise<void>;
-  isLoading?: boolean;
-}
+import type { CreateEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
 
 const MODEL_PROVIDERS: ModelProvider[] = ["openai", "anthropic", "gemini"];
 
-export const EvalFormModal: React.FC<EvalFormModalProps> = ({ open, onClose, onSubmit, isLoading = false }) => {
+const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider>("openai");
@@ -185,7 +180,7 @@ export const EvalFormModal: React.FC<EvalFormModalProps> = ({ open, onClose, onS
                   onChange={(e) => setMinScore(Number(e.target.value))}
                   disabled={isLoading}
                   size="small"
-                  inputProps={{ min: 0, step: 1 }}
+                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 />
               </FormControl>
 
@@ -201,7 +196,7 @@ export const EvalFormModal: React.FC<EvalFormModalProps> = ({ open, onClose, onS
                   onChange={(e) => setMaxScore(Number(e.target.value))}
                   disabled={isLoading}
                   size="small"
-                  inputProps={{ min: 0, step: 1 }}
+                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 />
               </FormControl>
             </Box>
@@ -230,3 +225,5 @@ export const EvalFormModal: React.FC<EvalFormModalProps> = ({ open, onClose, onS
     </Dialog>
   );
 };
+
+export default EvalFormModal;

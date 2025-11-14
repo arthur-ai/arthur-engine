@@ -5,7 +5,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
-import { EvalFormModal } from "./EvalFormModal";
+import EvalFormModal from "./EvalFormModal";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
@@ -171,7 +171,7 @@ const Evaluators: React.FC = () => {
               </Box>
               <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first eval to get started.</Box>
               <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
-                Create Eval
+                Create Evaluator
               </Button>
             </Box>
           </Box>
