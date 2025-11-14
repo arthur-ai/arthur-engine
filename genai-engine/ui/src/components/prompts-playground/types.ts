@@ -150,6 +150,7 @@ type PromptType = {
   // tags: Array<string>; // TODO
   running?: boolean; // Whether the prompt is running
   version?: number | null; // Unsaved prompts have no version
+  isDirty?: boolean; // Whether the prompt has been modified from its saved version
 };
 
 interface PromptPlaygroundState {
