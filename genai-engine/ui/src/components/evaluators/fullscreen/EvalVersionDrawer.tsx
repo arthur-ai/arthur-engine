@@ -91,6 +91,9 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
           boxSizing: "border-box",
           position: "relative",
           height: "100%",
+          borderRight: "1px solid",
+          borderColor: "divider",
+          overflow: "visible",
         },
       }}
     >

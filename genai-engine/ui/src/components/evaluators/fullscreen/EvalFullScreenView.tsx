@@ -34,22 +34,14 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
 
   return (
     <Box sx={{ display: "flex", height: "100%", position: "relative" }}>
-      <Box
-        sx={{
-          width: 400,
-          flexShrink: 0,
-          position: "relative",
-        }}
-      >
-        <EvalVersionDrawer
-          open={true}
-          onClose={onClose}
-          taskId={task?.id ?? ""}
-          evalName={evalName}
-          selectedVersion={selectedVersion}
-          onSelectVersion={handleSelectVersion}
-        />
-      </Box>
+      <EvalVersionDrawer
+        open={true}
+        onClose={onClose}
+        taskId={task?.id ?? ""}
+        evalName={evalName}
+        selectedVersion={selectedVersion}
+        onSelectVersion={handleSelectVersion}
+      />
       <Box
         sx={{
           flex: 1,
