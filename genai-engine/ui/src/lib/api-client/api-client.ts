@@ -1133,9 +1133,9 @@ export interface GetAllAgenticPromptVersionsApiV1TasksTaskIdPromptsPromptNameVer
   model_name?: string | null;
   /**
    * Model Provider
-   * Filter by model provider. Allowed values: anthropic, gemini, openai
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
    */
-  model_provider?: ModelProvider | null;
+  model_provider?: string | null;
   /**
    * Page
    * Page number
@@ -1192,9 +1192,9 @@ export interface GetAllAgenticPromptsApiV1TasksTaskIdPromptsGetParams {
   model_name?: string | null;
   /**
    * Model Provider
-   * Filter by model provider. Allowed values: anthropic, gemini, openai
+   * Filter by model provider (e.g., 'openai', 'anthropic', 'azure').
    */
-  model_provider?: ModelProvider | null;
+  model_provider?: string | null;
   /**
    * Page
    * Page number
