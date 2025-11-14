@@ -3,9 +3,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getCoreRowModel, getSortedRowModel, SortingState, useReactTable } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
+import { BucketProvider } from "../../context/bucket-context";
 import { columns } from "../../data/columns";
 import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
+import { usePaginationContext } from "../../stores/pagination-context";
+import { buildThresholdsFromSample } from "../../utils/duration";
 import { createFilterRow } from "../filtering/filters-row";
 import { TRACE_FIELDS } from "../filtering/trace-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
@@ -18,7 +21,6 @@ import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredTraces } from "@/services/tracing";
-import { usePaginationContext } from "../../stores/pagination-context";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -83,6 +85,8 @@ export function TraceLevel() {
     });
   };
 
+  const thresholds = useMemo(() => buildThresholdsFromSample(data?.traces.map((trace) => trace.duration_ms) ?? []), [data?.traces]);
+
   if (error) {
     return <Alert severity="error">There was an error fetching traces.</Alert>;
   }
@@ -92,13 +96,15 @@ export function TraceLevel() {
       <FiltersRow />
       {data?.traces?.length ? (
         <>
-          <TracesTable
-            table={table}
-            loading={isFetching}
-            onRowClick={(row) => {
-              handleRowClick(row.original);
-            }}
-          />
+          <BucketProvider thresholds={thresholds}>
+            <TracesTable
+              table={table}
+              loading={isFetching}
+              onRowClick={(row) => {
+                handleRowClick(row.original);
+              }}
+            />
+          </BucketProvider>
           <TablePagination
             component="div"
             count={data?.count ?? 0}

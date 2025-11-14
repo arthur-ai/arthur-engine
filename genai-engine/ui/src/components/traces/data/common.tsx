@@ -3,8 +3,10 @@ import GeneratingTokensOutlinedIcon from "@mui/icons-material/GeneratingTokensOu
 import TollOutlinedIcon from "@mui/icons-material/TollOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 
+import { useBucketer } from "../context/bucket-context";
+import { Bucket } from "../utils/duration";
+
 import { formatCurrency, formatDuration } from "@/utils/formatters";
-import { Bucket, Bucketer, defaultBucketer } from "../utils/duration";
 
 type TokenCountProps = {
   prompt?: number;
@@ -79,7 +81,8 @@ export const TruncatedText = ({ text }: { text: string }) => {
   return <span className="truncate p-2 bg-gray-100 rounded-md">{text}</span>;
 };
 
-export const DurationCell = ({ duration, bucketer = defaultBucketer }: { duration: number; bucketer?: Bucketer }) => {
+export const DurationCell = ({ duration }: { duration: number }) => {
+  const bucketer = useBucketer();
   const bucket = duration ? bucketer(duration) : "ok";
   const color = BUCKET_COLORS[bucket];
 

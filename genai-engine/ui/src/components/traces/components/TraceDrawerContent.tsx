@@ -8,9 +8,10 @@ import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-q
 import dayjs from "dayjs";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
+import { BucketProvider } from "../context/bucket-context";
 import { useSelectionStore } from "../stores/selection.store";
 import { buildThresholdsFromSample } from "../utils/duration";
-import { flattenSpans } from "../utils/spans";
+import { flattenSpans, getSpanDuration } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
 import { DrawerPagination } from "./DrawerPagination";
@@ -77,88 +78,92 @@ export const TraceDrawerContent = ({ id }: Props) => {
 
   useEffect(onOpenDrawer, []);
 
+  const thresholds = useMemo(() => buildThresholdsFromSample(flatSpans.map((span) => getSpanDuration(span) ?? 0)), [flatSpans]);
+
   if (!trace) return null;
 
   const selectedSpan = flatSpans.find((span) => span.span_id === selectedSpanId);
 
   return (
-    <Stack spacing={0} sx={{ height: "100%" }}>
-      <Stack
-        direction="row"
-        spacing={0}
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{
-          px: 4,
-          py: 2,
-          backgroundColor: "grey.100",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Stack direction="column" gap={0}>
-          <Typography variant="body2" color="text.secondary">
-            Trace Details
-          </Typography>
-          <Stack direction="row" gap={2}>
-            <Typography variant="h5" color="text.primary" fontWeight="bold">
-              {name}
+    <BucketProvider thresholds={thresholds}>
+      <Stack spacing={0} sx={{ height: "100%" }}>
+        <Stack
+          direction="row"
+          spacing={0}
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{
+            px: 4,
+            py: 2,
+            backgroundColor: "grey.100",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Stack direction="column" gap={0}>
+            <Typography variant="body2" color="text.secondary">
+              Trace Details
             </Typography>
-            <CopyableChip
-              label={id!}
-              sx={{
-                fontFamily: "monospace",
-              }}
-            />
+            <Stack direction="row" gap={2}>
+              <Typography variant="h5" color="text.primary" fontWeight="bold">
+                {name}
+              </Typography>
+              <CopyableChip
+                label={id!}
+                sx={{
+                  fontFamily: "monospace",
+                }}
+              />
+            </Stack>
+          </Stack>
+
+          <Stack gap={2} alignItems="flex-end">
+            <ButtonGroup variant="outlined" size="small" disableElevation>
+              <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
+                Refresh Metrics
+              </Button>
+              <AddToDatasetDrawer traceId={id} />
+            </ButtonGroup>
           </Stack>
         </Stack>
 
-        <Stack gap={2} alignItems="flex-end">
-          <ButtonGroup variant="outlined" size="small" disableElevation>
-            <Button loading={refreshMetrics.isPending} onClick={() => refreshMetrics.mutate()} startIcon={<RefreshIcon />}>
-              Refresh Metrics
-            </Button>
-            <AddToDatasetDrawer traceId={id} />
-          </ButtonGroup>
-        </Stack>
-      </Stack>
+        <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+          <DrawerPagination />
+        </Box>
 
-      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
-        <DrawerPagination />
-      </Box>
-
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: "2fr 3fr",
-          gap: 0,
-          height: "100%",
-          overflow: "auto",
-        }}
-      >
         <Box
           sx={{
-            borderRight: "1px solid",
-            borderColor: "divider",
-            p: 2,
-            backgroundColor: "grey.100",
+            display: "grid",
+            gridTemplateColumns: "2fr 3fr",
+            gap: 0,
+            height: "100%",
             overflow: "auto",
-            maxHeight: "100%",
           }}
         >
-          {rootSpan && <SpanTree spans={[rootSpan]} thresholds={percentiles} />}
+          <Box
+            sx={{
+              borderRight: "1px solid",
+              borderColor: "divider",
+              p: 2,
+              backgroundColor: "grey.100",
+              overflow: "auto",
+              maxHeight: "100%",
+            }}
+          >
+            {rootSpan && <SpanTree spans={[rootSpan]} thresholds={percentiles} />}
+          </Box>
+          <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
+            {selectedSpan && (
+              <SpanDetails span={selectedSpan}>
+                <SpanDetailsHeader />
+                <SpanDetailsWidgets />
+                <SpanDetailsPanels />
+              </SpanDetails>
+            )}
+          </Box>
         </Box>
-        <Box sx={{ overflow: "auto", maxHeight: "100%", p: 2 }}>
-          {selectedSpan && (
-            <SpanDetails span={selectedSpan}>
-              <SpanDetailsHeader />
-              <SpanDetailsWidgets />
-              <SpanDetailsPanels />
-            </SpanDetails>
-          )}
-        </Box>
-      </Box>
-    </Stack>
+      </Stack>
+    </BucketProvider>
   );
 };
 

@@ -1,20 +1,17 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Accordion } from "@base-ui-components/react/accordion";
-import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useMemo } from "react";
 
+import { DurationCell } from "../../data/common";
 import { useSelectionStore } from "../../stores/selection.store";
-import { Bucket, Bucketer, makeBucketer, Thresholds } from "../../utils/duration";
+import { Thresholds } from "../../utils/duration";
 import { getSpanDuration, getSpanType } from "../../utils/spans";
 
 import { TypeChip } from "@/components/common/span/TypeChip";
 import { NestedSpanWithMetricsResponse } from "@/lib/api";
-import { formatDuration } from "@/utils/formatters";
-import { BUCKET_COLORS, DurationCell } from "../../data/common";
 
 type Props = {
   level?: number;
@@ -29,8 +26,6 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), thresholds }
 
   const values = spans.map((span) => span.span_id);
 
-  const bucketer = useMemo(() => (thresholds ? makeBucketer(thresholds.p50, thresholds.p90) : undefined), [thresholds]);
-
   return (
     <Accordion.Root defaultValue={values} keepMounted>
       {spans.map((span) => (
@@ -44,7 +39,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), thresholds }
             select("span", span.span_id);
           }}
         >
-          <SpanTreeItem span={span} level={level} bucketer={bucketer} />
+          <SpanTreeItem span={span} level={level} />
           <Accordion.Panel
             render={
               <Box className="h-(--accordion-panel-height) overflow-hidden text-base text-gray-600 transition-[height] ease-out data-ending-style:h-0 data-starting-style:h-0 data-open:rounded-b" />
@@ -58,7 +53,7 @@ export const SpanTree = ({ level = 0, spans, ancestors = new Set(), thresholds }
   );
 };
 
-const SpanTreeItem = ({ span, level, bucketer }: { span: NestedSpanWithMetricsResponse; level: number; bucketer: Bucketer }) => {
+const SpanTreeItem = ({ span, level }: { span: NestedSpanWithMetricsResponse; level: number }) => {
   const selectedSpanId = useSelectionStore((state) => state.selection.span);
 
   const isSelected = span.span_id === selectedSpanId;
@@ -67,8 +62,6 @@ const SpanTreeItem = ({ span, level, bucketer }: { span: NestedSpanWithMetricsRe
   const chip = <TypeChip type={getSpanType(span) ?? OpenInferenceSpanKind.AGENT} active={isSelected} />;
 
   const duration = getSpanDuration(span);
-
-  const bucket = duration ? bucketer!(duration) : "ok";
 
   return (
     <>
@@ -117,7 +110,7 @@ const SpanTreeItem = ({ span, level, bucketer }: { span: NestedSpanWithMetricsRe
             <Typography variant="body2" fontWeight={500} fontSize={12}>
               {span.span_name}
             </Typography>
-            {duration ? <DurationCell duration={duration} bucketer={bucketer} /> : null}
+            {duration ? <DurationCell duration={duration} /> : null}
           </Stack>
         </Stack>
       </Accordion.Header>

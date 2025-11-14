@@ -3,6 +3,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { useTracesHistoryStore } from "../stores/history.store";
 import { useSelectionStore } from "../stores/selection.store";
