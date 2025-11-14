@@ -30,7 +30,7 @@ interface EvalFullScreenViewProps {
 }
 
 interface EvalDetailViewProps {
-  eval: LLMEval | undefined;
+  evalData: LLMEval | undefined;
   isLoading: boolean;
   error: Error | null;
   evalName: string;

@@ -50,7 +50,7 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
           minWidth: 0,
         }}
       >
-        <EvalDetailView eval={evalData} isLoading={isLoading} error={error} evalName={evalName} version={selectedVersion} onClose={onClose} />
+        <EvalDetailView evalData={evalData} isLoading={isLoading} error={error} evalName={evalName} version={selectedVersion} onClose={onClose} />
       </Box>
     </Box>
   );

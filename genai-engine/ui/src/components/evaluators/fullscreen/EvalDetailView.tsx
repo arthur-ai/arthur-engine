@@ -11,7 +11,7 @@ import type { EvalDetailViewProps } from "../types";
 
 import { formatDate } from "@/utils/formatters";
 
-const EvalDetailView = ({ eval: evalData, isLoading, error, evalName, version, onClose }: EvalDetailViewProps) => {
+const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose }: EvalDetailViewProps) => {
   if (isLoading) {
     return (
       <Box
