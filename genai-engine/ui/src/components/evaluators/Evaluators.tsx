@@ -130,7 +130,7 @@ const Evaluators: React.FC = () => {
         width: "100%",
         height: getContentHeight(),
         display: "grid",
-        gridTemplateRows: "auto 1fr",
+        gridTemplateRows: "auto auto 1fr",
         overflow: "hidden",
       }}
     >
@@ -138,7 +138,7 @@ const Evaluators: React.FC = () => {
 
       {error && evals.length > 0 && (
         <Box sx={{ px: 3, pt: 2 }}>
-          <Alert severity="error">{error.message || "An error occurred"}</Alert>
+          <Alert severity="error">{error?.message || "An error occurred"}</Alert>
         </Box>
       )}
 

@@ -9,7 +9,7 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import React, { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 import { useEvalVersions } from "../hooks/useEvalVersions";
 import type { EvalVersionDrawerProps } from "../types";
@@ -151,7 +151,7 @@ const EvalVersionDrawer = ({ open, onClose, taskId, evalName, selectedVersion, o
           <List sx={{ flex: 1, overflow: "auto" }}>
             {sortedAndFilteredVersions.map((version) => {
               const isSelected = selectedVersion === version.version;
-              const isDeleted = version.deleted_at !== null;
+              const isDeleted = !!version.deleted_at;
 
               return (
                 <ListItem key={version.version} disablePadding>
