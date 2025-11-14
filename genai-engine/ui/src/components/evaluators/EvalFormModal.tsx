@@ -1,4 +1,5 @@
 import Alert from "@mui/material/Alert";
+import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -7,27 +8,105 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
-import InputLabel from "@mui/material/InputLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Select from "@mui/material/Select";
 import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EvalFormModalProps } from "./types";
 
-import type { CreateEvalRequest, ModelProvider } from "@/lib/api-client/api-client";
-
-const MODEL_PROVIDERS: ModelProvider[] = ["openai", "anthropic", "gemini"];
+import { useApi } from "@/hooks/useApi";
+import type { CreateEvalRequest, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
+  const apiClient = useApi();
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [modelProvider, setModelProvider] = useState<ModelProvider>("openai");
+  const [modelProvider, setModelProvider] = useState<ModelProvider | "">("");
   const [modelName, setModelName] = useState("");
   const [minScore, setMinScore] = useState<number>(0);
   const [maxScore, setMaxScore] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
+  const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
+  const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
+  const hasFetchedProviders = useRef(false);
+  const hasFetchedAvailableModels = useRef(false);
+
+  const fetchProviders = useCallback(async () => {
+    if (hasFetchedProviders.current) {
+      return;
+    }
+
+    if (!apiClient) {
+      console.error("No api client");
+      return;
+    }
+
+    hasFetchedProviders.current = true;
+    try {
+      const response = await apiClient.api.getModelProvidersApiV1ModelProvidersGet();
+      const { data } = response;
+      const providers = data.providers
+        .filter((provider: ModelProviderResponse) => provider.enabled)
+        .map((provider: ModelProviderResponse) => provider.provider);
+      setEnabledProviders(providers);
+    } catch (error) {
+      console.error("Failed to fetch providers:", error);
+      setError("Failed to load providers. Please try again.");
+    }
+  }, [apiClient]);
+
+  const fetchAvailableModels = useCallback(async () => {
+    if (hasFetchedAvailableModels.current || !apiClient || enabledProviders.length === 0) {
+      return;
+    }
+
+    hasFetchedAvailableModels.current = true;
+
+    // Fetch models for all enabled providers in parallel
+    const modelPromises = enabledProviders.map(async (provider) => {
+      try {
+        const response = await apiClient.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
+        return { provider, models: response.data.available_models };
+      } catch (error) {
+        console.error(`Failed to fetch models for provider ${provider}:`, error);
+        return { provider, models: [] };
+      }
+    });
+
+    const results = await Promise.all(modelPromises);
+
+    const newAvailableModels = new Map<ModelProvider, string[]>();
+    results.forEach(({ provider, models }) => {
+      newAvailableModels.set(provider, models);
+    });
+
+    setAvailableModels(newAvailableModels);
+  }, [apiClient, enabledProviders]);
+
+  // Fetch providers when modal opens
+  useEffect(() => {
+    if (open) {
+      // Reset refs when modal opens to allow fresh data fetch
+      hasFetchedProviders.current = false;
+      hasFetchedAvailableModels.current = false;
+      fetchProviders();
+    }
+  }, [open, fetchProviders]);
+
+  // Fetch available models when providers are loaded
+  useEffect(() => {
+    if (enabledProviders.length > 0) {
+      fetchAvailableModels();
+    }
+  }, [enabledProviders, fetchAvailableModels]);
+
+  // Set the first provider as the default provider
+  useEffect(() => {
+    if (enabledProviders.length > 0 && !modelProvider) {
+      setModelProvider(enabledProviders[0]);
+    }
+  }, [enabledProviders, modelProvider]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +122,11 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       return;
     }
 
+    if (!modelProvider) {
+      setError("Model provider is required");
+      return;
+    }
+
     if (!modelName.trim()) {
       setError("Model name is required");
       return;
@@ -51,7 +135,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
     try {
       const data: CreateEvalRequest = {
         instructions: instructions.trim(),
-        model_provider: modelProvider,
+        model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
         min_score: minScore,
         max_score: maxScore,
@@ -62,7 +146,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       // Reset form on success
       setEvalName("");
       setInstructions("");
-      setModelProvider("openai");
+      setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
       setMinScore(0);
       setMaxScore(1);
@@ -77,7 +161,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
     if (!isLoading) {
       setEvalName("");
       setInstructions("");
-      setModelProvider("openai");
+      setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
       setMinScore(0);
       setMaxScore(1);
@@ -85,6 +169,20 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       onClose();
     }
   };
+
+  const handleProviderChange = (_event: React.SyntheticEvent<Element, Event>, newValue: ModelProvider | null) => {
+    setModelProvider(newValue || "");
+    setModelName(""); // Clear model selection when provider changes
+  };
+
+  const handleModelChange = (_event: React.SyntheticEvent<Element, Event>, newValue: string | null) => {
+    setModelName(newValue || "");
+  };
+
+  const providerDisabled = enabledProviders.length === 0;
+  const modelDisabled = modelProvider === "";
+  const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
+  const availableModelsForProvider = useMemo(() => availableModels.get(modelProvider as ModelProvider) || [], [availableModels, modelProvider]);
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
@@ -130,24 +228,22 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
 
             <Box sx={{ display: "flex", gap: 2 }}>
               <FormControl fullWidth>
-                <InputLabel id="model-provider-label" size="small">
-                  Model Provider
-                </InputLabel>
-                <Select
-                  labelId="model-provider-label"
-                  value={modelProvider}
-                  onChange={(e) => setModelProvider(e.target.value as ModelProvider)}
-                  disabled={isLoading}
-                  required
-                  label="Model Provider"
-                  size="small"
-                >
-                  {MODEL_PROVIDERS.map((provider) => (
-                    <MenuItem key={provider} value={provider}>
-                      {provider}
-                    </MenuItem>
-                  ))}
-                </Select>
+                <FormLabel>
+                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                    Model Provider
+                  </Typography>
+                </FormLabel>
+                <Tooltip title={tooltipTitle} placement="top-start" arrow>
+                  <Autocomplete<ModelProvider>
+                    options={enabledProviders}
+                    value={modelProvider || null}
+                    onChange={handleProviderChange}
+                    disabled={providerDisabled || isLoading}
+                    renderInput={(params) => (
+                      <TextField {...params} label="Select Provider" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                    )}
+                  />
+                </Tooltip>
               </FormControl>
 
               <FormControl fullWidth>
@@ -156,13 +252,14 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                     Model Name
                   </Typography>
                 </FormLabel>
-                <TextField
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
-                  placeholder="e.g., gpt-4o, claude-3-sonnet"
-                  disabled={isLoading}
-                  required
-                  size="small"
+                <Autocomplete
+                  options={availableModelsForProvider}
+                  value={modelName || null}
+                  onChange={handleModelChange}
+                  disabled={modelDisabled || isLoading}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
+                  )}
                 />
               </FormControl>
             </Box>
@@ -215,7 +312,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
           <Button
             type="submit"
             variant="contained"
-            disabled={isLoading || !evalName.trim() || !instructions.trim() || !modelName.trim()}
+            disabled={isLoading || !evalName.trim() || !instructions.trim() || !modelProvider || !modelName.trim()}
             sx={{ minWidth: 120 }}
           >
             {isLoading ? "Creating..." : "Create Eval"}
