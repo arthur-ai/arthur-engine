@@ -101,7 +101,7 @@ export const UserDrawerContent = ({ id }: Props) => {
             <Tabs.Panel value="sessions">
               <Suspense fallback={<Skeleton variant="rectangular" height={100} />}>
                 <FilterStoreProvider timeRange={timeRange}>
-                  <UserSessionsTable ids={user.session_ids} taskId={task?.id ?? ""} />
+                  <UserSessionsTable ids={[user.user_id]} taskId={task?.id ?? ""} />
                 </FilterStoreProvider>
               </Suspense>
             </Tabs.Panel>
@@ -201,7 +201,7 @@ const UserSessionsTable = ({ ids, taskId }: UserTableProps) => {
 
   const timeRange = useFilterStore((state) => state.timeRange);
 
-  const filters: IncomingFilter[] = useMemo(() => [{ name: "session_ids", operator: Operators.IN, value: ids }], [ids]);
+  const filters: IncomingFilter[] = useMemo(() => [{ name: "user_ids", operator: Operators.IN, value: ids }], [ids]);
 
   const params = {
     taskId,
