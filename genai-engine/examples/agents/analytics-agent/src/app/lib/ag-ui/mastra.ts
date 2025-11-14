@@ -26,13 +26,6 @@ type RemoteMastraAgent = ReturnType<MastraClient["getAgent"]>;
 import {
   convertAGUIMessagesToMastra,
   GetLocalAgentsOptions,
-  // getLocalAgents,
-  // getRemoteAgents,
-  // GetRemoteAgentsOptions,
-  // GetLocalAgentOptions,
-  // getLocalAgent,
-  // GetNetworkOptions,
-  // getNetwork,
 } from "@ag-ui/mastra";
 
 export interface MastraAgentConfig extends AgentConfig {
@@ -281,11 +274,13 @@ export class MastraAgent extends AbstractAgent {
       // Local agent - use the agent's stream method directly
       try {
         // Extract telemetry data from runtime context
-        const telemetry = this.runtimeContext?.get("telemetry") as { 
-          userId?: string | null; 
-          sessionId?: string | null; 
-        } | undefined;
-        
+        const telemetry = this.runtimeContext?.get("telemetry") as
+          | {
+              userId?: string | null;
+              sessionId?: string | null;
+            }
+          | undefined;
+
         // Build metadata object conditionally - only include fields that are provided
         const metadata: Record<string, string> = {};
         if (telemetry?.userId) {
@@ -294,9 +289,9 @@ export class MastraAgent extends AbstractAgent {
         if (telemetry?.sessionId) {
           metadata.sessionId = telemetry.sessionId;
         }
-        
+
         console.log("streaming local agent with tracing metadata", metadata);
-        
+
         const response = await this.agent.stream(convertedMessages, {
           threadId,
           resourceId,
