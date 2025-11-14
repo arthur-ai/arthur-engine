@@ -7,7 +7,8 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { styled } from "@mui/material/styles";
+import { styled, useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import React, { useCallback, useReducer, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -43,6 +44,22 @@ const PromptsPlayground = () => {
 
   const apiClient = useApi();
   const spanId = searchParams.get("spanId");
+
+  const theme = useTheme();
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up("xl")); // xl breakpoint = 1536px
+
+  // Calculate prompt width based on screen size
+  // Large screens: fit 6 prompts, small screens: fit 3 prompts
+  const promptsPerScreen = isLargeScreen ? 5 : 3;
+  const spacing = 8; // 1 * 8px (MUI spacing unit)
+  const padding = 8; // Container padding
+
+  // Calculate dynamic width: (100vw - total spacing - padding) / number of prompts
+  const promptWidth = `calc((100vw - ${(promptsPerScreen - 1) * spacing + padding * 2}px) / ${promptsPerScreen})`;
+
+  // Determine if prompts should use icon-only mode based on prompt count
+  // Switch to icon-only when we have 3 or more prompts
+  const useIconOnlyMode = state.prompts.length >= 3;
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -276,11 +293,12 @@ const PromptsPlayground = () => {
                   key={prompt.id}
                   className="flex-1 h-full"
                   sx={{
-                    minWidth: 750,
+                    width: promptWidth,
+                    minWidth: promptWidth,
                     flexShrink: 0,
                   }}
                 >
-                  <PromptComponent prompt={prompt} />
+                  <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />
                 </Box>
               ))}
             </Stack>

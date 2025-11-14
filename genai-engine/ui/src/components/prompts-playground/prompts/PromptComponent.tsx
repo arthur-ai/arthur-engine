@@ -2,8 +2,13 @@ import Alert from "@mui/material/Alert";
 import Badge from "@mui/material/Badge";
 import Button from "@mui/material/Button";
 import Container from "@mui/material/Container";
+import IconButton from "@mui/material/IconButton";
 import Paper from "@mui/material/Paper";
 import Snackbar from "@mui/material/Snackbar";
+import Tooltip from "@mui/material/Tooltip";
+import AddIcon from "@mui/icons-material/Add";
+import BuildIcon from "@mui/icons-material/Build";
+import CodeIcon from "@mui/icons-material/Code";
 import React, { useCallback, useEffect, useState, useRef } from "react";
 
 import MessagesSection from "../messages/MessagesSection";
@@ -23,7 +28,7 @@ import useSnackbar from "@/hooks/useSnackbar";
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt }: PromptComponentProps) => {
+const Prompt = ({ prompt, useIconOnlyMode }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
@@ -36,6 +41,7 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { dispatch } = usePromptContext();
+
   const runPrompt = useRunPrompt({
     prompt,
     onError: (error) => {
@@ -75,30 +81,64 @@ const Prompt = ({ prompt }: PromptComponentProps) => {
     <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
         <div className="flex justify-between items-center gap-1 mb-2 flex-shrink-0">
-          <div className="flex justify-start items-center gap-1">
-            {prompt.tools.length > 0 ? (
-              <Badge badgeContent={prompt.tools.length} color="primary">
-                <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)}>
-                  Tools
-                </Button>
-              </Badge>
+          <div className="flex justify-start items-center gap-1" style={{ minWidth: 0 }}>
+            {useIconOnlyMode ? (
+              <>
+                {/* Icon-only mode when space is constrained */}
+                {prompt.tools.length > 0 ? (
+                  <Badge badgeContent={prompt.tools.length} color="primary">
+                    <Tooltip title="Tools" arrow>
+                      <IconButton size="small" onClick={() => setToolsDialogOpen(true)}>
+                        <BuildIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Badge>
+                ) : (
+                  <Tooltip title="Tools" arrow>
+                    <IconButton size="small" onClick={() => setToolsDialogOpen(true)}>
+                      <BuildIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                <Tooltip title="Add Message" arrow>
+                  <IconButton size="small" onClick={handleAddMessage}>
+                    <AddIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Format Response" arrow>
+                  <IconButton size="small" onClick={handleOpenResponseSchemaDialog}>
+                    <CodeIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </>
             ) : (
-              <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)}>
-                Tools
-              </Button>
+              <>
+                {/* Full buttons with text when there's space */}
+                {prompt.tools.length > 0 ? (
+                  <Badge badgeContent={prompt.tools.length} color="primary">
+                    <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)} startIcon={<BuildIcon />} sx={{ minWidth: "auto", px: 1 }}>
+                      Tools
+                    </Button>
+                  </Badge>
+                ) : (
+                  <Button variant="outlined" size="small" onClick={() => setToolsDialogOpen(true)} startIcon={<BuildIcon />} sx={{ minWidth: "auto", px: 1 }}>
+                    Tools
+                  </Button>
+                )}
+                <Button variant="outlined" size="small" onClick={handleAddMessage} startIcon={<AddIcon />} sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}>
+                  Add Message
+                </Button>
+                <Button variant="outlined" size="small" onClick={handleOpenResponseSchemaDialog} startIcon={<CodeIcon />} sx={{ minWidth: "auto", px: 1, whiteSpace: "nowrap" }}>
+                  Format Response
+                </Button>
+              </>
             )}
-            <Button variant="outlined" size="small" onClick={handleAddMessage}>
-              Add Message
-            </Button>
-            <Button variant="outlined" size="small" onClick={handleOpenResponseSchemaDialog}>
-              Format Response
-            </Button>
           </div>
           <div className="flex justify-end items-center gap-1 flex-shrink-0">
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
         </div>
-        <div className="min-w-[300px] flex-shrink-0">
+        <div className="flex-shrink-0" style={{ minWidth: 0 }}>
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">

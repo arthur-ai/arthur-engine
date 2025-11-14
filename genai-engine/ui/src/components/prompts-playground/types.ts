@@ -172,6 +172,7 @@ interface MessageComponentProps {
 
 interface PromptComponentProps {
   prompt: PromptType;
+  useIconOnlyMode: boolean;
 }
 
 interface OutputFieldProps {
