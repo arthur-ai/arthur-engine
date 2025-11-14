@@ -5,12 +5,15 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import dayjs from "dayjs";
 import { useEffect, useEffectEvent, useMemo } from "react";
 
 import { useSelectionStore } from "../stores/selection.store";
+import { buildThresholdsFromSample } from "../utils/duration";
 import { flattenSpans } from "../utils/spans";
 
 import { AddToDatasetDrawer } from "./add-to-dataset/Drawer";
+import { DrawerPagination } from "./DrawerPagination";
 import { SpanDetails, SpanDetailsHeader, SpanDetailsPanels, SpanDetailsWidgets } from "./SpanDetails";
 import { SpanTree } from "./SpanTree";
 
@@ -19,8 +22,6 @@ import { useApi } from "@/hooks/useApi";
 import { queryKeys } from "@/lib/queryKeys";
 import { computeTraceMetrics, getTrace } from "@/services/tracing";
 import { wait } from "@/utils";
-import { buildThresholdsFromSample } from "../utils/duration";
-import dayjs from "dayjs";
 
 type Props = {
   id: string;
@@ -121,6 +122,10 @@ export const TraceDrawerContent = ({ id }: Props) => {
           </ButtonGroup>
         </Stack>
       </Stack>
+
+      <Box sx={{ px: 4, py: 2, borderBottom: "1px solid", borderColor: "divider", backgroundColor: "grey.200" }}>
+        <DrawerPagination />
+      </Box>
 
       <Box
         sx={{

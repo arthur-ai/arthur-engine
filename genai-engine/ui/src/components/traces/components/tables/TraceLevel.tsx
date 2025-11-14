@@ -18,6 +18,7 @@ import { TraceMetadataResponse } from "@/lib/api-client/api-client";
 import { FETCH_SIZE } from "@/lib/constants";
 import { queryKeys } from "@/lib/queryKeys";
 import { getFilteredTraces } from "@/services/tracing";
+import { usePaginationContext } from "../../stores/pagination-context";
 
 const DEFAULT_DATA: TraceMetadataResponse[] = [];
 
@@ -26,9 +27,11 @@ export function TraceLevel() {
   const pagination = useDatasetPagination(FETCH_SIZE);
 
   const push = useTracesHistoryStore((state) => state.push);
-  const timeRange = useFilterStore((state) => state.timeRange);
 
+  const timeRange = useFilterStore((state) => state.timeRange);
   const filters = useFilterStore((state) => state.filters);
+
+  const setContext = usePaginationContext((state) => state.actions.setContext);
 
   const api = useApi()!;
 
@@ -68,6 +71,18 @@ export function TraceLevel() {
     [task?.id, api]
   );
 
+  const handleRowClick = (row: TraceMetadataResponse) => {
+    setContext({
+      type: "trace",
+      ids: data?.traces.map((trace) => trace.trace_id) ?? [],
+    });
+
+    push({
+      type: "trace",
+      id: row.trace_id,
+    });
+  };
+
   if (error) {
     return <Alert severity="error">There was an error fetching traces.</Alert>;
   }
@@ -81,10 +96,7 @@ export function TraceLevel() {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              push({
-                type: "trace",
-                id: row.original.trace_id,
-              });
+              handleRowClick(row.original);
             }}
           />
           <TablePagination

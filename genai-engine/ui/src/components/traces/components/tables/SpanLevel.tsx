@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { spanLevelColumns } from "../../data/span-level-columns";
 import { useFilterStore } from "../../stores/filter.store";
 import { useTracesHistoryStore } from "../../stores/history.store";
+import { usePaginationContext } from "../../stores/pagination-context";
 import { createFilterRow } from "../filtering/filters-row";
 import { SPAN_FIELDS } from "../filtering/span-fields";
 import { TracesEmptyState } from "../TracesEmptyState";
@@ -30,6 +31,8 @@ export const SpanLevel = () => {
 
   const filters = useFilterStore((state) => state.filters);
   const timeRange = useFilterStore((state) => state.timeRange);
+
+  const setContext = usePaginationContext((state) => state.actions.setContext);
 
   const params = {
     taskId: task?.id ?? "",
@@ -67,6 +70,18 @@ export const SpanLevel = () => {
     [task?.id, api]
   );
 
+  const handleRowClick = (row: SpanMetadataResponse) => {
+    setContext({
+      type: "span",
+      ids: data?.spans.map((span) => span.span_id) ?? [],
+    });
+
+    push({
+      type: "span",
+      id: row.span_id,
+    });
+  };
+
   if (error) {
     return <Alert severity="error">There was an error fetching spans.</Alert>;
   }
@@ -80,10 +95,7 @@ export const SpanLevel = () => {
             table={table}
             loading={isFetching}
             onRowClick={(row) => {
-              push({
-                type: "span",
-                id: row.original.span_id,
-              });
+              handleRowClick(row.original);
             }}
           />
 
