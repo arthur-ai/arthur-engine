@@ -159,7 +159,7 @@ const PromptsPlayground = () => {
     });
   };
 
-  const drawerWidth = drawerOpen ? 250 : 64;
+  const drawerWidth = drawerOpen ? 210 : 64;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -187,103 +187,55 @@ const PromptsPlayground = () => {
 
   return (
     <PromptProvider state={state} dispatch={dispatch}>
+      {/* <button onClick={() => setDrawerOpen(!drawerOpen)}>Toggle Drawer</button> */}
       <Box className="flex h-full bg-gray-300" sx={{ position: "relative" }}>
-        <Drawer
-          variant="permanent"
-          anchor="left"
-          sx={{
-            zIndex: 1000,
-            width: drawerWidth,
-            flexShrink: 0,
-            position: "absolute",
-            top: 0,
-            left: 0,
-            height: "100%",
-            "& .MuiDrawer-paper": {
-              width: drawerWidth,
-              boxSizing: "border-box",
-              position: "absolute",
-              top: 0,
-              left: 0,
-              height: "100%",
-              borderRight: "1px solid",
-              borderColor: "divider",
-              backgroundColor: "white",
-            },
-          }}
-        >
-          <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
-            <Collapse
-              in={!drawerOpen}
-              orientation="horizontal"
-              unmountOnExit={false}
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-              }}
-            >
-              <Box sx={{ width: "100%", height: "100%" }}>
-                <Stack justifyContent="flex-end" alignItems="center" spacing={2} sx={{ pt: 2 }}>
-                  <IconButton onClick={() => setDrawerOpen(!drawerOpen)} sx={{ height: 32 }}>
-                    <ChevronRightIcon />
-                  </IconButton>
-                  <Divider />
-                  <IconButton onClick={handleAddPrompt} color="primary" sx={{ height: 32 }}>
-                    <AddIcon />
-                  </IconButton>
-                  <IconButton onClick={handleRunAllPrompts} color="primary" sx={{ height: 32 }}>
-                    <PlayArrowIcon />
-                  </IconButton>
-                  <IconButton onClick={() => {}} color="primary" sx={{ height: 32 }}>
-                    <CodeIcon />
-                  </IconButton>
-                </Stack>
-              </Box>
-            </Collapse>
-
-            <Collapse
-              in={drawerOpen}
-              orientation="horizontal"
-              unmountOnExit={false}
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-              }}
-            >
-              <Box sx={{ height: "100%", width: "100%" }}>
-                <Stack justifyContent="flex-end" spacing={2}>
+        <div>
+          <Box sx={{ width: `${drawerWidth}px`, height: "100%", backgroundColor: "white" }}>
+            <Collapse in={drawerOpen} collapsedSize={64}>
+              <Stack justifyContent="flex-end" alignItems="center" spacing={2} sx={{ pt: 2 }}>
+                <IconButton onClick={() => setDrawerOpen(!drawerOpen)} sx={{ height: 32 }}>
+                  <ChevronRightIcon />
+                </IconButton>
+                <Divider />
+                <IconButton onClick={handleAddPrompt} color="primary" sx={{ height: 32 }}>
+                  <AddIcon />
+                </IconButton>
+                <IconButton onClick={handleRunAllPrompts} color="primary" sx={{ height: 32 }}>
+                  <PlayArrowIcon />
+                </IconButton>
+                <IconButton onClick={() => {}} color="primary" sx={{ height: 32 }}>
+                  <CodeIcon />
+                </IconButton>
+              </Stack>
+              <Stack justifyContent="flex-end" spacing={2} sx={{ pt: 2 }}>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
                   <IconButton onClick={() => setDrawerOpen(!drawerOpen)} sx={{ height: 32 }}>
                     <ChevronLeftIcon />
                   </IconButton>
-                  <Divider sx={{ margin: 0 }} />
-                  <Button variant="contained" sx={{ height: 32 }} onClick={handleAddPrompt} startIcon={<AddIcon />}>
-                    Add Prompt
-                  </Button>
-                  <Button variant="contained" sx={{ height: 32 }} onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
-                    Run All Prompts
-                  </Button>
-                  <Button variant="contained" sx={{ height: 32 }} onClick={() => {}}>
-                    &#123;&#123;&nbsp;&#125;&#125;&nbsp;Variables
-                  </Button>
-                </Stack>
-                {/* <VariableInputs /> */}
-              </Box>
+                </Box>
+                <Divider sx={{ margin: 0 }} />
+                <Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={handleAddPrompt} startIcon={<AddIcon />}>
+                  Add Prompt
+                </Button>
+                <Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
+                  Run All Prompts
+                </Button>
+                <Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={() => {}}>
+                  &#123;&#123;&nbsp;&#125;&#125;&nbsp;Variables
+                </Button>
+              </Stack>
             </Collapse>
           </Box>
-        </Drawer>
+        </div>
         <Box
           component="main"
           className="flex-1 flex flex-col"
-          sx={{
-            marginLeft: `${drawerWidth}px`,
-            width: `calc(100% - ${drawerWidth}px)`,
-          }}
+          sx={
+            {
+              // marginLeft: `${drawerWidth}px`,
+              // width: `calc(100% - ${drawerWidth}px)`,
+            }
+          }
         >
           <Box ref={scrollContainerRef} className="flex-1 overflow-x-auto overflow-y-auto p-1">
             <Stack direction="row" spacing={1} sx={{ minWidth: "max-content", height: "100%" }}>
@@ -308,3 +260,39 @@ const PromptsPlayground = () => {
 };
 
 export default PromptsPlayground;
+
+{
+  /* <Stack justifyContent="flex-end" alignItems="center" spacing={2} sx={{ pt: 2 }}>
+<IconButton onClick={() => setDrawerOpen(!drawerOpen)} sx={{ height: 32 }}>
+  <ChevronRightIcon />
+</IconButton>
+<Divider />
+<IconButton onClick={handleAddPrompt} color="primary" sx={{ height: 32 }}>
+  <AddIcon />
+</IconButton>
+<IconButton onClick={handleRunAllPrompts} color="primary" sx={{ height: 32 }}>
+  <PlayArrowIcon />
+</IconButton>
+<IconButton onClick={() => {}} color="primary" sx={{ height: 32 }}>
+  <CodeIcon />
+</IconButton>
+</Stack>
+
+<Stack justifyContent="flex-end" spacing={2} sx={{ pt: 2 }}>
+<Box sx={{ display: "flex", justifyContent: "flex-end", width: "100%" }}>
+  <IconButton onClick={() => setDrawerOpen(!drawerOpen)} sx={{ height: 32 }}>
+    <ChevronLeftIcon />
+  </IconButton>
+</Box>
+<Divider sx={{ margin: 0 }} />
+<Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={handleAddPrompt} startIcon={<AddIcon />}>
+  Add Prompt
+</Button>
+<Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={handleRunAllPrompts} startIcon={<PlayArrowIcon />}>
+  Run All Prompts
+</Button>
+<Button variant="contained" sx={{ height: 32, width: "100%" }} onClick={() => {}}>
+  &#123;&#123;&nbsp;&#125;&#125;&nbsp;Variables
+</Button>
+</Stack> */
+}
