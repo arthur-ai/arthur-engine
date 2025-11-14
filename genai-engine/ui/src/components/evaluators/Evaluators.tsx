@@ -14,6 +14,7 @@ import EvalsTable from "./table/EvalsTable";
 
 import { getContentHeight } from "@/constants/layout";
 import { useTask } from "@/hooks/useTask";
+import { CreateEvalRequest } from "@/lib/api-client/api-client";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -44,7 +45,7 @@ const Evaluators: React.FC = () => {
   });
 
   const handleCreateEval = useCallback(
-    async (evalName: string, data: import("@/lib/api-client/api-client").CreateEvalRequest) => {
+    async (evalName: string, data: CreateEvalRequest) => {
       await createMutation.mutateAsync({ evalName, data });
     },
     [createMutation]

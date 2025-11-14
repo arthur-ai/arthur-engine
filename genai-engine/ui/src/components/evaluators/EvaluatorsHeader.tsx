@@ -20,10 +20,7 @@ const EvaluatorsHeader = ({ onCreateEval }: EvaluatorsHeaderProps) => {
         }}
       >
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 0.5, color: "text.primary" }}>
-            Evaluators
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="subtitle1" color="text.primary">
             Manage and organize your evaluation metrics
           </Typography>
         </Box>
