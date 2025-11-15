@@ -1,6 +1,6 @@
 import {
   ReasoningEffortEnum,
-  AgenticPromptMessageInput,
+  OpenAIMessageInput,
   MessageRole,
   LogitBiasItem,
   StreamOptions,
@@ -109,7 +109,7 @@ type PromptAction =
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
-interface MessageType extends AgenticPromptMessageInput {
+interface MessageType extends OpenAIMessageInput {
   id: string;
   disabled: boolean;
 }
@@ -150,6 +150,7 @@ type PromptType = {
   // tags: Array<string>; // TODO
   running?: boolean; // Whether the prompt is running
   version?: number | null; // Unsaved prompts have no version
+  isDirty?: boolean; // Whether the prompt has been modified from its saved version
 };
 
 interface PromptPlaygroundState {
@@ -172,6 +173,7 @@ interface MessageComponentProps {
 
 interface PromptComponentProps {
   prompt: PromptType;
+  useIconOnlyMode: boolean;
 }
 
 interface OutputFieldProps {
