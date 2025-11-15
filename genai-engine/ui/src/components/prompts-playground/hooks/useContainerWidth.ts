@@ -4,7 +4,7 @@ import { useEffect, useState, RefObject } from "react";
  * Custom hook to detect container width using ResizeObserver
  * This enables container query-like behavior in React
  */
-const useContainerWidth = (ref: RefObject<HTMLElement>) => {
+const useContainerWidth = (ref: RefObject<HTMLElement | null>) => {
   const [width, setWidth] = useState<number>(0);
 
   useEffect(() => {
