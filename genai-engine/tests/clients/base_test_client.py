@@ -56,7 +56,7 @@ from sqlalchemy.orm import sessionmaker
 from weaviate.collections.classes.grpc import HybridFusion, TargetVectorJoinType
 
 from config.database_config import DatabaseConfig
-from schemas.agentic_prompt_schemas import AgenticPrompt, AgenticPromptBaseConfig
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.enums import (
     RagAPIKeyAuthenticationProviderEnum,
     RagProviderAuthenticationMethodEnum,
@@ -65,6 +65,7 @@ from schemas.enums import (
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
+    CreateAgenticPromptRequest,
     DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
@@ -3362,7 +3363,7 @@ class GenaiEngineTestClientBase(httpx.Client):
         self,
         task_id: str,
         prompt_name: str,
-        prompt_data: AgenticPromptBaseConfig,
+        prompt_data: CreateAgenticPromptRequest,
     ) -> tuple[int, AgenticPrompt]:
         """Create an agentic prompt."""
         resp = self.base_client.post(

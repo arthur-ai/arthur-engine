@@ -1,6 +1,6 @@
 import {
   ReasoningEffortEnum,
-  AgenticPromptMessageInput,
+  OpenAIMessageInput,
   MessageRole,
   LogitBiasItem,
   StreamOptions,
@@ -109,7 +109,7 @@ type PromptAction =
     };
 
 // The id is used in the FE, but may not need to be stored in BE.
-interface MessageType extends AgenticPromptMessageInput {
+interface MessageType extends OpenAIMessageInput {
   id: string;
   disabled: boolean;
 }

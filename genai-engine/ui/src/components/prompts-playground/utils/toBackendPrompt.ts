@@ -3,7 +3,7 @@ import { PromptType } from "../types";
 import convertToolChoiceForBackend from "./convertToolChoiceForBackend";
 import filterNullParams from "./filterNullParams";
 
-import { AgenticPrompt, AgenticPromptBaseConfig, ModelProvider } from "@/lib/api-client/api-client";
+import { AgenticPrompt, CreateAgenticPromptRequest, ModelProvider } from "@/lib/api-client/api-client";
 
 const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   name: prompt.name,
@@ -24,8 +24,8 @@ const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
     strict: tool.strict,
     type: tool.type,
   })),
-  tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
-  ...filterNullParams({
+  config: filterNullParams({
+    tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
     temperature: prompt.modelParameters.temperature,
     top_p: prompt.modelParameters.top_p,
     timeout: prompt.modelParameters.timeout,
@@ -45,7 +45,7 @@ const toBackendPrompt = (prompt: PromptType): AgenticPrompt => ({
   }),
 });
 
-export const toBackendPromptBaseConfig = (prompt: PromptType): AgenticPromptBaseConfig => {
+export const toBackendPromptBaseConfig = (prompt: PromptType): CreateAgenticPromptRequest => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { name, ...rest } = toBackendPrompt(prompt);
   return rest;

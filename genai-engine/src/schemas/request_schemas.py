@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Any, List, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from litellm.types.llms.anthropic import AnthropicThinkingParam
+from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
 from weaviate.classes.query import BM25Operator
 from weaviate.collections.classes.grpc import (
@@ -13,16 +14,6 @@ from weaviate.collections.classes.grpc import (
 )
 from weaviate.types import INCLUDE_VECTOR
 
-from schemas.agentic_prompt_schemas import (
-    AgenticPromptMessage,
-    LLMConfigSettings,
-    LLMResponseFormat,
-    LLMTool,
-    PromptCompletionRequest,
-    StreamOptions,
-    ToolChoice,
-    ToolChoiceEnum,
-)
 from schemas.enums import (
     DocumentStorageEnvironment,
     ModelProvider,
@@ -30,6 +21,16 @@ from schemas.enums import (
     RagProviderAuthenticationMethodEnum,
     RagProviderEnum,
     RagSearchKind,
+    ReasoningEffortEnum,
+)
+from schemas.llm_schemas import (
+    LLMResponseFormat,
+    LLMTool,
+    LogitBiasItem,
+    OpenAIMessage,
+    StreamOptions,
+    ToolChoice,
+    ToolChoiceEnum,
 )
 
 
@@ -609,6 +610,77 @@ class LLMGetAllFilterRequest(BaseModel):
     )
 
 
+class LLMRequestConfigSettings(BaseModel):
+    timeout: Optional[float] = Field(None, description="Request timeout in seconds")
+    temperature: Optional[float] = Field(
+        None,
+        description="Sampling temperature (0.0 to 2.0). Higher values make output more random",
+    )
+    top_p: Optional[float] = Field(
+        None,
+        description="Top-p sampling parameter (0.0 to 1.0). Alternative to temperature",
+    )
+    max_tokens: Optional[int] = Field(
+        None,
+        description="Maximum number of tokens to generate in the response",
+    )
+    stop: Optional[str] = Field(
+        None,
+        description="Stop sequence(s) where the model should stop generating",
+    )
+    presence_penalty: Optional[float] = Field(
+        None,
+        description="Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence",
+    )
+    frequency_penalty: Optional[float] = Field(
+        None,
+        description="Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency",
+    )
+    seed: Optional[int] = Field(
+        None,
+        description="Random seed for reproducible outputs",
+    )
+    logprobs: Optional[bool] = Field(
+        None,
+        description="Whether to return log probabilities of output tokens",
+    )
+    top_logprobs: Optional[int] = Field(
+        None,
+        description="Number of most likely tokens to return log probabilities for (1-20)",
+    )
+    logit_bias: Optional[List[LogitBiasItem]] = Field(
+        None,
+        description="Modify likelihood of specified tokens appearing in completion",
+    )
+    max_completion_tokens: Optional[int] = Field(
+        None,
+        description="Maximum number of completion tokens (alternative to max_tokens)",
+    )
+    reasoning_effort: Optional[ReasoningEffortEnum] = Field(
+        None,
+        description="Reasoning effort level for models that support it (e.g., OpenAI o1 series)",
+    )
+    thinking: Optional[AnthropicThinkingParam] = Field(
+        None,
+        description="Anthropic-specific thinking parameter for Claude models",
+    )
+
+
+class LLMPromptRequestConfigSettings(LLMRequestConfigSettings):
+    response_format: Optional[LLMResponseFormat] = Field(
+        None,
+        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
+    )
+    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
+        None,
+        description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
+    )
+    stream_options: Optional[StreamOptions] = Field(
+        None,
+        description="Additional streaming configuration options",
+    )
+
+
 class CreateEvalRequest(BaseModel):
     model_name: str = Field(
         description="Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')",
@@ -619,14 +691,14 @@ class CreateEvalRequest(BaseModel):
     instructions: str = Field(description="Instructions for the llm eval")
     min_score: int = Field(default=0, description="Minimum score for the llm eval")
     max_score: int = Field(default=1, description="Maximum score for the llm eval")
-    config: Optional[LLMConfigSettings] = Field(
+    config: Optional[LLMRequestConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
 
 
-class CreateAgenticPromptRequest(LLMConfigSettings):
-    messages: List[AgenticPromptMessage] = Field(
+class CreateAgenticPromptRequest(BaseModel):
+    messages: List[OpenAIMessage] = Field(
         description="List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])",
     )
     model_name: str = Field(
@@ -639,21 +711,47 @@ class CreateAgenticPromptRequest(LLMConfigSettings):
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
     )
-    tool_choice: Optional[Union[ToolChoiceEnum, ToolChoice]] = Field(
+    config: Optional[LLMPromptRequestConfigSettings] = Field(
         None,
-        description="Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)",
-    )
-    response_format: Optional[LLMResponseFormat] = Field(
-        None,
-        description="Response format specification (e.g., {'type': 'json_object'} for JSON mode)",
-    )
-    stream_options: Optional[StreamOptions] = Field(
-        None,
-        description="Additional streaming configuration options",
+        description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",
     )
 
     class Config:
         use_enum_values = True
+
+
+class VariableTemplateValue(BaseModel):
+    name: str = Field(..., description="Name of the variable")
+    value: str = Field(..., description="Value of the variable")
+
+
+class BaseCompletionRequest(BaseModel):
+    variables: Optional[List[VariableTemplateValue]] = Field(
+        description="List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt",
+        default=[],
+    )
+
+
+class PromptCompletionRequest(BaseCompletionRequest):
+    """Request schema for running an agentic prompt"""
+
+    stream: Optional[bool] = Field(
+        description="Whether to stream the response",
+        default=False,
+    )
+    strict: Optional[bool] = Field(
+        description="Whether to enforce strict validation of variables. If True, any variables that are found in the prompt but not in the variables list will raise an error.",
+        default=False,
+    )
+
+    _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _build_variable_map(self):
+        """Construct a private lookup dictionary for variable substitution"""
+        if self.variables:
+            self._variable_map = {v.name: v.value for v in self.variables}
+        return self
 
 
 class CompletionRequest(CreateAgenticPromptRequest):

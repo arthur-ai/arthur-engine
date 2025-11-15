@@ -14,6 +14,8 @@ export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
   /**
    * Created At
    * Timestamp when the prompt was created.
@@ -25,35 +27,10 @@ export interface AgenticPrompt {
    */
   deleted_at?: string | null;
   /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
-  /**
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: AgenticPromptMessageOutput[];
+  messages: OpenAIMessageOutput[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -67,127 +44,21 @@ export interface AgenticPrompt {
    */
   name: string;
   /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /**
-   * Response Format
-   * Either a structured json_schema or a Pydantic model to enforce structured outputs.
-   */
-  response_format?: LLMResponseFormatOutput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
   tools?: LLMToolOutput[] | null;
   /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
+   * Variables
+   * List of variable names for the agentic prompt
    */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
+  variables?: string[];
   /**
    * Version
    * Version of the agentic prompt
    * @default 1
    */
   version?: number;
-}
-
-/**
- * AgenticPromptMessage
- * The message schema class for the prompts playground.
- * This class adheres to OpenAI's message schema.
- */
-export interface AgenticPromptMessageInput {
-  /**
-   * Content
-   * Content of the message
-   */
-  content?: string | OpenAIMessageItem[] | null;
-  /**
-   * Name
-   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-   */
-  name?: string | null;
-  /** Role of the message */
-  role: MessageRole;
-  /**
-   * Tool Call Id
-   * ID of the tool call this message is responding to
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Calls
-   * Tool calls made by assistant
-   */
-  tool_calls?: ToolCall[] | null;
-}
-
-/**
- * AgenticPromptMessage
- * The message schema class for the prompts playground.
- * This class adheres to OpenAI's message schema.
- */
-export interface AgenticPromptMessageOutput {
-  /**
-   * Content
-   * Content of the message
-   */
-  content?: string | OpenAIMessageItem[] | null;
-  /**
-   * Name
-   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-   */
-  name?: string | null;
-  /** Role of the message */
-  role: MessageRole;
-  /**
-   * Tool Call Id
-   * ID of the tool call this message is responding to
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Calls
-   * Tool calls made by assistant
-   */
-  tool_calls?: ToolCall[] | null;
 }
 
 /** AgenticPromptRunResponse */
@@ -533,36 +404,13 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
 export interface CompletionRequest {
   /** Run configuration for the unsaved prompt */
   completion_request?: PromptCompletionRequest;
-  /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMPromptRequestConfigSettings | null;
   /**
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: AgenticPromptMessageInput[];
+  messages: OpenAIMessageInput[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -571,58 +419,10 @@ export interface CompletionRequest {
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
   /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatInput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
   tools?: LLMToolInput[] | null;
-  /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
-   */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
 }
 
 export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
@@ -690,36 +490,13 @@ export interface ConversationBaseResponse {
 
 /** CreateAgenticPromptRequest */
 export interface CreateAgenticPromptRequest {
-  /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMPromptRequestConfigSettings | null;
   /**
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: AgenticPromptMessageInput[];
+  messages: OpenAIMessageInput[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -728,58 +505,10 @@ export interface CreateAgenticPromptRequest {
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
   /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatInput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
   tools?: LLMToolInput[] | null;
-  /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
-   */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
 }
 
 export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
@@ -801,7 +530,7 @@ export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
 /** CreateEvalRequest */
 export interface CreateEvalRequest {
   /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMConfigSettings | null;
+  config?: LLMRequestConfigSettings | null;
   /**
    * Instructions
    * Instructions for the llm eval
@@ -2180,8 +1909,8 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
-/** LLMConfigSettings */
-export interface LLMConfigSettings {
+/** LLMBaseConfigSettings */
+export interface LLMBaseConfigSettings {
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -2248,10 +1977,90 @@ export interface LLMConfigSettings {
   top_p?: number | null;
 }
 
+/** LLMConfigSettings */
+export interface LLMConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Response Format
+   * Either a structured json_schema or a Pydantic model to enforce structured outputs.
+   */
+  response_format?: LLMResponseFormatOutput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
 /** LLMEval */
 export interface LLMEval {
   /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMConfigSettings | null;
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -2291,6 +2100,11 @@ export interface LLMEval {
    * Name of the llm eval
    */
   name: string;
+  /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
   /**
    * Version
    * Version of the llm eval
@@ -2375,6 +2189,151 @@ export interface LLMGetAllMetadataResponse {
    * Number of versions of the llm asset
    */
   versions: number;
+}
+
+/** LLMPromptRequestConfigSettings */
+export interface LLMPromptRequestConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** LLMRequestConfigSettings */
+export interface LLMRequestConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
 }
 
 /** LLMResponseFormatEnum */
@@ -3480,6 +3439,36 @@ export interface NewTaskRequest {
   name: string;
 }
 
+/**
+ * OpenAIMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface OpenAIMessageInput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
+}
+
 /** OpenAIMessageItem */
 export interface OpenAIMessageItem {
   /** Image URL content of the message if type is 'image_url' */
@@ -3493,6 +3482,36 @@ export interface OpenAIMessageItem {
   text?: string | null;
   /** Type of the message (either 'text', 'image_url', or 'input_audio') */
   type: OpenAIMessageType;
+}
+
+/**
+ * OpenAIMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface OpenAIMessageOutput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
 }
 
 /** OpenAIMessageType */
@@ -6894,7 +6913,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.165
+ * @version 2.1.167
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
