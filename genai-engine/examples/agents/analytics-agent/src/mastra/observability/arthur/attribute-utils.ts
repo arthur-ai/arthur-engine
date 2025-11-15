@@ -26,6 +26,7 @@ import {
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
 import { OISpan } from "@arizeai/openinference-core";
+import { appendFileSync } from "fs";
 
 export function setSpanErrorInfo(
   otelSpan: OISpan,
@@ -252,6 +253,13 @@ function constructLLMMessages(otelSpan: OISpan, span: AnyExportedAISpan): void {
  * Wraps output data as a single assistant message
  */
 function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
+  // Debug: log input to file
+  try {
+    appendFileSync('/tmp/wrapOutputAsMessage-debug.log', JSON.stringify(output) + '\n');
+  } catch (e) {
+    // Silently fail if debug logging fails
+  }
+
   if (output === null || output === undefined) {
     return null;
   }
@@ -262,14 +270,163 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
 
   // Handle different output formats
   if (typeof output === "string") {
-    message[SemanticConventions.MESSAGE_CONTENT] = output;
+    // Try to parse as JSON to detect structured tool calls/results
+    let parsed = null;
+    try {
+      parsed = JSON.parse(output);
+    } catch {
+      // Not JSON, treat as regular string content
+      message[SemanticConventions.MESSAGE_CONTENT] = output;
+    }
+
+    if (parsed !== null) {
+      // Check if it's a tool call array
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
+        // Convert Mastra tool call format to OpenInference format
+        // Don't set empty content when tool_calls exist
+        message[SemanticConventions.MESSAGE_TOOL_CALLS] = parsed.map((tc) => ({
+          tool_call: {
+            id: tc.toolCallId,
+            function: {
+              name: tc.toolName,
+              arguments: JSON.stringify(tc.input || {}),
+            },
+          },
+        }));
+      }
+      // Check if it's a tool result array
+      else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+        const result = parsed[0];
+        message[SemanticConventions.MESSAGE_ROLE] = "tool";
+        // Extract the actual output value
+        let outputValue = result.output?.value;
+        if (typeof outputValue === "string") {
+          // Try to parse if it's a JSON string
+          try {
+            outputValue = JSON.parse(outputValue);
+            message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+          } catch {
+            message[SemanticConventions.MESSAGE_CONTENT] = outputValue;
+          }
+        } else if (outputValue !== undefined) {
+          message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+        } else {
+          message[SemanticConventions.MESSAGE_CONTENT] = "";
+        }
+        // Set the tool call ID
+        if (result.toolCallId) {
+          message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = result.toolCallId;
+        }
+      }
+      // Otherwise, it's JSON but not a tool call/result - stringify it
+      else {
+        message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(parsed);
+      }
+    }
   } else if (isObject(output)) {
     // If it's already a message-like object, preserve its structure
     if (output.role) {
       message[SemanticConventions.MESSAGE_ROLE] = output.role;
     }
     if (output.content !== undefined) {
-      message[SemanticConventions.MESSAGE_CONTENT] = output.content;
+      // Handle content that might be stringified tool calls/results
+      if (typeof output.content === "string") {
+        let parsed = null;
+        try {
+          parsed = JSON.parse(output.content);
+        } catch {
+          // Not JSON, treat as regular string content
+          message[SemanticConventions.MESSAGE_CONTENT] = output.content;
+        }
+
+        if (parsed !== null) {
+          // Check if it's a tool call array
+          if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
+            // Convert Mastra tool call format to OpenInference format
+            // Don't set empty content when tool_calls exist
+            message[SemanticConventions.MESSAGE_TOOL_CALLS] = parsed.map((tc) => ({
+              tool_call: {
+                id: tc.toolCallId,
+                function: {
+                  name: tc.toolName,
+                  arguments: JSON.stringify(tc.input || {}),
+                },
+              },
+            }));
+          }
+          // Check if it's a tool result array
+          else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+            const result = parsed[0];
+            // Extract the actual output value
+            let outputValue = result.output?.value;
+            if (typeof outputValue === "string") {
+              // Try to parse if it's a JSON string
+              try {
+                outputValue = JSON.parse(outputValue);
+                message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+              } catch {
+                message[SemanticConventions.MESSAGE_CONTENT] = outputValue;
+              }
+            } else if (outputValue !== undefined) {
+              message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+            } else {
+              message[SemanticConventions.MESSAGE_CONTENT] = "";
+            }
+            // Set the tool call ID
+            if (result.toolCallId) {
+              message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = result.toolCallId;
+            }
+          }
+          // Otherwise, it's JSON but not a tool call/result - stringify it
+          else {
+            message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(parsed);
+          }
+        }
+      } else if (Array.isArray(output.content)) {
+        // Content is already an array - check if it's tool calls/results
+        if (output.content.length > 0 && output.content[0]?.type === "tool-call") {
+          // Convert Mastra tool call format to OpenInference format
+          // Don't set empty content when tool_calls exist
+          message[SemanticConventions.MESSAGE_TOOL_CALLS] = output.content.map((tc: any) => ({
+            tool_call: {
+              id: tc.toolCallId,
+              function: {
+                name: tc.toolName,
+                arguments: JSON.stringify(tc.input || {}),
+              },
+            },
+          }));
+        } else if (output.content.length > 0 && output.content[0]?.type === "tool-result") {
+          const result = output.content[0];
+          // Extract the actual output value
+          let outputValue = result.output?.value;
+          if (typeof outputValue === "string") {
+            // Try to parse if it's a JSON string
+            try {
+              outputValue = JSON.parse(outputValue);
+              message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+            } catch {
+              message[SemanticConventions.MESSAGE_CONTENT] = outputValue;
+            }
+          } else if (outputValue !== undefined) {
+            message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+          } else {
+            message[SemanticConventions.MESSAGE_CONTENT] = "";
+          }
+          // Set the tool call ID
+          if (result.toolCallId) {
+            message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = result.toolCallId;
+          }
+        } else {
+          // Regular array, stringify it
+          message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(output.content);
+        }
+      } else {
+        // Content is some other type (object, number, etc)
+        message[SemanticConventions.MESSAGE_CONTENT] = typeof output.content === "string" 
+          ? output.content 
+          : JSON.stringify(output.content);
+      }
     } else if (output.contents !== undefined) {
       message[SemanticConventions.MESSAGE_CONTENTS] = output.contents;
     } else {
@@ -356,6 +513,13 @@ function extractMessagesFromData(
  * Extracts a single message from an item, handling various formats
  */
 function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
+  // Debug: log input to file
+  try {
+    appendFileSync('/tmp/extractMessageFromItem-debug.log', JSON.stringify(item) + '\n');
+  } catch (e) {
+    // Silently fail if debug logging fails
+  }
+
   if (!isObject(item)) {
     return null;
   }
@@ -376,17 +540,106 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
   // Extract content
   if (item.content !== undefined) {
     if (typeof item.content === "string") {
-      message[SemanticConventions.MESSAGE_CONTENT] = item.content;
-    } else if (
-      Array.isArray(item.content) &&
-      item.content.length === 1 &&
-      isObject(item.content[0]) &&
-      typeof item.content[0].text === "string"
-    ) {
-      // if there is a single text content incorrectly formatted as an array, extract just the text string to adhere to open inference formatting
-      message[SemanticConventions.MESSAGE_CONTENT] = item.content[0].text;
+      // Try to parse as JSON to detect structured tool calls/results
+      let parsed = null;
+      try {
+        parsed = JSON.parse(item.content);
+      } catch {
+        // Not JSON, treat as regular string content
+        message[SemanticConventions.MESSAGE_CONTENT] = item.content;
+      }
+
+      if (parsed !== null) {
+        // Check if it's a tool call array
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
+          // Convert Mastra tool call format to OpenInference format
+          // Don't set empty content when tool_calls exist
+          message[SemanticConventions.MESSAGE_TOOL_CALLS] = parsed.map((tc) => ({
+            tool_call: {
+              id: tc.toolCallId,
+              function: {
+                name: tc.toolName,
+                arguments: JSON.stringify(tc.input || {}),
+              },
+            },
+          }));
+        }
+        // Check if it's a tool result array
+        else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+          const result = parsed[0];
+          // Extract the actual output value
+          let outputValue = result.output?.value;
+          if (typeof outputValue === "string") {
+            // Try to parse if it's a JSON string
+            try {
+              outputValue = JSON.parse(outputValue);
+              message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+            } catch {
+              message[SemanticConventions.MESSAGE_CONTENT] = outputValue;
+            }
+          } else if (outputValue !== undefined) {
+            message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+          } else {
+            message[SemanticConventions.MESSAGE_CONTENT] = "";
+          }
+          // Set the tool call ID
+          if (result.toolCallId) {
+            message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = result.toolCallId;
+          }
+        }
+        // Otherwise, it's JSON but not a tool call/result - stringify it
+        else {
+          message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(parsed);
+        }
+      }
+    } else if (Array.isArray(item.content)) {
+      // Content is already an array - check various formats
+      if (item.content.length > 0 && item.content[0]?.type === "tool-call") {
+        // Convert Mastra tool call format to OpenInference format
+        // Don't set empty content when tool_calls exist
+        message[SemanticConventions.MESSAGE_TOOL_CALLS] = item.content.map((tc: any) => ({
+          tool_call: {
+            id: tc.toolCallId,
+            function: {
+              name: tc.toolName,
+              arguments: JSON.stringify(tc.input || {}),
+            },
+          },
+        }));
+      } else if (item.content.length > 0 && item.content[0]?.type === "tool-result") {
+        const result = item.content[0];
+        // Extract the actual output value
+        let outputValue = result.output?.value;
+        if (typeof outputValue === "string") {
+          // Try to parse if it's a JSON string
+          try {
+            outputValue = JSON.parse(outputValue);
+            message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+          } catch {
+            message[SemanticConventions.MESSAGE_CONTENT] = outputValue;
+          }
+        } else if (outputValue !== undefined) {
+          message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(outputValue);
+        } else {
+          message[SemanticConventions.MESSAGE_CONTENT] = "";
+        }
+        // Set the tool call ID
+        if (result.toolCallId) {
+          message[SemanticConventions.MESSAGE_TOOL_CALL_ID] = result.toolCallId;
+        }
+      } else if (
+        item.content.length === 1 &&
+        isObject(item.content[0]) &&
+        typeof item.content[0].text === "string"
+      ) {
+        // if there is a single text content incorrectly formatted as an array, extract just the text string to adhere to open inference formatting
+        message[SemanticConventions.MESSAGE_CONTENT] = item.content[0].text;
+      } else {
+        // Regular array, stringify it
+        message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(item.content);
+      }
     } else {
-      // fail safe if content doesn't match any expected formatting
+      // Content is some other type (object, number, etc)
       message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(
         item.content
       );
@@ -423,9 +676,10 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
     }
   }
 
-  // Only return message if it has content or contents
+  // Only return message if it has content or contents or tool_calls
   return message[SemanticConventions.MESSAGE_CONTENT] !== undefined ||
-    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined
+    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined ||
+    message[SemanticConventions.MESSAGE_TOOL_CALLS] !== undefined
     ? message
     : null;
 }
