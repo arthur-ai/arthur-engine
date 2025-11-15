@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
@@ -8,78 +8,42 @@ import { PromptExperimentsViewHeader } from "./PromptExperimentsViewHeader";
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
 
 import { getContentHeight } from "@/constants/layout";
-
-// Mock data for development - replace with API call later
-const MOCK_EXPERIMENTS: PromptExperiment[] = [
-  {
-    id: "exp-1",
-    name: "Customer Support Tone Variations",
-    description: "Testing different tones for customer support responses",
-    status: "completed",
-    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    prompt_name: "customer_support_v2",
-    total_rows: 150,
-  },
-  {
-    id: "exp-2",
-    name: "Product Description Generator",
-    description: "Comparing prompt templates for product descriptions",
-    status: "running",
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    prompt_name: "product_desc_template",
-    total_rows: 500,
-  },
-  {
-    id: "exp-3",
-    name: "Code Review Assistant",
-    description: "Testing different prompt structures for code review",
-    status: "queued",
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    prompt_name: "code_reviewer_v1",
-    total_rows: 75,
-  },
-  {
-    id: "exp-4",
-    name: "Summarization Length Experiment",
-    description: "Comparing different length constraints in summarization prompts",
-    status: "completed",
-    created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    prompt_name: "summarizer_base",
-    total_rows: 200,
-  },
-  {
-    id: "exp-5",
-    name: "Sentiment Analysis Variations",
-    description: "Testing prompt variations for sentiment classification",
-    status: "failed",
-    created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
-    prompt_name: "sentiment_classifier",
-    total_rows: 1000,
-  },
-  {
-    id: "exp-6",
-    name: "Translation Quality Assessment",
-    description: "Evaluating translation accuracy across different prompts",
-    status: "evaluating",
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    finished_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-    prompt_name: "translator_v3",
-    total_rows: 350,
-  },
-];
+import { useApi } from "@/hooks/useApi";
 
 export const PromptExperimentsView: React.FC = () => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const api = useApi();
 
-  // Using mock data for now - will be replaced with API call
-  const [experiments] = useState<PromptExperiment[]>(MOCK_EXPERIMENTS);
+  const [experiments, setExperiments] = useState<PromptExperiment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    loadExperiments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId, api]);
+
+  const loadExperiments = async () => {
+    if (!taskId || !api) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.api.listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet({
+        taskId,
+        page: 1,
+        page_size: 100,
+      });
+      setExperiments(response.data.data);
+    } catch (err) {
+      console.error("Failed to load experiments:", err);
+      setError("Failed to load experiments");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateExperiment = () => {
     setIsModalOpen(true);
@@ -90,9 +54,33 @@ export const PromptExperimentsView: React.FC = () => {
   };
 
   const handleSubmitExperiment = async (data: ExperimentFormData) => {
-    console.log("Creating experiment with data:", data);
-    // TODO: Call API to create experiment
-    // For now, just log the data
+    if (!taskId || !api) return;
+
+    try {
+      await api.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(taskId, {
+        name: data.name,
+        description: data.description,
+        dataset_ref: {
+          id: data.datasetId,
+          version: data.datasetVersion,
+        },
+        prompt_ref: {
+          name: data.promptVersions[0].promptName,
+          version_list: data.promptVersions.map(pv => pv.version),
+          variable_mapping: [],
+        },
+        eval_list: data.evaluators.map(evaluator => ({
+          name: evaluator.name,
+          version: evaluator.version,
+          variable_mapping: [],
+        })),
+      });
+      handleCloseModal();
+      loadExperiments();
+    } catch (err) {
+      console.error("Failed to create experiment:", err);
+      throw err;
+    }
   };
 
   const handleRowClick = (experiment: PromptExperiment) => {
@@ -110,7 +98,15 @@ export const PromptExperimentsView: React.FC = () => {
         </Box>
 
         <Box className="overflow-auto min-h-0">
-          {experiments.length === 0 ? (
+          {loading ? (
+            <Box className="flex items-center justify-center h-full">
+              <p className="text-gray-600">Loading experiments...</p>
+            </Box>
+          ) : error ? (
+            <Box className="flex items-center justify-center h-full">
+              <p className="text-red-600">{error}</p>
+            </Box>
+          ) : experiments.length === 0 ? (
             <PromptExperimentsEmptyState onCreateExperiment={handleCreateExperiment} />
           ) : (
             <PromptExperimentsTable

@@ -445,7 +445,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  const [pageSize] = useState(5);
+  const [pageSize] = useState(20);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
@@ -527,211 +527,21 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   }, [page, taskId, experimentId, api]);
 
   const loadTestCases = async () => {
-    if (!api) return;
+    if (!api || !experimentId) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API call when endpoint is available
-      // const response = await api.api.getTestCasesApiV1TasksTaskIdPromptExperimentsExperimentIdTestCasesGet({
-      //   taskId,
-      //   experimentId,
-      //   page,
-      //   pageSize,
-      // });
-      // setTestCases(response.data.data);
-      // setTotalPages(response.data.total_pages);
-      // setTotalCount(response.data.total_count);
+      const response = await api.api.getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet({
+        experimentId,
+        page,
+        page_size: pageSize,
+      });
 
-      // Mock data for now
-      const mockTestCases: TestCase[] = Array.from({ length: 5 }, (_, i) => ({
-        status: ["completed", "completed", "running", "completed", "failed"][i] as TestCase["status"],
-        retries: 0,
-        dataset_row_id: `row-${i + 1}`,
-        prompt_input_variables: [
-          { variable_name: "customer_query", value: `Sample customer query ${i + 1}` },
-          { variable_name: "tone", value: ["friendly", "professional", "casual"][i % 3] },
-          { variable_name: "customer_name", value: `Customer ${i + 1}` },
-          { variable_name: "product_name", value: ["Widget Pro", "Gadget Plus", "Tool Master"][i % 3] },
-          { variable_name: "issue_type", value: ["Billing", "Technical", "General"][i % 3] },
-          { variable_name: "priority", value: ["High", "Medium", "Low"][i % 3] },
-          { variable_name: "language", value: ["English", "Spanish", "French"][i % 3] },
-          { variable_name: "account_tier", value: ["Premium", "Standard", "Basic"][i % 3] },
-          { variable_name: "response_length", value: ["Short", "Medium", "Long"][i % 3] },
-        ],
-        prompt_results: [
-          {
-            name: "customer_support_v2",
-            version: 1,
-            rendered_prompt: [
-              {
-                role: "system",
-                content: `You are an expert SQL developer specializing in PostgreSQL.
-Your task is to convert natural language queries into valid PostgreSQL SQL statements.
-
-Do not ask the user for clarifications or schema definitions. When in doubt, assume a
-schema that would make sense for the user's query. It's more important to return plausible SQL
-than to be completely accurate.
-
-Guidelines:
-- Always generate valid PostgreSQL syntax
-- Use appropriate data types and functions
-- Include proper WHERE clauses, JOINs, and aggregations as needed
-- Be conservative with assumptions about table/column names
-- If the query is ambiguous, make reasonable assumptions and note them
-- Always return a valid SQL statement that can be executed
-
-Return your response in the following JSON format:
-{
-  "sqlQuery": "SELECT * FROM table_name WHERE condition;",
-  "explanation": "Brief explanation of what this query does"
-}`,
-              },
-              {
-                role: "user",
-                content: `Sample customer query ${i + 1}. Please respond with a ${["friendly", "professional", "casual"][i % 3]} tone.`,
-              },
-            ],
-            output: {
-              content: `{
-  "sqlQuery": "SELECT u.id, u.name, u.email, COUNT(o.id) as order_count, SUM(o.total_amount) as total_spent FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE u.created_at >= NOW() - INTERVAL '90 days' GROUP BY u.id, u.name, u.email HAVING COUNT(o.id) > 0 ORDER BY total_spent DESC LIMIT 100;",
-  "explanation": "This query retrieves the top 100 customers by total spending who have made at least one order in the last 90 days. It includes their user information, total number of orders, and total amount spent, sorted by spending in descending order."
-}`,
-              tool_calls: [],
-              cost: "0.0012",
-            },
-            evals: [
-              {
-                eval_name: "test_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "response", value: "The response content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.2 ? 1 : 0,
-                  explanation: "The response is appropriate and maintains the requested tone.",
-                  cost: 0.0008,
-                },
-              },
-              {
-                eval_name: "sentiment_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "text", value: "The response content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.15 ? 1 : 0,
-                  explanation: "Positive sentiment detected with appropriate emotional tone.",
-                  cost: 0.0010,
-                },
-              },
-              {
-                eval_name: "accuracy_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "response", value: "The response content..." },
-                  { variable_name: "expected", value: "Expected content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.25 ? 1 : 0,
-                  explanation: "Response accurately addresses the customer query with relevant information.",
-                  cost: 0.0009,
-                },
-              },
-            ],
-          },
-          {
-            name: "customer_support_v2",
-            version: 2,
-            rendered_prompt: [
-              {
-                role: "system",
-                content: `You are an expert SQL developer specializing in PostgreSQL with advanced knowledge of query optimization.
-Your task is to convert natural language queries into valid PostgreSQL SQL statements.
-
-IMPORTANT RULES:
-- Do not ask the user for clarifications or schema definitions
-- When in doubt, assume a schema that would make sense for the user's query
-- It's more important to return plausible SQL than to be completely accurate
-- Prioritize performance and use appropriate indexes where applicable
-
-Guidelines:
-- Always generate valid PostgreSQL syntax
-- Use appropriate data types and functions
-- Include proper WHERE clauses, JOINs, and aggregations as needed
-- Be conservative with assumptions about table/column names
-- If the query is ambiguous, make reasonable assumptions and note them
-- Always return a valid SQL statement that can be executed
-- Consider query optimization and performance
-
-Return your response in the following JSON format:
-{
-  "sqlQuery": "SELECT * FROM table_name WHERE condition;",
-  "explanation": "Brief explanation of what this query does",
-  "assumptions": "Any assumptions made about schema or data"
-}`,
-              },
-              {
-                role: "user",
-                content: `Sample customer query ${i + 1}. Please respond with a ${["friendly", "professional", "casual"][i % 3]} tone.`,
-              },
-            ],
-            output: {
-              content: `{
-  "sqlQuery": "SELECT u.id, u.name, u.email, COUNT(o.id) as order_count, SUM(o.total_amount) as total_spent, AVG(o.total_amount) as avg_order_value FROM users u LEFT JOIN orders o ON u.id = o.user_id WHERE u.created_at >= CURRENT_DATE - INTERVAL '90 days' GROUP BY u.id, u.name, u.email HAVING COUNT(o.id) > 0 ORDER BY total_spent DESC LIMIT 100;",
-  "explanation": "This optimized query retrieves the top 100 customers by total spending who have made at least one order in the last 90 days. It includes their user information, total number of orders, total amount spent, and average order value, sorted by spending in descending order.",
-  "assumptions": "Assumed 'users' table has columns: id, name, email, created_at. Assumed 'orders' table has columns: id, user_id, total_amount. Used LEFT JOIN to include users even if they have no orders, though HAVING clause filters them out."
-}`,
-              tool_calls: [],
-              cost: "0.0015",
-            },
-            evals: [
-              {
-                eval_name: "test_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "response", value: "The response content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.15 ? 1 : 0,
-                  explanation: "Excellent response quality with proper tone matching.",
-                  cost: 0.0008,
-                },
-              },
-              {
-                eval_name: "sentiment_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "text", value: "The response content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.1 ? 1 : 0,
-                  explanation: "Strong positive sentiment with professional tone.",
-                  cost: 0.0010,
-                },
-              },
-              {
-                eval_name: "accuracy_evaluator",
-                eval_version: "1",
-                eval_input_variables: [
-                  { variable_name: "response", value: "The response content..." },
-                  { variable_name: "expected", value: "Expected content..." },
-                ],
-                eval_results: {
-                  score: Math.random() > 0.2 ? 1 : 0,
-                  explanation: "Highly accurate response with detailed information addressing the query.",
-                  cost: 0.0009,
-                },
-              },
-            ],
-          },
-        ],
-      }));
-
-      setTestCases(mockTestCases);
-      setTotalPages(5);
-      setTotalCount(100); // Mock total count
+      setTestCases(response.data.data as any);
+      setTotalPages(response.data.total_pages);
+      setTotalCount(response.data.total_count);
     } catch (err) {
       console.error("Failed to load test cases:", err);
       setError("Failed to load experiment results");

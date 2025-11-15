@@ -75,108 +75,13 @@ export const ExperimentDetailView: React.FC = () => {
   }, [taskId, experimentId, api]);
 
   const loadExperiment = async () => {
-    if (!taskId || !experimentId || !api) return;
+    if (!experimentId || !api) return;
 
     try {
       setLoading(true);
       setError(null);
-      // TODO: Replace with actual API call when endpoint is available
-      // const response = await api.api.getExperimentApiV1TasksTaskIdExperimentsExperimentIdGet({
-      //   taskId,
-      //   experimentId,
-      // });
-      // setExperiment(response.data);
-
-      // Mock data for now
-      const mockExperiment: ExperimentDetail = {
-        id: experimentId,
-        name: "Customer Support Tone Variations",
-        description: "Testing different tones for customer support responses",
-        created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        finished_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        status: "completed",
-        prompt_name: "customer_support_v2",
-        dataset_ref: {
-          id: "dataset-123",
-          version: "1",
-        },
-        prompt_ref: {
-          name: "customer_support_v2",
-          version_list: [1, 2, 3],
-          variable_mapping: [],
-        },
-        eval_list: [
-          {
-            name: "test_evaluator",
-            version: "1",
-            variable_mapping: [],
-          },
-          {
-            name: "sentiment_evaluator",
-            version: "1",
-            variable_mapping: [],
-          },
-        ],
-        summary_results: {
-          prompt_eval_summaries: [
-            {
-              prompt_name: "customer_support_v2",
-              prompt_version: 1,
-              eval_results: [
-                {
-                  eval_name: "test_evaluator",
-                  eval_version: "1",
-                  pass_count: 120,
-                  total_count: 150,
-                },
-                {
-                  eval_name: "sentiment_evaluator",
-                  eval_version: "1",
-                  pass_count: 140,
-                  total_count: 150,
-                },
-              ],
-            },
-            {
-              prompt_name: "customer_support_v2",
-              prompt_version: 2,
-              eval_results: [
-                {
-                  eval_name: "test_evaluator",
-                  eval_version: "1",
-                  pass_count: 135,
-                  total_count: 150,
-                },
-                {
-                  eval_name: "sentiment_evaluator",
-                  eval_version: "1",
-                  pass_count: 145,
-                  total_count: 150,
-                },
-              ],
-            },
-            {
-              prompt_name: "customer_support_v2",
-              prompt_version: 3,
-              eval_results: [
-                {
-                  eval_name: "test_evaluator",
-                  eval_version: "1",
-                  pass_count: 130,
-                  total_count: 150,
-                },
-                {
-                  eval_name: "sentiment_evaluator",
-                  eval_version: "1",
-                  pass_count: 142,
-                  total_count: 150,
-                },
-              ],
-            },
-          ],
-        },
-      };
-      setExperiment(mockExperiment);
+      const response = await api.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(experimentId);
+      setExperiment(response.data as any);
     } catch (err) {
       console.error("Failed to load experiment:", err);
       setError("Failed to load experiment details");
