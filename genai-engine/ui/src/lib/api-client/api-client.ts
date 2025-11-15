@@ -49,6 +49,11 @@ export interface AgenticPrompt {
    */
   tools?: LLMToolOutput[] | null;
   /**
+   * Variables
+   * List of variable names for the agentic prompt
+   */
+  variables?: string[];
+  /**
    * Version
    * Version of the agentic prompt
    * @default 1
@@ -576,6 +581,10 @@ export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
 
+export type CreateTransformApiV2DatasetsDatasetIdTransformsPostData = DatasetTransformResponse;
+
+export type CreateTransformApiV2DatasetsDatasetIdTransformsPostError = HTTPValidationError;
+
 /** CreateUserRequest */
 export interface CreateUserRequest {
   /** Email */
@@ -637,6 +646,66 @@ export interface DatasetResponse {
    * Timestamp representing the time of the last dataset update in unix milliseconds.
    */
   updated_at: number;
+}
+
+/** DatasetTransformResponse */
+export interface DatasetTransformResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of transform creation in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Dataset Id
+   * ID of the parent dataset.
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition: Record<string, any>;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name: string;
+  /**
+   * Updated At
+   * Timestamp representing the time of the last transform update in unix milliseconds.
+   */
+  updated_at: number;
+}
+
+/** DatasetTransformUpdateRequest */
+export interface DatasetTransformUpdateRequest {
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition?: Record<string, any> | null;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name?: string | null;
 }
 
 /** DatasetUpdateRequest */
@@ -814,6 +883,10 @@ export type DeleteRagSearchSettingError = HTTPValidationError;
 export type DeleteRagSearchSettingVersionData = any;
 
 export type DeleteRagSearchSettingVersionError = HTTPValidationError;
+
+export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData = any;
+
+export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1635,6 +1708,10 @@ export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
 
+export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData = DatasetTransformResponse;
+
+export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError = HTTPValidationError;
+
 export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
 
 export type GetUserDetailsApiV1TracesUsersUserIdGetError = HTTPValidationError;
@@ -2024,6 +2101,11 @@ export interface LLMEval {
    */
   name: string;
   /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
+  /**
    * Version
    * Version of the llm eval
    * @default 1
@@ -2380,6 +2462,15 @@ export interface LLMVersionResponse {
    * Version number of the llm eval
    */
   version: number;
+}
+
+/** ListDatasetTransformsResponse */
+export interface ListDatasetTransformsResponse {
+  /**
+   * Transforms
+   * List of transforms for the dataset.
+   */
+  transforms: DatasetTransformResponse[];
 }
 
 /** ListDatasetVersionsResponse */
@@ -2817,6 +2908,10 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
+export type ListTransformsApiV2DatasetsDatasetIdTransformsGetData = ListDatasetTransformsResponse;
+
+export type ListTransformsApiV2DatasetsDatasetIdTransformsGetError = HTTPValidationError;
+
 export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
 
 export type ListUsersMetadataApiV1TracesUsersGetError = HTTPValidationError;
@@ -3201,6 +3296,25 @@ export interface NewDatasetRequest {
   /**
    * Name
    * Name of the dataset.
+   */
+  name: string;
+}
+
+/** NewDatasetTransformRequest */
+export interface NewDatasetTransformRequest {
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition: Record<string, any>;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
    */
   name: string;
 }
@@ -5783,6 +5897,10 @@ export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
 
+export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData = DatasetTransformResponse;
+
+export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError = HTTPValidationError;
+
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
 export type UploadEmbeddingsFileApiChatFilesPostError = HTTPValidationError;
@@ -6795,7 +6913,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.165
+ * @version 2.1.167
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -7134,6 +7252,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Create a new transform for a dataset.
+     *
+     * @tags Datasets
+     * @name CreateTransformApiV2DatasetsDatasetIdTransformsPost
+     * @summary Create Transform
+     * @request POST:/api/v2/datasets/{dataset_id}/transforms
+     * @secure
+     */
+    createTransformApiV2DatasetsDatasetIdTransformsPost: (datasetId: string, data: NewDatasetTransformRequest, params: RequestParams = {}) =>
+      this.request<CreateTransformApiV2DatasetsDatasetIdTransformsPostData, CreateTransformApiV2DatasetsDatasetIdTransformsPostError>({
+        path: `/api/v2/datasets/${datasetId}/transforms`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description [Deprecated] Validate a non-task related prompt based on the configured default rules.
      *
      * @tags Default Validation
@@ -7332,6 +7470,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
       this.request<DeleteRagSearchSettingVersionData, DeleteRagSearchSettingVersionError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a transform.
+     *
+     * @tags Datasets
+     * @name DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete
+     * @summary Delete Transform
+     * @request DELETE:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    deleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete: (datasetId: string, transformId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData,
+        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError
+      >({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -8026,6 +8184,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get a specific transform.
+     *
+     * @tags Datasets
+     * @name GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGet
+     * @summary Get Transform
+     * @request GET:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    getTransformApiV2DatasetsDatasetIdTransformsTransformIdGet: (datasetId: string, transformId: string, params: RequestParams = {}) =>
+      this.request<GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData, GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError>({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information for a single user including session and trace metadata.
      *
      * @tags Users
@@ -8117,6 +8293,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all transforms for a dataset.
+     *
+     * @tags Datasets
+     * @name ListTransformsApiV2DatasetsDatasetIdTransformsGet
+     * @summary List Transforms
+     * @request GET:/api/v2/datasets/{dataset_id}/transforms
+     * @secure
+     */
+    listTransformsApiV2DatasetsDatasetIdTransformsGet: (datasetId: string, params: RequestParams = {}) =>
+      this.request<ListTransformsApiV2DatasetsDatasetIdTransformsGetData, ListTransformsApiV2DatasetsDatasetIdTransformsGetError>({
+        path: `/api/v2/datasets/${datasetId}/transforms`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -8657,6 +8851,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData, UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError>({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a transform.
+     *
+     * @tags Datasets
+     * @name UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut
+     * @summary Update Transform
+     * @request PUT:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    updateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut: (
+      datasetId: string,
+      transformId: string,
+      data: DatasetTransformUpdateRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData,
+        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError
+      >({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+        method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,

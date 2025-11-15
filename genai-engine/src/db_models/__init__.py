@@ -11,7 +11,7 @@ from db_models.base import (
 # Import all models
 from db_models.auth_models import DatabaseApiKey, DatabaseUser
 from db_models.configuration_models import DatabaseApplicationConfiguration
-from db_models.dataset_models import DatabaseDataset
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetTransform
 from db_models.document_models import (
     DatabaseDocument,
     DatabaseEmbedding,
@@ -103,6 +103,7 @@ __all__ = [
     "DatabaseAgenticPrompt",
     # Dataset models
     "DatabaseDataset",
+    "DatabaseDatasetTransform",
     # Secret storage models
     "DatabaseSecretStorage",
     # RAG provider models

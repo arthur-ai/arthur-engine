@@ -142,6 +142,31 @@ class ListDatasetVersionsResponse(BaseModel):
     )
 
 
+class DatasetTransformResponse(BaseModel):
+    id: UUID = Field(description="ID of the transform.")
+    dataset_id: UUID = Field(description="ID of the parent dataset.")
+    name: str = Field(description="Name of the transform.")
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the transform.",
+    )
+    definition: dict = Field(
+        description="Transform definition in JSON format specifying extraction rules.",
+    )
+    created_at: int = Field(
+        description="Timestamp representing the time of transform creation in unix milliseconds.",
+    )
+    updated_at: int = Field(
+        description="Timestamp representing the time of the last transform update in unix milliseconds.",
+    )
+
+
+class ListDatasetTransformsResponse(BaseModel):
+    transforms: List[DatasetTransformResponse] = Field(
+        description="List of transforms for the dataset.",
+    )
+
+
 class TraceMetadataResponse(TokenCountCostSchema):
     """Lightweight trace metadata for list operations"""
 

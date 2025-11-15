@@ -12,7 +12,7 @@ type UseSpanSelectorParams = {
   spans: NestedSpanWithMetricsResponse[];
   path: string;
   name: string;
-  onFieldChange: (value: { value: string; name: string; path: string }) => void;
+  onFieldChange: (value: { value: string; name: string; path: string; span_name?: string; attribute_path?: string }) => void;
 };
 
 export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSelectorParams) => {
@@ -65,6 +65,8 @@ export const useSpanSelector = ({ spans, path, name, onFieldChange }: UseSpanSel
       value: isPrimitive(value) ? String(value) : JSON.stringify(value),
       name,
       path: `${selectedSpan.span_name}.${fullPath}`,
+      span_name: selectedSpan.span_name || undefined,
+      attribute_path: fullPath,
     });
   };
 
