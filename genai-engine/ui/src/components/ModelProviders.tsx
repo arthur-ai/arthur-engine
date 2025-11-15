@@ -155,7 +155,7 @@ export const ModelProviders: React.FC = () => {
 
     try {
       setIsDeleting(true);
-      await api.api.setModelProviderApiV1ModelProvidersProviderDelete(
+      await api.api.deleteModelProviderApiV1ModelProvidersProviderDelete(
         deleteModal.provider.provider
       );
 
