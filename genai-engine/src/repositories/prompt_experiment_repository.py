@@ -184,8 +184,30 @@ class PromptExperimentRepository:
                 raise ValueError(
                     f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
                 )
-        
-        # TODO validate that the variable mapping is valid for all the referenced prompts and evals
+
+        # Validate that all dataset column references exist in the dataset version
+        dataset_columns = set(dataset_version.column_names)
+
+        # Check prompt variable mappings
+        for mapping in request.prompt_ref.variable_mapping:
+            column_name = mapping.dataset_column.name
+            if column_name not in dataset_columns:
+                raise ValueError(
+                    f"Dataset column '{column_name}' referenced in prompt variable mapping not found in dataset version. "
+                    f"Available columns: {', '.join(sorted(dataset_columns))}"
+                )
+
+        # Check eval variable mappings
+        for eval_ref in request.eval_list:
+            for mapping in eval_ref.variable_mapping:
+                # Only validate dataset_column type mappings
+                if mapping.source.type == "dataset_column":
+                    column_name = mapping.source.dataset_column.name
+                    if column_name not in dataset_columns:
+                        raise ValueError(
+                            f"Dataset column '{column_name}' referenced in eval '{eval_ref.name}' variable mapping not found in dataset version. "
+                            f"Available columns: {', '.join(sorted(dataset_columns))}"
+                        )
 
     def _create_test_cases_for_dataset(
         self,
