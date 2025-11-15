@@ -274,7 +274,6 @@ class PromptExperimentRepository:
 
         # Bulk insert all test cases
         self.db_session.bulk_save_objects(test_cases)
-        self.db_session.commit()
 
         return len(test_cases)
 
@@ -309,7 +308,6 @@ class PromptExperimentRepository:
         )
 
         self.db_session.add(db_experiment)
-        self.db_session.commit()
 
         # Create test cases for each dataset row
         total_rows = self._create_test_cases_for_dataset(
