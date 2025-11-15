@@ -1,7 +1,7 @@
 """prompt experiments
 
 Revision ID: 0381fe93ad77
-Revises: 52c0a0da3ef1
+Revises: 7c2dbe560050
 Create Date: 2025-11-15 19:32:26.838827
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0381fe93ad77'
-down_revision = '52c0a0da3ef1'
+down_revision = '7c2dbe560050'
 branch_labels = None
 depends_on = None
 
