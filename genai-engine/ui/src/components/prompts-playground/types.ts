@@ -8,6 +8,7 @@ import {
   ToolChoiceEnum,
   LLMToolInput,
   ToolChoice,
+  ToolCall,
   ModelProvider,
   LLMGetAllMetadataResponse,
   Api,
@@ -63,6 +64,10 @@ type PromptAction =
   | {
       type: "editMessage";
       payload: { parentId: string; id: string; content: string };
+    }
+  | {
+      type: "editMessageToolCalls";
+      payload: { parentId: string; id: string; toolCalls: ToolCall[] | null };
     }
   | {
       type: "changeMessageRole";
@@ -168,6 +173,7 @@ interface MessageComponentProps {
   role?: string;
   defaultContent?: string | OpenAIMessageItem[];
   content: string | OpenAIMessageItem[] | "";
+  toolCalls?: ToolCall[] | null;
   dragHandleProps?: Record<string, unknown>;
 }
 
