@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import ARRAY, JSON
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
@@ -54,7 +54,7 @@ class DatabasePromptExperiment(Base):
     # Prompt being tested
     prompt_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
     prompt_versions: Mapped[List[int]] = mapped_column(
-        ARRAY(Integer), nullable=False
+        JSON, nullable=False
     )  # List of versions to test
 
     # Dataset reference

@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 from typing import List, Optional, Tuple
+from uuid import uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
@@ -9,13 +10,18 @@ from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
-from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
+from db_models.dataset_models import (
+    DatabaseDataset,
+    DatabaseDatasetVersion,
+    DatabaseDatasetVersionRow,
+)
 from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
 )
 from db_models.task_models import DatabaseTask
+from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
@@ -73,14 +79,14 @@ class PromptExperimentRepository:
         """Convert database experiment to detail schema"""
         # Convert JSON variable mappings to Pydantic models
         variable_mappings = [
-            VariableMapping(**mapping) for mapping in db_experiment.prompt_variable_mapping
+            VariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
         ]
 
         # Convert JSON eval configs to Pydantic models
-        eval_list = [EvalRef(**eval_config) for eval_config in db_experiment.eval_configs]
+        eval_list = [EvalRef.model_validate(eval_config) for eval_config in db_experiment.eval_configs]
 
         # Convert summary results to Pydantic model
-        summary_results = SummaryResults(**(db_experiment.summary_results or {"prompt_eval_summaries": []}))
+        summary_results = SummaryResults.model_validate(db_experiment.summary_results or {"prompt_eval_summaries": []})
 
         return PromptExperimentDetail(
             id=db_experiment.id,
@@ -109,12 +115,13 @@ class PromptExperimentRepository:
         """Convert database test case to schema"""
         # Convert JSON input variables to Pydantic models
         input_variables = [
-            InputVariable(**var) for var in db_test_case.prompt_input_variables
+            InputVariable.model_validate(var) for var in db_test_case.prompt_input_variables
         ]
 
         # Convert JSON prompt results to Pydantic models
+        # model_validate handles nested models (PromptOutput, EvalExecution, EvalResults) automatically
         prompt_results = [
-            PromptResult(**result) for result in db_test_case.prompt_results
+            PromptResult.model_validate(result) for result in db_test_case.prompt_results
         ]
 
         return TestCase(
@@ -178,6 +185,42 @@ class PromptExperimentRepository:
                     f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
                 )
 
+    def _create_test_cases_for_dataset(
+        self,
+        experiment_id: str,
+        dataset_ref: DatasetRef,
+    ) -> int:
+        """Create test cases for each row in the dataset version"""
+        # Get all rows for this dataset version
+        dataset_rows = (
+            self.db_session.query(DatabaseDatasetVersionRow)
+            .filter(
+                DatabaseDatasetVersionRow.dataset_id == dataset_ref.id,
+                DatabaseDatasetVersionRow.version_number == dataset_ref.version,
+            )
+            .all()
+        )
+
+        # Create a test case for each row
+        test_cases = []
+        for row in dataset_rows:
+            test_case = DatabasePromptExperimentTestCase(
+                id=str(uuid4()),
+                experiment_id=experiment_id,
+                dataset_row_id=str(row.id),
+                status=TestCaseStatus.QUEUED,
+                retries=0,
+                prompt_input_variables=[],  # Will be populated during execution
+                prompt_results=[],  # Will be populated during execution
+            )
+            test_cases.append(test_case)
+
+        # Bulk insert all test cases
+        self.db_session.bulk_save_objects(test_cases)
+        self.db_session.commit()
+
+        return len(test_cases)
+
     def create_experiment(
         self,
         task_id: str,
@@ -188,6 +231,7 @@ class PromptExperimentRepository:
         # Validate all references exist
         self._validate_experiment_references(task_id, request)
 
+        # Create the experiment
         db_experiment = DatabasePromptExperiment(
             id=experiment_id,
             task_id=task_id,
@@ -202,12 +246,21 @@ class PromptExperimentRepository:
                 mapping.model_dump() for mapping in request.prompt_ref.variable_mapping
             ],
             eval_configs=[eval_ref.model_dump() for eval_ref in request.eval_list],
-            total_rows=0,
+            total_rows=0,  # Will be updated after creating test cases
             completed_rows=0,
             failed_rows=0,
         )
 
         self.db_session.add(db_experiment)
+        self.db_session.commit()
+
+        # Create test cases for each dataset row
+        total_rows = self._create_test_cases_for_dataset(
+            experiment_id, request.dataset_ref
+        )
+
+        # Update experiment with total row count
+        db_experiment.total_rows = total_rows
         self.db_session.commit()
         self.db_session.refresh(db_experiment)
 

@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
     sa.Column('finished_at', sa.TIMESTAMP(), nullable=True),
     sa.Column('prompt_name', sa.String(), nullable=False),
-    sa.Column('prompt_versions', postgresql.ARRAY(sa.Integer()), nullable=False),
+    sa.Column('prompt_versions', postgresql.JSON(astext_type=sa.Text()), nullable=False),
     sa.Column('dataset_id', sa.String(), nullable=False),
     sa.Column('dataset_version', sa.Integer(), nullable=False),
     sa.Column('prompt_variable_mapping', postgresql.JSON(astext_type=sa.Text()), nullable=False),
