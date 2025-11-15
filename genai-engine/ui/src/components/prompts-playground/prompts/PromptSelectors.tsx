@@ -180,7 +180,7 @@ const PromptSelectors = ({
   );
 
   return (
-    <div className="flex gap-1 min-w-0">
+    <div className="flex gap-1 min-w-0 flex-wrap">
       <div className="flex-1 min-w-0">
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
@@ -217,7 +217,7 @@ const PromptSelectors = ({
           )}
         />
       </div>
-      <VersionSelector promptName={currentPromptName} promptId={prompt.id} currentVersion={prompt.version} onVersionSelect={handleVersionSelect} />
+      <VersionSelector promptName={currentPromptName} promptId={prompt.id} currentVersion={prompt.version} isDirty={prompt.isDirty} onVersionSelect={handleVersionSelect} />
       <div className="flex-1 min-w-0">
         <Tooltip title={tooltipTitle} placement="top-start" arrow>
           <Autocomplete<ModelProvider>

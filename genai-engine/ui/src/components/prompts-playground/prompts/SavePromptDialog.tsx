@@ -63,7 +63,18 @@ const SavePromptDialog = ({ open, setOpen, prompt, initialName = "" }: SavePromp
       showSnackbar(`Saved prompt: ${data.name}`, "success");
       handleClose();
       fetchPrompts(dispatch);
-      dispatch({ type: "updatePromptName", payload: { promptId: prompt.id, name: nameInputValue } });
+      // Update name, version, and clear dirty flag after saving
+      dispatch({
+        type: "updatePrompt",
+        payload: {
+          promptId: prompt.id,
+          prompt: {
+            name: nameInputValue,
+            version: data.version,
+            isDirty: false,
+          },
+        },
+      });
     } catch (error: unknown) {
       const apiError = error as { response: { data: { detail: string } } };
       if (apiError?.response?.data?.detail) {

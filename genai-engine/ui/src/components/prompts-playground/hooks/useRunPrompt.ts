@@ -41,7 +41,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
   const runPrompt = useCallback(async () => {
     if (!apiClient) {
       console.error("No API client available");
-      onError?.("No API client available");
+      onError?.("No API client available. Please check the console for more details.");
       return;
     }
 
@@ -103,7 +103,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
           onError: (error: string) => {
             console.error("Error streaming prompt:", error);
             isRunningRef.current = false;
-            onError?.(error);
+            onError?.(`${error}. Please check the console for more details.`);
             dispatch({
               type: "updatePrompt",
               payload: {
@@ -157,7 +157,7 @@ const useRunPrompt = ({ prompt, onError }: UseRunPromptOptions) => {
           errorMessage = error.message;
         }
 
-        onError?.(errorMessage);
+        onError?.(`${errorMessage}. Please check the console for more details.`);
         dispatch({
           type: "updatePrompt",
           payload: {
