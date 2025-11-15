@@ -72,7 +72,7 @@ VariableSource = Annotated[
 
 
 class VariableMapping(BaseModel):
-    """Mapping of a variable to its source (used for eval mappings)"""
+    """Mapping of a variable to its source"""
 
     variable_name: str = Field(description="Name of the variable")
     source: VariableSource = Field(description="Source of the variable value")
@@ -93,7 +93,7 @@ class PromptRef(BaseModel):
     version_list: list[int] = Field(
         description="List of prompt versions to test in the experiment"
     )
-    variable_mapping: list[DatasetColumnVariableSource] = Field(
+    variable_mapping: list[VariableMapping] = Field(
         description="Mapping of prompt variables to dataset columns"
     )
 

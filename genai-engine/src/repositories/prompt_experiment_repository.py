@@ -24,7 +24,6 @@ from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
-    DatasetColumnVariableSource,
     DatasetRef,
     EvalRef,
     ExperimentStatus,
@@ -35,6 +34,7 @@ from schemas.prompt_experiment_schemas import (
     PromptResult,
     SummaryResults,
     TestCase,
+    VariableMapping,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class PromptExperimentRepository:
         """Convert database experiment to detail schema"""
         # Convert JSON prompt variable mappings to Pydantic models
         prompt_variable_mappings = [
-            DatasetColumnVariableSource.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
+            VariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
         ]
 
         # Convert JSON eval configs to Pydantic models
@@ -161,7 +161,8 @@ class PromptExperimentRepository:
                 f"Dataset version {request.dataset_ref.version} not found for dataset {request.dataset_ref.id}"
             )
 
-        # Validate prompt versions exist
+        # Validate prompt versions exist and collect their variables
+        prompt_versions = []
         for version in request.prompt_ref.version_list:
             prompt = self.db_session.query(DatabaseAgenticPrompt).filter(
                 DatabaseAgenticPrompt.task_id == task_id,
@@ -172,8 +173,10 @@ class PromptExperimentRepository:
                 raise ValueError(
                     f"Prompt '{request.prompt_ref.name}' version {version} not found for task {task_id}"
                 )
+            prompt_versions.append(prompt)
 
-        # Validate eval versions exist
+        # Validate eval versions exist and collect their variables
+        llm_evals = []
         for eval_ref in request.eval_list:
             llm_eval = self.db_session.query(DatabaseLLMEval).filter(
                 DatabaseLLMEval.task_id == task_id,
@@ -184,23 +187,29 @@ class PromptExperimentRepository:
                 raise ValueError(
                     f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
                 )
+            llm_evals.append((eval_ref, llm_eval))
 
         # Validate that all dataset column references exist in the dataset version
         dataset_columns = set(dataset_version.column_names)
 
-        # Check prompt variable mappings
+        # Check prompt variable mappings - prompts can ONLY use dataset_column sources
         for mapping in request.prompt_ref.variable_mapping:
-            column_name = mapping.dataset_column.name
+            if mapping.source.type != "dataset_column":
+                raise ValueError(
+                    f"Prompt variable '{mapping.variable_name}' uses source type '{mapping.source.type}'. "
+                    f"Prompts can only use 'dataset_column' source type."
+                )
+
+            column_name = mapping.source.dataset_column.name
             if column_name not in dataset_columns:
                 raise ValueError(
                     f"Dataset column '{column_name}' referenced in prompt variable mapping not found in dataset version. "
                     f"Available columns: {', '.join(sorted(dataset_columns))}"
                 )
 
-        # Check eval variable mappings
+        # Check eval variable mappings - only validate dataset_column type
         for eval_ref in request.eval_list:
             for mapping in eval_ref.variable_mapping:
-                # Only validate dataset_column type mappings
                 if mapping.source.type == "dataset_column":
                     column_name = mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
@@ -208,6 +217,33 @@ class PromptExperimentRepository:
                             f"Dataset column '{column_name}' referenced in eval '{eval_ref.name}' variable mapping not found in dataset version. "
                             f"Available columns: {', '.join(sorted(dataset_columns))}"
                         )
+
+        # Validate that all prompt variables are provided in the configuration
+        provided_prompt_variables = {mapping.variable_name for mapping in request.prompt_ref.variable_mapping}
+
+        for prompt in prompt_versions:
+            required_variables = set(prompt.variables)
+            missing_variables = required_variables - provided_prompt_variables
+
+            if missing_variables:
+                raise ValueError(
+                    f"Prompt '{request.prompt_ref.name}' version {prompt.version} requires variables {sorted(missing_variables)} "
+                    f"but they are not provided in the variable mapping. "
+                    f"Provided variables: {sorted(provided_prompt_variables)}"
+                )
+
+        # Validate that all eval variables are provided in the configuration
+        for eval_ref, llm_eval in llm_evals:
+            provided_eval_variables = {mapping.variable_name for mapping in eval_ref.variable_mapping}
+            required_variables = set(llm_eval.variables)
+            missing_variables = required_variables - provided_eval_variables
+
+            if missing_variables:
+                raise ValueError(
+                    f"Eval '{eval_ref.name}' version {eval_ref.version} requires variables {sorted(missing_variables)} "
+                    f"but they are not provided in the variable mapping. "
+                    f"Provided variables: {sorted(provided_eval_variables)}"
+                )
 
     def _create_test_cases_for_dataset(
         self,
