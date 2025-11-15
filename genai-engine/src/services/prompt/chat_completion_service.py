@@ -2,6 +2,7 @@ from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union
 
 from fastapi.responses import StreamingResponse
 from jinja2 import meta
+from jinja2.sandbox import SandboxedEnvironment
 from litellm import (
     completion_cost,
     stream_chunk_builder,
@@ -18,22 +19,35 @@ from schemas.response_schemas import AgenticPromptRunResponse
 class ChatCompletionService:
     """Service for running a chat completion"""
 
+    def __init__(self):
+        # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
+        #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
+        #   autoescape=False "{{ name }}" -> "<Bob>"
+        #   autoescape=True "{{ name }}" -> "&lt;Bob&gt;"
+        self._jinja_env = SandboxedEnvironment(autoescape=False)
+
     # ============================================================================
     # Variable Validation and Replacement
     # ============================================================================
 
-    def _find_missing_variables_in_text(
+    def find_undeclared_variables_in_text(
         self,
-        completion_request: PromptCompletionRequest,
+        text: str,
+    ) -> Set[str]:
+        template_ast = self._jinja_env.parse(text)
+        return meta.find_undeclared_variables(template_ast)
+
+    def _find_missing_variables_in_variable_map(
+        self,
+        variable_map: Dict[str, str],
         text: str,
     ) -> List[str]:
-        template_ast = completion_request._jinja_env.parse(text)
-        undeclared_vars = meta.find_undeclared_variables(template_ast)
-        return [v for v in undeclared_vars if v not in completion_request._variable_map]
+        undeclared_vars = self.find_undeclared_variables_in_text(text)
+        return [v for v in undeclared_vars if v not in variable_map]
 
-    def _find_missing_variables(
+    def find_missing_variables_in_messages(
         self,
-        completion_request: PromptCompletionRequest,
+        variable_map: Dict[str, str],
         messages: List[OpenAIMessage],
     ) -> Set[str]:
         missing_vars = set()
@@ -43,8 +57,8 @@ class ChatCompletionService:
 
             if isinstance(message.content, str):
                 missing_vars.update(
-                    self._find_missing_variables_in_text(
-                        completion_request,
+                    self._find_missing_variables_in_variable_map(
+                        variable_map,
                         message.content,
                     ),
                 )
@@ -52,8 +66,8 @@ class ChatCompletionService:
                 for item in message.content:
                     if item.type == OpenAIMessageType.TEXT.value and item.text:
                         missing_vars.update(
-                            self._find_missing_variables_in_text(
-                                completion_request,
+                            self._find_missing_variables_in_variable_map(
+                                variable_map,
                                 item.text,
                             ),
                         )
@@ -62,15 +76,15 @@ class ChatCompletionService:
 
     def _replace_variables_in_text(
         self,
-        completion_request: PromptCompletionRequest,
+        variable_map: Dict[str, str],
         text: str,
     ) -> str:
-        template = completion_request._jinja_env.from_string(text)
-        return template.render(**completion_request._variable_map)
+        template = self._jinja_env.from_string(text)
+        return template.render(**variable_map)
 
-    def _replace_variables(
+    def replace_variables(
         self,
-        completion_request: PromptCompletionRequest,
+        variable_map: Dict[str, str],
         messages: List[OpenAIMessage],
     ) -> list[dict]:
         for message in messages:
@@ -79,14 +93,14 @@ class ChatCompletionService:
 
             if isinstance(message.content, str):
                 message.content = self._replace_variables_in_text(
-                    completion_request,
+                    variable_map,
                     message.content,
                 )
             elif isinstance(message.content, list):
                 for item in message.content:
                     if item.type == OpenAIMessageType.TEXT.value and item.text:
                         item.text = self._replace_variables_in_text(
-                            completion_request,
+                            variable_map,
                             item.text,
                         )
 
@@ -150,8 +164,8 @@ class ChatCompletionService:
 
         # validate all variables are passed in to the prompt if strict mode is enabled
         if completion_request.strict == True:
-            missing_vars = self._find_missing_variables(
-                completion_request,
+            missing_vars = self.find_missing_variables_in_messages(
+                completion_request._variable_map,
                 prompt.messages,
             )
             if missing_vars:
@@ -162,8 +176,8 @@ class ChatCompletionService:
         # replace variables in messages
         completion_messages = prompt.messages
         if completion_request.variables:
-            completion_messages = self._replace_variables(
-                completion_request,
+            completion_messages = self.replace_variables(
+                completion_request._variable_map,
                 completion_messages,
             )
 

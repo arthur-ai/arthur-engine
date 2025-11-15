@@ -690,7 +690,10 @@ def test_agentic_prompt_variable_replacement(message, variables, expected_messag
     messages = [OpenAIMessage(role=MessageRole.USER, content=message)]
 
     chat_completion_service = ChatCompletionService()
-    result = chat_completion_service._replace_variables(completion_request, messages)
+    result = chat_completion_service.replace_variables(
+        completion_request._variable_map,
+        messages,
+    )
     expected_result = [
         OpenAIMessage(role=MessageRole.USER, content=expected_message),
     ]
@@ -801,8 +804,8 @@ def test_agentic_prompt_find_missing_variables(message, variables, missing_varia
     messages = [OpenAIMessage(role=MessageRole.USER, content=message)]
     completion_request = PromptCompletionRequest(variables=variables)
     chat_completion_service = ChatCompletionService()
-    results = chat_completion_service._find_missing_variables(
-        completion_request,
+    results = chat_completion_service.find_missing_variables_in_messages(
+        completion_request._variable_map,
         messages,
     )
     assert results == missing_variables

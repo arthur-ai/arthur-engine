@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
 from fastapi import HTTPException
-from jinja2.sandbox import SandboxedEnvironment
 from litellm.types.llms.anthropic import AnthropicThinkingParam
 from pydantic import BaseModel, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_core import Url
@@ -705,14 +704,6 @@ class PromptCompletionRequest(BaseCompletionRequest):
     )
 
     _variable_map: Dict[str, str] = PrivateAttr(default_factory=dict)
-
-    # autoescape=False because Jinja automatically HTML-escapes items by default. Ex:
-    #   if text = "{{ name }}" and variables = {"name": "<Bob>"}
-    #   autoescape=False "{{ name }}" -> "<Bob>"
-    #   autoescape=True "{{ name }}" -> "&lt;Bob&gt;"
-    _jinja_env: SandboxedEnvironment = PrivateAttr(
-        default_factory=lambda: SandboxedEnvironment(autoescape=False),
-    )
 
     @model_validator(mode="after")
     def _build_variable_map(self):
