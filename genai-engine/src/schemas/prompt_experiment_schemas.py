@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Discriminator, Field, Tag
 
 
 class ExperimentStatus(str, Enum):
@@ -41,20 +41,33 @@ class ExperimentOutputSource(BaseModel):
     )
 
 
-class VariableSource(BaseModel):
-    """Source of a variable value"""
+class DatasetColumnVariableSource(BaseModel):
+    """Variable source from a dataset column"""
 
-    type: str = Field(
-        description="Type of source: 'dataset_column' or 'experiment_output'"
+    type: Literal["dataset_column"] = Field(
+        description="Type of source: 'dataset_column'"
     )
-    dataset_column: Optional[DatasetColumnSource] = Field(
-        default=None,
-        description="Dataset column source (if type is 'dataset_column')",
+    dataset_column: DatasetColumnSource = Field(
+        description="Dataset column source"
     )
-    experiment_output: Optional[ExperimentOutputSource] = Field(
-        default=None,
-        description="Experiment output source (if type is 'experiment_output')",
+
+
+class ExperimentOutputVariableSource(BaseModel):
+    """Variable source from experiment output"""
+
+    type: Literal["experiment_output"] = Field(
+        description="Type of source: 'experiment_output'"
     )
+    experiment_output: ExperimentOutputSource = Field(
+        description="Experiment output source"
+    )
+
+
+# Union type with discriminator
+VariableSource = Annotated[
+    Union[DatasetColumnVariableSource, ExperimentOutputVariableSource],
+    Discriminator("type"),
+]
 
 
 class VariableMapping(BaseModel):

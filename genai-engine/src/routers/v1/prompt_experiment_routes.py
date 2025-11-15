@@ -116,7 +116,7 @@ def create_prompt_experiment(
 
 
 @prompt_experiment_routes.get(
-    "/tasks/{task_id}/prompt_experiments/{experiment_id}",
+    "/prompt_experiments/{experiment_id}",
     summary="Get prompt experiment details",
     description="Get detailed information about a specific prompt experiment including summary results",
     response_model=PromptExperimentDetail,
@@ -132,7 +132,6 @@ def get_prompt_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ):
     """
     Get detailed information about a prompt experiment.
@@ -154,7 +153,7 @@ def get_prompt_experiment(
 
 
 @prompt_experiment_routes.get(
-    "/tasks/{task_id}/prompt_experiments/{experiment_id}/test_cases",
+    "/prompt_experiments/{experiment_id}/test_cases",
     summary="Get experiment test cases",
     description="Get paginated list of test case results for a prompt experiment",
     response_model=TestCaseListResponse,
@@ -174,7 +173,6 @@ def get_experiment_test_cases(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ):
     """
     Get detailed test case results for an experiment.
@@ -205,7 +203,7 @@ def get_experiment_test_cases(
 
 
 @prompt_experiment_routes.delete(
-    "/tasks/{task_id}/prompt_experiments/{experiment_id}",
+    "/prompt_experiments/{experiment_id}",
     summary="Delete prompt experiment",
     description="Delete a prompt experiment and all its associated data",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -223,7 +221,6 @@ def delete_prompt_experiment(
     ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
-    task: Task = Depends(get_validated_agentic_task),
 ) -> Response:
     """
     Delete a prompt experiment.
