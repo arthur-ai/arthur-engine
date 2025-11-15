@@ -10172,18 +10172,6 @@
                         "title": "Instructions",
                         "description": "Instructions for the llm eval"
                     },
-                    "min_score": {
-                        "type": "integer",
-                        "title": "Min Score",
-                        "description": "Minimum score for the llm eval",
-                        "default": 0
-                    },
-                    "max_score": {
-                        "type": "integer",
-                        "title": "Max Score",
-                        "description": "Maximum score for the llm eval",
-                        "default": 1
-                    },
                     "config": {
                         "anyOf": [
                             {
@@ -11896,18 +11884,6 @@
                         "type": "string",
                         "title": "Instructions",
                         "description": "Instructions for the llm eval"
-                    },
-                    "min_score": {
-                        "type": "integer",
-                        "title": "Min Score",
-                        "description": "Minimum score for the llm eval",
-                        "default": 0
-                    },
-                    "max_score": {
-                        "type": "integer",
-                        "title": "Max Score",
-                        "description": "Maximum score for the llm eval",
-                        "default": 1
                     },
                     "variables": {
                         "items": {

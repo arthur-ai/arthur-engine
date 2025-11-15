@@ -62,8 +62,6 @@ def test_save_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: 
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "new_eval"
@@ -77,8 +75,6 @@ def test_save_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task: 
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 1
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["min_score"] == eval_data["min_score"]
-    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -91,8 +87,6 @@ def test_save_llm_eval_duplicate(client: GenaiEngineTestClientBase, agentic_task
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "duplicate_eval"
@@ -115,8 +109,6 @@ def test_save_llm_eval_duplicate(client: GenaiEngineTestClientBase, agentic_task
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 2
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["min_score"] == eval_data["min_score"]
-    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -131,8 +123,6 @@ def test_save_llm_eval_with_malformed_data(
     # Missing model_name, model_provider
     eval_data = {
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     response = client.base_client.post(
@@ -151,8 +141,6 @@ def test_delete_llm_eval_success(client: GenaiEngineTestClientBase, agentic_task
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -191,8 +179,6 @@ def test_delete_llm_eval_errors(client: GenaiEngineTestClientBase, agentic_task:
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -232,8 +218,6 @@ def test_soft_delete_llm_eval_success(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "delete_eval"
@@ -278,8 +262,6 @@ def test_soft_delete_llm_eval_version_errors(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     eval_name = "soft_delete_eval"
@@ -333,8 +315,6 @@ def test_soft_delete_llm_eval_by_version_route(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     save_response = client.base_client.post(
@@ -370,8 +350,6 @@ def test_soft_delete_llm_eval_by_version_route(
         eval_response = response.json()
         assert eval_response["name"] == eval_name
         assert eval_response["instructions"] == ""
-        assert eval_response["min_score"] == 0
-        assert eval_response["max_score"] == 1
         assert eval_response["model_name"] == ""
         assert eval_response["model_provider"] == "openai"
         assert eval_response["deleted_at"] is not None
@@ -392,8 +370,6 @@ def test_get_llm_eval_success(client: GenaiEngineTestClientBase):
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
 
     response = client.base_client.post(
@@ -413,8 +389,6 @@ def test_get_llm_eval_success(client: GenaiEngineTestClientBase):
     eval_response = response.json()
     assert eval_response["name"] == eval_name
     assert eval_response["instructions"] == eval_data["instructions"]
-    assert eval_response["min_score"] == eval_data["min_score"]
-    assert eval_response["max_score"] == eval_data["max_score"]
     assert eval_response["model_name"] == eval_data["model_name"]
     assert eval_response["model_provider"] == eval_data["model_provider"]
     assert eval_response["version"] == 1
@@ -472,8 +446,6 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
     eval_name = "test_llm_eval"
 
@@ -486,8 +458,6 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 1
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["min_score"] == eval_data["min_score"]
-    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -501,8 +471,6 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 2
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["min_score"] == eval_data["min_score"]
-    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -531,8 +499,6 @@ def test_get_llm_eval_does_not_raise_err_for_deleted_eval(
     assert response.json()["name"] == eval_name
     assert response.json()["version"] == 2
     assert response.json()["instructions"] == ""
-    assert response.json()["min_score"] == 0
-    assert response.json()["max_score"] == 1
     assert response.json()["model_name"] == ""
     assert response.json()["model_provider"] == "openai"
 
@@ -555,8 +521,6 @@ def test_get_llm_eval_by_version_route(
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
     if eval_version == "datetime":
         eval_version = datetime.now().isoformat()
@@ -578,8 +542,6 @@ def test_get_llm_eval_by_version_route(
     eval_response = response.json()
     assert eval_response["name"] == eval_name
     assert eval_response["instructions"] == eval_data["instructions"]
-    assert eval_response["min_score"] == eval_data["min_score"]
-    assert eval_response["max_score"] == eval_data["max_score"]
     assert eval_response["model_name"] == eval_data["model_name"]
     assert eval_response["model_provider"] == eval_data["model_provider"]
     assert eval_response["version"] == 1
@@ -598,8 +560,6 @@ def test_get_llm_eval_versions(client: GenaiEngineTestClientBase):
         "model_name": "gpt-4o",
         "model_provider": "openai",
         "instructions": "Test instructions",
-        "min_score": 0,
-        "max_score": 1,
     }
     eval_name = "test_llm_eval"
 
@@ -614,8 +574,6 @@ def test_get_llm_eval_versions(client: GenaiEngineTestClientBase):
         assert response.json()["name"] == eval_name
         assert response.json()["version"] == i + 1
         assert response.json()["instructions"] == eval_data["instructions"]
-        assert response.json()["min_score"] == eval_data["min_score"]
-        assert response.json()["max_score"] == eval_data["max_score"]
         assert response.json()["model_name"] == eval_data["model_name"]
         assert response.json()["model_provider"] == eval_data["model_provider"]
 
@@ -629,8 +587,6 @@ def test_get_llm_eval_versions(client: GenaiEngineTestClientBase):
     assert response.json()["name"] == "different_eval_name"
     assert response.json()["version"] == 1
     assert response.json()["instructions"] == eval_data["instructions"]
-    assert response.json()["min_score"] == eval_data["min_score"]
-    assert response.json()["max_score"] == eval_data["max_score"]
     assert response.json()["model_name"] == eval_data["model_name"]
     assert response.json()["model_provider"] == eval_data["model_provider"]
 
