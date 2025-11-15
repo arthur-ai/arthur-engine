@@ -32,6 +32,7 @@ export function executeTransform(
         path: `${colDef.span_name}.${colDef.attribute_path}`,
         span_name: colDef.span_name,
         attribute_path: colDef.attribute_path,
+        matchCount: 0,
       });
     } else {
       const span = matchingSpans[0];
@@ -45,6 +46,13 @@ export function executeTransform(
         path: `${span.span_name}.${colDef.attribute_path}`,
         span_name: colDef.span_name,
         attribute_path: colDef.attribute_path,
+        matchCount: matchingSpans.length,
+        selectedSpanId: span.span_id,
+        allMatches: matchingSpans.length > 1 ? matchingSpans.map(s => ({
+          span_id: s.span_id,
+          span_name: s.span_name || "unknown",
+          extractedValue: stringifyValue(getNestedValue(s.raw_data, colDef.attribute_path)),
+        })) : undefined,
       });
     }
   }

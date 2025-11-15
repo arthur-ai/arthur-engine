@@ -6,6 +6,13 @@ export type Column = {
   path: string;
   span_name?: string;
   attribute_path?: string;
+  matchCount?: number;
+  selectedSpanId?: string;
+  allMatches?: Array<{
+    span_id: string;
+    span_name: string;
+    extractedValue: string;
+  }>;
 };
 
 export type TransformDefinition = {

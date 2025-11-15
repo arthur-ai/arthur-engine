@@ -62,11 +62,11 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
       });
     },
     onSuccess: () => {
-      snackbar.showSnackbar("Dataset version created successfully", "success");
+      snackbar.showSnackbar("Row added", "success");
       setOpen(false);
     },
     onError: () => {
-      snackbar.showSnackbar("Failed to create dataset version", "error");
+      snackbar.showSnackbar("Failed to add row", "error");
     },
   });
 
@@ -103,12 +103,24 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
       });
 
       setSavedTransformId(response.data.id);
-      snackbar.showSnackbar("Transform saved successfully", "success");
       transformsQuery.refetch();
+      
+      setTimeout(() => {
+        setShowSaveTransformDialog(false);
+        snackbar.showSnackbar("Transform saved", "success");
+      }, 100);
     } catch (error: any) {
-      const errorMessage = error.response?.data?.detail || error.message || "Failed to save transform";
-      snackbar.showSnackbar(errorMessage, "error");
-      throw error;
+      let errorMessage = "Failed to save transform";
+      
+      if (error.response?.status === 409) {
+        errorMessage = `A transform named "${name}" already exists. Please use a different name.`;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -225,10 +237,6 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
 
             <PreviewTable form={form} onSaveTransform={() => setShowSaveTransformDialog(true)} />
           </form>
-
-          <Snackbar {...snackbar.snackbarProps}>
-            <Alert {...snackbar.alertProps} />
-          </Snackbar>
         </Drawer.Content>
       </Drawer>
 
@@ -238,6 +246,10 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
         columns={form.state.values.columns}
         onSave={handleSaveTransform}
       />
+
+      <Snackbar {...snackbar.snackbarProps}>
+        <Alert {...snackbar.alertProps} />
+      </Snackbar>
     </>
   );
 };

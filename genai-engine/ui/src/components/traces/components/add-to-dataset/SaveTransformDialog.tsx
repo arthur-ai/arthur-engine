@@ -56,7 +56,6 @@ export function SaveTransformDialog({
       await onSave(name.trim(), description.trim(), transformDef);
       setName("");
       setDescription("");
-      onClose();
     } catch (err) {
       setErrors([err instanceof Error ? err.message : "Failed to save transform"]);
     } finally {
