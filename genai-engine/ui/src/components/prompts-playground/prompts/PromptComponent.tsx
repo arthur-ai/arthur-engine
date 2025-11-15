@@ -155,7 +155,6 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
             style={{
               flexBasis: `${messagesHeightRatio * 100}%`,
               minHeight: "30%",
-              maxHeight: "70%",
             }}
           >
             <Paper elevation={2} className="p-1 h-full">
@@ -168,7 +167,6 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
             style={{
               flexBasis: `${(1 - messagesHeightRatio) * 100}%`,
               minHeight: "30%",
-              maxHeight: "70%",
             }}
           >
             <Paper elevation={2} className="p-1 h-full">
