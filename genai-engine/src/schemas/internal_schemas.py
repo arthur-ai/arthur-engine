@@ -103,7 +103,11 @@ from db_models import (
     DatabaseTraceMetadata,
     DatabaseUser,
 )
-from db_models.dataset_models import DatabaseDatasetVersion, DatabaseDatasetVersionRow
+from db_models.dataset_models import (
+    DatabaseDatasetTransform,
+    DatabaseDatasetVersion,
+    DatabaseDatasetVersionRow,
+)
 from db_models.rag_provider_models import (
     DatabaseApiKeyRagProviderConfiguration,
     DatabaseRagProviderAuthenticationConfigurationTypes,
@@ -126,6 +130,7 @@ from schemas.metric_schemas import MetricScoreDetails
 from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
     NewDatasetRequest,
+    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowColumnItemRequest,
     RagProviderConfigurationRequest,
@@ -140,6 +145,7 @@ from schemas.response_schemas import (
     ApiKeyRagAuthenticationConfigResponse,
     ApplicationConfigurationResponse,
     DatasetResponse,
+    DatasetTransformResponse,
     DatasetVersionMetadataResponse,
     DatasetVersionResponse,
     DatasetVersionRowColumnItemResponse,
@@ -2076,6 +2082,68 @@ class Dataset(BaseModel):
             description=db_dataset.description,
             metadata=db_dataset.dataset_metadata,
             latest_version_number=db_dataset.latest_version_number,
+        )
+
+
+class DatasetTransform(BaseModel):
+    id: uuid.UUID
+    dataset_id: uuid.UUID
+    name: str
+    description: Optional[str]
+    definition: dict
+    created_at: datetime
+    updated_at: datetime
+
+    def to_response_model(self) -> DatasetTransformResponse:
+        return DatasetTransformResponse(
+            id=self.id,
+            dataset_id=self.dataset_id,
+            name=self.name,
+            description=self.description,
+            definition=self.definition,
+            created_at=_serialize_datetime(self.created_at),
+            updated_at=_serialize_datetime(self.updated_at),
+        )
+
+    def _to_database_model(self) -> DatabaseDatasetTransform:
+        return DatabaseDatasetTransform(
+            id=self.id,
+            dataset_id=self.dataset_id,
+            name=self.name,
+            description=self.description,
+            definition=self.definition,
+            created_at=self.created_at,
+            updated_at=self.updated_at,
+        )
+
+    @staticmethod
+    def _from_request_model(
+        dataset_id: uuid.UUID,
+        request: NewDatasetTransformRequest,
+    ) -> "DatasetTransform":
+        curr_time = datetime.now()
+        return DatasetTransform(
+            id=uuid.uuid4(),
+            dataset_id=dataset_id,
+            name=request.name,
+            description=request.description,
+            definition=request.definition,
+            created_at=curr_time,
+            updated_at=curr_time,
+        )
+
+    @staticmethod
+    def _from_database_model(
+        db_transform: DatabaseDatasetTransform,
+    ) -> "DatasetTransform":
+        return DatasetTransform(
+            id=db_transform.id,
+            dataset_id=db_transform.dataset_id,
+            name=db_transform.name,
+            description=db_transform.description,
+            definition=db_transform.definition,
+            created_at=db_transform.created_at,
+            updated_at=db_transform.updated_at,
         )
 
 

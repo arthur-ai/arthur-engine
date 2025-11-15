@@ -12,15 +12,19 @@ from repositories.datasets_repository import DatasetRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
-from schemas.internal_schemas import Dataset, User
+from schemas.internal_schemas import Dataset, DatasetTransform, User
 from schemas.request_schemas import (
+    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
+    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
 )
 from schemas.response_schemas import (
     DatasetResponse,
+    DatasetTransformResponse,
     DatasetVersionResponse,
+    ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
     SearchDatasetsResponse,
 )
@@ -241,5 +245,120 @@ def get_dataset_version(
             version_number,
             pagination_parameters,
         ).to_response_model()
+    finally:
+        db_session.close()
+
+
+###################################
+#### Transform Management Routes ##
+###################################
+
+
+@dataset_management_routes.post(
+    "/datasets/{dataset_id}/transforms",
+    description="Create a new transform for a dataset.",
+    response_model=DatasetTransformResponse,
+    tags=[datasets_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def create_transform(
+    request: NewDatasetTransformRequest,
+    dataset_id: UUID = Path(
+        description="ID of the dataset to create the transform for.",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetTransformResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        transform = DatasetTransform._from_request_model(dataset_id, request)
+        dataset_repo.create_transform(transform)
+        return transform.to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/transforms",
+    description="List all transforms for a dataset.",
+    response_model=ListDatasetTransformsResponse,
+    tags=[datasets_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def list_transforms(
+    dataset_id: UUID = Path(description="ID of the dataset to list transforms for."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> ListDatasetTransformsResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        transforms = dataset_repo.list_transforms(dataset_id)
+        return ListDatasetTransformsResponse(
+            transforms=[transform.to_response_model() for transform in transforms],
+        )
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.get(
+    "/datasets/{dataset_id}/transforms/{transform_id}",
+    description="Get a specific transform.",
+    response_model=DatasetTransformResponse,
+    tags=[datasets_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_READ.value)
+def get_transform(
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    transform_id: UUID = Path(description="ID of the transform to fetch."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetTransformResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        return dataset_repo.get_transform(dataset_id, transform_id).to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.put(
+    "/datasets/{dataset_id}/transforms/{transform_id}",
+    description="Update a transform.",
+    response_model=DatasetTransformResponse,
+    tags=[datasets_router_tag],
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def update_transform(
+    request: DatasetTransformUpdateRequest,
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    transform_id: UUID = Path(description="ID of the transform to update."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> DatasetTransformResponse:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        dataset_repo.update_transform(dataset_id, transform_id, request)
+        transform = dataset_repo.get_transform(dataset_id, transform_id)
+        return transform.to_response_model()
+    finally:
+        db_session.close()
+
+
+@dataset_management_routes.delete(
+    "/datasets/{dataset_id}/transforms/{transform_id}",
+    description="Delete a transform.",
+    tags=[datasets_router_tag],
+    status_code=HTTP_204_NO_CONTENT,
+)
+@permission_checker(permissions=PermissionLevelsEnum.DATASET_WRITE.value)
+def delete_transform(
+    dataset_id: UUID = Path(description="ID of the dataset."),
+    transform_id: UUID = Path(description="ID of the transform to delete."),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+) -> Response:
+    try:
+        dataset_repo = DatasetRepository(db_session)
+        dataset_repo.delete_transform(dataset_id, transform_id)
+        return Response(status_code=HTTP_204_NO_CONTENT)
     finally:
         db_session.close()

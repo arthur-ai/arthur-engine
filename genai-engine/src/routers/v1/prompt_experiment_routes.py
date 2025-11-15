@@ -70,6 +70,8 @@ def list_prompt_experiments(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
 
 
 @prompt_experiment_routes.post(
@@ -113,6 +115,8 @@ def create_prompt_experiment(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
 
 
 @prompt_experiment_routes.get(
@@ -150,6 +154,8 @@ def get_prompt_experiment(
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
 
 
 @prompt_experiment_routes.get(
@@ -200,6 +206,8 @@ def get_experiment_test_cases(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
 
 
 @prompt_experiment_routes.delete(
@@ -241,3 +249,5 @@ def delete_prompt_experiment(
             raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()

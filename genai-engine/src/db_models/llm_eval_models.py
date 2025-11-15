@@ -34,8 +34,6 @@ class DatabaseLLMEval(Base):
         server_default="[]",
         default=list,
     )
-    min_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    max_score: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Eval configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)

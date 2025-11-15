@@ -130,6 +130,47 @@ class NewDatasetVersionRequest(BaseModel):
     )
 
 
+class NewDatasetTransformRequest(BaseModel):
+    name: str = Field(
+        description="Name of the transform.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the transform.",
+    )
+    definition: dict = Field(
+        description="Transform definition in JSON format specifying extraction rules.",
+        examples=[
+            {
+                "version": "1.0",
+                "columns": [
+                    {
+                        "column_name": "sqlQuery",
+                        "span_name": "rag-retrieval-savedQueries",
+                        "attribute_path": "attributes.input.value.sqlQuery",
+                        "fallback": None,
+                    },
+                ],
+            },
+        ],
+    )
+
+
+class DatasetTransformUpdateRequest(BaseModel):
+    name: Optional[str] = Field(
+        default=None,
+        description="Name of the transform.",
+    )
+    description: Optional[str] = Field(
+        default=None,
+        description="Description of the transform.",
+    )
+    definition: Optional[dict] = Field(
+        default=None,
+        description="Transform definition in JSON format specifying extraction rules.",
+    )
+
+
 class PutModelProviderCredentials(BaseModel):
     api_key: SecretStr = Field(description="The API key for the provider.")
 
@@ -648,8 +689,6 @@ class CreateEvalRequest(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     instructions: str = Field(description="Instructions for the llm eval")
-    min_score: int = Field(default=0, description="Minimum score for the llm eval")
-    max_score: int = Field(default=1, description="Maximum score for the llm eval")
     config: Optional[LLMRequestConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",

@@ -24,17 +24,19 @@ from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
+    DatasetColumnVariableSource,
     DatasetRef,
     EvalRef,
+    EvalVariableMapping,
     ExperimentStatus,
     InputVariable,
     PromptExperimentDetail,
     PromptExperimentSummary,
     PromptRef,
     PromptResult,
+    PromptVariableMapping,
     SummaryResults,
     TestCase,
-    VariableMapping,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ class PromptExperimentRepository:
         """Convert database experiment to detail schema"""
         # Convert JSON prompt variable mappings to Pydantic models
         prompt_variable_mappings = [
-            VariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
+            PromptVariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
         ]
 
         # Convert JSON eval configs to Pydantic models
@@ -192,14 +194,9 @@ class PromptExperimentRepository:
         # Validate that all dataset column references exist in the dataset version
         dataset_columns = set(dataset_version.column_names)
 
-        # Check prompt variable mappings - prompts can ONLY use dataset_column sources
+        # Check prompt variable mappings - validate dataset columns exist
+        # (Type enforcement is handled by schema - PromptVariableMapping only accepts DatasetColumnVariableSource)
         for mapping in request.prompt_ref.variable_mapping:
-            if mapping.source.type != "dataset_column":
-                raise ValueError(
-                    f"Prompt variable '{mapping.variable_name}' uses source type '{mapping.source.type}'. "
-                    f"Prompts can only use 'dataset_column' source type."
-                )
-
             column_name = mapping.source.dataset_column.name
             if column_name not in dataset_columns:
                 raise ValueError(
@@ -210,7 +207,7 @@ class PromptExperimentRepository:
         # Check eval variable mappings - only validate dataset_column type
         for eval_ref in request.eval_list:
             for mapping in eval_ref.variable_mapping:
-                if mapping.source.type == "dataset_column":
+                if isinstance(mapping.source, DatasetColumnVariableSource):
                     column_name = mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
                         raise ValueError(
@@ -277,7 +274,6 @@ class PromptExperimentRepository:
 
         # Bulk insert all test cases
         self.db_session.bulk_save_objects(test_cases)
-        self.db_session.commit()
 
         return len(test_cases)
 
@@ -312,7 +308,6 @@ class PromptExperimentRepository:
         )
 
         self.db_session.add(db_experiment)
-        self.db_session.commit()
 
         # Create test cases for each dataset row
         total_rows = self._create_test_cases_for_dataset(
