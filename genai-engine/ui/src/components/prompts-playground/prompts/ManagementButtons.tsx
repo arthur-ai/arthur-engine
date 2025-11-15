@@ -51,6 +51,9 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
   }, [dispatch, prompt.id]);
 
   const runDisabled = prompt.running || prompt.modelName === "";
+  const isDirty = prompt.isDirty;
+  const saveTooltip = isDirty ? "Save unsaved changes" : "Save Prompt";
+
   return (
     <>
       <Tooltip title="Run Prompt" placement="top-start" arrow>
@@ -77,9 +80,20 @@ const ManagementButtons = ({ prompt, setSavePromptOpen }: ManagementButtonsProps
         name={prompt.name}
         modelParameters={prompt.modelParameters}
       />
-      <Tooltip title="Save Prompt" placement="top-start" arrow>
-        <IconButton aria-label="save" onClick={handleSavePromptOpen}>
-          <SaveIcon color="primary" />
+      <Tooltip title={saveTooltip} placement="top-start" arrow>
+        <IconButton
+          aria-label="save"
+          onClick={handleSavePromptOpen}
+          sx={{
+            ...(isDirty && {
+              backgroundColor: "#f97316",
+              "&:hover": {
+                backgroundColor: "#ea580c",
+              },
+            }),
+          }}
+        >
+          <SaveIcon sx={{ color: isDirty ? "white" : undefined }} color={isDirty ? undefined : "primary"} />
         </IconButton>
       </Tooltip>
       <Tooltip title="Delete Prompt" placement="top-start" arrow>
@@ -99,6 +113,7 @@ const arePropsEqual = (prevProps: ManagementButtonsProps, nextProps: ManagementB
     prevProps.prompt.modelName === nextProps.prompt.modelName &&
     prevProps.prompt.name === nextProps.prompt.name &&
     prevProps.prompt.modelParameters === nextProps.prompt.modelParameters &&
+    prevProps.prompt.isDirty === nextProps.prompt.isDirty &&
     prevProps.setSavePromptOpen === nextProps.setSavePromptOpen
   );
 };
