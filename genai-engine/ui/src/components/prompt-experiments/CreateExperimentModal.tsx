@@ -42,7 +42,7 @@ export interface PromptVersionSelection {
 
 export interface EvaluatorSelection {
   name: string;
-  version: number | "latest";
+  version: number;
 }
 
 export interface ExperimentFormData {
@@ -50,7 +50,7 @@ export interface ExperimentFormData {
   description: string;
   promptVersions: PromptVersionSelection[];
   datasetId: string;
-  datasetVersion: number | "latest";
+  datasetVersion: number | "";
   evaluators: EvaluatorSelection[];
 }
 
@@ -68,7 +68,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     description: "",
     promptVersions: [],
     datasetId: "",
-    datasetVersion: "latest",
+    datasetVersion: "",
     evaluators: [],
   });
 
@@ -91,7 +91,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const [evaluatorVersions, setEvaluatorVersions] = useState<Record<string, LLMEvalsVersionResponse[]>>({});
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [currentEvaluatorName, setCurrentEvaluatorName] = useState<string>("");
-  const [currentEvaluatorVersion, setCurrentEvaluatorVersion] = useState<number | "latest" | "">("latest");
+  const [currentEvaluatorVersion, setCurrentEvaluatorVersion] = useState<number | "">("");
 
   const [errors, setErrors] = useState<Partial<Record<keyof ExperimentFormData | "general", string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -170,7 +170,17 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         datasetId,
         page_size: 100,
       });
-      setDatasetVersions(response.data.versions);
+      const versions = response.data.versions;
+      setDatasetVersions(versions);
+
+      // Set to highest version number
+      if (versions.length > 0) {
+        const maxVersion = Math.max(...versions.map(v => v.version_number));
+        setFormData(prev => ({
+          ...prev,
+          datasetVersion: maxVersion
+        }));
+      }
     } catch (error) {
       console.error("Failed to load dataset versions:", error);
     } finally {
@@ -202,10 +212,17 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         evalName,
         page_size: 100,
       });
+      const versions = response.data.versions.filter(v => !v.deleted_at);
       setEvaluatorVersions(prev => ({
         ...prev,
-        [evalName]: response.data.versions.filter(v => !v.deleted_at),
+        [evalName]: versions,
       }));
+
+      // Set to highest version number
+      if (versions.length > 0) {
+        const maxVersion = Math.max(...versions.map(v => v.version));
+        setCurrentEvaluatorVersion(maxVersion);
+      }
     } catch (error) {
       console.error("Failed to load evaluator versions:", error);
     }
@@ -240,7 +257,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   };
 
   const handleAddEvaluator = async () => {
-    if (!currentEvaluatorName || currentEvaluatorVersion === "") return;
+    if (!currentEvaluatorName || !currentEvaluatorVersion) return;
 
     const alreadyAdded = formData.evaluators.some(
       e => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion
@@ -249,10 +266,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     if (!alreadyAdded) {
       setFormData(prev => ({
         ...prev,
-        evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as (number | "latest") }],
+        evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as number }],
       }));
       setCurrentEvaluatorName("");
-      setCurrentEvaluatorVersion("latest");
+      setCurrentEvaluatorVersion("");
     }
   };
 
@@ -302,13 +319,13 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         description: "",
         promptVersions: [],
         datasetId: "",
-        datasetVersion: "latest",
+        datasetVersion: "",
         evaluators: [],
       });
       setSelectedPromptName("");
       setVisibleOlderVersions([]);
       setCurrentEvaluatorName("");
-      setCurrentEvaluatorVersion("latest");
+      setCurrentEvaluatorVersion("");
       setErrors({});
       onClose();
     } catch (error) {
@@ -326,13 +343,13 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       description: "",
       promptVersions: [],
       datasetId: "",
-      datasetVersion: "latest",
+      datasetVersion: "",
       evaluators: [],
     });
     setSelectedPromptName("");
     setVisibleOlderVersions([]);
     setCurrentEvaluatorName("");
-    setCurrentEvaluatorVersion("latest");
+    setCurrentEvaluatorVersion("");
     setErrors({});
     onClose();
   };
@@ -454,7 +471,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                         <Select
                           value=""
                           onChange={(e) => {
-                            const version = e.target.value as number;
+                            const version = Number(e.target.value);
                             if (version && !visibleOlderVersions.includes(version)) {
                               setVisibleOlderVersions(prev => [...prev, version]);
                               handleAddPromptVersion(version);
@@ -501,7 +518,6 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                   setFormData(prev => ({
                     ...prev,
                     datasetId: value?.id || "",
-                    datasetVersion: "latest"
                   }));
                   if (value?.id) {
                     loadDatasetVersions(value.id);
@@ -540,12 +556,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                   value={formData.datasetVersion}
                   onChange={(e) => setFormData(prev => ({
                     ...prev,
-                    datasetVersion: e.target.value as (number | "latest")
+                    datasetVersion: e.target.value as number
                   }))}
                   label="Version"
                   disabled={!formData.datasetId || loadingDatasetVersions}
+                  displayEmpty={false}
                 >
-                  <MenuItem value="latest">Latest</MenuItem>
                   {datasetVersions.map((version) => (
                     <MenuItem key={version.version_number} value={version.version_number}>
                       v{version.version_number}
@@ -595,11 +611,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                 <InputLabel>Version</InputLabel>
                 <Select
                   value={currentEvaluatorVersion}
-                  onChange={(e) => setCurrentEvaluatorVersion(e.target.value as (number | "latest"))}
+                  onChange={(e) => setCurrentEvaluatorVersion(e.target.value as number)}
                   label="Version"
                   disabled={!currentEvaluatorName}
                 >
-                  <MenuItem value="latest">Latest</MenuItem>
                   {currentEvaluatorName &&
                     evaluatorVersions[currentEvaluatorName]?.map((version) => (
                       <MenuItem key={version.version} value={version.version}>
@@ -612,7 +627,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
               <Button
                 variant="outlined"
                 onClick={handleAddEvaluator}
-                disabled={!currentEvaluatorName || currentEvaluatorVersion === ""}
+                disabled={!currentEvaluatorName || !currentEvaluatorVersion}
                 startIcon={<AddIcon />}
               >
                 Add
@@ -631,7 +646,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                       className="flex items-center justify-between bg-gray-50 p-2 rounded"
                     >
                       <Typography variant="body2">
-                        {evaluator.name} {evaluator.version === "latest" ? "(Latest)" : `v${evaluator.version}`}
+                        {evaluator.name} v{evaluator.version}
                       </Typography>
                       <IconButton
                         size="small"
