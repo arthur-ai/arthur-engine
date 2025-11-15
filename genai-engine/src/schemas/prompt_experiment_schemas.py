@@ -94,12 +94,15 @@ class EvalRef(BaseModel):
     )
 
 
-# Experiment schemas
-class ExperimentSummary(BaseModel):
+# Prompt Experiment schemas
+class PromptExperimentSummary(BaseModel):
     """Summary of a prompt experiment"""
 
     id: str = Field(description="Unique identifier for the experiment")
     name: str = Field(description="Name of the experiment")
+    description: Optional[str] = Field(
+        default=None, description="Description of the experiment"
+    )
     created_at: str = Field(description="ISO timestamp when experiment was created")
     finished_at: Optional[str] = Field(
         default=None, description="ISO timestamp when experiment finished"
@@ -109,10 +112,13 @@ class ExperimentSummary(BaseModel):
     total_rows: int = Field(description="Total number of test rows in the experiment")
 
 
-class CreateExperimentRequest(BaseModel):
+class CreatePromptExperimentRequest(BaseModel):
     """Request to create a new prompt experiment"""
 
     name: str = Field(description="Name for the experiment")
+    description: Optional[str] = Field(
+        default=None, description="Description of the experiment"
+    )
     dataset_ref: DatasetRef = Field(description="Reference to the dataset to use")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
     eval_list: list[EvalRef] = Field(description="List of evaluations to run")
@@ -145,11 +151,14 @@ class SummaryResults(BaseModel):
     )
 
 
-class ExperimentDetail(BaseModel):
-    """Detailed information about an experiment"""
+class PromptExperimentDetail(BaseModel):
+    """Detailed information about a prompt experiment"""
 
     id: str = Field(description="Unique identifier for the experiment")
     name: str = Field(description="Name of the experiment")
+    description: Optional[str] = Field(
+        default=None, description="Description of the experiment"
+    )
     created_at: str = Field(description="ISO timestamp when experiment was created")
     finished_at: Optional[str] = Field(
         default=None, description="ISO timestamp when experiment finished"
@@ -165,14 +174,16 @@ class ExperimentDetail(BaseModel):
 
 
 # Pagination schemas
-class ExperimentListResponse(BaseModel):
-    """Paginated list of experiments"""
+class PromptExperimentListResponse(BaseModel):
+    """Paginated list of prompt experiments"""
 
-    data: list[ExperimentSummary] = Field(description="List of experiment summaries")
+    data: list[PromptExperimentSummary] = Field(
+        description="List of prompt experiment summaries"
+    )
     page: int = Field(description="Current page number (0-indexed)")
     page_size: int = Field(description="Number of items per page")
     total_pages: int = Field(description="Total number of pages")
-    total_count: int = Field(description="Total number of experiments")
+    total_count: int = Field(description="Total number of prompt experiments")
 
 
 # Test case / result schemas

@@ -11,17 +11,17 @@ from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.prompt_experiment_schemas import (
-    CreateExperimentRequest,
+    CreatePromptExperimentRequest,
     EvalExecution,
     EvalRef,
     EvalResult,
     EvalResults,
-    ExperimentDetail,
-    ExperimentListResponse,
     ExperimentStatus,
-    ExperimentSummary,
     InputVariable,
     PromptEvalSummary,
+    PromptExperimentDetail,
+    PromptExperimentListResponse,
+    PromptExperimentSummary,
     PromptOutput,
     PromptResult,
     SummaryResults,
@@ -43,11 +43,13 @@ def _generate_mock_experiment_summary(
     experiment_id: str,
     name: str,
     prompt_name: str,
-) -> ExperimentSummary:
+    description: str | None = None,
+) -> PromptExperimentSummary:
     """Generate mock experiment summary data"""
-    return ExperimentSummary(
+    return PromptExperimentSummary(
         id=experiment_id,
         name=name,
+        description=description,
         created_at="2025-01-15T10:30:00Z",
         finished_at="2025-01-15T11:45:00Z",
         status=ExperimentStatus.COMPLETED,
@@ -58,8 +60,8 @@ def _generate_mock_experiment_summary(
 
 def _generate_mock_experiment_detail(
     experiment_id: str,
-    request: CreateExperimentRequest,
-) -> ExperimentDetail:
+    request: CreatePromptExperimentRequest,
+) -> PromptExperimentDetail:
     """Generate mock experiment detail data"""
     # Generate mock summary results
     prompt_eval_summaries = []
@@ -85,9 +87,10 @@ def _generate_mock_experiment_detail(
 
     summary_results = SummaryResults(prompt_eval_summaries=prompt_eval_summaries)
 
-    return ExperimentDetail(
+    return PromptExperimentDetail(
         id=experiment_id,
         name=request.name,
+        description=request.description,
         created_at="2025-01-15T10:30:00Z",
         finished_at="2025-01-15T11:45:00Z",
         status=ExperimentStatus.COMPLETED,
@@ -169,7 +172,7 @@ def _generate_mock_test_cases(
     "/tasks/{task_id}/prompt_experiments",
     summary="List prompt experiments",
     description="List all prompt experiments for a task with optional filtering and pagination",
-    response_model=ExperimentListResponse,
+    response_model=PromptExperimentListResponse,
     response_model_exclude_none=True,
     tags=["Prompt Experiments"],
 )
@@ -195,6 +198,7 @@ def list_prompt_experiments(
                 experiment_id=f"exp_{i}",
                 name=f"Experiment {i}",
                 prompt_name=f"prompt_v{i}",
+                description=f"Mock description for experiment {i}",
             )
             for i in range(1, 6)
         ]
@@ -209,7 +213,7 @@ def list_prompt_experiments(
         end_idx = start_idx + page_size
         paginated_data = mock_experiments[start_idx:end_idx]
 
-        return ExperimentListResponse(
+        return PromptExperimentListResponse(
             data=paginated_data,
             page=page,
             page_size=page_size,
@@ -224,14 +228,14 @@ def list_prompt_experiments(
     "/tasks/{task_id}/prompt_experiments",
     summary="Create and run a prompt experiment",
     description="Create a new prompt experiment and initiate execution",
-    response_model=ExperimentSummary,
+    response_model=PromptExperimentSummary,
     response_model_exclude_none=True,
     status_code=status.HTTP_200_OK,
     tags=["Prompt Experiments"],
 )
 @permission_checker(permissions=PermissionLevelsEnum.TASK_WRITE.value)
 def create_prompt_experiment(
-    experiment_request: CreateExperimentRequest,
+    experiment_request: CreatePromptExperimentRequest,
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -252,6 +256,7 @@ def create_prompt_experiment(
             experiment_id=experiment_id,
             name=experiment_request.name,
             prompt_name=experiment_request.prompt_ref.name,
+            description=experiment_request.description,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -263,7 +268,7 @@ def create_prompt_experiment(
     "/tasks/{task_id}/prompt_experiments/{experiment_id}",
     summary="Get prompt experiment details",
     description="Get detailed information about a specific prompt experiment including summary results",
-    response_model=ExperimentDetail,
+    response_model=PromptExperimentDetail,
     response_model_exclude_none=True,
     tags=["Prompt Experiments"],
 )
@@ -285,8 +290,9 @@ def get_prompt_experiment(
     """
     try:
         # Mock data - in production, this would query the database
-        mock_request = CreateExperimentRequest(
+        mock_request = CreatePromptExperimentRequest(
             name="Sample Experiment",
+            description="This is a sample experiment to test prompt variations",
             dataset_ref={"id": "dataset_123", "version": "v1"},
             prompt_ref={
                 "name": "test_prompt",
