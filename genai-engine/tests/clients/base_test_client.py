@@ -66,8 +66,10 @@ from schemas.request_schemas import (
     ApiKeyRagAuthenticationConfigRequest,
     ApiKeyRagAuthenticationConfigUpdateRequest,
     CreateAgenticPromptRequest,
+    DatasetTransformUpdateRequest,
     DatasetUpdateRequest,
     NewDatasetRequest,
+    NewDatasetTransformRequest,
     NewDatasetVersionRequest,
     NewDatasetVersionRowRequest,
     NewDatasetVersionUpdateRowRequest,
@@ -90,7 +92,9 @@ from schemas.request_schemas import (
 from schemas.response_schemas import (
     ConnectionCheckResult,
     DatasetResponse,
+    DatasetTransformResponse,
     DatasetVersionResponse,
+    ListDatasetTransformsResponse,
     ListDatasetVersionsResponse,
     ListRagSearchSettingConfigurationsResponse,
     ListRagSearchSettingConfigurationVersionsResponse,
@@ -997,6 +1001,118 @@ class GenaiEngineTestClientBase(httpx.Client):
     def delete_dataset(self, dataset_id: str) -> int:
         resp = self.base_client.delete(
             f"/api/v2/datasets/{dataset_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return resp.status_code
+
+    def create_transform(
+        self,
+        dataset_id: str,
+        name: str,
+        definition: dict,
+        description: str = None,
+    ) -> tuple[int, DatasetTransformResponse]:
+        request = NewDatasetTransformRequest(
+            name=name,
+            description=description,
+            definition=definition,
+        )
+
+        resp = self.base_client.post(
+            f"/api/v2/datasets/{dataset_id}/transforms",
+            json=request.model_dump(),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetTransformResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def get_transform(
+        self,
+        dataset_id: str,
+        transform_id: str,
+    ) -> tuple[int, DatasetTransformResponse]:
+        resp = self.base_client.get(
+            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetTransformResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def list_transforms(
+        self,
+        dataset_id: str,
+    ) -> tuple[int, ListDatasetTransformsResponse]:
+        resp = self.base_client.get(
+            f"/api/v2/datasets/{dataset_id}/transforms",
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                ListDatasetTransformsResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def update_transform(
+        self,
+        dataset_id: str,
+        transform_id: str,
+        name: str = None,
+        description: str = None,
+        definition: dict = None,
+    ) -> tuple[int, DatasetTransformResponse]:
+        request = DatasetTransformUpdateRequest(
+            name=name,
+            description=description,
+            definition=definition,
+        )
+
+        resp = self.base_client.put(
+            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
+            json=request.model_dump(exclude_none=True),
+            headers=self.authorized_user_api_key_headers,
+        )
+
+        log_response(resp)
+
+        return (
+            resp.status_code,
+            (
+                DatasetTransformResponse.model_validate(resp.json())
+                if resp.status_code == 200
+                else None
+            ),
+        )
+
+    def delete_transform(self, dataset_id: str, transform_id: str) -> int:
+        resp = self.base_client.delete(
+            f"/api/v2/datasets/{dataset_id}/transforms/{transform_id}",
             headers=self.authorized_user_api_key_headers,
         )
 

@@ -3,6 +3,11 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/15/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'variables' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'variables' to the response with the '200' status
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'variables' to the response with the '200' status

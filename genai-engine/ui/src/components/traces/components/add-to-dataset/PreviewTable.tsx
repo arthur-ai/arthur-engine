@@ -1,5 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import SaveIcon from "@mui/icons-material/Save";
 import { Button, ButtonGroup, Typography } from "@mui/material";
 import { Stack } from "@mui/material";
 import { useField } from "@tanstack/react-form";
@@ -15,7 +16,10 @@ import { Drawer } from "@/components/common/Drawer";
 
 export const PreviewTable = withForm({
   ...addToDatasetFormOptions,
-  render: function Render({ form }) {
+  props: {} as {
+    onSaveTransform: () => void;
+  },
+  render: function Render({ form, onSaveTransform }) {
     const field = useField({ form, name: "columns" as const });
 
     const hasData = useMemo(() => field.state.value.some((entry) => !!entry.value), [field.state.value]);
@@ -31,6 +35,15 @@ export const PreviewTable = withForm({
             Preview: 1 row will be added
           </Typography>
           <ButtonGroup size="small">
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<SaveIcon />}
+              onClick={onSaveTransform}
+              disabled={!hasData}
+            >
+              Save as Transform
+            </Button>
             <Drawer.Close render={<Button variant="outlined" color="primary" startIcon={<CloseIcon />} />}>Cancel</Drawer.Close>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} type="submit">
               Add Row
