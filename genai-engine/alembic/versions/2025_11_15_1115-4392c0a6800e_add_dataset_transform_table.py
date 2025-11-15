@@ -1,7 +1,7 @@
 """add_dataset_transform_table
 
 Revision ID: 4392c0a6800e
-Revises: 52c0a0da3ef1
+Revises: 7c2dbe560050
 Create Date: 2025-11-15 11:15:20.246124
 
 """
@@ -13,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "4392c0a6800e"
-down_revision = "52c0a0da3ef1"
+down_revision = "7c2dbe560050"
 branch_labels = None
 depends_on = None
 
