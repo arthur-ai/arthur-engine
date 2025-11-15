@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+
 # 11/13/2025
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'
