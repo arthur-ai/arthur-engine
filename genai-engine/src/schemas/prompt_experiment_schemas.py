@@ -228,7 +228,7 @@ class PromptResult(BaseModel):
 
     name: str = Field(description="Name of the prompt")
     version: str = Field(description="Version of the prompt")
-    rendered_input: str = Field(description="Rendered input to the prompt")
+    rendered_prompt: str = Field(description="Prompt with variables replaced")
     output: PromptOutput = Field(description="Output from the prompt")
     evals: list[EvalExecution] = Field(
         description="Evaluation results for this prompt output"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSON
@@ -9,9 +9,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db_models.base import Base
 from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
-
-if TYPE_CHECKING:
-    from db_models.task_models import DatabaseTask
 
 
 class DatabasePromptExperiment(Base):

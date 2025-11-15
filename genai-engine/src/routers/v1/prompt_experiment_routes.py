@@ -2,32 +2,21 @@ from typing import Annotated
 from uuid import uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_validated_agentic_task
+from repositories.prompt_experiment_repository import PromptExperimentRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
-    EvalExecution,
-    EvalRef,
-    EvalResult,
-    EvalResults,
-    ExperimentStatus,
-    InputVariable,
-    PromptEvalSummary,
     PromptExperimentDetail,
     PromptExperimentListResponse,
     PromptExperimentSummary,
-    PromptOutput,
-    PromptResult,
-    SummaryResults,
-    TestCase,
     TestCaseListResponse,
-    TestCaseStatus,
 )
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
@@ -36,136 +25,6 @@ prompt_experiment_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
-
-
-# Mock data generators for the endpoints
-def _generate_mock_experiment_summary(
-    experiment_id: str,
-    name: str,
-    prompt_name: str,
-    description: str | None = None,
-) -> PromptExperimentSummary:
-    """Generate mock experiment summary data"""
-    return PromptExperimentSummary(
-        id=experiment_id,
-        name=name,
-        description=description,
-        created_at="2025-01-15T10:30:00Z",
-        finished_at="2025-01-15T11:45:00Z",
-        status=ExperimentStatus.COMPLETED,
-        prompt_name=prompt_name,
-        total_rows=100,
-    )
-
-
-def _generate_mock_experiment_detail(
-    experiment_id: str,
-    request: CreatePromptExperimentRequest,
-) -> PromptExperimentDetail:
-    """Generate mock experiment detail data"""
-    # Generate mock summary results
-    prompt_eval_summaries = []
-    for version in request.prompt_ref.version_list:
-        eval_results = []
-        for eval_ref in request.eval_list:
-            eval_results.append(
-                EvalResult(
-                    eval_name=eval_ref.name,
-                    eval_version=eval_ref.version,
-                    pass_count=85,
-                    total_count=100,
-                )
-            )
-
-        prompt_eval_summaries.append(
-            PromptEvalSummary(
-                prompt_name=request.prompt_ref.name,
-                prompt_version=version,
-                eval_results=eval_results,
-            )
-        )
-
-    summary_results = SummaryResults(prompt_eval_summaries=prompt_eval_summaries)
-
-    return PromptExperimentDetail(
-        id=experiment_id,
-        name=request.name,
-        description=request.description,
-        created_at="2025-01-15T10:30:00Z",
-        finished_at="2025-01-15T11:45:00Z",
-        status=ExperimentStatus.COMPLETED,
-        prompt_name=request.prompt_ref.name,
-        dataset_ref=request.dataset_ref,
-        prompt_ref=request.prompt_ref,
-        eval_list=request.eval_list,
-        summary_results=summary_results,
-    )
-
-
-def _generate_mock_test_cases(
-    prompt_versions: list[str],
-    eval_refs: list[EvalRef],
-    num_cases: int = 10,
-) -> list[TestCase]:
-    """Generate mock test case data"""
-    test_cases = []
-
-    for i in range(num_cases):
-        # Generate mock input variables
-        input_variables = [
-            InputVariable(variable_name="query", value=f"Sample query {i+1}"),
-            InputVariable(variable_name="context", value=f"Sample context {i+1}"),
-        ]
-
-        # Generate mock prompt results for each version
-        prompt_results = []
-        for version in prompt_versions:
-            # Generate mock evals
-            evals = []
-            for eval_ref in eval_refs:
-                evals.append(
-                    EvalExecution(
-                        eval_name=eval_ref.name,
-                        eval_version=eval_ref.version,
-                        eval_input_variables=[
-                            InputVariable(
-                                variable_name="response",
-                                value=f"Sample response {i+1}",
-                            )
-                        ],
-                        eval_results=EvalResults(
-                            score=0.85,
-                            explanation="Response meets quality criteria",
-                            cost=0.002,
-                        ),
-                    )
-                )
-
-            prompt_results.append(
-                PromptResult(
-                    name="test_prompt",
-                    version=version,
-                    rendered_input=f"Rendered prompt for test case {i+1}",
-                    output=PromptOutput(
-                        content=f"Generated response for test case {i+1}",
-                        tool_calls=[],
-                        cost="0.005",
-                    ),
-                    evals=evals,
-                )
-            )
-
-        test_cases.append(
-            TestCase(
-                status=TestCaseStatus.COMPLETED,
-                retries=0,
-                dataset_row_id=f"row_{i+1}",
-                prompt_input_variables=input_variables,
-                prompt_results=prompt_results,
-            )
-        )
-
-    return test_cases
 
 
 @prompt_experiment_routes.get(
@@ -192,29 +51,18 @@ def list_prompt_experiments(
     Returns paginated list of experiment summaries.
     """
     try:
-        # Mock data - in production, this would query the database
-        mock_experiments = [
-            _generate_mock_experiment_summary(
-                experiment_id=f"exp_{i}",
-                name=f"Experiment {i}",
-                prompt_name=f"prompt_v{i}",
-                description=f"Mock description for experiment {i}",
-            )
-            for i in range(1, 6)
-        ]
+        repo = PromptExperimentRepository(db_session)
+        experiments, total_count = repo.list_experiments(
+            task_id=task.id,
+            pagination_params=pagination_parameters,
+        )
 
         page = pagination_parameters.page
         page_size = pagination_parameters.page_size
-
-        total_count = len(mock_experiments)
-        total_pages = (total_count + page_size - 1) // page_size
-
-        start_idx = page * page_size
-        end_idx = start_idx + page_size
-        paginated_data = mock_experiments[start_idx:end_idx]
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
 
         return PromptExperimentListResponse(
-            data=paginated_data,
+            data=experiments,
             page=page,
             page_size=page_size,
             total_pages=total_pages,
@@ -250,14 +98,17 @@ def create_prompt_experiment(
         # Generate a unique experiment ID
         experiment_id = str(uuid4())
 
-        # Mock response - in production, this would create the experiment in the database
-        # and kick off async execution
-        return _generate_mock_experiment_summary(
+        repo = PromptExperimentRepository(db_session)
+        experiment = repo.create_experiment(
+            task_id=task.id,
             experiment_id=experiment_id,
-            name=experiment_request.name,
-            prompt_name=experiment_request.prompt_ref.name,
-            description=experiment_request.description,
+            request=experiment_request,
         )
+
+        # TODO: Kick off async execution of the experiment
+        # This would typically involve queueing a background job
+
+        return experiment
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -289,42 +140,10 @@ def get_prompt_experiment(
     Returns full experiment configuration and summary results across all test cases.
     """
     try:
-        # Mock data - in production, this would query the database
-        mock_request = CreatePromptExperimentRequest(
-            name="Sample Experiment",
-            description="This is a sample experiment to test prompt variations",
-            dataset_ref={"id": "dataset_123", "version": "v1"},
-            prompt_ref={
-                "name": "test_prompt",
-                "version_list": ["v1", "v2"],
-                "variable_mapping": [
-                    {
-                        "variable_name": "query",
-                        "source": {
-                            "type": "dataset_column",
-                            "dataset_column": {"name": "user_query"},
-                        },
-                    }
-                ],
-            },
-            eval_list=[
-                {
-                    "name": "relevance_eval",
-                    "version": "v1",
-                    "variable_mapping": [
-                        {
-                            "variable_name": "response",
-                            "source": {
-                                "type": "experiment_output",
-                                "experiment_output": {"json_path": "$.content"},
-                            },
-                        }
-                    ],
-                }
-            ],
-        )
-
-        return _generate_mock_experiment_detail(experiment_id, mock_request)
+        repo = PromptExperimentRepository(db_session)
+        return repo.get_experiment(experiment_id)
+    except HTTPException:
+        raise
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
@@ -364,39 +183,18 @@ def get_experiment_test_cases(
     and evaluation results.
     """
     try:
-        # Mock data - in production, this would query the database
-        mock_test_cases = _generate_mock_test_cases(
-            prompt_versions=["v1", "v2"],
-            eval_refs=[
-                EvalRef(
-                    name="relevance_eval",
-                    version="v1",
-                    variable_mapping=[
-                        {
-                            "variable_name": "response",
-                            "source": {
-                                "type": "experiment_output",
-                                "experiment_output": {"json_path": "$.content"},
-                            },
-                        }
-                    ],
-                )
-            ],
-            num_cases=25,
+        repo = PromptExperimentRepository(db_session)
+        test_cases, total_count = repo.get_test_cases(
+            experiment_id=experiment_id,
+            pagination_params=pagination_parameters,
         )
 
         page = pagination_parameters.page
         page_size = pagination_parameters.page_size
-
-        total_count = len(mock_test_cases)
-        total_pages = (total_count + page_size - 1) // page_size
-
-        start_idx = page * page_size
-        end_idx = start_idx + page_size
-        paginated_data = mock_test_cases[start_idx:end_idx]
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
 
         return TestCaseListResponse(
-            data=paginated_data,
+            data=test_cases,
             page=page,
             page_size=page_size,
             total_pages=total_pages,
@@ -434,9 +232,11 @@ def delete_prompt_experiment(
     This operation cannot be undone.
     """
     try:
-        # Mock deletion - in production, this would delete from the database
-        # For now, just return success
+        repo = PromptExperimentRepository(db_session)
+        repo.delete_experiment(experiment_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        raise
     except ValueError as e:
         if "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail=str(e))
