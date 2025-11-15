@@ -99,9 +99,9 @@ const OutputField = ({ promptId, running, runResponse, responseFormat, dialogOpe
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
             Tool Calls
           </Typography>
-          <div style={{ minHeight: "200px", maxHeight: "400px", width: "100%" }}>
+          <div style={{ height: "300px", width: "100%" }}>
             <Editor
-              height="100%"
+              height="300px"
               defaultLanguage="json"
               theme="light"
               value={JSON.stringify(runResponse.tool_calls, null, 2)}

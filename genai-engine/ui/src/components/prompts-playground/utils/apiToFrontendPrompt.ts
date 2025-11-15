@@ -329,6 +329,43 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
   const inputMessages = extractInputMessages(spanData.raw_data);
   const outputMessages = extractOutputMessages(spanData.raw_data);
 
+  // Filter out the final assistant response with tool_calls from input messages
+  // because it will be in the output messages. Tool response messages that follow
+  // should also be excluded if they're responding to the final assistant message.
+  const filteredInputMessages = inputMessages.filter((msg, index) => {
+    // If this is an assistant message with tool_calls, check if it's the last one
+    if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+      // Check if this assistant message is followed only by tool responses
+      const remainingMessages = inputMessages.slice(index + 1);
+      const allToolResponses = remainingMessages.every((m) => m.role === "tool");
+
+      // If followed only by tool responses (or nothing), this is likely the final turn
+      // that's being responded to, so exclude it and its tool responses
+      if (allToolResponses) {
+        return false;
+      }
+    }
+
+    // If this is a tool message, check if it's responding to an excluded assistant message
+    if (msg.role === "tool") {
+      // Find the most recent assistant message with tool_calls before this
+      for (let i = index - 1; i >= 0; i--) {
+        const prevMsg = inputMessages[i];
+        if (prevMsg.role === "assistant" && prevMsg.tool_calls && prevMsg.tool_calls.length > 0) {
+          // Check if that assistant message will be excluded
+          const remainingAfterAssistant = inputMessages.slice(i + 1);
+          const allToolResponsesAfter = remainingAfterAssistant.every((m) => m.role === "tool");
+          if (allToolResponsesAfter) {
+            return false; // Exclude this tool message too
+          }
+          break;
+        }
+      }
+    }
+
+    return true;
+  });
+
   // Create runResponse from the first output message
   const assistantMessage = outputMessages.length > 0 ? outputMessages[0] : null;
   const runResponse = assistantMessage
@@ -339,7 +376,7 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
       }
     : null;
 
-  const tools = extractTools(inputMessages, spanData.raw_data);
+  const tools = extractTools(filteredInputMessages, spanData.raw_data);
 
   // Create the prompt object
   const prompt: PromptType = {
@@ -349,7 +386,7 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
     created_at: spanData.created_at,
     modelName,
     modelProvider,
-    messages: inputMessages,
+    messages: filteredInputMessages,
     modelParameters,
     runResponse: runResponse,
     responseFormat: undefined,
