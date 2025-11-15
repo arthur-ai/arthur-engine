@@ -16,6 +16,8 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import React, { useEffect, useState } from "react";
 import { useApi } from "@/hooks/useApi";
 
@@ -138,9 +140,39 @@ interface TestCaseDetailModalProps {
   testCase: TestCase | null;
   open: boolean;
   onClose: () => void;
+  currentIndex: number;
+  totalCount: number;
+  onPrevious: () => void;
+  onNext: () => void;
 }
 
-const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, open, onClose }) => {
+const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
+  testCase,
+  open,
+  onClose,
+  currentIndex,
+  totalCount,
+  onPrevious,
+  onNext,
+}) => {
+  // Add keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        onPrevious();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        onNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onPrevious, onNext]);
+
   if (!testCase) return null;
 
   return (
@@ -154,9 +186,27 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({ testCase, ope
       >
         {/* Modal Header */}
         <Box className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
-          <Typography variant="h6" className="font-semibold text-gray-900">
-            Test Case Details
-          </Typography>
+          <Box className="flex items-center gap-3">
+            <IconButton
+              onClick={onPrevious}
+              size="small"
+              disabled={currentIndex <= 0}
+              className="hover:bg-gray-100"
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" className="font-semibold text-gray-900">
+              Test Case {currentIndex + 1} of {totalCount}
+            </Typography>
+            <IconButton
+              onClick={onNext}
+              size="small"
+              disabled={currentIndex >= totalCount - 1}
+              className="hover:bg-gray-100"
+            >
+              <ArrowForwardIcon />
+            </IconButton>
+          </Box>
           <IconButton onClick={onClose} size="small">
             <CloseIcon />
           </IconButton>
@@ -394,19 +444,58 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageSize] = useState(20);
-  const [selectedTestCase, setSelectedTestCase] = useState<TestCase | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize] = useState(5);
+  const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
+  const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
 
-  const handleRowClick = (testCase: TestCase) => {
-    setSelectedTestCase(testCase);
+  // Effect to handle index after page load
+  useEffect(() => {
+    if (pendingIndexAfterPageLoad && testCases.length > 0) {
+      if (pendingIndexAfterPageLoad === "first") {
+        setSelectedTestCaseIndex(0);
+      } else if (pendingIndexAfterPageLoad === "last") {
+        setSelectedTestCaseIndex(testCases.length - 1);
+      }
+      setPendingIndexAfterPageLoad(null);
+    }
+  }, [testCases, pendingIndexAfterPageLoad]);
+
+  const handleRowClick = (index: number) => {
+    setSelectedTestCaseIndex(index);
     setModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setModalOpen(false);
-    setSelectedTestCase(null);
+    setSelectedTestCaseIndex(-1);
   };
+
+  const handlePrevious = async () => {
+    if (selectedTestCaseIndex > 0) {
+      // Navigate within current page
+      setSelectedTestCaseIndex(selectedTestCaseIndex - 1);
+    } else if (page > 1) {
+      // Load previous page and go to last item
+      setPendingIndexAfterPageLoad("last");
+      setPage(page - 1);
+    }
+  };
+
+  const handleNext = async () => {
+    if (selectedTestCaseIndex < testCases.length - 1) {
+      // Navigate within current page
+      setSelectedTestCaseIndex(selectedTestCaseIndex + 1);
+    } else if (page < totalPages) {
+      // Load next page and go to first item
+      setPendingIndexAfterPageLoad("first");
+      setPage(page + 1);
+    }
+  };
+
+  // Calculate global index for display
+  const globalIndex = (page - 1) * pageSize + selectedTestCaseIndex;
 
   // Extract unique variable columns and eval columns from test cases
   const variableColumns = React.useMemo(() => {
@@ -453,6 +542,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
       // });
       // setTestCases(response.data.data);
       // setTotalPages(response.data.total_pages);
+      // setTotalCount(response.data.total_count);
 
       // Mock data for now
       const mockTestCases: TestCase[] = Array.from({ length: 5 }, (_, i) => ({
@@ -641,6 +731,7 @@ Return your response in the following JSON format:
 
       setTestCases(mockTestCases);
       setTotalPages(5);
+      setTotalCount(100); // Mock total count
     } catch (err) {
       console.error("Failed to load test cases:", err);
       setError("Failed to load experiment results");
@@ -711,7 +802,7 @@ Return your response in the following JSON format:
                 testCase={testCase}
                 variableColumns={variableColumns}
                 evalColumns={evalColumns}
-                onClick={() => handleRowClick(testCase)}
+                onClick={() => handleRowClick(index)}
               />
             ))}
           </TableBody>
@@ -730,9 +821,13 @@ Return your response in the following JSON format:
       )}
 
       <TestCaseDetailModal
-        testCase={selectedTestCase}
+        testCase={selectedTestCaseIndex >= 0 ? testCases[selectedTestCaseIndex] : null}
         open={modalOpen}
         onClose={handleCloseModal}
+        currentIndex={globalIndex}
+        totalCount={totalCount}
+        onPrevious={handlePrevious}
+        onNext={handleNext}
       />
     </Box>
   );
