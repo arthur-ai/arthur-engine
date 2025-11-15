@@ -10,7 +10,7 @@ from litellm import (
 
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.enums import OpenAIMessageType
+from schemas.enums import OpenAIMessageType, ToolChoiceEnum
 from schemas.llm_schemas import LLMResponseFormat, OpenAIMessage
 from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
 from schemas.response_schemas import AgenticPromptRunResponse
