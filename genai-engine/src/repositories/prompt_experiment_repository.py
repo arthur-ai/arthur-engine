@@ -8,10 +8,14 @@ from fastapi import HTTPException
 from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
+from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.dataset_models import DatabaseDataset, DatabaseDatasetVersion
+from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
 )
+from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
@@ -121,6 +125,59 @@ class PromptExperimentRepository:
             prompt_results=prompt_results,
         )
 
+    def _validate_experiment_references(
+        self,
+        task_id: str,
+        request: CreatePromptExperimentRequest,
+    ) -> None:
+        """Validate that all referenced resources exist"""
+        # Validate task exists
+        task = self.db_session.query(DatabaseTask).filter(
+            DatabaseTask.id == task_id
+        ).first()
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        # Validate dataset and version exist
+        dataset = self.db_session.query(DatabaseDataset).filter(
+            DatabaseDataset.id == request.dataset_ref.id
+        ).first()
+        if not dataset:
+            raise ValueError(f"Dataset {request.dataset_ref.id} not found")
+
+        dataset_version = self.db_session.query(DatabaseDatasetVersion).filter(
+            DatabaseDatasetVersion.dataset_id == request.dataset_ref.id,
+            DatabaseDatasetVersion.version_number == request.dataset_ref.version,
+        ).first()
+        if not dataset_version:
+            raise ValueError(
+                f"Dataset version {request.dataset_ref.version} not found for dataset {request.dataset_ref.id}"
+            )
+
+        # Validate prompt versions exist
+        for version in request.prompt_ref.version_list:
+            prompt = self.db_session.query(DatabaseAgenticPrompt).filter(
+                DatabaseAgenticPrompt.task_id == task_id,
+                DatabaseAgenticPrompt.name == request.prompt_ref.name,
+                DatabaseAgenticPrompt.version == version,
+            ).first()
+            if not prompt:
+                raise ValueError(
+                    f"Prompt '{request.prompt_ref.name}' version {version} not found for task {task_id}"
+                )
+
+        # Validate eval versions exist
+        for eval_ref in request.eval_list:
+            llm_eval = self.db_session.query(DatabaseLLMEval).filter(
+                DatabaseLLMEval.task_id == task_id,
+                DatabaseLLMEval.name == eval_ref.name,
+                DatabaseLLMEval.version == eval_ref.version,
+            ).first()
+            if not llm_eval:
+                raise ValueError(
+                    f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
+                )
+
     def create_experiment(
         self,
         task_id: str,
@@ -128,6 +185,9 @@ class PromptExperimentRepository:
         request: CreatePromptExperimentRequest,
     ) -> PromptExperimentSummary:
         """Create a new experiment"""
+        # Validate all references exist
+        self._validate_experiment_references(task_id, request)
+
         db_experiment = DatabasePromptExperiment(
             id=experiment_id,
             task_id=task_id,
@@ -136,7 +196,7 @@ class PromptExperimentRepository:
             status=ExperimentStatus.QUEUED,
             prompt_name=request.prompt_ref.name,
             prompt_versions=request.prompt_ref.version_list,
-            dataset_id=request.dataset_ref.id,
+            dataset_id=str(request.dataset_ref.id),
             dataset_version=request.dataset_ref.version,
             prompt_variable_mapping=[
                 mapping.model_dump() for mapping in request.prompt_ref.variable_mapping

@@ -53,13 +53,13 @@ class DatabasePromptExperiment(Base):
 
     # Prompt being tested
     prompt_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    prompt_versions: Mapped[List[str]] = mapped_column(
-        ARRAY(String), nullable=False
+    prompt_versions: Mapped[List[int]] = mapped_column(
+        ARRAY(Integer), nullable=False
     )  # List of versions to test
 
     # Dataset reference
     dataset_id: Mapped[str] = mapped_column(String, nullable=False)
-    dataset_version: Mapped[str] = mapped_column(String, nullable=False)
+    dataset_version: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Variable mappings stored as JSON
     # Structure: [{"variable_name": str, "source": {"type": str, "dataset_column": {...}, ...}}]

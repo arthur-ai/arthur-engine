@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Annotated, Literal, Optional, Union
+from uuid import UUID
 
 from pydantic import BaseModel, Discriminator, Field, Tag
 
@@ -81,15 +82,15 @@ class VariableMapping(BaseModel):
 class DatasetRef(BaseModel):
     """Reference to a dataset and version"""
 
-    id: str = Field(description="Dataset ID")
-    version: str = Field(description="Dataset version")
+    id: UUID = Field(description="Dataset ID")
+    version: int = Field(description="Dataset version number")
 
 
 class PromptRef(BaseModel):
     """Reference to a prompt configuration"""
 
     name: str = Field(description="Name of the prompt")
-    version_list: list[str] = Field(
+    version_list: list[int] = Field(
         description="List of prompt versions to test in the experiment"
     )
     variable_mapping: list[VariableMapping] = Field(
@@ -101,7 +102,7 @@ class EvalRef(BaseModel):
     """Reference to an evaluation configuration"""
 
     name: str = Field(description="Name of the evaluation")
-    version: str = Field(description="Version of the evaluation")
+    version: int = Field(description="Version of the evaluation")
     variable_mapping: list[VariableMapping] = Field(
         description="Mapping of eval variables to data sources"
     )
