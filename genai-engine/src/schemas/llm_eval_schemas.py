@@ -20,8 +20,8 @@ class LLMEval(BaseModel):
     instructions: str = Field(description="Instructions for the llm eval")
     min_score: int = Field(default=0, description="Minimum score for the llm eval")
     max_score: int = Field(default=1, description="Maximum score for the llm eval")
-    variables: Optional[List[str]] = Field(
-        None,
+    variables: List[str] = Field(
+        default_factory=list,
         description="List of variable names for the llm eval",
     )
     config: Optional[LLMBaseConfigSettings] = Field(

@@ -24,11 +24,21 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "agentic_prompts",
-        sa.Column("variables", postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "variables",
+            postgresql.JSON(astext_type=sa.Text()),
+            nullable=False,
+            server_default="[]",
+        ),
     )
     op.add_column(
         "llm_evals",
-        sa.Column("variables", postgresql.JSON(astext_type=sa.Text()), nullable=True),
+        sa.Column(
+            "variables",
+            postgresql.JSON(astext_type=sa.Text()),
+            nullable=False,
+            server_default="[]",
+        ),
     )
 
     connection = op.get_bind()

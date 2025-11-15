@@ -9054,17 +9054,10 @@
                         "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
                     "variables": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
                         "title": "Variables",
                         "description": "List of variable names for the agentic prompt"
                     },
@@ -11517,17 +11510,10 @@
                         "default": 1
                     },
                     "variables": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
                         "title": "Variables",
                         "description": "List of variable names for the llm eval"
                     },

@@ -28,7 +28,12 @@ class DatabaseLLMEval(Base):
 
     # Prompt Content - stored as JSON for flexibility
     instructions: Mapped[str] = mapped_column(String, nullable=False)
-    variables: Mapped[Optional[List[str]]] = mapped_column(JSON, nullable=True)
+    variables: Mapped[List[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default="[]",
+        default=list,
+    )
     min_score: Mapped[int] = mapped_column(Integer, nullable=False)
     max_score: Mapped[int] = mapped_column(Integer, nullable=False)
 
