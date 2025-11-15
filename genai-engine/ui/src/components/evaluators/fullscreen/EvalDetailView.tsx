@@ -80,14 +80,6 @@ const EvalDetailView = ({ evalData, isLoading, error, evalName, version, onClose
           </Box>
           <Box>
             <Typography variant="caption" color="text.secondary">
-              Score Range
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 500 }}>
-              {evalData.min_score ?? 0} - {evalData.max_score ?? 1}
-            </Typography>
-          </Box>
-          <Box>
-            <Typography variant="caption" color="text.secondary">
               Created At
             </Typography>
             <Typography variant="body1" sx={{ fontWeight: 500 }}>

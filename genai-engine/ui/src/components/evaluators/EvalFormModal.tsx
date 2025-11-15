@@ -24,8 +24,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider | "">("");
   const [modelName, setModelName] = useState("");
-  const [minScore, setMinScore] = useState<number>(0);
-  const [maxScore, setMaxScore] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
@@ -137,8 +135,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         instructions: instructions.trim(),
         model_provider: modelProvider as ModelProvider,
         model_name: modelName.trim(),
-        min_score: minScore,
-        max_score: maxScore,
       };
 
       await onSubmit(evalName.trim(), data);
@@ -148,8 +144,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setInstructions("");
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
-      setMinScore(0);
-      setMaxScore(1);
       setError(null);
     } catch (err) {
       console.error("Failed to create eval:", err);
@@ -163,8 +157,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
       setInstructions("");
       setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
       setModelName("");
-      setMinScore(0);
-      setMaxScore(1);
       setError(null);
       onClose();
     }
@@ -260,40 +252,6 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   renderInput={(params) => (
                     <TextField {...params} label="Select Model" variant="outlined" size="small" sx={{ backgroundColor: "white" }} />
                   )}
-                />
-              </FormControl>
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <FormControl fullWidth>
-                <FormLabel>
-                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                    Min Score
-                  </Typography>
-                </FormLabel>
-                <TextField
-                  type="number"
-                  value={minScore}
-                  onChange={(e) => setMinScore(Number(e.target.value))}
-                  disabled={isLoading}
-                  size="small"
-                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                />
-              </FormControl>
-
-              <FormControl fullWidth>
-                <FormLabel>
-                  <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                    Max Score
-                  </Typography>
-                </FormLabel>
-                <TextField
-                  type="number"
-                  value={maxScore}
-                  onChange={(e) => setMaxScore(Number(e.target.value))}
-                  disabled={isLoading}
-                  size="small"
-                  slotProps={{ htmlInput: { min: 0, step: 1 } }}
                 />
               </FormControl>
             </Box>
