@@ -24,6 +24,7 @@ from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
+    DatasetColumnVariableSource,
     DatasetRef,
     EvalRef,
     ExperimentStatus,
@@ -34,7 +35,6 @@ from schemas.prompt_experiment_schemas import (
     PromptResult,
     SummaryResults,
     TestCase,
-    VariableMapping,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,9 +77,9 @@ class PromptExperimentRepository:
         self, db_experiment: DatabasePromptExperiment
     ) -> PromptExperimentDetail:
         """Convert database experiment to detail schema"""
-        # Convert JSON variable mappings to Pydantic models
-        variable_mappings = [
-            VariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
+        # Convert JSON prompt variable mappings to Pydantic models
+        prompt_variable_mappings = [
+            DatasetColumnVariableSource.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
         ]
 
         # Convert JSON eval configs to Pydantic models
@@ -103,7 +103,7 @@ class PromptExperimentRepository:
             prompt_ref=PromptRef(
                 name=db_experiment.prompt_name,
                 version_list=db_experiment.prompt_versions,
-                variable_mapping=variable_mappings,
+                variable_mapping=prompt_variable_mappings,
             ),
             eval_list=eval_list,
             summary_results=summary_results,
@@ -184,6 +184,8 @@ class PromptExperimentRepository:
                 raise ValueError(
                     f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
                 )
+        
+        # TODO validate that the variable mapping is valid for all the referenced prompts and evals
 
     def _create_test_cases_for_dataset(
         self,

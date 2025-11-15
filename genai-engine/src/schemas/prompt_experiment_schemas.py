@@ -64,7 +64,7 @@ class ExperimentOutputVariableSource(BaseModel):
     )
 
 
-# Union type with discriminator
+# Union type with discriminator (used for eval mappings)
 VariableSource = Annotated[
     Union[DatasetColumnVariableSource, ExperimentOutputVariableSource],
     Discriminator("type"),
@@ -72,7 +72,7 @@ VariableSource = Annotated[
 
 
 class VariableMapping(BaseModel):
-    """Mapping of a variable to its source"""
+    """Mapping of a variable to its source (used for eval mappings)"""
 
     variable_name: str = Field(description="Name of the variable")
     source: VariableSource = Field(description="Source of the variable value")
@@ -93,8 +93,8 @@ class PromptRef(BaseModel):
     version_list: list[int] = Field(
         description="List of prompt versions to test in the experiment"
     )
-    variable_mapping: list[VariableMapping] = Field(
-        description="Mapping of prompt variables to data sources"
+    variable_mapping: list[DatasetColumnVariableSource] = Field(
+        description="Mapping of prompt variables to dataset columns"
     )
 
 
