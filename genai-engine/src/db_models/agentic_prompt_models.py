@@ -42,6 +42,12 @@ class DatabaseAgenticPrompt(SoftDeletedModel, Base):
     # Prompt Content - stored as JSON for flexibility
     messages: Mapped[List[Dict[str, Any]]] = mapped_column(JSON, nullable=False)
     tools: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True)
+    variables: Mapped[List[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        server_default="[]",
+        default=list,
+    )
 
     # prompt configurations
     config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)

@@ -9010,178 +9010,14 @@
             },
             "AgenticPrompt": {
                 "properties": {
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timeout",
-                        "description": "Request timeout in seconds"
-                    },
-                    "temperature": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Temperature",
-                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
-                    },
-                    "top_p": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top P",
-                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
-                    },
-                    "max_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Tokens",
-                        "description": "Maximum number of tokens to generate in the response"
-                    },
-                    "stop": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stop",
-                        "description": "Stop sequence(s) where the model should stop generating"
-                    },
-                    "presence_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Presence Penalty",
-                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
-                    },
-                    "frequency_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Frequency Penalty",
-                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
-                    },
-                    "seed": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Seed",
-                        "description": "Random seed for reproducible outputs"
-                    },
-                    "logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logprobs",
-                        "description": "Whether to return log probabilities of output tokens"
-                    },
-                    "top_logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Logprobs",
-                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
-                    },
-                    "logit_bias": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LogitBiasItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logit Bias",
-                        "description": "Modify likelihood of specified tokens appearing in completion"
-                    },
-                    "max_completion_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Completion Tokens",
-                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
-                    },
-                    "reasoning_effort": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ReasoningEffortEnum"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
-                    },
-                    "thinking": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the agentic prompt"
                     },
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage-Output"
+                            "$ref": "#/components/schemas/OpenAIMessage-Output"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -9217,44 +9053,24 @@
                         "title": "Tools",
                         "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
-                    "tool_choice": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ToolChoiceEnum"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ToolChoice"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variable names for the agentic prompt"
                     },
-                    "response_format": {
+                    "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Output"
-                            },
-                            {},
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Response Format",
-                        "description": "Either a structured json_schema or a Pydantic model to enforce structured outputs."
-                    },
-                    "stream_options": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/StreamOptions"
+                                "$ref": "#/components/schemas/LLMConfigSettings"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "description": "Additional streaming configuration options"
+                        "description": "LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)"
                     },
                     "created_at": {
                         "anyOf": [
@@ -9281,164 +9097,16 @@
                         ],
                         "title": "Deleted At",
                         "description": "Time that this prompt was deleted"
-                    },
-                    "name": {
-                        "type": "string",
-                        "title": "Name",
-                        "description": "Name of the agentic prompt"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
+                    "name",
                     "messages",
                     "model_name",
-                    "model_provider",
-                    "name"
+                    "model_provider"
                 ],
                 "title": "AgenticPrompt"
-            },
-            "AgenticPromptMessage-Input": {
-                "properties": {
-                    "role": {
-                        "$ref": "#/components/schemas/MessageRole",
-                        "description": "Role of the message"
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
-                    },
-                    "content": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/OpenAIMessageItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Content",
-                        "description": "Content of the message"
-                    },
-                    "tool_calls": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Calls",
-                        "description": "Tool calls made by assistant"
-                    },
-                    "tool_call_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Call Id",
-                        "description": "ID of the tool call this message is responding to"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "role"
-                ],
-                "title": "AgenticPromptMessage",
-                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
-            },
-            "AgenticPromptMessage-Output": {
-                "properties": {
-                    "role": {
-                        "$ref": "#/components/schemas/MessageRole",
-                        "description": "Role of the message"
-                    },
-                    "name": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Name",
-                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
-                    },
-                    "content": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/OpenAIMessageItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Content",
-                        "description": "Content of the message"
-                    },
-                    "tool_calls": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/ToolCall"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Calls",
-                        "description": "Tool calls made by assistant"
-                    },
-                    "tool_call_id": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Tool Call Id",
-                        "description": "ID of the tool call this message is responding to"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "role"
-                ],
-                "title": "AgenticPromptMessage",
-                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
             },
             "AgenticPromptRunResponse": {
                 "properties": {
@@ -10027,178 +9695,9 @@
             },
             "CompletionRequest": {
                 "properties": {
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timeout",
-                        "description": "Request timeout in seconds"
-                    },
-                    "temperature": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Temperature",
-                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
-                    },
-                    "top_p": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top P",
-                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
-                    },
-                    "max_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Tokens",
-                        "description": "Maximum number of tokens to generate in the response"
-                    },
-                    "stop": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stop",
-                        "description": "Stop sequence(s) where the model should stop generating"
-                    },
-                    "presence_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Presence Penalty",
-                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
-                    },
-                    "frequency_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Frequency Penalty",
-                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
-                    },
-                    "seed": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Seed",
-                        "description": "Random seed for reproducible outputs"
-                    },
-                    "logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logprobs",
-                        "description": "Whether to return log probabilities of output tokens"
-                    },
-                    "top_logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Logprobs",
-                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
-                    },
-                    "logit_bias": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LogitBiasItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logit Bias",
-                        "description": "Modify likelihood of specified tokens appearing in completion"
-                    },
-                    "max_completion_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Completion Tokens",
-                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
-                    },
-                    "reasoning_effort": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ReasoningEffortEnum"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
-                    },
-                    "thinking": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Anthropic-specific thinking parameter for Claude models"
-                    },
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -10228,49 +9727,22 @@
                         "title": "Tools",
                         "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
-                    "tool_choice": {
+                    "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/ToolChoiceEnum"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ToolChoice"
+                                "$ref": "#/components/schemas/LLMPromptRequestConfigSettings"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
-                    },
-                    "response_format": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
-                    },
-                    "stream_options": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/StreamOptions"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Additional streaming configuration options"
+                        "description": "LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)"
                     },
                     "completion_request": {
                         "$ref": "#/components/schemas/PromptCompletionRequest",
                         "description": "Run configuration for the unsaved prompt"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "messages",
@@ -10334,178 +9806,9 @@
             },
             "CreateAgenticPromptRequest": {
                 "properties": {
-                    "timeout": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Timeout",
-                        "description": "Request timeout in seconds"
-                    },
-                    "temperature": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Temperature",
-                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
-                    },
-                    "top_p": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top P",
-                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
-                    },
-                    "max_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Tokens",
-                        "description": "Maximum number of tokens to generate in the response"
-                    },
-                    "stop": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Stop",
-                        "description": "Stop sequence(s) where the model should stop generating"
-                    },
-                    "presence_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Presence Penalty",
-                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
-                    },
-                    "frequency_penalty": {
-                        "anyOf": [
-                            {
-                                "type": "number"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Frequency Penalty",
-                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
-                    },
-                    "seed": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Seed",
-                        "description": "Random seed for reproducible outputs"
-                    },
-                    "logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "boolean"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logprobs",
-                        "description": "Whether to return log probabilities of output tokens"
-                    },
-                    "top_logprobs": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Top Logprobs",
-                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
-                    },
-                    "logit_bias": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "$ref": "#/components/schemas/LogitBiasItem"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Logit Bias",
-                        "description": "Modify likelihood of specified tokens appearing in completion"
-                    },
-                    "max_completion_tokens": {
-                        "anyOf": [
-                            {
-                                "type": "integer"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "title": "Max Completion Tokens",
-                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
-                    },
-                    "reasoning_effort": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ReasoningEffortEnum"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
-                    },
-                    "thinking": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/AnthropicThinkingParam"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Anthropic-specific thinking parameter for Claude models"
-                    },
                     "messages": {
                         "items": {
-                            "$ref": "#/components/schemas/AgenticPromptMessage-Input"
+                            "$ref": "#/components/schemas/OpenAIMessage-Input"
                         },
                         "type": "array",
                         "title": "Messages",
@@ -10535,45 +9838,18 @@
                         "title": "Tools",
                         "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
-                    "tool_choice": {
+                    "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/ToolChoiceEnum"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ToolChoice"
+                                "$ref": "#/components/schemas/LLMPromptRequestConfigSettings"
                             },
                             {
                                 "type": "null"
                             }
                         ],
-                        "title": "Tool Choice",
-                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
-                    },
-                    "response_format": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
-                    },
-                    "stream_options": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/StreamOptions"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
-                        "description": "Additional streaming configuration options"
+                        "description": "LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)"
                     }
                 },
-                "additionalProperties": false,
                 "type": "object",
                 "required": [
                     "messages",
@@ -10613,7 +9889,7 @@
                     "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMConfigSettings"
+                                "$ref": "#/components/schemas/LLMRequestConfigSettings"
                             },
                             {
                                 "type": "null"
@@ -11809,7 +11085,7 @@
                     ]
                 }
             },
-            "LLMConfigSettings": {
+            "LLMBaseConfigSettings": {
                 "properties": {
                     "timeout": {
                         "anyOf": [
@@ -11983,6 +11259,221 @@
                 },
                 "additionalProperties": false,
                 "type": "object",
+                "title": "LLMBaseConfigSettings"
+            },
+            "LLMConfigSettings": {
+                "properties": {
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ToolChoice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Output"
+                            },
+                            {},
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Response Format",
+                        "description": "Either a structured json_schema or a Pydantic model to enforce structured outputs."
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
                 "title": "LLMConfigSettings"
             },
             "LLMEval": {
@@ -12018,10 +11509,18 @@
                         "description": "Maximum score for the llm eval",
                         "default": 1
                     },
+                    "variables": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Variables",
+                        "description": "List of variable names for the llm eval"
+                    },
                     "config": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/LLMConfigSettings"
+                                "$ref": "#/components/schemas/LLMBaseConfigSettings"
                             },
                             {
                                 "type": "null"
@@ -12185,6 +11684,393 @@
                     "deleted_versions"
                 ],
                 "title": "LLMGetAllMetadataResponse"
+            },
+            "LLMPromptRequestConfigSettings": {
+                "properties": {
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    },
+                    "response_format": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/LLMResponseFormat-Input"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Response format specification (e.g., {'type': 'json_object'} for JSON mode)"
+                    },
+                    "tool_choice": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ToolChoiceEnum"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ToolChoice"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Choice",
+                        "description": "Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)"
+                    },
+                    "stream_options": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/StreamOptions"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Additional streaming configuration options"
+                    }
+                },
+                "type": "object",
+                "title": "LLMPromptRequestConfigSettings"
+            },
+            "LLMRequestConfigSettings": {
+                "properties": {
+                    "timeout": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Timeout",
+                        "description": "Request timeout in seconds"
+                    },
+                    "temperature": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Temperature",
+                        "description": "Sampling temperature (0.0 to 2.0). Higher values make output more random"
+                    },
+                    "top_p": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top P",
+                        "description": "Top-p sampling parameter (0.0 to 1.0). Alternative to temperature"
+                    },
+                    "max_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Tokens",
+                        "description": "Maximum number of tokens to generate in the response"
+                    },
+                    "stop": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Stop",
+                        "description": "Stop sequence(s) where the model should stop generating"
+                    },
+                    "presence_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Presence Penalty",
+                        "description": "Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence"
+                    },
+                    "frequency_penalty": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Frequency Penalty",
+                        "description": "Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency"
+                    },
+                    "seed": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Seed",
+                        "description": "Random seed for reproducible outputs"
+                    },
+                    "logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logprobs",
+                        "description": "Whether to return log probabilities of output tokens"
+                    },
+                    "top_logprobs": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Top Logprobs",
+                        "description": "Number of most likely tokens to return log probabilities for (1-20)"
+                    },
+                    "logit_bias": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/LogitBiasItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Logit Bias",
+                        "description": "Modify likelihood of specified tokens appearing in completion"
+                    },
+                    "max_completion_tokens": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Completion Tokens",
+                        "description": "Maximum number of completion tokens (alternative to max_tokens)"
+                    },
+                    "reasoning_effort": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ReasoningEffortEnum"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Reasoning effort level for models that support it (e.g., OpenAI o1 series)"
+                    },
+                    "thinking": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AnthropicThinkingParam"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Anthropic-specific thinking parameter for Claude models"
+                    }
+                },
+                "type": "object",
+                "title": "LLMRequestConfigSettings"
             },
             "LLMResponseFormat-Input": {
                 "properties": {
@@ -13504,6 +13390,148 @@
                     "name"
                 ],
                 "title": "NewTaskRequest"
+            },
+            "OpenAIMessage-Input": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "description": "Role of the message"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIMessageItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "description": "ID of the tool call this message is responding to"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
+                ],
+                "title": "OpenAIMessage",
+                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
+            },
+            "OpenAIMessage-Output": {
+                "properties": {
+                    "role": {
+                        "$ref": "#/components/schemas/MessageRole",
+                        "description": "Role of the message"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Name",
+                        "description": "An optional name for the participant. Provides the model information to differentiate between participants of the same role."
+                    },
+                    "content": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/OpenAIMessageItem"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Content",
+                        "description": "Content of the message"
+                    },
+                    "tool_calls": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/ToolCall"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Calls",
+                        "description": "Tool calls made by assistant"
+                    },
+                    "tool_call_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Tool Call Id",
+                        "description": "ID of the tool call this message is responding to"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "role"
+                ],
+                "title": "OpenAIMessage",
+                "description": "The message schema class for the prompts playground.\nThis class adheres to OpenAI's message schema."
             },
             "OpenAIMessageItem": {
                 "properties": {

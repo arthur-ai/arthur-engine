@@ -13,13 +13,14 @@ from sqlalchemy.exc import IntegrityError
 from clients.llm.llm_client import LLMClient, LLMModelResponse
 from db_models.llm_eval_models import DatabaseLLMEval
 from repositories.llm_evals_repository import LLMEvalsRepository
-from schemas.agentic_prompt_schemas import LLMConfigSettings
 from schemas.enums import ModelProvider
 from schemas.llm_eval_schemas import LLMEval
+from schemas.llm_schemas import LLMBaseConfigSettings
 from schemas.request_schemas import (
     CreateEvalRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
+    LLMRequestConfigSettings,
 )
 from schemas.response_schemas import (
     LLMEvalRunResponse,
@@ -43,7 +44,7 @@ def sample_llm_eval():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
+        config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
         version=1,
     )
 
@@ -54,7 +55,7 @@ def sample_create_eval_request():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
+        config=LLMRequestConfigSettings(temperature=0.5, max_tokens=100),
     )
 
 
@@ -70,7 +71,7 @@ def sample_db_llm_eval():
         instructions="test_instructions",
         min_score=0,
         max_score=1,
-        config=LLMConfigSettings(temperature=0.5, max_tokens=100),
+        config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
         created_at=datetime.now(),
         deleted_at=None,
         version=1,
@@ -150,9 +151,9 @@ def test_save_llm_eval_with_llm_eval_object(
 
 
 @pytest.mark.unit_tests
-def test_llm_eval_from_db_model(sample_db_llm_eval):
+def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
     """Test creating LLMEval from DatabaseLLMEval"""
-    llm_eval = LLMEval.from_db_model(sample_db_llm_eval)
+    llm_eval = llm_evals_repo.from_db_model(sample_db_llm_eval)
 
     assert isinstance(llm_eval, LLMEval)
     assert llm_eval.name == sample_db_llm_eval.name
@@ -297,7 +298,7 @@ def test_validate_score_range():
             min_score=1,
             max_score=1,
             instructions="test_instructions",
-            config=LLMConfigSettings(temperature=0.5, max_tokens=100),
+            config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
             version=1,
         )
 

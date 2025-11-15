@@ -13,11 +13,11 @@ from dependencies import (
 from repositories.llm_evals_repository import LLMEvalsRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
-from schemas.agentic_prompt_schemas import BaseCompletionRequest
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
 from schemas.llm_eval_schemas import LLMEval
 from schemas.request_schemas import (
+    BaseCompletionRequest,
     CreateEvalRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,

@@ -26,8 +26,10 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
     }
 
     response = client.base_client.post(
@@ -49,8 +51,8 @@ def test_get_agentic_prompt_success(client: GenaiEngineTestClientBase):
     assert prompt_response["messages"] == [{"role": "user", "content": "Hello, world!"}]
     assert prompt_response["model_name"] == "gpt-4"
     assert prompt_response["model_provider"] == "openai"
-    assert prompt_response["temperature"] == 0.7
-    assert prompt_response["max_tokens"] == 100
+    assert prompt_response["config"]["temperature"] == 0.7
+    assert prompt_response["config"]["max_tokens"] == 100
 
 
 @pytest.mark.unit_tests
@@ -211,7 +213,9 @@ def test_run_agentic_prompt_success(
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
+        "config": {
+            "temperature": 0.7,
+        },
     }
 
     response = client.base_client.post(
@@ -262,7 +266,9 @@ def test_run_saved_agentic_prompt_success(
         "messages": [{"role": "user", "content": "Saved prompt content"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.8,
+        "config": {
+            "temperature": 0.8,
+        },
     }
 
     prompt_name = "saved_prompt"
@@ -323,10 +329,12 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
         "messages": [{"role": "user", "content": "New prompt content"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.5,
-        "max_tokens": 200,
         "tools": [{"type": "function", "function": {"name": "calculator"}}],
-        "tool_choice": "auto",
+        "config": {
+            "temperature": 0.5,
+            "max_tokens": 200,
+            "tool_choice": "auto",
+        },
     }
 
     prompt_name = "new_prompt"
@@ -350,8 +358,8 @@ def test_save_agentic_prompt_success(client: GenaiEngineTestClientBase):
 
     saved_prompt = response.json()
     assert saved_prompt["name"] == "new_prompt"
-    assert saved_prompt["temperature"] == 0.5
-    assert saved_prompt["max_tokens"] == 200
+    assert saved_prompt["config"]["temperature"] == 0.5
+    assert saved_prompt["config"]["max_tokens"] == 200
     assert saved_prompt["tools"] == [
         {"type": "function", "function": {"name": "calculator"}},
     ]
@@ -514,8 +522,10 @@ def test_agentic_prompt_routes_with_malformed_data(client: GenaiEngineTestClient
 
 
 @pytest.mark.unit_tests
-@patch("schemas.agentic_prompt_schemas.completion_cost")
-@patch("schemas.agentic_prompt_schemas.AgenticPrompt.stream_chat_completion")
+@patch("services.prompt.chat_completion_service.completion_cost")
+@patch(
+    "services.prompt.chat_completion_service.ChatCompletionService.stream_chat_completion",
+)
 def test_streaming_agentic_prompt(
     mock_stream_chat_completion,
     mock_completion_cost,
@@ -548,7 +558,9 @@ def test_streaming_agentic_prompt(
         "messages": [{"role": "user", "content": "Stream this"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
+        "config": {
+            "temperature": 0.7,
+        },
     }
 
     prompt_name = "streaming_prompt"
@@ -1335,8 +1347,8 @@ def test_get_agentic_prompt_by_version_route(
     assert prompt_response.model_name == "gpt-4"
     assert prompt_response.model_provider == "openai"
     assert prompt_response.version == 1
-    assert prompt_response.temperature == 0.7
-    assert prompt_response.max_tokens == 100
+    assert prompt_response.config.temperature == 0.7
+    assert prompt_response.config.max_tokens == 100
 
 
 @pytest.mark.unit_tests
@@ -1357,8 +1369,10 @@ def test_soft_delete_agentic_prompt_by_version_route(
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
     }
     if prompt_version == "datetime":
         prompt_version = datetime.now().isoformat()

@@ -97,7 +97,7 @@ const PromptsPlayground = () => {
     // Fetch models for all enabled providers in parallel
     const modelPromises = state.enabledProviders.map(async (provider) => {
       try {
-        const response = await apiClient.api.getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
+        const response = await apiClient.api.getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet(provider as ModelProvider);
         return { provider, models: response.data.available_models };
       } catch (error) {
         console.error(`Failed to fetch models for provider ${provider}:`, error);

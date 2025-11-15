@@ -18,6 +18,7 @@ from schemas.response_schemas import (
     LLMGetAllMetadataResponse,
     LLMVersionResponse,
 )
+from services.prompt.chat_completion_service import ChatCompletionService
 
 
 class BaseLLMRepository(ABC):
@@ -34,9 +35,14 @@ class BaseLLMRepository(ABC):
             )
 
         self.db_session = db_session
+        self.chat_completion_service = ChatCompletionService()
 
     @abstractmethod
-    def _from_db_model(self, db_item: Base) -> BaseModel:
+    def from_db_model(self, db_item: Base) -> BaseModel:
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    @abstractmethod
+    def to_db_model(self, task_id: str, item: BaseModel) -> db_model:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
@@ -285,7 +291,7 @@ class BaseLLMRepository(ABC):
             err_message=err_msg,
         )
 
-        return self._from_db_model(db_item)
+        return self.from_db_model(db_item)
 
     def get_llm_item_versions(
         self,
@@ -447,13 +453,13 @@ class BaseLLMRepository(ABC):
         # Assign version
         item.version = (latest_version + 1) if latest_version else 1
 
-        db_item = item.to_db_model(task_id)
+        db_item = self.to_db_model(task_id, item)
 
         try:
             self.db_session.add(db_item)
             self.db_session.commit()
             self.db_session.refresh(db_item)
-            return self._from_db_model(db_item)
+            return self.from_db_model(db_item)
         except IntegrityError:
             self.db_session.rollback()
             raise ValueError(
