@@ -1,14 +1,16 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
 import { Collapsible } from "@base-ui-components/react/collapsible";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
-import { Paper } from "@mui/material";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Button, Paper } from "@mui/material";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { createContext, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { getSpanDetailsStrategy, SpanDetailsStrategy } from "../data/details-strategy";
 import { useTracesHistoryStore } from "../stores/history.store";
-import { getSpanDuration } from "../utils/spans";
+import { getSpanDuration, isSpanOfType } from "../utils/spans";
 
 import { CopyableChip } from "@/components/common";
 import { Tabs } from "@/components/ui/Tabs";
@@ -51,16 +53,24 @@ export const SpanDetails = ({ span, children }: Props) => {
 
 export const SpanDetailsHeader = () => {
   const push = useTracesHistoryStore((state) => state.push);
+  const navigate = useNavigate();
   const { span } = useSpanDetails();
 
   const duration = getSpanDuration(span);
   const start = new Date(span.start_time);
+  const isLLM = isSpanOfType(span, OpenInferenceSpanKind.LLM);
 
   const onOpenSpanDrawer = () => {
     push({
       type: "span",
       id: span.span_id,
     });
+  };
+
+  const handleOpenInPlayground = () => {
+    if (span.task_id) {
+      navigate(`/tasks/${span.task_id}/playgrounds/prompts?spanId=${span.span_id}`);
+    }
   };
 
   return (
@@ -79,7 +89,20 @@ export const SpanDetailsHeader = () => {
             {span.span_name}
           </Typography>
         </Stack>
-        <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
+        <Stack direction="row" spacing={1} alignItems="center">
+          {isLLM && (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={handleOpenInPlayground}
+              disabled={!span.task_id}
+              startIcon={<OpenInNewIcon />}
+            >
+              Open in Playground
+            </Button>
+          )}
+          <CopyableChip label={span.span_id} sx={{ fontFamily: "monospace" }} />
+        </Stack>
       </Stack>
       <Stack direction="row" spacing={1}>
         <Typography variant="caption" color="text.secondary">
