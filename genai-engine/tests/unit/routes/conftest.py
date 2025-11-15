@@ -6,7 +6,10 @@ import pytest
 from arthur_common.models.response_schemas import TaskResponse
 
 from src.schemas.agentic_prompt_schemas import AgenticPrompt
-from src.schemas.request_schemas import CreateAgenticPromptRequest
+from src.schemas.request_schemas import (
+    CreateAgenticPromptRequest,
+    LLMPromptRequestConfigSettings,
+)
 from tests.clients.base_test_client import GenaiEngineTestClientBase
 from tests.clients.unit_test_client import get_genai_engine_test_client
 
@@ -52,8 +55,10 @@ def create_agentic_prompt(
         messages=[{"role": "user", "content": "Hello, world!"}],
         model_name="gpt-4",
         model_provider="openai",
-        temperature=0.7,
-        max_tokens=100,
+        config=LLMPromptRequestConfigSettings(
+            temperature=0.7,
+            max_tokens=100,
+        ),
     )
     _, agentic_prompt = client.create_agentic_prompt(
         task_id=create_agentic_task.id,

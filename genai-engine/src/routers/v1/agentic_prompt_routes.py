@@ -1,4 +1,4 @@
-from typing import Annotated, Union
+from typing import Annotated
 
 import litellm
 from arthur_common.models.common_schemas import PaginationParameters
@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from clients.llm.llm_client import LLMClient
 from dependencies import (
     get_db_session,
     get_validated_agentic_task,
@@ -14,12 +13,10 @@ from dependencies import (
     llm_get_versions_filter_parameters,
 )
 from repositories.agentic_prompts_repository import AgenticPromptRepository
-from repositories.model_provider_repository import ModelProviderRepository
 from routers.route_handler import GenaiEngineRoute
 from routers.v2 import multi_validator
 from schemas.agentic_prompt_schemas import (
     AgenticPrompt,
-    PromptCompletionRequest,
 )
 from schemas.enums import PermissionLevelsEnum
 from schemas.internal_schemas import Task, User
@@ -28,6 +25,7 @@ from schemas.request_schemas import (
     CreateAgenticPromptRequest,
     LLMGetAllFilterRequest,
     LLMGetVersionsFilterRequest,
+    PromptCompletionRequest,
 )
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
@@ -41,22 +39,6 @@ agentic_prompt_routes = APIRouter(
     prefix="/api/v1",
     route_class=GenaiEngineRoute,
 )
-
-
-async def execute_prompt_completion(
-    llm_client: LLMClient,
-    prompt: AgenticPrompt,
-    completion_request: PromptCompletionRequest,
-) -> Union[AgenticPromptRunResponse, StreamingResponse]:
-    """Helper to execute prompt completion with or without streaming"""
-    if completion_request.stream is None or completion_request.stream == False:
-        return prompt.run_chat_completion(llm_client, completion_request)
-
-    return StreamingResponse(
-        prompt.stream_chat_completion(llm_client, completion_request),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
-    )
 
 
 @agentic_prompt_routes.get(
@@ -251,18 +233,8 @@ async def run_agentic_prompt(
         AgenticPromptRunResponse or StreamingResponse
     """
     try:
-        repo = ModelProviderRepository(db_session)
-        llm_client = repo.get_model_provider_client(
-            provider=unsaved_prompt.model_provider,
-        )
-        prompt, completion_request = AgenticPromptRepository.to_prompt_and_request(
-            unsaved_prompt,
-        )
-        return await execute_prompt_completion(
-            llm_client,
-            prompt,
-            completion_request,
-        )
+        agentic_prompt_service = AgenticPromptRepository(db_session)
+        return await agentic_prompt_service.run_unsaved_prompt(unsaved_prompt)
     except HTTPException:
         # propagate HTTP exceptions
         raise
@@ -364,16 +336,10 @@ async def run_saved_agentic_prompt(
     """
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        prompt = agentic_prompt_service.get_llm_item(
+        return await agentic_prompt_service.run_saved_prompt(
             task.id,
             prompt_name,
             prompt_version,
-        )
-        repo = ModelProviderRepository(db_session)
-        llm_client = repo.get_model_provider_client(provider=prompt.model_provider)
-        return await execute_prompt_completion(
-            llm_client,
-            prompt,
             completion_request,
         )
     except HTTPException:
