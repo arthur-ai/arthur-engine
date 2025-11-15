@@ -330,6 +330,21 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
         ),
       };
     }
+    case "editMessageToolCalls": {
+      const { parentId, id, toolCalls } = action.payload;
+      return {
+        ...state,
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? {
+                ...prompt,
+                messages: prompt.messages.map((message) => (message.id === id ? { ...message, tool_calls: toolCalls } : message)),
+                isDirty: prompt.version ? true : false,
+              }
+            : prompt
+        ),
+      };
+    }
     case "changeMessageRole": {
       const { parentId, id, role } = action.payload;
       return {

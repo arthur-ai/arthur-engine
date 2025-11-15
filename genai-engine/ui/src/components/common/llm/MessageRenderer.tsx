@@ -13,7 +13,23 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
   const { role, content } = message;
 
   let contentToRender = null;
-  if (Array.isArray(content) && content.length > 0) {
+  
+  // Check if this is an assistant message with tool_calls but empty content
+  if (
+    role === "assistant" && 
+    "tool_calls" in message && 
+    message.tool_calls && 
+    message.tool_calls.length > 0 &&
+    (!content || content === "")
+  ) {
+    // Render tool calls as pretty-printed JSON
+    contentToRender = (
+      <Highlight 
+        code={tryFormatJson(message.tool_calls)} 
+        language="json" 
+      />
+    );
+  } else if (Array.isArray(content) && content.length > 0) {
     contentToRender = content.map((item, index) => {
       switch (item.type) {
         case "text":
@@ -24,8 +40,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
           );
       }
     });
-  }
-  if (typeof content === "string") {
+  } else if (typeof content === "string" && content !== "") {
     contentToRender = <TextMessageRenderer text={content} />;
   }
 
@@ -61,7 +76,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
             className="group-data-panel-open:rotate-90 transition-transform duration-75"
           />
           <Typography color="text.primary" fontWeight={600} fontSize={12}>
-            {getRoleLabel(role)}
+            {getRoleLabel(role, message)}
           </Typography>
         </Stack>
       </Collapsible.Trigger>
@@ -74,7 +89,7 @@ export const MessageRenderer = ({ message }: { message: Message }) => {
   );
 };
 
-function getRoleLabel(role: Message["role"]) {
+function getRoleLabel(role: Message["role"], message: Message) {
   switch (role) {
     case "system":
       return "System";

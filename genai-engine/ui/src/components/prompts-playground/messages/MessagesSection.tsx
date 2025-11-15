@@ -62,6 +62,7 @@ const MessagesSection = ({ prompt }: MessagesSectionProps) => {
                 role={message.role}
                 defaultContent={message.content || ""}
                 content={message.content || ""}
+                toolCalls={message.tool_calls}
               />
             ))}
           </SortableContext>

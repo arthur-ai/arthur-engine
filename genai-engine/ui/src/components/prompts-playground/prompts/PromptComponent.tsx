@@ -151,27 +151,27 @@ const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponen
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">
           <div
-            className="flex-shrink-0"
             style={{
-              flexBasis: `${messagesHeightRatio * 100}%`,
-              minHeight: "30%",
-              maxHeight: "70%",
+              flex: `${messagesHeightRatio} 1 0`,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <Paper elevation={2} className="p-1 h-full">
+            <Paper elevation={2} className="p-1" sx={{ overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
               <MessagesSection prompt={prompt} />
             </Paper>
           </div>
           <ResizableSplitter onResize={handleResize} minTopRatio={0.3} minBottomRatio={0.3} />
           <div
-            className="flex-shrink-0"
             style={{
-              flexBasis: `${(1 - messagesHeightRatio) * 100}%`,
-              minHeight: "30%",
-              maxHeight: "70%",
+              flex: `${1 - messagesHeightRatio} 1 0`,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            <Paper elevation={2} className="p-1 h-full">
+            <Paper elevation={2} className="p-1" sx={{ overflow: "hidden", display: "flex", flexDirection: "column", height: "100%" }}>
               <OutputField
                 promptId={prompt.id}
                 running={prompt.running || false}

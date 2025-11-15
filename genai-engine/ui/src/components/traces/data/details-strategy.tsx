@@ -76,21 +76,13 @@ const spanDetailsStrategy = [
         label: "Input Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
           const messages = getMessages(span);
-          const model = getSpanModel(span);
 
           return (
-            <Paper variant="outlined" sx={{ display: "flex", flexDirection: "column" }}>
-              <Box p={1} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
-                <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
-                  {model}
-                </Typography>
-              </Box>
-              <Box p={1} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {messages.map(({ message }, index) => (
-                  <MessageRenderer message={message} key={index} />
-                ))}
-              </Box>
-            </Paper>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {messages.map(({ message }, index) => (
+                <MessageRenderer message={message} key={index} />
+              ))}
+            </Box>
           );
         },
         defaultOpen: true,
@@ -99,28 +91,13 @@ const spanDetailsStrategy = [
         label: "Output Messages",
         render: (span: NestedSpanWithMetricsResponse) => {
           const messages = getOutputMessages(span);
-          const model = getSpanModel(span);
 
           return (
-            <Paper
-              variant="outlined"
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                fontSize: "12px",
-              }}
-            >
-              <Box p={1} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
-                <Typography variant="body2" color="text.primary" fontWeight={700} fontSize={12}>
-                  {model}
-                </Typography>
-              </Box>
-              <Box p={1} sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {messages.map((message, index) => (
-                  <MessageRenderer message={message.message} key={index} />
-                ))}
-              </Box>
-            </Paper>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {messages.map((message, index) => (
+                <MessageRenderer message={message.message} key={index} />
+              ))}
+            </Box>
           );
         },
         defaultOpen: true,
