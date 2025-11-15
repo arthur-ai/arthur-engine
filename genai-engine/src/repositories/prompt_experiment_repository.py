@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from typing import List, Optional, Tuple
 from uuid import uuid4
 
@@ -24,10 +23,8 @@ from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
-    DatasetColumnVariableSource,
     DatasetRef,
     EvalRef,
-    EvalVariableMapping,
     ExperimentStatus,
     InputVariable,
     PromptExperimentDetail,
@@ -207,7 +204,7 @@ class PromptExperimentRepository:
         # Check eval variable mappings - only validate dataset_column type
         for eval_ref in request.eval_list:
             for mapping in eval_ref.variable_mapping:
-                if isinstance(mapping.source, DatasetColumnVariableSource):
+                if mapping.source.type == "dataset_column":
                     column_name = mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
                         raise ValueError(
@@ -368,69 +365,15 @@ class PromptExperimentRepository:
         self.db_session.delete(db_experiment)
         self.db_session.commit()
 
-    def update_experiment_status(
-        self,
-        experiment_id: str,
-        status: ExperimentStatus,
-        finished_at: Optional[datetime] = None,
-    ) -> None:
-        """Update experiment status"""
-        db_experiment = self._get_db_experiment(experiment_id)
-        db_experiment.status = status
-        if finished_at:
-            db_experiment.finished_at = finished_at
-        self.db_session.commit()
-
-    def update_experiment_counts(
-        self,
-        experiment_id: str,
-        total_rows: Optional[int] = None,
-        completed_rows: Optional[int] = None,
-        failed_rows: Optional[int] = None,
-    ) -> None:
-        """Update experiment row counts"""
-        db_experiment = self._get_db_experiment(experiment_id)
-        if total_rows is not None:
-            db_experiment.total_rows = total_rows
-        if completed_rows is not None:
-            db_experiment.completed_rows = completed_rows
-        if failed_rows is not None:
-            db_experiment.failed_rows = failed_rows
-        self.db_session.commit()
-
-    def update_experiment_summary_results(
-        self, experiment_id: str, summary_results: dict
-    ) -> None:
-        """Update experiment summary results"""
-        db_experiment = self._get_db_experiment(experiment_id)
-        db_experiment.summary_results = summary_results
-        self.db_session.commit()
-
-    # Test case methods
-    def create_test_case(
-        self,
-        test_case_id: str,
-        experiment_id: str,
-        dataset_row_id: str,
-        prompt_input_variables: list,
-    ) -> None:
-        """Create a new test case"""
-        db_test_case = DatabasePromptExperimentTestCase(
-            id=test_case_id,
-            experiment_id=experiment_id,
-            dataset_row_id=dataset_row_id,
-            prompt_input_variables=prompt_input_variables,
-            prompt_results=[],
-        )
-        self.db_session.add(db_test_case)
-        self.db_session.commit()
-
     def get_test_cases(
         self,
         experiment_id: str,
         pagination_params: PaginationParameters,
     ) -> Tuple[List[TestCase], int]:
         """Get paginated test cases for an experiment"""
+        # Verify experiment exists first
+        self._get_db_experiment(experiment_id)
+
         base_query = self.db_session.query(DatabasePromptExperimentTestCase).filter(
             DatabasePromptExperimentTestCase.experiment_id == experiment_id
         )
@@ -457,27 +400,3 @@ class PromptExperimentRepository:
         return [
             self._db_test_case_to_schema(db_tc) for db_tc in db_test_cases
         ], count
-
-    def update_test_case_results(
-        self,
-        test_case_id: str,
-        prompt_results: list,
-        status: Optional[str] = None,
-    ) -> None:
-        """Update test case results"""
-        db_test_case = (
-            self.db_session.query(DatabasePromptExperimentTestCase)
-            .filter(DatabasePromptExperimentTestCase.id == test_case_id)
-            .first()
-        )
-        if not db_test_case:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Test case {test_case_id} not found.",
-            )
-
-        db_test_case.prompt_results = prompt_results
-        if status:
-            db_test_case.status = status
-        db_test_case.updated_at = datetime.now()
-        self.db_session.commit()

@@ -204,6 +204,8 @@ def get_experiment_test_cases(
             total_pages=total_pages,
             total_count=total_count,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
