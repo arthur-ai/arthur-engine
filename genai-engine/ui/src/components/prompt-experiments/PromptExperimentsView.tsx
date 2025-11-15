@@ -56,6 +56,11 @@ export const PromptExperimentsView: React.FC = () => {
   const handleSubmitExperiment = async (data: ExperimentFormData) => {
     if (!taskId || !api) return;
 
+    // Validate that datasetVersion is a number
+    if (typeof data.datasetVersion !== 'number') {
+      throw new Error('Dataset version must be selected');
+    }
+
     try {
       await api.api.createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost(taskId, {
         name: data.name,

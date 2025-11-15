@@ -14,9 +14,9 @@ import React, { useCallback } from "react";
 export interface PromptExperiment {
   id: string;
   name: string;
-  description: string;
+  description?: string | null;
   created_at: string;
-  finished_at: string;
+  finished_at?: string | null;
   status: "queued" | "running" | "evaluating" | "failed" | "completed";
   prompt_name: string;
   total_rows: number;
@@ -40,7 +40,8 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   onRowClick,
 }) => {
 
-  const formatDate = useCallback((dateString: string): string => {
+  const formatDate = useCallback((dateString?: string | null): string => {
+    if (!dateString) return "-";
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {

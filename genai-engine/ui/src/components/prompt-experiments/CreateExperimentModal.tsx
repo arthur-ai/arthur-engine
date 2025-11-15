@@ -26,7 +26,8 @@ import type {
   AgenticPromptVersionResponse,
   DatasetResponse,
   DatasetVersionMetadataResponse,
-  LLMEvalsVersionResponse,
+  LLMEvalsVersionListResponse,
+  LLMVersionResponse,
 } from "@/lib/api-client/api-client";
 
 interface CreateExperimentModalProps {
@@ -88,7 +89,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
   // Evaluators state
   const [evaluators, setEvaluators] = useState<LLMGetAllMetadataResponse[]>([]);
-  const [evaluatorVersions, setEvaluatorVersions] = useState<Record<string, LLMEvalsVersionResponse[]>>({});
+  const [evaluatorVersions, setEvaluatorVersions] = useState<Record<string, LLMVersionResponse[]>>({});
   const [loadingEvaluators, setLoadingEvaluators] = useState(false);
   const [currentEvaluatorName, setCurrentEvaluatorName] = useState<string>("");
   const [currentEvaluatorVersion, setCurrentEvaluatorVersion] = useState<number | "">("");
