@@ -130,30 +130,62 @@ class ChatCompletionService:
     ) -> Tuple[str, Dict[str, Any]]:
         model = prompt.model_provider + "/" + prompt.model_name
 
-        completion_params = prompt.model_dump(
-            exclude={
-                "name",
-                "model_name",
-                "model_provider",
-                "created_at",
-                "version",
-                "deleted_at",
-                "messages",
-                "config",
-            },
-            exclude_none=True,
-        )
+        completion_params = {
+            "messages": [
+                message.model_dump(exclude_none=True) for message in prompt.messages
+            ],
+        }
 
+        if prompt.tools:
+            completion_params["tools"] = [
+                tool.model_dump(exclude_none=True) for tool in prompt.tools
+            ]
+
+        # flatten config params to pass into litellm properly
         if prompt.config:
-            # flatten config params to pass into litellm properly
-            config_dict = prompt.config.model_dump(
-                exclude={"response_format"},
-                exclude_none=True,
-            )
-            completion_params.update(config_dict)
-
-            # either get the json_object/schema response format or pass in the pydantic model
+            if prompt.config.timeout:
+                completion_params["timeout"] = prompt.config.timeout
+            if prompt.config.temperature:
+                completion_params["temperature"] = prompt.config.temperature
+            if prompt.config.top_p:
+                completion_params["top_p"] = prompt.config.top_p
+            if prompt.config.max_tokens:
+                completion_params["max_tokens"] = prompt.config.max_tokens
+            if prompt.config.stop:
+                completion_params["stop"] = prompt.config.stop
+            if prompt.config.presence_penalty:
+                completion_params["presence_penalty"] = prompt.config.presence_penalty
+            if prompt.config.frequency_penalty:
+                completion_params["frequency_penalty"] = prompt.config.frequency_penalty
+            if prompt.config.seed:
+                completion_params["seed"] = prompt.config.seed
+            if prompt.config.logprobs:
+                completion_params["logprobs"] = prompt.config.logprobs
+            if prompt.config.top_logprobs:
+                completion_params["top_logprobs"] = prompt.config.top_logprobs
+            if prompt.config.logit_bias:
+                completion_params["logit_bias"] = prompt.config.logit_bias.model_dump(
+                    exclude_none=True,
+                )
+            if prompt.config.max_completion_tokens:
+                completion_params["max_completion_tokens"] = (
+                    prompt.config.max_completion_tokens
+                )
+            if prompt.config.reasoning_effort:
+                completion_params["reasoning_effort"] = (
+                    prompt.config.reasoning_effort.value
+                )
+            if prompt.config.thinking:
+                completion_params["thinking"] = dict(prompt.config.thinking)
+            if prompt.config.tool_choice:
+                if isinstance(prompt.config.tool_choice, ToolChoiceEnum):
+                    completion_params["tool_choice"] = prompt.config.tool_choice.value
+                else:
+                    completion_params["tool_choice"] = (
+                        prompt.config.tool_choice.model_dump(exclude_none=True)
+                    )
             if prompt.config.response_format:
+                # either get the json_object/schema response format or pass in the pydantic model
                 response_format = prompt.config.response_format
                 if isinstance(response_format, LLMResponseFormat):
                     completion_params["response_format"] = response_format.model_dump(
@@ -161,6 +193,10 @@ class ChatCompletionService:
                     )
                 else:
                     completion_params["response_format"] = response_format
+            if prompt.config.stream_options:
+                completion_params["stream_options"] = (
+                    prompt.config.stream_options.model_dump(exclude_none=True)
+                )
 
         # validate all variables are passed in to the prompt if strict mode is enabled
         if completion_request.strict == True:
