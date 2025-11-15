@@ -1,7 +1,7 @@
 """remove score range from llm evals
 
 Revision ID: 5d30b8ab358b
-Revises: 7c2dbe560050
+Revises: 4392c0a6800e
 Create Date: 2025-11-15 16:18:53.418393
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "5d30b8ab358b"
-down_revision = "7c2dbe560050"
+down_revision = "4392c0a6800e"
 branch_labels = None
 depends_on = None
 
