@@ -2,6 +2,13 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+
 # 11/13/2025
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'
