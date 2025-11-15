@@ -19,64 +19,12 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import React, { useEffect, useState } from "react";
-import { useApi } from "@/hooks/useApi";
-
-interface PromptInputVariable {
-  variable_name: string;
-  value: string;
-}
-
-interface EvalInputVariable {
-  variable_name: string;
-  value: string;
-}
-
-interface EvalResults {
-  score: number;
-  explanation: string;
-  cost: number;
-}
-
-interface Eval {
-  eval_name: string;
-  eval_version: string;
-  eval_input_variables: EvalInputVariable[];
-  eval_results: EvalResults;
-}
+import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
+import type { TestCase } from "@/lib/api-client/api-client";
 
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
-}
-
-interface PromptOutput {
-  content: string;
-  tool_calls: any[];
-  cost: string;
-}
-
-interface PromptResult {
-  name: string;
-  version: number;
-  rendered_prompt: Message[];
-  output: PromptOutput;
-  evals: Eval[];
-}
-
-interface TestCase {
-  status: "queued" | "running" | "evaluating" | "failed" | "completed";
-  retries: number;
-  dataset_row_id: string;
-  prompt_input_variables: PromptInputVariable[];
-  prompt_results: PromptResult[];
-}
-
-interface TestCasesResponse {
-  data: TestCase[];
-  page: number;
-  page_size: number;
-  total_pages: number;
-  total_count: number;
 }
 
 interface ExperimentResultsTableProps {
@@ -263,9 +211,23 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           Input Messages:
                         </Typography>
                         <Box className="max-h-96 overflow-auto">
-                          {promptResult.rendered_prompt.map((message, msgIndex) => (
-                            <MessageDisplay key={msgIndex} message={message} />
-                          ))}
+                          {(() => {
+                            try {
+                              const messages = JSON.parse(promptResult.rendered_prompt) as Message[];
+                              return messages.map((message, msgIndex) => (
+                                <MessageDisplay key={msgIndex} message={message} />
+                              ));
+                            } catch {
+                              // If not JSON, display as plain text
+                              return (
+                                <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
+                                  <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+                                    {promptResult.rendered_prompt}
+                                  </Typography>
+                                </Box>
+                              );
+                            }
+                          })()}
                         </Box>
                       </Box>
 
@@ -438,14 +400,9 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   taskId,
   experimentId,
 }) => {
-  const api = useApi();
-  const [testCases, setTestCases] = useState<TestCase[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const [pageSize] = useState(20);
+  const pageSize = 20;
+  const { testCases, totalPages, totalCount, isLoading, error } = useExperimentTestCases(experimentId, page, pageSize);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
@@ -521,40 +478,11 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     return Array.from(evals.values());
   }, [testCases]);
 
-  useEffect(() => {
-    loadTestCases();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, taskId, experimentId, api]);
-
-  const loadTestCases = async () => {
-    if (!api || !experimentId) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await api.api.getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet({
-        experimentId,
-        page,
-        page_size: pageSize,
-      });
-
-      setTestCases(response.data.data as any);
-      setTotalPages(response.data.total_pages);
-      setTotalCount(response.data.total_count);
-    } catch (err) {
-      console.error("Failed to load test cases:", err);
-      setError("Failed to load experiment results");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box className="flex items-center justify-center p-8">
         <Typography>Loading results...</Typography>
@@ -565,7 +493,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   if (error) {
     return (
       <Box className="flex items-center justify-center p-8">
-        <Typography color="error">{error}</Typography>
+        <Typography color="error">{error.message}</Typography>
       </Box>
     );
   }

@@ -1,96 +1,19 @@
 import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useApi } from "@/hooks/useApi";
 import { getContentHeight } from "@/constants/layout";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
-
-interface ExperimentDetail {
-  id: string;
-  name: string;
-  description: string;
-  created_at: string;
-  finished_at: string;
-  status: "queued" | "running" | "evaluating" | "failed" | "completed";
-  prompt_name: string;
-  dataset_ref: {
-    id: string;
-    version: string;
-  };
-  prompt_ref: {
-    name: string;
-    version_list: number[];
-    variable_mapping: Array<{
-      variable_name: string;
-      source: {
-        type: string;
-        dataset_column?: {
-          name: string;
-        };
-      };
-    }>;
-  };
-  eval_list: Array<{
-    name: string;
-    version: string;
-    variable_mapping: Array<{
-      variable_name: string;
-      source: {
-        type: string;
-        dataset_column?: {
-          name: string;
-        };
-        experiment_output?: {
-          json_path?: string;
-        };
-      };
-    }>;
-  }>;
-  summary_results: {
-    prompt_eval_summaries: Array<{
-      prompt_name: string;
-      prompt_version: number;
-      eval_results: Array<{
-        eval_name: string;
-        eval_version: string;
-        pass_count: number;
-        total_count: number;
-      }>;
-    }>;
-  };
-}
+import { usePromptExperiment } from "@/hooks/usePromptExperiments";
+import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const api = useApi();
-  const [experiment, setExperiment] = useState<ExperimentDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { experiment, isLoading, error } = usePromptExperiment(experimentId);
 
-  useEffect(() => {
-    loadExperiment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId, experimentId, api]);
-
-  const loadExperiment = async () => {
-    if (!experimentId || !api) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await api.api.getPromptExperimentApiV1PromptExperimentsExperimentIdGet(experimentId);
-      setExperiment(response.data as any);
-    } catch (err) {
-      console.error("Failed to load experiment:", err);
-      setError("Failed to load experiment details");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "-";
     try {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return dateString;
@@ -107,7 +30,7 @@ export const ExperimentDetailView: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: ExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
+  const getStatusColor = (status: PromptExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {
       case "queued":
         return "default";
@@ -124,11 +47,11 @@ export const ExperimentDetailView: React.FC = () => {
     }
   };
 
-  const getStatusLabel = (status: ExperimentDetail["status"]): string => {
+  const getStatusLabel = (status: PromptExperimentDetail["status"]): string => {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Box className="flex items-center justify-center h-full">
         <Typography>Loading experiment...</Typography>
@@ -139,7 +62,7 @@ export const ExperimentDetailView: React.FC = () => {
   if (error || !experiment) {
     return (
       <Box className="flex items-center justify-center h-full">
-        <Typography color="error">{error || "Experiment not found"}</Typography>
+        <Typography color="error">{error?.message || "Experiment not found"}</Typography>
       </Box>
     );
   }
