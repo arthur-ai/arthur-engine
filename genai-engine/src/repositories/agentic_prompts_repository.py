@@ -23,10 +23,16 @@ class AgenticPromptRepository(BaseLLMRepository):
     def __init__(self, db_session: Session):
         super().__init__(db_session)
         self.model_provider_repo = ModelProviderRepository(db_session)
-        self.chat_completion_service = ChatCompletionService()
 
-    def _from_db_model(self, db_item: Base) -> BaseModel:
-        return AgenticPrompt.from_db_model(db_item)
+    def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
+        return AgenticPrompt.model_validate(db_prompt.__dict__)
+
+    def to_db_model(self, task_id: str, item: AgenticPrompt) -> DatabaseAgenticPrompt:
+        """Convert an AgenticPrompt into a DatabaseAgenticPrompt"""
+        return DatabaseAgenticPrompt(
+            **item.model_dump(mode="python", exclude_none=True),
+            task_id=task_id,
+        )
 
     def _to_versions_reponse_item(self, db_item: Base) -> AgenticPromptVersionResponse:
         num_messages = len(db_item.messages or [])
@@ -47,6 +53,15 @@ class AgenticPromptRepository(BaseLLMRepository):
         db_item.messages = []
         db_item.tools = None
         db_item.config = None
+
+    def save_llm_item(self, task_id: str, item: AgenticPrompt) -> BaseModel:
+        item.variables = list(
+            self.chat_completion_service.find_missing_variables_in_messages(
+                variable_map={},
+                messages=item.messages,
+            ),
+        )
+        return super().save_llm_item(task_id, item)
 
     async def run_unsaved_prompt(
         self,

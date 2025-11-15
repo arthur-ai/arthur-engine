@@ -1,5 +1,4 @@
 from datetime import datetime
-from types import SimpleNamespace
 from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -12,7 +11,6 @@ from pydantic import Field, create_model
 from sqlalchemy.exc import IntegrityError
 
 from clients.llm.llm_client import LLMClient
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.common_schemas import JsonSchema
@@ -49,12 +47,6 @@ def to_openai_messages(
 
 
 @pytest.fixture
-def mock_db_session():
-    """Mock database session for testing"""
-    return MagicMock()
-
-
-@pytest.fixture
 def mock_llm_client():
     """Mock LiteLLM client for testing"""
     return LLMClient(
@@ -64,9 +56,10 @@ def mock_llm_client():
 
 
 @pytest.fixture
-def agentic_prompt_repo(mock_db_session):
+def agentic_prompt_repo():
     """Create AgenticPromptRepository instance with mocked db session"""
-    return AgenticPromptRepository(mock_db_session)
+    db_session = override_get_db_session()
+    return AgenticPromptRepository(db_session)
 
 
 @pytest.fixture
@@ -113,10 +106,11 @@ def sample_unsaved_run_config(sample_prompt_data):
 
 
 @pytest.fixture
-def sample_db_prompt(sample_prompt_data):
+def sample_db_prompt(agentic_prompt_repo, sample_prompt_data):
     """Create sample DatabaseAgenticPrompt instance"""
     task_id = str(uuid4())
-    return AgenticPrompt(name="test_prompt", **sample_prompt_data).to_db_model(task_id)
+    prompt = AgenticPrompt(name="test_prompt", **sample_prompt_data)
+    return agentic_prompt_repo.to_db_model(task_id, prompt)
 
 
 @pytest.fixture
@@ -144,11 +138,15 @@ def mock_completion(*args, **kwargs):
 
 @pytest.mark.unit_tests
 @pytest.mark.asyncio
+@patch(
+    "repositories.agentic_prompts_repository.ModelProviderRepository.get_model_provider_client",
+)
 @patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
+@patch("clients.llm.llm_client.LLMClient.completion")
 async def test_run_prompt(
     mock_completion,
     mock_completion_cost,
+    mock_get_client,
     mock_llm_client,
     agentic_prompt_repo,
     sample_unsaved_run_config,
@@ -161,8 +159,13 @@ async def test_run_prompt(
         "content": "Test response",
         "tool_calls": [{"id": "call_123", "function": {"name": "test_tool"}}],
     }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.001234
+    mock_llm_response = MagicMock()
+    mock_llm_response.response = mock_response
+    mock_llm_response.cost = 0.001234
+
+    mock_completion.return_value = mock_llm_response
+    mock_get_client.return_value = mock_llm_client
+    mock_llm_client.completion = mock_completion
 
     result = await agentic_prompt_repo.run_unsaved_prompt(sample_unsaved_run_config)
 
@@ -190,48 +193,30 @@ async def test_run_prompt(
 @pytest.mark.unit_tests
 def test_get_prompt_success(
     agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
+    sample_agentic_prompt,
     expected_db_prompt_messages,
 ):
     """Test successfully getting a prompt from database"""
     task_id = "test_task_id"
-    prompt_name = "test_prompt"
 
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.order_by.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
+    # save temp prompt to db
+    created_prompt = agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
 
-    result = agentic_prompt_repo.get_llm_item(task_id, prompt_name)
+    # get prompt from db
+    result = agentic_prompt_repo.get_llm_item(task_id, created_prompt.name)
 
     assert isinstance(result, AgenticPrompt)
-    assert result.name == sample_db_prompt.name
+    assert result.name == created_prompt.name
     assert result.messages == expected_db_prompt_messages
 
-    # Verify database query was called correctly
-    mock_db_session.query.assert_called_once_with(DatabaseAgenticPrompt)
-    mock_query.filter.assert_called_once()
+    agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
 
 
 @pytest.mark.unit_tests
-def test_get_prompt_not_found(agentic_prompt_repo, mock_db_session):
+def test_get_prompt_not_found(agentic_prompt_repo):
     """Test getting a prompt that doesn't exist"""
     task_id = "nonexistent_task"
     prompt_name = "nonexistent_prompt"
-
-    # Mock database query returning None
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.order_by.return_value = mock_filter
-    mock_filter.first.return_value = None
 
     with pytest.raises(ValueError) as exc_info:
         agentic_prompt_repo.get_llm_item(task_id, prompt_name)
@@ -243,92 +228,46 @@ def test_get_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 
 @pytest.mark.unit_tests
-def test_get_all_prompts(agentic_prompt_repo, mock_db_session, sample_db_prompt):
+def test_get_all_prompts(agentic_prompt_repo, sample_prompt_data):
     """Test getting all prompts for a task"""
     task_id = "test_task_id"
 
     # Create multiple sample prompts
-    prompt2 = DatabaseAgenticPrompt(
-        task_id=task_id,
-        name="prompt2",
-        messages=[{"role": "user", "content": "Second prompt"}],
-        model_name="gpt-3.5-turbo",
-        model_provider="openai",
-        created_at=datetime.now(),
-        version=1,
-        deleted_at=None,
-    )
+    created_prompts = []
+    try:
+        for i in range(2):
+            prompt = AgenticPrompt(name=f"test_prompt_{i}", **sample_prompt_data)
+            created_prompts.append(agentic_prompt_repo.save_llm_item(task_id, prompt))
 
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.group_by.return_value = mock_filter
-    mock_filter.order_by.return_value = mock_filter
-    mock_filter.all.return_value = [
-        SimpleNamespace(
-            name=sample_db_prompt.name,
-            versions=1,
-            created_at=sample_db_prompt.created_at or datetime.now(),
-            latest_version_created_at=sample_db_prompt.created_at or datetime.now(),
-        ),
-        SimpleNamespace(
-            name=prompt2.name,
-            versions=1,
-            created_at=prompt2.created_at or datetime.now(),
-            latest_version_created_at=prompt2.created_at or datetime.now(),
-        ),
-    ]
+        # pagination parameters ascending
+        pagination_parameters = PaginationParameters(
+            page=0,
+            page_size=10,
+            sort=PaginationSortMethod.ASCENDING,
+        )
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
+            task_id,
+            pagination_parameters,
+        )
 
-    # Mock deleted_versions query
-    mock_deleted = MagicMock()
-    mock_deleted.filter.return_value = mock_deleted
-    mock_deleted.order_by.return_value = mock_deleted
-    mock_deleted.all.return_value = []
-    mock_db_session.query.side_effect = [mock_query, mock_deleted, mock_deleted]
+        assert isinstance(result, LLMGetAllMetadataListResponse)
+        assert len(result.llm_metadata) == 2
+        assert all(
+            isinstance(prompt, LLMGetAllMetadataResponse)
+            for prompt in result.llm_metadata
+        )
+        assert result.llm_metadata[0].name == created_prompts[0].name
+        assert result.llm_metadata[1].name == created_prompts[1].name
 
-    # Mock count query
-    mock_filter.count.return_value = 2
-    mock_filter.offset.return_value = mock_filter
-    mock_filter.limit.return_value = mock_filter
-
-    # Use default pagination parameters
-    pagination_parameters = PaginationParameters(
-        page=0,
-        page_size=10,
-        sort=PaginationSortMethod.DESCENDING,
-    )
-    result = agentic_prompt_repo.get_all_llm_item_metadata(
-        task_id,
-        pagination_parameters,
-    )
-
-    assert isinstance(result, LLMGetAllMetadataListResponse)
-    assert len(result.llm_metadata) == 2
-    assert all(
-        isinstance(prompt, LLMGetAllMetadataResponse) for prompt in result.llm_metadata
-    )
-    assert result.llm_metadata[0].name == sample_db_prompt.name
-    assert result.llm_metadata[1].name == prompt2.name
+    finally:
+        for prompt in created_prompts:
+            agentic_prompt_repo.delete_llm_item(task_id, prompt.name)
 
 
 @pytest.mark.unit_tests
-def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
+def test_get_all_prompts_empty(agentic_prompt_repo):
     """Test getting all prompts when none exist"""
     task_id = "empty_task"
-
-    # Mock database query returning empty list
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.group_by.return_value = mock_filter
-    mock_filter.order_by.return_value = mock_filter
-    mock_filter.count.return_value = 0
-    mock_filter.offset.return_value = mock_filter
-    mock_filter.limit.return_value = mock_filter
-    mock_filter.all.return_value = []
 
     # Use default pagination parameters
     pagination_parameters = PaginationParameters(
@@ -348,38 +287,26 @@ def test_get_all_prompts_empty(agentic_prompt_repo, mock_db_session):
 @pytest.mark.unit_tests
 def test_save_prompt_with_agentic_prompt_object(
     agentic_prompt_repo,
-    mock_db_session,
     sample_agentic_prompt,
 ):
     """Test saving an AgenticPrompt object to database"""
     task_id = "test_task_id"
 
-    mock_db_session.query.return_value.filter.return_value.scalar.return_value = 0
+    added_prompt = agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
 
-    agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
-
-    # Verify database operations
-    mock_db_session.add.assert_called_once()
-    mock_db_session.commit.assert_called_once()
-
-    # Check the DatabaseAgenticPrompt object that was added
-    added_prompt = mock_db_session.add.call_args[0][0]
-    messages = to_openai_messages(added_prompt.messages)
-
-    assert isinstance(added_prompt, DatabaseAgenticPrompt)
-    assert added_prompt.task_id == task_id
+    assert isinstance(added_prompt, AgenticPrompt)
     assert added_prompt.name == sample_agentic_prompt.name
-    assert messages == sample_agentic_prompt.messages
+    assert added_prompt.messages == sample_agentic_prompt.messages
+
+    agentic_prompt_repo.delete_llm_item(task_id, added_prompt.name)
 
 
 @pytest.mark.unit_tests
-def test_save_prompt_integrity_error(
-    agentic_prompt_repo,
-    mock_db_session,
-    sample_agentic_prompt,
-):
+def test_save_prompt_integrity_error(sample_agentic_prompt):
     """Test saving a prompt when it already exists (IntegrityError)"""
     task_id = "test_task_id"
+    mock_db_session = MagicMock()
+    agentic_prompt_repo = AgenticPromptRepository(db_session=mock_db_session)
 
     # Mock IntegrityError on commit
     mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
@@ -397,37 +324,26 @@ def test_save_prompt_integrity_error(
 
 
 @pytest.mark.unit_tests
-def test_delete_prompt_success(agentic_prompt_repo, mock_db_session, sample_db_prompt):
+def test_delete_prompt_success(agentic_prompt_repo, sample_agentic_prompt):
     """Test successfully deleting a prompt"""
     task_id = "test_task_id"
-    prompt_name = "test_prompt"
 
     # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.all.return_value = [sample_db_prompt]
+    created_prompt = agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
+    agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
 
-    agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
-
-    # Verify database operations
-    mock_db_session.delete.assert_called_once_with(sample_db_prompt)
-    mock_db_session.commit.assert_called_once()
+    with pytest.raises(ValueError) as exc_info:
+        agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
+    assert f"'{created_prompt.name}' not found for task '{task_id}'" in str(
+        exc_info.value,
+    )
 
 
 @pytest.mark.unit_tests
-def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
+def test_delete_prompt_not_found(agentic_prompt_repo):
     """Test deleting a prompt that doesn't exist"""
     task_id = "nonexistent_task"
     prompt_name = "nonexistent_prompt"
-
-    # Mock database query returning None
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.all.return_value = None
 
     with pytest.raises(
         ValueError,
@@ -438,38 +354,38 @@ def test_delete_prompt_not_found(agentic_prompt_repo, mock_db_session):
 
 @pytest.mark.unit_tests
 @pytest.mark.asyncio
+@patch(
+    "repositories.agentic_prompts_repository.ModelProviderRepository.get_model_provider_client",
+)
 @patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
+@patch("clients.llm.llm_client.LLMClient.completion")
 async def test_run_saved_prompt(
     mock_completion,
     mock_completion_cost,
+    mock_get_client,
     mock_llm_client,
     agentic_prompt_repo,
-    mock_db_session,
-    sample_db_prompt,
+    sample_agentic_prompt,
 ):
     """Test running a saved prompt from database"""
     task_id = "test_task_id"
     prompt_name = "test_prompt"
-
-    # Mock database query
-    mock_query = MagicMock()
-    mock_filter = MagicMock()
-    mock_db_session.query.return_value = mock_query
-    mock_query.filter.return_value = mock_filter
-    mock_filter.filter.return_value = mock_filter
-    mock_filter.order_by.return_value = mock_filter
-    mock_filter.first.return_value = sample_db_prompt
 
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message = {
         "content": "Saved prompt response",
-        "tool_calls": None,
     }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.002345
+    mock_llm_response = MagicMock()
+    mock_llm_response.response = mock_response
+    mock_llm_response.cost = 0.002345
+
+    mock_completion.return_value = mock_llm_response
+    mock_get_client.return_value = mock_llm_client
+    mock_llm_client.completion = mock_completion
+
+    created_prompt = agentic_prompt_repo.save_llm_item(task_id, sample_agentic_prompt)
 
     result = await agentic_prompt_repo.run_saved_prompt(
         task_id,
@@ -482,11 +398,17 @@ async def test_run_saved_prompt(
     assert result.content == "Saved prompt response"
     assert result.cost == "0.002345"
 
+    agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
+
 
 @pytest.mark.unit_tests
-def test_agentic_prompt_from_db_model(sample_db_prompt, expected_db_prompt_messages):
+def test_agentic_prompt_from_db_model(
+    agentic_prompt_repo,
+    sample_db_prompt,
+    expected_db_prompt_messages,
+):
     """Test creating AgenticPrompt from DatabaseAgenticPrompt"""
-    prompt = AgenticPrompt.from_db_model(sample_db_prompt)
+    prompt = agentic_prompt_repo.from_db_model(sample_db_prompt)
 
     assert isinstance(prompt, AgenticPrompt)
     assert prompt.name == sample_db_prompt.name
@@ -513,11 +435,15 @@ def test_agentic_prompt_model_dump(sample_agentic_prompt):
 
 
 @pytest.mark.unit_tests
+@patch(
+    "repositories.agentic_prompts_repository.ModelProviderRepository.get_model_provider_client",
+)
 @patch("clients.llm.llm_client.completion_cost")
-@patch("clients.llm.llm_client.litellm.completion")
+@patch("clients.llm.llm_client.LLMClient.completion")
 def test_chat_completion_service_run_chat_completion(
     mock_completion,
     mock_completion_cost,
+    mock_get_client,
     mock_llm_client,
     sample_agentic_prompt,
 ):
@@ -529,8 +455,13 @@ def test_chat_completion_service_run_chat_completion(
         "content": "Direct completion response",
         "tool_calls": [{"id": "call_456", "function": {"name": "test_tool"}}],
     }
-    mock_completion.return_value = mock_response
-    mock_completion_cost.return_value = 0.003456
+    mock_llm_response = MagicMock()
+    mock_llm_response.response = mock_response
+    mock_llm_response.cost = 0.003456
+
+    mock_completion.return_value = mock_llm_response
+    mock_get_client.return_value = mock_llm_client
+    mock_llm_client.completion = mock_completion
 
     chat_completion_service = ChatCompletionService()
     result = chat_completion_service.run_chat_completion(
@@ -812,7 +743,7 @@ def test_agentic_prompt_find_missing_variables(message, variables, missing_varia
 
 
 @pytest.mark.unit_tests
-def test_agentic_prompt_tools_serialization():
+def test_agentic_prompt_tools_serialization(agentic_prompt_repo):
     """Test that tools serialize and deserialize correctly"""
     prompt_data = {
         "name": "test_tools",
@@ -849,7 +780,7 @@ def test_agentic_prompt_tools_serialization():
 
     # Convert to DB model
     task_id = str(uuid4())
-    db_model = prompt.to_db_model(task_id)
+    db_model = agentic_prompt_repo.to_db_model(task_id, prompt)
 
     # Verify tools are serialized correctly
     assert len(db_model.tools) == 1
@@ -868,7 +799,7 @@ def test_agentic_prompt_tools_serialization():
     assert db_model.config["tool_choice"]["function"]["name"] == "get_weather"
 
     # Convert back from DB model
-    reconstructed_prompt = AgenticPrompt.from_db_model(db_model)
+    reconstructed_prompt = agentic_prompt_repo.from_db_model(db_model)
 
     # Verify tools are deserialized correctly
     assert len(reconstructed_prompt.tools) == 1
@@ -886,7 +817,7 @@ def test_agentic_prompt_tools_serialization():
 
 
 @pytest.mark.unit_tests
-def test_agentic_prompt_response_format_serialization():
+def test_agentic_prompt_response_format_serialization(agentic_prompt_repo):
     """Test that response_format serializes and deserializes correctly"""
     prompt_data = {
         "name": "test_response_format",
@@ -916,7 +847,7 @@ def test_agentic_prompt_response_format_serialization():
 
     # Convert to DB model
     task_id = str(uuid4())
-    db_model = prompt.to_db_model(task_id)
+    db_model = agentic_prompt_repo.to_db_model(task_id, prompt)
 
     # Verify response_format is serialized correctly
     assert db_model.config["response_format"]["type"] == "json_schema"
@@ -937,7 +868,7 @@ def test_agentic_prompt_response_format_serialization():
     assert db_model.config["response_format"]["json_schema"].get("strict") == None
 
     # Convert back from DB model
-    reconstructed_prompt = AgenticPrompt.from_db_model(db_model)
+    reconstructed_prompt = agentic_prompt_repo.from_db_model(db_model)
 
     # Verify response_format is deserialized correctly
     assert reconstructed_prompt.config.response_format.type == "json_schema"
@@ -1133,12 +1064,9 @@ async def test_stream_deleted_prompt_spawns_error(
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
-def test_get_prompt_by_version_success(prompt_version):
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+def test_get_prompt_by_version_success(agentic_prompt_repo, prompt_version):
     """Test getting a prompt with different version formats"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
     prompt_name = "test_prompt"
 
@@ -1147,19 +1075,24 @@ def test_get_prompt_by_version_success(prompt_version):
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
-        "version": 1,
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
     }
-    db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
-    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
+    prompt = AgenticPrompt(name="test_prompt", **prompt_data)
+    created_prompt = agentic_prompt_repo.save_llm_item(task_id, prompt)
 
     # Save to database
-    db_session.add(db_prompt)
-    db_session.commit()
-
     try:
-        result = repo.get_llm_item(task_id, prompt_name, prompt_version)
+        if prompt_version == "datetime":
+            prompt_version = created_prompt.created_at.isoformat()
+
+        result = agentic_prompt_repo.get_llm_item(
+            task_id,
+            created_prompt.name,
+            prompt_version,
+        )
 
         assert isinstance(result, AgenticPrompt)
         assert result.name == prompt_name
@@ -1169,9 +1102,7 @@ def test_get_prompt_by_version_success(prompt_version):
         assert result.version == 1
     finally:
         # Cleanup
-        db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        agentic_prompt_repo.delete_llm_item(task_id, created_prompt.name)
 
 
 @pytest.mark.unit_tests
@@ -1181,20 +1112,18 @@ def test_get_prompt_by_version_success(prompt_version):
         ("model_provider", ModelProvider.OPENAI, 1, "prompt_openai"),
         ("model_name", "gpt-4", 1, "prompt_openai"),
         ("llm_asset_names", ["prompt_openai"], 1, "prompt_openai"),
-        ("created_after", datetime(2025, 1, 1), 2, None),
-        ("created_before", datetime(2025, 1, 2), 1, "prompt_openai"),
+        ("created_after", "", 2, None),
+        ("created_before", "", 1, "prompt_openai"),
     ],
 )
 def test_get_all_prompt_metadata_with_filters(
+    agentic_prompt_repo,
     filter_param,
     filter_value,
     expected_count,
     expected_name,
 ):
     """Test getting all prompt metadata with filter_request parameters"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
 
     # Create multiple prompts with different providers and models
@@ -1204,29 +1133,30 @@ def test_get_all_prompt_metadata_with_filters(
             "messages": [{"role": "user", "content": "OpenAI prompt"}],
             "model_name": "gpt-4",
             "model_provider": "openai",
-            "created_at": datetime(2025, 1, 1, 12, 0, 0),
         },
         {
             "name": "prompt_anthropic",
             "messages": [{"role": "user", "content": "Anthropic prompt"}],
             "model_name": "claude-3-5-sonnet",
             "model_provider": "anthropic",
-            "created_at": datetime(2025, 1, 2, 12, 0, 0),
         },
     ]
 
     created_prompts = []
     for prompt_data in prompts_data:
-        created_at = prompt_data.pop("created_at")
-        db_prompt = AgenticPrompt(**prompt_data).to_db_model(task_id)
-        db_prompt.created_at = created_at
-        db_session.add(db_prompt)
-        created_prompts.append(db_prompt)
-
-    db_session.commit()
+        prompt = agentic_prompt_repo.save_llm_item(
+            task_id,
+            AgenticPrompt(**prompt_data),
+        )
+        created_prompts.append(prompt)
 
     try:
         # Create filter request
+        if filter_param == "created_after":
+            filter_value = created_prompts[0].created_at.isoformat()
+        elif filter_param == "created_before":
+            filter_value = created_prompts[-1].created_at.isoformat()
+
         filter_request = LLMGetAllFilterRequest(**{filter_param: filter_value})
 
         # Create pagination parameters
@@ -1237,7 +1167,7 @@ def test_get_all_prompt_metadata_with_filters(
         )
 
         # Get filtered results
-        result = repo.get_all_llm_item_metadata(
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
             filter_request=filter_request,
@@ -1254,10 +1184,8 @@ def test_get_all_prompt_metadata_with_filters(
 
     finally:
         # Cleanup
-        for db_prompt in created_prompts:
-            db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        for prompt in created_prompts:
+            agentic_prompt_repo.delete_llm_item(task_id, prompt.name)
 
 
 @pytest.mark.unit_tests
@@ -1266,19 +1194,21 @@ def test_get_all_prompt_metadata_with_filters(
     [
         ("model_provider", ModelProvider.OPENAI, 2),
         ("model_name", "gpt-4", 2),
-        ("created_after", datetime(2025, 1, 1), 3),
-        ("created_before", datetime(2025, 1, 2), 2),
+        ("created_after", "", 3),
+        ("created_before", "", 2),
         ("exclude_deleted", True, 2),
         ("min_version", 2, 2),
         ("max_version", 2, 2),
         ("min_version", 10, 0),  # verify no returned versions doesn't spawn an error
     ],
 )
-def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_count):
+def test_get_prompt_versions_with_filters(
+    agentic_prompt_repo,
+    filter_param,
+    filter_value,
+    expected_count,
+):
     """Test getting prompt versions with filter_request parameters"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
     prompt_name = "test_prompt"
 
@@ -1288,42 +1218,37 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
             "messages": [{"role": "user", "content": "Version 1"}],
             "model_name": "gpt-4",
             "model_provider": "openai",
-            "version": 1,
-            "created_at": datetime(2025, 1, 1, 12, 0, 0),
-            "deleted_at": None,
         },
         {
             "messages": [{"role": "user", "content": "Version 2"}],
             "model_name": "gpt-4",
             "model_provider": "openai",
-            "version": 2,
-            "created_at": datetime(2025, 1, 1, 13, 0, 0),
-            "deleted_at": None,
         },
         {
             "messages": [{"role": "user", "content": "Version 3"}],
             "model_name": "claude-3-5-sonnet",
             "model_provider": "anthropic",
-            "version": 3,
-            "created_at": datetime(2025, 1, 2, 12, 0, 0),
-            "deleted_at": datetime(2025, 1, 3, 12, 0, 0),  # deleted version
         },
     ]
 
     created_prompts = []
     for version_data in versions_data:
-        created_at = version_data.pop("created_at")
-        deleted_at = version_data.pop("deleted_at")
-        db_prompt = AgenticPrompt(name=prompt_name, **version_data).to_db_model(task_id)
-        db_prompt.created_at = created_at
-        db_prompt.deleted_at = deleted_at
-        db_session.add(db_prompt)
-        created_prompts.append(db_prompt)
-
-    db_session.commit()
+        prompt = AgenticPrompt(name=prompt_name, **version_data)
+        created_prompts.append(agentic_prompt_repo.save_llm_item(task_id, prompt))
 
     try:
         # Create filter request
+        if filter_param == "created_after":
+            filter_value = created_prompts[0].created_at.isoformat()
+        elif filter_param == "created_before":
+            filter_value = created_prompts[-1].created_at.isoformat()
+        elif filter_param == "exclude_deleted":
+            agentic_prompt_repo.soft_delete_llm_item_version(
+                task_id,
+                prompt_name,
+                "latest",
+            )
+
         filter_request = LLMGetVersionsFilterRequest(**{filter_param: filter_value})
 
         # Create pagination parameters
@@ -1334,7 +1259,7 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
         )
 
         # Get filtered results
-        result = repo.get_llm_item_versions(
+        result = agentic_prompt_repo.get_llm_item_versions(
             task_id=task_id,
             item_name=prompt_name,
             pagination_parameters=pagination_params,
@@ -1348,10 +1273,7 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
 
     finally:
         # Cleanup
-        for db_prompt in created_prompts:
-            db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        agentic_prompt_repo.delete_llm_item(task_id, prompt.name)
 
 
 @pytest.mark.unit_tests
@@ -1365,11 +1287,14 @@ def test_get_prompt_versions_with_filters(filter_param, filter_value, expected_c
         (2, 1, PaginationSortMethod.ASCENDING, ["prompt_2"]),
     ],
 )
-def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected_names):
+def test_get_all_prompt_metadata_with_pagination(
+    agentic_prompt_repo,
+    page,
+    page_size,
+    sort,
+    expected_names,
+):
     """Test getting all prompt metadata with all pagination parameters (page, page_size, sort)"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
 
     # Create multiple prompts
@@ -1381,13 +1306,8 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
 
     created_prompts = []
     for i in range(3):
-        db_prompt = AgenticPrompt(name=f"prompt_{i}", **prompt_data).to_db_model(
-            task_id,
-        )
-        db_session.add(db_prompt)
-        created_prompts.append(db_prompt)
-
-    db_session.commit()
+        prompt = AgenticPrompt(name=f"prompt_{i}", **prompt_data)
+        created_prompts.append(agentic_prompt_repo.save_llm_item(task_id, prompt))
 
     try:
         # Create pagination parameters
@@ -1398,7 +1318,7 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
         )
 
         # Get paginated results
-        result = repo.get_all_llm_item_metadata(
+        result = agentic_prompt_repo.get_all_llm_item_metadata(
             task_id=task_id,
             pagination_parameters=pagination_params,
         )
@@ -1414,10 +1334,8 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
 
     finally:
         # Cleanup
-        for db_prompt in created_prompts:
-            db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        for prompt in created_prompts:
+            agentic_prompt_repo.delete_llm_item(task_id, prompt.name)
 
 
 @pytest.mark.unit_tests
@@ -1431,11 +1349,14 @@ def test_get_all_prompt_metadata_with_pagination(page, page_size, sort, expected
         (3, 1, PaginationSortMethod.ASCENDING, [4]),
     ],
 )
-def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_versions):
+def test_get_prompt_versions_with_pagination(
+    agentic_prompt_repo,
+    page,
+    page_size,
+    sort,
+    expected_versions,
+):
     """Test getting prompt versions with all pagination parameters (page, page_size, sort)"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
     prompt_name = "test_prompt"
 
@@ -1448,11 +1369,8 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
             "model_provider": "openai",
             "version": i,
         }
-        db_prompt = AgenticPrompt(name=prompt_name, **version_data).to_db_model(task_id)
-        db_session.add(db_prompt)
-        created_prompts.append(db_prompt)
-
-    db_session.commit()
+        prompt = AgenticPrompt(name=prompt_name, **version_data)
+        created_prompts.append(agentic_prompt_repo.save_llm_item(task_id, prompt))
 
     try:
         # Create pagination parameters
@@ -1463,7 +1381,7 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
         )
 
         # Get paginated results
-        result = repo.get_llm_item_versions(
+        result = agentic_prompt_repo.get_llm_item_versions(
             task_id=task_id,
             item_name=prompt_name,
             pagination_parameters=pagination_params,
@@ -1480,19 +1398,13 @@ def test_get_prompt_versions_with_pagination(page, page_size, sort, expected_ver
 
     finally:
         # Cleanup
-        for db_prompt in created_prompts:
-            db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
 
 
 @pytest.mark.unit_tests
-@pytest.mark.parametrize("prompt_version", ["latest", "1", "2025-01-01T00:00:00"])
-def test_soft_delete_prompt_by_version_success(prompt_version):
+@pytest.mark.parametrize("prompt_version", ["latest", "1", "datetime"])
+def test_soft_delete_prompt_by_version_success(agentic_prompt_repo, prompt_version):
     """Test deleting a prompt with different version formats"""
-    db_session = override_get_db_session()
-    repo = AgenticPromptRepository(db_session)
-
     task_id = str(uuid4())
     prompt_name = "test_prompt"
 
@@ -1501,28 +1413,36 @@ def test_soft_delete_prompt_by_version_success(prompt_version):
         "messages": [{"role": "user", "content": "Hello, world!"}],
         "model_name": "gpt-4",
         "model_provider": "openai",
-        "temperature": 0.7,
-        "max_tokens": 100,
-        "version": 1,
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
     }
-    db_prompt = AgenticPrompt(name="test_prompt", **prompt_data).to_db_model(task_id)
-    db_prompt.created_at = datetime.fromisoformat("2025-01-01T00:00:00")
-
-    # Save to database
-    db_session.add(db_prompt)
-    db_session.commit()
+    prompt = AgenticPrompt(name="test_prompt", **prompt_data)
+    created_prompt = agentic_prompt_repo.save_llm_item(task_id, prompt)
 
     try:
-        repo.soft_delete_llm_item_version(task_id, prompt_name, prompt_version)
+        if prompt_version == "datetime":
+            prompt_version = created_prompt.created_at.isoformat()
+
+        agentic_prompt_repo.soft_delete_llm_item_version(
+            task_id,
+            prompt_name,
+            prompt_version,
+        )
         if prompt_version == "latest":
             with pytest.raises(ValueError) as exc_info:
-                repo.get_llm_item(task_id, prompt_name, prompt_version)
+                agentic_prompt_repo.get_llm_item(task_id, prompt_name, prompt_version)
             assert (
                 f"'{prompt_name}' (version 'latest') not found for task '{task_id}'"
                 in str(exc_info.value)
             )
         else:
-            result = repo.get_llm_item(task_id, prompt_name, prompt_version)
+            result = agentic_prompt_repo.get_llm_item(
+                task_id,
+                prompt_name,
+                prompt_version,
+            )
 
             assert isinstance(result, AgenticPrompt)
             assert result.name == prompt_name
@@ -1535,9 +1455,7 @@ def test_soft_delete_prompt_by_version_success(prompt_version):
             assert result.deleted_at is not None
     finally:
         # Cleanup
-        db_session.delete(db_prompt)
-        db_session.commit()
-        db_session.close()
+        agentic_prompt_repo.delete_llm_item(task_id, prompt_name)
 
 
 @pytest.mark.unit_tests

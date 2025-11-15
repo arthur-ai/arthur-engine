@@ -29,6 +29,10 @@ class AgenticPrompt(BaseModel):
         None,
         description="Available tools/functions for the model to call, in OpenAI function calling format",
     )
+    variables: Optional[List[str]] = Field(
+        None,
+        description="List of variable names for the agentic prompt",
+    )
     config: Optional[LLMConfigSettings] = Field(
         default=None,
         description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",

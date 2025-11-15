@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from litellm import supports_response_schema
 from pydantic import BaseModel, Field, create_model
@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from db_models.llm_eval_models import Base, DatabaseLLMEval
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
+from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.llm_eval_schemas import LLMEval
+from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat
 from schemas.request_schemas import (
     BaseCompletionRequest,
     PromptCompletionRequest,
@@ -29,8 +31,14 @@ class LLMEvalsRepository(BaseLLMRepository):
         self.model_provider_repo = ModelProviderRepository(db_session)
         self.chat_completion_service = ChatCompletionService()
 
-    def _from_db_model(self, db_item: Base) -> BaseModel:
-        return LLMEval.from_db_model(db_item)
+    def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
+        return LLMEval.model_validate(db_eval.__dict__)
+
+    def to_db_model(self, task_id: str, item: LLMEval) -> DatabaseLLMEval:
+        return DatabaseLLMEval(
+            task_id=task_id,
+            **item.model_dump(mode="python", exclude_none=True),
+        )
 
     def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
         return LLMVersionResponse(
@@ -47,6 +55,41 @@ class LLMEvalsRepository(BaseLLMRepository):
         db_item.min_score = 0
         db_item.max_score = 1
         db_item.config = None
+
+    def from_llm_eval_to_agentic_prompt(
+        self,
+        llm_eval: LLMEval,
+        response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
+    ) -> AgenticPrompt:
+        messages = [
+            {"role": "system", "content": llm_eval.instructions},
+        ]
+
+        config_dict = {}
+        if llm_eval.config:
+            config_dict = llm_eval.config.model_dump(exclude_none=True)
+
+        if response_format is not None:
+            config_dict["response_format"] = response_format
+
+        return AgenticPrompt(
+            name=llm_eval.name,
+            model_name=llm_eval.model_name,
+            model_provider=llm_eval.model_provider,
+            messages=messages,
+            version=llm_eval.version,
+            created_at=llm_eval.created_at,
+            deleted_at=llm_eval.deleted_at,
+            config=LLMConfigSettings(**config_dict),
+        )
+
+    def save_llm_item(self, task_id: str, item: LLMEval) -> LLMEval:
+        item.variables = list(
+            self.chat_completion_service.find_undeclared_variables_in_text(
+                item.instructions,
+            ),
+        )
+        return super().save_llm_item(task_id, item)
 
     def run_llm_eval(
         self,
@@ -116,7 +159,8 @@ class LLMEvalsRepository(BaseLLMRepository):
         )
 
         # run the chat completion
-        agentic_prompt = llm_eval.to_agentic_prompt(
+        agentic_prompt = self.from_llm_eval_to_agentic_prompt(
+            llm_eval=llm_eval,
             response_format=llm_eval_response_schema,
         )
 

@@ -9053,6 +9053,21 @@
                         "title": "Tools",
                         "description": "Available tools/functions for the model to call, in OpenAI function calling format"
                     },
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "List of variable names for the agentic prompt"
+                    },
                     "config": {
                         "anyOf": [
                             {
@@ -11500,6 +11515,21 @@
                         "title": "Max Score",
                         "description": "Maximum score for the llm eval",
                         "default": 1
+                    },
+                    "variables": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Variables",
+                        "description": "List of variable names for the llm eval"
                     },
                     "config": {
                         "anyOf": [

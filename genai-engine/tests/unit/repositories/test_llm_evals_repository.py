@@ -151,9 +151,9 @@ def test_save_llm_eval_with_llm_eval_object(
 
 
 @pytest.mark.unit_tests
-def test_llm_eval_from_db_model(sample_db_llm_eval):
+def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
     """Test creating LLMEval from DatabaseLLMEval"""
-    llm_eval = LLMEval.from_db_model(sample_db_llm_eval)
+    llm_eval = llm_evals_repo.from_db_model(sample_db_llm_eval)
 
     assert isinstance(llm_eval, LLMEval)
     assert llm_eval.name == sample_db_llm_eval.name
