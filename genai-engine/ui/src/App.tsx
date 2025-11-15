@@ -15,6 +15,7 @@ import { DatasetsView } from "./components/datasets/DatasetsView";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
 import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -155,6 +156,17 @@ function App() {
                   <ProtectedRoute>
                     <TaskLayout>
                       <PromptExperimentsView />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompt-experiments/:experimentId"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <ExperimentDetailView />
                     </TaskLayout>
                   </ProtectedRoute>
                 }

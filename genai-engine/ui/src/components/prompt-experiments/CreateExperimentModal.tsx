@@ -170,9 +170,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         datasetId,
         page_size: 100,
       });
-      console.log("Dataset versions response:", response.data);
       setDatasetVersions(response.data.versions);
-      console.log("Set dataset versions to:", response.data.versions);
     } catch (error) {
       console.error("Failed to load dataset versions:", error);
     } finally {

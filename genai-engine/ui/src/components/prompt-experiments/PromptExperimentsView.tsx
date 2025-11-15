@@ -1,5 +1,6 @@
 import { Box } from "@mui/material";
 import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { PromptExperimentsEmptyState } from "./PromptExperimentsEmptyState";
 import { PromptExperimentsTable, PromptExperiment } from "./PromptExperimentsTable";
@@ -73,6 +74,9 @@ const MOCK_EXPERIMENTS: PromptExperiment[] = [
 ];
 
 export const PromptExperimentsView: React.FC = () => {
+  const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
   // Using mock data for now - will be replaced with API call
   const [experiments] = useState<PromptExperiment[]>(MOCK_EXPERIMENTS);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -92,8 +96,7 @@ export const PromptExperimentsView: React.FC = () => {
   };
 
   const handleRowClick = (experiment: PromptExperiment) => {
-    console.log("Experiment clicked:", experiment.id);
-    // TODO: Navigate to experiment detail view
+    navigate(`/tasks/${taskId}/prompt-experiments/${experiment.id}`);
   };
 
   return (
