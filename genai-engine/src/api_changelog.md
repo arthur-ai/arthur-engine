@@ -2,6 +2,113 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the optional property 'min_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'max_score' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed the optional property 'min_score' from the response with the '200' status
+
+# 11/15/2025
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v2/datasets/{dataset_id}/transforms/{transform_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'variables' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'variables' to the response with the '200' status
+
+# 11/14/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/completions  removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'frequency_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logit_bias'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_completion_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'max_tokens'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'presence_penalty'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'reasoning_effort'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'response_format'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'seed'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stop'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'stream_options'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'temperature'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'thinking'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'timeout'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'tool_choice'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_logprobs'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the request property 'top_p'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'frequency_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logit_bias' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_completion_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'max_tokens' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'presence_penalty' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'reasoning_effort' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'response_format' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'seed' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stop' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'stream_options' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'temperature' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'thinking' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'timeout' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'tool_choice' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_logprobs' from the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  removed the optional property 'top_p' from the response with the '200' status
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Input'
+- **CHANGE** for Component/Schema:  removed the schema 'AgenticPromptMessage-Output'
+- **CHANGE** for **URL**: /api/v1/completions  added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMRequestConfigSettings' to the 'config' request property 'anyOf' list
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added '#/components/schemas/LLMBaseConfigSettings' to the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  removed '#/components/schemas/LLMConfigSettings' from the 'config' response property 'anyOf' list for the response status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the new optional request property 'config'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'config' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'config' to the response with the '200' status
+
 # 11/13/2025
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'created_at'
 - **CHANGE** for **URL**: /api/v1/completions  removed the request property 'deleted_at'

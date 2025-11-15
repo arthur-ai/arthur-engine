@@ -14,6 +14,8 @@ export type APIKeysRolesEnum = "DEFAULT-RULE-ADMIN" | "TASK-ADMIN" | "VALIDATION
 
 /** AgenticPrompt */
 export interface AgenticPrompt {
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMConfigSettings | null;
   /**
    * Created At
    * Timestamp when the prompt was created.
@@ -25,35 +27,10 @@ export interface AgenticPrompt {
    */
   deleted_at?: string | null;
   /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
-  /**
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: AgenticPromptMessageOutput[];
+  messages: OpenAIMessageOutput[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -67,234 +44,21 @@ export interface AgenticPrompt {
    */
   name: string;
   /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatOutput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
   tools?: LLMToolOutput[] | null;
   /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
+   * Variables
+   * List of variable names for the agentic prompt
    */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
+  variables?: string[];
   /**
    * Version
    * Version of the agentic prompt
    * @default 1
    */
   version?: number;
-}
-
-/** AgenticPromptBaseConfig */
-export interface AgenticPromptBaseConfig {
-  /**
-   * Created At
-   * Timestamp when the prompt was created.
-   */
-  created_at?: string | null;
-  /**
-   * Deleted At
-   * Time that this prompt was deleted
-   */
-  deleted_at?: string | null;
-  /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
-  /**
-   * Messages
-   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
-   */
-  messages: AgenticPromptMessageInput[];
-  /**
-   * Model Name
-   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
-   */
-  model_name: string;
-  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
-  model_provider: ModelProvider;
-  /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatInput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
-   * Tools
-   * Available tools/functions for the model to call, in OpenAI function calling format
-   */
-  tools?: LLMToolInput[] | null;
-  /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
-   */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
-  /**
-   * Version
-   * Version of the agentic prompt
-   * @default 1
-   */
-  version?: number;
-}
-
-/**
- * AgenticPromptMessage
- * The message schema class for the prompts playground.
- * This class adheres to OpenAI's message schema.
- */
-export interface AgenticPromptMessageInput {
-  /**
-   * Content
-   * Content of the message
-   */
-  content?: string | OpenAIMessageItem[] | null;
-  /**
-   * Name
-   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-   */
-  name?: string | null;
-  /** Role of the message */
-  role: MessageRole;
-  /**
-   * Tool Call Id
-   * ID of the tool call this message is responding to
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Calls
-   * Tool calls made by assistant
-   */
-  tool_calls?: ToolCall[] | null;
-}
-
-/**
- * AgenticPromptMessage
- * The message schema class for the prompts playground.
- * This class adheres to OpenAI's message schema.
- */
-export interface AgenticPromptMessageOutput {
-  /**
-   * Content
-   * Content of the message
-   */
-  content?: string | OpenAIMessageItem[] | null;
-  /**
-   * Name
-   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
-   */
-  name?: string | null;
-  /** Role of the message */
-  role: MessageRole;
-  /**
-   * Tool Call Id
-   * ID of the tool call this message is responding to
-   */
-  tool_call_id?: string | null;
-  /**
-   * Tool Calls
-   * Tool calls made by assistant
-   */
-  tool_calls?: ToolCall[] | null;
 }
 
 /** AgenticPromptRunResponse */
@@ -503,6 +267,16 @@ export interface AuthUserRole {
   name: string;
 }
 
+/** BaseCompletionRequest */
+export interface BaseCompletionRequest {
+  /**
+   * Variables
+   * List of VariableTemplateValue fields that specify the values to fill in for each template in the prompt
+   * @default []
+   */
+  variables?: VariableTemplateValue[] | null;
+}
+
 /** BaseDetailsResponse */
 export interface BaseDetailsResponse {
   /** Message */
@@ -630,46 +404,13 @@ export interface CheckUserPermissionUsersPermissionsCheckGetParams {
 export interface CompletionRequest {
   /** Run configuration for the unsaved prompt */
   completion_request?: PromptCompletionRequest;
-  /**
-   * Created At
-   * Timestamp when the prompt was created.
-   */
-  created_at?: string | null;
-  /**
-   * Deleted At
-   * Time that this prompt was deleted
-   */
-  deleted_at?: string | null;
-  /**
-   * Frequency Penalty
-   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
-   */
-  frequency_penalty?: number | null;
-  /**
-   * Logit Bias
-   * Modify likelihood of specified tokens appearing in completion
-   */
-  logit_bias?: LogitBiasItem[] | null;
-  /**
-   * Logprobs
-   * Whether to return log probabilities of output tokens
-   */
-  logprobs?: boolean | null;
-  /**
-   * Max Completion Tokens
-   * Maximum number of completion tokens (alternative to max_tokens)
-   */
-  max_completion_tokens?: number | null;
-  /**
-   * Max Tokens
-   * Maximum number of tokens to generate in the response
-   */
-  max_tokens?: number | null;
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMPromptRequestConfigSettings | null;
   /**
    * Messages
    * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
    */
-  messages: AgenticPromptMessageInput[];
+  messages: OpenAIMessageInput[];
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -678,64 +419,10 @@ export interface CompletionRequest {
   /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
   model_provider: ModelProvider;
   /**
-   * Presence Penalty
-   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
-   */
-  presence_penalty?: number | null;
-  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
-  reasoning_effort?: ReasoningEffortEnum | null;
-  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
-  response_format?: LLMResponseFormatInput | null;
-  /**
-   * Seed
-   * Random seed for reproducible outputs
-   */
-  seed?: number | null;
-  /**
-   * Stop
-   * Stop sequence(s) where the model should stop generating
-   */
-  stop?: string | null;
-  /** Additional streaming configuration options */
-  stream_options?: StreamOptions | null;
-  /**
-   * Temperature
-   * Sampling temperature (0.0 to 2.0). Higher values make output more random
-   */
-  temperature?: number | null;
-  /** Anthropic-specific thinking parameter for Claude models */
-  thinking?: AnthropicThinkingParam | null;
-  /**
-   * Timeout
-   * Request timeout in seconds
-   */
-  timeout?: number | null;
-  /**
-   * Tool Choice
-   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
-   */
-  tool_choice?: ToolChoiceEnum | ToolChoice | null;
-  /**
    * Tools
    * Available tools/functions for the model to call, in OpenAI function calling format
    */
   tools?: LLMToolInput[] | null;
-  /**
-   * Top Logprobs
-   * Number of most likely tokens to return log probabilities for (1-20)
-   */
-  top_logprobs?: number | null;
-  /**
-   * Top P
-   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
-   */
-  top_p?: number | null;
-  /**
-   * Version
-   * Version of the agentic prompt
-   * @default 1
-   */
-  version?: number;
 }
 
 export type ComputeSessionMetricsApiV1TracesSessionsSessionIdMetricsGetData = SessionTracesResponse;
@@ -801,6 +488,29 @@ export interface ConversationBaseResponse {
   updated_at: string;
 }
 
+/** CreateAgenticPromptRequest */
+export interface CreateAgenticPromptRequest {
+  /** LLM configurations for this prompt (e.g. temperature, max_tokens, etc.) */
+  config?: LLMPromptRequestConfigSettings | null;
+  /**
+   * Messages
+   * List of chat messages in OpenAI format (e.g., [{'role': 'user', 'content': 'Hello'}])
+   */
+  messages: OpenAIMessageInput[];
+  /**
+   * Model Name
+   * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
+   */
+  model_name: string;
+  /** Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure') */
+  model_provider: ModelProvider;
+  /**
+   * Tools
+   * Available tools/functions for the model to call, in OpenAI function calling format
+   */
+  tools?: LLMToolInput[] | null;
+}
+
 export type CreateApiKeyAuthApiKeysPostData = ApiKeyResponse;
 
 export type CreateApiKeyAuthApiKeysPostError = HTTPValidationError;
@@ -820,7 +530,7 @@ export type CreateDefaultRuleApiV2DefaultRulesPostError = HTTPValidationError;
 /** CreateEvalRequest */
 export interface CreateEvalRequest {
   /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMConfigSettings | null;
+  config?: LLMRequestConfigSettings | null;
   /**
    * Instructions
    * Instructions for the llm eval
@@ -863,13 +573,17 @@ export type CreateTaskApiV2TasksPostData = TaskResponse;
 
 export type CreateTaskApiV2TasksPostError = HTTPValidationError;
 
-export type CreateTaskMetricApiV2TasksTaskIdMetricsPostData = any;
+export type CreateTaskMetricApiV2TasksTaskIdMetricsPostData = MetricResponse;
 
 export type CreateTaskMetricApiV2TasksTaskIdMetricsPostError = HTTPValidationError;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostData = RuleResponse;
 
 export type CreateTaskRuleApiV2TasksTaskIdRulesPostError = HTTPValidationError;
+
+export type CreateTransformApiV2DatasetsDatasetIdTransformsPostData = DatasetTransformResponse;
+
+export type CreateTransformApiV2DatasetsDatasetIdTransformsPostError = HTTPValidationError;
 
 /** CreateUserRequest */
 export interface CreateUserRequest {
@@ -932,6 +646,66 @@ export interface DatasetResponse {
    * Timestamp representing the time of the last dataset update in unix milliseconds.
    */
   updated_at: number;
+}
+
+/** DatasetTransformResponse */
+export interface DatasetTransformResponse {
+  /**
+   * Created At
+   * Timestamp representing the time of transform creation in unix milliseconds.
+   */
+  created_at: number;
+  /**
+   * Dataset Id
+   * ID of the parent dataset.
+   * @format uuid
+   */
+  dataset_id: string;
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition: Record<string, any>;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Id
+   * ID of the transform.
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name: string;
+  /**
+   * Updated At
+   * Timestamp representing the time of the last transform update in unix milliseconds.
+   */
+  updated_at: number;
+}
+
+/** DatasetTransformUpdateRequest */
+export interface DatasetTransformUpdateRequest {
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition?: Record<string, any> | null;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name?: string | null;
 }
 
 /** DatasetUpdateRequest */
@@ -1094,6 +868,10 @@ export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteData = any;
 
 export type DeleteLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameDeleteError = HTTPValidationError;
 
+export type DeleteModelProviderApiV1ModelProvidersProviderDeleteData = any;
+
+export type DeleteModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
+
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
 
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
@@ -1105,6 +883,10 @@ export type DeleteRagSearchSettingError = HTTPValidationError;
 export type DeleteRagSearchSettingVersionData = any;
 
 export type DeleteRagSearchSettingVersionError = HTTPValidationError;
+
+export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData = any;
+
+export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError = HTTPValidationError;
 
 export type DeleteUserUsersUserIdDeleteData = any;
 
@@ -1568,7 +1350,7 @@ export type GetApiKeyAuthApiKeysApiKeyIdGetData = ApiKeyResponse;
 
 export type GetApiKeyAuthApiKeysApiKeyIdGetError = HTTPValidationError;
 
-export type GetConversationsApiChatConversationsGetData = PageListConversationBaseResponse;
+export type GetConversationsApiChatConversationsGetData = PageConversationBaseResponse;
 
 export type GetConversationsApiChatConversationsGetError = HTTPValidationError;
 
@@ -1716,9 +1498,9 @@ export type GetLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGetErro
 
 export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 
-export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
+export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
 
-export type GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
 
 export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
 
@@ -1769,9 +1551,54 @@ export interface GetRagProvidersApiV1TasksTaskIdRagProvidersGetParams {
   taskId: string;
 }
 
+export type GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetData =
+  ListRagSearchSettingConfigurationVersionsResponse;
+
+export type GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetError = HTTPValidationError;
+
+export interface GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Setting Configuration Id
+   * ID of the RAG search setting configuration to get versions for.
+   * @format uuid
+   */
+  settingConfigurationId: string;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Tags
+   * List of tags to filter for versions tagged with any matching tag.
+   */
+  tags?: string[] | null;
+  /**
+   * Version Numbers
+   * List of version numbers to filter for.
+   */
+  version_numbers?: number[] | null;
+}
+
 export type GetRagSearchSettingData = RagSearchSettingConfigurationResponse;
 
 export type GetRagSearchSettingError = HTTPValidationError;
+
+export type GetRagSearchSettingVersionByTagData = RagSearchSettingConfigurationVersionResponse;
+
+export type GetRagSearchSettingVersionByTagError = HTTPValidationError;
 
 export type GetRagSearchSettingVersionData = RagSearchSettingConfigurationVersionResponse;
 
@@ -1880,6 +1707,10 @@ export interface GetTokenUsageApiV2UsageTokensGetParams {
 export type GetTraceByIdApiV1TracesTraceIdGetData = TraceResponse;
 
 export type GetTraceByIdApiV1TracesTraceIdGetError = HTTPValidationError;
+
+export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData = DatasetTransformResponse;
+
+export type GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError = HTTPValidationError;
 
 export type GetUserDetailsApiV1TracesUsersUserIdGetData = TraceUserMetadataResponse;
 
@@ -2078,8 +1909,8 @@ export interface KeywordsConfig {
   keywords: string[];
 }
 
-/** LLMConfigSettings */
-export interface LLMConfigSettings {
+/** LLMBaseConfigSettings */
+export interface LLMBaseConfigSettings {
   /**
    * Frequency Penalty
    * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
@@ -2146,10 +1977,90 @@ export interface LLMConfigSettings {
   top_p?: number | null;
 }
 
+/** LLMConfigSettings */
+export interface LLMConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Response Format
+   * Either a structured json_schema or a Pydantic model to enforce structured outputs.
+   */
+  response_format?: LLMResponseFormatOutput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
 /** LLMEval */
 export interface LLMEval {
   /** LLM configurations for this eval (e.g. temperature, max_tokens, etc.) */
-  config?: LLMConfigSettings | null;
+  config?: LLMBaseConfigSettings | null;
   /**
    * Created At
    * Timestamp when the llm eval was created.
@@ -2190,11 +2101,35 @@ export interface LLMEval {
    */
   name: string;
   /**
+   * Variables
+   * List of variable names for the llm eval
+   */
+  variables?: string[];
+  /**
    * Version
    * Version of the llm eval
    * @default 1
    */
   version?: number;
+}
+
+/** LLMEvalRunResponse */
+export interface LLMEvalRunResponse {
+  /**
+   * Cost
+   * Cost of this llm completion
+   */
+  cost: string;
+  /**
+   * Reason
+   * Explanation for how the llm arrived at this answer.
+   */
+  reason: string;
+  /**
+   * Score
+   * Score for this llm eval
+   */
+  score: number;
 }
 
 /** LLMEvalsVersionListResponse */
@@ -2208,34 +2143,7 @@ export interface LLMEvalsVersionListResponse {
    * Versions
    * List of llm eval version metadata
    */
-  versions: LLMEvalsVersionResponse[];
-}
-
-/** LLMEvalsVersionResponse */
-export interface LLMEvalsVersionResponse {
-  /**
-   * Created At
-   * Timestamp when the llm eval version was created
-   * @format date-time
-   */
-  created_at: string;
-  /**
-   * Deleted At
-   * Timestamp when the llm eval version was deleted (None if not deleted)
-   */
-  deleted_at: string | null;
-  /**
-   * Model Name
-   * Model name chosen for this version of the llm eval
-   */
-  model_name: string;
-  /** Model provider chosen for this version of the llm eval */
-  model_provider: ModelProvider;
-  /**
-   * Version
-   * Version number of the llm eval
-   */
-  version: number;
+  versions: LLMVersionResponse[];
 }
 
 /** LLMGetAllMetadataListResponse */
@@ -2281,6 +2189,151 @@ export interface LLMGetAllMetadataResponse {
    * Number of versions of the llm asset
    */
   versions: number;
+}
+
+/** LLMPromptRequestConfigSettings */
+export interface LLMPromptRequestConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /** Response format specification (e.g., {'type': 'json_object'} for JSON mode) */
+  response_format?: LLMResponseFormatInput | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /** Additional streaming configuration options */
+  stream_options?: StreamOptions | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Tool Choice
+   * Tool choice configuration ('auto', 'none', 'required', or a specific tool selection)
+   */
+  tool_choice?: ToolChoiceEnum | ToolChoice | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
+}
+
+/** LLMRequestConfigSettings */
+export interface LLMRequestConfigSettings {
+  /**
+   * Frequency Penalty
+   * Frequency penalty (-2.0 to 2.0). Positive values penalize tokens based on frequency
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Logit Bias
+   * Modify likelihood of specified tokens appearing in completion
+   */
+  logit_bias?: LogitBiasItem[] | null;
+  /**
+   * Logprobs
+   * Whether to return log probabilities of output tokens
+   */
+  logprobs?: boolean | null;
+  /**
+   * Max Completion Tokens
+   * Maximum number of completion tokens (alternative to max_tokens)
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Max Tokens
+   * Maximum number of tokens to generate in the response
+   */
+  max_tokens?: number | null;
+  /**
+   * Presence Penalty
+   * Presence penalty (-2.0 to 2.0). Positive values penalize new tokens based on their presence
+   */
+  presence_penalty?: number | null;
+  /** Reasoning effort level for models that support it (e.g., OpenAI o1 series) */
+  reasoning_effort?: ReasoningEffortEnum | null;
+  /**
+   * Seed
+   * Random seed for reproducible outputs
+   */
+  seed?: number | null;
+  /**
+   * Stop
+   * Stop sequence(s) where the model should stop generating
+   */
+  stop?: string | null;
+  /**
+   * Temperature
+   * Sampling temperature (0.0 to 2.0). Higher values make output more random
+   */
+  temperature?: number | null;
+  /** Anthropic-specific thinking parameter for Claude models */
+  thinking?: AnthropicThinkingParam | null;
+  /**
+   * Timeout
+   * Request timeout in seconds
+   */
+  timeout?: number | null;
+  /**
+   * Top Logprobs
+   * Number of most likely tokens to return log probabilities for (1-20)
+   */
+  top_logprobs?: number | null;
+  /**
+   * Top P
+   * Top-p sampling parameter (0.0 to 1.0). Alternative to temperature
+   */
+  top_p?: number | null;
 }
 
 /** LLMResponseFormatEnum */
@@ -2384,6 +2437,42 @@ export interface LLMToolOutput {
   type?: string;
 }
 
+/** LLMVersionResponse */
+export interface LLMVersionResponse {
+  /**
+   * Created At
+   * Timestamp when the llm eval version was created
+   * @format date-time
+   */
+  created_at: string;
+  /**
+   * Deleted At
+   * Timestamp when the llm eval version was deleted (None if not deleted)
+   */
+  deleted_at: string | null;
+  /**
+   * Model Name
+   * Model name chosen for this version of the llm eval
+   */
+  model_name: string;
+  /** Model provider chosen for this version of the llm eval */
+  model_provider: ModelProvider;
+  /**
+   * Version
+   * Version number of the llm eval
+   */
+  version: number;
+}
+
+/** ListDatasetTransformsResponse */
+export interface ListDatasetTransformsResponse {
+  /**
+   * Transforms
+   * List of transforms for the dataset.
+   */
+  transforms: DatasetTransformResponse[];
+}
+
 /** ListDatasetVersionsResponse */
 export interface ListDatasetVersionsResponse {
   /**
@@ -2416,6 +2505,20 @@ export interface ListDatasetVersionsResponse {
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData = SearchRagProviderCollectionsResponse;
 
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetError = HTTPValidationError;
+
+/** ListRagSearchSettingConfigurationVersionsResponse */
+export interface ListRagSearchSettingConfigurationVersionsResponse {
+  /**
+   * Count
+   * The total number of RAG search setting configuration versions matching the parameters.
+   */
+  count: number;
+  /**
+   * Rag Provider Setting Configurations
+   * List of RAG search setting configuration versions matching the search filters. Length is less than or equal to page_size parameter
+   */
+  rag_provider_setting_configurations: RagSearchSettingConfigurationVersionResponse[];
+}
 
 /** ListRagSearchSettingConfigurationsResponse */
 export interface ListRagSearchSettingConfigurationsResponse {
@@ -2805,6 +2908,10 @@ export interface ListTracesMetadataApiV1TracesGetParams {
   user_ids?: string[];
 }
 
+export type ListTransformsApiV2DatasetsDatasetIdTransformsGetData = ListDatasetTransformsResponse;
+
+export type ListTransformsApiV2DatasetsDatasetIdTransformsGetError = HTTPValidationError;
+
 export type ListUsersMetadataApiV1TracesUsersGetData = TraceUserListResponse;
 
 export type ListUsersMetadataApiV1TracesUsersGetError = HTTPValidationError;
@@ -3193,6 +3300,25 @@ export interface NewDatasetRequest {
   name: string;
 }
 
+/** NewDatasetTransformRequest */
+export interface NewDatasetTransformRequest {
+  /**
+   * Definition
+   * Transform definition in JSON format specifying extraction rules.
+   */
+  definition: Record<string, any>;
+  /**
+   * Description
+   * Description of the transform.
+   */
+  description?: string | null;
+  /**
+   * Name
+   * Name of the transform.
+   */
+  name: string;
+}
+
 /** NewDatasetVersionRequest */
 export interface NewDatasetVersionRequest {
   /**
@@ -3313,6 +3439,36 @@ export interface NewTaskRequest {
   name: string;
 }
 
+/**
+ * OpenAIMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface OpenAIMessageInput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
+}
+
 /** OpenAIMessageItem */
 export interface OpenAIMessageItem {
   /** Image URL content of the message if type is 'image_url' */
@@ -3326,6 +3482,36 @@ export interface OpenAIMessageItem {
   text?: string | null;
   /** Type of the message (either 'text', 'image_url', or 'input_audio') */
   type: OpenAIMessageType;
+}
+
+/**
+ * OpenAIMessage
+ * The message schema class for the prompts playground.
+ * This class adheres to OpenAI's message schema.
+ */
+export interface OpenAIMessageOutput {
+  /**
+   * Content
+   * Content of the message
+   */
+  content?: string | OpenAIMessageItem[] | null;
+  /**
+   * Name
+   * An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+   */
+  name?: string | null;
+  /** Role of the message */
+  role: MessageRole;
+  /**
+   * Tool Call Id
+   * ID of the tool call this message is responding to
+   */
+  tool_call_id?: string | null;
+  /**
+   * Tool Calls
+   * Tool calls made by assistant
+   */
+  tool_calls?: ToolCall[] | null;
 }
 
 /** OpenAIMessageType */
@@ -3400,10 +3586,10 @@ export type PIIEntityTypes =
   | "US_PASSPORT"
   | "US_SSN";
 
-/** Page[List[ConversationBaseResponse]] */
-export interface PageListConversationBaseResponse {
+/** Page[ConversationBaseResponse] */
+export interface PageConversationBaseResponse {
   /** Items */
-  items: ConversationBaseResponse[][];
+  items: ConversationBaseResponse[];
   /**
    * Page
    * @min 1
@@ -3563,7 +3749,7 @@ export interface QueryFeedbackApiV2FeedbackQueryGetParams {
    * Target
    * Target of the feedback. Must be one of ['context', 'response_results', 'prompt_results']
    */
-  target?: string | string[] | null;
+  target?: InferenceFeedbackTarget | InferenceFeedbackTarget[] | null;
   /**
    * Task Id
    * Task ID to filter on
@@ -4390,6 +4576,15 @@ export interface RagSearchSettingConfigurationVersionResponse {
   version_number: number;
 }
 
+/** RagSearchSettingConfigurationVersionUpdateRequest */
+export interface RagSearchSettingConfigurationVersionUpdateRequest {
+  /**
+   * Tags
+   * List of tags to update this version of the search settings configuration with.
+   */
+  tags: string[];
+}
+
 /** RagVectorSimilarityTextSearchSettingRequest */
 export interface RagVectorSimilarityTextSearchSettingRequest {
   /** Settings for the similarity text search request to the vector database. */
@@ -4575,6 +4770,10 @@ export type RunAgenticPromptApiV1CompletionsPostError = HTTPValidationError;
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostData = AgenticPromptRunResponse;
 
 export type RunSavedAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionCompletionsPostError = HTTPValidationError;
+
+export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData = LLMEvalRunResponse;
+
+export type RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError = HTTPValidationError;
 
 export type SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData = AgenticPrompt;
 
@@ -4899,10 +5098,6 @@ export interface SessionTracesResponse {
    */
   traces: TraceResponse[];
 }
-
-export type SetModelProviderApiV1ModelProvidersProviderDeleteData = any;
-
-export type SetModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
 
 export type SetModelProviderApiV1ModelProvidersProviderPutData = any;
 
@@ -5680,6 +5875,11 @@ export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdP
 
 export type UpdateRagSearchSettingsApiV1RagSearchSettingsSettingConfigurationIdPatchError = HTTPValidationError;
 
+export type UpdateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatchData =
+  RagSearchSettingConfigurationVersionResponse;
+
+export type UpdateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatchError = HTTPValidationError;
+
 /** UpdateRuleRequest */
 export interface UpdateRuleRequest {
   /**
@@ -5689,13 +5889,17 @@ export interface UpdateRuleRequest {
   enabled: boolean;
 }
 
-export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData = any;
+export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchData = TaskResponse;
 
 export type UpdateTaskMetricApiV2TasksTaskIdMetricsMetricIdPatchError = HTTPValidationError;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData = TaskResponse;
 
 export type UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError = HTTPValidationError;
+
+export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData = DatasetTransformResponse;
+
+export type UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError = HTTPValidationError;
 
 export type UploadEmbeddingsFileApiChatFilesPostData = FileUploadResult;
 
@@ -6709,7 +6913,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.157
+ * @version 2.1.167
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -7048,6 +7252,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Create a new transform for a dataset.
+     *
+     * @tags Datasets
+     * @name CreateTransformApiV2DatasetsDatasetIdTransformsPost
+     * @summary Create Transform
+     * @request POST:/api/v2/datasets/{dataset_id}/transforms
+     * @secure
+     */
+    createTransformApiV2DatasetsDatasetIdTransformsPost: (datasetId: string, data: NewDatasetTransformRequest, params: RequestParams = {}) =>
+      this.request<CreateTransformApiV2DatasetsDatasetIdTransformsPostData, CreateTransformApiV2DatasetsDatasetIdTransformsPostError>({
+        path: `/api/v2/datasets/${datasetId}/transforms`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description [Deprecated] Validate a non-task related prompt based on the configured default rules.
      *
      * @tags Default Validation
@@ -7184,6 +7408,23 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Disables the configuration for a model provider
+     *
+     * @tags Model Providers
+     * @name DeleteModelProviderApiV1ModelProvidersProviderDelete
+     * @summary Disables the configuration for a model provider.
+     * @request DELETE:/api/v1/model_providers/{provider}
+     * @secure
+     */
+    deleteModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
+      this.request<DeleteModelProviderApiV1ModelProvidersProviderDeleteData, DeleteModelProviderApiV1ModelProvidersProviderDeleteError>({
+        path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
      * @description Delete a RAG provider connection configuration.
      *
      * @tags RAG Providers
@@ -7229,6 +7470,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
       this.request<DeleteRagSearchSettingVersionData, DeleteRagSearchSettingVersionError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a transform.
+     *
+     * @tags Datasets
+     * @name DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete
+     * @summary Delete Transform
+     * @request DELETE:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    deleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDelete: (datasetId: string, transformId: string, params: RequestParams = {}) =>
+      this.request<
+        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteData,
+        DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteError
+      >({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -7666,15 +7927,15 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
      * @description Returns a list of the names of all available models for a provider.
      *
      * @tags Model Providers
-     * @name GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGet
+     * @name GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet
      * @summary List the models available from a provider.
      * @request GET:/api/v1/model_providers/{provider}/available_models
      * @secure
      */
-    getModelProvidersApiV1ModelProvidersProviderAvailableModelsGet: (provider: ModelProvider, params: RequestParams = {}) =>
+    getModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGet: (provider: ModelProvider, params: RequestParams = {}) =>
       this.request<
-        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetData,
-        GetModelProvidersApiV1ModelProvidersProviderAvailableModelsGetError
+        GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData,
+        GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError
       >({
         path: `/api/v1/model_providers/${provider}/available_models`,
         method: "GET",
@@ -7742,6 +8003,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get list of versions for the RAG search setting configuration.
+     *
+     * @tags RAG Settings
+     * @name GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGet
+     * @summary Get Rag Search Setting Configuration Versions
+     * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}/versions
+     * @secure
+     */
+    getRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGet: (
+      { settingConfigurationId, ...query }: GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetData,
+        GetRagSearchSettingConfigurationVersionsApiV1RagSearchSettingsSettingConfigurationIdVersionsGetError
+      >({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get a single RAG setting configuration version.
      *
      * @tags RAG Settings
@@ -7753,6 +8039,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getRagSearchSettingVersion: (settingConfigurationId: string, versionNumber: number, params: RequestParams = {}) =>
       this.request<GetRagSearchSettingVersionData, GetRagSearchSettingVersionError>({
         path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get a single RAG setting configuration version by tag.
+     *
+     * @tags RAG Settings
+     * @name GetRagSearchSettingVersionByTag
+     * @summary Get Rag Search Setting Version By Tag
+     * @request GET:/api/v1/rag_search_settings/{setting_configuration_id}/versions/tags/{tag}
+     * @secure
+     */
+    getRagSearchSettingVersionByTag: (settingConfigurationId: string, tag: string, params: RequestParams = {}) =>
+      this.request<GetRagSearchSettingVersionByTagData, GetRagSearchSettingVersionByTagError>({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/tags/${tag}`,
         method: "GET",
         secure: true,
         format: "json",
@@ -7880,6 +8184,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get a specific transform.
+     *
+     * @tags Datasets
+     * @name GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGet
+     * @summary Get Transform
+     * @request GET:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    getTransformApiV2DatasetsDatasetIdTransformsTransformIdGet: (datasetId: string, transformId: string, params: RequestParams = {}) =>
+      this.request<GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetData, GetTransformApiV2DatasetsDatasetIdTransformsTransformIdGetError>({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Get detailed information for a single user including session and trace metadata.
      *
      * @tags Users
@@ -7971,6 +8293,24 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         path: `/api/v1/traces`,
         method: "GET",
         query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all transforms for a dataset.
+     *
+     * @tags Datasets
+     * @name ListTransformsApiV2DatasetsDatasetIdTransformsGet
+     * @summary List Transforms
+     * @request GET:/api/v2/datasets/{dataset_id}/transforms
+     * @secure
+     */
+    listTransformsApiV2DatasetsDatasetIdTransformsGet: (datasetId: string, params: RequestParams = {}) =>
+      this.request<ListTransformsApiV2DatasetsDatasetIdTransformsGetData, ListTransformsApiV2DatasetsDatasetIdTransformsGetError>({
+        path: `/api/v2/datasets/${datasetId}/transforms`,
+        method: "GET",
         secure: true,
         format: "json",
         ...params,
@@ -8174,6 +8514,35 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Run a saved llm eval
+     *
+     * @tags LLMEvals
+     * @name RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost
+     * @summary Run a saved llm eval
+     * @request POST:/api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/completions
+     * @secure
+     */
+    runSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPost: (
+      evalName: string,
+      evalVersion: string,
+      taskId: string,
+      data: BaseCompletionRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostData,
+        RunSavedLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionCompletionsPostError
+      >({
+        path: `/api/v1/tasks/${taskId}/llm_evals/${evalName}/versions/${evalVersion}/completions`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Save an agentic prompt to the database
      *
      * @tags Prompts
@@ -8185,7 +8554,7 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     saveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePost: (
       promptName: string,
       taskId: string,
-      data: AgenticPromptBaseConfig,
+      data: CreateAgenticPromptRequest,
       params: RequestParams = {}
     ) =>
       this.request<SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostData, SaveAgenticPromptApiV1TasksTaskIdPromptsPromptNamePostError>({
@@ -8257,23 +8626,6 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         secure: true,
         type: ContentType.Json,
         format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Disables the configuration for a model provider
-     *
-     * @tags Model Providers
-     * @name SetModelProviderApiV1ModelProvidersProviderDelete
-     * @summary Disables the configuration for a model provider.
-     * @request DELETE:/api/v1/model_providers/{provider}
-     * @secure
-     */
-    setModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
-      this.request<SetModelProviderApiV1ModelProvidersProviderDeleteData, SetModelProviderApiV1ModelProvidersProviderDeleteError>({
-        path: `/api/v1/model_providers/${provider}`,
-        method: "DELETE",
-        secure: true,
         ...params,
       }),
 
@@ -8439,6 +8791,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Update a single RAG search setting configuration version metadata.
+     *
+     * @tags RAG Settings
+     * @name UpdateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatch
+     * @summary Update Rag Search Settings Version
+     * @request PATCH:/api/v1/rag_search_settings/{setting_configuration_id}/versions/{version_number}
+     * @secure
+     */
+    updateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatch: (
+      settingConfigurationId: string,
+      versionNumber: number,
+      data: RagSearchSettingConfigurationVersionUpdateRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        UpdateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatchData,
+        UpdateRagSearchSettingsVersionApiV1RagSearchSettingsSettingConfigurationIdVersionsVersionNumberPatchError
+      >({
+        path: `/api/v1/rag_search_settings/${settingConfigurationId}/versions/${versionNumber}`,
+        method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Update a task metric.
      *
      * @tags Tasks
@@ -8471,6 +8851,34 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchData, UpdateTaskRulesApiV2TasksTaskIdRulesRuleIdPatchError>({
         path: `/api/v2/tasks/${taskId}/rules/${ruleId}`,
         method: "PATCH",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Update a transform.
+     *
+     * @tags Datasets
+     * @name UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut
+     * @summary Update Transform
+     * @request PUT:/api/v2/datasets/{dataset_id}/transforms/{transform_id}
+     * @secure
+     */
+    updateTransformApiV2DatasetsDatasetIdTransformsTransformIdPut: (
+      datasetId: string,
+      transformId: string,
+      data: DatasetTransformUpdateRequest,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutData,
+        UpdateTransformApiV2DatasetsDatasetIdTransformsTransformIdPutError
+      >({
+        path: `/api/v2/datasets/${datasetId}/transforms/${transformId}`,
+        method: "PUT",
         body: data,
         secure: true,
         type: ContentType.Json,

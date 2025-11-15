@@ -57,12 +57,12 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
             type: tool.type,
           }))
         : undefined,
-    tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
-    response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
     completion_request: {
       stream: prompt.modelParameters.stream ?? false,
     },
-    ...filterNullParams({
+    config: filterNullParams({
+      tool_choice: convertToolChoiceForBackend(prompt.toolChoice, prompt.tools),
+      response_format: prompt.responseFormat ? JSON.parse(prompt.responseFormat) : null,
       temperature: prompt.modelParameters.temperature,
       // top_p: prompt.modelParameters.top_p,
       max_tokens: prompt.modelParameters.max_tokens,

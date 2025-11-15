@@ -1,15 +1,12 @@
 from datetime import datetime
-from typing import Optional, Type, Union
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from db_models.llm_eval_models import DatabaseLLMEval
-from schemas.agentic_prompt_schemas import (
-    AgenticPrompt,
-    LLMConfigSettings,
-    LLMResponseFormat,
-)
 from schemas.enums import ModelProvider
+from schemas.llm_schemas import (
+    LLMBaseConfigSettings,
+)
 
 
 class LLMEval(BaseModel):
@@ -21,9 +18,11 @@ class LLMEval(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     instructions: str = Field(description="Instructions for the llm eval")
-    min_score: int = Field(default=0, description="Minimum score for the llm eval")
-    max_score: int = Field(default=1, description="Maximum score for the llm eval")
-    config: Optional[LLMConfigSettings] = Field(
+    variables: List[str] = Field(
+        default_factory=list,
+        description="List of variable names for the llm eval",
+    )
+    config: Optional[LLMBaseConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
@@ -40,41 +39,17 @@ class LLMEval(BaseModel):
     class Config:
         use_enum_values = True
 
-    @model_validator(mode="after")
-    def validate_score_range(self):
-        if self.min_score >= self.max_score:
-            raise ValueError("min_score must be less than max_score")
-        return self
-
     def has_been_deleted(self) -> bool:
         return self.deleted_at is not None
 
-    @classmethod
-    def from_db_model(cls, db_eval: DatabaseLLMEval) -> "LLMEval":
-        return cls.model_validate(db_eval.__dict__)
 
-    def to_db_model(self, task_id: str) -> DatabaseLLMEval:
-        return DatabaseLLMEval(
-            task_id=task_id,
-            **self.model_dump(mode="python", exclude_none=True),
-        )
+class ReasonedScore(BaseModel):
+    """
+    Response format schema for llm eval runs
+    """
 
-    def to_agentic_prompt(
-        self,
-        response_format: Optional[Union[LLMResponseFormat, Type[BaseModel]]] = None,
-    ) -> AgenticPrompt:
-        messages = [
-            {"role": "system", "content": self.instructions},
-        ]
-
-        return AgenticPrompt(
-            name=self.name,
-            model_name=self.model_name,
-            model_provider=self.model_provider,
-            messages=messages,
-            response_format=response_format,
-            version=self.version,
-            created_at=self.created_at,
-            deleted_at=self.deleted_at,
-            **self.config.model_dump(exclude_none=True) if self.config else {},
-        )
+    reason: str = Field(
+        ...,
+        description="Explanation for how you arrived at this answer.",
+    )
+    score: int = Field(..., ge=0, le=1, description="Binary score between 0 and 1")
