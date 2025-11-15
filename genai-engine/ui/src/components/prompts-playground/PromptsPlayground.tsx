@@ -46,20 +46,22 @@ const PromptsPlayground = () => {
   const spanId = searchParams.get("spanId");
 
   const theme = useTheme();
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("xl")); // xl breakpoint = 1536px
+  const isXLScreen = useMediaQuery(theme.breakpoints.up("xl")); // xl breakpoint = 1536px
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg")); // lg breakpoint = 1280px
+  const isMediumScreen = useMediaQuery(theme.breakpoints.up("md")); // md breakpoint = 960px
 
   // Calculate prompt width based on screen size
-  // Large screens: fit 6 prompts, small screens: fit 3 prompts
-  const promptsPerScreen = isLargeScreen ? 5 : 3;
+  // XL screens: fit 5 prompts, Large screens: fit 4 prompts, Medium: fit 3 prompts, Small: fit 2 prompts
+  const promptsPerScreen = isXLScreen ? 5 : isLargeScreen ? 4 : isMediumScreen ? 3 : 2;
   const spacing = 8; // 1 * 8px (MUI spacing unit)
   const padding = 8; // Container padding
 
   // Calculate dynamic width: (100vw - total spacing - padding) / number of prompts
   const promptWidth = `calc((100vw - ${(promptsPerScreen - 1) * spacing + padding * 2}px) / ${promptsPerScreen})`;
 
-  // Determine if prompts should use icon-only mode based on prompt count
-  // Switch to icon-only when we have 3 or more prompts
-  const useIconOnlyMode = state.prompts.length >= 3;
+  // Pass false to let each prompt determine its own icon-only mode based on container width
+  // This enables true container query behavior - each prompt measures its own width
+  const useIconOnlyMode = false;
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -296,6 +298,7 @@ const PromptsPlayground = () => {
                     width: promptWidth,
                     minWidth: promptWidth,
                     flexShrink: 0,
+                    containerType: 'inline-size',
                   }}
                 >
                   <PromptComponent prompt={prompt} useIconOnlyMode={useIconOnlyMode} />

@@ -23,12 +23,13 @@ import SavePromptDialog from "./SavePromptDialog";
 import ToolsDialog from "./ToolsDialog";
 
 import useRunPrompt from "@/components/prompts-playground/hooks/useRunPrompt";
+import useContainerWidth from "@/components/prompts-playground/hooks/useContainerWidth";
 import useSnackbar from "@/hooks/useSnackbar";
 
 /**
  * A prompt is a list of messages and templates, along with an associated output field/format.
  */
-const Prompt = ({ prompt, useIconOnlyMode }: PromptComponentProps) => {
+const Prompt = ({ prompt, useIconOnlyMode: useIconOnlyModeProp }: PromptComponentProps) => {
   // This name value updates when an existing prompt is selected
   const [currentPromptName, setCurrentPromptName] = useState<string>(prompt.name || "");
   const [nameInputValue, setNameInputValue] = useState("");
@@ -37,10 +38,17 @@ const Prompt = ({ prompt, useIconOnlyMode }: PromptComponentProps) => {
   const [responseSchemaDialogOpen, setResponseSchemaDialogOpen] = useState<boolean>(false);
   const [messagesHeightRatio, setMessagesHeightRatio] = useState<number>(0.7); // Default: 70% messages, 30% response
   const containerRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const hasTriggeredRunRef = useRef<boolean>(false);
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   const { dispatch } = usePromptContext();
+
+  // Use container width to determine icon-only mode (container queries approach)
+  // Switch to icon-only mode when container is less than 600px wide
+  // This ensures buttons don't overlap when space is constrained
+  const containerWidth = useContainerWidth(outerRef);
+  const useIconOnlyMode = useIconOnlyModeProp || (containerWidth > 0 && containerWidth < 600);
 
   const runPrompt = useRunPrompt({
     prompt,
@@ -78,10 +86,10 @@ const Prompt = ({ prompt, useIconOnlyMode }: PromptComponentProps) => {
   }, []);
 
   return (
-    <div className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
+    <div ref={outerRef} className="h-full shadow-md rounded-lg p-1 bg-gray-200 flex flex-col">
       <Container component="div" ref={containerRef} className="p-1 mt-1 flex flex-col h-full" maxWidth="lg" disableGutters>
         <div className="flex justify-between items-center gap-1 mb-2 flex-shrink-0">
-          <div className="flex justify-start items-center gap-1" style={{ minWidth: 0 }}>
+          <div className="flex justify-start items-center gap-1 min-w-0">
             {useIconOnlyMode ? (
               <>
                 {/* Icon-only mode when space is constrained */}
@@ -138,7 +146,7 @@ const Prompt = ({ prompt, useIconOnlyMode }: PromptComponentProps) => {
             <ManagementButtons prompt={prompt} setSavePromptOpen={setSavePromptOpen} />
           </div>
         </div>
-        <div className="flex-shrink-0" style={{ minWidth: 0 }}>
+        <div className="flex-shrink-0 min-w-0">
           <PromptSelectors prompt={prompt} currentPromptName={currentPromptName} onPromptNameChange={setCurrentPromptName} />
         </div>
         <div className="mt-1 flex-1 min-h-0 flex flex-col">

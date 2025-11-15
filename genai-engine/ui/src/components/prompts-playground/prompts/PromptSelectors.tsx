@@ -180,7 +180,7 @@ const PromptSelectors = ({
   );
 
   return (
-    <div className="flex gap-1 min-w-0" style={{ flexWrap: "wrap" }}>
+    <div className="flex gap-1 min-w-0 flex-wrap">
       <div className="flex-1 min-w-0">
         <Autocomplete
           id={`prompt-select-${prompt.id}`}
