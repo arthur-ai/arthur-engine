@@ -69,8 +69,6 @@ def sample_db_llm_eval():
         model_name="gpt-4o",
         model_provider="openai",
         instructions="test_instructions",
-        min_score=0,
-        max_score=1,
         config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
         created_at=datetime.now(),
         deleted_at=None,
@@ -140,8 +138,6 @@ def test_save_llm_eval_with_llm_eval_object(
     assert result.model_name == sample_llm_eval.model_name
     assert result.model_provider == sample_llm_eval.model_provider
     assert result.instructions == sample_llm_eval.instructions
-    assert result.min_score == sample_llm_eval.min_score
-    assert result.max_score == sample_llm_eval.max_score
     assert result.config == sample_llm_eval.config
     assert result.version == sample_llm_eval.version
     assert result.deleted_at is None
@@ -160,8 +156,6 @@ def test_llm_eval_repo_from_db_model(llm_evals_repo, sample_db_llm_eval):
     assert llm_eval.model_name == sample_db_llm_eval.model_name
     assert llm_eval.model_provider == sample_db_llm_eval.model_provider
     assert llm_eval.instructions == sample_db_llm_eval.instructions
-    assert llm_eval.min_score == sample_db_llm_eval.min_score
-    assert llm_eval.max_score == sample_db_llm_eval.max_score
     assert llm_eval.config == sample_db_llm_eval.config
     assert llm_eval.version == sample_db_llm_eval.version
     assert llm_eval.created_at == sample_db_llm_eval.created_at
@@ -178,8 +172,6 @@ def test_llm_eval_model_dump(sample_llm_eval):
     assert llm_eval_dict["model_name"] == sample_llm_eval.model_name
     assert llm_eval_dict["model_provider"] == sample_llm_eval.model_provider
     assert llm_eval_dict["instructions"] == sample_llm_eval.instructions
-    assert llm_eval_dict["min_score"] == sample_llm_eval.min_score
-    assert llm_eval_dict["max_score"] == sample_llm_eval.max_score
     assert "config" in llm_eval_dict
     assert llm_eval_dict["config"]["temperature"] == sample_llm_eval.config.temperature
     assert llm_eval_dict["config"]["max_tokens"] == sample_llm_eval.config.max_tokens
@@ -237,8 +229,6 @@ def test_soft_delete_eval_version_success(
     assert result.deleted_at is not None
     assert result.model_name == ""
     assert result.instructions == ""
-    assert result.min_score == 0
-    assert result.max_score == 1
     assert result.config is None
 
     # clean up database
@@ -285,25 +275,6 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, sample_create_eval_requ
 
 
 @pytest.mark.unit_tests
-def test_validate_score_range():
-    """Test max_score must be greater than min_score"""
-    with pytest.raises(
-        ValueError,
-        match="min_score must be less than max_score",
-    ):
-        LLMEval(
-            name="test_llm_eval",
-            model_name="gpt-4o",
-            model_provider="openai",
-            min_score=1,
-            max_score=1,
-            instructions="test_instructions",
-            config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
-            version=1,
-        )
-
-
-@pytest.mark.unit_tests
 @pytest.mark.parametrize("eval_version", ["latest", "1", "datetime"])
 def test_soft_delete_eval_by_version_success(
     llm_evals_repo,
@@ -342,8 +313,6 @@ def test_soft_delete_eval_by_version_success(
             assert result.model_name == ""
             assert result.model_provider == "openai"
             assert result.instructions == ""
-            assert result.min_score == 0
-            assert result.max_score == 1
             assert result.config is None
             assert result.version == 1
             assert result.created_at == created_at_timestamp
@@ -372,8 +341,6 @@ def test_get_eval_success(
     assert result.model_name == sample_db_llm_eval.model_name
     assert result.model_provider == sample_db_llm_eval.model_provider
     assert result.instructions == sample_db_llm_eval.instructions
-    assert result.min_score == sample_db_llm_eval.min_score
-    assert result.max_score == sample_db_llm_eval.max_score
     assert result.config == sample_db_llm_eval.config
     assert result.version == sample_db_llm_eval.version
     assert result.deleted_at is None
@@ -427,8 +394,6 @@ def test_get_eval_different_version_types_success(
         assert result.model_name == sample_db_llm_eval.model_name
         assert result.model_provider == sample_db_llm_eval.model_provider
         assert result.instructions == sample_db_llm_eval.instructions
-        assert result.min_score == sample_db_llm_eval.min_score
-        assert result.max_score == sample_db_llm_eval.max_score
         assert result.config == sample_db_llm_eval.config
         assert result.version == sample_db_llm_eval.version
         assert result.created_at == created_at_timestamp
@@ -462,8 +427,6 @@ def test_get_soft_delete_eval_by_version_no_error(
         assert result.deleted_at is not None
         assert result.model_name == ""
         assert result.instructions == ""
-        assert result.min_score == 0
-        assert result.max_score == 1
         assert result.config is None
         assert result.version == 1
         assert result.created_at == created_at_timestamp

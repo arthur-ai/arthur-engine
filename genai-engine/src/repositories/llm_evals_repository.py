@@ -1,14 +1,14 @@
 from typing import Optional, Type, Union
 
 from litellm import supports_response_schema
-from pydantic import BaseModel, Field, create_model
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db_models.llm_eval_models import Base, DatabaseLLMEval
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.llm_eval_schemas import LLMEval
+from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat
 from schemas.request_schemas import (
     BaseCompletionRequest,
@@ -52,8 +52,6 @@ class LLMEvalsRepository(BaseLLMRepository):
     def _clear_db_item_data(self, db_item: Base) -> None:
         db_item.model_name = ""
         db_item.instructions = ""
-        db_item.min_score = 0
-        db_item.max_score = 1
         db_item.config = None
 
     def from_llm_eval_to_agentic_prompt(
@@ -125,28 +123,6 @@ class LLMEvalsRepository(BaseLLMRepository):
                 f"Model {llm_eval.model_name} with provider {llm_eval.model_provider} does not support structured outputs",
             )
 
-        # create the structured output response schema
-        # NOTE: We use create_model instead of a global BaseModel to so the score range can be set dynamically
-        llm_eval_response_schema = create_model(
-            "ReasonedScore",
-            reason=(
-                str,
-                Field(
-                    ...,
-                    description="Explanation for how you arrived at this answer.",
-                ),
-            ),
-            score=(
-                int,
-                Field(
-                    ...,
-                    ge=llm_eval.min_score,
-                    le=llm_eval.max_score,
-                    description=f"Score between {llm_eval.min_score} and {llm_eval.max_score}",
-                ),
-            ),
-        )
-
         variables = []
         if completion_request and completion_request.variables:
             variables = completion_request.variables
@@ -161,7 +137,7 @@ class LLMEvalsRepository(BaseLLMRepository):
         # run the chat completion
         agentic_prompt = self.from_llm_eval_to_agentic_prompt(
             llm_eval=llm_eval,
-            response_format=llm_eval_response_schema,
+            response_format=ReasonedScore,
         )
 
         llm_model_response = (
@@ -179,7 +155,7 @@ class LLMEvalsRepository(BaseLLMRepository):
 
         if not isinstance(
             llm_model_response.structured_output_response,
-            llm_eval_response_schema,
+            ReasonedScore,
         ):
             raise TypeError("Structured output is not a ReasonedScore instance")
 

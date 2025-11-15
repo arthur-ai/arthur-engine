@@ -689,8 +689,6 @@ class CreateEvalRequest(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     instructions: str = Field(description="Instructions for the llm eval")
-    min_score: int = Field(default=0, description="Minimum score for the llm eval")
-    max_score: int = Field(default=1, description="Maximum score for the llm eval")
     config: Optional[LLMRequestConfigSettings] = Field(
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",

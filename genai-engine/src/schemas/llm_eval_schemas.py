@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 from schemas.enums import ModelProvider
 from schemas.llm_schemas import (
@@ -18,8 +18,6 @@ class LLMEval(BaseModel):
         description="Provider of the LLM model (e.g., 'openai', 'anthropic', 'azure')",
     )
     instructions: str = Field(description="Instructions for the llm eval")
-    min_score: int = Field(default=0, description="Minimum score for the llm eval")
-    max_score: int = Field(default=1, description="Maximum score for the llm eval")
     variables: List[str] = Field(
         default_factory=list,
         description="List of variable names for the llm eval",
@@ -41,11 +39,17 @@ class LLMEval(BaseModel):
     class Config:
         use_enum_values = True
 
-    @model_validator(mode="after")
-    def validate_score_range(self):
-        if self.min_score >= self.max_score:
-            raise ValueError("min_score must be less than max_score")
-        return self
-
     def has_been_deleted(self) -> bool:
         return self.deleted_at is not None
+
+
+class ReasonedScore(BaseModel):
+    """
+    Response format schema for llm eval runs
+    """
+
+    reason: str = Field(
+        ...,
+        description="Explanation for how you arrived at this answer.",
+    )
+    score: int = Field(..., ge=0, le=1, description="Binary score between 0 and 1")
