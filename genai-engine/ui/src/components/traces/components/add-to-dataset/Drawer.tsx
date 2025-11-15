@@ -112,9 +112,14 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
     }
   };
 
+  const handleClose = () => {
+    form.reset();
+    setOpen(false);
+  };
+
   return (
     <>
-      <Drawer open={open} onOpenChange={setOpen} onClose={() => form.reset()}>
+      <Drawer open={open} onOpenChange={setOpen} onClose={handleClose}>
         <Drawer.Trigger render={<Button startIcon={<AddIcon />} />}>Add to Dataset</Drawer.Trigger>
 
         <Drawer.Content
