@@ -6,6 +6,7 @@ import logging
 from typing import List, Optional
 
 from arthur_common.models.enums import ComparisonOperatorEnum, MetricType, ToolClassEnum
+from openinference.semconv.trace import OpenInferenceSpanKindValues
 from sqlalchemy import and_, exists, func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.types import Float, Integer
@@ -37,7 +38,14 @@ class FilterService:
     # ============================================================================
 
     def auto_detect_span_types(self, filters: TraceQuerySchema) -> Optional[List[str]]:
-        """Auto-detect required span types from filter presence."""
+        """Auto-detect required span types from filter presence.
+
+        Returns:
+            - Explicit span_types if provided
+            - Detected span types if span-type-specific filters are present (LLM metrics, tool_name)
+            - ALL span types if cross-span-type filters are present (status_code) but no span-type-specific filters
+            - None if no span-level filtering is needed
+        """
         if filters.span_types:
             return filters.span_types
 
@@ -51,7 +59,16 @@ class FilterService:
         if filters.tool_name:
             detected_types.add(SPAN_KIND_TOOL)
 
-        return list(detected_types) if detected_types else None
+        # If we detected specific span types, return them
+        if detected_types:
+            return list(detected_types)
+
+        # If no span-type-specific filters but we have cross-span-type filters,
+        # return all span types from OpenInference spec
+        if filters.status_code:
+            return [kind.value for kind in OpenInferenceSpanKindValues]
+
+        return None
 
     def validate_filter_compatibility(self, filters: TraceQuerySchema) -> List[str]:
         """Validate filter combinations and return any compatibility issues."""
@@ -90,6 +107,7 @@ class FilterService:
         return bool(
             filters.tool_name
             or filters.span_types
+            or filters.status_code
             or self.has_llm_metric_filters(filters),
         )
 
@@ -297,6 +315,10 @@ class FilterService:
         # Type-specific filters
         if span_type == SPAN_KIND_TOOL and filters.tool_name:
             conditions.append(DatabaseSpan.span_name == filters.tool_name)
+
+        # Cross-span-type filters (apply to all span types)
+        if filters.status_code:
+            conditions.append(DatabaseSpan.status_code == filters.status_code)
 
         return conditions
 

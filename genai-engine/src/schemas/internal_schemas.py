@@ -22,6 +22,7 @@ from arthur_common.models.enums import (
     RuleResultEnum,
     RuleScope,
     RuleType,
+    StatusCodeEnum,
     ToolClassEnum,
     ToxicityViolationType,
 )
@@ -1982,6 +1983,10 @@ class TraceQuerySchema(BaseModel):
         None,
         description="Span types to filter on. Optional.",
     )
+    status_code: Optional[StatusCodeEnum] = Field(
+        None,
+        description="Status code to filter on. Optional.",
+    )
     tool_selection: Optional[ToolClassEnum] = None
     tool_usage: Optional[ToolClassEnum] = None
     query_relevance_filters: Optional[list[FloatRangeFilter]] = None
@@ -2014,6 +2019,7 @@ class TraceQuerySchema(BaseModel):
             end_time=request.end_time,
             tool_name=request.tool_name,
             span_types=request.span_types,
+            status_code=request.status_code,
             tool_selection=request.tool_selection,
             tool_usage=request.tool_usage,
             query_relevance_filters=query_relevance,
