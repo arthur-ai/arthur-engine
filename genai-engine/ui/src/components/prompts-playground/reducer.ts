@@ -101,6 +101,7 @@ const createPrompt = (overrides: Partial<PromptType> = {}): PromptType => ({
   toolChoice: undefined,
   running: false,
   version: null,
+  isDirty: false,
   ...overrides,
 });
 
@@ -112,7 +113,8 @@ const duplicatePrompt = (original: PromptType): PromptType => {
   return createPrompt({
     ...original,
     id: newId,
-    name: `${original.name} (Copy)`,
+    name: original.name, // Preserve original name so it shows in Select Prompt dropdown
+    version: original.version, // Preserve version to show which version this is based on
     created_at: undefined,
     messages: original.messages.map(duplicateMessage),
     tools: original.tools.map((tool) => ({
@@ -177,14 +179,32 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelProvider } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelProvider } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId
+            ? {
+                ...prompt,
+                modelProvider,
+                // Only mark dirty if value actually changed and prompt has a version
+                isDirty: prompt.modelProvider !== modelProvider && prompt.version ? true : prompt.isDirty,
+              }
+            : prompt
+        ),
       };
     }
     case "updatePromptModelName": {
       const { promptId, modelName } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelName } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId
+            ? {
+                ...prompt,
+                modelName,
+                // Only mark dirty if value actually changed and prompt has a version
+                isDirty: prompt.modelName !== modelName && prompt.version ? true : prompt.isDirty,
+              }
+            : prompt
+        ),
       };
     }
     case "updatePrompt": {
@@ -200,7 +220,14 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
                 messages: prompt.messages ?? p.messages,
                 tools: prompt.tools ?? p.tools,
                 modelParameters: prompt.modelParameters ?? p.modelParameters,
-                responseFormat: prompt.responseFormat,
+                responseFormat: prompt.responseFormat ?? p.responseFormat,
+                // Explicit isDirty in payload takes precedence, otherwise detect backend load, otherwise preserve existing
+                isDirty:
+                  prompt.isDirty !== undefined
+                    ? prompt.isDirty
+                    : prompt.version !== undefined && prompt.messages !== undefined
+                      ? false
+                      : p.isDirty,
               }
             : p
         ),
@@ -231,7 +258,11 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { parentId } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === parentId ? { ...prompt, messages: [...prompt.messages, newMessage()] } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === parentId
+            ? { ...prompt, messages: [...prompt.messages, newMessage()], isDirty: prompt.version ? true : false }
+            : prompt
+        ),
       };
     }
     case "deleteMessage": {
@@ -243,6 +274,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.filter((msg) => msg.id !== id),
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -264,6 +296,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
           return {
             ...prompt,
             messages: arrayUtils.duplicateAfter(prompt.messages, messageIndex, duplicatedMessage),
+            isDirty: prompt.version ? true : false,
           };
         }),
       };
@@ -291,6 +324,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) => (message.id === id ? { ...message, content } : message)),
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -305,6 +339,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: prompt.messages.map((message) => (message.id === id ? { ...message, role: role as MessageRole } : message)),
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -358,14 +393,18 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelParameters } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, modelParameters } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, modelParameters, isDirty: prompt.version ? true : false } : prompt
+        ),
       };
     }
     case "updateResponseFormat": {
       const { promptId, responseFormat } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) => (prompt.id === promptId ? { ...prompt, responseFormat } : prompt)),
+        prompts: state.prompts.map((prompt) =>
+          prompt.id === promptId ? { ...prompt, responseFormat, isDirty: prompt.version ? true : false } : prompt
+        ),
       };
     }
     case "addTool": {
@@ -377,6 +416,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: [...prompt.tools, createTool(prompt.tools.length + 1)],
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -409,6 +449,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ...prompt,
             tools: prompt.tools.filter((tool) => tool.id !== toolId),
             toolChoice: shouldResetToolChoice ? ("auto" as ToolChoiceEnum) : prompt.toolChoice,
+            isDirty: prompt.version ? true : false,
           };
         }),
       };
@@ -422,6 +463,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 tools: prompt.tools.map((t) => (t.id === toolId ? { ...t, ...tool } : t)),
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
@@ -432,7 +474,9 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       return {
         ...state,
         prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice } : prompt
+          prompt.id === promptId
+            ? { ...prompt, toolChoice: toolChoice as ToolChoiceEnum | ToolChoice, isDirty: prompt.version ? true : false }
+            : prompt
         ),
       };
     }
@@ -445,6 +489,7 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
             ? {
                 ...prompt,
                 messages: arrayUtils.moveItem(prompt.messages, fromIndex, toIndex),
+                isDirty: prompt.version ? true : false,
               }
             : prompt
         ),
