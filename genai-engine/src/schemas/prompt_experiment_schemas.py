@@ -132,6 +132,9 @@ class PromptExperimentSummary(BaseModel):
         description="Number of test rows completed successfully"
     )
     failed_rows: int = Field(description="Number of test rows that failed")
+    total_cost: Optional[str] = Field(
+        default=None, description="Total cost of running the experiment"
+    )
 
 
 class CreatePromptExperimentRequest(BaseModel):
@@ -192,6 +195,9 @@ class PromptExperimentDetail(BaseModel):
         description="Number of test rows completed successfully"
     )
     failed_rows: int = Field(description="Number of test rows that failed")
+    total_cost: Optional[str] = Field(
+        default=None, description="Total cost of running the experiment"
+    )
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
     eval_list: list[EvalRef] = Field(description="List of evaluations being run")
@@ -276,6 +282,9 @@ class TestCase(BaseModel):
     )
     prompt_results: list[PromptResult] = Field(
         description="Results for each prompt version tested"
+    )
+    total_cost: Optional[str] = Field(
+        default=None, description="Total cost for this test case"
     )
 
 

@@ -135,6 +135,7 @@ class ExperimentExecutor:
             if not test_cases:
                 logger.warning(f"No test cases found for experiment {experiment_id}")
                 experiment.status = ExperimentStatus.COMPLETED.value
+                experiment.total_cost = "0.0"
                 db_session.commit()
                 return
 
@@ -185,16 +186,28 @@ class ExperimentExecutor:
                 .filter_by(id=experiment_id)
                 .first()
             )
+
+            # Calculate total cost across all test cases
+            total_experiment_cost = 0.0
+            for test_case in test_cases:
+                if test_case.total_cost:
+                    try:
+                        total_experiment_cost += float(test_case.total_cost)
+                    except (ValueError, TypeError):
+                        logger.warning(f"Could not parse test case cost: {test_case.total_cost}")
+
             if failed_count > 0:
                 experiment.status = ExperimentStatus.FAILED.value
                 experiment.finished_at = datetime.now()
+                experiment.total_cost = str(total_experiment_cost)
                 logger.warning(
-                    f"Experiment {experiment_id} completed with {failed_count} failed test cases"
+                    f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_experiment_cost}"
                 )
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 experiment.finished_at = datetime.now()
-                logger.info(f"Experiment {experiment_id} completed successfully")
+                experiment.total_cost = str(total_experiment_cost)
+                logger.info(f"Experiment {experiment_id} completed successfully. Total cost: ${total_experiment_cost}")
 
             db_session.commit()
 
@@ -302,10 +315,29 @@ class ExperimentExecutor:
                 )
                 return False
 
-            # Mark test case as completed
+            # Calculate total cost for this test case
+            total_cost = 0.0
+            for prompt_result in test_case.prompt_results:
+                # Add prompt execution cost
+                if prompt_result.output_cost:
+                    try:
+                        total_cost += float(prompt_result.output_cost)
+                    except (ValueError, TypeError):
+                        logger.warning(f"Could not parse prompt cost: {prompt_result.output_cost}")
+
+                # Add eval costs
+                for eval_score in prompt_result.eval_scores:
+                    if eval_score.eval_result_cost:
+                        try:
+                            total_cost += float(eval_score.eval_result_cost)
+                        except (ValueError, TypeError):
+                            logger.warning(f"Could not parse eval cost: {eval_score.eval_result_cost}")
+
+            # Mark test case as completed and store total cost
             test_case.status = TestCaseStatus.COMPLETED.value
+            test_case.total_cost = str(total_cost)
             db_session.commit()
-            logger.info(f"Test case {test_case_id} completed successfully")
+            logger.info(f"Test case {test_case_id} completed successfully with total cost ${total_cost}")
             return True
 
         except Exception as e:
@@ -503,7 +535,7 @@ class ExperimentExecutor:
             # Save output to separate columns
             prompt_result.output_content = response.content if response.content else None
             prompt_result.output_tool_calls = response.tool_calls if response.tool_calls else None
-            prompt_result.output_cost = str(response.cost) if response.cost else None
+            prompt_result.output_cost = response.cost if response.cost else None
             db_session.commit()
 
             logger.info(
@@ -691,7 +723,7 @@ class ExperimentExecutor:
             # Save eval results to separate columns
             eval_score.eval_result_score = llm_model_response.structured_output_response.score
             eval_score.eval_result_explanation = llm_model_response.structured_output_response.reason
-            eval_score.eval_result_cost = str(llm_model_response.cost) if llm_model_response.cost else None
+            eval_score.eval_result_cost = llm_model_response.cost if llm_model_response.cost else None
             db_session.commit()
 
             logger.info(

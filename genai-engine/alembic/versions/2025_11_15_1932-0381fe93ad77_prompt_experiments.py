@@ -35,6 +35,7 @@ def upgrade() -> None:
     sa.Column('total_rows', sa.Integer(), nullable=False),
     sa.Column('completed_rows', sa.Integer(), nullable=False),
     sa.Column('failed_rows', sa.Integer(), nullable=False),
+    sa.Column('total_cost', sa.String(), nullable=True),
     sa.Column('summary_results', postgresql.JSON(astext_type=sa.Text()), nullable=True),
     sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -50,6 +51,7 @@ def upgrade() -> None:
     sa.Column('status', sa.String(), nullable=False),
     sa.Column('dataset_row_id', sa.String(), nullable=False),
     sa.Column('prompt_input_variables', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+    sa.Column('total_cost', sa.String(), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
     sa.Column('updated_at', sa.TIMESTAMP(), nullable=False),
     sa.ForeignKeyConstraint(['experiment_id'], ['prompt_experiments.id'], ondelete='CASCADE'),

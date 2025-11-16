@@ -263,7 +263,7 @@ class ChatCompletionService:
         return AgenticPromptRunResponse(
             content=msg.get("content"),
             tool_calls=msg.get("tool_calls"),
-            cost=f"{llm_model_response.cost:.6f}",
+            cost=llm_model_response.cost,
         )
 
     async def stream_chat_completion(

@@ -76,6 +76,9 @@ class DatabasePromptExperiment(Base):
     completed_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failed_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+    # Total cost across all test cases (string to maintain precision)
+    total_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     # Summary results stored as JSON (computed after experiment completes)
     # Structure: {"prompt_eval_summaries": [{"prompt_name": str, "prompt_version": str, "eval_results": [...]}]}
     summary_results: Mapped[Optional[Dict[str, Any]]] = mapped_column(
@@ -122,6 +125,9 @@ class DatabasePromptExperimentTestCase(Base):
     prompt_input_variables: Mapped[List[Dict[str, Any]]] = mapped_column(
         JSON, nullable=False
     )
+
+    # Total cost for this test case (string to maintain precision)
+    total_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
