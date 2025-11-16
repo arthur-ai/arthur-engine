@@ -255,87 +255,102 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
             </Stack>
             <Stack direction="column" gap={2} sx={{ p: 4, overflow: "auto", flex: 1 }}>
               <form.Field name="dataset">
-                {(field) => (
-                  <Stack direction="column" gap={1}>
+                {(field) => {
+                  // Add a special "Create New Dataset" option at the end
+                  const CREATE_NEW_OPTION = { id: "__create_new__", name: "+ Create New Dataset" } as const;
+                  const datasetOptions = [...datasetsQuery.datasets, CREATE_NEW_OPTION];
+
+                  return (
                     <Autocomplete
-                      options={datasetsQuery.datasets}
+                      options={datasetOptions}
                       value={datasetsQuery.datasets.find((d) => d.id === field.state.value) || null}
                       disablePortal
                       renderInput={(params) => <TextField {...params} label="Select Dataset" />}
                       onChange={(_event, value) => {
-                        field.handleChange(value?.id ?? "");
+                        if (value && "id" in value && value.id === "__create_new__") {
+                          setShowCreateDatasetDialog(true);
+                        } else {
+                          field.handleChange(value?.id ?? "");
+                          // Reset transform when dataset changes
+                          form.setFieldValue("transform", "manual");
+                          form.setFieldValue("columns", []);
+                        }
                       }}
                       getOptionLabel={(option) => option.name}
+                      renderOption={(props, option) => {
+                        const isCreateNew = "id" in option && option.id === "__create_new__";
+                        return (
+                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: "#1976d2" } : undefined}>
+                            {option.name}
+                          </li>
+                        );
+                      }}
                     />
-                    <Button
-                      variant="outlined"
-                      startIcon={<AddIcon />}
-                      onClick={() => setShowCreateDatasetDialog(true)}
-                      fullWidth
-                    >
-                      Create New Dataset
-                    </Button>
-                  </Stack>
-                )}
+                  );
+                }}
               </form.Field>
 
               {selectedDataset && (
                 <>
-                  <Button
-                    variant="outlined"
-                    startIcon={<AddIcon />}
-                    onClick={() => setShowAddColumnDialog(true)}
-                    fullWidth
-                  >
-                    Add New Column
-                  </Button>
+                  <form.Field name="transform">
+                    {(field) => {
+                      const hasTransforms = transformsQuery.data && transformsQuery.data.length > 0;
+                      const options = hasTransforms ? transformsQuery.data : [];
+
+                      return (
+                        <Autocomplete
+                          options={options}
+                          value={options.find((opt) => opt.id === field.state.value) || null}
+                          disabled={!hasTransforms}
+                          disablePortal
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Transform"
+                              helperText={
+                                !hasTransforms
+                                  ? "No transforms available for this dataset"
+                                  : "Select a saved transform"
+                              }
+                            />
+                          )}
+                          onChange={(_event, value) => {
+                            const transformId = value?.id ?? "";
+                            field.handleChange(transformId);
+
+                            if (transformId && value) {
+                              const executedColumns = executeTransform(flatSpans, value.definition);
+                              if (executedColumns) {
+                                form.setFieldValue("columns", executedColumns);
+                              }
+                            } else {
+                              form.setFieldValue("columns", []);
+                            }
+                          }}
+                          getOptionLabel={(option) => option.name}
+                        />
+                      );
+                    }}
+                  </form.Field>
 
                   {datasetColumns.length > 0 && (
-                    <form.Field name="transform">
-                      {(field) => {
-                        const options = [{ id: "manual", name: "Manual Entry" }, ...(transformsQuery.data || [])];
-
-                        return (
-                          <Autocomplete
-                            options={options}
-                            value={options.find((opt) => opt.id === field.state.value) || options[0]}
-                            disablePortal
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label="Transform"
-                                helperText={
-                                  transformsQuery.data?.length === 0
-                                    ? "No transforms yet. Use Manual Entry and save your first transform."
-                                    : "Select a saved transform or use Manual Entry"
-                                }
-                              />
-                            )}
-                            onChange={(_event, value) => {
-                              const transformId = value?.id ?? "manual";
-                              field.handleChange(transformId);
-
-                              if (transformId !== "manual") {
-                                const selectedTransform = transformsQuery.data?.find((t) => t.id === transformId);
-                                if (selectedTransform) {
-                                  const executedColumns = executeTransform(flatSpans, selectedTransform.definition);
-                                  if (executedColumns) {
-                                    form.setFieldValue("columns", executedColumns);
-                                  }
-                                }
-                              } else {
-                                form.setFieldValue("columns", []);
-                              }
-                            }}
-                            getOptionLabel={(option) => option.name}
-                          />
-                        );
-                      }}
-                    </form.Field>
+                    <Configurator
+                      form={form}
+                      dataset={selectedDataset}
+                      spans={flatSpans}
+                      onAddColumn={() => setShowAddColumnDialog(true)}
+                    />
                   )}
 
-                  {datasetColumns.length > 0 && (
-                    <Configurator form={form} dataset={selectedDataset} spans={flatSpans} />
+                  {datasetColumns.length === 0 && (
+                    <Button
+                      variant="outlined"
+                      startIcon={<AddIcon />}
+                      onClick={() => setShowAddColumnDialog(true)}
+                      fullWidth
+                    >
+                      Add New Column
+                    </Button>
                   )}
                 </>
               )}

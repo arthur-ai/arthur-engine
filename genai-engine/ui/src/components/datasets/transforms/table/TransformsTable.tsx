@@ -12,7 +12,6 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import { TransformsTableProps } from "../types";
 
 export const TransformsTable: React.FC<TransformsTableProps> = ({
@@ -70,7 +69,17 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({
         </TableHead>
         <TableBody>
           {transforms.map((transform) => (
-            <TableRow key={transform.id} hover>
+            <TableRow
+              key={transform.id}
+              hover
+              onClick={() => onView(transform)}
+              sx={{
+                cursor: "pointer",
+                "& .action-buttons": {
+                  visibility: "visible",
+                },
+              }}
+            >
               <TableCell>{transform.name}</TableCell>
               <TableCell>
                 <Box
@@ -87,12 +96,11 @@ export const TransformsTable: React.FC<TransformsTableProps> = ({
               <TableCell>{formatDate(transform.created_at)}</TableCell>
               <TableCell>{formatDate(transform.updated_at)}</TableCell>
               <TableCell align="center">
-                <Box sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}>
-                  <Tooltip title="View Details">
-                    <IconButton size="small" onClick={() => onView(transform)}>
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
+                <Box
+                  className="action-buttons"
+                  sx={{ display: "flex", gap: 0.5, justifyContent: "center" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Tooltip title="Edit">
                     <IconButton size="small" onClick={() => onEdit(transform)}>
                       <EditIcon fontSize="small" />
