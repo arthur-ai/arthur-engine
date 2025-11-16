@@ -92,7 +92,9 @@ class ExperimentExecutor:
         with db_session_context() as db_session:
             self._execute_experiment_with_session(db_session, experiment_id)
 
-    def _execute_experiment_with_session(self, db_session: Session, experiment_id: str) -> None:
+    def _execute_experiment_with_session(
+        self, db_session: Session, experiment_id: str
+    ) -> None:
         """
         Execute an experiment using the provided database session.
 
@@ -102,7 +104,11 @@ class ExperimentExecutor:
         """
         try:
             # Mark experiment as running
-            experiment = db_session.query(DatabasePromptExperiment).filter_by(id=experiment_id).first()
+            experiment = (
+                db_session.query(DatabasePromptExperiment)
+                .filter_by(id=experiment_id)
+                .first()
+            )
             if not experiment:
                 logger.error(f"Experiment {experiment_id} not found")
                 return
@@ -112,9 +118,11 @@ class ExperimentExecutor:
             logger.info(f"Marked experiment {experiment_id} as running")
 
             # Get all test cases for this experiment
-            test_cases = db_session.query(DatabasePromptExperimentTestCase).filter_by(
-                experiment_id=experiment_id
-            ).all()
+            test_cases = (
+                db_session.query(DatabasePromptExperimentTestCase)
+                .filter_by(experiment_id=experiment_id)
+                .all()
+            )
 
             if not test_cases:
                 logger.warning(f"No test cases found for experiment {experiment_id}")
@@ -144,13 +152,18 @@ class ExperimentExecutor:
                         else:
                             failed_count += 1
                     except Exception as e:
-                        logger.error(f"Test case {test_case_id} raised exception: {e}", exc_info=True)
+                        logger.error(
+                            f"Test case {test_case_id} raised exception: {e}",
+                            exc_info=True,
+                        )
                         failed_count += 1
 
                     # Update experiment progress after each completion (main thread, no concurrency issues)
                     experiment.completed_rows = completed_count
                     experiment.failed_rows = failed_count
-                    experiment.summary_results = self._calculate_summary_results(db_session, experiment_id)
+                    experiment.summary_results = self._calculate_summary_results(
+                        db_session, experiment_id
+                    )
                     db_session.commit()
 
                     logger.info(
@@ -159,10 +172,16 @@ class ExperimentExecutor:
                     )
 
             # Mark experiment as completed or failed based on final counts
-            experiment = db_session.query(DatabasePromptExperiment).filter_by(id=experiment_id).first()
+            experiment = (
+                db_session.query(DatabasePromptExperiment)
+                .filter_by(id=experiment_id)
+                .first()
+            )
             if failed_count > 0:
                 experiment.status = ExperimentStatus.FAILED.value
-                logger.warning(f"Experiment {experiment_id} completed with {failed_count} failed test cases")
+                logger.warning(
+                    f"Experiment {experiment_id} completed with {failed_count} failed test cases"
+                )
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 logger.info(f"Experiment {experiment_id} completed successfully")
@@ -170,14 +189,23 @@ class ExperimentExecutor:
             db_session.commit()
 
         except Exception as e:
-            logger.error(f"Error executing experiment {experiment_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing experiment {experiment_id}: {e}", exc_info=True
+            )
             try:
-                experiment = db_session.query(DatabasePromptExperiment).filter_by(id=experiment_id).first()
+                experiment = (
+                    db_session.query(DatabasePromptExperiment)
+                    .filter_by(id=experiment_id)
+                    .first()
+                )
                 if experiment:
                     experiment.status = ExperimentStatus.FAILED.value
                     db_session.commit()
             except Exception as commit_error:
-                logger.error(f"Failed to mark experiment as failed: {commit_error}", exc_info=True)
+                logger.error(
+                    f"Failed to mark experiment as failed: {commit_error}",
+                    exc_info=True,
+                )
 
     def _execute_test_case(self, test_case_id: str) -> bool:
         """
@@ -192,7 +220,9 @@ class ExperimentExecutor:
         with db_session_context() as db_session:
             return self._execute_test_case_with_session(db_session, test_case_id)
 
-    def _execute_test_case_with_session(self, db_session: Session, test_case_id: str) -> bool:
+    def _execute_test_case_with_session(
+        self, db_session: Session, test_case_id: str
+    ) -> bool:
         """
         Execute a single test case using the provided database session.
 
@@ -205,7 +235,11 @@ class ExperimentExecutor:
         """
         try:
             # Mark test case as running
-            test_case = db_session.query(DatabasePromptExperimentTestCase).filter_by(id=test_case_id).first()
+            test_case = (
+                db_session.query(DatabasePromptExperimentTestCase)
+                .filter_by(id=test_case_id)
+                .first()
+            )
             if not test_case:
                 logger.error(f"Test case {test_case_id} not found")
                 return False
@@ -220,13 +254,17 @@ class ExperimentExecutor:
                 success = self._execute_prompt(db_session, prompt_result, test_case)
                 if not success:
                     any_prompt_failed = True
-                    logger.warning(f"Prompt {prompt_result.name} v{prompt_result.version} failed in test case {test_case_id}, continuing with other prompts")
+                    logger.warning(
+                        f"Prompt {prompt_result.name} v{prompt_result.version} failed in test case {test_case_id}, continuing with other prompts"
+                    )
 
             # If any prompts failed, mark test case as failed and return
             if any_prompt_failed:
                 test_case.status = TestCaseStatus.FAILED.value
                 db_session.commit()
-                logger.error(f"Test case {test_case_id} failed due to prompt execution failures")
+                logger.error(
+                    f"Test case {test_case_id} failed due to prompt execution failures"
+                )
                 return False
 
             # All prompts executed successfully, now run evaluations
@@ -240,13 +278,17 @@ class ExperimentExecutor:
                 success = self._execute_evaluations(db_session, prompt_result)
                 if not success:
                     any_eval_failed = True
-                    logger.warning(f"Evaluations failed for prompt {prompt_result.name} v{prompt_result.version} in test case {test_case_id}, continuing with other evaluations")
+                    logger.warning(
+                        f"Evaluations failed for prompt {prompt_result.name} v{prompt_result.version} in test case {test_case_id}, continuing with other evaluations"
+                    )
 
             # If any evaluations failed, mark test case as failed and return
             if any_eval_failed:
                 test_case.status = TestCaseStatus.FAILED.value
                 db_session.commit()
-                logger.error(f"Test case {test_case_id} failed due to evaluation failures")
+                logger.error(
+                    f"Test case {test_case_id} failed due to evaluation failures"
+                )
                 return False
 
             # Mark test case as completed
@@ -256,21 +298,28 @@ class ExperimentExecutor:
             return True
 
         except Exception as e:
-            logger.error(f"Error executing test case {test_case_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing test case {test_case_id}: {e}", exc_info=True
+            )
             try:
-                test_case = db_session.query(DatabasePromptExperimentTestCase).filter_by(id=test_case_id).first()
+                test_case = (
+                    db_session.query(DatabasePromptExperimentTestCase)
+                    .filter_by(id=test_case_id)
+                    .first()
+                )
                 if test_case:
                     test_case.status = TestCaseStatus.FAILED.value
                     db_session.commit()
             except Exception as commit_error:
-                logger.error(f"Failed to mark test case as failed: {commit_error}", exc_info=True)
+                logger.error(
+                    f"Failed to mark test case as failed: {commit_error}", exc_info=True
+                )
             return False
 
     def _calculate_summary_results(
         self,
         db_session: Session,
         experiment_id: str,
-        experiment: DatabasePromptExperiment,
     ) -> Dict[str, Any]:
         """
         Calculate summary results for an experiment based on completed test cases.
@@ -286,7 +335,9 @@ class ExperimentExecutor:
             # Get all completed test cases with their prompt results and eval scores
             test_cases = (
                 db_session.query(DatabasePromptExperimentTestCase)
-                .filter_by(experiment_id=experiment_id, status=TestCaseStatus.COMPLETED.value)
+                .filter_by(
+                    experiment_id=experiment_id, status=TestCaseStatus.COMPLETED.value
+                )
                 .all()
             )
 
@@ -317,30 +368,39 @@ class ExperimentExecutor:
 
             # Build the summary structure
             prompt_eval_summaries = []
-            for (prompt_name, prompt_version), eval_results in sorted(results_by_prompt.items()):
+            for (prompt_name, prompt_version), eval_results in sorted(
+                results_by_prompt.items()
+            ):
                 eval_result_list = []
                 for (eval_name, eval_version), scores in sorted(eval_results.items()):
                     # Count how many passed (score >= 0.5, assuming 0-1 scale)
                     pass_count = sum(1 for s in scores if s >= 0.5)
                     total_count = len(scores)
 
-                    eval_result_list.append({
-                        "eval_name": eval_name,
-                        "eval_version": str(eval_version),
-                        "pass_count": pass_count,
-                        "total_count": total_count,
-                    })
+                    eval_result_list.append(
+                        {
+                            "eval_name": eval_name,
+                            "eval_version": str(eval_version),
+                            "pass_count": pass_count,
+                            "total_count": total_count,
+                        }
+                    )
 
-                prompt_eval_summaries.append({
-                    "prompt_name": prompt_name,
-                    "prompt_version": str(prompt_version),
-                    "eval_results": eval_result_list,
-                })
+                prompt_eval_summaries.append(
+                    {
+                        "prompt_name": prompt_name,
+                        "prompt_version": str(prompt_version),
+                        "eval_results": eval_result_list,
+                    }
+                )
 
             return {"prompt_eval_summaries": prompt_eval_summaries}
 
         except Exception as e:
-            logger.error(f"Error calculating summary results for experiment {experiment_id}: {e}", exc_info=True)
+            logger.error(
+                f"Error calculating summary results for experiment {experiment_id}: {e}",
+                exc_info=True,
+            )
             return {"prompt_eval_summaries": []}
 
     def _execute_prompt(
@@ -363,7 +423,7 @@ class ExperimentExecutor:
         try:
             # Get the experiment using the test_case relationship
             experiment = test_case.experiment
-            
+
             # Get the prompt using repository
             prompt_repo = AgenticPromptRepository(db_session)
             try:
@@ -373,12 +433,16 @@ class ExperimentExecutor:
                     item_version=str(prompt_result.version),
                 )
             except ValueError as e:
-                logger.error(f"Prompt {prompt_result.name} v{prompt_result.version} not found: {e}")
+                logger.error(
+                    f"Prompt {prompt_result.name} v{prompt_result.version} not found: {e}"
+                )
                 return False
 
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
-            llm_client = model_provider_repo.get_model_provider_client(prompt.model_provider)
+            llm_client = model_provider_repo.get_model_provider_client(
+                prompt.model_provider
+            )
 
             # Build variable map from test case input variables
             variable_map = {
@@ -415,11 +479,16 @@ class ExperimentExecutor:
             prompt_result.output = response.model_dump(mode="python", exclude_none=True)
             db_session.commit()
 
-            logger.info(f"Executed prompt {prompt_result.name} v{prompt_result.version} for test case {test_case.id}")
+            logger.info(
+                f"Executed prompt {prompt_result.name} v{prompt_result.version} for test case {test_case.id}"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Error executing prompt {prompt_result.name} v{prompt_result.version}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing prompt {prompt_result.name} v{prompt_result.version}: {e}",
+                exc_info=True,
+            )
             return False
 
     def _execute_evaluations(
@@ -441,15 +510,22 @@ class ExperimentExecutor:
             # Execute all eval scores using the relationship, tracking failures but continuing
             any_eval_failed = False
             for eval_score in prompt_result.eval_scores:
-                success = self._execute_single_eval(db_session, eval_score, prompt_result)
+                success = self._execute_single_eval(
+                    db_session, eval_score, prompt_result
+                )
                 if not success:
                     any_eval_failed = True
-                    logger.warning(f"Eval {eval_score.eval_name} v{eval_score.eval_version} failed for prompt result {prompt_result.id}, continuing with other evals")
+                    logger.warning(
+                        f"Eval {eval_score.eval_name} v{eval_score.eval_version} failed for prompt result {prompt_result.id}, continuing with other evals"
+                    )
 
             return not any_eval_failed
 
         except Exception as e:
-            logger.error(f"Error executing evaluations for prompt result {prompt_result.id}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing evaluations for prompt result {prompt_result.id}: {e}",
+                exc_info=True,
+            )
             return False
 
     def _execute_single_eval(
@@ -482,23 +558,32 @@ class ExperimentExecutor:
                     item_version=str(eval_score.eval_version),
                 )
             except ValueError as e:
-                logger.error(f"Eval {eval_score.eval_name} v{eval_score.eval_version} not found: {e}")
+                logger.error(
+                    f"Eval {eval_score.eval_name} v{eval_score.eval_version} not found: {e}"
+                )
                 return False
 
             # Find the eval config from the experiment to get the variable mapping with source information
             eval_config = None
             for config in experiment.eval_configs:
-                if config["name"] == eval_score.eval_name and str(config["version"]) == str(eval_score.eval_version):
+                if config["name"] == eval_score.eval_name and str(
+                    config["version"]
+                ) == str(eval_score.eval_version):
                     eval_config = config
                     break
 
             if not eval_config:
-                logger.error(f"Eval config for {eval_score.eval_name} v{eval_score.eval_version} not found in experiment")
+                logger.error(
+                    f"Eval config for {eval_score.eval_name} v{eval_score.eval_version} not found in experiment"
+                )
                 return False
 
             # Build variable map using the eval config's variable mapping to determine sources
             # Create a mapping of variable names to their current values from eval_input_variables
-            stored_values = {var["variable_name"]: var["value"] for var in eval_score.eval_input_variables}
+            stored_values = {
+                var["variable_name"]: var["value"]
+                for var in eval_score.eval_input_variables
+            }
 
             variable_map = {}
             for mapping in eval_config["variable_mapping"]:
@@ -509,9 +594,13 @@ class ExperimentExecutor:
                 if source["type"] == "experiment_output":
                     # Get the value from prompt output
                     if prompt_result.output:
-                        variable_map[variable_name] = prompt_result.output.get("content", "")
+                        variable_map[variable_name] = prompt_result.output.get(
+                            "content", ""
+                        )
                     else:
-                        logger.error(f"Prompt output not available for eval variable {variable_name}")
+                        logger.error(
+                            f"Prompt output not available for eval variable {variable_name}"
+                        )
                         return False
                 else:
                     # It's a dataset column - get the stored value
@@ -521,16 +610,20 @@ class ExperimentExecutor:
             updated_eval_input_variables = []
             for var in eval_score.eval_input_variables:
                 variable_name = var["variable_name"]
-                updated_eval_input_variables.append({
-                    "variable_name": variable_name,
-                    "value": variable_map[variable_name],
-                })
+                updated_eval_input_variables.append(
+                    {
+                        "variable_name": variable_name,
+                        "value": variable_map[variable_name],
+                    }
+                )
             eval_score.eval_input_variables = updated_eval_input_variables
             db_session.commit()
 
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
-            llm_client = model_provider_repo.get_model_provider_client(llm_eval.model_provider)
+            llm_client = model_provider_repo.get_model_provider_client(
+                llm_eval.model_provider
+            )
 
             # Convert eval to agentic prompt
             agentic_prompt = llm_evals_repo.from_llm_eval_to_agentic_prompt(
@@ -548,18 +641,24 @@ class ExperimentExecutor:
                 strict=True,
             )
 
-            llm_model_response = self.chat_completion_service.run_chat_completion_raw_response(
-                agentic_prompt,
-                llm_client,
-                completion_request,
+            llm_model_response = (
+                self.chat_completion_service.run_chat_completion_raw_response(
+                    agentic_prompt,
+                    llm_client,
+                    completion_request,
+                )
             )
 
             if not llm_model_response.structured_output_response:
                 logger.error(f"No structured output from eval {eval_score.eval_name}")
                 return False
 
-            if not isinstance(llm_model_response.structured_output_response, ReasonedScore):
-                logger.error(f"Unexpected structured output type from eval {eval_score.eval_name}")
+            if not isinstance(
+                llm_model_response.structured_output_response, ReasonedScore
+            ):
+                logger.error(
+                    f"Unexpected structured output type from eval {eval_score.eval_name}"
+                )
                 return False
 
             # Save eval results
@@ -570,9 +669,14 @@ class ExperimentExecutor:
             }
             db_session.commit()
 
-            logger.info(f"Executed eval {eval_score.eval_name} v{eval_score.eval_version} for prompt result {prompt_result.id}")
+            logger.info(
+                f"Executed eval {eval_score.eval_name} v{eval_score.eval_version} for prompt result {prompt_result.id}"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Error executing eval {eval_score.eval_name} v{eval_score.eval_version}: {e}", exc_info=True)
+            logger.error(
+                f"Error executing eval {eval_score.eval_name} v{eval_score.eval_version}: {e}",
+                exc_info=True,
+            )
             return False
