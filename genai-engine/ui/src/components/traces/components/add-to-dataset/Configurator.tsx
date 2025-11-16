@@ -81,7 +81,7 @@ export const Configurator = withForm({
                           {column.name}
                         </Typography>
                         {column.matchCount !== undefined && column.matchCount === 0 && (
-                          <Tooltip title="0 rows detected">
+                          <Tooltip title="0 spans matched">
                             <WarningAmberRoundedIcon fontSize="small" color="warning" />
                           </Tooltip>
                         )}
