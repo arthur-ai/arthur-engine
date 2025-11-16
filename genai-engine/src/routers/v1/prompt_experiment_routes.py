@@ -16,6 +16,7 @@ from schemas.prompt_experiment_schemas import (
     PromptExperimentDetail,
     PromptExperimentListResponse,
     PromptExperimentSummary,
+    PromptVersionResultListResponse,
     TestCaseListResponse,
 )
 from services.experiment_executor import ExperimentExecutor
@@ -207,6 +208,73 @@ def get_experiment_test_cases(
 
         return TestCaseListResponse(
             data=test_cases,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            total_count=total_count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+
+@prompt_experiment_routes.get(
+    "/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results",
+    summary="Get prompt version results",
+    description="Get paginated list of results for a specific prompt version within an experiment",
+    response_model=PromptVersionResultListResponse,
+    response_model_exclude_none=True,
+    tags=["Prompt Experiments"],
+)
+@permission_checker(permissions=PermissionLevelsEnum.TASK_READ.value)
+def get_prompt_version_results(
+    pagination_parameters: Annotated[
+        PaginationParameters,
+        Depends(common_pagination_parameters),
+    ],
+    experiment_id: str = Path(
+        ...,
+        description="The ID of the experiment",
+        title="Experiment ID",
+    ),
+    prompt_name: str = Path(
+        ...,
+        description="The name of the prompt",
+        title="Prompt Name",
+    ),
+    prompt_version: int = Path(
+        ...,
+        description="The version of the prompt",
+        title="Prompt Version",
+    ),
+    db_session: Session = Depends(get_db_session),
+    current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
+):
+    """
+    Get detailed results for a specific prompt version within an experiment.
+
+    Returns paginated list of results showing inputs, rendered prompt, outputs,
+    and evaluation results for the specified prompt version across all test cases.
+    Similar to the test_cases endpoint but filtered to a single prompt version.
+    """
+    try:
+        repo = PromptExperimentRepository(db_session)
+        results, total_count = repo.get_prompt_version_results(
+            experiment_id=experiment_id,
+            prompt_name=prompt_name,
+            prompt_version=prompt_version,
+            pagination_params=pagination_parameters,
+        )
+
+        page = pagination_parameters.page
+        page_size = pagination_parameters.page_size
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+
+        return PromptVersionResultListResponse(
+            data=results,
             page=page,
             page_size=page_size,
             total_pages=total_pages,

@@ -38,6 +38,7 @@ from schemas.prompt_experiment_schemas import (
     PromptRef,
     PromptResult,
     PromptVariableMapping,
+    PromptVersionResult,
     SummaryResults,
     TestCase,
 )
@@ -630,3 +631,142 @@ class PromptExperimentRepository:
         db_test_cases = base_query.limit(pagination_params.page_size).all()
 
         return [self._db_test_case_to_schema(db_tc) for db_tc in db_test_cases], count
+
+    def get_prompt_version_results(
+        self,
+        experiment_id: str,
+        prompt_name: str,
+        prompt_version: int,
+        pagination_params: PaginationParameters,
+    ) -> Tuple[List[PromptVersionResult], int]:
+        """Get paginated results for a specific prompt version within an experiment"""
+        # Verify experiment exists first
+        db_experiment = self._get_db_experiment(experiment_id)
+
+        # Verify the prompt name and version are part of this experiment
+        if db_experiment.prompt_name != prompt_name:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Prompt '{prompt_name}' not found in experiment {experiment_id}. "
+                f"This experiment tests prompt '{db_experiment.prompt_name}'.",
+            )
+
+        if prompt_version not in db_experiment.prompt_versions:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Prompt version {prompt_version} not found in experiment {experiment_id}. "
+                f"Available versions: {', '.join(map(str, db_experiment.prompt_versions))}",
+            )
+
+        # Query test cases with their prompt results filtered for the specific prompt version
+        base_query = (
+            self.db_session.query(DatabasePromptExperimentTestCase)
+            .filter(DatabasePromptExperimentTestCase.experiment_id == experiment_id)
+            .join(
+                DatabasePromptExperimentTestCasePromptResult,
+                DatabasePromptExperimentTestCase.id
+                == DatabasePromptExperimentTestCasePromptResult.test_case_id,
+            )
+            .filter(
+                DatabasePromptExperimentTestCasePromptResult.name == prompt_name,
+                DatabasePromptExperimentTestCasePromptResult.version == prompt_version,
+            )
+        )
+
+        # Apply sorting - sort by test case created_at field
+        if pagination_params.sort == PaginationSortMethod.DESCENDING:
+            base_query = base_query.order_by(
+                desc(DatabasePromptExperimentTestCase.created_at)
+            )
+        else:
+            base_query = base_query.order_by(
+                asc(DatabasePromptExperimentTestCase.created_at)
+            )
+
+        # Calculate total count
+        count = base_query.count()
+
+        # Apply pagination
+        base_query = base_query.offset(
+            pagination_params.page * pagination_params.page_size
+        )
+        db_test_cases = base_query.limit(pagination_params.page_size).all()
+
+        # Convert each test case to a PromptVersionResult
+        results = []
+        for db_test_case in db_test_cases:
+            # Find the specific prompt result for this prompt version
+            db_prompt_result = next(
+                (
+                    pr
+                    for pr in db_test_case.prompt_results
+                    if pr.name == prompt_name and pr.version == prompt_version
+                ),
+                None,
+            )
+
+            if not db_prompt_result:
+                # This shouldn't happen due to our join, but handle it just in case
+                logger.warning(
+                    f"No prompt result found for prompt {prompt_name} version {prompt_version} "
+                    f"in test case {db_test_case.id}"
+                )
+                continue
+
+            # Convert input variables
+            input_variables = [
+                InputVariable.model_validate(var)
+                for var in db_test_case.prompt_input_variables
+            ]
+
+            # Convert eval scores for this prompt result
+            eval_executions = []
+            for db_eval_score in db_prompt_result.eval_scores:
+                eval_input_variables = [
+                    InputVariable.model_validate(var)
+                    for var in db_eval_score.eval_input_variables
+                ]
+
+                # Convert eval results - may be None if not yet executed
+                eval_results = None
+                if db_eval_score.eval_result_score is not None:
+                    eval_results = EvalExecutionResult(
+                        score=db_eval_score.eval_result_score,
+                        explanation=db_eval_score.eval_result_explanation or "",
+                        cost=db_eval_score.eval_result_cost or "0",
+                    )
+
+                eval_execution = EvalExecution(
+                    eval_name=db_eval_score.eval_name,
+                    eval_version=str(db_eval_score.eval_version),
+                    eval_input_variables=eval_input_variables,
+                    eval_results=eval_results,
+                )
+                eval_executions.append(eval_execution)
+
+            # Convert prompt output - may be None if not yet executed
+            prompt_output = None
+            if (
+                db_prompt_result.output_content is not None
+                or db_prompt_result.output_tool_calls is not None
+                or db_prompt_result.output_cost is not None
+            ):
+                prompt_output = PromptOutput(
+                    content=db_prompt_result.output_content or "",
+                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    cost=db_prompt_result.output_cost or "0",
+                )
+
+            # Build the PromptVersionResult
+            result = PromptVersionResult(
+                status=db_test_case.status,
+                dataset_row_id=db_test_case.dataset_row_id,
+                prompt_input_variables=input_variables,
+                rendered_prompt=db_prompt_result.rendered_prompt,
+                output=prompt_output,
+                evals=eval_executions,
+                total_cost=db_prompt_result.output_cost,
+            )
+            results.append(result)
+
+        return results, count

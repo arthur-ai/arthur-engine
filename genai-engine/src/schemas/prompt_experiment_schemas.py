@@ -296,3 +296,35 @@ class TestCaseListResponse(BaseModel):
     page_size: int = Field(description="Number of items per page")
     total_pages: int = Field(description="Total number of pages")
     total_count: int = Field(description="Total number of test cases")
+
+
+class PromptVersionResult(BaseModel):
+    """Result for a specific prompt version within a test case"""
+
+    status: TestCaseStatus = Field(description="Status of the test case")
+    dataset_row_id: str = Field(description="ID of the dataset row")
+    prompt_input_variables: list[InputVariable] = Field(
+        description="Input variables for the prompt"
+    )
+    rendered_prompt: str = Field(description="Prompt with variables replaced")
+    output: Optional[PromptOutput] = Field(
+        default=None, description="Output from the prompt (None if not yet executed)"
+    )
+    evals: list[EvalExecution] = Field(
+        description="Evaluation results for this prompt output"
+    )
+    total_cost: Optional[str] = Field(
+        default=None, description="Total cost for this specific prompt execution"
+    )
+
+
+class PromptVersionResultListResponse(BaseModel):
+    """Paginated list of results for a specific prompt version"""
+
+    data: list[PromptVersionResult] = Field(
+        description="List of results for the prompt version"
+    )
+    page: int = Field(description="Current page number (0-indexed)")
+    page_size: int = Field(description="Number of items per page")
+    total_pages: int = Field(description="Total number of pages")
+    total_count: int = Field(description="Total number of results")
