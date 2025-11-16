@@ -65,7 +65,7 @@ def upgrade() -> None:
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('version', sa.Integer(), nullable=False),
     sa.Column('rendered_prompt', sa.Text(), nullable=False),
-    sa.Column('output', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+    sa.Column('output', postgresql.JSON(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
     sa.ForeignKeyConstraint(['test_case_id'], ['prompt_experiment_test_cases.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -78,7 +78,7 @@ def upgrade() -> None:
     sa.Column('eval_name', sa.String(), nullable=False),
     sa.Column('eval_version', sa.Integer(), nullable=False),
     sa.Column('eval_input_variables', postgresql.JSON(astext_type=sa.Text()), nullable=False),
-    sa.Column('eval_results', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+    sa.Column('eval_results', postgresql.JSON(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.TIMESTAMP(), nullable=False),
     sa.ForeignKeyConstraint(['prompt_result_id'], ['prompt_experiment_test_case_prompt_results.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')

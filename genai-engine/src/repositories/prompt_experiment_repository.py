@@ -26,12 +26,15 @@ from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
+    EvalExecution,
     EvalRef,
+    EvalResults,
     EvalVariableMapping,
     ExperimentStatus,
     InputVariable,
     PromptExperimentDetail,
     PromptExperimentSummary,
+    PromptOutput,
     PromptRef,
     PromptResult,
     PromptVariableMapping,
@@ -131,18 +134,23 @@ class PromptExperimentRepository:
                     for var in db_eval_score.eval_input_variables
                 ]
 
-                from schemas.prompt_experiment_schemas import EvalExecution, EvalResults
+                # Convert eval results - may be None if not yet executed
+                eval_results = None
+                if db_eval_score.eval_results is not None:
+                    eval_results = EvalResults.model_validate(db_eval_score.eval_results)
+
                 eval_execution = EvalExecution(
                     eval_name=db_eval_score.eval_name,
                     eval_version=str(db_eval_score.eval_version),
                     eval_input_variables=eval_input_variables,
-                    eval_results=EvalResults.model_validate(db_eval_score.eval_results),
+                    eval_results=eval_results,
                 )
                 eval_executions.append(eval_execution)
 
-            # Convert prompt output
-            from schemas.prompt_experiment_schemas import PromptOutput
-            prompt_output = PromptOutput.model_validate(db_prompt_result.output)
+            # Convert prompt output - may be None if not yet executed
+            prompt_output = None
+            if db_prompt_result.output is not None:
+                prompt_output = PromptOutput.model_validate(db_prompt_result.output)
 
             # Build the full prompt result
             prompt_result = PromptResult(
@@ -345,8 +353,8 @@ class PromptExperimentRepository:
                     test_case_id=test_case.id,
                     name=prompt.name,
                     version=prompt.version,
-                    rendered_prompt="",  # Will be filled when experiment runs
-                    output={},  # Will be filled when experiment runs
+                    rendered_prompt="...waiting to run...",  # Will be filled when experiment runs
+                    output=None,  # Will be filled when experiment runs
                 )
                 self.db_session.add(prompt_result)
 
@@ -370,7 +378,7 @@ class PromptExperimentRepository:
                             # Mark as placeholder - will be filled from prompt output when experiment runs
                             eval_input_variables.append({
                                 "variable_name": variable_name,
-                                "value": "<Waiting for output>",  # Will be filled when experiment runs
+                                "value": "...waiting for response...",  # Will be filled when experiment runs
                             })
 
                     eval_score = DatabasePromptExperimentTestCasePromptResultEvalScore(
@@ -379,7 +387,7 @@ class PromptExperimentRepository:
                         eval_name=llm_eval.name,
                         eval_version=llm_eval.version,
                         eval_input_variables=eval_input_variables,
-                        eval_results={},  # Will be filled when experiment runs
+                        eval_results=None,  # Will be filled when experiment runs
                     )
                     self.db_session.add(eval_score)
 

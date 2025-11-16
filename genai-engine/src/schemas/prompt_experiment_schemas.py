@@ -241,7 +241,7 @@ class EvalExecution(BaseModel):
     eval_input_variables: list[InputVariable] = Field(
         description="Input variables used for the eval"
     )
-    eval_results: EvalResults = Field(description="Results from the eval")
+    eval_results: Optional[EvalResults] = Field(default=None, description="Results from the eval (None if not yet executed)")
 
 
 class PromptResult(BaseModel):
@@ -250,7 +250,7 @@ class PromptResult(BaseModel):
     name: str = Field(description="Name of the prompt")
     version: str = Field(description="Version of the prompt")
     rendered_prompt: str = Field(description="Prompt with variables replaced")
-    output: PromptOutput = Field(description="Output from the prompt")
+    output: Optional[PromptOutput] = Field(default=None, description="Output from the prompt (None if not yet executed)")
     evals: list[EvalExecution] = Field(
         description="Evaluation results for this prompt output"
     )

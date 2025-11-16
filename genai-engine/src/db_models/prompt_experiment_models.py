@@ -172,7 +172,7 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
 
     # Output from the prompt
     # Structure: {"content": str, "tool_calls": [], "cost": str}
-    output: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    output: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -220,7 +220,7 @@ class DatabasePromptExperimentTestCasePromptResultEvalScore(Base):
 
     # Eval results
     # Structure: {"score": float, "explanation": str, "cost": float}
-    eval_results: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
+    eval_results: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
