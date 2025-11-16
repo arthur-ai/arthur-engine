@@ -481,12 +481,16 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     switch (step) {
       case 0:
         // Experiment info step - need basic info, prompt versions, dataset, and evaluators
+        // Count both already-added evaluators AND the current selection if both fields are filled
+        const hasCurrentEvaluator = !!(currentEvaluatorName && currentEvaluatorVersion);
+        const totalEvaluators = formData.evaluators.length + (hasCurrentEvaluator ? 1 : 0);
+
         return !!(
           formData.name.trim() &&
           formData.promptVersions.length > 0 &&
           formData.datasetId &&
           formData.datasetVersion &&
-          formData.evaluators.length > 0
+          totalEvaluators > 0
         );
       case 1:
         // Configure prompt variables - need all mappings
@@ -513,6 +517,19 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
   const handleNext = async () => {
     if (currentStep === 0) {
+      // Before proceeding, add the current evaluator selection if both fields are filled
+      if (currentEvaluatorName && currentEvaluatorVersion) {
+        const alreadyAdded = formData.evaluators.some(
+          e => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion
+        );
+        if (!alreadyAdded) {
+          setFormData(prev => ({
+            ...prev,
+            evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as number }],
+          }));
+        }
+      }
+
       // Load prompt variables before moving to step 1
       // Always reload to reflect any changes made by going back and modifying step 0
       if (!taskId || !api || formData.promptVersions.length === 0) return;
@@ -907,7 +924,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                   <IconButton
                     onClick={() => handleRemoveEvaluator(index)}
                     className="text-red-600"
-                    sx={{ mt: 0, height: 56, width: 56 }}
+                    sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -967,7 +984,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                   onClick={handleAddEvaluator}
                   disabled={!currentEvaluatorName || !currentEvaluatorVersion}
                   startIcon={<AddIcon />}
-                  sx={{ mt: 0, height: 56, minWidth: 80 }}
+                  sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
                 >
                   Add
                 </Button>
