@@ -19,8 +19,9 @@ export interface AgenticPrompt {
   /**
    * Created At
    * Timestamp when the prompt was created.
+   * @format date-time
    */
-  created_at?: string | null;
+  created_at: string;
   /**
    * Deleted At
    * Time that this prompt was deleted
@@ -545,6 +546,36 @@ export interface CreateEvalRequest {
   model_provider: ModelProvider;
 }
 
+export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData = PromptExperimentSummary;
+
+export type CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError = HTTPValidationError;
+
+/**
+ * CreatePromptExperimentRequest
+ * Request to create a new prompt experiment
+ */
+export interface CreatePromptExperimentRequest {
+  /** Reference to the dataset to use */
+  dataset_ref: DatasetRef;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations to run
+   */
+  eval_list: EvalRefInput[];
+  /**
+   * Name
+   * Name for the experiment
+   */
+  name: string;
+  /** Reference to the prompt configuration */
+  prompt_ref: PromptRefInput;
+}
+
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostData = RagProviderConfigurationResponse;
 
 export type CreateRagProviderApiV1TasksTaskIdRagProvidersPostError = HTTPValidationError;
@@ -595,6 +626,50 @@ export interface CreateUserRequest {
 export type CreateUserUsersPostData = any;
 
 export type CreateUserUsersPostError = HTTPValidationError;
+
+/**
+ * DatasetColumnSource
+ * Reference to a dataset column
+ */
+export interface DatasetColumnSource {
+  /**
+   * Name
+   * Name of the dataset column
+   */
+  name: string;
+}
+
+/**
+ * DatasetColumnVariableSource
+ * Variable source from a dataset column
+ */
+export interface DatasetColumnVariableSource {
+  /** Dataset column source */
+  dataset_column: DatasetColumnSource;
+  /**
+   * Type
+   * Type of source: 'dataset_column'
+   */
+  type: "dataset_column";
+}
+
+/**
+ * DatasetRef
+ * Reference to a dataset and version
+ */
+export interface DatasetRef {
+  /**
+   * Id
+   * Dataset ID
+   * @format uuid
+   */
+  id: string;
+  /**
+   * Version
+   * Dataset version number
+   */
+  version: number;
+}
 
 /** DatasetResponse */
 export interface DatasetResponse {
@@ -860,6 +935,10 @@ export type DeleteModelProviderApiV1ModelProvidersProviderDeleteData = any;
 
 export type DeleteModelProviderApiV1ModelProvidersProviderDeleteError = HTTPValidationError;
 
+export type DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteData = any;
+
+export type DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteError = HTTPValidationError;
+
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteData = any;
 
 export type DeleteRagProviderApiV1RagProvidersProviderIdDeleteError = HTTPValidationError;
@@ -879,6 +958,169 @@ export type DeleteTransformApiV2DatasetsDatasetIdTransformsTransformIdDeleteErro
 export type DeleteUserUsersUserIdDeleteData = any;
 
 export type DeleteUserUsersUserIdDeleteError = HTTPValidationError;
+
+/**
+ * EvalExecution
+ * Details of an eval execution
+ */
+export interface EvalExecution {
+  /**
+   * Eval Input Variables
+   * Input variables used for the eval
+   */
+  eval_input_variables: InputVariable[];
+  /**
+   * Eval Name
+   * Name of the evaluation
+   */
+  eval_name: string;
+  /** Results from the eval (None if not yet executed) */
+  eval_results?: EvalExecutionResult | null;
+  /**
+   * Eval Version
+   * Version of the evaluation
+   */
+  eval_version: string;
+}
+
+/**
+ * EvalExecutionResult
+ * Results from an eval execution
+ */
+export interface EvalExecutionResult {
+  /**
+   * Cost
+   * Cost of the evaluation
+   */
+  cost: string;
+  /**
+   * Explanation
+   * Explanation of the score
+   */
+  explanation: string;
+  /**
+   * Score
+   * Score from the evaluation
+   */
+  score: number;
+}
+
+/**
+ * EvalRef
+ * Reference to an evaluation configuration
+ */
+export interface EvalRefInput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources
+   */
+  variable_mapping: EvalVariableMappingInput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * EvalRef
+ * Reference to an evaluation configuration
+ */
+export interface EvalRefOutput {
+  /**
+   * Name
+   * Name of the evaluation
+   */
+  name: string;
+  /**
+   * Variable Mapping
+   * Mapping of eval variables to data sources
+   */
+  variable_mapping: EvalVariableMappingOutput[];
+  /**
+   * Version
+   * Version of the evaluation
+   */
+  version: number;
+}
+
+/**
+ * EvalResultSummary
+ * Results for a single eval
+ */
+export interface EvalResultSummary {
+  /**
+   * Eval Name
+   * Name of the evaluation
+   */
+  eval_name: string;
+  /**
+   * Eval Version
+   * Version of the evaluation
+   */
+  eval_version: string;
+  /**
+   * Pass Count
+   * Number of test cases that passed
+   */
+  pass_count: number;
+  /**
+   * Total Count
+   * Total number of test cases evaluated
+   */
+  total_count: number;
+}
+
+/**
+ * EvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output)
+ */
+export interface EvalVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & ExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * EvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output)
+ */
+export interface EvalVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & ExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
 
 /**
  * ExampleConfig
@@ -925,6 +1167,38 @@ export type ExecuteKeywordSearchApiV1RagProvidersProviderIdKeywordSearchPostErro
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostData = RagProviderQueryResponse;
 
 export type ExecuteSimilarityTextSearchApiV1RagProvidersProviderIdSimilarityTextSearchPostError = HTTPValidationError;
+
+/**
+ * ExperimentOutputSource
+ * Reference to experiment output
+ */
+export interface ExperimentOutputSource {
+  /**
+   * Json Path
+   * Optional JSON path to extract from experiment output
+   */
+  json_path?: string | null;
+}
+
+/**
+ * ExperimentOutputVariableSource
+ * Variable source from experiment output
+ */
+export interface ExperimentOutputVariableSource {
+  /** Experiment output source */
+  experiment_output: ExperimentOutputSource;
+  /**
+   * Type
+   * Type of source: 'experiment_output'
+   */
+  type: "experiment_output";
+}
+
+/**
+ * ExperimentStatus
+ * Status of a prompt experiment
+ */
+export type ExperimentStatus = "queued" | "running" | "failed" | "completed";
 
 /** ExternalDocument */
 export interface ExternalDocument {
@@ -1472,6 +1746,35 @@ export type GetDefaultRulesApiV2DefaultRulesGetData = RuleResponse[];
 
 export type GetDefaultTaskApiChatDefaultTaskGetData = ChatDefaultTaskResponse;
 
+export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData = TestCaseListResponse;
+
+export type GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetError = HTTPValidationError;
+
+export interface GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 /** Response Get Files Api Chat Files Get */
 export type GetFilesApiChatFilesGetData = ExternalDocument[];
 
@@ -1489,6 +1792,50 @@ export type GetModelProvidersApiV1ModelProvidersGetData = ModelProviderList;
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetData = ModelProviderModelList;
 
 export type GetModelProvidersAvailableModelsApiV1ModelProvidersProviderAvailableModelsGetError = HTTPValidationError;
+
+export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData = PromptExperimentDetail;
+
+export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError = HTTPValidationError;
+
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData =
+  PromptVersionResultListResponse;
+
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError = HTTPValidationError;
+
+export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Name
+   * The name of the prompt
+   */
+  promptName: string;
+  /**
+   * Prompt Version
+   * The version of the prompt
+   */
+  promptVersion: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
 
 export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
 
@@ -1813,6 +2160,23 @@ export interface InputAudio {
   format: string;
 }
 
+/**
+ * InputVariable
+ * Input variable for a test case
+ */
+export interface InputVariable {
+  /**
+   * Value
+   * Value of the variable
+   */
+  value: string;
+  /**
+   * Variable Name
+   * Name of the variable
+   */
+  variable_name: string;
+}
+
 /** JsonPropertySchema */
 export interface JsonPropertySchema {
   /**
@@ -2052,8 +2416,9 @@ export interface LLMEval {
   /**
    * Created At
    * Timestamp when the llm eval was created.
+   * @format date-time
    */
-  created_at?: string | null;
+  created_at: string;
   /**
    * Deleted At
    * Time that this llm eval was deleted
@@ -2476,6 +2841,40 @@ export interface ListDatasetVersionsResponse {
    * List of existing versions for the dataset.
    */
   versions: DatasetVersionMetadataResponse[];
+}
+
+export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetData = PromptExperimentListResponse;
+
+export type ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetError = HTTPValidationError;
+
+export interface ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams {
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Search
+   * Search text to filter experiments by name, description, prompt name, or dataset name
+   */
+  search?: string | null;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+  /**
+   * Task Id
+   * @format uuid
+   */
+  taskId: string;
 }
 
 export type ListRagProviderCollectionsApiV1RagProvidersProviderIdCollectionsGetData = SearchRagProviderCollectionsResponse;
@@ -3630,6 +4029,284 @@ export interface PromptCompletionRequest {
   variables?: VariableTemplateValue[] | null;
 }
 
+/**
+ * PromptEvalResultSummaries
+ * Summary of evaluation results for a prompt version
+ */
+export interface PromptEvalResultSummaries {
+  /**
+   * Eval Results
+   * Results for each evaluation run on this prompt version
+   */
+  eval_results: EvalResultSummary[];
+  /**
+   * Prompt Name
+   * Name of the prompt
+   */
+  prompt_name: string;
+  /**
+   * Prompt Version
+   * Version of the prompt
+   */
+  prompt_version: string;
+}
+
+/**
+ * PromptExperimentDetail
+ * Detailed information about a prompt experiment
+ */
+export interface PromptExperimentDetail {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /** Reference to the dataset used */
+  dataset_ref: DatasetRef;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Eval List
+   * List of evaluations being run
+   */
+  eval_list: EvalRefOutput[];
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Prompt Name
+   * Name of the prompt being tested
+   */
+  prompt_name: string;
+  /** Reference to the prompt configuration */
+  prompt_ref: PromptRefOutput;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /** Summary of results across all test cases */
+  summary_results: SummaryResults;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * PromptExperimentListResponse
+ * Paginated list of prompt experiments
+ */
+export interface PromptExperimentListResponse {
+  /**
+   * Data
+   * List of prompt experiment summaries
+   */
+  data: PromptExperimentSummary[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of prompt experiments
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * PromptExperimentSummary
+ * Summary of a prompt experiment
+ */
+export interface PromptExperimentSummary {
+  /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
+   * Created At
+   * ISO timestamp when experiment was created
+   */
+  created_at: string;
+  /**
+   * Description
+   * Description of the experiment
+   */
+  description?: string | null;
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
+  /**
+   * Finished At
+   * ISO timestamp when experiment finished
+   */
+  finished_at?: string | null;
+  /**
+   * Id
+   * Unique identifier for the experiment
+   */
+  id: string;
+  /**
+   * Name
+   * Name of the experiment
+   */
+  name: string;
+  /**
+   * Prompt Name
+   * Name of the prompt being tested
+   */
+  prompt_name: string;
+  /** Current status of the experiment */
+  status: ExperimentStatus;
+  /**
+   * Total Cost
+   * Total cost of running the experiment
+   */
+  total_cost?: string | null;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
+}
+
+/**
+ * PromptOutput
+ * Output from a prompt execution
+ */
+export interface PromptOutput {
+  /**
+   * Content
+   * Content of the prompt response
+   */
+  content: string;
+  /**
+   * Cost
+   * Cost of the prompt execution
+   */
+  cost: string;
+  /**
+   * Tool Calls
+   * Tool calls made by the prompt
+   */
+  tool_calls?: any[];
+}
+
+/**
+ * PromptRef
+ * Reference to a prompt configuration
+ */
+export interface PromptRefInput {
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /**
+   * Variable Mapping
+   * Mapping of prompt variables to dataset columns
+   */
+  variable_mapping: PromptVariableMappingInput[];
+  /**
+   * Version List
+   * List of prompt versions to test in the experiment
+   */
+  version_list: number[];
+}
+
+/**
+ * PromptRef
+ * Reference to a prompt configuration
+ */
+export interface PromptRefOutput {
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /**
+   * Variable Mapping
+   * Mapping of prompt variables to dataset columns
+   */
+  variable_mapping: PromptVariableMappingOutput[];
+  /**
+   * Version List
+   * List of prompt versions to test in the experiment
+   */
+  version_list: number[];
+}
+
+/**
+ * PromptResult
+ * Results from a prompt execution with evals
+ */
+export interface PromptResult {
+  /**
+   * Evals
+   * Evaluation results for this prompt output
+   */
+  evals: EvalExecution[];
+  /**
+   * Name
+   * Name of the prompt
+   */
+  name: string;
+  /** Output from the prompt (None if not yet executed) */
+  output?: PromptOutput | null;
+  /**
+   * Rendered Prompt
+   * Prompt with variables replaced
+   */
+  rendered_prompt: string;
+  /**
+   * Version
+   * Version of the prompt
+   */
+  version: string;
+}
+
 /** PromptValidationRequest */
 export interface PromptValidationRequest {
   /**
@@ -3647,6 +4324,102 @@ export interface PromptValidationRequest {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+/**
+ * PromptVariableMapping
+ * Mapping of a prompt variable to a dataset column source
+ */
+export interface PromptVariableMappingInput {
+  /** Dataset column source */
+  source: DatasetColumnVariableSource;
+  /**
+   * Variable Name
+   * Name of the prompt variable
+   */
+  variable_name: string;
+}
+
+/**
+ * PromptVariableMapping
+ * Mapping of a prompt variable to a dataset column source
+ */
+export interface PromptVariableMappingOutput {
+  /** Dataset column source */
+  source: DatasetColumnVariableSource;
+  /**
+   * Variable Name
+   * Name of the prompt variable
+   */
+  variable_name: string;
+}
+
+/**
+ * PromptVersionResult
+ * Result for a specific prompt version within a test case
+ */
+export interface PromptVersionResult {
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /**
+   * Evals
+   * Evaluation results for this prompt output
+   */
+  evals: EvalExecution[];
+  /** Output from the prompt (None if not yet executed) */
+  output?: PromptOutput | null;
+  /**
+   * Prompt Input Variables
+   * Input variables for the prompt
+   */
+  prompt_input_variables: InputVariable[];
+  /**
+   * Rendered Prompt
+   * Prompt with variables replaced
+   */
+  rendered_prompt: string;
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this specific prompt execution
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * PromptVersionResultListResponse
+ * Paginated list of results for a specific prompt version
+ */
+export interface PromptVersionResultListResponse {
+  /**
+   * Data
+   * List of results for the prompt version
+   */
+  data: PromptVersionResult[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of results
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
 }
 
 /** PutModelProviderCredentials */
@@ -5328,6 +6101,18 @@ export interface StreamOptions {
   include_usage?: boolean | null;
 }
 
+/**
+ * SummaryResults
+ * Summary results across all prompt versions and evaluations
+ */
+export interface SummaryResults {
+  /**
+   * Prompt Eval Summaries
+   * Summary for each prompt version tested
+   */
+  prompt_eval_summaries: PromptEvalResultSummaries[];
+}
+
 /** TaskResponse */
 export interface TaskResponse {
   /**
@@ -5366,6 +6151,73 @@ export interface TaskResponse {
    */
   updated_at: number;
 }
+
+/**
+ * TestCase
+ * Individual test case result
+ */
+export interface TestCase {
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /**
+   * Prompt Input Variables
+   * Input variables for the prompt
+   */
+  prompt_input_variables: InputVariable[];
+  /**
+   * Prompt Results
+   * Results for each prompt version tested
+   */
+  prompt_results: PromptResult[];
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this test case
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * TestCaseListResponse
+ * Paginated list of test cases
+ */
+export interface TestCaseListResponse {
+  /**
+   * Data
+   * List of test cases
+   */
+  data: TestCase[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of test cases
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
+}
+
+/**
+ * TestCaseStatus
+ * Status of a test case
+ */
+export type TestCaseStatus = "queued" | "running" | "evaluating" | "failed" | "completed";
 
 export type TestRagProviderConnectionApiV1TasksTaskIdRagProvidersTestConnectionPostData = ConnectionCheckResult;
 
@@ -6889,7 +7741,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.173
+ * @version 2.1.178
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
@@ -7102,6 +7954,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
         format: "json",
         ...params,
       }),
+
+    /**
+     * @description Create a new prompt experiment and initiate execution
+     *
+     * @tags Prompt Experiments
+     * @name CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPost
+     * @summary Create and run a prompt experiment
+     * @request POST:/api/v1/tasks/{task_id}/prompt_experiments
+     * @secure
+     */
+    createPromptExperimentApiV1TasksTaskIdPromptExperimentsPost: (taskId: string, data: CreatePromptExperimentRequest, params: RequestParams = {}) =>
+      this.request<CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostData, CreatePromptExperimentApiV1TasksTaskIdPromptExperimentsPostError>(
+        {
+          path: `/api/v1/tasks/${taskId}/prompt_experiments`,
+          method: "POST",
+          body: data,
+          secure: true,
+          type: ContentType.Json,
+          format: "json",
+          ...params,
+        }
+      ),
 
     /**
      * @description Register a new RAG provider connection configuration.
@@ -7395,6 +8269,26 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     deleteModelProviderApiV1ModelProvidersProviderDelete: (provider: ModelProvider, params: RequestParams = {}) =>
       this.request<DeleteModelProviderApiV1ModelProvidersProviderDeleteData, DeleteModelProviderApiV1ModelProvidersProviderDeleteError>({
         path: `/api/v1/model_providers/${provider}`,
+        method: "DELETE",
+        secure: true,
+        ...params,
+      }),
+
+    /**
+     * @description Delete a prompt experiment and all its associated data
+     *
+     * @tags Prompt Experiments
+     * @name DeletePromptExperimentApiV1PromptExperimentsExperimentIdDelete
+     * @summary Delete prompt experiment
+     * @request DELETE:/api/v1/prompt_experiments/{experiment_id}
+     * @secure
+     */
+    deletePromptExperimentApiV1PromptExperimentsExperimentIdDelete: (experimentId: string, params: RequestParams = {}) =>
+      this.request<
+        DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteData,
+        DeletePromptExperimentApiV1PromptExperimentsExperimentIdDeleteError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}`,
         method: "DELETE",
         secure: true,
         ...params,
@@ -7824,6 +8718,31 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       }),
 
     /**
+     * @description Get paginated list of test case results for a prompt experiment
+     *
+     * @tags Prompt Experiments
+     * @name GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet
+     * @summary Get experiment test cases
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}/test_cases
+     * @secure
+     */
+    getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet: (
+      { experimentId, ...query }: GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetData,
+        GetExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGetError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}/test_cases`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description List uploaded files. Only files that are global or owned by the caller are returned.
      *
      * @tags Chat
@@ -7915,6 +8834,54 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       >({
         path: `/api/v1/model_providers/${provider}/available_models`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get detailed information about a specific prompt experiment including summary results
+     *
+     * @tags Prompt Experiments
+     * @name GetPromptExperimentApiV1PromptExperimentsExperimentIdGet
+     * @summary Get prompt experiment details
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}
+     * @secure
+     */
+    getPromptExperimentApiV1PromptExperimentsExperimentIdGet: (experimentId: string, params: RequestParams = {}) =>
+      this.request<GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData, GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError>({
+        path: `/api/v1/prompt_experiments/${experimentId}`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of results for a specific prompt version within an experiment
+     *
+     * @tags Prompt Experiments
+     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet
+     * @summary Get prompt version results
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results
+     * @secure
+     */
+    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet: (
+      {
+        experimentId,
+        promptName,
+        promptVersion,
+        ...query
+      }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData,
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptName}/versions/${promptVersion}/results`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,
@@ -8189,6 +9156,28 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
     getUserDetailsApiV1TracesUsersUserIdGet: ({ userId, ...query }: GetUserDetailsApiV1TracesUsersUserIdGetParams, params: RequestParams = {}) =>
       this.request<GetUserDetailsApiV1TracesUsersUserIdGetData, GetUserDetailsApiV1TracesUsersUserIdGetError>({
         path: `/api/v1/traces/users/${userId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description List all prompt experiments for a task with optional filtering and pagination
+     *
+     * @tags Prompt Experiments
+     * @name ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet
+     * @summary List prompt experiments
+     * @request GET:/api/v1/tasks/{task_id}/prompt_experiments
+     * @secure
+     */
+    listPromptExperimentsApiV1TasksTaskIdPromptExperimentsGet: (
+      { taskId, ...query }: ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetData, ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetError>({
+        path: `/api/v1/tasks/${taskId}/prompt_experiments`,
         method: "GET",
         query: query,
         secure: true,

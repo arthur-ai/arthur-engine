@@ -3,6 +3,14 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/16/2025
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  endpoint added
+- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
+
+# 11/16/2025
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
 - **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
