@@ -378,7 +378,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
           sx={getStatusChipSx(getStatusColor(testCase.status))}
         />
       </TableCell>
-      {promptEvalColumns.map((column) => {
+      {promptEvalColumns.map((column, index) => {
         const promptResult = testCase.prompt_results.find(
           (pr) => pr.name === column.promptName && pr.version === column.promptVersion
         );
@@ -389,11 +389,21 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
         const score = evalResult?.eval_results?.score;
         const isPending = !evalResult?.eval_results;
 
+        // Check if this is the last eval in its prompt group
+        const isLastInGroup =
+          index === promptEvalColumns.length - 1 ||
+          promptEvalColumns[index + 1].promptName !== column.promptName ||
+          promptEvalColumns[index + 1].promptVersion !== column.promptVersion;
+
         return (
           <TableCell
             key={`${column.promptName}-${column.promptVersion}-${column.evalName}-${column.evalVersion}`}
             align="center"
-            sx={{ padding: "6px 8px" }}
+            sx={{
+              padding: "6px 8px",
+              borderRight: isLastInGroup ? (index === promptEvalColumns.length - 1 ? 3 : 0) : 0,
+              borderColor: "divider",
+            }}
           >
             {isPending ? (
               <Typography variant="body2" className="text-gray-400" sx={{ fontSize: "0.75rem" }}>
@@ -434,7 +444,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
         );
       })}
       {/* Eval totals columns */}
-      {evalGroups.map((evalGroup) => {
+      {evalGroups.map((evalGroup, index) => {
         let passCount = 0;
         let totalCount = 0;
 
@@ -462,6 +472,8 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, promptEvalColumns, evalGrou
               backgroundColor: "#f9fafb",
               fontWeight: 500,
               fontSize: "0.8rem",
+              borderRight: index === evalGroups.length - 1 ? 3 : 0,
+              borderColor: "divider",
             }}
           >
             <Typography
@@ -672,18 +684,18 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Status
                 </Box>
               </TableCell>
-              {promptGroups.map((group) => (
+              {promptGroups.map((group, index) => (
                 <TableCell
                   key={`${group.promptName}-${group.promptVersion}`}
                   colSpan={group.evalCount}
                   align="center"
                   sx={{
-                    backgroundColor: "#dbeafe",
-                    borderRight: 1,
+                    backgroundColor: "grey.50",
+                    borderRight: index === promptGroups.length - 1 ? 3 : 1,
                     borderColor: "divider",
                   }}
                 >
-                  <Box component="span" className="font-semibold text-blue-900">
+                  <Box component="span" className="font-semibold">
                     {group.promptName} (v{group.promptVersion})
                   </Box>
                 </TableCell>
@@ -692,13 +704,12 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 colSpan={evalGroups.length}
                 align="center"
                 sx={{
-                  backgroundColor: "#fef3c7",
-                  borderRight: 1,
-                  borderLeft: 1,
+                  backgroundColor: "grey.50",
+                  borderRight: 3,
                   borderColor: "divider",
                 }}
               >
-                <Box component="span" className="font-semibold text-amber-900">
+                <Box component="span" className="font-semibold">
                   Totals
                 </Box>
               </TableCell>
@@ -726,13 +737,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                     key={`${col.promptName}-${col.promptVersion}-${col.evalName}-${col.evalVersion}`}
                     align="center"
                     sx={{
-                      backgroundColor: "#eff6ff",
-                      borderRight: isLastInGroup ? 1 : 0,
+                      backgroundColor: "grey.50",
+                      borderRight: isLastInGroup ? (index === promptEvalColumns.length - 1 ? 3 : 1) : 0,
                       borderColor: "divider",
                       fontSize: "0.75rem",
                     }}
                   >
-                    <Box component="span" className="font-medium text-blue-800">
+                    <Box component="span" className="font-medium">
                       {col.evalName} (v{col.evalVersion})
                     </Box>
                   </TableCell>
@@ -744,13 +755,13 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   key={`total-header-${evalGroup.evalName}-${evalGroup.evalVersion}`}
                   align="center"
                   sx={{
-                    backgroundColor: "#fef9c3",
-                    borderRight: index === evalGroups.length - 1 ? 1 : 0,
+                    backgroundColor: "grey.50",
+                    borderRight: index === evalGroups.length - 1 ? 3 : 0,
                     borderColor: "divider",
                     fontSize: "0.75rem",
                   }}
                 >
-                  <Box component="span" className="font-medium text-amber-800">
+                  <Box component="span" className="font-medium">
                     {evalGroup.evalName} (v{evalGroup.evalVersion})
                   </Box>
                 </TableCell>
