@@ -5,7 +5,7 @@ from uuid import uuid4
 from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, or_
 from sqlalchemy.orm import Session, joinedload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
@@ -540,6 +540,7 @@ class PromptExperimentRepository:
         task_id: str,
         pagination_params: PaginationParameters,
         status_filter: Optional[str] = None,
+        search_text: Optional[str] = None,
     ) -> Tuple[List[PromptExperimentSummary], int]:
         """List experiments for a task with optional filtering"""
         base_query = self.db_session.query(DatabasePromptExperiment).filter(
@@ -550,6 +551,25 @@ class PromptExperimentRepository:
         if status_filter:
             base_query = base_query.filter(
                 DatabasePromptExperiment.status == status_filter
+            )
+
+        # Apply search filter if provided
+        if search_text:
+            # Join with dataset table to search dataset name
+            base_query = base_query.outerjoin(
+                DatabaseDataset,
+                DatabasePromptExperiment.dataset_id == DatabaseDataset.id
+            )
+
+            # Search across experiment name, description, prompt name, and dataset name
+            search_pattern = f"%{search_text}%"
+            base_query = base_query.filter(
+                or_(
+                    DatabasePromptExperiment.name.ilike(search_pattern),
+                    DatabasePromptExperiment.description.ilike(search_pattern),
+                    DatabasePromptExperiment.prompt_name.ilike(search_pattern),
+                    DatabaseDataset.name.ilike(search_pattern),
+                )
             )
 
         # Apply sorting - sort by created_at field

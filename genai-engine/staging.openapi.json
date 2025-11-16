@@ -8640,6 +8640,24 @@
                         }
                     },
                     {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Search text to filter experiments by name, description, prompt name, or dataset name",
+                            "title": "Search"
+                        },
+                        "description": "Search text to filter experiments by name, description, prompt name, or dataset name"
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "required": false,

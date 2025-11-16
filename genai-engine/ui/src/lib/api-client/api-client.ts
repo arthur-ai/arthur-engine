@@ -2819,6 +2819,11 @@ export interface ListPromptExperimentsApiV1TasksTaskIdPromptExperimentsGetParams
    */
   page_size?: number;
   /**
+   * Search
+   * Search text to filter experiments by name, description, prompt name, or dataset name
+   */
+  search?: string | null;
+  /**
    * Sort the results (asc/desc)
    * @default "desc"
    */
@@ -7626,7 +7631,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.173
+ * @version 2.1.175
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

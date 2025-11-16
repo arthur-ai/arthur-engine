@@ -3,6 +3,9 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/16/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'search'
+
+# 11/16/2025
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added

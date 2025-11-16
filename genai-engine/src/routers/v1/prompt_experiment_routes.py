@@ -1,8 +1,8 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import uuid4
 
 from arthur_common.models.common_schemas import PaginationParameters
-from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from dependencies import get_db_session, get_validated_agentic_task
@@ -42,6 +42,10 @@ def list_prompt_experiments(
         PaginationParameters,
         Depends(common_pagination_parameters),
     ],
+    search: Optional[str] = Query(
+        None,
+        description="Search text to filter experiments by name, description, prompt name, or dataset name",
+    ),
     db_session: Session = Depends(get_db_session),
     current_user: User | None = Depends(multi_validator.validate_api_multi_auth),
     task: Task = Depends(get_validated_agentic_task),
@@ -50,12 +54,14 @@ def list_prompt_experiments(
     List all prompt experiments for a given task.
 
     Returns paginated list of experiment summaries.
+    Optionally filter by search text matching experiment name, description, prompt name, or dataset name.
     """
     try:
         repo = PromptExperimentRepository(db_session)
         experiments, total_count = repo.list_experiments(
             task_id=task.id,
             pagination_params=pagination_parameters,
+            search_text=search,
         )
 
         page = pagination_parameters.page
