@@ -310,13 +310,15 @@ class ExperimentExecutor:
             True if all evaluations executed successfully, False otherwise
         """
         try:
-            # Execute all eval scores using the relationship
+            # Execute all eval scores using the relationship, tracking failures but continuing
+            any_eval_failed = False
             for eval_score in prompt_result.eval_scores:
                 success = self._execute_single_eval(db_session, eval_score, prompt_result)
                 if not success:
-                    return False
+                    any_eval_failed = True
+                    logger.warning(f"Eval {eval_score.eval_name} v{eval_score.eval_version} failed for prompt result {prompt_result.id}, continuing with other evals")
 
-            return True
+            return not any_eval_failed
 
         except Exception as e:
             logger.error(f"Error executing evaluations for prompt result {prompt_result.id}: {e}", exc_info=True)
@@ -340,22 +342,8 @@ class ExperimentExecutor:
             True if eval executed successfully, False otherwise
         """
         try:
-            # Get the experiment to find the task_id
-            test_case = db_session.query(DatabasePromptExperimentTestCase).filter_by(
-                id=prompt_result.test_case_id
-            ).first()
-
-            if not test_case:
-                logger.error(f"Could not find test case for prompt result {prompt_result.id}")
-                return False
-
-            experiment = db_session.query(DatabasePromptExperiment).filter_by(
-                id=test_case.experiment_id
-            ).first()
-
-            if not experiment:
-                logger.error(f"Could not find experiment for test case {test_case.id}")
-                return False
+            # Get the experiment using the prompt_result relationship
+            experiment = prompt_result.test_case.experiment
 
             # Get the eval using repository
             llm_evals_repo = LLMEvalsRepository(db_session)
@@ -369,14 +357,28 @@ class ExperimentExecutor:
                 logger.error(f"Eval {eval_score.eval_name} v{eval_score.eval_version} not found: {e}")
                 return False
 
-            # Build variable map from eval input variables
-            # Some variables come from dataset, some from experiment output
+            # Find the eval config from the experiment to get the variable mapping with source information
+            eval_config = None
+            for config in experiment.eval_configs:
+                if config["name"] == eval_score.eval_name and str(config["version"]) == str(eval_score.eval_version):
+                    eval_config = config
+                    break
+
+            if not eval_config:
+                logger.error(f"Eval config for {eval_score.eval_name} v{eval_score.eval_version} not found in experiment")
+                return False
+
+            # Build variable map using the eval config's variable mapping to determine sources
+            # Create a mapping of variable names to their current values from eval_input_variables
+            stored_values = {var["variable_name"]: var["value"] for var in eval_score.eval_input_variables}
+
             variable_map = {}
-            for var in eval_score.eval_input_variables:
-                variable_name = var["variable_name"]
+            for mapping in eval_config["variable_mapping"]:
+                variable_name = mapping["variable_name"]
+                source = mapping["source"]
 
                 # Check if this is an experiment_output type
-                if var.get("source", {}).get("type") == "experiment_output":
+                if source["type"] == "experiment_output":
                     # Get the value from prompt output
                     if prompt_result.output:
                         variable_map[variable_name] = prompt_result.output.get("content", "")
@@ -384,8 +386,19 @@ class ExperimentExecutor:
                         logger.error(f"Prompt output not available for eval variable {variable_name}")
                         return False
                 else:
-                    # It's a dataset column or static value
-                    variable_map[variable_name] = var.get("value", "")
+                    # It's a dataset column - get the stored value
+                    variable_map[variable_name] = stored_values.get(variable_name, "")
+
+            # Update eval_input_variables with finalized experiment_output values
+            updated_eval_input_variables = []
+            for var in eval_score.eval_input_variables:
+                variable_name = var["variable_name"]
+                updated_eval_input_variables.append({
+                    "variable_name": variable_name,
+                    "value": variable_map[variable_name],
+                })
+            eval_score.eval_input_variables = updated_eval_input_variables
+            db_session.commit()
 
             # Get LLM client
             model_provider_repo = ModelProviderRepository(db_session)
@@ -425,7 +438,7 @@ class ExperimentExecutor:
             eval_score.eval_results = {
                 "score": llm_model_response.structured_output_response.score,
                 "reason": llm_model_response.structured_output_response.reason,
-                "cost": float(llm_model_response.cost),
+                "cost": llm_model_response.cost,
             }
             db_session.commit()
 
