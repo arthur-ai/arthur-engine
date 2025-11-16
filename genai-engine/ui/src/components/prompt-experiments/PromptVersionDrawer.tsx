@@ -515,27 +515,15 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                 <Typography variant="subtitle1" className="font-semibold text-gray-900 mb-3">
                   Messages
                 </Typography>
-                <Box className="space-y-3">
+                <Box>
                   {prompt.messages.map((message, idx) => (
-                    <Box key={idx} className="border border-gray-200 rounded">
-                      <Box className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <Chip
-                          label={message.role.toUpperCase()}
-                          size="small"
-                          color={message.role === "system" ? "primary" : message.role === "user" ? "default" : "secondary"}
-                          sx={{ fontWeight: 600, fontSize: "0.7rem" }}
-                        />
-                      </Box>
-                      <Box className="p-4">
-                        <Typography
-                          variant="body2"
-                          className="font-mono text-gray-900 whitespace-pre-wrap"
-                          sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}
-                        >
-                          {typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2)}
-                        </Typography>
-                      </Box>
-                    </Box>
+                    <MessageDisplay
+                      key={idx}
+                      message={{
+                        role: message.role as "system" | "user" | "assistant",
+                        content: typeof message.content === "string" ? message.content : JSON.stringify(message.content, null, 2)
+                      }}
+                    />
                   ))}
                 </Box>
               </Box>

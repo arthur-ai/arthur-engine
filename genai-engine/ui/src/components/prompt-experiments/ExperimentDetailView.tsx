@@ -1,5 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -222,9 +223,9 @@ export const ExperimentDetailView: React.FC = () => {
                       key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
                       elevation={1}
                       onClick={() => handlePromptClick(promptSummary)}
-                      sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 } }}
+                      sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 }, position: "relative" }}
                     >
-                      <CardContent>
+                      <CardContent sx={{ position: "relative", paddingBottom: "16px !important" }}>
                         <Box className="flex items-center gap-2 mb-3">
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
                             Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
@@ -265,6 +266,19 @@ export const ExperimentDetailView: React.FC = () => {
                           </Box>
                         );
                       })}
+                    </Box>
+
+                    {/* Expand icon in lower right corner */}
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        bottom: 8,
+                        right: 8,
+                        opacity: 0.4,
+                        transition: "opacity 0.2s",
+                      }}
+                    >
+                      <OpenInFullIcon sx={{ fontSize: 16, color: "text.secondary" }} />
                     </Box>
                   </CardContent>
                 </Card>
