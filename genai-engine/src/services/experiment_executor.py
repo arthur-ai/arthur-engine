@@ -7,6 +7,7 @@ This module handles the execution of prompt experiments by:
 3. Updating experiment and test case statuses throughout execution
 """
 
+import json
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -232,25 +233,9 @@ class ExperimentExecutor:
             True if prompt executed successfully, False otherwise
         """
         try:
-            # Get the experiment to find the task_id
-            experiment = db_session.query(DatabasePromptExperiment).filter_by(
-                id=test_case.experiment.id if hasattr(test_case, 'experiment') else None
-            ).first()
-
-            if not experiment:
-                # Fallback: query by test case's experiment_id
-                test_case_full = db_session.query(DatabasePromptExperimentTestCase).filter_by(
-                    id=test_case.id
-                ).first()
-                if test_case_full:
-                    experiment = db_session.query(DatabasePromptExperiment).filter_by(
-                        id=test_case_full.experiment_id
-                    ).first()
-
-            if not experiment:
-                logger.error(f"Could not find experiment for test case {test_case.id}")
-                return False
-
+            # Get the experiment using the test_case relationship
+            experiment = test_case.experiment
+            
             # Get the prompt using repository
             prompt_repo = AgenticPromptRepository(db_session)
             try:
@@ -278,7 +263,7 @@ class ExperimentExecutor:
                 variable_map=variable_map,
                 messages=prompt.messages,
             )
-            rendered_prompt_text = "\n".join([msg.get("content", "") for msg in rendered_messages])
+            rendered_prompt_text = json.dumps(rendered_messages, indent=2)
 
             # Save rendered prompt
             prompt_result.rendered_prompt = rendered_prompt_text
@@ -298,12 +283,8 @@ class ExperimentExecutor:
                 completion_request=completion_request,
             )
 
-            # Save output
-            prompt_result.output = {
-                "content": response.content,
-                "tool_calls": response.tool_calls if response.tool_calls else [],
-                "cost": response.cost,
-            }
+            # Save output - convert response model to dict
+            prompt_result.output = response.model_dump(mode="python", exclude_none=True)
             db_session.commit()
 
             logger.info(f"Executed prompt {prompt_result.name} v{prompt_result.version} for test case {test_case.id}")
