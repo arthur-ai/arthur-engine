@@ -258,85 +258,92 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
               </Stack>
             </Stack>
             <Stack direction="column" gap={2} sx={{ p: 4, overflow: "auto", flex: 1 }}>
-              <form.Field name="dataset">
-                {(field) => {
-                  // Add a special "Create New Dataset" option at the end
-                  const CREATE_NEW_OPTION = { id: "__create_new__", name: "+ Create New Dataset" } as const;
-                  const datasetOptions = [...datasetsQuery.datasets, CREATE_NEW_OPTION];
+              <Stack direction="row" gap={2}>
+                <form.Field name="dataset">
+                  {(field) => {
+                    // Add a special "Create New Dataset" option at the end
+                    const CREATE_NEW_OPTION = { id: "__create_new__", name: "+ Create New Dataset" } as const;
+                    const datasetOptions = [...datasetsQuery.datasets, CREATE_NEW_OPTION];
 
-                  return (
-                    <Autocomplete
-                      options={datasetOptions}
-                      value={datasetsQuery.datasets.find((d) => d.id === field.state.value) || null}
-                      disablePortal
-                      renderInput={(params) => <TextField {...params} label="Select Dataset" />}
-                      onChange={(_event, value) => {
-                        if (value && "id" in value && value.id === "__create_new__") {
-                          setShowCreateDatasetDialog(true);
-                        } else {
-                          field.handleChange(value?.id ?? "");
-                          // Reset transform when dataset changes
-                          form.setFieldValue("transform", "manual");
-                          form.setFieldValue("columns", []);
-                        }
-                      }}
-                      getOptionLabel={(option) => option.name}
-                      renderOption={(props, option) => {
-                        const isCreateNew = "id" in option && option.id === "__create_new__";
-                        return (
-                          <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: "#1976d2" } : undefined}>
-                            {option.name}
-                          </li>
-                        );
-                      }}
-                    />
-                  );
-                }}
-              </form.Field>
+                    return (
+                      <Autocomplete
+                        options={datasetOptions}
+                        value={datasetsQuery.datasets.find((d) => d.id === field.state.value) || null}
+                        disablePortal
+                        sx={{ flex: 1 }}
+                        renderInput={(params) => <TextField {...params} label="Select Dataset" />}
+                        onChange={(_event, value) => {
+                          if (value && "id" in value && value.id === "__create_new__") {
+                            setShowCreateDatasetDialog(true);
+                          } else {
+                            field.handleChange(value?.id ?? "");
+                            // Reset transform when dataset changes
+                            form.setFieldValue("transform", "");
+                            form.setFieldValue("columns", []);
+                          }
+                        }}
+                        getOptionLabel={(option) => option.name}
+                        renderOption={(props, option) => {
+                          const isCreateNew = "id" in option && option.id === "__create_new__";
+                          return (
+                            <li {...props} key={option.id} style={isCreateNew ? { fontWeight: 500, color: "#1976d2" } : undefined}>
+                              {option.name}
+                            </li>
+                          );
+                        }}
+                      />
+                    );
+                  }}
+                </form.Field>
+
+                <form.Field name="transform">
+                  {(field) => {
+                    const hasTransforms = selectedDataset && transformsQuery.data && transformsQuery.data.length > 0;
+                    const options = hasTransforms ? transformsQuery.data : [];
+                    const isDisabled = !selectedDataset || !hasTransforms;
+
+                    return (
+                      <Autocomplete
+                        options={options}
+                        value={options.find((opt) => opt.id === field.state.value) || null}
+                        disabled={isDisabled}
+                        disablePortal
+                        sx={{ flex: 1 }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Transform"
+                            helperText={
+                              !selectedDataset
+                                ? "Select a dataset first"
+                                : !hasTransforms
+                                ? "No transforms available for this dataset"
+                                : "Select a saved transform"
+                            }
+                          />
+                        )}
+                        onChange={(_event, value) => {
+                          const transformId = value?.id ?? "";
+                          field.handleChange(transformId);
+
+                          if (transformId && value) {
+                            const executedColumns = executeTransform(flatSpans, value.definition);
+                            if (executedColumns) {
+                              form.setFieldValue("columns", executedColumns);
+                            }
+                          } else {
+                            form.setFieldValue("columns", []);
+                          }
+                        }}
+                        getOptionLabel={(option) => option.name}
+                      />
+                    );
+                  }}
+                </form.Field>
+              </Stack>
 
               {selectedDataset && (
                 <>
-                  <form.Field name="transform">
-                    {(field) => {
-                      const hasTransforms = transformsQuery.data && transformsQuery.data.length > 0;
-                      const options = hasTransforms ? transformsQuery.data : [];
-
-                      return (
-                        <Autocomplete
-                          options={options}
-                          value={options.find((opt) => opt.id === field.state.value) || null}
-                          disabled={!hasTransforms}
-                          disablePortal
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Transform"
-                              helperText={
-                                !hasTransforms
-                                  ? "No transforms available for this dataset"
-                                  : "Select a saved transform"
-                              }
-                            />
-                          )}
-                          onChange={(_event, value) => {
-                            const transformId = value?.id ?? "";
-                            field.handleChange(transformId);
-
-                            if (transformId && value) {
-                              const executedColumns = executeTransform(flatSpans, value.definition);
-                              if (executedColumns) {
-                                form.setFieldValue("columns", executedColumns);
-                              }
-                            } else {
-                              form.setFieldValue("columns", []);
-                            }
-                          }}
-                          getOptionLabel={(option) => option.name}
-                        />
-                      );
-                    }}
-                  </form.Field>
-
                   {datasetColumns.length > 0 && (
                     <Configurator
                       form={form}
