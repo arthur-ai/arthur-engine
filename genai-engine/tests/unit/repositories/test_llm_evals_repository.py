@@ -46,6 +46,7 @@ def sample_llm_eval():
         instructions="test_instructions",
         config=LLMBaseConfigSettings(temperature=0.5, max_tokens=100),
         version=1,
+        created_at=datetime.now(),
     )
 
 
@@ -97,13 +98,10 @@ def test_save_llm_eval_integrity_error(sample_create_eval_request):
     mock_db_session.commit.side_effect = IntegrityError("", "", Exception(""))
 
     with pytest.raises(ValueError) as exc_info:
-        full_eval = LLMEval(
-            name=sample_llm_eval.name,
-            **sample_create_eval_request.model_dump(),
-        )
         llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            sample_llm_eval.name,
+            sample_create_eval_request,
         )
 
     assert (
@@ -123,13 +121,10 @@ def test_save_llm_eval_with_llm_eval_object(
 ):
     """Test saving an LLMEval object to database"""
     task_id = "test_task_id"
-    full_eval = LLMEval(
-        name=sample_llm_eval.name,
-        **sample_create_eval_request.model_dump(),
-    )
     result = llm_evals_repo.save_llm_item(
         task_id,
-        full_eval,
+        sample_llm_eval.name,
+        sample_create_eval_request,
     )
 
     # Compare was inserted to the database correctly
@@ -185,8 +180,7 @@ def test_delete_eval_success(llm_evals_repo, sample_create_eval_request):
     eval_name = "test_eval"
 
     # Mock database query
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
     llm_evals_repo.delete_llm_item(task_id, eval_name)
 
     with pytest.raises(ValueError) as exc_info:
@@ -220,8 +214,7 @@ def test_soft_delete_eval_version_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
     llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
     result = llm_evals_repo.get_llm_item(task_id, eval_name, "1")
 
@@ -241,8 +234,7 @@ def test_soft_delete_eval_version_errors(llm_evals_repo, sample_create_eval_requ
     task_id = "test_task"
     eval_name = "test_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
     llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
 
     # --- Case 1: Not found ---
@@ -286,10 +278,10 @@ def test_soft_delete_eval_by_version_success(
     eval_name = "test_llm_eval"
 
     try:
-        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
         result = llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            eval_name,
+            sample_create_eval_request,
         )
         created_at_timestamp = result.created_at
 
@@ -332,8 +324,7 @@ def test_get_eval_success(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    llm_evals_repo.save_llm_item(task_id, eval_name, sample_create_eval_request)
     result = llm_evals_repo.get_llm_item(task_id, eval_name, "latest")
 
     assert isinstance(result, LLMEval)
@@ -377,10 +368,10 @@ def test_get_eval_different_version_types_success(
     eval_name = "test_llm_eval"
 
     try:
-        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
         result = llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            eval_name,
+            sample_create_eval_request,
         )
         created_at_timestamp = result.created_at
 
@@ -413,10 +404,10 @@ def test_get_soft_delete_eval_by_version_no_error(
     eval_name = "test_llm_eval"
 
     try:
-        full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
         result = llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            eval_name,
+            sample_create_eval_request,
         )
         created_at_timestamp = result.created_at
 
@@ -483,8 +474,7 @@ def test_get_eval_versions_with_filters(
     try:
         results = []
         for version_data in versions_data:
-            full_eval = LLMEval(name=eval_name, **version_data.model_dump())
-            result = llm_evals_repo.save_llm_item(task_id, full_eval)
+            result = llm_evals_repo.save_llm_item(task_id, eval_name, version_data)
             results.append(result)
 
         if filter_param == "created_after":
@@ -553,8 +543,7 @@ def test_get_llm_eval_versions_with_pagination(
                 model_name="gpt-4",
                 model_provider="openai",
             )
-            full_eval = LLMEval(name=eval_name, **version_data.model_dump())
-            result = llm_evals_repo.save_llm_item(task_id, full_eval)
+            result = llm_evals_repo.save_llm_item(task_id, eval_name, version_data)
             created_evals.append(result)
 
         # Create pagination parameters
@@ -591,13 +580,10 @@ def test_get_all_llm_evals(llm_evals_repo, sample_create_eval_request):
     task_id = "test_task_id"
 
     for i in range(2):
-        full_eval = LLMEval(
-            name=f"test_llm_eval_{i}",
-            **sample_create_eval_request.model_dump(),
-        )
         llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            f"test_llm_eval_{i}",
+            sample_create_eval_request,
         )
 
     # Use default pagination parameters
@@ -676,13 +662,10 @@ def test_get_all_llm_eval_metadata_with_filters(
     ]
 
     for i, eval_data in enumerate(evals_data):
-        full_eval = LLMEval(
-            name=f"eval_{eval_data.model_provider.value}",
-            **eval_data.model_dump(),
-        )
         result = llm_evals_repo.save_llm_item(
             task_id,
-            full_eval,
+            f"eval_{eval_data.model_provider.value}",
+            CreateEvalRequest(**eval_data.model_dump()),
         )
         if filter_param == "created_after" and i == 0:
             filter_value = result.created_at
@@ -749,8 +732,7 @@ def test_get_all_llm_eval_metadata_with_pagination(
 
     # Create multiple evals
     for i in range(3):
-        full_eval = LLMEval(name=f"eval_{i}", **sample_create_eval_request.model_dump())
-        llm_evals_repo.save_llm_item(task_id, full_eval)
+        llm_evals_repo.save_llm_item(task_id, f"eval_{i}", sample_create_eval_request)
 
     try:
         # Create pagination parameters
@@ -795,8 +777,11 @@ def test_run_saved_llm_eval(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    full_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
 
     # Mock completion response
     mock_response = MagicMock(spec=ModelResponse)
@@ -834,8 +819,11 @@ def test_run_deleted_llm_eval_spawns_error(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    full_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
     llm_evals_repo.soft_delete_llm_item_version(task_id, eval_name, "latest")
 
     llm_evals_repo.model_provider_repo.get_model_provider_client = MagicMock(
@@ -861,8 +849,11 @@ def test_run_saved_llm_eval_malformed_response_errors(
     task_id = "test_task_id"
     eval_name = "test_llm_eval"
 
-    full_eval = LLMEval(name=eval_name, **sample_create_eval_request.model_dump())
-    llm_evals_repo.save_llm_item(task_id, full_eval)
+    full_eval = llm_evals_repo.save_llm_item(
+        task_id,
+        eval_name,
+        sample_create_eval_request,
+    )
 
     # check if the structured output response is None it raises the appropriate error
     mock_response = MagicMock(spec=LLMModelResponse)

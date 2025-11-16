@@ -2,6 +2,16 @@ The intention of this changelog is to document API changes as they happen to eff
 
 ---
 
+# 11/16/2025
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the response property 'created_at' became required for the status '200'
+
 # 11/15/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'min_score'
