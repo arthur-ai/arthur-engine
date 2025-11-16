@@ -1,4 +1,5 @@
 import { OpenInferenceSpanKind } from "@arizeai/openinference-semantic-conventions";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Box, Button, ButtonGroup, Stack, Typography } from "@mui/material";
 import {
@@ -6,6 +7,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 import { useTracesHistoryStore } from "../stores/history.store";
 import { isSpanOfType } from "../utils/spans";
@@ -30,6 +32,7 @@ type Props = {
 export const SpanDrawerContent = ({ id }: Props) => {
   const api = useApi();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const push = useTracesHistoryStore((state) => state.push);
   const select = useSelectionStore((state) => state.select);
@@ -61,6 +64,12 @@ export const SpanDrawerContent = ({ id }: Props) => {
       type: "trace",
       id: span.trace_id,
     });
+  };
+
+  const handleOpenInPlayground = () => {
+    if (span.task_id) {
+      navigate(`/tasks/${span.task_id}/playgrounds/prompts?spanId=${span.span_id}`);
+    }
   };
 
   return (
@@ -110,6 +119,13 @@ export const SpanDrawerContent = ({ id }: Props) => {
           <Stack direction="row" spacing={0} sx={{ marginLeft: "auto" }}>
             {isLLM && (
               <ButtonGroup variant="outlined" size="small" disableElevation>
+                <Button
+                  onClick={handleOpenInPlayground}
+                  disabled={!span.task_id}
+                  startIcon={<OpenInNewIcon />}
+                >
+                  Open in Playground
+                </Button>
                 <Button
                   loading={refreshMetrics.isPending}
                   onClick={() => refreshMetrics.mutate()}

@@ -27,6 +27,16 @@ export const LLMOutputMessage = z.object({
   object: z.any(),
 });
 
+export const ToolCall = z.object({
+  tool_call: z.object({
+    id: z.string(),
+    function: z.object({
+      name: z.string(),
+      arguments: z.string().optional(),
+    }),
+  }),
+});
+
 export const Message = z.discriminatedUnion("role", [
   z.object({
     role: z.literal("system"),
@@ -39,14 +49,17 @@ export const Message = z.discriminatedUnion("role", [
   z.object({
     role: z.literal("assistant"),
     content: z.string(),
+    tool_calls: z.array(ToolCall).optional(),
   }),
   z.object({
     role: z.literal("tool"),
     content: z.string(),
+    tool_call_id: z.string().optional(),
   }),
 ]);
 
 export type Message = z.infer<typeof Message>;
+export type ToolCall = z.infer<typeof ToolCall>;
 
 export type TextContent = z.infer<typeof TextContent>;
 export type ToolCallContent = z.infer<typeof ToolCallContent>;
