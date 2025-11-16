@@ -73,11 +73,15 @@ export const AddToDatasetDrawer = ({ traceId }: Props) => {
   const datasetId = useStore(form.store, (state) => state.values.dataset);
 
   const traceQuery = useTrace(traceId);
-  const datasetsQuery = useDatasets(task?.id, {
-    page: 0,
-    pageSize: MAX_PAGE_SIZE,
-    sortOrder: "asc",
-  });
+  const datasetsQuery = useDatasets(
+    task?.id,
+    {
+      page: 0,
+      pageSize: MAX_PAGE_SIZE,
+      sortOrder: "asc",
+    },
+    { enabled: open }
+  );
 
   useEffect(() => {
     if (traceQuery.error) {
