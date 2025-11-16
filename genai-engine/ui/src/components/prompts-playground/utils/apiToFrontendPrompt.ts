@@ -130,8 +130,18 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
     });
   };
 
-  // Extract tools from context messages and LiteLLM attributes
-  const extractTools = (context: Record<string, unknown>[] | null | undefined, rawData: Record<string, unknown>) => {
+  // Extract tools from messages and LiteLLM attributes
+  const extractTools = (
+    messages: Array<{
+      id: string;
+      role: MessageRole;
+      content: string | OpenAIMessageItem[];
+      disabled: boolean;
+      tool_calls: ToolCall[] | null;
+      tool_call_id: string | null;
+    }>,
+    rawData: Record<string, unknown>
+  ) => {
     const tools: Array<{
       id: string;
       function: {
@@ -185,31 +195,84 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
       }
     }
 
-    // Fallback: extract tools from context messages
-    if (context && Array.isArray(context)) {
-      context.forEach((msg: Record<string, unknown>) => {
-        if (msg.role === "tool" && msg.name && !toolNames.has(msg.name as string)) {
-          const toolName = msg.name as string;
-          toolNames.add(toolName);
-          tools.push({
-            id: generateId("tool"),
-            function: {
-              name: toolName,
-              description: `Tool: ${toolName}`,
-              parameters: {
-                type: "object",
-                properties: {},
-                required: [],
-              } as JsonSchema,
-            },
-            strict: false,
-            type: "function",
+    // Fallback: extract tools from tool_calls in messages
+    if (messages && Array.isArray(messages)) {
+      messages.forEach((msg) => {
+        if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+          msg.tool_calls.forEach((toolCall) => {
+            if (toolCall.function && !toolNames.has(toolCall.function.name)) {
+              const toolName = toolCall.function.name;
+              toolNames.add(toolName);
+              tools.push({
+                id: generateId("tool"),
+                function: {
+                  name: toolName,
+                  description: `Tool: ${toolName}`,
+                  parameters: {
+                    type: "object",
+                    properties: {},
+                    required: [],
+                  } as JsonSchema,
+                },
+                strict: false,
+                type: "function",
+              });
+            }
           });
         }
       });
     }
 
     return tools;
+  };
+
+  // Extract input messages from llm.input_messages
+  const extractInputMessages = (rawData: Record<string, unknown>) => {
+    const attributes = (rawData.attributes as Record<string, unknown>) || {};
+    const llm = attributes.llm as
+      | {
+          input_messages?: Array<{
+            message?: {
+              role?: string;
+              content?: unknown;
+              tool_calls?: ToolCall[];
+              tool_call_id?: string;
+            };
+          }>;
+        }
+      | undefined;
+
+    if (!llm?.input_messages || !Array.isArray(llm.input_messages)) {
+      return [];
+    }
+
+    return llm.input_messages
+      .map((inputMsg) => {
+        const msg = inputMsg.message;
+        if (!msg || typeof msg !== "object") {
+          return null;
+        }
+
+        const role = (msg.role as MessageRole) || "user";
+        const content = normalizeContent(msg.content);
+
+        return {
+          id: generateId("msg"),
+          role,
+          content,
+          disabled: false,
+          tool_calls: (msg.tool_calls as ToolCall[]) || null,
+          tool_call_id: (msg.tool_call_id as string) || null,
+        };
+      })
+      .filter((msg) => msg !== null) as Array<{
+      id: string;
+      role: MessageRole;
+      content: string | OpenAIMessageItem[];
+      disabled: boolean;
+      tool_calls: ToolCall[] | null;
+      tool_call_id: string | null;
+    }>;
   };
 
   // Extract assistant messages from llm.output_messages
@@ -263,11 +326,57 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
 
   const { modelName, modelProvider } = extractModelInfo(spanData.raw_data);
   const modelParameters = extractModelParameters(spanData.raw_data);
-  const inputMessages = convertContextToMessages(spanData.raw_data.attributes.input.context);
+  const inputMessages = extractInputMessages(spanData.raw_data);
   const outputMessages = extractOutputMessages(spanData.raw_data);
-  // Combine input and output messages
-  const messages = [...inputMessages, ...outputMessages];
-  const tools = extractTools(spanData.raw_data.attributes.input.context, spanData.raw_data);
+
+  // Filter out the final assistant response with tool_calls from input messages
+  // because it will be in the output messages. Tool response messages that follow
+  // should also be excluded if they're responding to the final assistant message.
+  const filteredInputMessages = inputMessages.filter((msg, index) => {
+    // If this is an assistant message with tool_calls, check if it's the last one
+    if (msg.role === "assistant" && msg.tool_calls && msg.tool_calls.length > 0) {
+      // Check if this assistant message is followed only by tool responses
+      const remainingMessages = inputMessages.slice(index + 1);
+      const allToolResponses = remainingMessages.every((m) => m.role === "tool");
+
+      // If followed only by tool responses (or nothing), this is likely the final turn
+      // that's being responded to, so exclude it and its tool responses
+      if (allToolResponses) {
+        return false;
+      }
+    }
+
+    // If this is a tool message, check if it's responding to an excluded assistant message
+    if (msg.role === "tool") {
+      // Find the most recent assistant message with tool_calls before this
+      for (let i = index - 1; i >= 0; i--) {
+        const prevMsg = inputMessages[i];
+        if (prevMsg.role === "assistant" && prevMsg.tool_calls && prevMsg.tool_calls.length > 0) {
+          // Check if that assistant message will be excluded
+          const remainingAfterAssistant = inputMessages.slice(i + 1);
+          const allToolResponsesAfter = remainingAfterAssistant.every((m) => m.role === "tool");
+          if (allToolResponsesAfter) {
+            return false; // Exclude this tool message too
+          }
+          break;
+        }
+      }
+    }
+
+    return true;
+  });
+
+  // Create runResponse from the first output message
+  const assistantMessage = outputMessages.length > 0 ? outputMessages[0] : null;
+  const runResponse = assistantMessage
+    ? {
+        content: typeof assistantMessage.content === "string" ? assistantMessage.content : JSON.stringify(assistantMessage.content),
+        cost: "0",
+        tool_calls: assistantMessage.tool_calls || undefined,
+      }
+    : null;
+
+  const tools = extractTools(filteredInputMessages, spanData.raw_data);
 
   // Create the prompt object
   const prompt: PromptType = {
@@ -277,9 +386,9 @@ const apiToFrontendPrompt = (spanData: SpanWithMetricsResponse, defaultModel: st
     created_at: spanData.created_at,
     modelName,
     modelProvider,
-    messages,
+    messages: filteredInputMessages,
     modelParameters,
-    runResponse: null, // TODO
+    runResponse: runResponse,
     responseFormat: undefined,
     tools,
     toolChoice: tools.length > 0 ? "auto" : undefined,
