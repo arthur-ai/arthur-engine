@@ -98,6 +98,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   // Step management
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [currentEvalIndex, setCurrentEvalIndex] = useState(0); // Track which eval is being configured in step 2
 
   // Form state
   const [formData, setFormData] = useState<ExperimentFormData>({
@@ -433,6 +434,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setEvalVariables({});
       setDatasetColumns([]);
       setCurrentStep(0);
+      setCurrentEvalIndex(0);
       setCompletedSteps(new Set());
       setErrors({});
       onClose();
@@ -464,21 +466,15 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     setEvalVariables({});
     setDatasetColumns([]);
     setCurrentStep(0);
+    setCurrentEvalIndex(0);
     setCompletedSteps(new Set());
     setErrors({});
     onClose();
   };
 
-  // Step navigation
+  // Step navigation - always show 3 high-level steps
   const getStepLabels = () => {
-    const labels = ["Experiment Info"];
-    if (formData.promptVersions.length > 0) {
-      labels.push("Configure Prompt Variables");
-    }
-    formData.evaluators.forEach((evaluator) => {
-      labels.push(`Configure ${evaluator.name} (v${evaluator.version})`);
-    });
-    return labels;
+    return ["Experiment Info", "Configure Prompts", "Configure Evals"];
   };
 
   const canProceedFromStep = (step: number): boolean => {
@@ -496,21 +492,22 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         // Configure prompt variables - need all mappings
         if (!formData.promptVariableMappings) return false;
         return promptVariables.every(varName => !!formData.promptVariableMappings![varName]);
+      case 2:
+        // Configure evals - need all mappings for ALL evaluators
+        if (!formData.evalVariableMappings || formData.evaluators.length === 0) return false;
+
+        return formData.evaluators.every(evaluator => {
+          const evalMappings = formData.evalVariableMappings?.find(
+            m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+          );
+          if (!evalMappings) return false;
+
+          const evalKey = `${evaluator.name}-${evaluator.version}`;
+          const evalVars = evalVariables[evalKey]?.variables || [];
+          return evalVars.every(varName => !!evalMappings.mappings[varName]);
+        });
       default:
-        // Configure eval variables - need all mappings for the current eval
-        if (step < 2) return false;
-        const evalIndex = step - 2;
-        const evaluator = formData.evaluators[evalIndex];
-        if (!evaluator) return false;
-
-        const evalMappings = formData.evalVariableMappings?.find(
-          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-        );
-        if (!evalMappings) return false;
-
-        const evalKey = `${evaluator.name}-${evaluator.version}`;
-        const evalVars = evalVariables[evalKey]?.variables || [];
-        return evalVars.every(varName => !!evalMappings.mappings[varName]);
+        return false;
     }
   };
 
@@ -547,30 +544,66 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       } finally {
         setLoadingPromptDetails(false);
       }
+      setCompletedSteps(prev => new Set(prev).add(currentStep));
+      setCurrentStep(prev => prev + 1);
     } else if (currentStep === 1) {
-      // Load eval variables for first evaluator
+      // Load eval variables for first evaluator before moving to step 2
       if (formData.evaluators.length > 0) {
         const firstEval = formData.evaluators[0];
         await loadEvalVariablesForEvaluator(firstEval.name, firstEval.version);
+        setCurrentEvalIndex(0);
       }
-    } else if (currentStep >= 2) {
-      // Load next eval variables if there are more
-      const nextEvalIndex = currentStep - 1;
+      setCompletedSteps(prev => new Set(prev).add(currentStep));
+      setCurrentStep(prev => prev + 1);
+    } else if (currentStep === 2) {
+      // Within evals step, navigate between evaluators
+      const nextEvalIndex = currentEvalIndex + 1;
       if (nextEvalIndex < formData.evaluators.length) {
+        // Move to next evaluator within step 2
         const nextEval = formData.evaluators[nextEvalIndex];
         await loadEvalVariablesForEvaluator(nextEval.name, nextEval.version);
+        setCurrentEvalIndex(nextEvalIndex);
+      } else {
+        // All evaluators configured, can submit
+        setCompletedSteps(prev => new Set(prev).add(currentStep));
       }
     }
-    setCompletedSteps(prev => new Set(prev).add(currentStep));
-    setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
-    setCurrentStep(prev => prev - 1);
+    if (currentStep === 2 && currentEvalIndex > 0) {
+      // Within evals step, go back to previous evaluator
+      setCurrentEvalIndex(prev => prev - 1);
+    } else {
+      // Go back to previous main step
+      setCurrentStep(prev => prev - 1);
+      if (currentStep === 2) {
+        // Reset eval index when leaving step 2
+        setCurrentEvalIndex(0);
+      }
+    }
   };
 
   const isLastStep = () => {
-    return currentStep === getStepLabels().length - 1;
+    // We're at the last step when on step 2 and on the last evaluator
+    return currentStep === 2 && currentEvalIndex === formData.evaluators.length - 1;
+  };
+
+  // Check if we can proceed from current eval in step 2
+  const canProceedFromCurrentEval = (): boolean => {
+    if (currentStep !== 2) return true;
+
+    const evaluator = formData.evaluators[currentEvalIndex];
+    if (!evaluator) return false;
+
+    const evalMappings = formData.evalVariableMappings?.find(
+      m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+    );
+    if (!evalMappings) return false;
+
+    const evalKey = `${evaluator.name}-${evaluator.version}`;
+    const evalVars = evalVariables[evalKey]?.variables || [];
+    return evalVars.every(varName => !!evalMappings.mappings[varName]);
   };
 
   // Render step content
@@ -580,8 +613,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     } else if (currentStep === 1) {
       return renderPromptVariableMappingStep();
     } else {
-      const evalIndex = currentStep - 2;
-      return renderEvalVariableMappingStep(evalIndex);
+      return renderEvalVariableMappingStep(currentEvalIndex);
     }
   };
 
@@ -964,9 +996,14 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
     return (
       <Box className="flex flex-col gap-4 mt-2">
-        <Typography variant="body1" className="text-gray-700">
-          Map each variable for <strong>{evaluator.name} (v{evaluator.version})</strong> to either a dataset column or the experiment output.
-        </Typography>
+        <Box>
+          <Typography variant="body2" className="text-gray-500 mb-1">
+            Evaluator {evalIndex + 1} of {formData.evaluators.length}
+          </Typography>
+          <Typography variant="body1" className="text-gray-700">
+            Map each variable for <strong>{evaluator.name} (v{evaluator.version})</strong> to either a dataset column or the experiment output.
+          </Typography>
+        </Box>
 
         {loadingEvalDetails ? (
           <Box className="flex justify-center p-4">
@@ -1182,7 +1219,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         <Button onClick={handleCancel} disabled={isSubmitting}>
           Cancel
         </Button>
-        {currentStep > 0 && (
+        {(currentStep > 0 || currentEvalIndex > 0) && (
           <Button onClick={handleBack} disabled={isSubmitting}>
             Back
           </Button>
@@ -1192,16 +1229,21 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             onClick={handleNext}
             variant="contained"
             color="primary"
-            disabled={!canProceedFromStep(currentStep) || isSubmitting}
+            disabled={
+              (currentStep === 2 ? !canProceedFromCurrentEval() : !canProceedFromStep(currentStep)) ||
+              isSubmitting
+            }
           >
-            {currentStep === 0 ? "Configure Prompts" : "Next"}
+            {currentStep === 0 ? "Configure Prompts" :
+             currentStep === 1 ? "Configure Evals" :
+             "Next Evaluator"}
           </Button>
         ) : (
           <Button
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={!canProceedFromStep(currentStep) || isSubmitting}
+            disabled={!canProceedFromCurrentEval() || isSubmitting}
             startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
           >
             {isSubmitting ? "Creating..." : "Create Experiment"}

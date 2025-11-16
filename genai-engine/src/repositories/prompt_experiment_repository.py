@@ -6,7 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import asc, desc
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.dataset_models import (
@@ -86,6 +86,7 @@ class PromptExperimentRepository:
             total_rows=db_experiment.total_rows,
             completed_rows=db_experiment.completed_rows,
             failed_rows=db_experiment.failed_rows,
+            total_cost=db_experiment.total_cost,
         )
 
     def _db_experiment_to_detail(
@@ -128,6 +129,7 @@ class PromptExperimentRepository:
             total_rows=db_experiment.total_rows,
             completed_rows=db_experiment.completed_rows,
             failed_rows=db_experiment.failed_rows,
+            total_cost=db_experiment.total_cost,
             dataset_ref=DatasetRef(
                 id=db_experiment.dataset_id,
                 version=db_experiment.dataset_version,
@@ -180,12 +182,15 @@ class PromptExperimentRepository:
                 eval_executions.append(eval_execution)
 
             # Convert prompt output - may be None if not yet executed
+            # Include output if we have any of: content, tool_calls, or cost
             prompt_output = None
-            if db_prompt_result.output_content is not None:
+            if (db_prompt_result.output_content is not None or
+                db_prompt_result.output_tool_calls is not None or
+                db_prompt_result.output_cost is not None):
                 prompt_output = PromptOutput(
-                    content=db_prompt_result.output_content,
+                    content=db_prompt_result.output_content or "",
                     tool_calls=db_prompt_result.output_tool_calls or [],
-                    cost=db_prompt_result.output_cost if db_prompt_result.output_cost is not None else "0",
+                    cost=db_prompt_result.output_cost or "0",
                 )
 
             # Build the full prompt result
@@ -203,6 +208,7 @@ class PromptExperimentRepository:
             dataset_row_id=db_test_case.dataset_row_id,
             prompt_input_variables=input_variables,
             prompt_results=prompt_results,
+            total_cost=db_test_case.total_cost,
         )
 
     def _validate_experiment_references(

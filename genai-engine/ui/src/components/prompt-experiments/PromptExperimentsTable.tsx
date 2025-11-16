@@ -103,7 +103,7 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
               </TableCell>
               <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
-                  Rows
+                  Test Cases
                 </Box>
               </TableCell>
               <TableCell sx={{ backgroundColor: "grey.50" }}>

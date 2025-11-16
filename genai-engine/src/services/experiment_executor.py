@@ -170,9 +170,6 @@ class ExperimentExecutor:
                     # Update experiment progress after each completion (main thread, no concurrency issues)
                     experiment.completed_rows = completed_count
                     experiment.failed_rows = failed_count
-                    experiment.summary_results = self._calculate_summary_results(
-                        db_session, experiment_id
-                    )
                     db_session.commit()
 
                     logger.info(
@@ -196,18 +193,26 @@ class ExperimentExecutor:
                     except (ValueError, TypeError):
                         logger.warning(f"Could not parse test case cost: {test_case.total_cost}")
 
+            # Calculate summary results now that all test cases have finished
+            experiment.summary_results = self._calculate_summary_results(
+                db_session, experiment_id
+            )
+
+            # Truncate total cost to 6 decimal places
+            total_cost_str = f"{total_experiment_cost:.6f}"
+
             if failed_count > 0:
                 experiment.status = ExperimentStatus.FAILED.value
                 experiment.finished_at = datetime.now()
-                experiment.total_cost = str(total_experiment_cost)
+                experiment.total_cost = total_cost_str
                 logger.warning(
-                    f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_experiment_cost}"
+                    f"Experiment {experiment_id} completed with {failed_count} failed test cases. Total cost: ${total_cost_str}"
                 )
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 experiment.finished_at = datetime.now()
-                experiment.total_cost = str(total_experiment_cost)
-                logger.info(f"Experiment {experiment_id} completed successfully. Total cost: ${total_experiment_cost}")
+                experiment.total_cost = total_cost_str
+                logger.info(f"Experiment {experiment_id} completed successfully. Total cost: ${total_cost_str}")
 
             db_session.commit()
 
@@ -333,9 +338,9 @@ class ExperimentExecutor:
                         except (ValueError, TypeError):
                             logger.warning(f"Could not parse eval cost: {eval_score.eval_result_cost}")
 
-            # Mark test case as completed and store total cost
+            # Mark test case as completed and store total cost (truncated to 6 decimal places)
             test_case.status = TestCaseStatus.COMPLETED.value
-            test_case.total_cost = str(total_cost)
+            test_case.total_cost = f"{total_cost:.6f}"
             db_session.commit()
             logger.info(f"Test case {test_case_id} completed successfully with total cost ${total_cost}")
             return True
