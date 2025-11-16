@@ -76,6 +76,8 @@ class PromptExperimentRepository:
             status=db_experiment.status,
             prompt_name=db_experiment.prompt_name,
             total_rows=db_experiment.total_rows,
+            completed_rows=db_experiment.completed_rows,
+            failed_rows=db_experiment.failed_rows,
         )
 
     def _db_experiment_to_detail(
@@ -101,6 +103,9 @@ class PromptExperimentRepository:
             finished_at=db_experiment.finished_at.isoformat() if db_experiment.finished_at else None,
             status=db_experiment.status,
             prompt_name=db_experiment.prompt_name,
+            total_rows=db_experiment.total_rows,
+            completed_rows=db_experiment.completed_rows,
+            failed_rows=db_experiment.failed_rows,
             dataset_ref=DatasetRef(
                 id=db_experiment.dataset_id,
                 version=db_experiment.dataset_version,

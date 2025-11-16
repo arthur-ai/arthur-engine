@@ -130,6 +130,8 @@ class PromptExperimentSummary(BaseModel):
     status: ExperimentStatus = Field(description="Current status of the experiment")
     prompt_name: str = Field(description="Name of the prompt being tested")
     total_rows: int = Field(description="Total number of test rows in the experiment")
+    completed_rows: int = Field(description="Number of test rows completed successfully")
+    failed_rows: int = Field(description="Number of test rows that failed")
 
 
 class CreatePromptExperimentRequest(BaseModel):
@@ -185,6 +187,9 @@ class PromptExperimentDetail(BaseModel):
     )
     status: ExperimentStatus = Field(description="Current status of the experiment")
     prompt_name: str = Field(description="Name of the prompt being tested")
+    total_rows: int = Field(description="Total number of test rows in the experiment")
+    completed_rows: int = Field(description="Number of test rows completed successfully")
+    failed_rows: int = Field(description="Number of test rows that failed")
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
     eval_list: list[EvalRef] = Field(description="List of evaluations being run")

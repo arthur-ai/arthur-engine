@@ -94,7 +94,8 @@ class ExperimentExecutor:
 
             # Execute test cases in parallel with worker pool
             num_workers = min(len(test_cases), self.MAX_WORKERS)
-            failed_test_cases = 0
+            completed_count = 0
+            failed_count = 0
 
             with ThreadPoolExecutor(max_workers=num_workers) as executor:
                 # Submit all test case jobs
@@ -103,22 +104,35 @@ class ExperimentExecutor:
                     for test_case in test_cases
                 }
 
-                # Wait for all test cases to complete
+                # Wait for all test cases to complete and update progress in real-time
                 for future in as_completed(futures):
                     test_case_id = futures[future]
                     try:
                         success = future.result()
-                        if not success:
-                            failed_test_cases += 1
+                        if success:
+                            completed_count += 1
+                        else:
+                            failed_count += 1
                     except Exception as e:
                         logger.error(f"Test case {test_case_id} raised exception: {e}", exc_info=True)
-                        failed_test_cases += 1
+                        failed_count += 1
 
-            # Mark experiment as completed or failed
+                    # Update experiment progress after each completion (main thread, no concurrency issues)
+                    experiment.completed_rows = completed_count
+                    experiment.failed_rows = failed_count
+                    experiment.summary_results = self._calculate_summary_results(db_session, experiment_id)
+                    db_session.commit()
+
+                    logger.info(
+                        f"Experiment {experiment_id} progress: "
+                        f"{completed_count}/{len(test_cases)} completed, {failed_count} failed"
+                    )
+
+            # Mark experiment as completed or failed based on final counts
             experiment = db_session.query(DatabasePromptExperiment).filter_by(id=experiment_id).first()
-            if failed_test_cases > 0:
+            if failed_count > 0:
                 experiment.status = ExperimentStatus.FAILED.value
-                logger.warning(f"Experiment {experiment_id} completed with {failed_test_cases} failed test cases")
+                logger.warning(f"Experiment {experiment_id} completed with {failed_count} failed test cases")
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 logger.info(f"Experiment {experiment_id} completed successfully")
@@ -199,7 +213,6 @@ class ExperimentExecutor:
             test_case.status = TestCaseStatus.COMPLETED.value
             db_session.commit()
             logger.info(f"Test case {test_case_id} completed successfully")
-
             return True
 
         except Exception as e:
@@ -214,6 +227,83 @@ class ExperimentExecutor:
             return False
         finally:
             db_session.close()
+
+    def _calculate_summary_results(
+        self,
+        db_session: Session,
+        experiment_id: str,
+        experiment: DatabasePromptExperiment,
+    ) -> Dict[str, Any]:
+        """
+        Calculate summary results for an experiment based on completed test cases.
+
+        Args:
+            db_session: Database session
+            experiment_id: ID of the experiment
+
+        Returns:
+            Summary results dictionary with prompt_eval_summaries
+        """
+        try:
+            # Get all completed test cases with their prompt results and eval scores
+            test_cases = (
+                db_session.query(DatabasePromptExperimentTestCase)
+                .filter_by(experiment_id=experiment_id, status=TestCaseStatus.COMPLETED.value)
+                .all()
+            )
+
+            if not test_cases:
+                return {"prompt_eval_summaries": []}
+
+            # Build a structure to aggregate results: {(prompt_name, prompt_version): {(eval_name, eval_version): [scores]}}
+            results_by_prompt: Dict[tuple, Dict[tuple, list]] = {}
+
+            for test_case in test_cases:
+                for prompt_result in test_case.prompt_results:
+                    prompt_key = (prompt_result.name, prompt_result.version)
+
+                    if prompt_key not in results_by_prompt:
+                        results_by_prompt[prompt_key] = {}
+
+                    for eval_score in prompt_result.eval_scores:
+                        eval_key = (eval_score.eval_name, eval_score.eval_version)
+
+                        if eval_key not in results_by_prompt[prompt_key]:
+                            results_by_prompt[prompt_key][eval_key] = []
+
+                        # Add the score if eval results exist
+                        if eval_score.eval_results:
+                            score = eval_score.eval_results.get("score")
+                            if score is not None:
+                                results_by_prompt[prompt_key][eval_key].append(score)
+
+            # Build the summary structure
+            prompt_eval_summaries = []
+            for (prompt_name, prompt_version), eval_results in sorted(results_by_prompt.items()):
+                eval_result_list = []
+                for (eval_name, eval_version), scores in sorted(eval_results.items()):
+                    # Count how many passed (score >= 0.5, assuming 0-1 scale)
+                    pass_count = sum(1 for s in scores if s >= 0.5)
+                    total_count = len(scores)
+
+                    eval_result_list.append({
+                        "eval_name": eval_name,
+                        "eval_version": str(eval_version),
+                        "pass_count": pass_count,
+                        "total_count": total_count,
+                    })
+
+                prompt_eval_summaries.append({
+                    "prompt_name": prompt_name,
+                    "prompt_version": str(prompt_version),
+                    "eval_results": eval_result_list,
+                })
+
+            return {"prompt_eval_summaries": prompt_eval_summaries}
+
+        except Exception as e:
+            logger.error(f"Error calculating summary results for experiment {experiment_id}: {e}", exc_info=True)
+            return {"prompt_eval_summaries": []}
 
     def _execute_prompt(
         self,
