@@ -30,7 +30,7 @@ export const SpanSelector = withForm({
   },
   render: function Render({ form, spans, container, index, name }) {
     const field = useField({ form, name: `columns[${index}]` as const });
-    const path = useStore(field.store, (state) => state.value.path);
+    const path = useStore(field.store, (state) => state.value?.path);
 
     const {
       selectedSpan,
