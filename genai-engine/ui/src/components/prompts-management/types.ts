@@ -1,18 +1,12 @@
 import { LLMGetAllMetadataResponse, AgenticPrompt, CreateAgenticPromptRequest } from "@/lib/api-client/api-client";
 
-interface PromptRowExpansionProps {
-  prompt: LLMGetAllMetadataResponse;
-  onExpandToFullScreen: () => void;
-}
-
 interface PromptsTableProps {
   prompts: LLMGetAllMetadataResponse[];
   sortColumn: string | null;
   sortDirection: "asc" | "desc";
   onSort: (column: string) => void;
-  expandedRows: Set<string>;
-  onToggleRow: (promptName: string) => void;
   onExpandToFullScreen: (promptName: string) => void;
+  onDelete?: (promptName: string) => Promise<void>;
 }
 
 interface PromptVersionDrawerProps {
@@ -22,6 +16,7 @@ interface PromptVersionDrawerProps {
   promptName: string;
   selectedVersion: number | null;
   onSelectVersion: (version: number) => void;
+  onDelete?: (version: number) => Promise<void>;
 }
 interface PromptFullScreenViewProps {
   promptName: string;
@@ -70,7 +65,6 @@ interface PromptFormModalProps {
 }
 
 export type {
-  PromptRowExpansionProps,
   PromptsTableProps,
   PromptVersionDrawerProps,
   PromptFullScreenViewProps,

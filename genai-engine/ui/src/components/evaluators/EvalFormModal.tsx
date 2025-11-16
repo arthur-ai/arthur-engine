@@ -242,25 +242,15 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
         return;
       }
 
-      // Update evalName
-      setEvalName(selectedName);
       prevEvalNameRef.current = selectedName;
 
-      // Always fetch when selectOption
-      if (existingEvalNames.includes(selectedName)) {
+      // Only auto-fill when explicitly selecting from dropdown or pressing enter
+      if (existingEvalNames.includes(selectedName) && (reason === "selectOption" || reason === "createOption")) {
         fetchLatestEvalVersion(selectedName);
       }
     },
-    [fetchLatestEvalVersion, enabledProviders]
+    [fetchLatestEvalVersion, enabledProviders, existingEvalNames]
   );
-
-  // Watch for when evalName matches an existing eval (for when onChange doesn't fire)
-  useEffect(() => {
-    if (evalName && existingEvalNames.includes(evalName) && prevEvalNameRef.current !== evalName) {
-      prevEvalNameRef.current = evalName;
-      fetchLatestEvalVersion(evalName);
-    }
-  }, [evalName, existingEvalNames, fetchLatestEvalVersion]);
 
   const providerDisabled = enabledProviders.length === 0;
   const modelDisabled = modelProvider === "";
@@ -283,7 +273,17 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                 freeSolo
                 options={existingEvalNames}
                 value={evalName}
+                inputValue={evalName}
                 onChange={handleEvalNameChange}
+                onInputChange={(_event, newValue) => {
+                  setEvalName(newValue);
+                }}
+                onClose={() => {
+                  if (evalName && existingEvalNames.includes(evalName) && prevEvalNameRef.current !== evalName) {
+                    prevEvalNameRef.current = evalName;
+                    fetchLatestEvalVersion(evalName);
+                  }
+                }}
                 disabled={isLoading}
                 forcePopupIcon={true}
                 filterOptions={(options, state) => {
@@ -315,6 +315,17 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                     required
                     size="small"
                     autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && evalName && existingEvalNames.includes(evalName)) {
+                        e.preventDefault();
+                        fetchLatestEvalVersion(evalName);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (evalName && existingEvalNames.includes(evalName)) {
+                        fetchLatestEvalVersion(evalName);
+                      }
+                    }}
                   />
                 )}
               />
