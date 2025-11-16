@@ -3,6 +3,18 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/16/2025
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/tags/{tag}  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  added the optional property 'tags' to the response with the '200' status
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags  endpoint added
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}/tags/{tag}  endpoint added
+
+# 11/16/2025
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
 - **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  endpoint added

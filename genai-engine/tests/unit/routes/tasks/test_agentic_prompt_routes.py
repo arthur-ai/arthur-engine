@@ -1410,3 +1410,368 @@ def test_soft_delete_agentic_prompt_by_version_route(
         assert prompt_response["model_name"] == ""
         assert prompt_response["model_provider"] == "openai"
         assert prompt_response["deleted_at"] is not None
+
+
+@pytest.mark.unit_tests
+def test_get_agentic_prompt_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting an agentic prompt by tag route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    # Get the prompt using different version formats
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    prompt_response = response.json()
+    assert prompt_response["name"] == prompt_name
+    assert prompt_response["messages"] == prompt_data["messages"]
+    assert prompt_response["model_name"] == "gpt-4"
+    assert prompt_response["model_provider"] == "openai"
+    assert prompt_response["tags"] == ["test_tag"]
+
+
+@pytest.mark.unit_tests
+def test_get_agentic_prompt_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting an agentic prompt by tag route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    prompt_name = "test_prompt"
+
+    # Test getting the prompt by tag that doesn't exist
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.unit_tests
+def test_add_agentic_prompt_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test adding a tag to an agentic prompt successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    prompt_response = add_tag_response.json()
+    assert prompt_response["name"] == prompt_name
+    assert prompt_response["messages"] == prompt_data["messages"]
+    assert prompt_response["model_name"] == "gpt-4"
+    assert prompt_response["model_provider"] == "openai"
+    assert prompt_response["tags"] == ["test_tag"]
+
+
+@pytest.mark.unit_tests
+def test_add_agentic_prompt_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting an agentic prompt by tag route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # test adding a tag to a prompt that doesn't exist
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"'test_prompt' (version 'latest') not found for task '{task.id}'"
+    )
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # test adding an empty tag to a prompt
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/latest/tags",
+        json={"tag": ""},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Tag cannot be empty"
+
+    # test adding latest tag to a prompt
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/latest/tags",
+        json={"tag": "latest"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "'latest' is a reserved tag"
+
+    # soft delete the prompt version
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/latest",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # test adding tag to a deleted prompt version
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/1/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 409
+    assert (
+        response.json()["detail"]
+        == "Cannot add tag to a deleted version of 'test_prompt'"
+    )
+
+
+@pytest.mark.unit_tests
+def test_delete_agentic_prompt_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test deleting a tag from an agentic prompt successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    prompt_response = add_tag_response.json()
+    assert prompt_response["name"] == prompt_name
+    assert prompt_response["messages"] == prompt_data["messages"]
+    assert prompt_response["model_name"] == "gpt-4"
+    assert prompt_response["model_provider"] == "openai"
+    assert prompt_response["version"] == 1
+    assert prompt_response["tags"] == ["test_tag"]
+
+    delete_tag_response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert delete_tag_response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}' and item '{prompt_name}'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_delete_agentic_prompt_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test deleting a tag from an agentic prompt route errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    prompt_name = "test_prompt"
+
+    # test deleting a tag from a prompt that doesn't exist
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]
+        == f"No matching version of '{prompt_name}' found for task '{task.id}'"
+    )
+
+    # Save a prompt
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    # save a prompt
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # test deleting a tag that doesn't exist from an existing prompt
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/test_prompt/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}', item '{prompt_name}' and version 'latest'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_soft_delete_agentic_prompt_deletes_tags_successfully(
+    client: GenaiEngineTestClientBase,
+):
+    """Test soft deleting an agentic prompt deletes all tags associated with that version"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save a prompt
+    prompt_name = "test_prompt"
+    prompt_data = {
+        "messages": [{"role": "user", "content": "Hello, world!"}],
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+        "config": {
+            "temperature": 0.7,
+            "max_tokens": 100,
+        },
+    }
+
+    # save a prompt
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}",
+        json=prompt_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # add a tag to the prompt
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    # soft delete the prompt version
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/latest",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/prompts/{prompt_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}' and item '{prompt_name}'."
+    )

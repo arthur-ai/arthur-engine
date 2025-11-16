@@ -1291,3 +1291,344 @@ def test_run_saved_llm_eval_strict_mode(
         assert response.json()["detail"] == expected_error
     else:
         assert response.status_code == 200
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting an llm eval by tag route successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_eval"
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4",
+        "model_provider": "openai",
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    # Get the llm eval using different version formats
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 200
+
+    eval_response = response.json()
+    assert eval_response["name"] == eval_name
+    assert eval_response["instructions"] == eval_data["instructions"]
+    assert eval_response["model_name"] == eval_data["model_name"]
+    assert eval_response["model_provider"] == eval_data["model_provider"]
+    assert eval_response["tags"] == ["test_tag"]
+
+
+@pytest.mark.unit_tests
+def test_get_llm_eval_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test getting an llm eval by tag route errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    eval_name = "test_eval"
+
+    # Test getting the llm eval by tag that doesn't exist
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.unit_tests
+def test_add_llm_eval_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test adding a tag to an llm eval successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_eval"
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    eval_response = add_tag_response.json()
+    assert eval_response["name"] == eval_name
+    assert eval_response["instructions"] == eval_data["instructions"]
+    assert eval_response["model_name"] == eval_data["model_name"]
+    assert eval_response["model_provider"] == eval_data["model_provider"]
+    assert eval_response["tags"] == ["test_tag"]
+
+
+@pytest.mark.unit_tests
+def test_add_llm_eval_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test adding a tag to an llm eval route errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    eval_name = "test_eval"
+
+    # test adding a tag to a llm eval that doesn't exist
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"'test_eval' (version 'latest') not found for task '{task.id}'"
+    )
+
+    # Save an llm eval
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # test adding an empty tag to a llm eval
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": ""},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Tag cannot be empty"
+
+    # test adding latest tag to a llm eval
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "latest"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "'latest' is a reserved tag"
+
+    # soft delete the llm eval version
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    # test adding tag to a deleted llm eval version
+    response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/1/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 409
+    assert (
+        response.json()["detail"]
+        == "Cannot add tag to a deleted version of 'test_eval'"
+    )
+
+
+@pytest.mark.unit_tests
+def test_delete_llm_eval_by_tag_route_success(
+    client: GenaiEngineTestClientBase,
+):
+    """Test deleting a tag from an llm eval successfully"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_eval"
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    eval_response = add_tag_response.json()
+    assert eval_response["name"] == eval_name
+    assert eval_response["instructions"] == eval_data["instructions"]
+    assert eval_response["model_name"] == eval_data["model_name"]
+    assert eval_response["model_provider"] == eval_data["model_provider"]
+    assert eval_response["version"] == 1
+    assert eval_response["tags"] == ["test_tag"]
+
+    delete_tag_response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert delete_tag_response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}' and item '{eval_name}'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_delete_llm_eval_by_tag_route_errors(
+    client: GenaiEngineTestClientBase,
+):
+    """Test deleting a tag from an llm eval route errors"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    eval_name = "test_eval"
+
+    # test deleting a tag from a llm eval that doesn't exist
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 400
+    assert (
+        response.json()["detail"]
+        == f"No matching version of '{eval_name}' found for task '{task.id}'"
+    )
+
+    # Save an llm eval
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # test deleting a tag that doesn't exist from an existing llm eval
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}', item '{eval_name}' and version 'latest'."
+    )
+
+
+@pytest.mark.unit_tests
+def test_soft_delete_llm_eval_deletes_tags_successfully(
+    client: GenaiEngineTestClientBase,
+):
+    """Test soft deleting an llm eval deletes all tags associated with that version"""
+    # Create an agentic task
+    task_name = f"agentic_task_{random.random()}"
+    status_code, task = client.create_task(task_name, is_agentic=True)
+    assert status_code == 200
+
+    # Save an llm eval
+    eval_name = "test_eval"
+    eval_data = {
+        "instructions": "Hello, world!",
+        "model_name": "gpt-4o",
+        "model_provider": "openai",
+    }
+
+    # save an llm eval
+    save_response = client.base_client.post(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}",
+        json=eval_data,
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert save_response.status_code == 200
+
+    # add a tag to the llm eval
+    add_tag_response = client.base_client.put(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest/tags",
+        json={"tag": "test_tag"},
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert add_tag_response.status_code == 200
+
+    # soft delete the llm eval version
+    response = client.base_client.delete(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/latest",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 204
+
+    response = client.base_client.get(
+        f"/api/v1/tasks/{task.id}/llm_evals/{eval_name}/versions/tags/test_tag",
+        headers=client.authorized_user_api_key_headers,
+    )
+    assert response.status_code == 404
+    assert (
+        response.json()["detail"]
+        == f"Tag 'test_tag' not found for task '{task.id}' and item '{eval_name}'."
+    )

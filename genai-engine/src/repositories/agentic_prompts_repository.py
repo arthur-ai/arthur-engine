@@ -4,7 +4,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db_models import Base
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
+from db_models.agentic_prompt_models import (
+    DatabaseAgenticPrompt,
+    DatabaseAgenticPromptVersionTag,
+)
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
@@ -23,6 +26,7 @@ from services.prompt.chat_completion_service import ChatCompletionService
 
 class AgenticPromptRepository(BaseLLMRepository):
     db_model: Type[Base] = DatabaseAgenticPrompt
+    tag_db_model: Type[Base] = DatabaseAgenticPromptVersionTag
     version_list_response_model: Type[BaseModel] = AgenticPromptVersionListResponse
 
     def __init__(self, db_session: Session):
@@ -30,7 +34,19 @@ class AgenticPromptRepository(BaseLLMRepository):
         self.model_provider_repo = ModelProviderRepository(db_session)
 
     def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
-        return AgenticPrompt.model_validate(db_prompt.__dict__)
+        return AgenticPrompt(
+            name=db_prompt.name,
+            messages=db_prompt.messages,
+            model_name=db_prompt.model_name,
+            model_provider=db_prompt.model_provider,
+            version=db_prompt.version,
+            tools=db_prompt.tools,
+            variables=db_prompt.variables,
+            tags=[t.tag for t in db_prompt.version_tags],
+            config=db_prompt.config,
+            created_at=db_prompt.created_at,
+            deleted_at=db_prompt.deleted_at,
+        )
 
     def _extract_variables_from_item(
         self,
