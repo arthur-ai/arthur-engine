@@ -31,9 +31,10 @@ from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.prompt_experiment_schemas import (
-    EvalResult,
+    EvalExecutionResult,
+    EvalResultSummary,
     ExperimentStatus,
-    PromptEvalSummary,
+    PromptEvalResultSummaries,
     SummaryResults,
     TestCaseStatus,
 )
@@ -386,7 +387,7 @@ class ExperimentExecutor:
                     total_count = len(scores)
 
                     eval_result_list.append(
-                        EvalResult(
+                        EvalResultSummary(
                             eval_name=eval_name,
                             eval_version=str(eval_version),
                             pass_count=pass_count,
@@ -395,7 +396,7 @@ class ExperimentExecutor:
                     )
 
                 prompt_eval_summaries.append(
-                    PromptEvalSummary(
+                    PromptEvalResultSummaries(
                         prompt_name=prompt_name,
                         prompt_version=str(prompt_version),
                         eval_results=eval_result_list,
@@ -683,12 +684,15 @@ class ExperimentExecutor:
                 )
                 return False
 
-            # Save eval results
-            eval_score.eval_results = {
-                "score": llm_model_response.structured_output_response.score,
-                "reason": llm_model_response.structured_output_response.reason,
-                "cost": llm_model_response.cost,
-            }
+            # Save eval results using Pydantic model
+            eval_result = EvalExecutionResult(
+                score=llm_model_response.structured_output_response.score,
+                explanation=llm_model_response.structured_output_response.reason,
+                cost=llm_model_response.cost,
+            )
+            eval_score.eval_results = eval_result.model_dump(
+                mode="python", exclude_none=True
+            )
             db_session.commit()
 
             logger.info(

@@ -28,7 +28,7 @@ from schemas.prompt_experiment_schemas import (
     DatasetRef,
     EvalExecution,
     EvalRef,
-    EvalResults,
+    EvalExecutionResult,
     EvalVariableMapping,
     ExperimentStatus,
     InputVariable,
@@ -71,8 +71,16 @@ class PromptExperimentRepository:
             id=db_experiment.id,
             name=db_experiment.name,
             description=db_experiment.description,
-            created_at=db_experiment.created_at.isoformat() if db_experiment.created_at else None,
-            finished_at=db_experiment.finished_at.isoformat() if db_experiment.finished_at else None,
+            created_at=(
+                db_experiment.created_at.isoformat()
+                if db_experiment.created_at
+                else None
+            ),
+            finished_at=(
+                db_experiment.finished_at.isoformat()
+                if db_experiment.finished_at
+                else None
+            ),
             status=db_experiment.status,
             prompt_name=db_experiment.prompt_name,
             total_rows=db_experiment.total_rows,
@@ -86,21 +94,35 @@ class PromptExperimentRepository:
         """Convert database experiment to detail schema"""
         # Convert JSON prompt variable mappings to Pydantic models
         prompt_variable_mappings = [
-            PromptVariableMapping.model_validate(mapping) for mapping in db_experiment.prompt_variable_mapping
+            PromptVariableMapping.model_validate(mapping)
+            for mapping in db_experiment.prompt_variable_mapping
         ]
 
         # Convert JSON eval configs to Pydantic models
-        eval_list = [EvalRef.model_validate(eval_config) for eval_config in db_experiment.eval_configs]
+        eval_list = [
+            EvalRef.model_validate(eval_config)
+            for eval_config in db_experiment.eval_configs
+        ]
 
         # Convert summary results to Pydantic model
-        summary_results = SummaryResults.model_validate(db_experiment.summary_results or {"prompt_eval_summaries": []})
+        summary_results = SummaryResults.model_validate(
+            db_experiment.summary_results or {"prompt_eval_summaries": []}
+        )
 
         return PromptExperimentDetail(
             id=db_experiment.id,
             name=db_experiment.name,
             description=db_experiment.description,
-            created_at=db_experiment.created_at.isoformat() if db_experiment.created_at else None,
-            finished_at=db_experiment.finished_at.isoformat() if db_experiment.finished_at else None,
+            created_at=(
+                db_experiment.created_at.isoformat()
+                if db_experiment.created_at
+                else None
+            ),
+            finished_at=(
+                db_experiment.finished_at.isoformat()
+                if db_experiment.finished_at
+                else None
+            ),
             status=db_experiment.status,
             prompt_name=db_experiment.prompt_name,
             total_rows=db_experiment.total_rows,
@@ -125,7 +147,8 @@ class PromptExperimentRepository:
         """Convert database test case to schema"""
         # Convert JSON input variables to Pydantic models
         input_variables = [
-            InputVariable.model_validate(var) for var in db_test_case.prompt_input_variables
+            InputVariable.model_validate(var)
+            for var in db_test_case.prompt_input_variables
         ]
 
         # Convert nested prompt results from database models to Pydantic models
@@ -142,7 +165,9 @@ class PromptExperimentRepository:
                 # Convert eval results - may be None if not yet executed
                 eval_results = None
                 if db_eval_score.eval_results is not None:
-                    eval_results = EvalResults.model_validate(db_eval_score.eval_results)
+                    eval_results = EvalExecutionResult.model_validate(
+                        db_eval_score.eval_results
+                    )
 
                 eval_execution = EvalExecution(
                     eval_name=db_eval_score.eval_name,
@@ -178,26 +203,38 @@ class PromptExperimentRepository:
         self,
         task_id: str,
         request: CreatePromptExperimentRequest,
-    ) -> Tuple[List[DatabaseAgenticPrompt], List[Tuple[EvalRef, DatabaseLLMEval]], DatabaseDatasetVersion]:
+    ) -> Tuple[
+        List[DatabaseAgenticPrompt],
+        List[Tuple[EvalRef, DatabaseLLMEval]],
+        DatabaseDatasetVersion,
+    ]:
         """Validate that all referenced resources exist and return them"""
         # Validate task exists
-        task = self.db_session.query(DatabaseTask).filter(
-            DatabaseTask.id == task_id
-        ).first()
+        task = (
+            self.db_session.query(DatabaseTask)
+            .filter(DatabaseTask.id == task_id)
+            .first()
+        )
         if not task:
             raise ValueError(f"Task {task_id} not found")
 
         # Validate dataset and version exist
-        dataset = self.db_session.query(DatabaseDataset).filter(
-            DatabaseDataset.id == request.dataset_ref.id
-        ).first()
+        dataset = (
+            self.db_session.query(DatabaseDataset)
+            .filter(DatabaseDataset.id == request.dataset_ref.id)
+            .first()
+        )
         if not dataset:
             raise ValueError(f"Dataset {request.dataset_ref.id} not found")
 
-        dataset_version = self.db_session.query(DatabaseDatasetVersion).filter(
-            DatabaseDatasetVersion.dataset_id == request.dataset_ref.id,
-            DatabaseDatasetVersion.version_number == request.dataset_ref.version,
-        ).first()
+        dataset_version = (
+            self.db_session.query(DatabaseDatasetVersion)
+            .filter(
+                DatabaseDatasetVersion.dataset_id == request.dataset_ref.id,
+                DatabaseDatasetVersion.version_number == request.dataset_ref.version,
+            )
+            .first()
+        )
         if not dataset_version:
             raise ValueError(
                 f"Dataset version {request.dataset_ref.version} not found for dataset {request.dataset_ref.id}"
@@ -206,11 +243,15 @@ class PromptExperimentRepository:
         # Validate prompt versions exist and collect their variables
         prompt_versions = []
         for version in request.prompt_ref.version_list:
-            prompt = self.db_session.query(DatabaseAgenticPrompt).filter(
-                DatabaseAgenticPrompt.task_id == task_id,
-                DatabaseAgenticPrompt.name == request.prompt_ref.name,
-                DatabaseAgenticPrompt.version == version,
-            ).first()
+            prompt = (
+                self.db_session.query(DatabaseAgenticPrompt)
+                .filter(
+                    DatabaseAgenticPrompt.task_id == task_id,
+                    DatabaseAgenticPrompt.name == request.prompt_ref.name,
+                    DatabaseAgenticPrompt.version == version,
+                )
+                .first()
+            )
             if not prompt:
                 raise ValueError(
                     f"Prompt '{request.prompt_ref.name}' version {version} not found for task {task_id}"
@@ -220,11 +261,15 @@ class PromptExperimentRepository:
         # Validate eval versions exist and collect their variables
         llm_evals = []
         for eval_ref in request.eval_list:
-            llm_eval = self.db_session.query(DatabaseLLMEval).filter(
-                DatabaseLLMEval.task_id == task_id,
-                DatabaseLLMEval.name == eval_ref.name,
-                DatabaseLLMEval.version == eval_ref.version,
-            ).first()
+            llm_eval = (
+                self.db_session.query(DatabaseLLMEval)
+                .filter(
+                    DatabaseLLMEval.task_id == task_id,
+                    DatabaseLLMEval.name == eval_ref.name,
+                    DatabaseLLMEval.version == eval_ref.version,
+                )
+                .first()
+            )
             if not llm_eval:
                 raise ValueError(
                     f"Eval '{eval_ref.name}' version {eval_ref.version} not found for task {task_id}"
@@ -247,7 +292,11 @@ class PromptExperimentRepository:
             prompt_variable_names.append(mapping.variable_name)
 
         # Check for duplicate prompt variable mappings
-        duplicate_prompt_vars = [var for var in set(prompt_variable_names) if prompt_variable_names.count(var) > 1]
+        duplicate_prompt_vars = [
+            var
+            for var in set(prompt_variable_names)
+            if prompt_variable_names.count(var) > 1
+        ]
         if duplicate_prompt_vars:
             raise ValueError(
                 f"Duplicate variable mappings found in prompt configuration: {', '.join(sorted(duplicate_prompt_vars))}. "
@@ -268,7 +317,11 @@ class PromptExperimentRepository:
                         )
 
             # Check for duplicate eval variable mappings
-            duplicate_eval_vars = [var for var in set(eval_variable_names) if eval_variable_names.count(var) > 1]
+            duplicate_eval_vars = [
+                var
+                for var in set(eval_variable_names)
+                if eval_variable_names.count(var) > 1
+            ]
             if duplicate_eval_vars:
                 raise ValueError(
                     f"Duplicate variable mappings found in eval '{eval_ref.name}' configuration: {', '.join(sorted(duplicate_eval_vars))}. "
@@ -276,7 +329,9 @@ class PromptExperimentRepository:
                 )
 
         # Validate that all prompt variables are provided in the configuration
-        provided_prompt_variables = {mapping.variable_name for mapping in request.prompt_ref.variable_mapping}
+        provided_prompt_variables = {
+            mapping.variable_name for mapping in request.prompt_ref.variable_mapping
+        }
 
         for prompt in prompt_versions:
             required_variables = set(prompt.variables)
@@ -291,7 +346,9 @@ class PromptExperimentRepository:
 
         # Validate that all eval variables are provided in the configuration
         for eval_ref, llm_eval in llm_evals:
-            provided_eval_variables = {mapping.variable_name for mapping in eval_ref.variable_mapping}
+            provided_eval_variables = {
+                mapping.variable_name for mapping in eval_ref.variable_mapping
+            }
             required_variables = set(llm_eval.variables)
             missing_variables = required_variables - provided_eval_variables
 
@@ -336,10 +393,12 @@ class PromptExperimentRepository:
                 # Get the value from the dataset row
                 column_value = row_data.get(column_name)
 
-                prompt_input_variables.append({
-                    "variable_name": variable_name,
-                    "value": column_value,
-                })
+                prompt_input_variables.append(
+                    {
+                        "variable_name": variable_name,
+                        "value": column_value,
+                    }
+                )
 
             # Create the test case
             test_case = DatabasePromptExperimentTestCase(
@@ -375,16 +434,20 @@ class PromptExperimentRepository:
                             # Get value from dataset row
                             column_name = mapping.source.dataset_column.name
                             column_value = row_data.get(column_name)
-                            eval_input_variables.append({
-                                "variable_name": variable_name,
-                                "value": column_value,
-                            })
+                            eval_input_variables.append(
+                                {
+                                    "variable_name": variable_name,
+                                    "value": column_value,
+                                }
+                            )
                         elif mapping.source.type == "experiment_output":
                             # Mark as placeholder - will be filled from prompt output when experiment runs
-                            eval_input_variables.append({
-                                "variable_name": variable_name,
-                                "value": "...waiting for response...",  # Will be filled when experiment runs
-                            })
+                            eval_input_variables.append(
+                                {
+                                    "variable_name": variable_name,
+                                    "value": "...waiting for response...",  # Will be filled when experiment runs
+                                }
+                            )
 
                     eval_score = DatabasePromptExperimentTestCasePromptResultEvalScore(
                         id=str(uuid4()),
@@ -409,7 +472,9 @@ class PromptExperimentRepository:
     ) -> PromptExperimentSummary:
         """Create a new experiment"""
         # Validate all references exist and get validated objects
-        prompt_versions, eval_configs, dataset_version = self._validate_experiment_references(task_id, request)
+        prompt_versions, eval_configs, dataset_version = (
+            self._validate_experiment_references(task_id, request)
+        )
 
         # Create the experiment
         db_experiment = DatabasePromptExperiment(
@@ -528,6 +593,4 @@ class PromptExperimentRepository:
         )
         db_test_cases = base_query.limit(pagination_params.page_size).all()
 
-        return [
-            self._db_test_case_to_schema(db_tc) for db_tc in db_test_cases
-        ], count
+        return [self._db_test_case_to_schema(db_tc) for db_tc in db_test_cases], count

@@ -47,9 +47,7 @@ class DatasetColumnVariableSource(BaseModel):
     type: Literal["dataset_column"] = Field(
         description="Type of source: 'dataset_column'"
     )
-    dataset_column: DatasetColumnSource = Field(
-        description="Dataset column source"
-    )
+    dataset_column: DatasetColumnSource = Field(description="Dataset column source")
 
 
 class ExperimentOutputVariableSource(BaseModel):
@@ -130,7 +128,9 @@ class PromptExperimentSummary(BaseModel):
     status: ExperimentStatus = Field(description="Current status of the experiment")
     prompt_name: str = Field(description="Name of the prompt being tested")
     total_rows: int = Field(description="Total number of test rows in the experiment")
-    completed_rows: int = Field(description="Number of test rows completed successfully")
+    completed_rows: int = Field(
+        description="Number of test rows completed successfully"
+    )
     failed_rows: int = Field(description="Number of test rows that failed")
 
 
@@ -146,7 +146,7 @@ class CreatePromptExperimentRequest(BaseModel):
     eval_list: list[EvalRef] = Field(description="List of evaluations to run")
 
 
-class EvalResult(BaseModel):
+class EvalResultSummary(BaseModel):
     """Results for a single eval"""
 
     eval_name: str = Field(description="Name of the evaluation")
@@ -155,12 +155,12 @@ class EvalResult(BaseModel):
     total_count: int = Field(description="Total number of test cases evaluated")
 
 
-class PromptEvalSummary(BaseModel):
+class PromptEvalResultSummaries(BaseModel):
     """Summary of evaluation results for a prompt version"""
 
     prompt_name: str = Field(description="Name of the prompt")
     prompt_version: str = Field(description="Version of the prompt")
-    eval_results: list[EvalResult] = Field(
+    eval_results: list[EvalResultSummary] = Field(
         description="Results for each evaluation run on this prompt version"
     )
 
@@ -168,7 +168,7 @@ class PromptEvalSummary(BaseModel):
 class SummaryResults(BaseModel):
     """Summary results across all prompt versions and evaluations"""
 
-    prompt_eval_summaries: list[PromptEvalSummary] = Field(
+    prompt_eval_summaries: list[PromptEvalResultSummaries] = Field(
         description="Summary for each prompt version tested"
     )
 
@@ -188,7 +188,9 @@ class PromptExperimentDetail(BaseModel):
     status: ExperimentStatus = Field(description="Current status of the experiment")
     prompt_name: str = Field(description="Name of the prompt being tested")
     total_rows: int = Field(description="Total number of test rows in the experiment")
-    completed_rows: int = Field(description="Number of test rows completed successfully")
+    completed_rows: int = Field(
+        description="Number of test rows completed successfully"
+    )
     failed_rows: int = Field(description="Number of test rows that failed")
     dataset_ref: DatasetRef = Field(description="Reference to the dataset used")
     prompt_ref: PromptRef = Field(description="Reference to the prompt configuration")
@@ -229,7 +231,7 @@ class PromptOutput(BaseModel):
     cost: str = Field(description="Cost of the prompt execution")
 
 
-class EvalResults(BaseModel):
+class EvalExecutionResult(BaseModel):
     """Results from an eval execution"""
 
     score: float = Field(description="Score from the evaluation")
@@ -245,7 +247,9 @@ class EvalExecution(BaseModel):
     eval_input_variables: list[InputVariable] = Field(
         description="Input variables used for the eval"
     )
-    eval_results: Optional[EvalResults] = Field(default=None, description="Results from the eval (None if not yet executed)")
+    eval_results: Optional[EvalExecutionResult] = Field(
+        default=None, description="Results from the eval (None if not yet executed)"
+    )
 
 
 class PromptResult(BaseModel):
@@ -254,7 +258,9 @@ class PromptResult(BaseModel):
     name: str = Field(description="Name of the prompt")
     version: str = Field(description="Version of the prompt")
     rendered_prompt: str = Field(description="Prompt with variables replaced")
-    output: Optional[PromptOutput] = Field(default=None, description="Output from the prompt (None if not yet executed)")
+    output: Optional[PromptOutput] = Field(
+        default=None, description="Output from the prompt (None if not yet executed)"
+    )
     evals: list[EvalExecution] = Field(
         description="Evaluation results for this prompt output"
     )
