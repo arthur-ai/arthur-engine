@@ -537,18 +537,6 @@ export interface CreateEvalRequest {
    */
   instructions: string;
   /**
-   * Max Score
-   * Maximum score for the llm eval
-   * @default 1
-   */
-  max_score?: number;
-  /**
-   * Min Score
-   * Minimum score for the llm eval
-   * @default 0
-   */
-  min_score?: number;
-  /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
    */
@@ -2076,18 +2064,6 @@ export interface LLMEval {
    * Instructions for the llm eval
    */
   instructions: string;
-  /**
-   * Max Score
-   * Maximum score for the llm eval
-   * @default 1
-   */
-  max_score?: number;
-  /**
-   * Min Score
-   * Minimum score for the llm eval
-   * @default 0
-   */
-  min_score?: number;
   /**
    * Model Name
    * Name of the LLM model (e.g., 'gpt-4o', 'claude-3-sonnet')
@@ -6913,7 +6889,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.167
+ * @version 2.1.170
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {
