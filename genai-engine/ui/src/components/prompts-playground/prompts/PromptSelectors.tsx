@@ -157,9 +157,11 @@ const PromptSelectors = ({
     });
   };
 
-  // Set the first provider as the default provider
+  // Set the first provider as the default provider (only for new prompts without a provider)
+  // Skip this if the prompt already has a provider set (when loading from backend)
   useEffect(() => {
-    if (state.enabledProviders.length > 0) {
+    // Only set default provider for truly new prompts (no provider and no version)
+    if (state.enabledProviders.length > 0 && !prompt.modelProvider && !prompt.version) {
       dispatch({
         type: "updatePromptProvider",
         payload: {
@@ -168,7 +170,7 @@ const PromptSelectors = ({
         },
       });
     }
-  }, [state.enabledProviders, dispatch, prompt.id]);
+  }, [state.enabledProviders, dispatch, prompt.id, prompt.modelProvider, prompt.version]);
 
   const providerDisabled = state.enabledProviders.length === 0;
   const modelDisabled = prompt.modelProvider === "";
