@@ -27,6 +27,123 @@ import {
 } from "@arizeai/openinference-semantic-conventions";
 import { OISpan } from "@arizeai/openinference-core";
 
+/**
+ * Helper function to convert Mastra tool calls to OpenInference format
+ */
+function convertToolCallsToOpenInference(toolCalls: any[]): any[] {
+  return toolCalls.map((tc) => ({
+    tool_call: {
+      id: tc.toolCallId,
+      function: {
+        name: tc.toolName,
+        arguments: JSON.stringify(tc.input || {}),
+      },
+    },
+  }));
+}
+
+/**
+ * Helper function to extract content from a tool result
+ */
+function extractToolResultContent(result: any): string {
+  let outputValue = result.output?.value;
+  if (typeof outputValue === "string") {
+    // Try to parse if it's a JSON string
+    try {
+      outputValue = JSON.parse(outputValue);
+      return JSON.stringify(outputValue);
+    } catch {
+      return outputValue;
+    }
+  } else if (outputValue !== undefined) {
+    return JSON.stringify(outputValue);
+  }
+  return "";
+}
+
+/**
+ * Helper function to process content that might contain tool calls or results
+ * Returns an object with the appropriate message attributes
+ */
+function processContentForToolCallsOrResults(
+  content: unknown,
+  defaultRole?: string
+): Partial<Record<string, unknown>> {
+  const result: Record<string, unknown> = {};
+
+  // Handle string content (might be stringified JSON)
+  if (typeof content === "string") {
+    let parsed = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      // Not JSON, return as regular content
+      result[SemanticConventions.MESSAGE_CONTENT] = content;
+      return result;
+    }
+
+    if (parsed !== null) {
+      // Check if it's a tool call array
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-call") {
+        result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(parsed);
+        return result;
+      }
+      // Check if it's a tool result array
+      else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.type === "tool-result") {
+        if (defaultRole) {
+          result[SemanticConventions.MESSAGE_ROLE] = "tool";
+        }
+        result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(parsed[0]);
+        if (parsed[0].toolCallId) {
+          result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = parsed[0].toolCallId;
+        }
+        return result;
+      }
+      // Otherwise, it's JSON but not a tool call/result
+      else {
+        result[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(parsed);
+        return result;
+      }
+    }
+  }
+  // Handle array content
+  else if (Array.isArray(content)) {
+    if (content.length > 0 && content[0]?.type === "tool-call") {
+      result[SemanticConventions.MESSAGE_TOOL_CALLS] = convertToolCallsToOpenInference(content);
+      return result;
+    } else if (content.length > 0 && content[0]?.type === "tool-result") {
+      result[SemanticConventions.MESSAGE_CONTENT] = extractToolResultContent(content[0]);
+      if (content[0].toolCallId) {
+        result[SemanticConventions.MESSAGE_TOOL_CALL_ID] = content[0].toolCallId;
+      }
+      return result;
+    }
+    // Check for special single-item text array format
+    else if (
+      content.length === 1 &&
+      isObject(content[0]) &&
+      typeof content[0].text === "string"
+    ) {
+      result[SemanticConventions.MESSAGE_CONTENT] = content[0].text;
+      return result;
+    }
+    // Regular array
+    else {
+      result[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(content);
+      return result;
+    }
+  }
+  // Handle other types
+  else {
+    result[SemanticConventions.MESSAGE_CONTENT] = typeof content === "string" 
+      ? content 
+      : JSON.stringify(content);
+    return result;
+  }
+
+  return result;
+}
+
 export function setSpanErrorInfo(
   otelSpan: OISpan,
   errorInfo: AnyExportedAISpan["errorInfo"]
@@ -261,15 +378,19 @@ function wrapOutputAsMessage(output: unknown): Record<string, unknown> | null {
   };
 
   // Handle different output formats
-  if (typeof output === "string") {
-    message[SemanticConventions.MESSAGE_CONTENT] = output;
+  if (typeof output === "string" || Array.isArray(output)) {
+    // Use helper function to process content
+    const processed = processContentForToolCallsOrResults(output, "assistant");
+    Object.assign(message, processed);
   } else if (isObject(output)) {
     // If it's already a message-like object, preserve its structure
     if (output.role) {
       message[SemanticConventions.MESSAGE_ROLE] = output.role;
     }
     if (output.content !== undefined) {
-      message[SemanticConventions.MESSAGE_CONTENT] = output.content;
+      // Use helper function to process content
+      const processed = processContentForToolCallsOrResults(output.content);
+      Object.assign(message, processed);
     } else if (output.contents !== undefined) {
       message[SemanticConventions.MESSAGE_CONTENTS] = output.contents;
     } else {
@@ -375,22 +496,9 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
 
   // Extract content
   if (item.content !== undefined) {
-    if (typeof item.content === "string") {
-      message[SemanticConventions.MESSAGE_CONTENT] = item.content;
-    } else if (
-      Array.isArray(item.content) &&
-      item.content.length === 1 &&
-      isObject(item.content[0]) &&
-      typeof item.content[0].text === "string"
-    ) {
-      // if there is a single text content incorrectly formatted as an array, extract just the text string to adhere to open inference formatting
-      message[SemanticConventions.MESSAGE_CONTENT] = item.content[0].text;
-    } else {
-      // fail safe if content doesn't match any expected formatting
-      message[SemanticConventions.MESSAGE_CONTENT] = JSON.stringify(
-        item.content
-      );
-    }
+    // Use helper function to process content
+    const processed = processContentForToolCallsOrResults(item.content);
+    Object.assign(message, processed);
   } else if (item.contents !== undefined) {
     // Handle contents array (multimodal content)
     message[SemanticConventions.MESSAGE_CONTENTS] = item.contents;
@@ -423,9 +531,10 @@ function extractMessageFromItem(item: unknown): Record<string, unknown> | null {
     }
   }
 
-  // Only return message if it has content or contents
+  // Only return message if it has content or contents or tool_calls
   return message[SemanticConventions.MESSAGE_CONTENT] !== undefined ||
-    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined
+    message[SemanticConventions.MESSAGE_CONTENTS] !== undefined ||
+    message[SemanticConventions.MESSAGE_TOOL_CALLS] !== undefined
     ? message
     : null;
 }

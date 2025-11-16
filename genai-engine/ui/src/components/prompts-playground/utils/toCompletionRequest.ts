@@ -17,12 +17,27 @@ const toCompletionRequest = (prompt: PromptType, keywords: Map<string, string>):
     }
     // If content is null/undefined or an array, keep it as is (API accepts these)
 
+    // Transform tool_calls from OpenInference format to OpenAI format
+    // OpenInference stores: { tool_call: { id, function } }
+    // OpenAI expects: { id, type: "function", function }
+    let processedToolCalls = null;
+    if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+      processedToolCalls = msg.tool_calls.map((tc: any) => ({
+        id: tc.tool_call.id,
+        type: "function",
+        function: {
+          name: tc.tool_call.function.name,
+          arguments: tc.tool_call.function.arguments || "",
+        },
+      }));
+    }
+
     return {
       role: msg.role,
       content: processedContent,
       name: msg.name || null,
       tool_call_id: msg.tool_call_id || null,
-      tool_calls: msg.tool_calls || null,
+      tool_calls: processedToolCalls,
     };
   });
 

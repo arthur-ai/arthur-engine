@@ -21,9 +21,12 @@ import { OpenAIMessageItem } from "@/lib/api-client/api-client";
 const DEBOUNCE_TIME = 500;
 const LABEL_TEXT = "Message Role"; // Must be same for correct rendering
 
-const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, dragHandleProps }) => {
+const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultContent = "", content, toolCalls, dragHandleProps }) => {
   const { dispatch } = usePromptContext();
   const [inputValue, setInputValue] = useState(defaultContent);
+  const [toolCallsValue, setToolCallsValue] = useState(
+    toolCalls && toolCalls.length > 0 ? JSON.stringify(toolCalls, null, 2) : ""
+  );
 
   const handleRoleChange = useCallback(
     (event: SelectChangeEvent) => {
@@ -41,6 +44,10 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
 
   const handleContentChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
+  }, []);
+
+  const handleToolCallsChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setToolCallsValue(event.target.value);
   }, []);
 
   const handleDuplicate = useCallback(() => {
@@ -78,9 +85,46 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
     [content, parentId, id]
   );
 
+  // Debounce tool calls updates
+  const debouncedSetToolCalls = useMemo(
+    () =>
+      debounce((value: string) => {
+        try {
+          const parsed = value.trim() ? JSON.parse(value) : null;
+          dispatch({
+            type: "editMessageToolCalls",
+            payload: {
+              parentId,
+              id,
+              toolCalls: parsed,
+            },
+          });
+        } catch (error) {
+          // Invalid JSON - don't update
+          console.error("Invalid tool calls JSON:", error);
+        }
+      }, DEBOUNCE_TIME),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parentId, id]
+  );
+
   useEffect(() => {
     debouncedSetMessage(inputValue);
   }, [inputValue, debouncedSetMessage]);
+
+  useEffect(() => {
+    debouncedSetToolCalls(toolCallsValue);
+  }, [toolCallsValue, debouncedSetToolCalls]);
+
+  // Sync toolCallsValue when toolCalls prop changes (e.g., when loading from trace)
+  useEffect(() => {
+    if (toolCalls && toolCalls.length > 0) {
+      const newValue = JSON.stringify(toolCalls, null, 2);
+      if (newValue !== toolCallsValue) {
+        setToolCallsValue(newValue);
+      }
+    }
+  }, [toolCalls, toolCallsValue]);
 
   // When the content changes, whether by user or hydration, update the keyword values
   useEffect(() => {
@@ -155,7 +199,15 @@ const Message: React.FC<MessageComponentProps> = ({ id, parentId, role, defaultC
         </div>
       </div>
       <div className="mt-2">
-        <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
+        {toolCalls && toolCalls.length > 0 && (!content || content === "") ? (
+          <HighlightedInputComponent 
+            value={toolCallsValue} 
+            onChange={handleToolCallsChange} 
+            label="Tool Calls (JSON)"
+          />
+        ) : (
+          <HighlightedInputComponent value={inputValue} onChange={handleContentChange} label="Content" />
+        )}
       </div>
     </div>
   );
