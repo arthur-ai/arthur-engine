@@ -1,9 +1,9 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
+import { useDeletePromptVersionMutation } from "../hooks/useDeletePromptVersionMutation";
 import { usePrompt } from "../hooks/usePrompt";
 import { usePromptVersions } from "../hooks/usePromptVersions";
-import { useDeletePromptVersionMutation } from "../hooks/useDeletePromptVersionMutation";
 import type { PromptFullScreenViewProps } from "../types";
 
 import PromptDetailView from "./PromptDetailView";

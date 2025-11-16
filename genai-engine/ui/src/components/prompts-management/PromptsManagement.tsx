@@ -5,10 +5,10 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
-import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptFullScreenView from "./fullscreen/PromptFullScreenView";
-import { usePrompts } from "./hooks/usePrompts";
 import { useDeletePromptMutation } from "./hooks/useDeletePromptMutation";
+import { usePrompts } from "./hooks/usePrompts";
+import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptsTable from "./table/PromptsTable";
 
 import { getContentHeight } from "@/constants/layout";

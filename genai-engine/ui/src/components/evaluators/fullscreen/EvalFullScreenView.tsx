@@ -1,9 +1,9 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
 
+import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import { useEval } from "../hooks/useEval";
 import { useEvalVersions } from "../hooks/useEvalVersions";
-import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import type { EvalFullScreenViewProps } from "../types";
 
 import EvalDetailView from "./EvalDetailView";
