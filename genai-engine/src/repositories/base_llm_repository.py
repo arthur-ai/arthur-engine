@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional, Tuple, Type
+from typing import List, Optional, Tuple, Type
 
 import sqlalchemy as sa
 from arthur_common.models.common_schemas import PaginationParameters
@@ -42,15 +42,15 @@ class BaseLLMRepository(ABC):
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
-    def to_db_model(self, task_id: str, item: BaseModel) -> db_model:
-        raise NotImplementedError("Subclasses must implement this method.")
-
-    @abstractmethod
     def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
         raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
     def _clear_db_item_data(self, db_item: Base) -> None:
+        raise NotImplementedError("Subclasses must implement this method.")
+
+    @abstractmethod
+    def _extract_variables_from_item(self, item: BaseModel) -> List[str]:
         raise NotImplementedError("Subclasses must implement this method.")
 
     def _get_latest_db_item(self, base_query: Query) -> Base:
@@ -433,6 +433,7 @@ class BaseLLMRepository(ABC):
     def save_llm_item(
         self,
         task_id: str,
+        item_name: str,
         item: BaseModel,
     ) -> BaseModel:
         """
@@ -445,15 +446,23 @@ class BaseLLMRepository(ABC):
             self.db_session.query(sa.func.max(self.db_model.version))
             .filter(
                 self.db_model.task_id == task_id,
-                self.db_model.name == item.name,
+                self.db_model.name == item_name,
             )
             .scalar()
         )
 
         # Assign version
-        item.version = (latest_version + 1) if latest_version else 1
+        version = (latest_version + 1) if latest_version else 1
+        variables = self._extract_variables_from_item(item)
 
-        db_item = self.to_db_model(task_id, item)
+        db_item = self.db_model(
+            task_id=task_id,
+            name=item_name,
+            variables=variables,
+            version=version,
+            created_at=datetime.now(),
+            **item.model_dump(mode="python", exclude_none=True),
+        )
 
         try:
             self.db_session.add(db_item)
@@ -463,7 +472,7 @@ class BaseLLMRepository(ABC):
         except IntegrityError:
             self.db_session.rollback()
             raise ValueError(
-                f"Failed to save '{item.name}' for task '{task_id}' — possible duplicate constraint.",
+                f"Failed to save '{item_name}' for task '{task_id}' — possible duplicate constraint.",
             )
 
     def soft_delete_llm_item_version(

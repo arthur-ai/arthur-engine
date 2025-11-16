@@ -26,8 +26,8 @@ class LLMEval(BaseModel):
         default=None,
         description="LLM configurations for this eval (e.g. temperature, max_tokens, etc.)",
     )
-    created_at: Optional[datetime] = Field(
-        default=None,
+    created_at: datetime = Field(
+        ...,
         description="Timestamp when the llm eval was created.",
     )
     deleted_at: Optional[datetime] = Field(

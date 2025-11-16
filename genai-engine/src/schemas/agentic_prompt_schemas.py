@@ -6,7 +6,6 @@ from pydantic import (
     Field,
 )
 
-from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from schemas.enums import (
     ModelProvider,
 )
@@ -37,12 +36,12 @@ class AgenticPrompt(BaseModel):
         default=None,
         description="LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)",
     )
-    created_at: Optional[datetime] = Field(
-        default=None,
+    created_at: datetime = Field(
+        ...,
         description="Timestamp when the prompt was created.",
     )
     deleted_at: Optional[datetime] = Field(
-        None,
+        default=None,
         description="Time that this prompt was deleted",
     )
 
@@ -51,14 +50,3 @@ class AgenticPrompt(BaseModel):
 
     def has_been_deleted(self) -> bool:
         return self.deleted_at is not None
-
-    @classmethod
-    def from_db_model(cls, db_prompt: DatabaseAgenticPrompt) -> "AgenticPrompt":
-        return cls.model_validate(db_prompt.__dict__)
-
-    def to_db_model(self, task_id: str) -> DatabaseAgenticPrompt:
-        """Convert this AgenticPrompt into a DatabaseAgenticPrompt"""
-        return DatabaseAgenticPrompt(
-            **self.model_dump(mode="python", exclude_none=True),
-            task_id=task_id,
-        )

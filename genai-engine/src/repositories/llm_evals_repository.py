@@ -1,4 +1,4 @@
-from typing import Optional, Type, Union
+from typing import List, Optional, Type, Union
 
 from litellm import supports_response_schema
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from schemas.llm_eval_schemas import LLMEval, ReasonedScore
 from schemas.llm_schemas import LLMConfigSettings, LLMResponseFormat
 from schemas.request_schemas import (
     BaseCompletionRequest,
+    CreateEvalRequest,
     PromptCompletionRequest,
 )
 from schemas.response_schemas import (
@@ -34,12 +35,6 @@ class LLMEvalsRepository(BaseLLMRepository):
     def from_db_model(self, db_eval: DatabaseLLMEval) -> LLMEval:
         return LLMEval.model_validate(db_eval.__dict__)
 
-    def to_db_model(self, task_id: str, item: LLMEval) -> DatabaseLLMEval:
-        return DatabaseLLMEval(
-            task_id=task_id,
-            **item.model_dump(mode="python", exclude_none=True),
-        )
-
     def _to_versions_reponse_item(self, db_item: Base) -> LLMVersionResponse:
         return LLMVersionResponse(
             version=db_item.version,
@@ -53,6 +48,13 @@ class LLMEvalsRepository(BaseLLMRepository):
         db_item.model_name = ""
         db_item.instructions = ""
         db_item.config = None
+
+    def _extract_variables_from_item(self, item: CreateEvalRequest) -> List[str]:
+        return list(
+            self.chat_completion_service.find_undeclared_variables_in_text(
+                item.instructions,
+            ),
+        )
 
     def from_llm_eval_to_agentic_prompt(
         self,
@@ -81,13 +83,13 @@ class LLMEvalsRepository(BaseLLMRepository):
             config=LLMConfigSettings(**config_dict),
         )
 
-    def save_llm_item(self, task_id: str, item: LLMEval) -> LLMEval:
-        item.variables = list(
-            self.chat_completion_service.find_undeclared_variables_in_text(
-                item.instructions,
-            ),
-        )
-        return super().save_llm_item(task_id, item)
+    def save_llm_item(
+        self,
+        task_id: str,
+        item_name: str,
+        item: CreateEvalRequest,
+    ) -> LLMEval:
+        return super().save_llm_item(task_id, item_name, item)
 
     def run_llm_eval(
         self,

@@ -1,13 +1,18 @@
-from typing import Type
+from typing import List, Type
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from db_models.agentic_prompt_models import Base, DatabaseAgenticPrompt
+from db_models import Base
+from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from repositories.base_llm_repository import BaseLLMRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.request_schemas import CompletionRequest, PromptCompletionRequest
+from schemas.request_schemas import (
+    CompletionRequest,
+    CreateAgenticPromptRequest,
+    PromptCompletionRequest,
+)
 from schemas.response_schemas import (
     AgenticPromptRunResponse,
     AgenticPromptVersionListResponse,
@@ -27,11 +32,15 @@ class AgenticPromptRepository(BaseLLMRepository):
     def from_db_model(self, db_prompt: DatabaseAgenticPrompt) -> AgenticPrompt:
         return AgenticPrompt.model_validate(db_prompt.__dict__)
 
-    def to_db_model(self, task_id: str, item: AgenticPrompt) -> DatabaseAgenticPrompt:
-        """Convert an AgenticPrompt into a DatabaseAgenticPrompt"""
-        return DatabaseAgenticPrompt(
-            **item.model_dump(mode="python", exclude_none=True),
-            task_id=task_id,
+    def _extract_variables_from_item(
+        self,
+        item: CreateAgenticPromptRequest,
+    ) -> List[str]:
+        return list(
+            self.chat_completion_service.find_missing_variables_in_messages(
+                variable_map={},
+                messages=item.messages,
+            ),
         )
 
     def _to_versions_reponse_item(self, db_item: Base) -> AgenticPromptVersionResponse:
@@ -54,14 +63,13 @@ class AgenticPromptRepository(BaseLLMRepository):
         db_item.tools = None
         db_item.config = None
 
-    def save_llm_item(self, task_id: str, item: AgenticPrompt) -> BaseModel:
-        item.variables = list(
-            self.chat_completion_service.find_missing_variables_in_messages(
-                variable_map={},
-                messages=item.messages,
-            ),
-        )
-        return super().save_llm_item(task_id, item)
+    def save_llm_item(
+        self,
+        task_id: str,
+        item_name: str,
+        item: CreateAgenticPromptRequest,
+    ) -> AgenticPrompt:
+        return super().save_llm_item(task_id, item_name, item)
 
     async def run_unsaved_prompt(
         self,

@@ -375,8 +375,7 @@ def save_agentic_prompt(
 ) -> AgenticPrompt:
     try:
         agentic_prompt_service = AgenticPromptRepository(db_session)
-        full_prompt = AgenticPrompt(name=prompt_name, **prompt_config.model_dump())
-        return agentic_prompt_service.save_llm_item(task.id, full_prompt)
+        return agentic_prompt_service.save_llm_item(task.id, prompt_name, prompt_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
