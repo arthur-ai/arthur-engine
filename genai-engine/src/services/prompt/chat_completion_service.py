@@ -86,7 +86,7 @@ class ChatCompletionService:
         self,
         variable_map: Dict[str, str],
         messages: List[OpenAIMessage],
-    ) -> list[dict]:
+    ) -> list[OpenAIMessage]:
         for message in messages:
             if message.content is None:
                 continue

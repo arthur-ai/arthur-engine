@@ -30,8 +30,14 @@ from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.model_provider_repository import ModelProviderRepository
 from schemas.agentic_prompt_schemas import AgenticPrompt
 from schemas.llm_eval_schemas import LLMEval, ReasonedScore
-from schemas.prompt_experiment_schemas import ExperimentStatus, TestCaseStatus
-from schemas.request_schemas import PromptCompletionRequest
+from schemas.prompt_experiment_schemas import (
+    EvalResult,
+    ExperimentStatus,
+    PromptEvalSummary,
+    SummaryResults,
+    TestCaseStatus,
+)
+from schemas.request_schemas import PromptCompletionRequest, VariableTemplateValue
 from services.prompt.chat_completion_service import ChatCompletionService
 
 logger = logging.getLogger(__name__)
@@ -342,7 +348,9 @@ class ExperimentExecutor:
             )
 
             if not test_cases:
-                return {"prompt_eval_summaries": []}
+                return SummaryResults(prompt_eval_summaries=[]).model_dump(
+                    mode="python", exclude_none=True
+                )
 
             # Build a structure to aggregate results: {(prompt_name, prompt_version): {(eval_name, eval_version): [scores]}}
             results_by_prompt: Dict[tuple, Dict[tuple, list]] = {}
@@ -366,7 +374,7 @@ class ExperimentExecutor:
                             if score is not None:
                                 results_by_prompt[prompt_key][eval_key].append(score)
 
-            # Build the summary structure
+            # Build the summary structure using Pydantic models
             prompt_eval_summaries = []
             for (prompt_name, prompt_version), eval_results in sorted(
                 results_by_prompt.items()
@@ -378,30 +386,34 @@ class ExperimentExecutor:
                     total_count = len(scores)
 
                     eval_result_list.append(
-                        {
-                            "eval_name": eval_name,
-                            "eval_version": str(eval_version),
-                            "pass_count": pass_count,
-                            "total_count": total_count,
-                        }
+                        EvalResult(
+                            eval_name=eval_name,
+                            eval_version=str(eval_version),
+                            pass_count=pass_count,
+                            total_count=total_count,
+                        )
                     )
 
                 prompt_eval_summaries.append(
-                    {
-                        "prompt_name": prompt_name,
-                        "prompt_version": str(prompt_version),
-                        "eval_results": eval_result_list,
-                    }
+                    PromptEvalSummary(
+                        prompt_name=prompt_name,
+                        prompt_version=str(prompt_version),
+                        eval_results=eval_result_list,
+                    )
                 )
 
-            return {"prompt_eval_summaries": prompt_eval_summaries}
+            return SummaryResults(
+                prompt_eval_summaries=prompt_eval_summaries
+            ).model_dump(mode="python", exclude_none=True)
 
         except Exception as e:
             logger.error(
                 f"Error calculating summary results for experiment {experiment_id}: {e}",
                 exc_info=True,
             )
-            return {"prompt_eval_summaries": []}
+            return SummaryResults(prompt_eval_summaries=[]).model_dump(
+                mode="python", exclude_none=True
+            )
 
     def _execute_prompt(
         self,
@@ -455,7 +467,17 @@ class ExperimentExecutor:
                 variable_map=variable_map,
                 messages=prompt.messages,
             )
-            rendered_prompt_text = json.dumps(rendered_messages, indent=2)
+
+            # Convert messages to dictionaries for JSON serialization
+            # Handle both dict objects and Pydantic/OpenAI message objects
+            messages_as_dicts = []
+            for msg in rendered_messages:
+                # Pydantic model
+                messages_as_dicts.append(
+                    msg.model_dump(mode="python", exclude_none=True)
+                )
+
+            rendered_prompt_text = json.dumps(messages_as_dicts, indent=2)
 
             # Save rendered prompt
             prompt_result.rendered_prompt = rendered_prompt_text
@@ -464,7 +486,7 @@ class ExperimentExecutor:
             # Execute the prompt
             completion_request = PromptCompletionRequest(
                 variables=[
-                    {"variable_name": k, "variable_value": v}
+                    VariableTemplateValue(name=k, value=v)
                     for k, v in variable_map.items()
                 ]
             )
@@ -634,7 +656,7 @@ class ExperimentExecutor:
             # Execute the eval
             completion_request = PromptCompletionRequest(
                 variables=[
-                    {"variable_name": k, "variable_value": v}
+                    VariableTemplateValue(name=k, value=v)
                     for k, v in variable_map.items()
                 ],
                 stream=False,
