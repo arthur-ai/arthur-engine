@@ -31,42 +31,42 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
       label: "Observability",
       items: [
         { id: "traces", label: "Traces" },
-        { id: "retrievals", label: "Retrievals" },
       ],
     },
     {
-      id: "evaluations",
-      label: "Evaluations",
+      id: "prompts",
+      label: "Prompts",
       items: [
-        { id: "evaluators", label: "Evaluators" },
+        { id: "playgrounds/prompts", label: "Prompts Playground" },
+        { id: "prompts-management", label: "Prompts Management" },
+        { id: "prompt-experiments", label: "Prompts Experiments" },
+      ],
+    },
+    {
+      id: "rag",
+      label: "RAG",
+      items: [
+        { id: "playgrounds/retrievals", label: "RAG Playground" },
+        { id: "retrievals", label: "RAG Management" },
+        { id: "rag-experiments", label: "RAG Experiments" },
+      ],
+    },
+    {
+      id: "evals",
+      label: "Evals",
+      items: [
+        { id: "evaluators", label: "Evals Management" },
         { id: "datasets", label: "Datasets" },
       ],
     },
     {
-      id: "experiments",
-      label: "Experiments",
+      id: "agents",
+      label: "Agents",
       items: [
-        { id: "prompt-experiments", label: "Prompt Experiments" },
-        { id: "rag-experiments", label: "Retrieval Experiments" },
-        { id: "agent-experiments", label: "Agent Experiments" },
+
+        { id: "agent-experiments", label: "Experiments" },
       ],
     },
-    {
-      id: "playgrounds",
-      label: "Playgrounds",
-      items: [
-        { id: "playgrounds/prompts", label: "Prompts" },
-        { id: "playgrounds/retrievals", label: "Retrievals" },
-      ],
-    },
-    // { template for future navbar realignment
-    //   id: "prompts",
-    //   label: "Prompts",
-    //   items:[
-    //     { id: "playgrounds/prompts", label: "Prompts" },
-    //     { id: "", label: "Management"}
-    //   ],
-    // },
     {
       id: "settings",
       label: "Settings",
@@ -78,8 +78,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   ];
 
   return (
-    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 h-full flex flex-col overflow-hidden">
-      <div className="p-4 flex-1 overflow-y-auto">
+    <nav className="w-64 bg-white shadow-sm border-r border-gray-200 flex flex-col" style={{ height: '100vh' }}>
+      <div className="p-4 overflow-y-scroll" style={{ flex: 1 }}>
         <div className="mb-4">
           <button
             onClick={onBackToDashboard}

@@ -55,6 +55,7 @@ export const TaskLayout: React.FC<TaskLayoutProps> = ({ children }) => {
       "agent-experiments": "Agent Experiments",
       "playgrounds/prompts": "Prompts Playground",
       "playgrounds/retrievals": "Retrievals Playground",
+      "prompts-management": "Prompts Management",
     };
     return titleMap[section] || "Task Details";
   };
