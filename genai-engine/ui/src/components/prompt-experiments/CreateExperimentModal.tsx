@@ -616,7 +616,13 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       case 0:
         // Experiment info step - need basic info, prompt versions, dataset, and evaluators
         // Only count already-added evaluators (not the current blank row)
-        return !!(formData.name.trim() && formData.promptVersions.length > 0 && formData.datasetId && formData.datasetVersion && formData.evaluators.length > 0);
+        return !!(
+          formData.name.trim() &&
+          formData.promptVersions.length > 0 &&
+          formData.datasetId &&
+          formData.datasetVersion &&
+          formData.evaluators.length > 0
+        );
       case 1:
         // Configure prompt variables - need all mappings
         if (!formData.promptVariableMappings) return false;

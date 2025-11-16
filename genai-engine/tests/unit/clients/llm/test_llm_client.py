@@ -49,7 +49,7 @@ def test_llm_client_completion_response_format(
     assert isinstance(response, LLMModelResponse)
     assert isinstance(response.response, ModelResponse)
     assert response.response.choices[0].message.get("content") == "Test response"
-    assert response.cost == 0.000123
+    assert response.cost == "0.000123"
 
     # Test json_schema structured outputs
     completion_request["response_format"] = (
@@ -79,7 +79,7 @@ def test_llm_client_completion_response_format(
     assert isinstance(response, LLMModelResponse)
     assert isinstance(response.response, ModelResponse)
     assert response.response.choices[0].message.get("content") == '{"name": "John Doe"}'
-    assert response.cost == 0.000123
+    assert response.cost == "0.000123"
 
     # Test pydantic response format
     completion_request["response_format"] = TestGetWeatherResponseClass
@@ -96,4 +96,4 @@ def test_llm_client_completion_response_format(
     assert isinstance(response.structured_output_response, TestGetWeatherResponseClass)
     assert response.structured_output_response.city == "New York"
     assert response.structured_output_response.temperature == 70
-    assert response.cost == 0.000123
+    assert response.cost == "0.000123"
