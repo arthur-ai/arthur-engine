@@ -9,7 +9,7 @@ import { DatasetsView } from "./components/datasets/DatasetsView";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
-// import PromptsManagement from "./components/prompts-management/PromptsManagement";
+import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { TaskDetailContent } from "./components/TaskDetailContent";
@@ -111,6 +111,17 @@ function App() {
                   <ProtectedRoute>
                     <TaskLayout>
                       <Evaluators />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompts-management"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <PromptsManagement />
                     </TaskLayout>
                   </ProtectedRoute>
                 }
