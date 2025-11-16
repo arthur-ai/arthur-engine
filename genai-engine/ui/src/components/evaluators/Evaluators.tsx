@@ -9,6 +9,7 @@ import EvalFormModal from "./EvalFormModal";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
+import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 import EvalsTable from "./table/EvalsTable";
 
@@ -20,7 +21,6 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Evaluators: React.FC = () => {
   const { task } = useTask();
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [fullScreenEval, setFullScreenEval] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -44,24 +44,16 @@ const Evaluators: React.FC = () => {
     refetch();
   });
 
+  const deleteMutation = useDeleteEvalMutation(task?.id, () => {
+    refetch();
+  });
+
   const handleCreateEval = useCallback(
     async (evalName: string, data: CreateEvalRequest) => {
       await createMutation.mutateAsync({ evalName, data });
     },
     [createMutation]
   );
-
-  const handleToggleRow = useCallback((evalName: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(evalName)) {
-        next.delete(evalName);
-      } else {
-        next.add(evalName);
-      }
-      return next;
-    });
-  }, []);
 
   const handleExpandToFullScreen = useCallback((evalName: string) => {
     setFullScreenEval(evalName);
@@ -182,9 +174,8 @@ const Evaluators: React.FC = () => {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
-            expandedRows={expandedRows}
-            onToggleRow={handleToggleRow}
             onExpandToFullScreen={handleExpandToFullScreen}
+            onDelete={deleteMutation.mutateAsync}
           />
         )}
       </Box>

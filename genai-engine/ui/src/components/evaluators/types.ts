@@ -1,18 +1,12 @@
 import { LLMGetAllMetadataResponse, LLMEval, CreateEvalRequest } from "@/lib/api-client/api-client";
 
-interface EvalRowExpansionProps {
-  eval: LLMGetAllMetadataResponse;
-  onExpandToFullScreen: () => void;
-}
-
 interface EvalsTableProps {
   evals: LLMGetAllMetadataResponse[];
   sortColumn: string | null;
   sortDirection: "asc" | "desc";
   onSort: (column: string) => void;
-  expandedRows: Set<string>;
-  onToggleRow: (evalName: string) => void;
   onExpandToFullScreen: (evalName: string) => void;
+  onDelete?: (evalName: string) => Promise<void>;
 }
 
 interface EvalVersionDrawerProps {
@@ -22,6 +16,7 @@ interface EvalVersionDrawerProps {
   evalName: string;
   selectedVersion: number | null;
   onSelectVersion: (version: number) => void;
+  onDelete?: (version: number) => Promise<void>;
 }
 interface EvalFullScreenViewProps {
   evalName: string;
@@ -70,7 +65,6 @@ interface EvalFormModalProps {
 }
 
 export type {
-  EvalRowExpansionProps,
   EvalsTableProps,
   EvalVersionDrawerProps,
   EvalFullScreenViewProps,
