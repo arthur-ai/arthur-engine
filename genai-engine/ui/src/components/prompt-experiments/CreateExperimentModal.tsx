@@ -540,14 +540,20 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
       try {
         setLoadingPromptDetails(true);
-        const firstVersion = formData.promptVersions[0];
-        const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
-          firstVersion.promptName,
-          String(firstVersion.version),
-          taskId
-        );
 
-        const vars = response.data.variables || [];
+        // Load variables from ALL selected prompt versions
+        const allVariablesSet = new Set<string>();
+        for (const promptVersion of formData.promptVersions) {
+          const response = await api.api.getAgenticPromptApiV1TasksTaskIdPromptsPromptNameVersionsPromptVersionGet(
+            promptVersion.promptName,
+            String(promptVersion.version),
+            taskId
+          );
+          const variables = response.data.variables || [];
+          variables.forEach(v => allVariablesSet.add(v));
+        }
+
+        const vars = Array.from(allVariablesSet);
         setPromptVariables(vars);
 
         // Initialize prompt variable mappings with auto-matching
