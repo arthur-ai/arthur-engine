@@ -2,6 +2,7 @@ import Alert from "@mui/material/Alert";
 import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -14,6 +15,8 @@ import Typography from "@mui/material/Typography";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EvalFormModalProps } from "./types";
+import { useEvaluatorTemplates } from "./hooks/useEvaluatorTemplates";
+import NunjucksHighlightedTextField from "./MustacheHighlightedTextField";
 
 import { useApi } from "@/hooks/useApi";
 import { useTask } from "@/hooks/useTask";
@@ -22,6 +25,7 @@ import type { CreateEvalRequest, LLMEval, ModelProvider, ModelProviderResponse }
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const apiClient = useApi();
   const { task } = useTask();
+  const evaluatorTemplates = useEvaluatorTemplates();
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider | "">("");
@@ -228,6 +232,19 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
 
   const prevEvalNameRef = useRef("");
 
+  // Combine template names with existing eval names
+  const allEvalNameOptions = useMemo(() => {
+    const templateNames = evaluatorTemplates.map((template) => template.name);
+    // Combine and deduplicate (templates first, then existing evals not in templates)
+    const combined = [...templateNames];
+    existingEvalNames.forEach((name) => {
+      if (!combined.includes(name)) {
+        combined.push(name);
+      }
+    });
+    return combined;
+  }, [evaluatorTemplates, existingEvalNames]);
+
   const handleEvalNameChange = useCallback(
     (_event: React.SyntheticEvent<Element, Event>, newValue: string | null, reason: string) => {
       const selectedName = newValue || "";
@@ -244,12 +261,21 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
 
       prevEvalNameRef.current = selectedName;
 
+      // Check if it's a template
+      const template = evaluatorTemplates.find((t) => t.name === selectedName);
+      if (template && (reason === "selectOption" || reason === "createOption")) {
+        // Populate from template
+        setInstructions(template.instructions);
+        // Keep the default provider and model
+        return;
+      }
+
       // Only auto-fill when explicitly selecting from dropdown or pressing enter
       if (existingEvalNames.includes(selectedName) && (reason === "selectOption" || reason === "createOption")) {
         fetchLatestEvalVersion(selectedName);
       }
     },
-    [fetchLatestEvalVersion, enabledProviders, existingEvalNames]
+    [fetchLatestEvalVersion, enabledProviders, existingEvalNames, evaluatorTemplates]
   );
 
   const providerDisabled = enabledProviders.length === 0;
@@ -271,7 +297,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
               </FormLabel>
               <Autocomplete
                 freeSolo
-                options={existingEvalNames}
+                options={allEvalNameOptions}
                 value={evalName}
                 inputValue={evalName}
                 onChange={handleEvalNameChange}
@@ -279,9 +305,14 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   setEvalName(newValue);
                 }}
                 onClose={() => {
-                  if (evalName && existingEvalNames.includes(evalName) && prevEvalNameRef.current !== evalName) {
+                  if (evalName && prevEvalNameRef.current !== evalName) {
                     prevEvalNameRef.current = evalName;
-                    fetchLatestEvalVersion(evalName);
+                    const template = evaluatorTemplates.find((t) => t.name === evalName);
+                    if (template) {
+                      setInstructions(template.instructions);
+                    } else if (existingEvalNames.includes(evalName)) {
+                      fetchLatestEvalVersion(evalName);
+                    }
                   }
                 }}
                 disabled={isLoading}
@@ -302,28 +333,55 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                 getOptionDisabled={(option) => option === "__NO_OPTIONS__"}
                 renderOption={(props, option) => {
                   const { key, ...otherProps } = props;
+                  const isTemplate = evaluatorTemplates.some((t) => t.name === option);
                   return (
                     <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default" } : undefined}>
-                      {option === "__NO_OPTIONS__" ? "No existing evals" : option}
+                      {option === "__NO_OPTIONS__" ? "No matching evals or templates" : (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <span>{option}</span>
+                          {isTemplate && (
+                            <Chip
+                              label="Built-in"
+                              size="small"
+                              color="primary"
+                              sx={{
+                                height: 20,
+                                fontSize: "0.7rem",
+                                fontWeight: 500,
+                              }}
+                            />
+                          )}
+                        </Box>
+                      )}
                     </li>
                   );
                 }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Enter eval name or select existing..."
+                    placeholder="Enter eval name or select template/existing..."
                     required
                     size="small"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && evalName && existingEvalNames.includes(evalName)) {
+                      if (e.key === "Enter" && evalName) {
                         e.preventDefault();
-                        fetchLatestEvalVersion(evalName);
+                        const template = evaluatorTemplates.find((t) => t.name === evalName);
+                        if (template) {
+                          setInstructions(template.instructions);
+                        } else if (existingEvalNames.includes(evalName)) {
+                          fetchLatestEvalVersion(evalName);
+                        }
                       }
                     }}
                     onBlur={() => {
-                      if (evalName && existingEvalNames.includes(evalName)) {
-                        fetchLatestEvalVersion(evalName);
+                      if (evalName) {
+                        const template = evaluatorTemplates.find((t) => t.name === evalName);
+                        if (template) {
+                          setInstructions(template.instructions);
+                        } else if (existingEvalNames.includes(evalName)) {
+                          fetchLatestEvalVersion(evalName);
+                        }
                       }
                     }}
                   />
@@ -337,7 +395,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Instructions
                 </Typography>
               </FormLabel>
-              <TextField
+              <NunjucksHighlightedTextField
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 placeholder="Enter eval instructions..."
