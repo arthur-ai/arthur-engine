@@ -1,0 +1,224 @@
+import Alert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import TablePagination from "@mui/material/TablePagination";
+import React, { useCallback, useMemo, useState } from "react";
+
+import EvalFormModal from "./EvalFormModal";
+import EvaluatorsHeader from "./EvaluatorsHeader";
+import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
+import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
+import { useEvals } from "./hooks/useEvals";
+import EvalsTable from "./table/EvalsTable";
+
+import { getContentHeight } from "@/constants/layout";
+import { useTask } from "@/hooks/useTask";
+import { CreateEvalRequest } from "@/lib/api-client/api-client";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const Evaluators: React.FC = () => {
+  const { task } = useTask();
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [fullScreenEval, setFullScreenEval] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const filters = useMemo(
+    () => ({
+      page,
+      pageSize,
+      sort: sortDirection,
+    }),
+    [page, pageSize, sortDirection]
+  );
+
+  const { evals, count, error, isLoading, refetch } = useEvals(task?.id, filters);
+
+  const createMutation = useCreateEvalMutation(task?.id, () => {
+    setIsCreateModalOpen(false);
+    refetch();
+  });
+
+  const handleCreateEval = useCallback(
+    async (evalName: string, data: CreateEvalRequest) => {
+      await createMutation.mutateAsync({ evalName, data });
+    },
+    [createMutation]
+  );
+
+  const handleToggleRow = useCallback((evalName: string) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(evalName)) {
+        next.delete(evalName);
+      } else {
+        next.add(evalName);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleExpandToFullScreen = useCallback((evalName: string) => {
+    setFullScreenEval(evalName);
+  }, []);
+
+  const handleCloseFullScreen = useCallback(() => {
+    setFullScreenEval(null);
+  }, []);
+
+  const handleSort = useCallback(
+    (column: string) => {
+      if (sortColumn === column) {
+        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      } else {
+        setSortColumn(column);
+        setSortDirection("desc");
+      }
+    },
+    [sortColumn]
+  );
+
+  const handlePageChange = useCallback((_event: unknown, newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const handlePageSizeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setPageSize(parseInt(event.target.value, 10));
+    setPage(0);
+  }, []);
+
+  if (fullScreenEval) {
+    return (
+      <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
+        <EvalFullScreenView evalName={fullScreenEval} onClose={handleCloseFullScreen} />
+      </Box>
+    );
+  }
+
+  if (isLoading && evals.length === 0) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: getContentHeight(),
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error && evals.length === 0) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" onClose={() => refetch()}>
+          {error.message || "Failed to load evals"}
+        </Alert>
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      sx={{
+        width: "100%",
+        height: getContentHeight(),
+        display: "grid",
+        gridTemplateRows: "auto auto 1fr",
+        overflow: "hidden",
+      }}
+    >
+      <EvaluatorsHeader onCreateEval={() => setIsCreateModalOpen(true)} />
+
+      {error && evals.length > 0 && (
+        <Box sx={{ px: 3, pt: 2 }}>
+          <Alert severity="error">{error?.message || "An error occurred"}</Alert>
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          overflow: "auto",
+          minHeight: 0,
+        }}
+      >
+        {!isLoading && evals.length === 0 ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+              p: 3,
+            }}
+          >
+            <Box sx={{ textAlign: "center" }}>
+              <Box
+                sx={{
+                  fontWeight: 600,
+                  fontSize: "1.25rem",
+                  color: "text.primary",
+                  mb: 1,
+                }}
+              >
+                No evals found
+              </Box>
+              <Box sx={{ color: "text.secondary", mb: 2 }}>Create your first eval to get started.</Box>
+              <Button variant="contained" onClick={() => setIsCreateModalOpen(true)} sx={{ mt: 1 }}>
+                Create Evaluator
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <EvalsTable
+            evals={evals}
+            sortColumn={sortColumn}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            expandedRows={expandedRows}
+            onToggleRow={handleToggleRow}
+            onExpandToFullScreen={handleExpandToFullScreen}
+          />
+        )}
+      </Box>
+
+      {evals.length > 0 && (
+        <Box
+          sx={{
+            borderTop: 1,
+            borderColor: "divider",
+            backgroundColor: "background.paper",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <TablePagination
+            component="div"
+            count={count}
+            page={page}
+            onPageChange={handlePageChange}
+            rowsPerPage={pageSize}
+            onRowsPerPageChange={handlePageSizeChange}
+            rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+          />
+        </Box>
+      )}
+
+      <EvalFormModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateEval}
+        isLoading={createMutation.isPending}
+      />
+    </Box>
+  );
+};
+
+export default Evaluators;

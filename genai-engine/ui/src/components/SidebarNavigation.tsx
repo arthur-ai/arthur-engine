@@ -59,6 +59,14 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         { id: "playgrounds/retrievals", label: "Retrievals" },
       ],
     },
+    // { template for future navbar realignment
+    //   id: "prompts",
+    //   label: "Prompts",
+    //   items:[
+    //     { id: "playgrounds/prompts", label: "Prompts" },
+    //     { id: "", label: "Management"}
+    //   ],
+    // },
     {
       id: "settings",
       label: "Settings",
