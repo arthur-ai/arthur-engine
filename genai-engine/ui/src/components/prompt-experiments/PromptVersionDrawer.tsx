@@ -1,6 +1,7 @@
 import CloseIcon from "@mui/icons-material/Close";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import {
   Box,
   Drawer,
@@ -30,6 +31,63 @@ import { Link as RouterLink } from "react-router-dom";
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp } from "@/utils/formatters";
+
+interface Message {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface MessageDisplayProps {
+  message: Message;
+}
+
+const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
+  const getRoleStyles = (role: Message["role"]) => {
+    switch (role) {
+      case "system":
+        return {
+          bg: "bg-gray-100",
+          border: "border-gray-300",
+          label: "System",
+          labelColor: "text-gray-700",
+        };
+      case "user":
+        return {
+          bg: "bg-blue-50",
+          border: "border-blue-200",
+          label: "User",
+          labelColor: "text-blue-700",
+        };
+      case "assistant":
+        return {
+          bg: "bg-green-50",
+          border: "border-green-200",
+          label: "Assistant",
+          labelColor: "text-green-700",
+        };
+      default:
+        return {
+          bg: "bg-gray-50",
+          border: "border-gray-200",
+          label: role,
+          labelColor: "text-gray-700",
+        };
+    }
+  };
+
+  const styles = getRoleStyles(message.role);
+
+  return (
+    <Box className={`p-3 ${styles.bg} border ${styles.border} rounded mb-2`}>
+      <Typography variant="caption" className={`font-semibold ${styles.labelColor} block mb-1`}>
+        {styles.label}
+      </Typography>
+      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
+        {message.content}
+      </Typography>
+    </Box>
+  );
+};
 
 interface EvalResult {
   eval_name: string;
@@ -62,8 +120,8 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
-  const [valueModalOpen, setValueModalOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState<{ title: string; content: string } | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1);
 
   // Fetch prompt version details
   const { prompt, isLoading: isPromptLoading } = usePrompt(
@@ -92,6 +150,22 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleOpenValueModal = (title: string, content: string) => {
+    setSelectedValue({ title, content });
+    setValueModalOpen(true);
+  };
+
+  const handleCloseValueModal = () => {
+    setValueModalOpen(false);
+    setSelectedValue(null);
+  };
+
+  const handleCopyValue = () => {
+    if (selectedValue) {
+      navigator.clipboard.writeText(selectedValue.content);
+    }
   };
 
   if (!promptDetails) {
@@ -150,7 +224,17 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
           ) : prompt ? (
             <>
               {/* Prompt Version Details */}
-              <Box className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <Box className="flex items-center justify-start">
+                  <Button
+                    variant="outlined"
+                    startIcon={<OpenInFullIcon />}
+                    onClick={() => setTemplateModalOpen(true)}
+                    size="small"
+                  >
+                    View Template
+                  </Button>
+                </Box>
                 <Box>
                   <Typography variant="caption" className="text-gray-500 font-medium">
                     Created At
@@ -184,15 +268,6 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Box>
               </Box>
-
-              <Button
-                variant="outlined"
-                startIcon={<VisibilityIcon />}
-                onClick={() => setTemplateModalOpen(true)}
-                size="small"
-              >
-                View Prompt Template
-              </Button>
             </>
           ) : (
             <Typography variant="body2" className="text-gray-500">
@@ -258,6 +333,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <TableHead>
                     <TableRow>
                       <TableCell className="font-semibold">Input Variables</TableCell>
+                      <TableCell className="font-semibold">Rendered Prompt</TableCell>
                       <TableCell className="font-semibold">Output</TableCell>
                       <TableCell className="font-semibold" align="center">
                         Evaluation Results
@@ -270,7 +346,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   <TableBody>
                     {isResultsLoading ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center">
+                        <TableCell colSpan={5} align="center">
                           <Box className="py-8">
                             <CircularProgress size={32} />
                             <Typography variant="body2" className="mt-2 text-gray-600">
@@ -281,7 +357,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                       </TableRow>
                     ) : results.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} align="center">
+                        <TableCell colSpan={5} align="center">
                           <Typography variant="body2" className="py-8 text-gray-600 italic">
                             No test case results available yet
                           </Typography>
@@ -299,22 +375,152 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         return (
                           <TableRow key={`${result.dataset_row_id}-${idx}`} hover>
                             <TableCell>
-                              <Box className="max-w-xs">
-                                {result.prompt_input_variables.map((variable, vidx) => (
-                                  <Typography
-                                    key={vidx}
-                                    variant="body2"
-                                    className="text-gray-700 text-xs truncate"
-                                  >
-                                    <span className="font-medium">{variable.variable_name}:</span> {variable.value}
-                                  </Typography>
-                                ))}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 0.25,
+                                  cursor: "pointer",
+                                }}
+                                onClick={() =>
+                                  handleOpenValueModal(
+                                    "Input Variables",
+                                    result.prompt_input_variables
+                                      .map((v) => `${v.variable_name}: ${v.value}`)
+                                      .join("\n\n")
+                                  )
+                                }
+                              >
+                                <Typography
+                                  variant="body2"
+                                  className="text-gray-700 text-xs"
+                                  sx={{
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 4,
+                                    WebkitBoxOrient: "vertical",
+                                    flex: 1,
+                                    maxWidth: "250px",
+                                  }}
+                                >
+                                  {result.prompt_input_variables
+                                    .map((v) => `${v.variable_name}: ${v.value}`)
+                                    .join("\n")}
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  sx={{
+                                    opacity: 0.5,
+                                    "&:hover": { opacity: 1 },
+                                    padding: 0.25,
+                                    flexShrink: 0,
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenValueModal(
+                                      "Input Variables",
+                                      result.prompt_input_variables
+                                        .map((v) => `${v.variable_name}: ${v.value}`)
+                                        .join("\n\n")
+                                    );
+                                  }}
+                                  title="View full content"
+                                >
+                                  <OpenInFullIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
                               </Box>
                             </TableCell>
                             <TableCell>
-                              <Typography variant="body2" className="text-gray-700 max-w-xs truncate text-xs">
-                                {result.output?.content || "No output yet"}
-                              </Typography>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 0.25,
+                                  cursor: "pointer",
+                                }}
+                                onClick={() =>
+                                  handleOpenValueModal("Rendered Prompt", result.rendered_prompt)
+                                }
+                              >
+                                <Typography
+                                  variant="body2"
+                                  className="text-gray-700 text-xs"
+                                  sx={{
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 4,
+                                    WebkitBoxOrient: "vertical",
+                                    flex: 1,
+                                    maxWidth: "300px",
+                                  }}
+                                >
+                                  {result.rendered_prompt || "No prompt"}
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  sx={{
+                                    opacity: 0.5,
+                                    "&:hover": { opacity: 1 },
+                                    padding: 0.25,
+                                    flexShrink: 0,
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenValueModal("Rendered Prompt", result.rendered_prompt);
+                                  }}
+                                  title="View full content"
+                                >
+                                  <OpenInFullIcon sx={{ fontSize: 14 }} />
+                                </IconButton>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 0.25,
+                                  cursor: result.output ? "pointer" : "default",
+                                }}
+                                onClick={
+                                  result.output
+                                    ? () => handleOpenValueModal("Output", JSON.stringify(result.output, null, 2))
+                                    : undefined
+                                }
+                              >
+                                <Typography
+                                  variant="body2"
+                                  className="text-gray-700 text-xs"
+                                  sx={{
+                                    overflow: "hidden",
+                                    display: "-webkit-box",
+                                    WebkitLineClamp: 4,
+                                    WebkitBoxOrient: "vertical",
+                                    flex: 1,
+                                    maxWidth: "300px",
+                                  }}
+                                >
+                                  {result.output?.content || (result.output?.tool_calls && result.output.tool_calls.length > 0 ? `${result.output.tool_calls.length} tool call(s)` : "No output yet")}
+                                </Typography>
+                                {result.output && (
+                                  <IconButton
+                                    size="small"
+                                    sx={{
+                                      opacity: 0.5,
+                                      "&:hover": { opacity: 1 },
+                                      padding: 0.25,
+                                      flexShrink: 0,
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenValueModal("Output", JSON.stringify(result.output, null, 2));
+                                    }}
+                                    title="View full content"
+                                  >
+                                    <OpenInFullIcon sx={{ fontSize: 14 }} />
+                                  </IconButton>
+                                )}
+                              </Box>
                             </TableCell>
                             <TableCell align="center">
                               <Box className="flex flex-col gap-1 items-center">
@@ -466,6 +672,44 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTemplateModalOpen(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Value View Modal */}
+      <Dialog open={valueModalOpen} onClose={handleCloseValueModal} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Box className="flex items-center justify-between">
+            <Typography variant="h6" className="font-semibold">
+              {selectedValue?.title}
+            </Typography>
+            <Box className="flex items-center gap-1">
+              <IconButton onClick={handleCopyValue} size="small" title="Copy to clipboard">
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+              <IconButton onClick={handleCloseValueModal} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box className="p-4 bg-gray-50 rounded border border-gray-200">
+            <Typography
+              variant="body2"
+              className="font-mono text-gray-900 whitespace-pre-wrap"
+              sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}
+            >
+              {selectedValue?.content}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCopyValue} startIcon={<ContentCopyIcon />} variant="outlined">
+            Copy
+          </Button>
+          <Button onClick={handleCloseValueModal} variant="contained">
             Close
           </Button>
         </DialogActions>
