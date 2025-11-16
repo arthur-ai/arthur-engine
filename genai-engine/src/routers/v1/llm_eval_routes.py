@@ -215,8 +215,7 @@ def save_llm_eval(
 ):
     try:
         llm_eval_service = LLMEvalsRepository(db_session)
-        full_eval = LLMEval(name=eval_name, **eval_config.model_dump())
-        return llm_eval_service.save_llm_item(task.id, full_eval)
+        return llm_eval_service.save_llm_item(task.id, eval_name, eval_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

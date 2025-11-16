@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Set, Tuple, Union
 
 from fastapi.responses import StreamingResponse
@@ -115,6 +116,7 @@ class ChatCompletionService:
         """
         prompt = AgenticPrompt(
             name="test_unsaved_prompt",
+            created_at=datetime.now(timezone.utc),
             **unsaved_prompt.model_dump(exclude={"completion_request"}),
         )
         return prompt, unsaved_prompt.completion_request

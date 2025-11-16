@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Arthur GenAI Engine",
-        "version": "2.1.175"
+        "version": "2.1.176"
     },
     "paths": {
         "/api/v2/usage/tokens": {
@@ -9371,15 +9371,8 @@
                         "description": "LLM configurations for this prompt (e.g. temperature, max_tokens, etc.)"
                     },
                     "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "format": "date-time",
                         "title": "Created At",
                         "description": "Timestamp when the prompt was created."
                     },
@@ -9402,7 +9395,8 @@
                     "name",
                     "messages",
                     "model_name",
-                    "model_provider"
+                    "model_provider",
+                    "created_at"
                 ],
                 "title": "AgenticPrompt"
             },
@@ -11905,15 +11899,8 @@
                         "description": "LLM configurations for this eval (e.g. temperature, max_tokens, etc.)"
                     },
                     "created_at": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "format": "date-time",
                         "title": "Created At",
                         "description": "Timestamp when the llm eval was created."
                     },
@@ -11942,7 +11929,8 @@
                     "name",
                     "model_name",
                     "model_provider",
-                    "instructions"
+                    "instructions",
+                    "created_at"
                 ],
                 "title": "LLMEval"
             },
@@ -13438,7 +13426,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.175"
+                                "version": "2.1.176"
                             }
                         ]
                     }
