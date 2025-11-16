@@ -5,9 +5,10 @@ import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
 import React, { useCallback, useMemo, useState } from "react";
 
-import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptFullScreenView from "./fullscreen/PromptFullScreenView";
+import { useDeletePromptMutation } from "./hooks/useDeletePromptMutation";
 import { usePrompts } from "./hooks/usePrompts";
+import PromptsManagementHeader from "./PromptsManagementHeader";
 import PromptsTable from "./table/PromptsTable";
 
 import { getContentHeight } from "@/constants/layout";
@@ -17,7 +18,6 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PromptsManagement: React.FC = () => {
   const { task } = useTask();
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [fullScreenPrompt, setFullScreenPrompt] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -35,22 +35,14 @@ const PromptsManagement: React.FC = () => {
 
   const { prompts, count, error, isLoading, refetch } = usePrompts(task?.id, filters);
 
+  const deleteMutation = useDeletePromptMutation(task?.id, () => {
+    refetch();
+  });
+
   const handleCreatePrompt = useCallback(() => {
     // Navigate to prompts playground
     window.location.href = `/tasks/${task?.id}/playgrounds/prompts`;
   }, [task?.id]);
-
-  const handleToggleRow = useCallback((promptName: string) => {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(promptName)) {
-        next.delete(promptName);
-      } else {
-        next.add(promptName);
-      }
-      return next;
-    });
-  }, []);
 
   const handleExpandToFullScreen = useCallback((promptName: string) => {
     setFullScreenPrompt(promptName);
@@ -171,9 +163,8 @@ const PromptsManagement: React.FC = () => {
             sortColumn={sortColumn}
             sortDirection={sortDirection}
             onSort={handleSort}
-            expandedRows={expandedRows}
-            onToggleRow={handleToggleRow}
             onExpandToFullScreen={handleExpandToFullScreen}
+            onDelete={deleteMutation.mutateAsync}
           />
         )}
       </Box>
