@@ -393,9 +393,6 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
           size="small"
         />
       </TableCell>
-      <TableCell>
-        {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
-      </TableCell>
       {evalColumns.map((evalCol) => {
         const key = `${evalCol.name}-${evalCol.version}`;
         const score = evalScoreMap[key];
@@ -425,6 +422,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
           </Typography>
         </TableCell>
       ))}
+      <TableCell>
+        {testCase.total_cost ? formatCurrency(parseFloat(testCase.total_cost)) : "-"}
+      </TableCell>
     </TableRow>
   );
 };
@@ -528,11 +528,6 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   Status
                 </Box>
               </TableCell>
-              <TableCell sx={{ backgroundColor: "grey.50" }}>
-                <Box component="span" className="font-semibold">
-                  Total Cost
-                </Box>
-              </TableCell>
               {evalColumns.map((evalCol) => (
                 <TableCell
                   key={`${evalCol.name}-${evalCol.version}`}
@@ -548,10 +543,15 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
               {variableColumns.map((varName) => (
                 <TableCell key={varName} sx={{ backgroundColor: "grey.50" }}>
                   <Box component="span" className="font-semibold">
-                    {varName}
+                    Input: {varName}
                   </Box>
                 </TableCell>
               ))}
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
+                <Box component="span" className="font-semibold">
+                  Total Cost
+                </Box>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
