@@ -1,7 +1,7 @@
 import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import React from "react";
+import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getContentHeight } from "@/constants/layout";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
@@ -12,7 +12,19 @@ import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/u
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
-  const { experiment, isLoading, error } = usePromptExperiment(experimentId);
+  const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId);
+
+  // Refetch data when window gains focus
+  useEffect(() => {
+    const handleFocus = () => {
+      refetch();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refetch]);
 
   const getStatusColor = (status: PromptExperimentDetail["status"]): "default" | "primary" | "info" | "success" | "error" => {
     switch (status) {

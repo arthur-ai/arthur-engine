@@ -40,12 +40,15 @@ import type {
   LLMVersionResponse,
   AgenticPrompt,
   LLMEval,
+  PromptExperimentDetail,
 } from "@/lib/api-client/api-client";
 
 interface CreateExperimentModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: ExperimentFormData) => Promise<{ id: string }>;
+  initialData?: PromptExperimentDetail;
+  isLoadingInitialData?: boolean;
 }
 
 export interface PromptVersionSelection {
@@ -98,6 +101,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   open,
   onClose,
   onSubmit,
+  initialData,
+  isLoadingInitialData = false,
 }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -174,6 +179,84 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPromptName, taskId, api]);
+
+  // Initialize form from existing experiment data
+  useEffect(() => {
+    const initializeFromExistingExperiment = async () => {
+      if (!initialData || !open || isLoadingInitialData || !taskId || !api) return;
+
+      try {
+        // Transform the initial data to form data format
+        const promptVersions: PromptVersionSelection[] = initialData.prompt_ref.version_list.map(v => ({
+          promptName: initialData.prompt_ref.name,
+          version: v,
+        }));
+
+        const evaluators: EvaluatorSelection[] = initialData.eval_list.map(e => ({
+          name: e.name,
+          version: e.version,
+        }));
+
+        // Transform prompt variable mappings
+        const promptVariableMappings: PromptVariableMappings = {};
+        initialData.prompt_ref.variable_mapping.forEach(mapping => {
+          if (mapping.source.type === "dataset_column") {
+            promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
+          }
+        });
+
+        // Transform eval variable mappings
+        const evalVariableMappings: EvalVariableMappings[] = initialData.eval_list.map(evalConfig => {
+          const mappings: EvalVariableMappings["mappings"] = {};
+          evalConfig.variable_mapping.forEach(mapping => {
+            if (mapping.source.type === "dataset_column") {
+              mappings[mapping.variable_name] = {
+                sourceType: "dataset_column",
+                datasetColumn: mapping.source.dataset_column.name,
+              };
+            } else if (mapping.source.type === "experiment_output") {
+              mappings[mapping.variable_name] = {
+                sourceType: "experiment_output",
+                jsonPath: mapping.source.experiment_output.json_path || "",
+              };
+            }
+          });
+          return {
+            evalName: evalConfig.name,
+            evalVersion: evalConfig.version,
+            mappings,
+          };
+        });
+
+        // Set the selected prompt name first
+        setSelectedPromptName(initialData.prompt_ref.name);
+
+        // Load all necessary data in parallel
+        await Promise.all([
+          loadDatasetVersions(initialData.dataset_ref.id),
+          loadPromptVersions(initialData.prompt_ref.name),
+          ...evaluators.map(evaluator => loadEvaluatorVersions(evaluator.name)),
+        ]);
+
+        // Now set the form data after all dropdowns are populated
+        setFormData({
+          name: `${initialData.name} (Copy)`,
+          description: initialData.description || "",
+          promptVersions,
+          datasetId: initialData.dataset_ref.id,
+          datasetVersion: initialData.dataset_ref.version,
+          evaluators,
+          promptVariableMappings,
+          evalVariableMappings,
+        });
+      } catch (error) {
+        console.error("Failed to initialize from existing experiment:", error);
+      }
+    };
+
+    initializeFromExistingExperiment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData, open, isLoadingInitialData]);
 
   const loadPrompts = async () => {
     if (!taskId || !api) return;
@@ -1353,20 +1436,28 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         aria-labelledby="create-experiment-dialog-title"
       >
         <DialogTitle id="create-experiment-dialog-title">
-          Create New Experiment
+          {initialData ? "Create Experiment from Template" : "Create New Experiment"}
         </DialogTitle>
         <DialogContent>
-          <Box className="mb-4">
-            <Stepper activeStep={currentStep} alternativeLabel>
-              {getStepLabels().map((label, index) => (
-                <Step key={label} completed={completedSteps.has(index)}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-          </Box>
+          {isLoadingInitialData ? (
+            <Box className="flex justify-center items-center py-8">
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Box className="mb-4">
+                <Stepper activeStep={currentStep} alternativeLabel>
+                  {getStepLabels().map((label, index) => (
+                    <Step key={label} completed={completedSteps.has(index)}>
+                      <StepLabel>{label}</StepLabel>
+                    </Step>
+                  ))}
+                </Stepper>
+              </Box>
 
-          {renderStepContent()}
+              {renderStepContent()}
+            </>
+          )}
         </DialogContent>
         <DialogActions className="px-6 pb-4">
           <Button onClick={handleCancel} disabled={isSubmitting}>
