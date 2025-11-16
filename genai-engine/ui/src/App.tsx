@@ -10,6 +10,8 @@ import TransformsManagement from "./components/datasets/transforms/TransformsMan
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
+import { PromptExperimentsView } from "./components/prompt-experiments/PromptExperimentsView";
+import { ExperimentDetailView } from "./components/prompt-experiments/ExperimentDetailView";
 import PromptsManagement from "./components/prompts-management/PromptsManagement";
 import PromptsPlayground from "./components/prompts-playground/PromptsPlayground";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -129,7 +131,51 @@ function App() {
               />
 
               <Route
+                path="/tasks/:id/evaluators/:evaluatorName"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <Evaluators />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/evaluators/:evaluatorName/versions/:version"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <Evaluators />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/tasks/:id/prompts-management"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <PromptsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompts/:promptName"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <PromptsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompts/:promptName/versions/:version"
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
@@ -166,10 +212,18 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <TaskLayout>
-                      <ComingSoon
-                        featureName="Prompt Experiments"
-                        description="Test and compare different prompt variations and their effectiveness."
-                      />
+                      <PromptExperimentsView />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompt-experiments/:experimentId"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <ExperimentDetailView />
                     </TaskLayout>
                   </ProtectedRoute>
                 }

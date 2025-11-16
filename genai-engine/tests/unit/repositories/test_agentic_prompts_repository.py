@@ -176,7 +176,7 @@ async def test_run_prompt(
     }
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
-    mock_llm_response.cost = 0.001234
+    mock_llm_response.cost = "0.001234"
 
     mock_completion.return_value = mock_llm_response
     mock_get_client.return_value = mock_llm_client
@@ -408,7 +408,7 @@ async def test_run_saved_prompt(
     }
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
-    mock_llm_response.cost = 0.002345
+    mock_llm_response.cost = "0.002345"
 
     mock_completion.return_value = mock_llm_response
     mock_get_client.return_value = mock_llm_client
@@ -494,7 +494,7 @@ def test_chat_completion_service_run_chat_completion(
     }
     mock_llm_response = MagicMock()
     mock_llm_response.response = mock_response
-    mock_llm_response.cost = 0.003456
+    mock_llm_response.cost = "0.003456"
 
     mock_completion.return_value = mock_llm_response
     mock_get_client.return_value = mock_llm_client

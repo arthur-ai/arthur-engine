@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useDeletePromptVersionMutation } from "../hooks/useDeletePromptVersionMutation";
 import { usePrompt } from "../hooks/usePrompt";
@@ -13,6 +14,8 @@ import { useTask } from "@/hooks/useTask";
 
 const PromptFullScreenView = ({ promptName, initialVersion, onClose }: PromptFullScreenViewProps) => {
   const { task } = useTask();
+  const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
   // Fetch versions to get the latest if no version is selected
@@ -33,6 +36,8 @@ const PromptFullScreenView = ({ promptName, initialVersion, onClose }: PromptFul
 
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
+    // Update URL to reflect the selected version
+    navigate(`/tasks/${taskId}/prompts/${promptName}/versions/${version}`);
   };
 
   return (

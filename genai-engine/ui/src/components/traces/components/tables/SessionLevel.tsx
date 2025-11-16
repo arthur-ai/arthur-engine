@@ -92,6 +92,7 @@ export const SessionLevel = () => {
             page={pagination.page}
             rowsPerPage={pagination.rowsPerPage}
             onRowsPerPageChange={pagination.handleRowsPerPageChange}
+            rowsPerPageOptions={[10, 25, 50, 100]}
             disabled={isPlaceholderData}
             sx={{
               overflow: "visible",

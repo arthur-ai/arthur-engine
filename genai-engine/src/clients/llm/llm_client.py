@@ -26,7 +26,7 @@ class LLMModelResponse(BaseModel):
         None,
         description="The structured output base model response from the model",
     )
-    cost: Optional[float] = Field(None, description="The cost of the model response")
+    cost: Optional[str] = Field(None, description="The cost of the model response")
 
 
 def supported_models() -> dict[str, list[str]]:
@@ -80,7 +80,8 @@ class LLMClient:
     ) -> LLMModelResponse:
         # Delegate to the top-level function
         response = litellm.completion(*args, api_key=self.api_key, **kwargs)
-        cost = completion_cost(response)
+        cost_float = completion_cost(response)
+        cost = f"{cost_float:.6f}" if cost_float is not None else None
 
         llm_model_response = LLMModelResponse(response=response, cost=cost)
 
