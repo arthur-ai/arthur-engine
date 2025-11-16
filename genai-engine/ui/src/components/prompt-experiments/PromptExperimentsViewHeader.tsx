@@ -86,7 +86,7 @@ export const PromptExperimentsViewHeader: React.FC<PromptExperimentsViewHeaderPr
           <MenuItem onClick={handleCreateNew} sx={{ justifyContent: "flex-start" }}>
             Create New
           </MenuItem>
-          <MenuItem onClick={handleCreateFromExisting} sx={{ justifyContent: "flex-start" }}>
+          <MenuItem onClick={handleCreateFromExisting} sx={{ justifyContent: "flex-start" }} disabled>
             Create from Existing
           </MenuItem>
         </Menu>

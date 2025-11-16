@@ -1,3 +1,6 @@
+import AddIcon from "@mui/icons-material/Add";
+import DeleteIcon from "@mui/icons-material/Delete";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Dialog,
   DialogTitle,
@@ -24,11 +27,9 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import type {
@@ -66,8 +67,8 @@ export type VariableSourceType = "dataset_column" | "experiment_output";
 export interface VariableMapping {
   variableName: string;
   sourceType: VariableSourceType;
-  datasetColumn?: string;  // For dataset_column source
-  jsonPath?: string;       // For experiment_output source
+  datasetColumn?: string; // For dataset_column source
+  jsonPath?: string; // For experiment_output source
 }
 
 export interface PromptVariableMappings {
@@ -113,6 +114,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [currentEvalIndex, setCurrentEvalIndex] = useState(0); // Track which eval is being configured in step 2
+  const [isInitializing, setIsInitializing] = useState(false); // Track internal data loading when cloning
 
   // Form state
   const [formData, setFormData] = useState<ExperimentFormData>({
@@ -183,32 +185,41 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   // Initialize form from existing experiment data
   useEffect(() => {
     const initializeFromExistingExperiment = async () => {
-      if (!initialData || !open || isLoadingInitialData || !taskId || !api) return;
+      if (!initialData || !open || isLoadingInitialData || !taskId || !api) {
+        // If we don't have initialData, we're not initializing
+        if (!initialData && open) {
+          setIsInitializing(false);
+        }
+        return;
+      }
+
+      // Set initializing to true at the start of the async function
+      setIsInitializing(true);
 
       try {
         // Transform the initial data to form data format
-        const promptVersions: PromptVersionSelection[] = initialData.prompt_ref.version_list.map(v => ({
+        const promptVersions: PromptVersionSelection[] = initialData.prompt_ref.version_list.map((v) => ({
           promptName: initialData.prompt_ref.name,
           version: v,
         }));
 
-        const evaluators: EvaluatorSelection[] = initialData.eval_list.map(e => ({
+        const evaluators: EvaluatorSelection[] = initialData.eval_list.map((e) => ({
           name: e.name,
           version: e.version,
         }));
 
         // Transform prompt variable mappings
         const promptVariableMappings: PromptVariableMappings = {};
-        initialData.prompt_ref.variable_mapping.forEach(mapping => {
+        initialData.prompt_ref.variable_mapping.forEach((mapping) => {
           if (mapping.source.type === "dataset_column") {
             promptVariableMappings[mapping.variable_name] = mapping.source.dataset_column.name;
           }
         });
 
         // Transform eval variable mappings
-        const evalVariableMappings: EvalVariableMappings[] = initialData.eval_list.map(evalConfig => {
+        const evalVariableMappings: EvalVariableMappings[] = initialData.eval_list.map((evalConfig) => {
           const mappings: EvalVariableMappings["mappings"] = {};
-          evalConfig.variable_mapping.forEach(mapping => {
+          evalConfig.variable_mapping.forEach((mapping) => {
             if (mapping.source.type === "dataset_column") {
               mappings[mapping.variable_name] = {
                 sourceType: "dataset_column",
@@ -235,7 +246,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         await Promise.all([
           loadDatasetVersions(initialData.dataset_ref.id),
           loadPromptVersions(initialData.prompt_ref.name),
-          ...evaluators.map(evaluator => loadEvaluatorVersions(evaluator.name)),
+          ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
         ]);
 
         // Now set the form data after all dropdowns are populated
@@ -251,6 +262,8 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         });
       } catch (error) {
         console.error("Failed to initialize from existing experiment:", error);
+      } finally {
+        setIsInitializing(false);
       }
     };
 
@@ -283,7 +296,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         promptName,
         page_size: 100,
       });
-      setPromptVersions(response.data.versions.filter(v => !v.deleted_at));
+      setPromptVersions(response.data.versions.filter((v) => !v.deleted_at));
     } catch (error) {
       console.error("Failed to load prompt versions:", error);
     } finally {
@@ -319,14 +332,14 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
       // Set to highest version number
       if (versions.length > 0) {
-        const maxVersion = Math.max(...versions.map(v => v.version_number));
-        setFormData(prev => ({
+        const maxVersion = Math.max(...versions.map((v) => v.version_number));
+        setFormData((prev) => ({
           ...prev,
-          datasetVersion: maxVersion
+          datasetVersion: maxVersion,
         }));
 
         // Load columns for the latest version
-        const latestVersion = versions.find(v => v.version_number === maxVersion);
+        const latestVersion = versions.find((v) => v.version_number === maxVersion);
         if (latestVersion) {
           setDatasetColumns(latestVersion.column_names);
         }
@@ -362,15 +375,15 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         evalName,
         page_size: 100,
       });
-      const versions = response.data.versions.filter(v => !v.deleted_at);
-      setEvaluatorVersions(prev => ({
+      const versions = response.data.versions.filter((v) => !v.deleted_at);
+      setEvaluatorVersions((prev) => ({
         ...prev,
         [evalName]: versions,
       }));
 
       // Set to highest version number
       if (versions.length > 0) {
-        const maxVersion = Math.max(...versions.map(v => v.version));
+        const maxVersion = Math.max(...versions.map((v) => v.version));
         setCurrentEvaluatorVersion(maxVersion);
       }
     } catch (error) {
@@ -403,13 +416,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     if (!taskId || !api) return;
     try {
       setLoadingEvalDetails(true);
-      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
-        evalName,
-        String(evalVersion),
-        taskId
-      );
+      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(evalName, String(evalVersion), taskId);
       if (response.data.variables) {
-        setEvalVariables(prev => ({
+        setEvalVariables((prev) => ({
           ...prev,
           [`${evalName}-${evalVersion}`]: {
             name: evalName,
@@ -429,11 +438,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     if (!taskId || !api) return;
     try {
       setLoadingInstructions(true);
-      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
-        evalName,
-        String(evalVersion),
-        taskId
-      );
+      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(evalName, String(evalVersion), taskId);
       setSelectedEvalInstructions({
         name: evalName,
         version: evalVersion,
@@ -450,25 +455,23 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const handleAddPromptVersion = (version: number) => {
     if (!selectedPromptName) return;
 
-    const existingIndex = formData.promptVersions.findIndex(
-      pv => pv.promptName === selectedPromptName && pv.version === version
-    );
+    const existingIndex = formData.promptVersions.findIndex((pv) => pv.promptName === selectedPromptName && pv.version === version);
 
     if (existingIndex >= 0) {
       // Remove if already selected (toggle off)
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         promptVersions: prev.promptVersions.filter((_, i) => i !== existingIndex),
       }));
 
       // Also remove from visible older versions if it's not in the top 5
-      const top5Versions = promptVersions.slice(0, 5).map(v => v.version);
+      const top5Versions = promptVersions.slice(0, 5).map((v) => v.version);
       if (!top5Versions.includes(version)) {
-        setVisibleOlderVersions(prev => prev.filter(v => v !== version));
+        setVisibleOlderVersions((prev) => prev.filter((v) => v !== version));
       }
     } else {
       // Add if not selected (toggle on)
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         promptVersions: [...prev.promptVersions, { promptName: selectedPromptName, version }],
       }));
@@ -478,12 +481,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const handleAddEvaluator = async () => {
     if (!currentEvaluatorName || !currentEvaluatorVersion) return;
 
-    const alreadyAdded = formData.evaluators.some(
-      e => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion
-    );
+    const alreadyAdded = formData.evaluators.some((e) => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion);
 
     if (!alreadyAdded) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as number }],
       }));
@@ -495,7 +496,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   };
 
   const handleRemoveEvaluator = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       evaluators: prev.evaluators.filter((_, i) => i !== index),
     }));
@@ -595,6 +596,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     setCurrentEvalIndex(0);
     setCompletedSteps(new Set());
     setErrors({});
+    setIsInitializing(false);
     onClose();
   };
 
@@ -611,30 +613,22 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         const hasCurrentEvaluator = !!(currentEvaluatorName && currentEvaluatorVersion);
         const totalEvaluators = formData.evaluators.length + (hasCurrentEvaluator ? 1 : 0);
 
-        return !!(
-          formData.name.trim() &&
-          formData.promptVersions.length > 0 &&
-          formData.datasetId &&
-          formData.datasetVersion &&
-          totalEvaluators > 0
-        );
+        return !!(formData.name.trim() && formData.promptVersions.length > 0 && formData.datasetId && formData.datasetVersion && totalEvaluators > 0);
       case 1:
         // Configure prompt variables - need all mappings
         if (!formData.promptVariableMappings) return false;
-        return promptVariables.every(varName => !!formData.promptVariableMappings![varName]);
+        return promptVariables.every((varName) => !!formData.promptVariableMappings![varName]);
       case 2:
         // Configure evals - need all mappings for ALL evaluators
         if (!formData.evalVariableMappings || formData.evaluators.length === 0) return false;
 
-        return formData.evaluators.every(evaluator => {
-          const evalMappings = formData.evalVariableMappings?.find(
-            m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-          );
+        return formData.evaluators.every((evaluator) => {
+          const evalMappings = formData.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
           if (!evalMappings) return false;
 
           const evalKey = `${evaluator.name}-${evaluator.version}`;
           const evalVars = evalVariables[evalKey]?.variables || [];
-          return evalVars.every(varName => !!evalMappings.mappings[varName]);
+          return evalVars.every((varName) => !!evalMappings.mappings[varName]);
         });
       default:
         return false;
@@ -645,11 +639,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     if (currentStep === 0) {
       // Before proceeding, add the current evaluator selection if both fields are filled
       if (currentEvaluatorName && currentEvaluatorVersion) {
-        const alreadyAdded = formData.evaluators.some(
-          e => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion
-        );
+        const alreadyAdded = formData.evaluators.some((e) => e.name === currentEvaluatorName && e.version === currentEvaluatorVersion);
         if (!alreadyAdded) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
             evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as number }],
           }));
@@ -672,7 +664,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
             taskId
           );
           const variables = response.data.variables || [];
-          variables.forEach(v => allVariablesSet.add(v));
+          variables.forEach((v) => allVariablesSet.add(v));
         }
 
         const vars = Array.from(allVariablesSet);
@@ -684,30 +676,30 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           const mappings: PromptVariableMappings = {};
           const existingMappings = formData.promptVariableMappings || {};
 
-          vars.forEach(varName => {
+          vars.forEach((varName) => {
             // First check if we have an existing mapping that's still valid
             if (existingMappings[varName] && datasetColumns.includes(existingMappings[varName])) {
               mappings[varName] = existingMappings[varName];
             } else {
               // Otherwise try to auto-match
-              const matchingColumn = datasetColumns.find(col => col === varName);
+              const matchingColumn = datasetColumns.find((col) => col === varName);
               if (matchingColumn) {
                 mappings[varName] = matchingColumn;
               }
             }
           });
-          setFormData(prev => ({ ...prev, promptVariableMappings: mappings }));
+          setFormData((prev) => ({ ...prev, promptVariableMappings: mappings }));
         } else {
           // Clear mappings if no variables
-          setFormData(prev => ({ ...prev, promptVariableMappings: {} }));
+          setFormData((prev) => ({ ...prev, promptVariableMappings: {} }));
         }
       } catch (error) {
         console.error("Failed to load prompt variables:", error);
       } finally {
         setLoadingPromptDetails(false);
       }
-      setCompletedSteps(prev => new Set(prev).add(currentStep));
-      setCurrentStep(prev => prev + 1);
+      setCompletedSteps((prev) => new Set(prev).add(currentStep));
+      setCurrentStep((prev) => prev + 1);
     } else if (currentStep === 1) {
       // Load eval variables for first evaluator before moving to step 2
       // Always reload to reflect any changes made by going back and modifying evaluators
@@ -719,21 +711,19 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         // Clean up eval variable mappings for removed evaluators
         // Only keep mappings for evaluators that still exist in formData.evaluators
         if (formData.evalVariableMappings) {
-          const currentEvalKeys = new Set(
-            formData.evaluators.map(e => `${e.name}-${e.version}`)
-          );
-          const cleanedMappings = formData.evalVariableMappings.filter(mapping =>
+          const currentEvalKeys = new Set(formData.evaluators.map((e) => `${e.name}-${e.version}`));
+          const cleanedMappings = formData.evalVariableMappings.filter((mapping) =>
             currentEvalKeys.has(`${mapping.evalName}-${mapping.evalVersion}`)
           );
 
           // Update formData with cleaned mappings
           if (cleanedMappings.length !== formData.evalVariableMappings.length) {
-            setFormData(prev => ({ ...prev, evalVariableMappings: cleanedMappings }));
+            setFormData((prev) => ({ ...prev, evalVariableMappings: cleanedMappings }));
           }
         }
       }
-      setCompletedSteps(prev => new Set(prev).add(currentStep));
-      setCurrentStep(prev => prev + 1);
+      setCompletedSteps((prev) => new Set(prev).add(currentStep));
+      setCurrentStep((prev) => prev + 1);
     } else if (currentStep === 2) {
       // Within evals step, navigate between evaluators
       const nextEvalIndex = currentEvalIndex + 1;
@@ -744,7 +734,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         setCurrentEvalIndex(nextEvalIndex);
       } else {
         // All evaluators configured, can submit
-        setCompletedSteps(prev => new Set(prev).add(currentStep));
+        setCompletedSteps((prev) => new Set(prev).add(currentStep));
       }
     }
   };
@@ -752,10 +742,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const handleBack = () => {
     if (currentStep === 2 && currentEvalIndex > 0) {
       // Within evals step, go back to previous evaluator
-      setCurrentEvalIndex(prev => prev - 1);
+      setCurrentEvalIndex((prev) => prev - 1);
     } else {
       // Go back to previous main step
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
       if (currentStep === 2) {
         // Reset eval index when leaving step 2
         setCurrentEvalIndex(0);
@@ -775,14 +765,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     const evaluator = formData.evaluators[currentEvalIndex];
     if (!evaluator) return false;
 
-    const evalMappings = formData.evalVariableMappings?.find(
-      m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-    );
+    const evalMappings = formData.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
     if (!evalMappings) return false;
 
     const evalKey = `${evaluator.name}-${evaluator.version}`;
     const evalVars = evalVariables[evalKey]?.variables || [];
-    return evalVars.every(varName => !!evalMappings.mappings[varName]);
+    return evalVars.every((varName) => !!evalMappings.mappings[varName]);
   };
 
   // Render step content
@@ -799,401 +787,379 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const renderExperimentInfoStep = () => (
     <Box className="flex flex-col gap-4 mt-2">
       {/* Basic Info */}
-          <TextField
-            label="Experiment Name"
-            value={formData.name}
-            onChange={(e) => {
-              setFormData(prev => ({ ...prev, name: e.target.value }));
-              if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
+      <TextField
+        label="Experiment Name"
+        value={formData.name}
+        onChange={(e) => {
+          setFormData((prev) => ({ ...prev, name: e.target.value }));
+          if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+        }}
+        error={!!errors.name}
+        helperText={errors.name}
+        fullWidth
+        required
+        placeholder="e.g., Customer Support Tone Variations"
+        autoFocus
+      />
+
+      <TextField
+        label="Description"
+        value={formData.description}
+        onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+        fullWidth
+        multiline
+        rows={2}
+        placeholder="Describe the purpose of this experiment"
+      />
+
+      {/* Prompt Selection */}
+      <Box className="border border-gray-300 rounded p-4">
+        <Box className="flex items-center gap-2 mb-2">
+          <Typography variant="subtitle1" className="font-semibold">
+            Prompt Versions *
+          </Typography>
+          <Tooltip
+            title="Select one or more versions of a prompt to test. Each version will be evaluated against all test cases in your dataset."
+            arrow
+            placement="right"
+          >
+            <InfoOutlinedIcon
+              sx={{
+                fontSize: 18,
+                color: "text.secondary",
+                cursor: "help",
+              }}
+            />
+          </Tooltip>
+        </Box>
+
+        <Box className="flex gap-2 mb-3 mt-4">
+          <Autocomplete
+            options={prompts}
+            getOptionLabel={(option) => option.name}
+            value={prompts.find((p) => p.name === selectedPromptName) || null}
+            onChange={(_, value) => {
+              setSelectedPromptName(value?.name || "");
+              setPromptVersions([]);
+              setVisibleOlderVersions([]);
             }}
-            error={!!errors.name}
-            helperText={errors.name}
-            fullWidth
-            required
-            placeholder="e.g., Customer Support Tone Variations"
-            autoFocus
+            loading={loadingPrompts}
+            renderInput={(params) => <TextField {...params} label="Select Prompt" placeholder="Search prompts..." />}
+            className="flex-1"
           />
+        </Box>
 
-          <TextField
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            fullWidth
-            multiline
-            rows={2}
-            placeholder="Describe the purpose of this experiment"
-          />
+        {selectedPromptName && (
+          <Box className="mb-3">
+            <Typography variant="body2" className="text-gray-600 mb-2">
+              Select versions to include (click to toggle):
+            </Typography>
+            {loadingPromptVersions ? (
+              <CircularProgress size={24} />
+            ) : (
+              <>
+                <Box className="flex flex-wrap gap-2 mb-3">
+                  {(() => {
+                    // Get the 5 most recent versions
+                    const recentVersions = promptVersions.slice(0, 5);
+                    // Get older versions that have been explicitly added
+                    const olderVersionsToShow = promptVersions.filter(
+                      (v) => visibleOlderVersions.includes(v.version) && !recentVersions.some((rv) => rv.version === v.version)
+                    );
+                    const allVisibleVersions = [...recentVersions, ...olderVersionsToShow];
 
-          {/* Prompt Selection */}
-          <Box className="border border-gray-300 rounded p-4">
-            <Box className="flex items-center gap-2 mb-2">
-              <Typography variant="subtitle1" className="font-semibold">
-                Prompt Versions *
-              </Typography>
-              <Tooltip
-                title="Select one or more versions of a prompt to test. Each version will be evaluated against all test cases in your dataset."
-                arrow
-                placement="right"
-              >
-                <InfoOutlinedIcon
-                  sx={{
-                    fontSize: 18,
-                    color: 'text.secondary',
-                    cursor: 'help'
-                  }}
-                />
-              </Tooltip>
-            </Box>
+                    return allVisibleVersions.map((version) => (
+                      <Chip
+                        key={version.version}
+                        label={`v${version.version}`}
+                        onClick={() => handleAddPromptVersion(version.version)}
+                        color={
+                          formData.promptVersions.some((pv) => pv.promptName === selectedPromptName && pv.version === version.version)
+                            ? "primary"
+                            : "default"
+                        }
+                        variant={
+                          formData.promptVersions.some((pv) => pv.promptName === selectedPromptName && pv.version === version.version)
+                            ? "filled"
+                            : "outlined"
+                        }
+                      />
+                    ));
+                  })()}
+                </Box>
 
-            <Box className="flex gap-2 mb-3 mt-4">
-              <Autocomplete
-                options={prompts}
-                getOptionLabel={(option) => option.name}
-                value={prompts.find(p => p.name === selectedPromptName) || null}
-                onChange={(_, value) => {
-                  setSelectedPromptName(value?.name || "");
-                  setPromptVersions([]);
-                  setVisibleOlderVersions([]);
-                }}
-                loading={loadingPrompts}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Prompt"
-                    placeholder="Search prompts..."
-                  />
+                {promptVersions.length > 5 && (
+                  <FormControl size="small" className="w-64">
+                    <InputLabel>Add older version</InputLabel>
+                    <Select
+                      value=""
+                      onChange={(e) => {
+                        const version = Number(e.target.value);
+                        if (version && !visibleOlderVersions.includes(version)) {
+                          setVisibleOlderVersions((prev) => [...prev, version]);
+                          handleAddPromptVersion(version);
+                        }
+                      }}
+                      label="Add older version"
+                    >
+                      {promptVersions.slice(5).map((version) => (
+                        <MenuItem key={version.version} value={version.version} disabled={visibleOlderVersions.includes(version.version)}>
+                          v{version.version}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 )}
-                className="flex-1"
-              />
-            </Box>
-
-            {selectedPromptName && (
-              <Box className="mb-3">
-                <Typography variant="body2" className="text-gray-600 mb-2">
-                  Select versions to include (click to toggle):
-                </Typography>
-                {loadingPromptVersions ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  <>
-                    <Box className="flex flex-wrap gap-2 mb-3">
-                      {(() => {
-                        // Get the 5 most recent versions
-                        const recentVersions = promptVersions.slice(0, 5);
-                        // Get older versions that have been explicitly added
-                        const olderVersionsToShow = promptVersions.filter(v =>
-                          visibleOlderVersions.includes(v.version) &&
-                          !recentVersions.some(rv => rv.version === v.version)
-                        );
-                        const allVisibleVersions = [...recentVersions, ...olderVersionsToShow];
-
-                        return allVisibleVersions.map((version) => (
-                          <Chip
-                            key={version.version}
-                            label={`v${version.version}`}
-                            onClick={() => handleAddPromptVersion(version.version)}
-                            color={
-                              formData.promptVersions.some(
-                                pv => pv.promptName === selectedPromptName && pv.version === version.version
-                              )
-                                ? "primary"
-                                : "default"
-                            }
-                            variant={
-                              formData.promptVersions.some(
-                                pv => pv.promptName === selectedPromptName && pv.version === version.version
-                              )
-                                ? "filled"
-                                : "outlined"
-                            }
-                          />
-                        ));
-                      })()}
-                    </Box>
-
-                    {promptVersions.length > 5 && (
-                      <FormControl size="small" className="w-64">
-                        <InputLabel>Add older version</InputLabel>
-                        <Select
-                          value=""
-                          onChange={(e) => {
-                            const version = Number(e.target.value);
-                            if (version && !visibleOlderVersions.includes(version)) {
-                              setVisibleOlderVersions(prev => [...prev, version]);
-                              handleAddPromptVersion(version);
-                            }
-                          }}
-                          label="Add older version"
-                        >
-                          {promptVersions.slice(5).map((version) => (
-                            <MenuItem
-                              key={version.version}
-                              value={version.version}
-                              disabled={visibleOlderVersions.includes(version.version)}
-                            >
-                              v{version.version}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    )}
-                  </>
-                )}
-              </Box>
-            )}
-
-            {errors.promptVersions && (
-              <Typography variant="caption" className="text-red-600 mt-2">
-                {errors.promptVersions}
-              </Typography>
+              </>
             )}
           </Box>
+        )}
 
-          {/* Dataset Selection */}
-          <Box className="border border-gray-300 rounded p-4">
-            <Box className="flex items-center gap-2 mb-2">
-              <Typography variant="subtitle1" className="font-semibold">
-                Dataset *
-              </Typography>
-              <Tooltip
-                title="Choose the dataset and version to use for testing. Each row in the dataset will be used as input for the experiment."
-                arrow
-                placement="right"
-              >
-                <InfoOutlinedIcon
-                  sx={{
-                    fontSize: 18,
-                    color: 'text.secondary',
-                    cursor: 'help'
-                  }}
-                />
-              </Tooltip>
-            </Box>
+        {errors.promptVersions && (
+          <Typography variant="caption" className="text-red-600 mt-2">
+            {errors.promptVersions}
+          </Typography>
+        )}
+      </Box>
 
-            <Box className="flex gap-2 mb-3 mt-4">
-              <Autocomplete
-                options={datasets}
-                getOptionLabel={(option) => option.name}
-                value={datasets.find(d => d.id === formData.datasetId) || null}
-                onChange={(_, value) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    datasetId: value?.id || "",
-                  }));
-                  if (value?.id) {
-                    loadDatasetVersions(value.id);
-                  } else {
-                    setDatasetVersions([]);
-                  }
-                  if (errors.datasetId) setErrors(prev => ({ ...prev, datasetId: undefined }));
-                }}
-                loading={loadingDatasets}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Dataset"
-                    error={!!errors.datasetId}
-                    placeholder="Search datasets..."
-                  />
-                )}
-                renderOption={(props, option) => (
-                  <li {...props}>
-                    <Box>
-                      <Typography variant="body2">{option.name}</Typography>
-                      {option.description && (
-                        <Typography variant="caption" className="text-gray-600">
-                          {option.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  </li>
-                )}
-                className="flex-1"
-              />
+      {/* Dataset Selection */}
+      <Box className="border border-gray-300 rounded p-4">
+        <Box className="flex items-center gap-2 mb-2">
+          <Typography variant="subtitle1" className="font-semibold">
+            Dataset *
+          </Typography>
+          <Tooltip
+            title="Choose the dataset and version to use for testing. Each row in the dataset will be used as input for the experiment."
+            arrow
+            placement="right"
+          >
+            <InfoOutlinedIcon
+              sx={{
+                fontSize: 18,
+                color: "text.secondary",
+                cursor: "help",
+              }}
+            />
+          </Tooltip>
+        </Box>
 
-              <FormControl className="w-40">
-                <InputLabel>Version</InputLabel>
+        <Box className="flex gap-2 mb-3 mt-4">
+          <Autocomplete
+            options={datasets}
+            getOptionLabel={(option) => option.name}
+            value={datasets.find((d) => d.id === formData.datasetId) || null}
+            onChange={(_, value) => {
+              setFormData((prev) => ({
+                ...prev,
+                datasetId: value?.id || "",
+              }));
+              if (value?.id) {
+                loadDatasetVersions(value.id);
+              } else {
+                setDatasetVersions([]);
+              }
+              if (errors.datasetId) setErrors((prev) => ({ ...prev, datasetId: undefined }));
+            }}
+            loading={loadingDatasets}
+            renderInput={(params) => <TextField {...params} label="Select Dataset" error={!!errors.datasetId} placeholder="Search datasets..." />}
+            renderOption={(props, option) => (
+              <li {...props}>
+                <Box>
+                  <Typography variant="body2">{option.name}</Typography>
+                  {option.description && (
+                    <Typography variant="caption" className="text-gray-600">
+                      {option.description}
+                    </Typography>
+                  )}
+                </Box>
+              </li>
+            )}
+            className="flex-1"
+          />
+
+          <FormControl className="w-40">
+            <InputLabel>Version</InputLabel>
+            <Select
+              value={formData.datasetVersion}
+              onChange={(e) => {
+                const versionNumber = e.target.value as number;
+                setFormData((prev) => ({
+                  ...prev,
+                  datasetVersion: versionNumber,
+                }));
+                // Update columns when version changes
+                const selectedVersion = datasetVersions.find((v) => v.version_number === versionNumber);
+                if (selectedVersion) {
+                  setDatasetColumns(selectedVersion.column_names);
+                }
+              }}
+              label="Version"
+              disabled={!formData.datasetId || loadingDatasetVersions}
+              displayEmpty={false}
+            >
+              {datasetVersions.map((version) => (
+                <MenuItem key={version.version_number} value={version.version_number}>
+                  v{version.version_number}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        {(errors.datasetId || errors.datasetVersion) && (
+          <Typography variant="caption" className="text-red-600">
+            {errors.datasetId || errors.datasetVersion}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Evaluator Selection */}
+      <Box className="border border-gray-300 rounded p-4">
+        <Box className="flex items-center gap-2 mb-2">
+          <Typography variant="subtitle1" className="font-semibold">
+            Evaluators *
+          </Typography>
+          <Tooltip
+            title="Select one or more evaluators to assess the quality of the prompt outputs. Each evaluator will score the results based on its criteria."
+            arrow
+            placement="right"
+          >
+            <InfoOutlinedIcon
+              sx={{
+                fontSize: 18,
+                color: "text.secondary",
+                cursor: "help",
+              }}
+            />
+          </Tooltip>
+        </Box>
+
+        <Box className="flex flex-col gap-2 mt-4">
+          {/* Existing evaluators with trash icons */}
+          {formData.evaluators.map((evaluator, index) => (
+            <Box key={`${evaluator.name}-${evaluator.version}`} className="flex gap-2 items-start">
+              <FormControl className="flex-1">
+                <InputLabel>Evaluator</InputLabel>
                 <Select
-                  value={formData.datasetVersion}
-                  onChange={(e) => {
-                    const versionNumber = e.target.value as number;
-                    setFormData(prev => ({
-                      ...prev,
-                      datasetVersion: versionNumber
-                    }));
-                    // Update columns when version changes
-                    const selectedVersion = datasetVersions.find(v => v.version_number === versionNumber);
-                    if (selectedVersion) {
-                      setDatasetColumns(selectedVersion.column_names);
+                  value={evaluator.name}
+                  label="Evaluator"
+                  onChange={async (e) => {
+                    const evalName = e.target.value;
+                    const updatedEvaluators = [...formData.evaluators];
+                    updatedEvaluators[index] = { ...updatedEvaluators[index], name: evalName };
+                    setFormData((prev) => ({ ...prev, evaluators: updatedEvaluators }));
+
+                    // Load versions for the new evaluator if needed
+                    if (evalName && !evaluatorVersions[evalName]) {
+                      await loadEvaluatorVersions(evalName);
                     }
                   }}
-                  label="Version"
-                  disabled={!formData.datasetId || loadingDatasetVersions}
-                  displayEmpty={false}
                 >
-                  {datasetVersions.map((version) => (
-                    <MenuItem key={version.version_number} value={version.version_number}>
-                      v{version.version_number}
+                  {evaluators.map((e) => (
+                    <MenuItem key={e.name} value={e.name}>
+                      {e.name}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
-            </Box>
 
-            {(errors.datasetId || errors.datasetVersion) && (
-              <Typography variant="caption" className="text-red-600">
-                {errors.datasetId || errors.datasetVersion}
-              </Typography>
-            )}
-          </Box>
-
-          {/* Evaluator Selection */}
-          <Box className="border border-gray-300 rounded p-4">
-            <Box className="flex items-center gap-2 mb-2">
-              <Typography variant="subtitle1" className="font-semibold">
-                Evaluators *
-              </Typography>
-              <Tooltip
-                title="Select one or more evaluators to assess the quality of the prompt outputs. Each evaluator will score the results based on its criteria."
-                arrow
-                placement="right"
-              >
-                <InfoOutlinedIcon
-                  sx={{
-                    fontSize: 18,
-                    color: 'text.secondary',
-                    cursor: 'help'
+              <FormControl className="flex-1">
+                <InputLabel>Version</InputLabel>
+                <Select
+                  value={evaluator.version}
+                  label="Version"
+                  onChange={(e) => {
+                    const updatedEvaluators = [...formData.evaluators];
+                    updatedEvaluators[index] = { ...updatedEvaluators[index], version: e.target.value as number };
+                    setFormData((prev) => ({ ...prev, evaluators: updatedEvaluators }));
                   }}
-                />
-              </Tooltip>
-            </Box>
-
-            <Box className="flex flex-col gap-2 mt-4">
-              {/* Existing evaluators with trash icons */}
-              {formData.evaluators.map((evaluator, index) => (
-                <Box key={`${evaluator.name}-${evaluator.version}`} className="flex gap-2 items-start">
-                  <FormControl className="flex-1">
-                    <InputLabel>Evaluator</InputLabel>
-                    <Select
-                      value={evaluator.name}
-                      label="Evaluator"
-                      onChange={async (e) => {
-                        const evalName = e.target.value;
-                        const updatedEvaluators = [...formData.evaluators];
-                        updatedEvaluators[index] = { ...updatedEvaluators[index], name: evalName };
-                        setFormData(prev => ({ ...prev, evaluators: updatedEvaluators }));
-
-                        // Load versions for the new evaluator if needed
-                        if (evalName && !evaluatorVersions[evalName]) {
-                          await loadEvaluatorVersions(evalName);
-                        }
-                      }}
-                    >
-                      {evaluators.map((e) => (
-                        <MenuItem key={e.name} value={e.name}>
-                          {e.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl className="flex-1">
-                    <InputLabel>Version</InputLabel>
-                    <Select
-                      value={evaluator.version}
-                      label="Version"
-                      onChange={(e) => {
-                        const updatedEvaluators = [...formData.evaluators];
-                        updatedEvaluators[index] = { ...updatedEvaluators[index], version: e.target.value as number };
-                        setFormData(prev => ({ ...prev, evaluators: updatedEvaluators }));
-                      }}
-                      disabled={!evaluator.name}
-                    >
-                      {evaluator.name &&
-                        evaluatorVersions[evaluator.name]?.map((version) => (
-                          <MenuItem key={version.version} value={version.version}>
-                            v{version.version}
-                          </MenuItem>
-                        ))}
-                    </Select>
-                  </FormControl>
-
-                  <IconButton
-                    onClick={() => handleRemoveEvaluator(index)}
-                    className="text-red-600"
-                    sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
-              ))}
-
-              {/* New evaluator row with Add button */}
-              <Box className="flex gap-2 items-start">
-                <FormControl className="flex-1">
-                  <InputLabel>Evaluator</InputLabel>
-                  <Select
-                    value={currentEvaluatorName}
-                    onChange={async (e) => {
-                      const evalName = e.target.value;
-                      setCurrentEvaluatorName(evalName);
-
-                      if (evalName && !evaluatorVersions[evalName]) {
-                        // Load versions - loadEvaluatorVersions will auto-set the most recent version
-                        await loadEvaluatorVersions(evalName);
-                      } else if (evalName && evaluatorVersions[evalName]) {
-                        // If versions are already loaded, set the most recent (highest) version
-                        const maxVersion = Math.max(...evaluatorVersions[evalName].map(v => v.version));
-                        setCurrentEvaluatorVersion(maxVersion);
-                      } else {
-                        setCurrentEvaluatorVersion("");
-                      }
-                    }}
-                    label="Evaluator"
-                  >
-                    {evaluators.map((evaluator) => (
-                      <MenuItem key={evaluator.name} value={evaluator.name}>
-                        {evaluator.name}
+                  disabled={!evaluator.name}
+                >
+                  {evaluator.name &&
+                    evaluatorVersions[evaluator.name]?.map((version) => (
+                      <MenuItem key={version.version} value={version.version}>
+                        v{version.version}
                       </MenuItem>
                     ))}
-                  </Select>
-                </FormControl>
+                </Select>
+              </FormControl>
 
-                <FormControl className="flex-1">
-                  <InputLabel>Version</InputLabel>
-                  <Select
-                    value={currentEvaluatorVersion}
-                    onChange={(e) => setCurrentEvaluatorVersion(e.target.value as number)}
-                    label="Version"
-                    disabled={!currentEvaluatorName}
-                  >
-                    {currentEvaluatorName &&
-                      evaluatorVersions[currentEvaluatorName]?.map((version) => (
-                        <MenuItem key={version.version} value={version.version}>
-                          v{version.version}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                </FormControl>
-
-                <Button
-                  variant="outlined"
-                  onClick={handleAddEvaluator}
-                  disabled={!currentEvaluatorName || !currentEvaluatorVersion}
-                  startIcon={<AddIcon />}
-                  sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
-                >
-                  Add
-                </Button>
-              </Box>
+              <IconButton
+                onClick={() => handleRemoveEvaluator(index)}
+                className="text-red-600"
+                sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
+              >
+                <DeleteIcon />
+              </IconButton>
             </Box>
+          ))}
 
-            {errors.evaluators && (
-              <Typography variant="caption" className="text-red-600 mt-2">
-                {errors.evaluators}
-              </Typography>
-            )}
+          {/* New evaluator row with Add button */}
+          <Box className="flex gap-2 items-start">
+            <FormControl className="flex-1">
+              <InputLabel>Evaluator</InputLabel>
+              <Select
+                value={currentEvaluatorName}
+                onChange={async (e) => {
+                  const evalName = e.target.value;
+                  setCurrentEvaluatorName(evalName);
+
+                  if (evalName && !evaluatorVersions[evalName]) {
+                    // Load versions - loadEvaluatorVersions will auto-set the most recent version
+                    await loadEvaluatorVersions(evalName);
+                  } else if (evalName && evaluatorVersions[evalName]) {
+                    // If versions are already loaded, set the most recent (highest) version
+                    const maxVersion = Math.max(...evaluatorVersions[evalName].map((v) => v.version));
+                    setCurrentEvaluatorVersion(maxVersion);
+                  } else {
+                    setCurrentEvaluatorVersion("");
+                  }
+                }}
+                label="Evaluator"
+              >
+                {evaluators.map((evaluator) => (
+                  <MenuItem key={evaluator.name} value={evaluator.name}>
+                    {evaluator.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl className="flex-1">
+              <InputLabel>Version</InputLabel>
+              <Select
+                value={currentEvaluatorVersion}
+                onChange={(e) => setCurrentEvaluatorVersion(e.target.value as number)}
+                label="Version"
+                disabled={!currentEvaluatorName}
+              >
+                {currentEvaluatorName &&
+                  evaluatorVersions[currentEvaluatorName]?.map((version) => (
+                    <MenuItem key={version.version} value={version.version}>
+                      v{version.version}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+
+            <Button
+              variant="outlined"
+              onClick={handleAddEvaluator}
+              disabled={!currentEvaluatorName || !currentEvaluatorVersion}
+              startIcon={<AddIcon />}
+              sx={{ mt: 0, height: 56, width: 80, minWidth: 80, maxWidth: 80 }}
+            >
+              Add
+            </Button>
           </Box>
+        </Box>
+
+        {errors.evaluators && (
+          <Typography variant="caption" className="text-red-600 mt-2">
+            {errors.evaluators}
+          </Typography>
+        )}
+      </Box>
 
       {errors.general && (
         <Typography variant="body2" className="text-red-600">
@@ -1225,7 +1191,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
               <Select
                 value={formData.promptVariableMappings?.[varName] || ""}
                 onChange={(e) => {
-                  setFormData(prev => ({
+                  setFormData((prev) => ({
                     ...prev,
                     promptVariableMappings: {
                       ...prev.promptVariableMappings,
@@ -1257,9 +1223,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
     const evalKey = `${evaluator.name}-${evaluator.version}`;
     const evalVars = evalVariables[evalKey]?.variables || [];
-    const currentMappings = formData.evalVariableMappings?.find(
-      m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-    );
+    const currentMappings = formData.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
     return (
       <Box className="flex flex-col gap-4 mt-2">
@@ -1283,10 +1247,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           </Typography>
           <Box className="p-3 bg-blue-50 border border-blue-200 rounded">
             <Typography variant="body2" className="text-gray-800">
-              <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference text, ground truth labels).
+              <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference
+              text, ground truth labels).
             </Typography>
             <Typography variant="body2" className="text-gray-800 mt-1">
-              <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check accuracy, relevance, or quality of the output).
+              <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check
+              accuracy, relevance, or quality of the output).
             </Typography>
           </Box>
         </Box>
@@ -1319,24 +1285,23 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                         if (newValue === null) return;
 
                         const newMappings = formData.evalVariableMappings || [];
-                        const existingIndex = newMappings.findIndex(
-                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-                        );
+                        const existingIndex = newMappings.findIndex((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
                         const updatedMapping = {
                           evalName: evaluator.name,
                           evalVersion: evaluator.version,
                           mappings: {
                             ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
-                            [varName]: newValue === "dataset_column"
-                              ? {
-                                  sourceType: "dataset_column" as VariableSourceType,
-                                  datasetColumn: mapping?.datasetColumn || "",
-                                }
-                              : {
-                                  sourceType: "experiment_output" as VariableSourceType,
-                                  jsonPath: mapping?.jsonPath || "",
-                                },
+                            [varName]:
+                              newValue === "dataset_column"
+                                ? {
+                                    sourceType: "dataset_column" as VariableSourceType,
+                                    datasetColumn: mapping?.datasetColumn || "",
+                                  }
+                                : {
+                                    sourceType: "experiment_output" as VariableSourceType,
+                                    jsonPath: mapping?.jsonPath || "",
+                                  },
                           },
                         };
 
@@ -1346,69 +1311,63 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                           newMappings.push(updatedMapping);
                         }
 
-                        setFormData(prev => ({
+                        setFormData((prev) => ({
                           ...prev,
                           evalVariableMappings: newMappings,
                         }));
                       }}
                       size="small"
                     >
-                      <ToggleButton value="dataset_column">
-                        Dataset Column
-                      </ToggleButton>
-                      <ToggleButton value="experiment_output">
-                        Experiment Output
-                      </ToggleButton>
+                      <ToggleButton value="dataset_column">Dataset Column</ToggleButton>
+                      <ToggleButton value="experiment_output">Experiment Output</ToggleButton>
                     </ToggleButtonGroup>
                   </Box>
 
                   {sourceType === "dataset_column" ? (
                     <Box>
                       <FormControl fullWidth size="small">
-                      <InputLabel>Dataset Column</InputLabel>
-                      <Select
-                        value={mapping?.datasetColumn || ""}
-                        onChange={(e) => {
-                          const newMappings = formData.evalVariableMappings || [];
-                          const existingIndex = newMappings.findIndex(
-                            m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-                          );
+                        <InputLabel>Dataset Column</InputLabel>
+                        <Select
+                          value={mapping?.datasetColumn || ""}
+                          onChange={(e) => {
+                            const newMappings = formData.evalVariableMappings || [];
+                            const existingIndex = newMappings.findIndex((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
-                          const updatedMapping = {
-                            evalName: evaluator.name,
-                            evalVersion: evaluator.version,
-                            mappings: {
-                              ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
-                              [varName]: {
-                                sourceType: "dataset_column" as VariableSourceType,
-                                datasetColumn: e.target.value,
+                            const updatedMapping = {
+                              evalName: evaluator.name,
+                              evalVersion: evaluator.version,
+                              mappings: {
+                                ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
+                                [varName]: {
+                                  sourceType: "dataset_column" as VariableSourceType,
+                                  datasetColumn: e.target.value,
+                                },
                               },
-                            },
-                          };
+                            };
 
-                          if (existingIndex >= 0) {
-                            newMappings[existingIndex] = updatedMapping;
-                          } else {
-                            newMappings.push(updatedMapping);
-                          }
+                            if (existingIndex >= 0) {
+                              newMappings[existingIndex] = updatedMapping;
+                            } else {
+                              newMappings.push(updatedMapping);
+                            }
 
-                          setFormData(prev => ({
-                            ...prev,
-                            evalVariableMappings: newMappings,
-                          }));
-                        }}
-                        label="Dataset Column"
-                      >
-                        <MenuItem value="">
-                          <em>Select a column</em>
-                        </MenuItem>
-                        {datasetColumns.map((column) => (
-                          <MenuItem key={column} value={column}>
-                            {column}
+                            setFormData((prev) => ({
+                              ...prev,
+                              evalVariableMappings: newMappings,
+                            }));
+                          }}
+                          label="Dataset Column"
+                        >
+                          <MenuItem value="">
+                            <em>Select a column</em>
                           </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                          {datasetColumns.map((column) => (
+                            <MenuItem key={column} value={column}>
+                              {column}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </Box>
                   ) : (
                     <Box className="p-3 bg-gray-50 border border-gray-200 rounded">
@@ -1428,18 +1387,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
   return (
     <>
-      <Dialog
-        open={open}
-        onClose={handleCancel}
-        maxWidth="md"
-        fullWidth
-        aria-labelledby="create-experiment-dialog-title"
-      >
-        <DialogTitle id="create-experiment-dialog-title">
-          {initialData ? "Create Experiment from Template" : "Create New Experiment"}
-        </DialogTitle>
+      <Dialog open={open} onClose={handleCancel} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
+        <DialogTitle id="create-experiment-dialog-title">{initialData ? "Create Experiment from Template" : "Create New Experiment"}</DialogTitle>
         <DialogContent>
-          {isLoadingInitialData ? (
+          {isLoadingInitialData || isInitializing || (initialData && formData.promptVersions.length === 0) ? (
             <Box className="flex justify-center items-center py-8">
               <CircularProgress />
             </Box>
@@ -1473,14 +1424,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
               onClick={handleNext}
               variant="contained"
               color="primary"
-              disabled={
-                (currentStep === 2 ? !canProceedFromCurrentEval() : !canProceedFromStep(currentStep)) ||
-                isSubmitting
-              }
+              disabled={(currentStep === 2 ? !canProceedFromCurrentEval() : !canProceedFromStep(currentStep)) || isSubmitting}
             >
-              {currentStep === 0 ? "Configure Prompts" :
-               currentStep === 1 ? "Configure Evals" :
-               "Next Evaluator"}
+              {currentStep === 0 ? "Configure Prompts" : currentStep === 1 ? "Configure Evals" : "Next Evaluator"}
             </Button>
           ) : (
             <Button
