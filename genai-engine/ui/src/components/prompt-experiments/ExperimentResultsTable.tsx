@@ -194,11 +194,13 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                     <Typography variant="h6" className="font-semibold text-indigo-900">
                       {promptResult.name} v{promptResult.version}
                     </Typography>
-                    <Chip
-                      label={`Cost: $${promptResult.output.cost}`}
-                      size="small"
-                      className="bg-white"
-                    />
+                    {promptResult.output && (
+                      <Chip
+                        label={`Cost: $${promptResult.output.cost}`}
+                        size="small"
+                        className="bg-white"
+                      />
+                    )}
                   </Box>
 
                   <CardContent>
@@ -237,13 +239,23 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                           Output Message:
                         </Typography>
                         <Box className="max-h-96 overflow-auto">
-                          <MessageDisplay
-                            message={{ role: "assistant", content: promptResult.output.content }}
-                          />
-                          {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
-                            <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
-                              <Typography variant="caption" className="font-medium text-purple-700">
-                                Tool Calls: {promptResult.output.tool_calls.length}
+                          {promptResult.output ? (
+                            <>
+                              <MessageDisplay
+                                message={{ role: "assistant", content: promptResult.output.content }}
+                              />
+                              {promptResult.output.tool_calls && promptResult.output.tool_calls.length > 0 && (
+                                <Box className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded">
+                                  <Typography variant="caption" className="font-medium text-purple-700">
+                                    Tool Calls: {promptResult.output.tool_calls.length}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </>
+                          ) : (
+                            <Box className="p-3 bg-gray-100 border border-gray-300 rounded">
+                              <Typography variant="body2" className="text-gray-500 italic">
+                                No output available
                               </Typography>
                             </Box>
                           )}
@@ -264,18 +276,28 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                 <Typography variant="body2" className="font-medium text-gray-900">
                                   {evalItem.eval_name} v{evalItem.eval_version}
                                 </Typography>
-                                <Chip
-                                  label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
-                                  size="small"
-                                  color={evalItem.eval_results.score === 1 ? "success" : "error"}
-                                />
-                                <Chip
-                                  label={`Cost: $${evalItem.eval_results.cost.toFixed(4)}`}
-                                  size="small"
-                                  variant="outlined"
-                                />
+                                {evalItem.eval_results ? (
+                                  <>
+                                    <Chip
+                                      label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
+                                      size="small"
+                                      color={evalItem.eval_results.score === 1 ? "success" : "error"}
+                                    />
+                                    <Chip
+                                      label={`Cost: $${evalItem.eval_results.cost.toFixed(4)}`}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  </>
+                                ) : (
+                                  <Chip
+                                    label="Pending"
+                                    size="small"
+                                    color="default"
+                                  />
+                                )}
                               </Box>
-                              {evalItem.eval_results.explanation && (
+                              {evalItem.eval_results?.explanation && (
                                 <Typography variant="body2" className="text-gray-700 mt-1">
                                   {evalItem.eval_results.explanation}
                                 </Typography>
@@ -343,7 +365,7 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
       const evalResult = promptResult.evals.find(
         (e) => e.eval_name === evalCol.name && e.eval_version === evalCol.version
       );
-      if (evalResult) {
+      if (evalResult?.eval_results?.score !== undefined) {
         scores.push(evalResult.eval_results.score);
       }
     });
@@ -400,7 +422,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   taskId,
   experimentId,
 }) => {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
   const pageSize = 20;
   const { testCases, totalPages, totalCount, isLoading, error } = useExperimentTestCases(experimentId, page, pageSize);
   const [selectedTestCaseIndex, setSelectedTestCaseIndex] = useState<number>(-1);
@@ -433,7 +455,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     if (selectedTestCaseIndex > 0) {
       // Navigate within current page
       setSelectedTestCaseIndex(selectedTestCaseIndex - 1);
-    } else if (page > 1) {
+    } else if (page > 0) {
       // Load previous page and go to last item
       setPendingIndexAfterPageLoad("last");
       setPage(page - 1);
@@ -444,7 +466,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     if (selectedTestCaseIndex < testCases.length - 1) {
       // Navigate within current page
       setSelectedTestCaseIndex(selectedTestCaseIndex + 1);
-    } else if (page < totalPages) {
+    } else if (page < totalPages - 1) {
       // Load next page and go to first item
       setPendingIndexAfterPageLoad("first");
       setPage(page + 1);
@@ -452,7 +474,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   };
 
   // Calculate global index for display
-  const globalIndex = (page - 1) * pageSize + selectedTestCaseIndex;
+  const globalIndex = page * pageSize + selectedTestCaseIndex;
 
   // Extract unique variable columns and eval columns from test cases
   const variableColumns = React.useMemo(() => {
@@ -479,7 +501,8 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
   }, [testCases]);
 
   const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
+    // Convert from 1-based MUI Pagination to 0-based internal state
+    setPage(value - 1);
   };
 
   if (isLoading) {
@@ -551,7 +574,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
         <Box className="flex justify-center mt-4">
           <Pagination
             count={totalPages}
-            page={page}
+            page={page + 1}
             onChange={handlePageChange}
             color="primary"
           />

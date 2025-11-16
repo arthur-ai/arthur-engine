@@ -11053,16 +11053,22 @@
                         "description": "Input variables used for the eval"
                     },
                     "eval_results": {
-                        "$ref": "#/components/schemas/EvalResults",
-                        "description": "Results from the eval"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EvalResults"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Results from the eval (None if not yet executed)"
                     }
                 },
                 "type": "object",
                 "required": [
                     "eval_name",
                     "eval_version",
-                    "eval_input_variables",
-                    "eval_results"
+                    "eval_input_variables"
                 ],
                 "title": "EvalExecution",
                 "description": "Details of an eval execution"
@@ -11081,7 +11087,7 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/VariableMapping-Input"
+                            "$ref": "#/components/schemas/EvalVariableMapping-Input"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
@@ -11111,7 +11117,7 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/VariableMapping-Output"
+                            "$ref": "#/components/schemas/EvalVariableMapping-Output"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
@@ -11186,6 +11192,76 @@
                 ],
                 "title": "EvalResults",
                 "description": "Results from an eval execution"
+            },
+            "EvalVariableMapping-Input": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the eval variable"
+                    },
+                    "source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Source of the variable value",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
+                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "EvalVariableMapping",
+                "description": "Mapping of an eval variable to its source (dataset column or experiment output)"
+            },
+            "EvalVariableMapping-Output": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the eval variable"
+                    },
+                    "source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Source of the variable value",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
+                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "EvalVariableMapping",
+                "description": "Mapping of an eval variable to its source (dataset column or experiment output)"
             },
             "ExampleConfig": {
                 "properties": {
@@ -11298,7 +11374,6 @@
                 "enum": [
                     "queued",
                     "running",
-                    "evaluating",
                     "failed",
                     "completed"
                 ],
@@ -14087,7 +14162,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.173"
+                                "version": "1.0"
                             }
                         ]
                     }
@@ -15019,6 +15094,21 @@
                         "title": "Prompt Name",
                         "description": "Name of the prompt being tested"
                     },
+                    "total_rows": {
+                        "type": "integer",
+                        "title": "Total Rows",
+                        "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
+                    },
                     "dataset_ref": {
                         "$ref": "#/components/schemas/DatasetRef",
                         "description": "Reference to the dataset used"
@@ -15047,6 +15137,9 @@
                     "created_at",
                     "status",
                     "prompt_name",
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows",
                     "dataset_ref",
                     "prompt_ref",
                     "eval_list",
@@ -15151,6 +15244,16 @@
                         "type": "integer",
                         "title": "Total Rows",
                         "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
                     }
                 },
                 "type": "object",
@@ -15160,7 +15263,9 @@
                     "created_at",
                     "status",
                     "prompt_name",
-                    "total_rows"
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows"
                 ],
                 "title": "PromptExperimentSummary",
                 "description": "Summary of a prompt experiment"
@@ -15209,11 +15314,11 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/VariableMapping-Input"
+                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to data sources"
+                        "description": "Mapping of prompt variables to dataset columns"
                     }
                 },
                 "type": "object",
@@ -15242,11 +15347,11 @@
                     },
                     "variable_mapping": {
                         "items": {
-                            "$ref": "#/components/schemas/VariableMapping-Output"
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
                         },
                         "type": "array",
                         "title": "Variable Mapping",
-                        "description": "Mapping of prompt variables to data sources"
+                        "description": "Mapping of prompt variables to dataset columns"
                     }
                 },
                 "type": "object",
@@ -15276,8 +15381,15 @@
                         "description": "Prompt with variables replaced"
                     },
                     "output": {
-                        "$ref": "#/components/schemas/PromptOutput",
-                        "description": "Output from the prompt"
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PromptOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the prompt (None if not yet executed)"
                     },
                     "evals": {
                         "items": {
@@ -15293,7 +15405,6 @@
                     "name",
                     "version",
                     "rendered_prompt",
-                    "output",
                     "evals"
                 ],
                 "title": "PromptResult",
@@ -15336,6 +15447,46 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
+            },
+            "PromptVariableMapping-Input": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the prompt variable"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "PromptVariableMapping",
+                "description": "Mapping of a prompt variable to a dataset column source"
+            },
+            "PromptVariableMapping-Output": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the prompt variable"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "PromptVariableMapping",
+                "description": "Mapping of a prompt variable to a dataset column source"
             },
             "PutModelProviderCredentials": {
                 "properties": {
@@ -17437,11 +17588,6 @@
                         "$ref": "#/components/schemas/TestCaseStatus",
                         "description": "Status of the test case"
                     },
-                    "retries": {
-                        "type": "integer",
-                        "title": "Retries",
-                        "description": "Number of retries attempted"
-                    },
                     "dataset_row_id": {
                         "type": "string",
                         "title": "Dataset Row Id",
@@ -17467,7 +17613,6 @@
                 "type": "object",
                 "required": [
                     "status",
-                    "retries",
                     "dataset_row_id",
                     "prompt_input_variables",
                     "prompt_results"
@@ -18569,76 +18714,6 @@
                         }
                     ]
                 }
-            },
-            "VariableMapping-Input": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the variable"
-                    },
-                    "source": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source of the variable value",
-                        "discriminator": {
-                            "propertyName": "type",
-                            "mapping": {
-                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
-                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "VariableMapping",
-                "description": "Mapping of a variable to its source"
-            },
-            "VariableMapping-Output": {
-                "properties": {
-                    "variable_name": {
-                        "type": "string",
-                        "title": "Variable Name",
-                        "description": "Name of the variable"
-                    },
-                    "source": {
-                        "oneOf": [
-                            {
-                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
-                            },
-                            {
-                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        ],
-                        "title": "Source",
-                        "description": "Source of the variable value",
-                        "discriminator": {
-                            "propertyName": "type",
-                            "mapping": {
-                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
-                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
-                            }
-                        }
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "variable_name",
-                    "source"
-                ],
-                "title": "VariableMapping",
-                "description": "Mapping of a variable to its source"
             },
             "VariableTemplateValue": {
                 "properties": {

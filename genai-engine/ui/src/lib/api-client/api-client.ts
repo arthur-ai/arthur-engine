@@ -973,8 +973,8 @@ export interface EvalExecution {
    * Name of the evaluation
    */
   eval_name: string;
-  /** Results from the eval */
-  eval_results: EvalResults;
+  /** Results from the eval (None if not yet executed) */
+  eval_results?: EvalResults | null;
   /**
    * Eval Version
    * Version of the evaluation
@@ -996,7 +996,7 @@ export interface EvalRefInput {
    * Variable Mapping
    * Mapping of eval variables to data sources
    */
-  variable_mapping: VariableMappingInput[];
+  variable_mapping: EvalVariableMappingInput[];
   /**
    * Version
    * Version of the evaluation
@@ -1018,7 +1018,7 @@ export interface EvalRefOutput {
    * Variable Mapping
    * Mapping of eval variables to data sources
    */
-  variable_mapping: VariableMappingOutput[];
+  variable_mapping: EvalVariableMappingOutput[];
   /**
    * Version
    * Version of the evaluation
@@ -1073,6 +1073,52 @@ export interface EvalResults {
    * Score from the evaluation
    */
   score: number;
+}
+
+/**
+ * EvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output)
+ */
+export interface EvalVariableMappingInput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & ExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
+}
+
+/**
+ * EvalVariableMapping
+ * Mapping of an eval variable to its source (dataset column or experiment output)
+ */
+export interface EvalVariableMappingOutput {
+  /**
+   * Source
+   * Source of the variable value
+   */
+  source:
+    | ({
+        type: "dataset_column";
+      } & DatasetColumnVariableSource)
+    | ({
+        type: "experiment_output";
+      } & ExperimentOutputVariableSource);
+  /**
+   * Variable Name
+   * Name of the eval variable
+   */
+  variable_name: string;
 }
 
 /**
@@ -1151,7 +1197,7 @@ export interface ExperimentOutputVariableSource {
  * ExperimentStatus
  * Status of a prompt experiment
  */
-export type ExperimentStatus = "queued" | "running" | "evaluating" | "failed" | "completed";
+export type ExperimentStatus = "queued" | "running" | "failed" | "completed";
 
 /** ExternalDocument */
 export interface ExternalDocument {
@@ -3964,6 +4010,11 @@ export interface PromptEvalSummary {
  */
 export interface PromptExperimentDetail {
   /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
    * Created At
    * ISO timestamp when experiment was created
    */
@@ -3980,6 +4031,11 @@ export interface PromptExperimentDetail {
    * List of evaluations being run
    */
   eval_list: EvalRefOutput[];
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
   /**
    * Finished At
    * ISO timestamp when experiment finished
@@ -4006,6 +4062,11 @@ export interface PromptExperimentDetail {
   status: ExperimentStatus;
   /** Summary of results across all test cases */
   summary_results: SummaryResults;
+  /**
+   * Total Rows
+   * Total number of test rows in the experiment
+   */
+  total_rows: number;
 }
 
 /**
@@ -4046,6 +4107,11 @@ export interface PromptExperimentListResponse {
  */
 export interface PromptExperimentSummary {
   /**
+   * Completed Rows
+   * Number of test rows completed successfully
+   */
+  completed_rows: number;
+  /**
    * Created At
    * ISO timestamp when experiment was created
    */
@@ -4055,6 +4121,11 @@ export interface PromptExperimentSummary {
    * Description of the experiment
    */
   description?: string | null;
+  /**
+   * Failed Rows
+   * Number of test rows that failed
+   */
+  failed_rows: number;
   /**
    * Finished At
    * ISO timestamp when experiment finished
@@ -4118,9 +4189,9 @@ export interface PromptRefInput {
   name: string;
   /**
    * Variable Mapping
-   * Mapping of prompt variables to data sources
+   * Mapping of prompt variables to dataset columns
    */
-  variable_mapping: VariableMappingInput[];
+  variable_mapping: PromptVariableMappingInput[];
   /**
    * Version List
    * List of prompt versions to test in the experiment
@@ -4140,9 +4211,9 @@ export interface PromptRefOutput {
   name: string;
   /**
    * Variable Mapping
-   * Mapping of prompt variables to data sources
+   * Mapping of prompt variables to dataset columns
    */
-  variable_mapping: VariableMappingOutput[];
+  variable_mapping: PromptVariableMappingOutput[];
   /**
    * Version List
    * List of prompt versions to test in the experiment
@@ -4165,8 +4236,8 @@ export interface PromptResult {
    * Name of the prompt
    */
   name: string;
-  /** Output from the prompt */
-  output: PromptOutput;
+  /** Output from the prompt (None if not yet executed) */
+  output?: PromptOutput | null;
   /**
    * Rendered Prompt
    * Prompt with variables replaced
@@ -4196,6 +4267,34 @@ export interface PromptValidationRequest {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
+}
+
+/**
+ * PromptVariableMapping
+ * Mapping of a prompt variable to a dataset column source
+ */
+export interface PromptVariableMappingInput {
+  /** Dataset column source */
+  source: DatasetColumnVariableSource;
+  /**
+   * Variable Name
+   * Name of the prompt variable
+   */
+  variable_name: string;
+}
+
+/**
+ * PromptVariableMapping
+ * Mapping of a prompt variable to a dataset column source
+ */
+export interface PromptVariableMappingOutput {
+  /** Dataset column source */
+  source: DatasetColumnVariableSource;
+  /**
+   * Variable Name
+   * Name of the prompt variable
+   */
+  variable_name: string;
 }
 
 /** PutModelProviderCredentials */
@@ -5948,11 +6047,6 @@ export interface TestCase {
    * Results for each prompt version tested
    */
   prompt_results: PromptResult[];
-  /**
-   * Retries
-   * Number of retries attempted
-   */
-  retries: number;
   /** Status of the test case */
   status: TestCaseStatus;
 }
@@ -6580,52 +6674,6 @@ export interface ValidationResult {
    * The user ID this prompt belongs to
    */
   user_id?: string | null;
-}
-
-/**
- * VariableMapping
- * Mapping of a variable to its source
- */
-export interface VariableMappingInput {
-  /**
-   * Source
-   * Source of the variable value
-   */
-  source:
-    | ({
-        type: "dataset_column";
-      } & DatasetColumnVariableSource)
-    | ({
-        type: "experiment_output";
-      } & ExperimentOutputVariableSource);
-  /**
-   * Variable Name
-   * Name of the variable
-   */
-  variable_name: string;
-}
-
-/**
- * VariableMapping
- * Mapping of a variable to its source
- */
-export interface VariableMappingOutput {
-  /**
-   * Source
-   * Source of the variable value
-   */
-  source:
-    | ({
-        type: "dataset_column";
-      } & DatasetColumnVariableSource)
-    | ({
-        type: "experiment_output";
-      } & ExperimentOutputVariableSource);
-  /**
-   * Variable Name
-   * Name of the variable
-   */
-  variable_name: string;
 }
 
 /** VariableTemplateValue */
@@ -7563,7 +7611,7 @@ export class HttpClient<SecurityDataType = unknown> {
 
 /**
  * @title Arthur GenAI Engine
- * @version 2.1.170
+ * @version 2.1.173
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
   api = {

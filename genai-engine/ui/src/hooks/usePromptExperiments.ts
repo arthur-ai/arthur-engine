@@ -67,7 +67,7 @@ export function usePromptExperiment(experimentId: string | undefined) {
  */
 export function useExperimentTestCases(
   experimentId: string | undefined,
-  page: number = 1,
+  page: number = 0,
   pageSize: number = 20
 ) {
   const { data, error, isLoading, refetch } = useApiQuery<"getExperimentTestCasesApiV1PromptExperimentsExperimentIdTestCasesGet">({
@@ -82,7 +82,7 @@ export function useExperimentTestCases(
 
   return {
     testCases: data?.data ?? [],
-    page: data?.page ?? 1,
+    page: data?.page ?? 0,
     pageSize: data?.page_size ?? pageSize,
     totalPages: data?.total_pages ?? 0,
     totalCount: data?.total_count ?? 0,

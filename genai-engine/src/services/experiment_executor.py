@@ -11,6 +11,7 @@ import json
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from typing import Any, Dict, List
 from uuid import uuid4
 
@@ -34,6 +35,26 @@ from schemas.request_schemas import PromptCompletionRequest
 from services.prompt.chat_completion_service import ChatCompletionService
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def db_session_context():
+    """
+    Context manager for database sessions using the FastAPI dependency.
+
+    Usage:
+        with db_session_context() as session:
+            # use session
+    """
+    session_gen = get_db_session()
+    session = next(session_gen)
+    try:
+        yield session
+    finally:
+        try:
+            next(session_gen)
+        except StopIteration:
+            pass
 
 
 class ExperimentExecutor:
@@ -68,8 +89,17 @@ class ExperimentExecutor:
         Args:
             experiment_id: ID of the experiment to execute
         """
-        db_session = get_db_session()
+        with db_session_context() as db_session:
+            self._execute_experiment_with_session(db_session, experiment_id)
 
+    def _execute_experiment_with_session(self, db_session: Session, experiment_id: str) -> None:
+        """
+        Execute an experiment using the provided database session.
+
+        Args:
+            db_session: Database session
+            experiment_id: ID of the experiment to execute
+        """
         try:
             # Mark experiment as running
             experiment = db_session.query(DatabasePromptExperiment).filter_by(id=experiment_id).first()
@@ -148,8 +178,6 @@ class ExperimentExecutor:
                     db_session.commit()
             except Exception as commit_error:
                 logger.error(f"Failed to mark experiment as failed: {commit_error}", exc_info=True)
-        finally:
-            db_session.close()
 
     def _execute_test_case(self, test_case_id: str) -> bool:
         """
@@ -161,8 +189,20 @@ class ExperimentExecutor:
         Returns:
             True if test case completed successfully, False otherwise
         """
-        db_session = get_db_session()
+        with db_session_context() as db_session:
+            return self._execute_test_case_with_session(db_session, test_case_id)
 
+    def _execute_test_case_with_session(self, db_session: Session, test_case_id: str) -> bool:
+        """
+        Execute a single test case using the provided database session.
+
+        Args:
+            db_session: Database session
+            test_case_id: ID of the test case to execute
+
+        Returns:
+            True if test case completed successfully, False otherwise
+        """
         try:
             # Mark test case as running
             test_case = db_session.query(DatabasePromptExperimentTestCase).filter_by(id=test_case_id).first()
@@ -225,8 +265,6 @@ class ExperimentExecutor:
             except Exception as commit_error:
                 logger.error(f"Failed to mark test case as failed: {commit_error}", exc_info=True)
             return False
-        finally:
-            db_session.close()
 
     def _calculate_summary_results(
         self,
