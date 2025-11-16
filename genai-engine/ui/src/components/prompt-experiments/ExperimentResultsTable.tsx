@@ -14,6 +14,7 @@ import {
   Pagination,
   Modal,
   IconButton,
+  LinearProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -395,7 +396,12 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
         const key = `${evalCol.name}-${evalCol.version}`;
         const score = evalScoreMap[key];
         return (
-          <TableCell key={key}>
+          <TableCell
+            key={key}
+            sx={{
+              backgroundColor: "#eff6ff"
+            }}
+          >
             {score !== undefined ? (
               <Typography variant="body2" className="font-medium">
                 {score}
@@ -519,9 +525,14 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                 </Box>
               </TableCell>
               {evalColumns.map((evalCol) => (
-                <TableCell key={`${evalCol.name}-${evalCol.version}`} sx={{ backgroundColor: "grey.50" }}>
-                  <Box component="span" className="font-semibold">
-                    {evalCol.name} v{evalCol.version}
+                <TableCell
+                  key={`${evalCol.name}-${evalCol.version}`}
+                  sx={{
+                    backgroundColor: "#eff6ff"
+                  }}
+                >
+                  <Box component="span" className="font-semibold text-blue-900">
+                    Eval: {evalCol.name} (v{evalCol.version})
                   </Box>
                 </TableCell>
               ))}

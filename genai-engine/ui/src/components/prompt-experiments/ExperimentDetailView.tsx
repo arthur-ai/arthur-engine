@@ -6,7 +6,7 @@ import { getContentHeight } from "@/constants/layout";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
 import { usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
-import { formatUTCTimestamp } from "@/utils/formatters";
+import { formatUTCTimestamp, formatTimestampDuration } from "@/utils/formatters";
 
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
@@ -93,6 +93,14 @@ export const ExperimentDetailView: React.FC = () => {
             <Box>
               <span className="font-medium">Finished:</span> {formatUTCTimestamp(experiment.finished_at)}
             </Box>
+            {experiment.finished_at && (() => {
+              const duration = formatTimestampDuration(experiment.created_at, experiment.finished_at);
+              return duration ? (
+                <Box>
+                  <span className="font-medium">Duration:</span> {duration}
+                </Box>
+              ) : null;
+            })()}
             <Box>
               <span className="font-medium">Prompt:</span> {experiment.prompt_name}
             </Box>
@@ -112,38 +120,33 @@ export const ExperimentDetailView: React.FC = () => {
               </Typography>
             </Box>
           ) : (
-            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+            <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
               {experiment.summary_results.prompt_eval_summaries.map((promptSummary) => (
-                <React.Fragment key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`}>
-                  {/* Version Tile */}
-                  <Card elevation={1}>
-                    <CardContent>
-                      <Typography variant="subtitle1" className="font-medium mb-1 text-gray-800">
+                <Card key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`} elevation={1}>
+                  <CardContent>
+                    <Box className="flex items-center gap-2 mb-3">
+                      <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
                         Prompt: {promptSummary.prompt_name}
                       </Typography>
-                      <Typography variant="h4" className="font-bold text-gray-900">
-                        v{promptSummary.prompt_version}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                      <Chip
+                        label={`v${promptSummary.prompt_version}`}
+                        size="small"
+                        color="primary"
+                        className="flex-shrink-0"
+                      />
+                    </Box>
 
-                  {/* Eval Result Tiles */}
-                  {promptSummary.eval_results.map((evalResult) => {
-                    const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
-                    const isGood = percentage >= 80;
-                    const isMedium = percentage >= 60 && percentage < 80;
+                    <Box className="space-y-3">
+                      {promptSummary.eval_results.map((evalResult) => {
+                        const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
+                        const isGood = percentage >= 80;
+                        const isMedium = percentage >= 60 && percentage < 80;
 
-                    return (
-                      <Card key={`${evalResult.eval_name}-${evalResult.eval_version}`} elevation={1}>
-                        <CardContent>
-                          <Typography variant="subtitle1" className="font-medium mb-3 text-gray-800">
-                            Prompt: {evalResult.eval_name} v{evalResult.eval_version}
-                          </Typography>
-
-                          <Box className="space-y-2">
+                        return (
+                          <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
                             <Box className="flex justify-between items-center mb-1">
                               <Typography variant="caption" className="font-medium text-gray-700">
-                                Pass Rate
+                                {evalResult.eval_name} (v{evalResult.eval_version})
                               </Typography>
                               <Typography variant="caption" className="text-gray-600">
                                 {percentage.toFixed(0)}%
@@ -164,11 +167,11 @@ export const ExperimentDetailView: React.FC = () => {
                               {evalResult.pass_count} / {evalResult.total_count}
                             </Typography>
                           </Box>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </React.Fragment>
+                        );
+                      })}
+                    </Box>
+                  </CardContent>
+                </Card>
               ))}
             </Box>
           )}
