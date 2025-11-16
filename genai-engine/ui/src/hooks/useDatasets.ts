@@ -8,7 +8,8 @@ import type { DatasetFilters } from "@/types/dataset";
 
 export function useDatasets(
   taskId: string | undefined,
-  filters: DatasetFilters
+  filters: DatasetFilters,
+  options?: { enabled?: boolean }
 ) {
   const params = buildFetchDatasetsParams(filters);
 
@@ -16,7 +17,7 @@ export function useDatasets(
     useApiQuery<"getDatasetsApiV2DatasetsSearchGet">({
       method: "getDatasetsApiV2DatasetsSearchGet",
       args: [params] as const,
-      enabled: !!taskId,
+      enabled: !!taskId && (options?.enabled ?? true),
       queryOptions: {
         staleTime: 2000,
         refetchOnWindowFocus: true,
