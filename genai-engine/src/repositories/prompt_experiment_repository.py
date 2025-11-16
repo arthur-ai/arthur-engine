@@ -221,8 +221,9 @@ class PromptExperimentRepository:
         # Validate that all dataset column references exist in the dataset version
         dataset_columns = set(dataset_version.column_names)
 
-        # Check prompt variable mappings - validate dataset columns exist
+        # Check prompt variable mappings - validate dataset columns exist and no duplicates
         # (Type enforcement is handled by schema - PromptVariableMapping only accepts DatasetColumnVariableSource)
+        prompt_variable_names = []
         for mapping in request.prompt_ref.variable_mapping:
             column_name = mapping.source.dataset_column.name
             if column_name not in dataset_columns:
@@ -230,10 +231,21 @@ class PromptExperimentRepository:
                     f"Dataset column '{column_name}' referenced in prompt variable mapping not found in dataset version. "
                     f"Available columns: {', '.join(sorted(dataset_columns))}"
                 )
+            prompt_variable_names.append(mapping.variable_name)
 
-        # Check eval variable mappings - only validate dataset_column type
+        # Check for duplicate prompt variable mappings
+        duplicate_prompt_vars = [var for var in set(prompt_variable_names) if prompt_variable_names.count(var) > 1]
+        if duplicate_prompt_vars:
+            raise ValueError(
+                f"Duplicate variable mappings found in prompt configuration: {', '.join(sorted(duplicate_prompt_vars))}. "
+                f"Each variable must be mapped exactly once."
+            )
+
+        # Check eval variable mappings - validate dataset columns exist and no duplicates
         for eval_ref in request.eval_list:
+            eval_variable_names = []
             for mapping in eval_ref.variable_mapping:
+                eval_variable_names.append(mapping.variable_name)
                 if mapping.source.type == "dataset_column":
                     column_name = mapping.source.dataset_column.name
                     if column_name not in dataset_columns:
@@ -241,6 +253,14 @@ class PromptExperimentRepository:
                             f"Dataset column '{column_name}' referenced in eval '{eval_ref.name}' variable mapping not found in dataset version. "
                             f"Available columns: {', '.join(sorted(dataset_columns))}"
                         )
+
+            # Check for duplicate eval variable mappings
+            duplicate_eval_vars = [var for var in set(eval_variable_names) if eval_variable_names.count(var) > 1]
+            if duplicate_eval_vars:
+                raise ValueError(
+                    f"Duplicate variable mappings found in eval '{eval_ref.name}' configuration: {', '.join(sorted(duplicate_eval_vars))}. "
+                    f"Each variable must be mapped exactly once."
+                )
 
         # Validate that all prompt variables are provided in the configuration
         provided_prompt_variables = {mapping.variable_name for mapping in request.prompt_ref.variable_mapping}
