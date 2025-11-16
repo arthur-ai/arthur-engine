@@ -242,8 +242,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         setSelectedPromptName(initialData.prompt_ref.name);
 
         // Load all necessary data in parallel
+        // Pass the desired version to preserve the original dataset version
         await Promise.all([
-          loadDatasetVersions(initialData.dataset_ref.id),
+          loadDatasetVersions(initialData.dataset_ref.id, initialData.dataset_ref.version),
           loadPromptVersions(initialData.prompt_ref.name),
           ...evaluators.map((evaluator) => loadEvaluatorVersions(evaluator.name)),
         ]);
@@ -259,6 +260,10 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           promptVariableMappings,
           evalVariableMappings,
         });
+
+        // Clear the "add evaluator" form state that was set during loadEvaluatorVersions
+        setCurrentEvaluatorName("");
+        setCurrentEvaluatorVersion("");
       } catch (error) {
         console.error("Failed to initialize from existing experiment:", error);
       } finally {
@@ -318,7 +323,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
     }
   };
 
-  const loadDatasetVersions = async (datasetId: string) => {
+  const loadDatasetVersions = async (datasetId: string, desiredVersion?: number) => {
     if (!api) return;
     try {
       setLoadingDatasetVersions(true);
@@ -329,18 +334,20 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       const versions = response.data.versions;
       setDatasetVersions(versions);
 
-      // Set to highest version number
       if (versions.length > 0) {
-        const maxVersion = Math.max(...versions.map((v) => v.version_number));
+        // If a desired version is specified (during initialization), use it
+        // Otherwise, default to the highest version number
+        const targetVersion = desiredVersion ?? Math.max(...versions.map((v) => v.version_number));
+
         setFormData((prev) => ({
           ...prev,
-          datasetVersion: maxVersion,
+          datasetVersion: targetVersion,
         }));
 
-        // Load columns for the latest version
-        const latestVersion = versions.find((v) => v.version_number === maxVersion);
-        if (latestVersion) {
-          setDatasetColumns(latestVersion.column_names);
+        // Load columns for the target version
+        const versionData = versions.find((v) => v.version_number === targetVersion);
+        if (versionData) {
+          setDatasetColumns(versionData.column_names);
         }
       }
     } catch (error) {
@@ -1354,7 +1361,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       <Dialog open={open} onClose={handleCancel} maxWidth="md" fullWidth aria-labelledby="create-experiment-dialog-title">
         <DialogTitle id="create-experiment-dialog-title">{initialData ? "Create Experiment from Template" : "Create New Experiment"}</DialogTitle>
         <DialogContent>
-          {isLoadingInitialData || isInitializing || (initialData && formData.promptVersions.length === 0) ? (
+          {isLoadingInitialData || isInitializing ? (
             <Box className="flex justify-center items-center py-8">
               <CircularProgress />
             </Box>

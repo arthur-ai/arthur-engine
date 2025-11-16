@@ -1,13 +1,15 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
-import React, { useEffect } from "react";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip, Button } from "@mui/material";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
 
 import { getContentHeight } from "@/constants/layout";
-import { usePromptExperiment } from "@/hooks/usePromptExperiments";
+import { usePromptExperiment, useCreateExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
@@ -15,6 +17,8 @@ export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
   const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId);
+  const createExperiment = useCreateExperiment(taskId);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Refetch data when window gains focus
   useEffect(() => {
@@ -45,6 +49,93 @@ export const ExperimentDetailView: React.FC = () => {
 
   const getStatusLabel = (status: PromptExperimentDetail["status"]): string => {
     return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const handleCreateFromExisting = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
+    // Validate that datasetVersion is a number
+    if (typeof data.datasetVersion !== 'number') {
+      throw new Error('Dataset version must be selected');
+    }
+
+    try {
+      // Transform prompt variable mappings to API format
+      const promptVariableMapping = Object.entries(data.promptVariableMappings || {}).map(([varName, columnName]) => ({
+        variable_name: varName,
+        source: {
+          type: "dataset_column" as const,
+          dataset_column: {
+            name: columnName,
+          },
+        },
+      }));
+
+      // Transform eval variable mappings to API format
+      const evalList = data.evaluators.map(evaluator => {
+        const evalMapping = data.evalVariableMappings?.find(
+          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
+        );
+
+        const variableMapping = evalMapping
+          ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
+              if (mapping.sourceType === "dataset_column") {
+                return {
+                  variable_name: varName,
+                  source: {
+                    type: "dataset_column" as const,
+                    dataset_column: {
+                      name: mapping.datasetColumn || "",
+                    },
+                  },
+                };
+              } else {
+                return {
+                  variable_name: varName,
+                  source: {
+                    type: "experiment_output" as const,
+                    experiment_output: {
+                      json_path: mapping.jsonPath || null,
+                    },
+                  },
+                };
+              }
+            })
+          : [];
+
+        return {
+          name: evaluator.name,
+          version: evaluator.version,
+          variable_mapping: variableMapping,
+        };
+      });
+
+      const result = await createExperiment.mutateAsync({
+        name: data.name,
+        description: data.description,
+        dataset_ref: {
+          id: data.datasetId,
+          version: data.datasetVersion,
+        },
+        prompt_ref: {
+          name: data.promptVersions[0].promptName,
+          version_list: data.promptVersions.map(pv => pv.version),
+          variable_mapping: promptVariableMapping,
+        },
+        eval_list: evalList,
+      });
+      handleCloseModal();
+      return { id: result.id };
+    } catch (err) {
+      console.error("Failed to create experiment:", err);
+      throw err;
+    }
   };
 
   if (isLoading) {
@@ -81,11 +172,20 @@ export const ExperimentDetailView: React.FC = () => {
 
         {/* Header Section */}
         <Box className="mb-6">
-          <Box className="flex items-center gap-3 mb-2">
-            <Typography variant="h4" className="font-semibold text-gray-900">
-              {experiment.name}
-            </Typography>
-            <Chip label={getStatusLabel(experiment.status)} color={getStatusColor(experiment.status)} size="small" />
+          <Box className="flex items-center justify-between mb-2">
+            <Box className="flex items-center gap-3">
+              <Typography variant="h4" className="font-semibold text-gray-900">
+                {experiment.name}
+              </Typography>
+              <Chip label={getStatusLabel(experiment.status)} color={getStatusColor(experiment.status)} size="small" />
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<ContentCopyIcon />}
+              onClick={handleCreateFromExisting}
+            >
+              Create from Existing
+            </Button>
           </Box>
           {experiment.description && (
             <Typography variant="body1" className="text-gray-600 mb-4">
@@ -220,6 +320,14 @@ export const ExperimentDetailView: React.FC = () => {
           {taskId && experimentId && <ExperimentResultsTable taskId={taskId} experimentId={experimentId} />}
         </Box>
       </Box>
+
+      {/* Create from Existing Modal */}
+      <CreateExperimentModal
+        open={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitExperiment}
+        initialData={experiment}
+      />
     </Box>
   );
 };
