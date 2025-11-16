@@ -514,6 +514,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const handleNext = async () => {
     if (currentStep === 0) {
       // Load prompt variables before moving to step 1
+      // Always reload to reflect any changes made by going back and modifying step 0
       if (!taskId || !api || formData.promptVersions.length === 0) return;
 
       try {
@@ -529,15 +530,27 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         setPromptVariables(vars);
 
         // Initialize prompt variable mappings with auto-matching
+        // Preserve existing mappings if they're still valid, otherwise auto-match
         if (datasetColumns.length > 0 && vars.length > 0) {
           const mappings: PromptVariableMappings = {};
+          const existingMappings = formData.promptVariableMappings || {};
+
           vars.forEach(varName => {
-            const matchingColumn = datasetColumns.find(col => col === varName);
-            if (matchingColumn) {
-              mappings[varName] = matchingColumn;
+            // First check if we have an existing mapping that's still valid
+            if (existingMappings[varName] && datasetColumns.includes(existingMappings[varName])) {
+              mappings[varName] = existingMappings[varName];
+            } else {
+              // Otherwise try to auto-match
+              const matchingColumn = datasetColumns.find(col => col === varName);
+              if (matchingColumn) {
+                mappings[varName] = matchingColumn;
+              }
             }
           });
           setFormData(prev => ({ ...prev, promptVariableMappings: mappings }));
+        } else {
+          // Clear mappings if no variables
+          setFormData(prev => ({ ...prev, promptVariableMappings: {} }));
         }
       } catch (error) {
         console.error("Failed to load prompt variables:", error);
@@ -548,10 +561,27 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setCurrentStep(prev => prev + 1);
     } else if (currentStep === 1) {
       // Load eval variables for first evaluator before moving to step 2
+      // Always reload to reflect any changes made by going back and modifying evaluators
       if (formData.evaluators.length > 0) {
         const firstEval = formData.evaluators[0];
         await loadEvalVariablesForEvaluator(firstEval.name, firstEval.version);
         setCurrentEvalIndex(0);
+
+        // Clean up eval variable mappings for removed evaluators
+        // Only keep mappings for evaluators that still exist in formData.evaluators
+        if (formData.evalVariableMappings) {
+          const currentEvalKeys = new Set(
+            formData.evaluators.map(e => `${e.name}-${e.version}`)
+          );
+          const cleanedMappings = formData.evalVariableMappings.filter(mapping =>
+            currentEvalKeys.has(`${mapping.evalName}-${mapping.evalVersion}`)
+          );
+
+          // Update formData with cleaned mappings
+          if (cleanedMappings.length !== formData.evalVariableMappings.length) {
+            setFormData(prev => ({ ...prev, evalVariableMappings: cleanedMappings }));
+          }
+        }
       }
       setCompletedSteps(prev => new Set(prev).add(currentStep));
       setCurrentStep(prev => prev + 1);
@@ -647,11 +677,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Prompt Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-3">
+            <Typography variant="subtitle1" className="font-semibold mb-2">
               Prompt Versions *
             </Typography>
 
-            <Box className="flex gap-2 mb-3">
+            <Box className="flex gap-2 mb-3 mt-4">
               <Autocomplete
                 options={prompts}
                 getOptionLabel={(option) => option.name}
@@ -757,11 +787,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Dataset Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-3">
+            <Typography variant="subtitle1" className="font-semibold mb-2">
               Dataset *
             </Typography>
 
-            <Box className="flex gap-2 mb-3">
+            <Box className="flex gap-2 mb-3 mt-4">
               <Autocomplete
                 options={datasets}
                 getOptionLabel={(option) => option.name}
@@ -840,86 +870,109 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Evaluator Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-3">
+            <Typography variant="subtitle1" className="font-semibold mb-2">
               Evaluators *
             </Typography>
 
-            <Box className="flex gap-2 mb-3">
-              <FormControl className="flex-1">
-                <InputLabel>Evaluator</InputLabel>
-                <Select
-                  value={currentEvaluatorName}
-                  onChange={async (e) => {
-                    const evalName = e.target.value;
-                    setCurrentEvaluatorName(evalName);
-                    setCurrentEvaluatorVersion("");
-                    if (evalName && !evaluatorVersions[evalName]) {
-                      await loadEvaluatorVersions(evalName);
-                    }
-                  }}
-                  label="Evaluator"
-                >
-                  {evaluators.map((evaluator) => (
-                    <MenuItem key={evaluator.name} value={evaluator.name}>
-                      {evaluator.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+            <Box className="flex flex-col gap-2 mt-4">
+              {/* Existing evaluators with trash icons */}
+              {formData.evaluators.map((evaluator, index) => (
+                <Box key={`${evaluator.name}-${evaluator.version}`} className="flex gap-2 items-start">
+                  <FormControl className="flex-1">
+                    <InputLabel>Evaluator</InputLabel>
+                    <Select
+                      value={evaluator.name}
+                      label="Evaluator"
+                      disabled
+                    >
+                      <MenuItem value={evaluator.name}>
+                        {evaluator.name}
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
 
-              <FormControl className="flex-1">
-                <InputLabel>Version</InputLabel>
-                <Select
-                  value={currentEvaluatorVersion}
-                  onChange={(e) => setCurrentEvaluatorVersion(e.target.value as number)}
-                  label="Version"
-                  disabled={!currentEvaluatorName}
-                >
-                  {currentEvaluatorName &&
-                    evaluatorVersions[currentEvaluatorName]?.map((version) => (
-                      <MenuItem key={version.version} value={version.version}>
-                        v{version.version}
+                  <FormControl className="flex-1">
+                    <InputLabel>Version</InputLabel>
+                    <Select
+                      value={evaluator.version}
+                      label="Version"
+                      disabled
+                    >
+                      <MenuItem value={evaluator.version}>
+                        v{evaluator.version}
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+
+                  <IconButton
+                    onClick={() => handleRemoveEvaluator(index)}
+                    className="text-red-600"
+                    sx={{ mt: 0, height: 56, width: 56 }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              ))}
+
+              {/* New evaluator row with Add button */}
+              <Box className="flex gap-2 items-start">
+                <FormControl className="flex-1">
+                  <InputLabel>Evaluator</InputLabel>
+                  <Select
+                    value={currentEvaluatorName}
+                    onChange={async (e) => {
+                      const evalName = e.target.value;
+                      setCurrentEvaluatorName(evalName);
+
+                      if (evalName && !evaluatorVersions[evalName]) {
+                        // Load versions - loadEvaluatorVersions will auto-set the most recent version
+                        await loadEvaluatorVersions(evalName);
+                      } else if (evalName && evaluatorVersions[evalName]) {
+                        // If versions are already loaded, set the most recent (highest) version
+                        const maxVersion = Math.max(...evaluatorVersions[evalName].map(v => v.version));
+                        setCurrentEvaluatorVersion(maxVersion);
+                      } else {
+                        setCurrentEvaluatorVersion("");
+                      }
+                    }}
+                    label="Evaluator"
+                  >
+                    {evaluators.map((evaluator) => (
+                      <MenuItem key={evaluator.name} value={evaluator.name}>
+                        {evaluator.name}
                       </MenuItem>
                     ))}
-                </Select>
-              </FormControl>
+                  </Select>
+                </FormControl>
 
-              <Button
-                variant="outlined"
-                onClick={handleAddEvaluator}
-                disabled={!currentEvaluatorName || !currentEvaluatorVersion}
-                startIcon={<AddIcon />}
-              >
-                Add
-              </Button>
-            </Box>
+                <FormControl className="flex-1">
+                  <InputLabel>Version</InputLabel>
+                  <Select
+                    value={currentEvaluatorVersion}
+                    onChange={(e) => setCurrentEvaluatorVersion(e.target.value as number)}
+                    label="Version"
+                    disabled={!currentEvaluatorName}
+                  >
+                    {currentEvaluatorName &&
+                      evaluatorVersions[currentEvaluatorName]?.map((version) => (
+                        <MenuItem key={version.version} value={version.version}>
+                          v{version.version}
+                        </MenuItem>
+                      ))}
+                  </Select>
+                </FormControl>
 
-            {formData.evaluators.length > 0 && (
-              <Box>
-                <Typography variant="body2" className="text-gray-600 mb-2">
-                  Selected evaluators:
-                </Typography>
-                <Box className="flex flex-col gap-2">
-                  {formData.evaluators.map((evaluator, index) => (
-                    <Box
-                      key={`${evaluator.name}-${evaluator.version}`}
-                      className="flex items-center justify-between bg-gray-50 p-2 rounded"
-                    >
-                      <Typography variant="body2">
-                        {evaluator.name} v{evaluator.version}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveEvaluator(index)}
-                        className="text-red-600"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  ))}
-                </Box>
+                <Button
+                  variant="outlined"
+                  onClick={handleAddEvaluator}
+                  disabled={!currentEvaluatorName || !currentEvaluatorVersion}
+                  startIcon={<AddIcon />}
+                  sx={{ mt: 0, height: 56, minWidth: 80 }}
+                >
+                  Add
+                </Button>
               </Box>
-            )}
+            </Box>
 
             {errors.evaluators && (
               <Typography variant="caption" className="text-red-600 mt-2">

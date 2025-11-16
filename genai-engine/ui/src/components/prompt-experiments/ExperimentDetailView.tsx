@@ -1,5 +1,6 @@
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton } from "@mui/material";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getContentHeight } from "@/constants/layout";
@@ -112,11 +113,26 @@ export const ExperimentDetailView: React.FC = () => {
           </Box>
         </Box>
 
-        {/* Overall Performance Section */}
+        {/* Overall Prompt Performance Section */}
         <Box className="mb-6">
-          <Typography variant="h5" className="font-semibold mb-4 text-gray-900">
-            Overall Performance
-          </Typography>
+          <Box className="flex items-center gap-2 mb-4">
+            <Typography variant="h5" className="font-semibold text-gray-900">
+              Overall Prompt Performance
+            </Typography>
+            <Tooltip
+              title="Each tile shows the evaluation results for a specific prompt version. The progress bars indicate how many test cases passed for each evaluator."
+              arrow
+              placement="right"
+            >
+              <InfoOutlinedIcon
+                sx={{
+                  fontSize: 20,
+                  color: 'text.secondary',
+                  cursor: 'help'
+                }}
+              />
+            </Tooltip>
+          </Box>
 
           {experiment.summary_results.prompt_eval_summaries.length === 0 ? (
             <Box className="p-6 bg-gray-50 border border-gray-200 rounded">
@@ -169,7 +185,7 @@ export const ExperimentDetailView: React.FC = () => {
                               }}
                             />
                             <Typography variant="caption" className="text-gray-500 text-xs">
-                              {evalResult.pass_count} / {evalResult.total_count}
+                              {evalResult.pass_count} / {evalResult.total_count} test cases passed
                             </Typography>
                           </Box>
                         );
@@ -182,11 +198,26 @@ export const ExperimentDetailView: React.FC = () => {
           )}
         </Box>
 
-        {/* Detailed Results Section */}
+        {/* Test Case Results Section */}
         <Box className="mb-6">
-          <Typography variant="h5" className="font-semibold mb-4 text-gray-900">
-            Detailed Results
-          </Typography>
+          <Box className="flex items-center gap-2 mb-4">
+            <Typography variant="h5" className="font-semibold text-gray-900">
+              Test Case Results
+            </Typography>
+            <Tooltip
+              title="This table shows individual test case results. Each row represents one test case from your dataset, showing evaluation failures across all prompt versions and the total cost."
+              arrow
+              placement="right"
+            >
+              <InfoOutlinedIcon
+                sx={{
+                  fontSize: 20,
+                  color: 'text.secondary',
+                  cursor: 'help'
+                }}
+              />
+            </Tooltip>
+          </Box>
           {taskId && experimentId && (
             <ExperimentResultsTable
               taskId={taskId}

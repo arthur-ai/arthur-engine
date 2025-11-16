@@ -15,10 +15,18 @@ import {
   Modal,
   IconButton,
   LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Tooltip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import React, { useEffect, useState } from "react";
 import { useExperimentTestCases } from "@/hooks/usePromptExperiments";
 import type { TestCase } from "@/lib/api-client/api-client";
@@ -83,6 +91,123 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
         {message.content}
       </Typography>
     </Box>
+  );
+};
+
+interface VariableTileProps {
+  variableName: string;
+  value: string;
+}
+
+const MAX_TILE_LENGTH = 200;
+
+const VariableTile: React.FC<VariableTileProps> = ({ variableName, value }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const isTruncated = value.length > MAX_TILE_LENGTH;
+  const displayValue = isTruncated ? value.substring(0, MAX_TILE_LENGTH) + "..." : value;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+  };
+
+  return (
+    <>
+      <Box
+        className="p-3 bg-gray-50 border border-gray-200 rounded relative"
+        onClick={isTruncated ? () => setIsModalOpen(true) : undefined}
+        sx={{ cursor: isTruncated ? "pointer" : "default" }}
+      >
+        <Typography variant="caption" className="font-medium text-gray-700">
+          {variableName}:
+        </Typography>
+        <Box className="flex items-start gap-1 mt-1">
+          <Typography variant="body2" className="text-gray-900 flex-1 break-words">
+            {displayValue}
+          </Typography>
+          {isTruncated && (
+            <Tooltip title="View full content">
+              <IconButton
+                size="small"
+                sx={{
+                  opacity: 0.5,
+                  "&:hover": { opacity: 1 },
+                  padding: 0.25,
+                  flexShrink: 0,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModalOpen(true);
+                }}
+              >
+                <OpenInFullIcon sx={{ fontSize: 14 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      </Box>
+
+      <Dialog
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DialogTitle>
+          <Box className="flex justify-between items-start gap-2">
+            <Box className="flex-1">
+              <Typography variant="h6" gutterBottom>
+                {variableName}
+              </Typography>
+              <Typography variant="caption" className="text-gray-600">
+                {value.length.toLocaleString()} characters
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={handleCopy}
+              title="Copy to clipboard"
+              sx={{
+                "&:hover": { color: "primary.main" },
+                flexShrink: 0,
+              }}
+            >
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent dividers>
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: "background.default",
+              borderRadius: 1,
+              fontSize: "0.875rem",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              minHeight: "200px",
+              maxHeight: "60vh",
+              overflow: "auto",
+              border: 1,
+              borderColor: "divider",
+              lineHeight: 1.6,
+            }}
+          >
+            {value}
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleCopy} variant="outlined" size="small">
+            Copy
+          </Button>
+          <Button onClick={() => setIsModalOpen(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
@@ -166,26 +291,29 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
         <Box className="p-6">
           {/* Input Variables Section */}
           <Box className="mb-6">
-            <Typography variant="subtitle1" className="font-semibold mb-3 text-gray-900">
+            <Typography
+              variant="h6"
+              className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
+            >
               Input Variables
             </Typography>
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {testCase.prompt_input_variables.map((variable) => (
-                <Box key={variable.variable_name} className="p-3 bg-gray-50 border border-gray-200 rounded">
-                  <Typography variant="caption" className="font-medium text-gray-700">
-                    {variable.variable_name}:
-                  </Typography>
-                  <Typography variant="body2" className="text-gray-900 mt-1">
-                    {variable.value}
-                  </Typography>
-                </Box>
+                <VariableTile
+                  key={variable.variable_name}
+                  variableName={variable.variable_name}
+                  value={variable.value}
+                />
               ))}
             </Box>
           </Box>
 
           {/* Prompt Results Section */}
           <Box>
-            <Typography variant="subtitle1" className="font-semibold mb-3 text-gray-900">
+            <Typography
+              variant="h6"
+              className="font-bold mb-4 pb-2 border-b-2 border-gray-300 text-gray-900"
+            >
               Prompt Results
             </Typography>
             <Box className="space-y-4">
@@ -358,25 +486,22 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
     return acc;
   }, {} as Record<string, string>);
 
-  // Create a map of eval scores for easy lookup (averaging across all prompt versions)
-  const evalScoreMap = evalColumns.reduce((acc, evalCol) => {
+  // Create a map of eval failure counts for easy lookup (count failures across all prompt versions)
+  const evalFailureMap = evalColumns.reduce((acc, evalCol) => {
     const key = `${evalCol.name}-${evalCol.version}`;
-    const scores: number[] = [];
+    let failureCount = 0;
 
     testCase.prompt_results.forEach((promptResult) => {
       const evalResult = promptResult.evals.find(
         (e) => e.eval_name === evalCol.name && e.eval_version === evalCol.version
       );
-      if (evalResult?.eval_results?.score !== undefined) {
-        scores.push(evalResult.eval_results.score);
+      // A score of 0 indicates a failure (fail), 1 indicates a pass
+      if (evalResult?.eval_results?.score === 0) {
+        failureCount++;
       }
     });
 
-    if (scores.length > 0) {
-      const avgScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-      acc[key] = avgScore;
-    }
-
+    acc[key] = failureCount;
     return acc;
   }, {} as Record<string, number>);
 
@@ -395,23 +520,16 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
       </TableCell>
       {evalColumns.map((evalCol) => {
         const key = `${evalCol.name}-${evalCol.version}`;
-        const score = evalScoreMap[key];
+        const failureCount = evalFailureMap[key];
         return (
-          <TableCell
-            key={key}
-            sx={{
-              backgroundColor: "#eff6ff"
-            }}
-          >
-            {score !== undefined ? (
-              <Typography variant="body2" className="font-medium">
-                {score}
-              </Typography>
-            ) : (
-              <Typography variant="body2" className="text-gray-400">
-                -
-              </Typography>
-            )}
+          <TableCell key={key}>
+            <Typography
+              variant="body2"
+              className="font-medium"
+              sx={{ color: failureCount > 0 ? "#dc2626" : "inherit" }}
+            >
+              {failureCount}
+            </Typography>
           </TableCell>
         );
       })}
@@ -536,7 +654,7 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
                   }}
                 >
                   <Box component="span" className="font-semibold text-blue-900">
-                    Eval: {evalCol.name} (v{evalCol.version})
+                    Eval: {evalCol.name} (v{evalCol.version}) Failures
                   </Box>
                 </TableCell>
               ))}
