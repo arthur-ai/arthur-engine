@@ -157,9 +157,9 @@ export const ExperimentDetailView: React.FC = () => {
                               value={percentage}
                               className="h-2 rounded"
                               sx={{
-                                backgroundColor: "#e5e7eb",
+                                backgroundColor: "#ef4444",
                                 "& .MuiLinearProgress-bar": {
-                                  backgroundColor: isGood ? "#10b981" : isMedium ? "#f59e0b" : "#ef4444",
+                                  backgroundColor: "#10b981",
                                 },
                               }}
                             />
