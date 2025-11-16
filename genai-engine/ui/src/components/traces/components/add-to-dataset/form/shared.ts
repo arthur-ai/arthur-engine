@@ -16,7 +16,7 @@ export type Column = {
 };
 
 export type TransformDefinition = {
-  version: string;
+  version?: string;
   columns: Array<{
     column_name: string;
     span_name: string;
