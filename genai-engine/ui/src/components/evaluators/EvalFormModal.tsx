@@ -16,10 +16,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { EvalFormModalProps } from "./types";
 
 import { useApi } from "@/hooks/useApi";
-import type { CreateEvalRequest, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
+import { useTask } from "@/hooks/useTask";
+import type { CreateEvalRequest, LLMEval, ModelProvider, ModelProviderResponse } from "@/lib/api-client/api-client";
 
 const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormModalProps) => {
   const apiClient = useApi();
+  const { task } = useTask();
   const [evalName, setEvalName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [modelProvider, setModelProvider] = useState<ModelProvider | "">("");
@@ -27,8 +29,10 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
   const [error, setError] = useState<string | null>(null);
   const [enabledProviders, setEnabledProviders] = useState<ModelProvider[]>([]);
   const [availableModels, setAvailableModels] = useState<Map<ModelProvider, string[]>>(new Map());
+  const [existingEvalNames, setExistingEvalNames] = useState<string[]>([]);
   const hasFetchedProviders = useRef(false);
   const hasFetchedAvailableModels = useRef(false);
+  const hasFetchedEvalNames = useRef(false);
 
   const fetchProviders = useCallback(async () => {
     if (hasFetchedProviders.current) {
@@ -82,15 +86,37 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
     setAvailableModels(newAvailableModels);
   }, [apiClient, enabledProviders]);
 
-  // Fetch providers when modal opens
+  const fetchExistingEvalNames = useCallback(async () => {
+    if (hasFetchedEvalNames.current || !apiClient || !task?.id) {
+      return;
+    }
+
+    hasFetchedEvalNames.current = true;
+    try {
+      const response = await apiClient.api.getAllLlmEvalsApiV1TasksTaskIdLlmEvalsGet({
+        taskId: task.id,
+        page: 0,
+        page_size: 1000, // Fetch all eval names
+      });
+      const evalNames = response.data.llm_metadata.map((evalMeta) => evalMeta.name);
+      setExistingEvalNames(evalNames);
+    } catch (error) {
+      console.error("Failed to fetch existing eval names:", error);
+      // Don't show error to user, just fail silently
+    }
+  }, [apiClient, task?.id]);
+
+  // Fetch providers and eval names when modal opens
   useEffect(() => {
     if (open) {
       // Reset refs when modal opens to allow fresh data fetch
       hasFetchedProviders.current = false;
       hasFetchedAvailableModels.current = false;
+      hasFetchedEvalNames.current = false;
       fetchProviders();
+      fetchExistingEvalNames();
     }
-  }, [open, fetchProviders]);
+  }, [open, fetchProviders, fetchExistingEvalNames]);
 
   // Fetch available models when providers are loaded
   useEffect(() => {
@@ -171,6 +197,71 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
     setModelName(newValue || "");
   };
 
+  const fetchLatestEvalVersion = useCallback(
+    async (evalName: string) => {
+      if (!apiClient || !task?.id || !evalName) {
+        return;
+      }
+
+      try {
+        // Fetch the latest version using "latest" as the version parameter
+        // API signature: (evalName, evalVersion, taskId)
+        const evalResponse = await apiClient.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
+          evalName,
+          "latest" as any, // The API accepts "latest" as a special version string
+          task.id
+        );
+
+        const evalData: LLMEval = evalResponse.data;
+
+        // Populate form with the eval data
+        setInstructions(evalData.instructions);
+        setModelProvider(evalData.model_provider);
+        setModelName(evalData.model_name);
+      } catch (error) {
+        console.error("Failed to fetch latest eval version:", error);
+        // Don't show error to user, just fail silently
+      }
+    },
+    [apiClient, task?.id]
+  );
+
+  const prevEvalNameRef = useRef("");
+
+  const handleEvalNameChange = useCallback(
+    (_event: React.SyntheticEvent<Element, Event>, newValue: string | null, reason: string) => {
+      const selectedName = newValue || "";
+
+      // If cleared or empty, reset all fields
+      if (!selectedName || reason === "clear") {
+        setEvalName("");
+        setInstructions("");
+        setModelProvider(enabledProviders.length > 0 ? enabledProviders[0] : "");
+        setModelName("");
+        prevEvalNameRef.current = "";
+        return;
+      }
+
+      // Update evalName
+      setEvalName(selectedName);
+      prevEvalNameRef.current = selectedName;
+
+      // Always fetch when selectOption
+      if (existingEvalNames.includes(selectedName)) {
+        fetchLatestEvalVersion(selectedName);
+      }
+    },
+    [fetchLatestEvalVersion, enabledProviders]
+  );
+
+  // Watch for when evalName matches an existing eval (for when onChange doesn't fire)
+  useEffect(() => {
+    if (evalName && existingEvalNames.includes(evalName) && prevEvalNameRef.current !== evalName) {
+      prevEvalNameRef.current = evalName;
+      fetchLatestEvalVersion(evalName);
+    }
+  }, [evalName, existingEvalNames, fetchLatestEvalVersion]);
+
   const providerDisabled = enabledProviders.length === 0;
   const modelDisabled = modelProvider === "";
   const tooltipTitle = providerDisabled ? "No providers available. Please configure at least one provider." : "";
@@ -188,14 +279,44 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
                   Eval Name
                 </Typography>
               </FormLabel>
-              <TextField
+              <Autocomplete
+                freeSolo
+                options={existingEvalNames}
                 value={evalName}
-                onChange={(e) => setEvalName(e.target.value)}
-                placeholder="Enter eval name..."
+                onChange={handleEvalNameChange}
                 disabled={isLoading}
-                autoFocus
-                required
-                size="small"
+                forcePopupIcon={true}
+                filterOptions={(options, state) => {
+                  if (!state.inputValue) {
+                    return options;
+                  }
+                  const filtered = options.filter((option) =>
+                    option.toLowerCase().includes(state.inputValue.toLowerCase())
+                  );
+                  // Add a placeholder message when no matches
+                  if (filtered.length === 0) {
+                    return ["__NO_OPTIONS__"];
+                  }
+                  return filtered;
+                }}
+                getOptionDisabled={(option) => option === "__NO_OPTIONS__"}
+                renderOption={(props, option) => {
+                  const { key, ...otherProps } = props;
+                  return (
+                    <li key={key} {...otherProps} style={option === "__NO_OPTIONS__" ? { cursor: "default" } : undefined}>
+                      {option === "__NO_OPTIONS__" ? "No existing evals" : option}
+                    </li>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Enter eval name or select existing..."
+                    required
+                    size="small"
+                    autoFocus
+                  />
+                )}
               />
             </FormControl>
 
@@ -273,7 +394,7 @@ const EvalFormModal = ({ open, onClose, onSubmit, isLoading = false }: EvalFormM
             disabled={isLoading || !evalName.trim() || !instructions.trim() || !modelProvider || !modelName.trim()}
             sx={{ minWidth: 120 }}
           >
-            {isLoading ? "Creating..." : "Create Eval"}
+            {isLoading ? "Saving..." : "Save Eval"}
           </Button>
         </DialogActions>
       </form>
