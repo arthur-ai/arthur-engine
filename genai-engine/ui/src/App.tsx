@@ -6,6 +6,7 @@ import { AllTasks } from "./components/AllTasks";
 import { ComingSoon } from "./components/ComingSoon";
 import { DatasetDetailView } from "./components/datasets/DatasetDetailView";
 import { DatasetsView } from "./components/datasets/DatasetsView";
+import TransformsManagement from "./components/datasets/transforms/TransformsManagement";
 import Evaluators from "./components/evaluators/Evaluators";
 import { LoginPage } from "./components/LoginPage";
 import { ModelProviders } from "./components/ModelProviders";
@@ -102,6 +103,17 @@ function App() {
                   <ProtectedRoute>
                     <TaskLayout>
                       <DatasetDetailView />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/datasets/:datasetId/transforms"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <TransformsManagement />
                     </TaskLayout>
                   </ProtectedRoute>
                 }

@@ -107,6 +107,10 @@ export const DatasetDetailView: React.FC = () => {
     navigate(`/tasks/${task?.id}/datasets`);
   }, [navigate, task?.id]);
 
+  const handleManageTransforms = useCallback(() => {
+    navigate(`/tasks/${task?.id}/datasets/${datasetId}/transforms`);
+  }, [navigate, task?.id, datasetId]);
+
   const handleVersionSwitch = useCallback(
     (versionNumber: number) => {
       if (localState.hasUnsavedChanges) {
@@ -256,6 +260,7 @@ export const DatasetDetailView: React.FC = () => {
           onExport={handleExport}
           onImport={modals.openImportModal}
           onOpenVersions={modals.openVersionDrawer}
+          onManageTransforms={handleManageTransforms}
           searchValue={search.searchQuery}
           onSearchChange={search.setSearchQuery}
           onSearchClear={search.handleClearSearch}

@@ -179,32 +179,40 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { promptId, modelProvider } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? {
-                ...prompt,
-                modelProvider,
-                // Only mark dirty if value actually changed and prompt has a version
-                isDirty: prompt.modelProvider !== modelProvider && prompt.version ? true : prompt.isDirty,
-              }
-            : prompt
-        ),
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id === promptId) {
+            const wasChanged = prompt.modelProvider !== modelProvider;
+            const shouldMarkDirty = wasChanged && prompt.version;
+
+            return {
+              ...prompt,
+              modelProvider,
+              // Only mark dirty if value actually changed and prompt has a version
+              isDirty: shouldMarkDirty ? true : prompt.isDirty,
+            };
+          }
+          return prompt;
+        }),
       };
     }
     case "updatePromptModelName": {
       const { promptId, modelName } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === promptId
-            ? {
-                ...prompt,
-                modelName,
-                // Only mark dirty if value actually changed and prompt has a version
-                isDirty: prompt.modelName !== modelName && prompt.version ? true : prompt.isDirty,
-              }
-            : prompt
-        ),
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id === promptId) {
+            const wasChanged = prompt.modelName !== modelName;
+            const shouldMarkDirty = wasChanged && prompt.version;
+
+            return {
+              ...prompt,
+              modelName,
+              // Only mark dirty if value actually changed and prompt has a version
+              isDirty: shouldMarkDirty ? true : prompt.isDirty,
+            };
+          }
+          return prompt;
+        }),
       };
     }
     case "updatePrompt": {
@@ -334,15 +342,24 @@ const promptsReducer = (state: PromptPlaygroundState, action: PromptAction) => {
       const { parentId, id, toolCalls } = action.payload;
       return {
         ...state,
-        prompts: state.prompts.map((prompt) =>
-          prompt.id === parentId
-            ? {
-                ...prompt,
-                messages: prompt.messages.map((message) => (message.id === id ? { ...message, tool_calls: toolCalls } : message)),
-                isDirty: prompt.version ? true : false,
-              }
-            : prompt
-        ),
+        prompts: state.prompts.map((prompt) => {
+          if (prompt.id === parentId) {
+            const message = prompt.messages.find((m) => m.id === id);
+
+            // Normalize undefined and null to be treated as equivalent (both mean "no tool calls")
+            const oldToolCalls = message?.tool_calls ?? null;
+            const newToolCalls = toolCalls ?? null;
+            const wasChanged = JSON.stringify(oldToolCalls) !== JSON.stringify(newToolCalls);
+            const shouldMarkDirty = wasChanged && prompt.version;
+
+            return {
+              ...prompt,
+              messages: prompt.messages.map((message) => (message.id === id ? { ...message, tool_calls: toolCalls } : message)),
+              isDirty: shouldMarkDirty ? true : prompt.isDirty,
+            };
+          }
+          return prompt;
+        }),
       };
     }
     case "changeMessageRole": {

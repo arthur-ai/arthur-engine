@@ -3,65 +3,14 @@ The intention of this changelog is to document API changes as they happen to eff
 ---
 
 # 11/16/2025
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results  endpoint added
-
-# 11/16/2025
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new optional 'query' request parameter 'search'
-
-# 11/16/2025
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  endpoint added
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  endpoint added
-
-# 11/16/2025
-- **CHANGE** for Component/Schema:  removed the schema 'EvalResult'
-- **CHANGE** for Component/Schema:  removed the schema 'EvalResults'
-- **CHANGE** for Component/Schema:  removed the schema 'PromptEvalSummary'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the optional property 'total_cost' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added the optional property 'data/items/total_cost' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added '#/components/schemas/EvalExecutionResult' to the 'data/items/prompt_results/items/evals/items/eval_results' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed '#/components/schemas/EvalResults' from the 'data/items/prompt_results/items/evals/items/eval_results' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the optional property 'data/items/total_cost' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the optional property 'total_cost' to the response with the '200' status
-
-# 11/16/2025
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  the 'prompt_ref/variable_mapping/items/source' response's property type/format changed from ''/'' to 'object'/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/evals/items/eval_results' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the response property 'data/items/prompt_results/items/output' became optional for the status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/evals/items/eval_results' response's property type/format changed from 'object'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  the 'data/items/prompt_results/items/output' response's property type/format changed from 'object'/'' to ''/'' for status '200'
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/prompt_results/items/evals/items/eval_results/cost' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/prompt_results/items/evals/items/eval_results/explanation' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/prompt_results/items/evals/items/eval_results/score' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/prompt_results/items/output/content' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/prompt_results/items/output/cost' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the required property 'data/items/retries' from the response with the '200' status
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_ref/variable_mapping/items/source/dataset_column'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the new required request property 'prompt_ref/variable_mapping/items/source/type'
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed '#/components/schemas/DatasetColumnVariableSource, #/components/schemas/ExperimentOutputVariableSource' from the 'prompt_ref/variable_mapping/items/source' request property 'oneOf' list
-- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  the 'prompt_ref/variable_mapping/items/source' request property type/format changed from ''/'' to 'object'/''
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  removed the optional property 'data/items/prompt_results/items/output/tool_calls' from the response with the '200' status
-- **CHANGE** for Component/Schema:  removed the schema 'VariableMapping-Input'
-- **CHANGE** for Component/Schema:  removed the schema 'VariableMapping-Output'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed discriminator from 'prompt_ref/variable_mapping/items/source' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed the 'evaluating' enum value from the 'status' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  removed '#/components/schemas/DatasetColumnVariableSource, #/components/schemas/ExperimentOutputVariableSource' from the 'prompt_ref/variable_mapping/items/source' response property 'oneOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'completed_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'failed_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_ref/variable_mapping/items/source/dataset_column' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'prompt_ref/variable_mapping/items/source/type' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}  added the required property 'total_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added '#/components/schemas/EvalResults, subschema #2' to the 'data/items/prompt_results/items/evals/items/eval_results' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/prompt_experiments/{experiment_id}/test_cases  added '#/components/schemas/PromptOutput, subschema #2' to the 'data/items/prompt_results/items/output' response property 'anyOf' list for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the 'evaluating' enum value from the 'data/items/status' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/completed_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'data/items/failed_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed discriminator from 'prompt_ref/variable_mapping/items/source' request property
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  removed the 'evaluating' enum value from the 'status' response property for the response status '200'
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'completed_rows' to the response with the '200' status
-- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompt_experiments  added the required property 'failed_rows' to the response with the '200' status
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **BREAKING CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the 'created_at' response's property type/format changed from ''/'' to 'string'/'date-time' for status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}/versions/{eval_version}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}  the response property 'created_at' became required for the status '200'
+- **CHANGE** for **URL**: /api/v1/tasks/{task_id}/prompts/{prompt_name}/versions/{prompt_version}  the response property 'created_at' became required for the status '200'
 
 # 11/15/2025
 - **CHANGE** for **URL**: /api/v1/tasks/{task_id}/llm_evals/{eval_name}  removed the request property 'max_score'

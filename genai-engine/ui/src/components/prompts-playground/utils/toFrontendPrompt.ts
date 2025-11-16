@@ -52,6 +52,7 @@ export const toFrontendPrompt = (backendPrompt: AgenticPrompt): PromptType => ({
   responseFormat: backendPrompt.config?.response_format ? JSON.stringify(backendPrompt.config.response_format) : undefined,
   running: false,
   version: backendPrompt.version || null,
+  isDirty: false, // Prompts loaded from backend should not be marked as dirty
 });
 
 export default toFrontendPrompt;
