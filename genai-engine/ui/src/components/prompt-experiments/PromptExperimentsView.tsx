@@ -28,7 +28,7 @@ export const PromptExperimentsView: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleSubmitExperiment = async (data: ExperimentFormData) => {
+  const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
     // Validate that datasetVersion is a number
     if (typeof data.datasetVersion !== 'number') {
       throw new Error('Dataset version must be selected');
@@ -85,7 +85,7 @@ export const PromptExperimentsView: React.FC = () => {
         };
       });
 
-      await createExperiment.mutateAsync({
+      const result = await createExperiment.mutateAsync({
         name: data.name,
         description: data.description,
         dataset_ref: {
@@ -100,6 +100,7 @@ export const PromptExperimentsView: React.FC = () => {
         eval_list: evalList,
       });
       handleCloseModal();
+      return { id: result.id };
     } catch (err) {
       console.error("Failed to create experiment:", err);
       throw err;

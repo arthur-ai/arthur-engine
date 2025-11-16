@@ -28,7 +28,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
 import useSnackbar from "@/hooks/useSnackbar";
 import type {
@@ -45,7 +45,7 @@ import type {
 interface CreateExperimentModalProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: ExperimentFormData) => Promise<void>;
+  onSubmit: (data: ExperimentFormData) => Promise<{ id: string }>;
 }
 
 export interface PromptVersionSelection {
@@ -100,6 +100,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   onSubmit,
 }) => {
   const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const api = useApi();
   const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
@@ -451,7 +452,9 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setIsSubmitting(true);
       // Transform formData to match API expectations
       // The parent component will handle the actual API call
-      await onSubmit(formData);
+      const result = await onSubmit(formData);
+      // Show success toast
+      showSnackbar(`Experiment "${formData.name}" created successfully!`, "success");
       // Reset form on success
       setFormData({
         name: "",
@@ -475,9 +478,12 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       setCompletedSteps(new Set());
       setErrors({});
       onClose();
+      // Navigate to the experiment detail page
+      navigate(`/tasks/${taskId}/prompt-experiments/${result.id}`);
     } catch (error) {
       console.error("Failed to create experiment:", error);
       setErrors({ general: "Failed to create experiment. Please try again." });
+      showSnackbar("Failed to create experiment. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -1438,6 +1444,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success/Error Toast */}
+      <Snackbar {...snackbarProps}>
+        <Alert {...alertProps} />
+      </Snackbar>
     </>
   );
 };
