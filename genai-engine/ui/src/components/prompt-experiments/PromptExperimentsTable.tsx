@@ -9,7 +9,8 @@ import {
   Box,
   Chip,
 } from "@mui/material";
-import React, { useCallback } from "react";
+import React from "react";
+import { formatUTCTimestamp } from "@/utils/formatters";
 
 export interface PromptExperiment {
   id: string;
@@ -39,26 +40,6 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
   experiments,
   onRowClick,
 }) => {
-
-  const formatDate = useCallback((dateString?: string | null): string => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return dateString;
-      }
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return dateString;
-    }
-  }, []);
 
   const getStatusColor = (
     status: PromptExperiment["status"]
@@ -142,8 +123,8 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                     size="small"
                   />
                 </TableCell>
-                <TableCell>{formatDate(experiment.created_at)}</TableCell>
-                <TableCell>{formatDate(experiment.finished_at)}</TableCell>
+                <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
+                <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

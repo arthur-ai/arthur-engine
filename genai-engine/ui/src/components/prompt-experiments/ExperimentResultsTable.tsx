@@ -380,8 +380,9 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
 
   return (
     <TableRow
-      className="hover:bg-gray-50 cursor-pointer"
+      hover
       onClick={onClick}
+      sx={{ cursor: "pointer" }}
     >
       <TableCell>
         <Chip
@@ -505,50 +506,27 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
     setPage(value - 1);
   };
 
-  if (isLoading) {
-    return (
-      <Box className="flex items-center justify-center p-8">
-        <Typography>Loading results...</Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box className="flex items-center justify-center p-8">
-        <Typography color="error">{error.message}</Typography>
-      </Box>
-    );
-  }
-
-  if (testCases.length === 0) {
-    return (
-      <Box className="flex items-center justify-center p-8">
-        <Typography className="text-gray-600">No test cases found</Typography>
-      </Box>
-    );
-  }
-
   return (
     <Box>
-      <TableContainer component={Paper} elevation={1}>
-        <Table aria-label="experiment results table">
+      <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
+        {isLoading && <LinearProgress />}
+        <Table stickyHeader size="small" aria-label="experiment results table">
           <TableHead>
             <TableRow>
-              <TableCell>
+              <TableCell sx={{ backgroundColor: "grey.50" }}>
                 <Box component="span" className="font-semibold">
                   Status
                 </Box>
               </TableCell>
               {evalColumns.map((evalCol) => (
-                <TableCell key={`${evalCol.name}-${evalCol.version}`}>
+                <TableCell key={`${evalCol.name}-${evalCol.version}`} sx={{ backgroundColor: "grey.50" }}>
                   <Box component="span" className="font-semibold">
                     {evalCol.name} v{evalCol.version}
                   </Box>
                 </TableCell>
               ))}
               {variableColumns.map((varName) => (
-                <TableCell key={varName}>
+                <TableCell key={varName} sx={{ backgroundColor: "grey.50" }}>
                   <Box component="span" className="font-semibold">
                     {varName}
                   </Box>
@@ -557,15 +535,35 @@ export const ExperimentResultsTable: React.FC<ExperimentResultsTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {testCases.map((testCase, index) => (
-              <TestCaseRow
-                key={testCase.dataset_row_id || index}
-                testCase={testCase}
-                variableColumns={variableColumns}
-                evalColumns={evalColumns}
-                onClick={() => handleRowClick(index)}
-              />
-            ))}
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                  <Typography>Loading results...</Typography>
+                </TableCell>
+              </TableRow>
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                  <Typography color="error">{error.message}</Typography>
+                </TableCell>
+              </TableRow>
+            ) : testCases.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={1 + evalColumns.length + variableColumns.length} align="center">
+                  <Typography className="text-gray-600">No test cases found</Typography>
+                </TableCell>
+              </TableRow>
+            ) : (
+              testCases.map((testCase, index) => (
+                <TestCaseRow
+                  key={testCase.dataset_row_id || index}
+                  testCase={testCase}
+                  variableColumns={variableColumns}
+                  evalColumns={evalColumns}
+                  onClick={() => handleRowClick(index)}
+                />
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>

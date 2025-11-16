@@ -12,6 +12,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Any, Dict, List
 from uuid import uuid4
 
@@ -186,11 +187,13 @@ class ExperimentExecutor:
             )
             if failed_count > 0:
                 experiment.status = ExperimentStatus.FAILED.value
+                experiment.finished_at = datetime.now()
                 logger.warning(
                     f"Experiment {experiment_id} completed with {failed_count} failed test cases"
                 )
             else:
                 experiment.status = ExperimentStatus.COMPLETED.value
+                experiment.finished_at = datetime.now()
                 logger.info(f"Experiment {experiment_id} completed successfully")
 
             db_session.commit()
@@ -207,6 +210,7 @@ class ExperimentExecutor:
                 )
                 if experiment:
                     experiment.status = ExperimentStatus.FAILED.value
+                    experiment.finished_at = datetime.now()
                     db_session.commit()
             except Exception as commit_error:
                 logger.error(
