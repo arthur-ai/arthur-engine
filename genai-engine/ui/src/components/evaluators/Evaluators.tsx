@@ -9,6 +9,7 @@ import EvalFormModal from "./EvalFormModal";
 import EvaluatorsHeader from "./EvaluatorsHeader";
 import EvalFullScreenView from "./fullscreen/EvalFullScreenView";
 import { useCreateEvalMutation } from "./hooks/useCreateEvalMutation";
+import { useDeleteEvalMutation } from "./hooks/useDeleteEvalMutation";
 import { useEvals } from "./hooks/useEvals";
 import EvalsTable from "./table/EvalsTable";
 
@@ -41,6 +42,10 @@ const Evaluators: React.FC = () => {
 
   const createMutation = useCreateEvalMutation(task?.id, () => {
     setIsCreateModalOpen(false);
+    refetch();
+  });
+
+  const deleteMutation = useDeleteEvalMutation(task?.id, () => {
     refetch();
   });
 
@@ -185,6 +190,7 @@ const Evaluators: React.FC = () => {
             expandedRows={expandedRows}
             onToggleRow={handleToggleRow}
             onExpandToFullScreen={handleExpandToFullScreen}
+            onDelete={deleteMutation.mutateAsync}
           />
         )}
       </Box>

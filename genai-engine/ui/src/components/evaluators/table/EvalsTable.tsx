@@ -1,6 +1,5 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
-import Collapse from "@mui/material/Collapse";
 import Paper from "@mui/material/Paper";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -9,17 +8,28 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableSortLabel from "@mui/material/TableSortLabel";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import DeleteIcon from "@mui/icons-material/Delete";
+import IconButton from "@mui/material/IconButton";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 
 import type { EvalsTableProps } from "../types";
-
-import EvalRowExpansion from "./EvalRowExpansion";
 
 import { formatDate } from "@/utils/formatters";
 
 type SortableColumn = "name" | "created_at" | "latest_version_created_at";
 
-const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, expandedRows, onToggleRow, onExpandToFullScreen }: EvalsTableProps) => {
+const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, onExpandToFullScreen, onDelete }: EvalsTableProps) => {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [evalToDelete, setEvalToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const handleSort = useCallback(
     (column: SortableColumn) => {
       onSort(column);
@@ -29,10 +39,39 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, expandedRows, on
 
   const handleRowClick = useCallback(
     (evalName: string) => {
-      onToggleRow(evalName);
+      onExpandToFullScreen(evalName);
     },
-    [onToggleRow]
+    [onExpandToFullScreen]
   );
+
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, evalName: string) => {
+      e.stopPropagation();
+      setEvalToDelete(evalName);
+      setDeleteDialogOpen(true);
+    },
+    []
+  );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!evalToDelete || !onDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete(evalToDelete);
+      setDeleteDialogOpen(false);
+      setEvalToDelete(null);
+    } catch (err) {
+      console.error("Failed to delete eval:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [evalToDelete, onDelete]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteDialogOpen(false);
+    setEvalToDelete(null);
+  }, []);
 
   const sortedEvals = useMemo(() => {
     if (!sortColumn) return evals;
@@ -65,57 +104,62 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, expandedRows, on
   }, [evals, sortColumn, sortDirection]);
 
   return (
-    <TableContainer
-      component={Paper}
-      elevation={1}
-      sx={{
-        overflow: "auto",
-        height: "100%",
-      }}
-    >
-      <Table sx={{ minWidth: 650 }} aria-label="evals table" stickyHeader>
-        <TableHead>
-          <TableRow>
-            <TableCell>
-              <Box component="span" sx={{ fontWeight: 600 }}>
-                Name
-              </Box>
-            </TableCell>
-            <TableCell>
-              <TableSortLabel
-                active={sortColumn === "created_at"}
-                direction={sortColumn === "created_at" ? sortDirection : "asc"}
-                onClick={() => handleSort("created_at")}
-              >
+    <>
+      <TableContainer
+        component={Paper}
+        elevation={1}
+        sx={{
+          overflow: "auto",
+          height: "100%",
+        }}
+      >
+        <Table sx={{ minWidth: 650 }} aria-label="evals table" stickyHeader>
+          <TableHead>
+            <TableRow>
+              <TableCell>
                 <Box component="span" sx={{ fontWeight: 600 }}>
-                  Created At
+                  Name
                 </Box>
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>
-              <TableSortLabel
-                active={sortColumn === "latest_version_created_at"}
-                direction={sortColumn === "latest_version_created_at" ? sortDirection : "asc"}
-                onClick={() => handleSort("latest_version_created_at")}
-              >
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortColumn === "created_at"}
+                  direction={sortColumn === "created_at" ? sortDirection : "asc"}
+                  onClick={() => handleSort("created_at")}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Created At
+                  </Box>
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={sortColumn === "latest_version_created_at"}
+                  direction={sortColumn === "latest_version_created_at" ? sortDirection : "asc"}
+                  onClick={() => handleSort("latest_version_created_at")}
+                >
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Latest Version Created At
+                  </Box>
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
                 <Box component="span" sx={{ fontWeight: 600 }}>
-                  Latest Version Created At
+                  Versions
                 </Box>
-              </TableSortLabel>
-            </TableCell>
-            <TableCell>
-              <Box component="span" sx={{ fontWeight: 600 }}>
-                Versions
-              </Box>
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {sortedEvals.map((evalMetadata) => {
-            const isExpanded = expandedRows.has(evalMetadata.name);
-            return (
-              <React.Fragment key={evalMetadata.name}>
+              </TableCell>
+              <TableCell>
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                  Actions
+                </Box>
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sortedEvals.map((evalMetadata) => {
+              return (
                 <TableRow
+                  key={evalMetadata.name}
                   hover
                   onClick={() => handleRowClick(evalMetadata.name)}
                   sx={{
@@ -144,20 +188,57 @@ const EvalsTable = ({ evals, sortColumn, sortDirection, onSort, expandedRows, on
                   <TableCell>{formatDate(evalMetadata.created_at)}</TableCell>
                   <TableCell>{formatDate(evalMetadata.latest_version_created_at)}</TableCell>
                   <TableCell>{evalMetadata.versions}</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={4}>
-                    <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                      <EvalRowExpansion eval={evalMetadata} onExpandToFullScreen={() => onExpandToFullScreen(evalMetadata.name)} />
-                    </Collapse>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleDeleteClick(e, evalMetadata.name)}
+                      sx={{ color: "error.main" }}
+                      aria-label="Delete eval"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
-              </React.Fragment>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">Delete Evaluator?</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Are you sure you want to delete <strong>{evalToDelete}</strong>?
+          </DialogContentText>
+          <Box
+            sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}
+          >
+            <strong>Warning:</strong> This will permanently delete the evaluator
+            and its entire version history. This action cannot be undone.
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 

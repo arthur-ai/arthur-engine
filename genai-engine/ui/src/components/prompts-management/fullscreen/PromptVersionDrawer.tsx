@@ -1,4 +1,3 @@
-import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
@@ -7,8 +6,16 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
-import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import DeleteIcon from "@mui/icons-material/Delete";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import { useMemo, useState, useCallback } from "react";
 
 import { usePromptVersions } from "../hooks/usePromptVersions";
@@ -16,44 +23,25 @@ import type { PromptVersionDrawerProps } from "../types";
 
 import { formatDate } from "@/utils/formatters";
 
-const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersion, onSelectVersion }: PromptVersionDrawerProps) => {
-  const [searchQuery, setSearchQuery] = useState("");
+const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersion, onSelectVersion, onDelete }: PromptVersionDrawerProps) => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [versionToDelete, setVersionToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { versions, isLoading, error } = usePromptVersions(taskId, promptName, {
+  const { versions, isLoading, error, refetch } = usePromptVersions(taskId, promptName, {
     sort: sortOrder,
     exclude_deleted: false,
   });
 
   const sortedAndFilteredVersions = useMemo(() => {
-    let filtered = versions;
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (v) =>
-          v.version.toString().includes(query) ||
-          v.model_name.toLowerCase().includes(query) ||
-          v.model_provider.toLowerCase().includes(query) ||
-          formatDate(v.created_at).toLowerCase().includes(query)
-      );
-    }
-
     // Sort by creation date
-    return [...filtered].sort((a, b) => {
+    return [...versions].sort((a, b) => {
       const aTime = new Date(a.created_at).getTime();
       const bTime = new Date(b.created_at).getTime();
       return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
     });
-  }, [versions, searchQuery, sortOrder]);
-
-  const autocompleteOptions = useMemo(() => {
-    return versions.map((v) => ({
-      label: `Version ${v.version} - ${v.model_provider}/${v.model_name} (${formatDate(v.created_at)})`,
-      version: v.version,
-    }));
-  }, [versions]);
+  }, [versions, sortOrder]);
 
   const handleVersionClick = useCallback(
     (version: number) => {
@@ -62,19 +50,35 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
     [onSelectVersion]
   );
 
-  const handleAutocompleteChange = useCallback(
-    (_event: unknown, value: { label: string; version: number } | string | null) => {
-      if (value && typeof value === "object") {
-        onSelectVersion(value.version);
-        setSearchQuery("");
-      } else if (typeof value === "string") {
-        setSearchQuery(value);
-      } else {
-        setSearchQuery("");
-      }
+  const handleDeleteClick = useCallback(
+    (e: React.MouseEvent, version: number) => {
+      e.stopPropagation();
+      setVersionToDelete(version);
+      setDeleteDialogOpen(true);
     },
-    [onSelectVersion]
+    []
   );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (versionToDelete === null || !onDelete) return;
+
+    try {
+      setIsDeleting(true);
+      await onDelete(versionToDelete);
+      setDeleteDialogOpen(false);
+      setVersionToDelete(null);
+      refetch();
+    } catch (err) {
+      console.error("Failed to delete prompt version:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [versionToDelete, onDelete, refetch]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteDialogOpen(false);
+    setVersionToDelete(null);
+  }, []);
 
   return (
     <Drawer
@@ -101,16 +105,6 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
           Versions: {promptName}
         </Typography>
-
-        <Autocomplete
-          freeSolo
-          options={autocompleteOptions}
-          getOptionLabel={(option) => (typeof option === "string" ? option : option.label)}
-          onChange={handleAutocompleteChange}
-          onInputChange={(_event, value) => setSearchQuery(value)}
-          inputValue={searchQuery}
-          renderInput={(params) => <TextField {...params} label="Search versions" variant="outlined" size="small" sx={{ mb: 2 }} />}
-        />
 
         <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
           <Chip
@@ -157,18 +151,26 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
                 <ListItem key={version.version} disablePadding>
                   <ListItemButton
                     selected={isSelected}
-                    onClick={() => handleVersionClick(version.version)}
+                    onClick={() => !isDeleted && handleVersionClick(version.version)}
+                    disabled={isDeleted}
                     sx={{
                       backgroundColor: isSelected ? "action.selected" : "transparent",
                       "&:hover": {
-                        backgroundColor: "action.hover",
+                        backgroundColor: isDeleted ? "transparent" : "action.hover",
                       },
+                      "&.Mui-disabled": {
+                        opacity: 1,
+                      },
+                      cursor: isDeleted ? "not-allowed" : "pointer",
                     }}
                   >
                     <ListItemText
                       primary={
                         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          <Typography variant="body2" sx={{
+                              fontWeight: 500,
+                              color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.primary",
+                            }}>
                             Version {version.version}
                           </Typography>
                           {isDeleted && <Chip label="Deleted" size="small" color="error" sx={{ height: 18, fontSize: "0.7rem" }} />}
@@ -176,15 +178,29 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
                       }
                       secondary={
                         <Box component="span" sx={{ mt: 0.5, display: "block" }}>
-                          <Typography variant="caption" color="text.secondary" component="span">
+                          <Typography variant="caption" color="text.secondary" component="span" sx={{ color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary" }}>
                             {version.model_provider} / {version.model_name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary" component="span" sx={{ display: "block", mt: 0.5 }}>
+                          <Typography variant="caption" color="text.secondary" component="span" sx={{
+                              display: "block",
+                              mt: 0.5,
+                              color: isDeleted ? "rgba(0, 0, 0, 0.55)" : "text.secondary",
+                            }}>
                             {formatDate(version.created_at)}
                           </Typography>
                         </Box>
                       }
                     />
+                    {!isDeleted && (
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleDeleteClick(e, version.version)}
+                        sx={{ color: "error.main" }}
+                        aria-label="Delete version"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </ListItemButton>
                 </ListItem>
               );
@@ -192,6 +208,38 @@ const PromptVersionDrawer = ({ open, onClose, taskId, promptName, selectedVersio
           </List>
         )}
       </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-version-dialog-title"
+        aria-describedby="delete-version-dialog-description"
+      >
+        <DialogTitle id="delete-version-dialog-title">Delete Version?</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-version-dialog-description">
+            Are you sure you want to delete <strong>Version {versionToDelete}</strong> of{" "}
+            <strong>{promptName}</strong>?
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: "warning.lighter", borderRadius: 1 }}>
+            <strong>Warning:</strong> This version and all of its contents will be deleted. This action cannot be undone.
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleDeleteCancel} disabled={isDeleting}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={isDeleting}
+            startIcon={isDeleting ? <CircularProgress size={16} /> : null}
+          >
+            {isDeleting ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Drawer>
   );
 };
