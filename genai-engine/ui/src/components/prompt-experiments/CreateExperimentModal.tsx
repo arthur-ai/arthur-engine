@@ -19,6 +19,10 @@ import {
   Step,
   StepLabel,
   Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -26,6 +30,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
+import useSnackbar from "@/hooks/useSnackbar";
 import type {
   LLMGetAllMetadataResponse,
   AgenticPromptVersionResponse,
@@ -96,6 +101,7 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 }) => {
   const { id: taskId } = useParams<{ id: string }>();
   const api = useApi();
+  const { showSnackbar, snackbarProps, alertProps } = useSnackbar();
 
   // Step management
   const [currentStep, setCurrentStep] = useState(0);
@@ -134,6 +140,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   const [loadingPromptDetails, setLoadingPromptDetails] = useState(false);
   const [evalVariables, setEvalVariables] = useState<Record<string, { name: string; version: number; variables: string[] }>>({});
   const [loadingEvalDetails, setLoadingEvalDetails] = useState(false);
+
+  // Evaluator instructions modal state
+  const [instructionsModalOpen, setInstructionsModalOpen] = useState(false);
+  const [selectedEvalInstructions, setSelectedEvalInstructions] = useState<{ name: string; version: number; instructions: string } | null>(null);
+  const [loadingInstructions, setLoadingInstructions] = useState(false);
 
   // Evaluators state
   const [evaluators, setEvaluators] = useState<LLMGetAllMetadataResponse[]>([]);
@@ -327,6 +338,28 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
       console.error("Failed to load eval variables:", error);
     } finally {
       setLoadingEvalDetails(false);
+    }
+  };
+
+  const loadEvaluatorInstructions = async (evalName: string, evalVersion: number) => {
+    if (!taskId || !api) return;
+    try {
+      setLoadingInstructions(true);
+      const response = await api.api.getLlmEvalApiV1TasksTaskIdLlmEvalsEvalNameVersionsEvalVersionGet(
+        evalName,
+        String(evalVersion),
+        taskId
+      );
+      setSelectedEvalInstructions({
+        name: evalName,
+        version: evalVersion,
+        instructions: response.data.instructions || "",
+      });
+      setInstructionsModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load evaluator instructions:", error);
+    } finally {
+      setLoadingInstructions(false);
     }
   };
 
@@ -1145,9 +1178,28 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
           <Typography variant="body2" className="text-gray-500 mb-1">
             Evaluator {evalIndex + 1} of {formData.evaluators.length}
           </Typography>
-          <Typography variant="body1" className="text-gray-700">
-            Map each variable for <strong>{evaluator.name} (v{evaluator.version})</strong> to either a dataset column or the experiment output.
+          <Typography variant="body1" className="text-gray-700 mb-2">
+            Map each variable for{" "}
+            <strong
+              onClick={() => loadEvaluatorInstructions(evaluator.name, evaluator.version)}
+              style={{
+                cursor: "pointer",
+                textDecoration: "underline",
+                color: "#2563eb",
+              }}
+            >
+              {evaluator.name} (v{evaluator.version})
+            </strong>{" "}
+            to either a dataset column or the experiment output.
           </Typography>
+          <Box className="p-3 bg-blue-50 border border-blue-200 rounded">
+            <Typography variant="body2" className="text-gray-800">
+              <strong>Dataset Column:</strong> Use this when the evaluator needs information from your test data (e.g., expected answers, reference text, ground truth labels).
+            </Typography>
+            <Typography variant="body2" className="text-gray-800 mt-1">
+              <strong>Experiment Output:</strong> Use this when the evaluator needs to assess the prompt's generated response (e.g., to check accuracy, relevance, or quality of the output).
+            </Typography>
+          </Box>
         </Box>
 
         {loadingEvalDetails ? (
@@ -1166,15 +1218,17 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
               return (
                 <Box key={varName} className="border border-gray-300 rounded p-3">
-                  <Typography variant="subtitle2" className="font-medium mb-2">
-                    {varName} *
-                  </Typography>
+                  <Box className="flex items-center justify-between mb-3">
+                    <Typography variant="subtitle2" className="font-medium">
+                      {varName} *
+                    </Typography>
 
-                  <Box className="flex gap-2 mb-2">
-                    <Button
-                      variant={sourceType === "dataset_column" ? "contained" : "outlined"}
-                      size="small"
-                      onClick={() => {
+                    <ToggleButtonGroup
+                      value={sourceType}
+                      exclusive
+                      onChange={(event, newValue) => {
+                        if (newValue === null) return;
+
                         const newMappings = formData.evalVariableMappings || [];
                         const existingIndex = newMappings.findIndex(
                           m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
@@ -1185,10 +1239,15 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                           evalVersion: evaluator.version,
                           mappings: {
                             ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
-                            [varName]: {
-                              sourceType: "dataset_column" as VariableSourceType,
-                              datasetColumn: mapping?.datasetColumn || "",
-                            },
+                            [varName]: newValue === "dataset_column"
+                              ? {
+                                  sourceType: "dataset_column" as VariableSourceType,
+                                  datasetColumn: mapping?.datasetColumn || "",
+                                }
+                              : {
+                                  sourceType: "experiment_output" as VariableSourceType,
+                                  jsonPath: mapping?.jsonPath || "",
+                                },
                           },
                         };
 
@@ -1203,48 +1262,20 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                           evalVariableMappings: newMappings,
                         }));
                       }}
-                    >
-                      Dataset Column
-                    </Button>
-                    <Button
-                      variant={sourceType === "experiment_output" ? "contained" : "outlined"}
                       size="small"
-                      onClick={() => {
-                        const newMappings = formData.evalVariableMappings || [];
-                        const existingIndex = newMappings.findIndex(
-                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-                        );
-
-                        const updatedMapping = {
-                          evalName: evaluator.name,
-                          evalVersion: evaluator.version,
-                          mappings: {
-                            ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
-                            [varName]: {
-                              sourceType: "experiment_output" as VariableSourceType,
-                              jsonPath: mapping?.jsonPath || "",
-                            },
-                          },
-                        };
-
-                        if (existingIndex >= 0) {
-                          newMappings[existingIndex] = updatedMapping;
-                        } else {
-                          newMappings.push(updatedMapping);
-                        }
-
-                        setFormData(prev => ({
-                          ...prev,
-                          evalVariableMappings: newMappings,
-                        }));
-                      }}
                     >
-                      Experiment Output
-                    </Button>
+                      <ToggleButton value="dataset_column">
+                        Dataset Column
+                      </ToggleButton>
+                      <ToggleButton value="experiment_output">
+                        Experiment Output
+                      </ToggleButton>
+                    </ToggleButtonGroup>
                   </Box>
 
                   {sourceType === "dataset_column" ? (
-                    <FormControl fullWidth size="small">
+                    <Box>
+                      <FormControl fullWidth size="small">
                       <InputLabel>Dataset Column</InputLabel>
                       <Select
                         value={mapping?.datasetColumn || ""}
@@ -1289,43 +1320,13 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                         ))}
                       </Select>
                     </FormControl>
+                    </Box>
                   ) : (
-                    <TextField
-                      fullWidth
-                      size="small"
-                      label="JSON Path (optional)"
-                      placeholder="e.g., .response.data"
-                      value={mapping?.jsonPath || ""}
-                      onChange={(e) => {
-                        const newMappings = formData.evalVariableMappings || [];
-                        const existingIndex = newMappings.findIndex(
-                          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-                        );
-
-                        const updatedMapping = {
-                          evalName: evaluator.name,
-                          evalVersion: evaluator.version,
-                          mappings: {
-                            ...(existingIndex >= 0 ? newMappings[existingIndex].mappings : {}),
-                            [varName]: {
-                              sourceType: "experiment_output" as VariableSourceType,
-                              jsonPath: e.target.value,
-                            },
-                          },
-                        };
-
-                        if (existingIndex >= 0) {
-                          newMappings[existingIndex] = updatedMapping;
-                        } else {
-                          newMappings.push(updatedMapping);
-                        }
-
-                        setFormData(prev => ({
-                          ...prev,
-                          evalVariableMappings: newMappings,
-                        }));
-                      }}
-                    />
+                    <Box className="p-3 bg-gray-50 border border-gray-200 rounded">
+                      <Typography variant="body2" className="text-gray-600 italic">
+                        This variable will receive the full output from the prompt execution.
+                      </Typography>
+                    </Box>
                   )}
                 </Box>
               );
@@ -1337,64 +1338,106 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={handleCancel}
-      maxWidth="md"
-      fullWidth
-      aria-labelledby="create-experiment-dialog-title"
-    >
-      <DialogTitle id="create-experiment-dialog-title">
-        Create New Experiment
-      </DialogTitle>
-      <DialogContent>
-        <Box className="mb-4">
-          <Stepper activeStep={currentStep} alternativeLabel>
-            {getStepLabels().map((label, index) => (
-              <Step key={label} completed={completedSteps.has(index)}>
-                <StepLabel>{label}</StepLabel>
-              </Step>
-            ))}
-          </Stepper>
-        </Box>
+    <>
+      <Dialog
+        open={open}
+        onClose={handleCancel}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="create-experiment-dialog-title"
+      >
+        <DialogTitle id="create-experiment-dialog-title">
+          Create New Experiment
+        </DialogTitle>
+        <DialogContent>
+          <Box className="mb-4">
+            <Stepper activeStep={currentStep} alternativeLabel>
+              {getStepLabels().map((label, index) => (
+                <Step key={label} completed={completedSteps.has(index)}>
+                  <StepLabel>{label}</StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
 
-        {renderStepContent()}
-      </DialogContent>
-      <DialogActions className="px-6 pb-4">
-        <Button onClick={handleCancel} disabled={isSubmitting}>
-          Cancel
-        </Button>
-        {(currentStep > 0 || currentEvalIndex > 0) && (
-          <Button onClick={handleBack} disabled={isSubmitting}>
-            Back
+          {renderStepContent()}
+        </DialogContent>
+        <DialogActions className="px-6 pb-4">
+          <Button onClick={handleCancel} disabled={isSubmitting}>
+            Cancel
           </Button>
-        )}
-        {!isLastStep() ? (
-          <Button
-            onClick={handleNext}
-            variant="contained"
-            color="primary"
-            disabled={
-              (currentStep === 2 ? !canProceedFromCurrentEval() : !canProceedFromStep(currentStep)) ||
-              isSubmitting
-            }
-          >
-            {currentStep === 0 ? "Configure Prompts" :
-             currentStep === 1 ? "Configure Evals" :
-             "Next Evaluator"}
+          {(currentStep > 0 || currentEvalIndex > 0) && (
+            <Button onClick={handleBack} disabled={isSubmitting}>
+              Back
+            </Button>
+          )}
+          {!isLastStep() ? (
+            <Button
+              onClick={handleNext}
+              variant="contained"
+              color="primary"
+              disabled={
+                (currentStep === 2 ? !canProceedFromCurrentEval() : !canProceedFromStep(currentStep)) ||
+                isSubmitting
+              }
+            >
+              {currentStep === 0 ? "Configure Prompts" :
+               currentStep === 1 ? "Configure Evals" :
+               "Next Evaluator"}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              color="primary"
+              disabled={!canProceedFromCurrentEval() || isSubmitting}
+              startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
+            >
+              {isSubmitting ? "Creating..." : "Create Experiment"}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+
+      {/* Evaluator Instructions Modal */}
+      <Dialog
+        open={instructionsModalOpen}
+        onClose={() => setInstructionsModalOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        aria-labelledby="evaluator-instructions-dialog-title"
+      >
+        <DialogTitle id="evaluator-instructions-dialog-title">
+          {selectedEvalInstructions && (
+            <>
+              {selectedEvalInstructions.name} (v{selectedEvalInstructions.version}) - Instructions
+            </>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          {loadingInstructions ? (
+            <Box className="flex justify-center p-4">
+              <CircularProgress />
+            </Box>
+          ) : selectedEvalInstructions ? (
+            <Box
+              className="whitespace-pre-wrap font-mono text-sm p-4 bg-gray-50 border border-gray-200 rounded"
+              sx={{
+                maxHeight: "70vh",
+                overflowY: "auto",
+                overflowX: "auto",
+              }}
+            >
+              {selectedEvalInstructions.instructions || "No instructions available for this evaluator."}
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setInstructionsModalOpen(false)} color="primary">
+            Close
           </Button>
-        ) : (
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            color="primary"
-            disabled={!canProceedFromCurrentEval() || isSubmitting}
-            startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
-          >
-            {isSubmitting ? "Creating..." : "Create Experiment"}
-          </Button>
-        )}
-      </DialogActions>
-    </Dialog>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
