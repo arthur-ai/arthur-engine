@@ -8615,6 +8615,448 @@
                 }
             }
         },
+        "/api/v1/tasks/{task_id}/prompt_experiments": {
+            "get": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "List prompt experiments",
+                "description": "List all prompt experiments for a task with optional filtering and pagination",
+                "operationId": "list_prompt_experiments_api_v1_tasks__task_id__prompt_experiments_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Search text to filter experiments by name, description, prompt name, or dataset name",
+                            "title": "Search"
+                        },
+                        "description": "Search text to filter experiments by name, description, prompt name, or dataset name"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Create and run a prompt experiment",
+                "description": "Create a new prompt experiment and initiate execution",
+                "operationId": "create_prompt_experiment_api_v1_tasks__task_id__prompt_experiments_post",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid",
+                            "title": "Task Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePromptExperimentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentSummary"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prompt_experiments/{experiment_id}": {
+            "get": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Get prompt experiment details",
+                "description": "Get detailed information about a specific prompt experiment including summary results",
+                "operationId": "get_prompt_experiment_api_v1_prompt_experiments__experiment_id__get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment to retrieve"
+                        },
+                        "description": "The ID of the experiment to retrieve"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptExperimentDetail"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Delete prompt experiment",
+                "description": "Delete a prompt experiment and all its associated data",
+                "operationId": "delete_prompt_experiment_api_v1_prompt_experiments__experiment_id__delete",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment to delete"
+                        },
+                        "description": "The ID of the experiment to delete"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Experiment deleted successfully."
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prompt_experiments/{experiment_id}/test_cases": {
+            "get": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Get experiment test cases",
+                "description": "Get paginated list of test case results for a prompt experiment",
+                "operationId": "get_experiment_test_cases_api_v1_prompt_experiments__experiment_id__test_cases_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment"
+                        },
+                        "description": "The ID of the experiment"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TestCaseListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results": {
+            "get": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Get prompt version results",
+                "description": "Get paginated list of results for a specific prompt version within an experiment",
+                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_name__versions__prompt_version__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment"
+                        },
+                        "description": "The ID of the experiment"
+                    },
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt"
+                        },
+                        "description": "The name of the prompt"
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt"
+                        },
+                        "description": "The version of the prompt"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptVersionResultListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -10186,6 +10628,52 @@
                 ],
                 "title": "CreateEvalRequest"
             },
+            "CreatePromptExperimentRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name for the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "dataset_ref": {
+                        "$ref": "#/components/schemas/DatasetRef",
+                        "description": "Reference to the dataset to use"
+                    },
+                    "prompt_ref": {
+                        "$ref": "#/components/schemas/PromptRef-Input",
+                        "description": "Reference to the prompt configuration"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Input"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations to run"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "dataset_ref",
+                    "prompt_ref",
+                    "eval_list"
+                ],
+                "title": "CreatePromptExperimentRequest",
+                "description": "Request to create a new prompt experiment"
+            },
             "CreateUserRequest": {
                 "properties": {
                     "email": {
@@ -10226,6 +10714,64 @@
                     "lastName"
                 ],
                 "title": "CreateUserRequest"
+            },
+            "DatasetColumnSource": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the dataset column"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "title": "DatasetColumnSource",
+                "description": "Reference to a dataset column"
+            },
+            "DatasetColumnVariableSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "dataset_column",
+                        "title": "Type",
+                        "description": "Type of source: 'dataset_column'"
+                    },
+                    "dataset_column": {
+                        "$ref": "#/components/schemas/DatasetColumnSource",
+                        "description": "Dataset column source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "dataset_column"
+                ],
+                "title": "DatasetColumnVariableSource",
+                "description": "Variable source from a dataset column"
+            },
+            "DatasetRef": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "title": "Id",
+                        "description": "Dataset ID"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Dataset version number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "version"
+                ],
+                "title": "DatasetRef",
+                "description": "Reference to a dataset and version"
             },
             "DatasetResponse": {
                 "properties": {
@@ -10605,6 +11151,237 @@
                 ],
                 "title": "DatasetVersionRowResponse"
             },
+            "EvalExecution": {
+                "properties": {
+                    "eval_name": {
+                        "type": "string",
+                        "title": "Eval Name",
+                        "description": "Name of the evaluation"
+                    },
+                    "eval_version": {
+                        "type": "string",
+                        "title": "Eval Version",
+                        "description": "Version of the evaluation"
+                    },
+                    "eval_input_variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/InputVariable"
+                        },
+                        "type": "array",
+                        "title": "Eval Input Variables",
+                        "description": "Input variables used for the eval"
+                    },
+                    "eval_results": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/EvalExecutionResult"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Results from the eval (None if not yet executed)"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "eval_name",
+                    "eval_version",
+                    "eval_input_variables"
+                ],
+                "title": "EvalExecution",
+                "description": "Details of an eval execution"
+            },
+            "EvalExecutionResult": {
+                "properties": {
+                    "score": {
+                        "type": "number",
+                        "title": "Score",
+                        "description": "Score from the evaluation"
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "title": "Explanation",
+                        "description": "Explanation of the score"
+                    },
+                    "cost": {
+                        "type": "string",
+                        "title": "Cost",
+                        "description": "Cost of the evaluation"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "score",
+                    "explanation",
+                    "cost"
+                ],
+                "title": "EvalExecutionResult",
+                "description": "Results from an eval execution"
+            },
+            "EvalRef-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the evaluation"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the evaluation"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalVariableMapping-Input"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of eval variables to data sources"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version",
+                    "variable_mapping"
+                ],
+                "title": "EvalRef",
+                "description": "Reference to an evaluation configuration"
+            },
+            "EvalRef-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the evaluation"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version",
+                        "description": "Version of the evaluation"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of eval variables to data sources"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version",
+                    "variable_mapping"
+                ],
+                "title": "EvalRef",
+                "description": "Reference to an evaluation configuration"
+            },
+            "EvalResultSummary": {
+                "properties": {
+                    "eval_name": {
+                        "type": "string",
+                        "title": "Eval Name",
+                        "description": "Name of the evaluation"
+                    },
+                    "eval_version": {
+                        "type": "string",
+                        "title": "Eval Version",
+                        "description": "Version of the evaluation"
+                    },
+                    "pass_count": {
+                        "type": "integer",
+                        "title": "Pass Count",
+                        "description": "Number of test cases that passed"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of test cases evaluated"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "eval_name",
+                    "eval_version",
+                    "pass_count",
+                    "total_count"
+                ],
+                "title": "EvalResultSummary",
+                "description": "Results for a single eval"
+            },
+            "EvalVariableMapping-Input": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the eval variable"
+                    },
+                    "source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Source of the variable value",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
+                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "EvalVariableMapping",
+                "description": "Mapping of an eval variable to its source (dataset column or experiment output)"
+            },
+            "EvalVariableMapping-Output": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the eval variable"
+                    },
+                    "source": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/DatasetColumnVariableSource"
+                            },
+                            {
+                                "$ref": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        ],
+                        "title": "Source",
+                        "description": "Source of the variable value",
+                        "discriminator": {
+                            "propertyName": "type",
+                            "mapping": {
+                                "dataset_column": "#/components/schemas/DatasetColumnVariableSource",
+                                "experiment_output": "#/components/schemas/ExperimentOutputVariableSource"
+                            }
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "EvalVariableMapping",
+                "description": "Mapping of an eval variable to its source (dataset column or experiment output)"
+            },
             "ExampleConfig": {
                 "properties": {
                     "example": {
@@ -10670,6 +11447,57 @@
                     ],
                     "hint": "specific individual's blood type"
                 }
+            },
+            "ExperimentOutputSource": {
+                "properties": {
+                    "json_path": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Json Path",
+                        "description": "Optional JSON path to extract from experiment output"
+                    }
+                },
+                "type": "object",
+                "title": "ExperimentOutputSource",
+                "description": "Reference to experiment output"
+            },
+            "ExperimentOutputVariableSource": {
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "const": "experiment_output",
+                        "title": "Type",
+                        "description": "Type of source: 'experiment_output'"
+                    },
+                    "experiment_output": {
+                        "$ref": "#/components/schemas/ExperimentOutputSource",
+                        "description": "Experiment output source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "type",
+                    "experiment_output"
+                ],
+                "title": "ExperimentOutputVariableSource",
+                "description": "Variable source from experiment output"
+            },
+            "ExperimentStatus": {
+                "type": "string",
+                "enum": [
+                    "queued",
+                    "running",
+                    "failed",
+                    "completed"
+                ],
+                "title": "ExperimentStatus",
+                "description": "Status of a prompt experiment"
             },
             "ExternalDocument": {
                 "properties": {
@@ -11300,6 +12128,27 @@
                     "format"
                 ],
                 "title": "InputAudio"
+            },
+            "InputVariable": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the variable"
+                    },
+                    "value": {
+                        "type": "string",
+                        "title": "Value",
+                        "description": "Value of the variable"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "value"
+                ],
+                "title": "InputVariable",
+                "description": "Input variable for a test case"
             },
             "JsonPropertySchema": {
                 "properties": {
@@ -13426,7 +14275,7 @@
                                         "span_name": "rag-retrieval-savedQueries"
                                     }
                                 ],
-                                "version": "2.1.178"
+                                "version": "1.0"
                             }
                         ]
                     }
@@ -14278,6 +15127,426 @@
                 "title": "PromptCompletionRequest",
                 "description": "Request schema for running an agentic prompt"
             },
+            "PromptEvalResultSummaries": {
+                "properties": {
+                    "prompt_name": {
+                        "type": "string",
+                        "title": "Prompt Name",
+                        "description": "Name of the prompt"
+                    },
+                    "prompt_version": {
+                        "type": "string",
+                        "title": "Prompt Version",
+                        "description": "Version of the prompt"
+                    },
+                    "eval_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalResultSummary"
+                        },
+                        "type": "array",
+                        "title": "Eval Results",
+                        "description": "Results for each evaluation run on this prompt version"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "prompt_name",
+                    "prompt_version",
+                    "eval_results"
+                ],
+                "title": "PromptEvalResultSummaries",
+                "description": "Summary of evaluation results for a prompt version"
+            },
+            "PromptExperimentDetail": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the experiment"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when experiment was created"
+                    },
+                    "finished_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Finished At",
+                        "description": "ISO timestamp when experiment finished"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ExperimentStatus",
+                        "description": "Current status of the experiment"
+                    },
+                    "prompt_name": {
+                        "type": "string",
+                        "title": "Prompt Name",
+                        "description": "Name of the prompt being tested"
+                    },
+                    "total_rows": {
+                        "type": "integer",
+                        "title": "Total Rows",
+                        "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost of running the experiment"
+                    },
+                    "dataset_ref": {
+                        "$ref": "#/components/schemas/DatasetRef",
+                        "description": "Reference to the dataset used"
+                    },
+                    "prompt_ref": {
+                        "$ref": "#/components/schemas/PromptRef-Output",
+                        "description": "Reference to the prompt configuration"
+                    },
+                    "eval_list": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalRef-Output"
+                        },
+                        "type": "array",
+                        "title": "Eval List",
+                        "description": "List of evaluations being run"
+                    },
+                    "summary_results": {
+                        "$ref": "#/components/schemas/SummaryResults",
+                        "description": "Summary of results across all test cases"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "created_at",
+                    "status",
+                    "prompt_name",
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows",
+                    "dataset_ref",
+                    "prompt_ref",
+                    "eval_list",
+                    "summary_results"
+                ],
+                "title": "PromptExperimentDetail",
+                "description": "Detailed information about a prompt experiment"
+            },
+            "PromptExperimentListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptExperimentSummary"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of prompt experiment summaries"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of prompt experiments"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "PromptExperimentListResponse",
+                "description": "Paginated list of prompt experiments"
+            },
+            "PromptExperimentSummary": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id",
+                        "description": "Unique identifier for the experiment"
+                    },
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the experiment"
+                    },
+                    "description": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Description",
+                        "description": "Description of the experiment"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At",
+                        "description": "ISO timestamp when experiment was created"
+                    },
+                    "finished_at": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Finished At",
+                        "description": "ISO timestamp when experiment finished"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/ExperimentStatus",
+                        "description": "Current status of the experiment"
+                    },
+                    "prompt_name": {
+                        "type": "string",
+                        "title": "Prompt Name",
+                        "description": "Name of the prompt being tested"
+                    },
+                    "total_rows": {
+                        "type": "integer",
+                        "title": "Total Rows",
+                        "description": "Total number of test rows in the experiment"
+                    },
+                    "completed_rows": {
+                        "type": "integer",
+                        "title": "Completed Rows",
+                        "description": "Number of test rows completed successfully"
+                    },
+                    "failed_rows": {
+                        "type": "integer",
+                        "title": "Failed Rows",
+                        "description": "Number of test rows that failed"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost of running the experiment"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "created_at",
+                    "status",
+                    "prompt_name",
+                    "total_rows",
+                    "completed_rows",
+                    "failed_rows"
+                ],
+                "title": "PromptExperimentSummary",
+                "description": "Summary of a prompt experiment"
+            },
+            "PromptOutput": {
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "title": "Content",
+                        "description": "Content of the prompt response"
+                    },
+                    "tool_calls": {
+                        "items": {},
+                        "type": "array",
+                        "title": "Tool Calls",
+                        "description": "Tool calls made by the prompt"
+                    },
+                    "cost": {
+                        "type": "string",
+                        "title": "Cost",
+                        "description": "Cost of the prompt execution"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "content",
+                    "cost"
+                ],
+                "title": "PromptOutput",
+                "description": "Output from a prompt execution"
+            },
+            "PromptRef-Input": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "version_list": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Version List",
+                        "description": "List of prompt versions to test in the experiment"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Input"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of prompt variables to dataset columns"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version_list",
+                    "variable_mapping"
+                ],
+                "title": "PromptRef",
+                "description": "Reference to a prompt configuration"
+            },
+            "PromptRef-Output": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "version_list": {
+                        "items": {
+                            "type": "integer"
+                        },
+                        "type": "array",
+                        "title": "Version List",
+                        "description": "List of prompt versions to test in the experiment"
+                    },
+                    "variable_mapping": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVariableMapping-Output"
+                        },
+                        "type": "array",
+                        "title": "Variable Mapping",
+                        "description": "Mapping of prompt variables to dataset columns"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version_list",
+                    "variable_mapping"
+                ],
+                "title": "PromptRef",
+                "description": "Reference to a prompt configuration"
+            },
+            "PromptResult": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Name",
+                        "description": "Name of the prompt"
+                    },
+                    "version": {
+                        "type": "string",
+                        "title": "Version",
+                        "description": "Version of the prompt"
+                    },
+                    "rendered_prompt": {
+                        "type": "string",
+                        "title": "Rendered Prompt",
+                        "description": "Prompt with variables replaced"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PromptOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the prompt (None if not yet executed)"
+                    },
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this prompt output"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "version",
+                    "rendered_prompt",
+                    "evals"
+                ],
+                "title": "PromptResult",
+                "description": "Results from a prompt execution with evals"
+            },
             "PromptValidationRequest": {
                 "properties": {
                     "prompt": {
@@ -14315,6 +15584,155 @@
                     "prompt"
                 ],
                 "title": "PromptValidationRequest"
+            },
+            "PromptVariableMapping-Input": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the prompt variable"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "PromptVariableMapping",
+                "description": "Mapping of a prompt variable to a dataset column source"
+            },
+            "PromptVariableMapping-Output": {
+                "properties": {
+                    "variable_name": {
+                        "type": "string",
+                        "title": "Variable Name",
+                        "description": "Name of the prompt variable"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/DatasetColumnVariableSource",
+                        "description": "Dataset column source"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "variable_name",
+                    "source"
+                ],
+                "title": "PromptVariableMapping",
+                "description": "Mapping of a prompt variable to a dataset column source"
+            },
+            "PromptVersionResult": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TestCaseStatus",
+                        "description": "Status of the test case"
+                    },
+                    "dataset_row_id": {
+                        "type": "string",
+                        "title": "Dataset Row Id",
+                        "description": "ID of the dataset row"
+                    },
+                    "prompt_input_variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/InputVariable"
+                        },
+                        "type": "array",
+                        "title": "Prompt Input Variables",
+                        "description": "Input variables for the prompt"
+                    },
+                    "rendered_prompt": {
+                        "type": "string",
+                        "title": "Rendered Prompt",
+                        "description": "Prompt with variables replaced"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PromptOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the prompt (None if not yet executed)"
+                    },
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this prompt output"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this specific prompt execution"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dataset_row_id",
+                    "prompt_input_variables",
+                    "rendered_prompt",
+                    "evals"
+                ],
+                "title": "PromptVersionResult",
+                "description": "Result for a specific prompt version within a test case"
+            },
+            "PromptVersionResultListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVersionResult"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of results for the prompt version"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of results"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "PromptVersionResultListResponse",
+                "description": "Paginated list of results for a specific prompt version"
             },
             "PutModelProviderCredentials": {
                 "properties": {
@@ -16324,6 +17742,24 @@
                 "type": "object",
                 "title": "StreamOptions"
             },
+            "SummaryResults": {
+                "properties": {
+                    "prompt_eval_summaries": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptEvalResultSummaries"
+                        },
+                        "type": "array",
+                        "title": "Prompt Eval Summaries",
+                        "description": "Summary for each prompt version tested"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "prompt_eval_summaries"
+                ],
+                "title": "SummaryResults",
+                "description": "Summary results across all prompt versions and evaluations"
+            },
             "TaskResponse": {
                 "properties": {
                     "id": {
@@ -16391,6 +17827,110 @@
                     "rules"
                 ],
                 "title": "TaskResponse"
+            },
+            "TestCase": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TestCaseStatus",
+                        "description": "Status of the test case"
+                    },
+                    "dataset_row_id": {
+                        "type": "string",
+                        "title": "Dataset Row Id",
+                        "description": "ID of the dataset row"
+                    },
+                    "prompt_input_variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/InputVariable"
+                        },
+                        "type": "array",
+                        "title": "Prompt Input Variables",
+                        "description": "Input variables for the prompt"
+                    },
+                    "prompt_results": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptResult"
+                        },
+                        "type": "array",
+                        "title": "Prompt Results",
+                        "description": "Results for each prompt version tested"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this test case"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dataset_row_id",
+                    "prompt_input_variables",
+                    "prompt_results"
+                ],
+                "title": "TestCase",
+                "description": "Individual test case result"
+            },
+            "TestCaseListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/TestCase"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of test cases"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of test cases"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "TestCaseListResponse",
+                "description": "Paginated list of test cases"
+            },
+            "TestCaseStatus": {
+                "type": "string",
+                "enum": [
+                    "queued",
+                    "running",
+                    "evaluating",
+                    "failed",
+                    "completed"
+                ],
+                "title": "TestCaseStatus",
+                "description": "Status of a test case"
             },
             "TokenUsageCount": {
                 "properties": {

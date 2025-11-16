@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import React, { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { useDeleteEvalVersionMutation } from "../hooks/useDeleteEvalVersionMutation";
 import { useEval } from "../hooks/useEval";
@@ -13,6 +14,8 @@ import { useTask } from "@/hooks/useTask";
 
 const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScreenViewProps) => {
   const { task } = useTask();
+  const { id: taskId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [selectedVersion, setSelectedVersion] = useState<number | null>(initialVersion ?? null);
 
   // Fetch versions to get the latest if no version is selected
@@ -35,6 +38,8 @@ const EvalFullScreenView = ({ evalName, initialVersion, onClose }: EvalFullScree
 
   const handleSelectVersion = (version: number) => {
     setSelectedVersion(version);
+    // Update URL to reflect the selected version
+    navigate(`/tasks/${taskId}/evaluators/${evalName}/versions/${version}`);
   };
 
   return (

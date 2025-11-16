@@ -87,7 +87,7 @@ class ChatCompletionService:
         self,
         variable_map: Dict[str, str],
         messages: List[OpenAIMessage],
-    ) -> list[dict]:
+    ) -> list[OpenAIMessage]:
         for message in messages:
             if message.content is None:
                 continue
@@ -265,7 +265,7 @@ class ChatCompletionService:
         return AgenticPromptRunResponse(
             content=msg.get("content"),
             tool_calls=msg.get("tool_calls"),
-            cost=f"{llm_model_response.cost:.6f}",
+            cost=llm_model_response.cost,
         )
 
     async def stream_chat_completion(

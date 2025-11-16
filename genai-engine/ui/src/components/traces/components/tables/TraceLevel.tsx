@@ -91,8 +91,10 @@ export function TraceLevel() {
             component="div"
             count={data?.count ?? 0}
             onPageChange={pagination.handlePageChange}
+            onRowsPerPageChange={pagination.handleRowsPerPageChange}
             page={pagination.page}
             rowsPerPage={pagination.rowsPerPage}
+            rowsPerPageOptions={[10, 25, 50, 100]}
             sx={{
               overflow: "visible",
             }}
