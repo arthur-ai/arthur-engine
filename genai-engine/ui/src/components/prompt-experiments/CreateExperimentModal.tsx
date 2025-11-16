@@ -18,9 +18,11 @@ import {
   Stepper,
   Step,
   StepLabel,
+  Tooltip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
@@ -368,9 +370,11 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
         ...prev,
         evaluators: [...prev.evaluators, { name: currentEvaluatorName, version: currentEvaluatorVersion as number }],
       }));
-      setCurrentEvaluatorName("");
-      setCurrentEvaluatorVersion("");
     }
+
+    // Clear the current selection to allow adding another evaluator
+    setCurrentEvaluatorName("");
+    setCurrentEvaluatorVersion("");
   };
 
   const handleRemoveEvaluator = (index: number) => {
@@ -694,9 +698,24 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Prompt Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-2">
-              Prompt Versions *
-            </Typography>
+            <Box className="flex items-center gap-2 mb-2">
+              <Typography variant="subtitle1" className="font-semibold">
+                Prompt Versions *
+              </Typography>
+              <Tooltip
+                title="Select one or more versions of a prompt to test. Each version will be evaluated against all test cases in your dataset."
+                arrow
+                placement="right"
+              >
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 18,
+                    color: 'text.secondary',
+                    cursor: 'help'
+                  }}
+                />
+              </Tooltip>
+            </Box>
 
             <Box className="flex gap-2 mb-3 mt-4">
               <Autocomplete
@@ -804,9 +823,24 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Dataset Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-2">
-              Dataset *
-            </Typography>
+            <Box className="flex items-center gap-2 mb-2">
+              <Typography variant="subtitle1" className="font-semibold">
+                Dataset *
+              </Typography>
+              <Tooltip
+                title="Choose the dataset and version to use for testing. Each row in the dataset will be used as input for the experiment."
+                arrow
+                placement="right"
+              >
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 18,
+                    color: 'text.secondary',
+                    cursor: 'help'
+                  }}
+                />
+              </Tooltip>
+            </Box>
 
             <Box className="flex gap-2 mb-3 mt-4">
               <Autocomplete
@@ -887,9 +921,24 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
 
           {/* Evaluator Selection */}
           <Box className="border border-gray-300 rounded p-4">
-            <Typography variant="subtitle1" className="font-semibold mb-2">
-              Evaluators *
-            </Typography>
+            <Box className="flex items-center gap-2 mb-2">
+              <Typography variant="subtitle1" className="font-semibold">
+                Evaluators *
+              </Typography>
+              <Tooltip
+                title="Select one or more evaluators to assess the quality of the prompt outputs. Each evaluator will score the results based on its criteria."
+                arrow
+                placement="right"
+              >
+                <InfoOutlinedIcon
+                  sx={{
+                    fontSize: 18,
+                    color: 'text.secondary',
+                    cursor: 'help'
+                  }}
+                />
+              </Tooltip>
+            </Box>
 
             <Box className="flex flex-col gap-2 mt-4">
               {/* Existing evaluators with trash icons */}
@@ -900,11 +949,23 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                     <Select
                       value={evaluator.name}
                       label="Evaluator"
-                      disabled
+                      onChange={async (e) => {
+                        const evalName = e.target.value;
+                        const updatedEvaluators = [...formData.evaluators];
+                        updatedEvaluators[index] = { ...updatedEvaluators[index], name: evalName };
+                        setFormData(prev => ({ ...prev, evaluators: updatedEvaluators }));
+
+                        // Load versions for the new evaluator if needed
+                        if (evalName && !evaluatorVersions[evalName]) {
+                          await loadEvaluatorVersions(evalName);
+                        }
+                      }}
                     >
-                      <MenuItem value={evaluator.name}>
-                        {evaluator.name}
-                      </MenuItem>
+                      {evaluators.map((e) => (
+                        <MenuItem key={e.name} value={e.name}>
+                          {e.name}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
 
@@ -913,11 +974,19 @@ export const CreateExperimentModal: React.FC<CreateExperimentModalProps> = ({
                     <Select
                       value={evaluator.version}
                       label="Version"
-                      disabled
+                      onChange={(e) => {
+                        const updatedEvaluators = [...formData.evaluators];
+                        updatedEvaluators[index] = { ...updatedEvaluators[index], version: e.target.value as number };
+                        setFormData(prev => ({ ...prev, evaluators: updatedEvaluators }));
+                      }}
+                      disabled={!evaluator.name}
                     >
-                      <MenuItem value={evaluator.version}>
-                        v{evaluator.version}
-                      </MenuItem>
+                      {evaluator.name &&
+                        evaluatorVersions[evaluator.name]?.map((version) => (
+                          <MenuItem key={version.version} value={version.version}>
+                            v{version.version}
+                          </MenuItem>
+                        ))}
                     </Select>
                   </FormControl>
 
