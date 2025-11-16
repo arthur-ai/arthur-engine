@@ -3,7 +3,7 @@ import { Stack } from "@mui/material";
 import { useField } from "@tanstack/react-form";
 import { useEffect, useRef } from "react";
 import CircleNotificationsOutlinedIcon from "@mui/icons-material/CircleNotificationsOutlined";
-import PriorityHighRoundedIcon from "@mui/icons-material/PriorityHighRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import AddIcon from "@mui/icons-material/Add";
 
 import { withForm } from "../filtering/hooks/form";
@@ -81,13 +81,13 @@ export const Configurator = withForm({
                           {column.name}
                         </Typography>
                         {column.matchCount !== undefined && column.matchCount === 0 && (
-                          <Tooltip title="0 items found">
-                            <PriorityHighRoundedIcon fontSize="small" color="error" />
+                          <Tooltip title="0 rows detected">
+                            <WarningAmberRoundedIcon fontSize="small" color="warning" />
                           </Tooltip>
                         )}
-                        {column.matchCount && column.matchCount > 1 && (
+                        {column.matchCount !== undefined && column.matchCount > 1 && (
                           <Tooltip title={`${column.matchCount} matching spans found`}>
-                            <Badge badgeContent={column.matchCount} color="warning">
+                            <Badge badgeContent={column.matchCount} color="warning" showZero={false}>
                               <CircleNotificationsOutlinedIcon fontSize="small" color="warning" />
                             </Badge>
                           </Tooltip>
