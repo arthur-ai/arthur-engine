@@ -1,10 +1,12 @@
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
 import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getContentHeight } from "@/constants/layout";
+
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
+
+import { getContentHeight } from "@/constants/layout";
 import { usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -32,8 +34,6 @@ export const ExperimentDetailView: React.FC = () => {
         return "default";
       case "running":
         return "primary";
-      case "evaluating":
-        return "info";
       case "completed":
         return "success";
       case "failed":
@@ -64,10 +64,7 @@ export const ExperimentDetailView: React.FC = () => {
   }
 
   return (
-    <Box
-      className="w-full overflow-auto"
-      style={{ height: getContentHeight() }}
-    >
+    <Box className="w-full overflow-auto" style={{ height: getContentHeight() }}>
       <Box className="p-6">
         {/* Breadcrumb / Back Button */}
         <Box className="mb-4">
@@ -88,11 +85,7 @@ export const ExperimentDetailView: React.FC = () => {
             <Typography variant="h4" className="font-semibold text-gray-900">
               {experiment.name}
             </Typography>
-            <Chip
-              label={getStatusLabel(experiment.status)}
-              color={getStatusColor(experiment.status)}
-              size="small"
-            />
+            <Chip label={getStatusLabel(experiment.status)} color={getStatusColor(experiment.status)} size="small" />
           </Box>
           {experiment.description && (
             <Typography variant="body1" className="text-gray-600 mb-4">
@@ -106,14 +99,15 @@ export const ExperimentDetailView: React.FC = () => {
             <Box>
               <span className="font-medium">Finished:</span> {formatUTCTimestamp(experiment.finished_at)}
             </Box>
-            {experiment.finished_at && (() => {
-              const duration = formatTimestampDuration(experiment.created_at, experiment.finished_at);
-              return duration ? (
-                <Box>
-                  <span className="font-medium">Duration:</span> {duration}
-                </Box>
-              ) : null;
-            })()}
+            {experiment.finished_at &&
+              (() => {
+                const duration = formatTimestampDuration(experiment.created_at, experiment.finished_at);
+                return duration ? (
+                  <Box>
+                    <span className="font-medium">Duration:</span> {duration}
+                  </Box>
+                ) : null;
+              })()}
             <Box>
               <span className="font-medium">Prompt:</span> {experiment.prompt_name}
             </Box>
@@ -139,8 +133,8 @@ export const ExperimentDetailView: React.FC = () => {
               <InfoOutlinedIcon
                 sx={{
                   fontSize: 20,
-                  color: 'text.secondary',
-                  cursor: 'help'
+                  color: "text.secondary",
+                  cursor: "help",
                 }}
               />
             </Tooltip>
@@ -161,19 +155,12 @@ export const ExperimentDetailView: React.FC = () => {
                       <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
                         Prompt: {promptSummary.prompt_name}
                       </Typography>
-                      <Chip
-                        label={`v${promptSummary.prompt_version}`}
-                        size="small"
-                        color="primary"
-                        className="flex-shrink-0"
-                      />
+                      <Chip label={`v${promptSummary.prompt_version}`} size="small" color="primary" className="flex-shrink-0" />
                     </Box>
 
                     <Box className="space-y-3">
                       {promptSummary.eval_results.map((evalResult) => {
                         const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
-                        const isGood = percentage >= 80;
-                        const isMedium = percentage >= 60 && percentage < 80;
 
                         return (
                           <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
@@ -224,18 +211,13 @@ export const ExperimentDetailView: React.FC = () => {
               <InfoOutlinedIcon
                 sx={{
                   fontSize: 20,
-                  color: 'text.secondary',
-                  cursor: 'help'
+                  color: "text.secondary",
+                  cursor: "help",
                 }}
               />
             </Tooltip>
           </Box>
-          {taskId && experimentId && (
-            <ExperimentResultsTable
-              taskId={taskId}
-              experimentId={experimentId}
-            />
-          )}
+          {taskId && experimentId && <ExperimentResultsTable taskId={taskId} experimentId={experimentId} />}
         </Box>
       </Box>
     </Box>
