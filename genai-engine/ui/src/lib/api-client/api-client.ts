@@ -1796,6 +1796,46 @@ export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData = Promp
 
 export type GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError = HTTPValidationError;
 
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData =
+  PromptVersionResultListResponse;
+
+export type GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError = HTTPValidationError;
+
+export interface GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams {
+  /**
+   * Experiment ID
+   * The ID of the experiment
+   */
+  experimentId: string;
+  /**
+   * Page
+   * Page number
+   * @default 0
+   */
+  page?: number;
+  /**
+   * Page Size
+   * Page size. Default is 10. Must be greater than 0 and less than 5000.
+   * @default 10
+   */
+  page_size?: number;
+  /**
+   * Prompt Name
+   * The name of the prompt
+   */
+  promptName: string;
+  /**
+   * Prompt Version
+   * The version of the prompt
+   */
+  promptVersion: number;
+  /**
+   * Sort the results (asc/desc)
+   * @default "desc"
+   */
+  sort?: PaginationSortMethod;
+}
+
 export type GetRagProviderApiV1RagProvidersProviderIdGetData = RagProviderConfigurationResponse;
 
 export type GetRagProviderApiV1RagProvidersProviderIdGetError = HTTPValidationError;
@@ -4310,6 +4350,74 @@ export interface PromptVariableMappingOutput {
    * Name of the prompt variable
    */
   variable_name: string;
+}
+
+/**
+ * PromptVersionResult
+ * Result for a specific prompt version within a test case
+ */
+export interface PromptVersionResult {
+  /**
+   * Dataset Row Id
+   * ID of the dataset row
+   */
+  dataset_row_id: string;
+  /**
+   * Evals
+   * Evaluation results for this prompt output
+   */
+  evals: EvalExecution[];
+  /** Output from the prompt (None if not yet executed) */
+  output?: PromptOutput | null;
+  /**
+   * Prompt Input Variables
+   * Input variables for the prompt
+   */
+  prompt_input_variables: InputVariable[];
+  /**
+   * Rendered Prompt
+   * Prompt with variables replaced
+   */
+  rendered_prompt: string;
+  /** Status of the test case */
+  status: TestCaseStatus;
+  /**
+   * Total Cost
+   * Total cost for this specific prompt execution
+   */
+  total_cost?: string | null;
+}
+
+/**
+ * PromptVersionResultListResponse
+ * Paginated list of results for a specific prompt version
+ */
+export interface PromptVersionResultListResponse {
+  /**
+   * Data
+   * List of results for the prompt version
+   */
+  data: PromptVersionResult[];
+  /**
+   * Page
+   * Current page number (0-indexed)
+   */
+  page: number;
+  /**
+   * Page Size
+   * Number of items per page
+   */
+  page_size: number;
+  /**
+   * Total Count
+   * Total number of results
+   */
+  total_count: number;
+  /**
+   * Total Pages
+   * Total number of pages
+   */
+  total_pages: number;
 }
 
 /** PutModelProviderCredentials */
@@ -8742,6 +8850,36 @@ export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDa
       this.request<GetPromptExperimentApiV1PromptExperimentsExperimentIdGetData, GetPromptExperimentApiV1PromptExperimentsExperimentIdGetError>({
         path: `/api/v1/prompt_experiments/${experimentId}`,
         method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Get paginated list of results for a specific prompt version within an experiment
+     *
+     * @tags Prompt Experiments
+     * @name GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet
+     * @summary Get prompt version results
+     * @request GET:/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results
+     * @secure
+     */
+    getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet: (
+      {
+        experimentId,
+        promptName,
+        promptVersion,
+        ...query
+      }: GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetData,
+        GetPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGetError
+      >({
+        path: `/api/v1/prompt_experiments/${experimentId}/prompts/${promptName}/versions/${promptVersion}/results`,
+        method: "GET",
+        query: query,
         secure: true,
         format: "json",
         ...params,

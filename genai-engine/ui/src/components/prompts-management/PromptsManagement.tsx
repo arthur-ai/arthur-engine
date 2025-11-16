@@ -3,7 +3,8 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 import PromptFullScreenView from "./fullscreen/PromptFullScreenView";
 import { useDeletePromptMutation } from "./hooks/useDeletePromptMutation";
@@ -18,11 +19,20 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const PromptsManagement: React.FC = () => {
   const { task } = useTask();
+  const { id: taskId, promptName: urlPromptName, version: urlVersion } = useParams<{ id: string; promptName?: string; version?: string }>();
+  const navigate = useNavigate();
   const [fullScreenPrompt, setFullScreenPrompt] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+
+  // Initialize fullScreenPrompt from URL parameter
+  useEffect(() => {
+    if (urlPromptName && !fullScreenPrompt) {
+      setFullScreenPrompt(urlPromptName);
+    }
+  }, [urlPromptName, fullScreenPrompt]);
 
   const filters = useMemo(
     () => ({
@@ -46,11 +56,15 @@ const PromptsManagement: React.FC = () => {
 
   const handleExpandToFullScreen = useCallback((promptName: string) => {
     setFullScreenPrompt(promptName);
-  }, []);
+    // Update URL to reflect the selected prompt
+    navigate(`/tasks/${taskId}/prompts/${promptName}`);
+  }, [taskId, navigate]);
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenPrompt(null);
-  }, []);
+    // Update URL to go back to the main prompts management view
+    navigate(`/tasks/${taskId}/prompts-management`);
+  }, [taskId, navigate]);
 
   const handleSort = useCallback(
     (column: string) => {
@@ -74,9 +88,10 @@ const PromptsManagement: React.FC = () => {
   }, []);
 
   if (fullScreenPrompt) {
+    const initialVersion = urlVersion ? parseInt(urlVersion, 10) : null;
     return (
       <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
-        <PromptFullScreenView promptName={fullScreenPrompt} onClose={handleCloseFullScreen} />
+        <PromptFullScreenView promptName={fullScreenPrompt} initialVersion={initialVersion} onClose={handleCloseFullScreen} />
       </Box>
     );
   }

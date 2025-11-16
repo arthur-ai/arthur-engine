@@ -195,6 +195,25 @@ export const PromptExperimentsView: React.FC = () => {
     setPage(0); // Reset to first page when searching
   };
 
+  const getStatusChipSx = (status: PromptExperiment["status"]) => {
+    const colorMap = {
+      queued: { color: "text.secondary", borderColor: "text.secondary" },
+      running: { color: "primary.main", borderColor: "primary.main" },
+      evaluating: { color: "info.main", borderColor: "info.main" },
+      completed: { color: "success.main", borderColor: "success.main" },
+      failed: { color: "error.main", borderColor: "error.main" },
+    };
+    const colors = colorMap[status] || colorMap.queued;
+    return {
+      backgroundColor: "transparent",
+      color: colors.color,
+      borderColor: colors.borderColor,
+      borderWidth: 1,
+      borderStyle: "solid",
+      textTransform: "capitalize",
+    };
+  };
+
   return (
     <>
       <Box
@@ -321,13 +340,7 @@ export const PromptExperimentsView: React.FC = () => {
                             <Chip
                               label={experiment.status}
                               size="small"
-                              color={
-                                experiment.status === 'completed' ? 'success' :
-                                experiment.status === 'failed' ? 'error' :
-                                experiment.status === 'running' ? 'primary' :
-                                'default'
-                              }
-                              sx={{ textTransform: 'capitalize' }}
+                              sx={getStatusChipSx(experiment.status)}
                             />
                           </Box>
                         }

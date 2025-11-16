@@ -79,6 +79,23 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
+    const colorMap = {
+      default: { color: "text.secondary", borderColor: "text.secondary" },
+      primary: { color: "primary.main", borderColor: "primary.main" },
+      info: { color: "info.main", borderColor: "info.main" },
+      success: { color: "success.main", borderColor: "success.main" },
+      error: { color: "error.main", borderColor: "error.main" },
+    };
+    return {
+      backgroundColor: "transparent",
+      color: colorMap[color].color,
+      borderColor: colorMap[color].borderColor,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
+  };
+
   return (
     <>
       <TableContainer component={Paper} sx={{ flexGrow: 0, flexShrink: 1 }}>
@@ -154,8 +171,8 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 <TableCell>
                   <Chip
                     label={getStatusLabel(experiment.status)}
-                    color={getStatusColor(experiment.status)}
                     size="small"
+                    sx={getStatusChipSx(getStatusColor(experiment.status))}
                   />
                 </TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>

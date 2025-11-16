@@ -119,7 +119,51 @@ function App() {
               />
 
               <Route
+                path="/tasks/:id/evaluators/:evaluatorName"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <Evaluators />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/evaluators/:evaluatorName/versions/:version"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <Evaluators />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
                 path="/tasks/:id/prompts-management"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <PromptsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompts/:promptName"
+                element={
+                  <ProtectedRoute>
+                    <TaskLayout>
+                      <PromptsManagement />
+                    </TaskLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tasks/:id/prompts/:promptName/versions/:version"
                 element={
                   <ProtectedRoute>
                     <TaskLayout>

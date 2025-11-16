@@ -8950,6 +8950,113 @@
                 }
             }
         },
+        "/api/v1/prompt_experiments/{experiment_id}/prompts/{prompt_name}/versions/{prompt_version}/results": {
+            "get": {
+                "tags": [
+                    "Prompt Experiments"
+                ],
+                "summary": "Get prompt version results",
+                "description": "Get paginated list of results for a specific prompt version within an experiment",
+                "operationId": "get_prompt_version_results_api_v1_prompt_experiments__experiment_id__prompts__prompt_name__versions__prompt_version__results_get",
+                "security": [
+                    {
+                        "API Key": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "experiment_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Experiment ID",
+                            "description": "The ID of the experiment"
+                        },
+                        "description": "The ID of the experiment"
+                    },
+                    {
+                        "name": "prompt_name",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Prompt Name",
+                            "description": "The name of the prompt"
+                        },
+                        "description": "The name of the prompt"
+                    },
+                    {
+                        "name": "prompt_version",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "title": "Prompt Version",
+                            "description": "The version of the prompt"
+                        },
+                        "description": "The version of the prompt"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "$ref": "#/components/schemas/PaginationSortMethod",
+                            "description": "Sort the results (asc/desc)",
+                            "default": "desc"
+                        },
+                        "description": "Sort the results (asc/desc)"
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page size. Default is 10. Must be greater than 0 and less than 5000.",
+                            "default": 10,
+                            "title": "Page Size"
+                        },
+                        "description": "Page size. Default is 10. Must be greater than 0 and less than 5000."
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Page number",
+                            "default": 0,
+                            "title": "Page"
+                        },
+                        "description": "Page number"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PromptVersionResultListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
                 "tags": [
@@ -15529,6 +15636,115 @@
                 ],
                 "title": "PromptVariableMapping",
                 "description": "Mapping of a prompt variable to a dataset column source"
+            },
+            "PromptVersionResult": {
+                "properties": {
+                    "status": {
+                        "$ref": "#/components/schemas/TestCaseStatus",
+                        "description": "Status of the test case"
+                    },
+                    "dataset_row_id": {
+                        "type": "string",
+                        "title": "Dataset Row Id",
+                        "description": "ID of the dataset row"
+                    },
+                    "prompt_input_variables": {
+                        "items": {
+                            "$ref": "#/components/schemas/InputVariable"
+                        },
+                        "type": "array",
+                        "title": "Prompt Input Variables",
+                        "description": "Input variables for the prompt"
+                    },
+                    "rendered_prompt": {
+                        "type": "string",
+                        "title": "Rendered Prompt",
+                        "description": "Prompt with variables replaced"
+                    },
+                    "output": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PromptOutput"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Output from the prompt (None if not yet executed)"
+                    },
+                    "evals": {
+                        "items": {
+                            "$ref": "#/components/schemas/EvalExecution"
+                        },
+                        "type": "array",
+                        "title": "Evals",
+                        "description": "Evaluation results for this prompt output"
+                    },
+                    "total_cost": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Total Cost",
+                        "description": "Total cost for this specific prompt execution"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "dataset_row_id",
+                    "prompt_input_variables",
+                    "rendered_prompt",
+                    "evals"
+                ],
+                "title": "PromptVersionResult",
+                "description": "Result for a specific prompt version within a test case"
+            },
+            "PromptVersionResultListResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/PromptVersionResult"
+                        },
+                        "type": "array",
+                        "title": "Data",
+                        "description": "List of results for the prompt version"
+                    },
+                    "page": {
+                        "type": "integer",
+                        "title": "Page",
+                        "description": "Current page number (0-indexed)"
+                    },
+                    "page_size": {
+                        "type": "integer",
+                        "title": "Page Size",
+                        "description": "Number of items per page"
+                    },
+                    "total_pages": {
+                        "type": "integer",
+                        "title": "Total Pages",
+                        "description": "Total number of pages"
+                    },
+                    "total_count": {
+                        "type": "integer",
+                        "title": "Total Count",
+                        "description": "Total number of results"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "data",
+                    "page",
+                    "page_size",
+                    "total_pages",
+                    "total_count"
+                ],
+                "title": "PromptVersionResultListResponse",
+                "description": "Paginated list of results for a specific prompt version"
             },
             "PutModelProviderCredentials": {
                 "properties": {

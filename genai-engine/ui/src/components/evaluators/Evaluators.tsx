@@ -3,7 +3,8 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import TablePagination from "@mui/material/TablePagination";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
 import EvalFormModal from "./EvalFormModal";
 import EvaluatorsHeader from "./EvaluatorsHeader";
@@ -21,12 +22,21 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const Evaluators: React.FC = () => {
   const { task } = useTask();
+  const { id: taskId, evaluatorName: urlEvaluatorName, version: urlVersion } = useParams<{ id: string; evaluatorName?: string; version?: string }>();
+  const navigate = useNavigate();
   const [fullScreenEval, setFullScreenEval] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>("latest_version_created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  // Initialize fullScreenEval from URL parameter
+  useEffect(() => {
+    if (urlEvaluatorName && !fullScreenEval) {
+      setFullScreenEval(urlEvaluatorName);
+    }
+  }, [urlEvaluatorName, fullScreenEval]);
 
   const filters = useMemo(
     () => ({
@@ -57,11 +67,15 @@ const Evaluators: React.FC = () => {
 
   const handleExpandToFullScreen = useCallback((evalName: string) => {
     setFullScreenEval(evalName);
-  }, []);
+    // Update URL to reflect the selected evaluator
+    navigate(`/tasks/${taskId}/evaluators/${evalName}`);
+  }, [taskId, navigate]);
 
   const handleCloseFullScreen = useCallback(() => {
     setFullScreenEval(null);
-  }, []);
+    // Update URL to go back to the main evaluators view
+    navigate(`/tasks/${taskId}/evaluators`);
+  }, [taskId, navigate]);
 
   const handleSort = useCallback(
     (column: string) => {
@@ -85,9 +99,10 @@ const Evaluators: React.FC = () => {
   }, []);
 
   if (fullScreenEval) {
+    const initialVersion = urlVersion ? parseInt(urlVersion, 10) : null;
     return (
       <Box sx={{ height: getContentHeight(), overflow: "hidden" }}>
-        <EvalFullScreenView evalName={fullScreenEval} onClose={handleCloseFullScreen} />
+        <EvalFullScreenView evalName={fullScreenEval} initialVersion={initialVersion} onClose={handleCloseFullScreen} />
       </Box>
     );
   }

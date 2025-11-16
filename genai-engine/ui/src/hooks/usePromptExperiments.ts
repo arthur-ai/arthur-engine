@@ -6,6 +6,7 @@ import type {
   PromptExperimentListResponse,
   PromptExperimentDetail,
   TestCaseListResponse,
+  PromptVersionResultListResponse,
   CreatePromptExperimentRequest,
   PromptExperimentSummary,
 } from "@/lib/api-client/api-client";
@@ -83,6 +84,38 @@ export function useExperimentTestCases(
 
   return {
     testCases: data?.data ?? [],
+    page: data?.page ?? 0,
+    pageSize: data?.page_size ?? pageSize,
+    totalPages: data?.total_pages ?? 0,
+    totalCount: data?.total_count ?? 0,
+    error,
+    isLoading,
+    refetch,
+  };
+}
+
+/**
+ * Hook to fetch results for a specific prompt version in an experiment
+ */
+export function usePromptVersionResults(
+  experimentId: string | undefined,
+  promptName: string | undefined,
+  promptVersion: string | undefined,
+  page: number = 0,
+  pageSize: number = 20
+) {
+  const { data, error, isLoading, refetch } = useApiQuery<"getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet">({
+    method: "getPromptVersionResultsApiV1PromptExperimentsExperimentIdPromptsPromptNameVersionsPromptVersionResultsGet",
+    args: [{ experimentId: experimentId!, promptName: promptName!, promptVersion: parseInt(promptVersion!), page, page_size: pageSize }] as const,
+    enabled: !!experimentId && !!promptName && !!promptVersion,
+    queryOptions: {
+      staleTime: 5000,
+      refetchOnWindowFocus: true,
+    },
+  });
+
+  return {
+    results: data?.data ?? [],
     page: data?.page ?? 0,
     pageSize: data?.page_size ?? pageSize,
     totalPages: data?.total_pages ?? 0,

@@ -230,6 +230,25 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
   onPrevious,
   onNext,
 }) => {
+  const getEvalChipSx = (isPass: boolean) => {
+    const color = isPass ? "success.main" : "error.main";
+    return {
+      backgroundColor: "transparent",
+      color: color,
+      borderColor: color,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
+  };
+
+  const getPendingChipSx = () => ({
+    backgroundColor: "transparent",
+    color: "text.secondary",
+    borderColor: "text.secondary",
+    borderWidth: 1,
+    borderStyle: "solid",
+  });
+
   // Add keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -411,7 +430,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                     <Chip
                                       label={evalItem.eval_results.score === 1 ? "Pass" : "Fail"}
                                       size="small"
-                                      color={evalItem.eval_results.score === 1 ? "success" : "error"}
+                                      sx={getEvalChipSx(evalItem.eval_results.score === 1)}
                                     />
                                     <Chip
                                       label={`Cost: $${evalItem.eval_results.cost}`}
@@ -423,7 +442,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                   <Chip
                                     label="Pending"
                                     size="small"
-                                    color="default"
+                                    sx={getPendingChipSx()}
                                   />
                                 )}
                               </Box>
@@ -480,6 +499,23 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
+  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
+    const colorMap = {
+      default: { color: "text.secondary", borderColor: "text.secondary" },
+      primary: { color: "primary.main", borderColor: "primary.main" },
+      info: { color: "info.main", borderColor: "info.main" },
+      success: { color: "success.main", borderColor: "success.main" },
+      error: { color: "error.main", borderColor: "error.main" },
+    };
+    return {
+      backgroundColor: "transparent",
+      color: colorMap[color].color,
+      borderColor: colorMap[color].borderColor,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
+  };
+
   // Create a map of variables for easy lookup
   const variableMap = testCase.prompt_input_variables.reduce((acc, variable) => {
     acc[variable.variable_name] = variable.value;
@@ -514,8 +550,8 @@ const TestCaseRow: React.FC<RowProps> = ({ testCase, variableColumns, evalColumn
       <TableCell>
         <Chip
           label={getStatusLabel(testCase.status)}
-          color={getStatusColor(testCase.status)}
           size="small"
+          sx={getStatusChipSx(getStatusColor(testCase.status))}
         />
       </TableCell>
       {evalColumns.map((evalCol) => {

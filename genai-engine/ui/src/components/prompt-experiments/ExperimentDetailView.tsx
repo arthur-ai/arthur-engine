@@ -1,20 +1,43 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip } from "@mui/material";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { ExperimentResultsTable } from "./ExperimentResultsTable";
+import { PromptVersionDrawer } from "./PromptVersionDrawer";
 
 import { getContentHeight } from "@/constants/layout";
 import { usePromptExperiment } from "@/hooks/usePromptExperiments";
 import type { PromptExperimentDetail } from "@/lib/api-client/api-client";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
 
+interface PromptVersionDetails {
+  prompt_name: string;
+  prompt_version: string;
+  eval_results: Array<{
+    eval_name: string;
+    eval_version: string;
+    pass_count: number;
+    total_count: number;
+  }>;
+}
+
 export const ExperimentDetailView: React.FC = () => {
   const { id: taskId, experimentId } = useParams<{ id: string; experimentId: string }>();
   const navigate = useNavigate();
   const { experiment, isLoading, error, refetch } = usePromptExperiment(experimentId);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedPrompt, setSelectedPrompt] = useState<PromptVersionDetails | null>(null);
+
+  const handlePromptClick = (promptSummary: PromptVersionDetails) => {
+    setSelectedPrompt(promptSummary);
+    setDrawerOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setDrawerOpen(false);
+  };
 
   // Refetch data when window gains focus
   useEffect(() => {
@@ -45,6 +68,23 @@ export const ExperimentDetailView: React.FC = () => {
 
   const getStatusLabel = (status: PromptExperimentDetail["status"]): string => {
     return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const getStatusChipSx = (color: "default" | "primary" | "info" | "success" | "error") => {
+    const colorMap = {
+      default: { color: "text.secondary", borderColor: "text.secondary" },
+      primary: { color: "primary.main", borderColor: "primary.main" },
+      info: { color: "info.main", borderColor: "info.main" },
+      success: { color: "success.main", borderColor: "success.main" },
+      error: { color: "error.main", borderColor: "error.main" },
+    };
+    return {
+      backgroundColor: "transparent",
+      color: colorMap[color].color,
+      borderColor: colorMap[color].borderColor,
+      borderWidth: 1,
+      borderStyle: "solid",
+    };
   };
 
   if (isLoading) {
@@ -85,7 +125,7 @@ export const ExperimentDetailView: React.FC = () => {
             <Typography variant="h4" className="font-semibold text-gray-900">
               {experiment.name}
             </Typography>
-            <Chip label={getStatusLabel(experiment.status)} color={getStatusColor(experiment.status)} size="small" />
+            <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
           </Box>
           {experiment.description && (
             <Typography variant="body1" className="text-gray-600 mb-4">
@@ -178,7 +218,12 @@ export const ExperimentDetailView: React.FC = () => {
                   const isBestPerforming = totalPasses === maxTotalPasses;
 
                   return (
-                    <Card key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`} elevation={1}>
+                    <Card
+                      key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`}
+                      elevation={1}
+                      onClick={() => handlePromptClick(promptSummary)}
+                      sx={{ cursor: "pointer", "&:hover": { boxShadow: 3 } }}
+                    >
                       <CardContent>
                         <Box className="flex items-center gap-2 mb-3">
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
@@ -253,6 +298,17 @@ export const ExperimentDetailView: React.FC = () => {
           {taskId && experimentId && <ExperimentResultsTable taskId={taskId} experimentId={experimentId} />}
         </Box>
       </Box>
+
+      {/* Prompt Version Drawer */}
+      {taskId && experimentId && (
+        <PromptVersionDrawer
+          open={drawerOpen}
+          onClose={handleDrawerClose}
+          promptDetails={selectedPrompt}
+          taskId={taskId}
+          experimentId={experimentId}
+        />
+      )}
     </Box>
   );
 };
