@@ -243,6 +243,7 @@ class PromptExperimentRepository:
         self,
         experiment_id: str,
         dataset_ref: DatasetRef,
+        prompt_variable_mappings: list[PromptVariableMapping],
     ) -> int:
         """Create test cases for each row in the dataset version"""
         # Get all rows for this dataset version
@@ -258,13 +259,29 @@ class PromptExperimentRepository:
         # Create a test case for each row
         test_cases = []
         for row in dataset_rows:
+            # Build prompt input variables from the dataset row data
+            prompt_input_variables = []
+            row_data = row.data  # This is the JSON data for the row
+
+            for mapping in prompt_variable_mappings:
+                variable_name = mapping.variable_name
+                column_name = mapping.source.dataset_column.name
+
+                # Get the value from the dataset row
+                column_value = row_data.get(column_name)
+
+                prompt_input_variables.append({
+                    "variable_name": variable_name,
+                    "value": column_value,
+                })
+
             test_case = DatabasePromptExperimentTestCase(
                 id=str(uuid4()),
                 experiment_id=experiment_id,
                 dataset_row_id=str(row.id),
                 status=TestCaseStatus.QUEUED,
                 retries=0,
-                prompt_input_variables=[],  # Will be populated during execution
+                prompt_input_variables=prompt_input_variables,
                 prompt_results=[],  # Will be populated during execution
             )
             test_cases.append(test_case)
@@ -306,9 +323,9 @@ class PromptExperimentRepository:
 
         self.db_session.add(db_experiment)
 
-        # Create test cases for each dataset row
+        # Create test cases for each dataset row with prompt input variables
         total_rows = self._create_test_cases_for_dataset(
-            experiment_id, request.dataset_ref
+            experiment_id, request.dataset_ref, request.prompt_ref.variable_mapping
         )
 
         # Update experiment with total row count
