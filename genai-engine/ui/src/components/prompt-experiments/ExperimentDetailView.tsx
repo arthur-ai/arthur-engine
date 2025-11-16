@@ -1,6 +1,6 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip } from "@mui/material";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip } from "@mui/material";
 import React, { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -148,15 +148,46 @@ export const ExperimentDetailView: React.FC = () => {
             </Box>
           ) : (
             <Box className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
-              {experiment.summary_results.prompt_eval_summaries.map((promptSummary) => (
-                <Card key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`} elevation={1}>
-                  <CardContent>
-                    <Box className="flex items-center gap-2 mb-3">
-                      <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
-                        Prompt: {promptSummary.prompt_name}
-                      </Typography>
-                      <Chip label={`v${promptSummary.prompt_version}`} size="small" color="primary" className="flex-shrink-0" />
-                    </Box>
+              {(() => {
+                const sortedSummaries = [...experiment.summary_results.prompt_eval_summaries].sort((a, b) => {
+                  // Calculate total passes for each prompt
+                  const totalPassesA = a.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
+                  const totalPassesB = b.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
+
+                  // Sort by total passes descending
+                  if (totalPassesB !== totalPassesA) {
+                    return totalPassesB - totalPassesA;
+                  }
+
+                  // If tied, sort by version descending (higher version first)
+                  return b.prompt_version - a.prompt_version;
+                });
+
+                // Find the max total passes to identify best performing prompts
+                const maxTotalPasses =
+                  sortedSummaries.length > 0
+                    ? Math.max(
+                        ...sortedSummaries.map((summary) =>
+                          summary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0)
+                        )
+                      )
+                    : 0;
+
+                return sortedSummaries.map((promptSummary) => {
+                  const totalPasses = promptSummary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0);
+                  const isBestPerforming = totalPasses === maxTotalPasses;
+
+                  return (
+                    <Card key={`${promptSummary.prompt_name}-${promptSummary.prompt_version}`} elevation={1}>
+                      <CardContent>
+                        <Box className="flex items-center gap-2 mb-3">
+                          <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
+                            Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
+                          </Typography>
+                          {isBestPerforming && (
+                            <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />
+                          )}
+                        </Box>
 
                     <Box className="space-y-3">
                       {promptSummary.eval_results.map((evalResult) => {
@@ -192,7 +223,9 @@ export const ExperimentDetailView: React.FC = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              ))}
+                  );
+                });
+              })()}
             </Box>
           )}
         </Box>
