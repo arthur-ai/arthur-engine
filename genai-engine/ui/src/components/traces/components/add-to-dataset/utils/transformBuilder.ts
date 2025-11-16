@@ -3,7 +3,6 @@ import { Column, TransformDefinition } from "../form/shared";
 // Builds transform definition from columns using the stored span_name and attribute_path
 export function buildTransformFromColumns(columns: Column[]): TransformDefinition {
   return {
-    version: "1.0",
     columns: columns
       .filter((col) => col.span_name && col.attribute_path && col.name)
       .map((col) => {
