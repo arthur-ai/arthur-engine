@@ -1,7 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import {
   Box,
   Drawer,
@@ -25,69 +24,15 @@ import {
   CircularProgress,
   Link,
 } from "@mui/material";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link as RouterLink } from "react-router-dom";
+
+import { PromptResultDetailModal } from "./PromptResultDetailModal";
+import { MessageDisplay } from "./PromptResultComponents";
 
 import { usePrompt } from "@/components/prompts-management/hooks/usePrompt";
 import { usePromptVersionResults } from "@/hooks/usePromptExperiments";
 import { formatUTCTimestamp } from "@/utils/formatters";
-
-interface Message {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-interface MessageDisplayProps {
-  message: Message;
-}
-
-const MessageDisplay: React.FC<MessageDisplayProps> = ({ message }) => {
-  const getRoleStyles = (role: Message["role"]) => {
-    switch (role) {
-      case "system":
-        return {
-          bg: "bg-gray-100",
-          border: "border-gray-300",
-          label: "System",
-          labelColor: "text-gray-700",
-        };
-      case "user":
-        return {
-          bg: "bg-blue-50",
-          border: "border-blue-200",
-          label: "User",
-          labelColor: "text-blue-700",
-        };
-      case "assistant":
-        return {
-          bg: "bg-green-50",
-          border: "border-green-200",
-          label: "Assistant",
-          labelColor: "text-green-700",
-        };
-      default:
-        return {
-          bg: "bg-gray-50",
-          border: "border-gray-200",
-          label: role,
-          labelColor: "text-gray-700",
-        };
-    }
-  };
-
-  const styles = getRoleStyles(message.role);
-
-  return (
-    <Box className={`p-3 ${styles.bg} border ${styles.border} rounded mb-2`}>
-      <Typography variant="caption" className={`font-semibold ${styles.labelColor} block mb-1`}>
-        {styles.label}
-      </Typography>
-      <Typography variant="body2" className="whitespace-pre-wrap text-gray-900">
-        {message.content}
-      </Typography>
-    </Box>
-  );
-};
 
 interface EvalResult {
   eval_name: string;
@@ -122,6 +67,7 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(-1);
+  const [pendingIndexAfterPageLoad, setPendingIndexAfterPageLoad] = useState<"first" | "last" | null>(null);
 
   // Fetch prompt version details
   const { prompt, isLoading: isPromptLoading } = usePrompt(
@@ -152,21 +98,52 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
     setPage(0);
   };
 
-  const handleOpenValueModal = (title: string, content: string) => {
-    setSelectedValue({ title, content });
-    setValueModalOpen(true);
+  // Effect to handle index after page load
+  useEffect(() => {
+    if (pendingIndexAfterPageLoad && results.length > 0) {
+      if (pendingIndexAfterPageLoad === "first") {
+        setSelectedResultIndex(0);
+      } else if (pendingIndexAfterPageLoad === "last") {
+        setSelectedResultIndex(results.length - 1);
+      }
+      setPendingIndexAfterPageLoad(null);
+    }
+  }, [results, pendingIndexAfterPageLoad]);
+
+  const handleRowClick = (index: number) => {
+    setSelectedResultIndex(index);
+    setDetailModalOpen(true);
   };
 
-  const handleCloseValueModal = () => {
-    setValueModalOpen(false);
-    setSelectedValue(null);
+  const handleCloseDetailModal = () => {
+    setDetailModalOpen(false);
+    setSelectedResultIndex(-1);
   };
 
-  const handleCopyValue = () => {
-    if (selectedValue) {
-      navigator.clipboard.writeText(selectedValue.content);
+  const handlePrevious = () => {
+    if (selectedResultIndex > 0) {
+      // Navigate within current page
+      setSelectedResultIndex(selectedResultIndex - 1);
+    } else if (page > 0) {
+      // Load previous page and go to last item
+      setPendingIndexAfterPageLoad("last");
+      setPage(page - 1);
     }
   };
+
+  const handleNext = () => {
+    if (selectedResultIndex < results.length - 1) {
+      // Navigate within current page
+      setSelectedResultIndex(selectedResultIndex + 1);
+    } else if (page < Math.ceil(totalCount / rowsPerPage) - 1) {
+      // Load next page and go to first item
+      setPendingIndexAfterPageLoad("first");
+      setPage(page + 1);
+    }
+  };
+
+  // Calculate global index for display
+  const globalIndex = page * rowsPerPage + selectedResultIndex;
 
   if (!promptDetails) {
     return null;
@@ -206,11 +183,6 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                   </Typography>
                 </Link>
               </Box>
-              {prompt?.description && (
-                <Typography variant="body2" className="text-gray-600">
-                  {prompt.description}
-                </Typography>
-              )}
             </Box>
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
@@ -373,154 +345,58 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
                         const totalCount = sortedEvals.length;
 
                         return (
-                          <TableRow key={`${result.dataset_row_id}-${idx}`} hover>
+                          <TableRow
+                            key={`${result.dataset_row_id}-${idx}`}
+                            hover
+                            onClick={() => handleRowClick(idx)}
+                            sx={{ cursor: "pointer" }}
+                          >
                             <TableCell>
-                              <Box
+                              <Typography
+                                variant="body2"
+                                className="text-gray-700 text-xs"
                                 sx={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: 0.25,
-                                  cursor: "pointer",
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 4,
+                                  WebkitBoxOrient: "vertical",
+                                  maxWidth: "250px",
                                 }}
-                                onClick={() =>
-                                  handleOpenValueModal(
-                                    "Input Variables",
-                                    result.prompt_input_variables
-                                      .map((v) => `${v.variable_name}: ${v.value}`)
-                                      .join("\n\n")
-                                  )
-                                }
                               >
-                                <Typography
-                                  variant="body2"
-                                  className="text-gray-700 text-xs"
-                                  sx={{
-                                    overflow: "hidden",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 4,
-                                    WebkitBoxOrient: "vertical",
-                                    flex: 1,
-                                    maxWidth: "250px",
-                                  }}
-                                >
-                                  {result.prompt_input_variables
-                                    .map((v) => `${v.variable_name}: ${v.value}`)
-                                    .join("\n")}
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  sx={{
-                                    opacity: 0.5,
-                                    "&:hover": { opacity: 1 },
-                                    padding: 0.25,
-                                    flexShrink: 0,
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenValueModal(
-                                      "Input Variables",
-                                      result.prompt_input_variables
-                                        .map((v) => `${v.variable_name}: ${v.value}`)
-                                        .join("\n\n")
-                                    );
-                                  }}
-                                  title="View full content"
-                                >
-                                  <OpenInFullIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              </Box>
+                                {result.prompt_input_variables
+                                  .map((v) => `${v.variable_name}: ${v.value}`)
+                                  .join("\n")}
+                              </Typography>
                             </TableCell>
                             <TableCell>
-                              <Box
+                              <Typography
+                                variant="body2"
+                                className="text-gray-700 text-xs"
                                 sx={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: 0.25,
-                                  cursor: "pointer",
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 4,
+                                  WebkitBoxOrient: "vertical",
+                                  maxWidth: "300px",
                                 }}
-                                onClick={() =>
-                                  handleOpenValueModal("Rendered Prompt", result.rendered_prompt)
-                                }
                               >
-                                <Typography
-                                  variant="body2"
-                                  className="text-gray-700 text-xs"
-                                  sx={{
-                                    overflow: "hidden",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 4,
-                                    WebkitBoxOrient: "vertical",
-                                    flex: 1,
-                                    maxWidth: "300px",
-                                  }}
-                                >
-                                  {result.rendered_prompt || "No prompt"}
-                                </Typography>
-                                <IconButton
-                                  size="small"
-                                  sx={{
-                                    opacity: 0.5,
-                                    "&:hover": { opacity: 1 },
-                                    padding: 0.25,
-                                    flexShrink: 0,
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenValueModal("Rendered Prompt", result.rendered_prompt);
-                                  }}
-                                  title="View full content"
-                                >
-                                  <OpenInFullIcon sx={{ fontSize: 14 }} />
-                                </IconButton>
-                              </Box>
+                                {result.rendered_prompt || "No prompt"}
+                              </Typography>
                             </TableCell>
                             <TableCell>
-                              <Box
+                              <Typography
+                                variant="body2"
+                                className="text-gray-700 text-xs"
                                 sx={{
-                                  display: "flex",
-                                  alignItems: "flex-start",
-                                  gap: 0.25,
-                                  cursor: result.output ? "pointer" : "default",
+                                  overflow: "hidden",
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 4,
+                                  WebkitBoxOrient: "vertical",
+                                  maxWidth: "300px",
                                 }}
-                                onClick={
-                                  result.output
-                                    ? () => handleOpenValueModal("Output", JSON.stringify(result.output, null, 2))
-                                    : undefined
-                                }
                               >
-                                <Typography
-                                  variant="body2"
-                                  className="text-gray-700 text-xs"
-                                  sx={{
-                                    overflow: "hidden",
-                                    display: "-webkit-box",
-                                    WebkitLineClamp: 4,
-                                    WebkitBoxOrient: "vertical",
-                                    flex: 1,
-                                    maxWidth: "300px",
-                                  }}
-                                >
-                                  {result.output?.content || (result.output?.tool_calls && result.output.tool_calls.length > 0 ? `${result.output.tool_calls.length} tool call(s)` : "No output yet")}
-                                </Typography>
-                                {result.output && (
-                                  <IconButton
-                                    size="small"
-                                    sx={{
-                                      opacity: 0.5,
-                                      "&:hover": { opacity: 1 },
-                                      padding: 0.25,
-                                      flexShrink: 0,
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenValueModal("Output", JSON.stringify(result.output, null, 2));
-                                    }}
-                                    title="View full content"
-                                  >
-                                    <OpenInFullIcon sx={{ fontSize: 14 }} />
-                                  </IconButton>
-                                )}
-                              </Box>
+                                {result.output?.content || (result.output?.tool_calls && result.output.tool_calls.length > 0 ? `${result.output.tool_calls.length} tool call(s)` : "No output yet")}
+                              </Typography>
                             </TableCell>
                             <TableCell align="center">
                               <Box className="flex flex-col gap-1 items-center">
@@ -677,43 +553,23 @@ export const PromptVersionDrawer: React.FC<PromptVersionDrawerProps> = ({
         </DialogActions>
       </Dialog>
 
-      {/* Value View Modal */}
-      <Dialog open={valueModalOpen} onClose={handleCloseValueModal} maxWidth="md" fullWidth>
-        <DialogTitle>
-          <Box className="flex items-center justify-between">
-            <Typography variant="h6" className="font-semibold">
-              {selectedValue?.title}
-            </Typography>
-            <Box className="flex items-center gap-1">
-              <IconButton onClick={handleCopyValue} size="small" title="Copy to clipboard">
-                <ContentCopyIcon fontSize="small" />
-              </IconButton>
-              <IconButton onClick={handleCloseValueModal} size="small">
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </Box>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Box className="p-4 bg-gray-50 rounded border border-gray-200">
-            <Typography
-              variant="body2"
-              className="font-mono text-gray-900 whitespace-pre-wrap"
-              sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}
-            >
-              {selectedValue?.content}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCopyValue} startIcon={<ContentCopyIcon />} variant="outlined">
-            Copy
-          </Button>
-          <Button onClick={handleCloseValueModal} variant="contained">
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Prompt Result Detail Modal */}
+      {selectedResultIndex >= 0 && selectedResultIndex < results.length && (
+        <PromptResultDetailModal
+          open={detailModalOpen}
+          onClose={handleCloseDetailModal}
+          promptName={promptDetails.prompt_name}
+          promptVersion={promptDetails.prompt_version}
+          inputVariables={results[selectedResultIndex].prompt_input_variables}
+          renderedPrompt={results[selectedResultIndex].rendered_prompt}
+          output={results[selectedResultIndex].output}
+          evals={results[selectedResultIndex].evals}
+          currentIndex={globalIndex}
+          totalCount={totalCount}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+        />
+      )}
     </Drawer>
   );
 };

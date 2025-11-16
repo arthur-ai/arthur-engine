@@ -200,7 +200,7 @@ export const ExperimentDetailView: React.FC = () => {
                   }
 
                   // If tied, sort by version descending (higher version first)
-                  return b.prompt_version - a.prompt_version;
+                  return parseInt(b.prompt_version) - parseInt(a.prompt_version);
                 });
 
                 // Find the max total passes to identify best performing prompts
