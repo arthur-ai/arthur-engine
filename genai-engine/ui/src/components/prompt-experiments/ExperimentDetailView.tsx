@@ -1,9 +1,9 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Box, Typography, Chip, LinearProgress, Card, CardContent, IconButton, Tooltip, Button } from "@mui/material";
-import React, { useEffect, useState } from "react";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import { Box, Typography, Chip, LinearProgress, Card, CardContent, Tooltip, Button } from "@mui/material";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { CreateExperimentModal, ExperimentFormData } from "./CreateExperimentModal";
@@ -85,8 +85,8 @@ export const ExperimentDetailView: React.FC = () => {
 
   const handleSubmitExperiment = async (data: ExperimentFormData): Promise<{ id: string }> => {
     // Validate that datasetVersion is a number
-    if (typeof data.datasetVersion !== 'number') {
-      throw new Error('Dataset version must be selected');
+    if (typeof data.datasetVersion !== "number") {
+      throw new Error("Dataset version must be selected");
     }
 
     try {
@@ -102,10 +102,8 @@ export const ExperimentDetailView: React.FC = () => {
       }));
 
       // Transform eval variable mappings to API format
-      const evalList = data.evaluators.map(evaluator => {
-        const evalMapping = data.evalVariableMappings?.find(
-          m => m.evalName === evaluator.name && m.evalVersion === evaluator.version
-        );
+      const evalList = data.evaluators.map((evaluator) => {
+        const evalMapping = data.evalVariableMappings?.find((m) => m.evalName === evaluator.name && m.evalVersion === evaluator.version);
 
         const variableMapping = evalMapping
           ? Object.entries(evalMapping.mappings).map(([varName, mapping]) => {
@@ -149,7 +147,7 @@ export const ExperimentDetailView: React.FC = () => {
         },
         prompt_ref: {
           name: data.promptVersions[0].promptName,
-          version_list: data.promptVersions.map(pv => pv.version),
+          version_list: data.promptVersions.map((pv) => pv.version),
           variable_mapping: promptVariableMapping,
         },
         eval_list: evalList,
@@ -215,16 +213,12 @@ export const ExperimentDetailView: React.FC = () => {
         <Box className="mb-6">
           <Box className="flex items-center justify-between mb-2">
             <Box className="flex items-center gap-3">
-             <Typography variant="h4" className="font-semibold text-gray-900">
-              {experiment.name}
-            </Typography>
-            <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
-          </Box>
-            <Button
-              variant="outlined"
-              startIcon={<ContentCopyIcon />}
-              onClick={handleCreateFromExisting}
-            >
+              <Typography variant="h4" className="font-semibold text-gray-900">
+                {experiment.name}
+              </Typography>
+              <Chip label={getStatusLabel(experiment.status)} size="small" sx={getStatusChipSx(getStatusColor(experiment.status))} />
+            </Box>
+            <Button variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCreateFromExisting}>
               Create from Existing
             </Button>
           </Box>
@@ -307,11 +301,7 @@ export const ExperimentDetailView: React.FC = () => {
                 // Find the max total passes to identify best performing prompts
                 const maxTotalPasses =
                   sortedSummaries.length > 0
-                    ? Math.max(
-                        ...sortedSummaries.map((summary) =>
-                          summary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0)
-                        )
-                      )
+                    ? Math.max(...sortedSummaries.map((summary) => summary.eval_results.reduce((sum, evalResult) => sum + evalResult.pass_count, 0)))
                     : 0;
 
                 return sortedSummaries.map((promptSummary) => {
@@ -330,58 +320,56 @@ export const ExperimentDetailView: React.FC = () => {
                           <Typography variant="subtitle1" className="font-medium text-gray-800 truncate flex-1 min-w-0">
                             Prompt: {promptSummary.prompt_name} (v{promptSummary.prompt_version})
                           </Typography>
-                          {isBestPerforming && (
-                            <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />
-                          )}
+                          {isBestPerforming && <Chip label="Best" size="small" color="success" sx={{ fontWeight: 600 }} className="shrink-0" />}
                         </Box>
 
-                    <Box className="space-y-3">
-                      {promptSummary.eval_results.map((evalResult) => {
-                        const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
+                        <Box className="space-y-3">
+                          {promptSummary.eval_results.map((evalResult) => {
+                            const percentage = (evalResult.pass_count / evalResult.total_count) * 100;
 
-                        return (
-                          <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
-                            <Box className="flex justify-between items-center mb-1">
-                              <Typography variant="caption" className="font-medium text-gray-700">
-                                {evalResult.eval_name} (v{evalResult.eval_version})
-                              </Typography>
-                              <Typography variant="caption" className="text-gray-600">
-                                {percentage.toFixed(0)}%
-                              </Typography>
-                            </Box>
-                            <LinearProgress
-                              variant="determinate"
-                              value={percentage}
-                              className="h-2 rounded"
-                              sx={{
-                                backgroundColor: "#ef4444",
-                                "& .MuiLinearProgress-bar": {
-                                  backgroundColor: "#10b981",
-                                },
-                              }}
-                            />
-                            <Typography variant="caption" className="text-gray-500 text-xs">
-                              {evalResult.pass_count} / {evalResult.total_count} test cases passed
-                            </Typography>
-                          </Box>
-                        );
-                      })}
-                    </Box>
+                            return (
+                              <Box key={`${evalResult.eval_name}-${evalResult.eval_version}`}>
+                                <Box className="flex justify-between items-center mb-1">
+                                  <Typography variant="caption" className="font-medium text-gray-700">
+                                    {evalResult.eval_name} (v{evalResult.eval_version})
+                                  </Typography>
+                                  <Typography variant="caption" className="text-gray-600">
+                                    {percentage.toFixed(0)}%
+                                  </Typography>
+                                </Box>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={percentage}
+                                  className="h-2 rounded"
+                                  sx={{
+                                    backgroundColor: "#ef4444",
+                                    "& .MuiLinearProgress-bar": {
+                                      backgroundColor: "#10b981",
+                                    },
+                                  }}
+                                />
+                                <Typography variant="caption" className="text-gray-500 text-xs">
+                                  {evalResult.pass_count} / {evalResult.total_count} test cases passed
+                                </Typography>
+                              </Box>
+                            );
+                          })}
+                        </Box>
 
-                    {/* Expand icon in lower right corner */}
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        bottom: 8,
-                        right: 8,
-                        opacity: 0.4,
-                        transition: "opacity 0.2s",
-                      }}
-                    >
-                      <OpenInFullIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                    </Box>
-                  </CardContent>
-                </Card>
+                        {/* Expand icon in lower right corner */}
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            bottom: 8,
+                            right: 8,
+                            opacity: 0.4,
+                            transition: "opacity 0.2s",
+                          }}
+                        >
+                          <OpenInFullIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                        </Box>
+                      </CardContent>
+                    </Card>
                   );
                 });
               })()}
@@ -431,12 +419,7 @@ export const ExperimentDetailView: React.FC = () => {
       </Box>
 
       {/* Create from Existing Modal */}
-      <CreateExperimentModal
-        open={isModalOpen}
-        onClose={handleCloseModal}
-        onSubmit={handleSubmitExperiment}
-        initialData={experiment}
-      />
+      <CreateExperimentModal open={isModalOpen} onClose={handleCloseModal} onSubmit={handleSubmitExperiment} initialData={experiment} />
 
       {/* Prompt Version Drawer */}
       {taskId && experimentId && (
