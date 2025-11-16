@@ -13,12 +13,10 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Any, Dict, List
-from uuid import uuid4
+from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
-from clients.llm.llm_client import LLMClient
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
@@ -29,10 +27,8 @@ from dependencies import get_db_session
 from repositories.agentic_prompts_repository import AgenticPromptRepository
 from repositories.llm_evals_repository import LLMEvalsRepository
 from repositories.model_provider_repository import ModelProviderRepository
-from schemas.agentic_prompt_schemas import AgenticPrompt
-from schemas.llm_eval_schemas import LLMEval, ReasonedScore
+from schemas.llm_eval_schemas import ReasonedScore
 from schemas.prompt_experiment_schemas import (
-    EvalExecutionResult,
     EvalResultSummary,
     ExperimentStatus,
     PromptEvalResultSummaries,
@@ -191,7 +187,9 @@ class ExperimentExecutor:
                     try:
                         total_experiment_cost += float(test_case.total_cost)
                     except (ValueError, TypeError):
-                        logger.warning(f"Could not parse test case cost: {test_case.total_cost}")
+                        logger.warning(
+                            f"Could not parse test case cost: {test_case.total_cost}"
+                        )
 
             # Calculate summary results now that all test cases have finished
             experiment.summary_results = self._calculate_summary_results(
@@ -212,7 +210,9 @@ class ExperimentExecutor:
                 experiment.status = ExperimentStatus.COMPLETED.value
                 experiment.finished_at = datetime.now()
                 experiment.total_cost = total_cost_str
-                logger.info(f"Experiment {experiment_id} completed successfully. Total cost: ${total_cost_str}")
+                logger.info(
+                    f"Experiment {experiment_id} completed successfully. Total cost: ${total_cost_str}"
+                )
 
             db_session.commit()
 
@@ -328,7 +328,9 @@ class ExperimentExecutor:
                     try:
                         total_cost += float(prompt_result.output_cost)
                     except (ValueError, TypeError):
-                        logger.warning(f"Could not parse prompt cost: {prompt_result.output_cost}")
+                        logger.warning(
+                            f"Could not parse prompt cost: {prompt_result.output_cost}"
+                        )
 
                 # Add eval costs
                 for eval_score in prompt_result.eval_scores:
@@ -336,13 +338,17 @@ class ExperimentExecutor:
                         try:
                             total_cost += float(eval_score.eval_result_cost)
                         except (ValueError, TypeError):
-                            logger.warning(f"Could not parse eval cost: {eval_score.eval_result_cost}")
+                            logger.warning(
+                                f"Could not parse eval cost: {eval_score.eval_result_cost}"
+                            )
 
             # Mark test case as completed and store total cost (truncated to 6 decimal places)
             test_case.status = TestCaseStatus.COMPLETED.value
             test_case.total_cost = f"{total_cost:.6f}"
             db_session.commit()
-            logger.info(f"Test case {test_case_id} completed successfully with total cost ${total_cost}")
+            logger.info(
+                f"Test case {test_case_id} completed successfully with total cost ${total_cost}"
+            )
             return True
 
         except Exception as e:
@@ -412,7 +418,9 @@ class ExperimentExecutor:
 
                         # Add the score if eval result exists
                         if eval_score.eval_result_score is not None:
-                            results_by_prompt[prompt_key][eval_key].append(eval_score.eval_result_score)
+                            results_by_prompt[prompt_key][eval_key].append(
+                                eval_score.eval_result_score
+                            )
 
             # Build the summary structure using Pydantic models
             prompt_eval_summaries = []
@@ -538,8 +546,12 @@ class ExperimentExecutor:
             )
 
             # Save output to separate columns
-            prompt_result.output_content = response.content if response.content else None
-            prompt_result.output_tool_calls = response.tool_calls if response.tool_calls else None
+            prompt_result.output_content = (
+                response.content if response.content else None
+            )
+            prompt_result.output_tool_calls = (
+                response.tool_calls if response.tool_calls else None
+            )
             prompt_result.output_cost = response.cost if response.cost else None
             db_session.commit()
 
@@ -662,7 +674,9 @@ class ExperimentExecutor:
                         variable_map[variable_name] = prompt_result.output_content
                     elif prompt_result.output_tool_calls:
                         # If no content but tool calls exist, use JSON string of tool calls
-                        variable_map[variable_name] = json.dumps(prompt_result.output_tool_calls, indent=2)
+                        variable_map[variable_name] = json.dumps(
+                            prompt_result.output_tool_calls, indent=2
+                        )
                     else:
                         # If neither content nor tool calls, use default message
                         variable_map[variable_name] = "No content was generated"
@@ -726,9 +740,15 @@ class ExperimentExecutor:
                 return False
 
             # Save eval results to separate columns
-            eval_score.eval_result_score = llm_model_response.structured_output_response.score
-            eval_score.eval_result_explanation = llm_model_response.structured_output_response.reason
-            eval_score.eval_result_cost = llm_model_response.cost if llm_model_response.cost else None
+            eval_score.eval_result_score = (
+                llm_model_response.structured_output_response.score
+            )
+            eval_score.eval_result_explanation = (
+                llm_model_response.structured_output_response.reason
+            )
+            eval_score.eval_result_cost = (
+                llm_model_response.cost if llm_model_response.cost else None
+            )
             db_session.commit()
 
             logger.info(

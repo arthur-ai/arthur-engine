@@ -6,7 +6,7 @@ from arthur_common.models.common_schemas import PaginationParameters
 from arthur_common.models.enums import PaginationSortMethod
 from fastapi import HTTPException
 from sqlalchemy import asc, desc, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
 from db_models.agentic_prompt_models import DatabaseAgenticPrompt
 from db_models.dataset_models import (
@@ -22,14 +22,12 @@ from db_models.prompt_experiment_models import (
     DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
 from db_models.task_models import DatabaseTask
-from schemas.prompt_experiment_schemas import TestCaseStatus
 from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
     EvalExecution,
-    EvalRef,
     EvalExecutionResult,
-    EvalVariableMapping,
+    EvalRef,
     ExperimentStatus,
     InputVariable,
     PromptExperimentDetail,
@@ -41,6 +39,7 @@ from schemas.prompt_experiment_schemas import (
     PromptVersionResult,
     SummaryResults,
     TestCase,
+    TestCaseStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -185,9 +184,11 @@ class PromptExperimentRepository:
             # Convert prompt output - may be None if not yet executed
             # Include output if we have any of: content, tool_calls, or cost
             prompt_output = None
-            if (db_prompt_result.output_content is not None or
-                db_prompt_result.output_tool_calls is not None or
-                db_prompt_result.output_cost is not None):
+            if (
+                db_prompt_result.output_content is not None
+                or db_prompt_result.output_tool_calls is not None
+                or db_prompt_result.output_cost is not None
+            ):
                 prompt_output = PromptOutput(
                     content=db_prompt_result.output_content or "",
                     tool_calls=db_prompt_result.output_tool_calls or [],
@@ -559,7 +560,7 @@ class PromptExperimentRepository:
             # Join with dataset table to search dataset name
             base_query = base_query.outerjoin(
                 DatabaseDataset,
-                DatabasePromptExperiment.dataset_id == DatabaseDataset.id
+                DatabasePromptExperiment.dataset_id == DatabaseDataset.id,
             )
 
             # Search across experiment name, description, prompt name, and dataset name

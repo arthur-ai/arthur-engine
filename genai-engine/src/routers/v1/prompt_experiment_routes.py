@@ -67,7 +67,9 @@ def list_prompt_experiments(
 
         page = pagination_parameters.page
         page_size = pagination_parameters.page_size
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        total_pages = (
+            (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        )
 
         return PromptExperimentListResponse(
             data=experiments,
@@ -204,7 +206,9 @@ def get_experiment_test_cases(
 
         page = pagination_parameters.page
         page_size = pagination_parameters.page_size
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        total_pages = (
+            (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        )
 
         return TestCaseListResponse(
             data=test_cases,
@@ -271,7 +275,9 @@ def get_prompt_version_results(
 
         page = pagination_parameters.page
         page_size = pagination_parameters.page_size
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        total_pages = (
+            (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        )
 
         return PromptVersionResultListResponse(
             data=results,

@@ -146,10 +146,12 @@ class DatabasePromptExperimentTestCase(Base):
     experiment: Mapped["DatabasePromptExperiment"] = relationship(
         back_populates="test_cases"
     )
-    prompt_results: Mapped[List["DatabasePromptExperimentTestCasePromptResult"]] = relationship(
-        back_populates="test_case",
-        lazy="select",
-        cascade="all, delete-orphan",
+    prompt_results: Mapped[List["DatabasePromptExperimentTestCasePromptResult"]] = (
+        relationship(
+            back_populates="test_case",
+            lazy="select",
+            cascade="all, delete-orphan",
+        )
     )
 
 
@@ -178,7 +180,9 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
 
     # Output from the prompt (broken into separate columns)
     output_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    output_tool_calls: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True)
+    output_tool_calls: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON, nullable=True
+    )
     output_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Timestamps
@@ -192,7 +196,9 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
     test_case: Mapped["DatabasePromptExperimentTestCase"] = relationship(
         back_populates="prompt_results"
     )
-    eval_scores: Mapped[List["DatabasePromptExperimentTestCasePromptResultEvalScore"]] = relationship(
+    eval_scores: Mapped[
+        List["DatabasePromptExperimentTestCasePromptResultEvalScore"]
+    ] = relationship(
         back_populates="prompt_result",
         lazy="select",
         cascade="all, delete-orphan",
@@ -238,6 +244,6 @@ class DatabasePromptExperimentTestCasePromptResultEvalScore(Base):
     )
 
     # Relationships
-    prompt_result: Mapped["DatabasePromptExperimentTestCasePromptResult"] = relationship(
-        back_populates="eval_scores"
+    prompt_result: Mapped["DatabasePromptExperimentTestCasePromptResult"] = (
+        relationship(back_populates="eval_scores")
     )
