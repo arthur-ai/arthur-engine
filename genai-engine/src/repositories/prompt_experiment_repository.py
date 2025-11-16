@@ -18,6 +18,8 @@ from db_models.llm_eval_models import DatabaseLLMEval
 from db_models.prompt_experiment_models import (
     DatabasePromptExperiment,
     DatabasePromptExperimentTestCase,
+    DatabasePromptExperimentTestCasePromptResult,
+    DatabasePromptExperimentTestCasePromptResultEvalScore,
 )
 from db_models.task_models import DatabaseTask
 from schemas.prompt_experiment_schemas import TestCaseStatus
@@ -25,6 +27,7 @@ from schemas.prompt_experiment_schemas import (
     CreatePromptExperimentRequest,
     DatasetRef,
     EvalRef,
+    EvalVariableMapping,
     ExperimentStatus,
     InputVariable,
     PromptExperimentDetail,
@@ -162,8 +165,8 @@ class PromptExperimentRepository:
         self,
         task_id: str,
         request: CreatePromptExperimentRequest,
-    ) -> None:
-        """Validate that all referenced resources exist"""
+    ) -> Tuple[List[DatabaseAgenticPrompt], List[Tuple[EvalRef, DatabaseLLMEval]], DatabaseDatasetVersion]:
+        """Validate that all referenced resources exist and return them"""
         # Validate task exists
         task = self.db_session.query(DatabaseTask).filter(
             DatabaseTask.id == task_id
@@ -266,13 +269,17 @@ class PromptExperimentRepository:
                     f"Provided variables: {sorted(provided_eval_variables)}"
                 )
 
+        return prompt_versions, llm_evals, dataset_version
+
     def _create_test_cases_for_dataset(
         self,
         experiment_id: str,
         dataset_ref: DatasetRef,
         prompt_variable_mappings: list[PromptVariableMapping],
+        prompt_versions: List[DatabaseAgenticPrompt],
+        eval_configs: List[Tuple[EvalRef, DatabaseLLMEval]],
     ) -> int:
-        """Create test cases for each row in the dataset version"""
+        """Create test cases for each row in the dataset version, including prompt results and eval scores"""
         # Get all rows for this dataset version
         dataset_rows = (
             self.db_session.query(DatabaseDatasetVersionRow)
@@ -284,7 +291,6 @@ class PromptExperimentRepository:
         )
 
         # Create a test case for each row
-        test_cases = []
         for row in dataset_rows:
             # Build prompt input variables from the dataset row data
             prompt_input_variables = []
@@ -302,20 +308,65 @@ class PromptExperimentRepository:
                     "value": column_value,
                 })
 
+            # Create the test case
             test_case = DatabasePromptExperimentTestCase(
                 id=str(uuid4()),
                 experiment_id=experiment_id,
                 dataset_row_id=str(row.id),
                 status=TestCaseStatus.QUEUED,
-                retries=0,
                 prompt_input_variables=prompt_input_variables,
             )
-            test_cases.append(test_case)
+            self.db_session.add(test_case)
 
-        # Bulk insert all test cases
-        self.db_session.bulk_save_objects(test_cases)
+            # Create prompt results for each prompt version in this test case
+            for prompt in prompt_versions:
+                prompt_result = DatabasePromptExperimentTestCasePromptResult(
+                    id=str(uuid4()),
+                    test_case_id=test_case.id,
+                    name=prompt.name,
+                    version=prompt.version,
+                    rendered_prompt="",  # Will be filled when experiment runs
+                    output={},  # Will be filled when experiment runs
+                )
+                self.db_session.add(prompt_result)
 
-        return len(test_cases)
+                # Create eval score entries for each eval configuration
+                for eval_ref, llm_eval in eval_configs:
+                    # Build eval input variables based on the mapping
+                    eval_input_variables = []
+                    for mapping in eval_ref.variable_mapping:
+                        variable_name = mapping.variable_name
+
+                        # Check the source type
+                        if mapping.source.type == "dataset_column":
+                            # Get value from dataset row
+                            column_name = mapping.source.dataset_column.name
+                            column_value = row_data.get(column_name)
+                            eval_input_variables.append({
+                                "variable_name": variable_name,
+                                "value": column_value,
+                            })
+                        elif mapping.source.type == "experiment_output":
+                            # Mark as placeholder - will be filled from prompt output when experiment runs
+                            eval_input_variables.append({
+                                "variable_name": variable_name,
+                                "value": None,  # Will be filled when experiment runs
+                            })
+
+                    eval_score = DatabasePromptExperimentTestCasePromptResultEvalScore(
+                        id=str(uuid4()),
+                        prompt_result_id=prompt_result.id,
+                        eval_name=llm_eval.name,
+                        eval_version=llm_eval.version,
+                        eval_input_variables=eval_input_variables,
+                        eval_results={},  # Will be filled when experiment runs
+                    )
+                    self.db_session.add(eval_score)
+
+        # Commit all the created objects
+        self.db_session.flush()
+
+        return len(dataset_rows)
 
     def create_experiment(
         self,
@@ -324,8 +375,8 @@ class PromptExperimentRepository:
         request: CreatePromptExperimentRequest,
     ) -> PromptExperimentSummary:
         """Create a new experiment"""
-        # Validate all references exist
-        self._validate_experiment_references(task_id, request)
+        # Validate all references exist and get validated objects
+        prompt_versions, eval_configs, dataset_version = self._validate_experiment_references(task_id, request)
 
         # Create the experiment
         db_experiment = DatabasePromptExperiment(
@@ -349,9 +400,13 @@ class PromptExperimentRepository:
 
         self.db_session.add(db_experiment)
 
-        # Create test cases for each dataset row with prompt input variables
+        # Create test cases for each dataset row with prompt input variables, prompt results, and eval scores
         total_rows = self._create_test_cases_for_dataset(
-            experiment_id, request.dataset_ref, request.prompt_ref.variable_mapping
+            experiment_id,
+            request.dataset_ref,
+            request.prompt_ref.variable_mapping,
+            prompt_versions,
+            eval_configs,
         )
 
         # Update experiment with total row count
