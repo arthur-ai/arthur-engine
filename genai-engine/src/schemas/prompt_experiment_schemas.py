@@ -11,7 +11,6 @@ class ExperimentStatus(str, Enum):
 
     QUEUED = "queued"
     RUNNING = "running"
-    EVALUATING = "evaluating"
     FAILED = "failed"
     COMPLETED = "completed"
 

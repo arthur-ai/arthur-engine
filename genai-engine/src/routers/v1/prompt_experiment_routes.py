@@ -18,6 +18,7 @@ from schemas.prompt_experiment_schemas import (
     PromptExperimentSummary,
     TestCaseListResponse,
 )
+from services.experiment_executor import ExperimentExecutor
 from utils.users import permission_checker
 from utils.utils import common_pagination_parameters
 
@@ -107,8 +108,9 @@ def create_prompt_experiment(
             request=experiment_request,
         )
 
-        # TODO: Kick off async execution of the experiment
-        # This would typically involve queueing a background job
+        # Kick off async execution of the experiment
+        executor = ExperimentExecutor()
+        executor.execute_experiment_async(experiment_id)
 
         return experiment
     except ValueError as e:
