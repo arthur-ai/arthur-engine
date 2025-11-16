@@ -236,7 +236,7 @@ class EvalExecutionResult(BaseModel):
 
     score: float = Field(description="Score from the evaluation")
     explanation: str = Field(description="Explanation of the score")
-    cost: float = Field(description="Cost of the evaluation")
+    cost: str = Field(description="Cost of the evaluation")
 
 
 class EvalExecution(BaseModel):

@@ -164,9 +164,11 @@ class PromptExperimentRepository:
 
                 # Convert eval results - may be None if not yet executed
                 eval_results = None
-                if db_eval_score.eval_results is not None:
-                    eval_results = EvalExecutionResult.model_validate(
-                        db_eval_score.eval_results
+                if db_eval_score.eval_result_score is not None:
+                    eval_results = EvalExecutionResult(
+                        score=db_eval_score.eval_result_score,
+                        explanation=db_eval_score.eval_result_explanation or "",
+                        cost=db_eval_score.eval_result_cost or "0",
                     )
 
                 eval_execution = EvalExecution(
@@ -179,8 +181,12 @@ class PromptExperimentRepository:
 
             # Convert prompt output - may be None if not yet executed
             prompt_output = None
-            if db_prompt_result.output is not None:
-                prompt_output = PromptOutput.model_validate(db_prompt_result.output)
+            if db_prompt_result.output_content is not None:
+                prompt_output = PromptOutput(
+                    content=db_prompt_result.output_content,
+                    tool_calls=db_prompt_result.output_tool_calls or [],
+                    cost=db_prompt_result.output_cost if db_prompt_result.output_cost is not None else "0",
+                )
 
             # Build the full prompt result
             prompt_result = PromptResult(
@@ -418,7 +424,9 @@ class PromptExperimentRepository:
                     name=prompt.name,
                     version=prompt.version,
                     rendered_prompt="...waiting to run...",  # Will be filled when experiment runs
-                    output=None,  # Will be filled when experiment runs
+                    output_content=None,  # Will be filled when experiment runs
+                    output_tool_calls=None,
+                    output_cost=None,
                 )
                 self.db_session.add(prompt_result)
 
@@ -455,7 +463,9 @@ class PromptExperimentRepository:
                         eval_name=llm_eval.name,
                         eval_version=llm_eval.version,
                         eval_input_variables=eval_input_variables,
-                        eval_results=None,  # Will be filled when experiment runs
+                        eval_result_score=None,  # Will be filled when experiment runs
+                        eval_result_explanation=None,
+                        eval_result_cost=None,
                     )
                     self.db_session.add(eval_score)
 

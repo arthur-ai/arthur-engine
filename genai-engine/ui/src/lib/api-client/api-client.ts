@@ -1062,7 +1062,7 @@ export interface EvalResults {
    * Cost
    * Cost of the evaluation
    */
-  cost: number;
+  cost: string;
   /**
    * Explanation
    * Explanation of the score

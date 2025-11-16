@@ -285,7 +285,7 @@ const TestCaseDetailModal: React.FC<TestCaseDetailModalProps> = ({
                                       color={evalItem.eval_results.score === 1 ? "success" : "error"}
                                     />
                                     <Chip
-                                      label={`Cost: $${evalItem.eval_results.cost.toFixed(4)}`}
+                                      label={`Cost: $${evalItem.eval_results.cost}`}
                                       size="small"
                                       variant="outlined"
                                     />

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import TIMESTAMP, ForeignKey, Integer, String, Text
+from sqlalchemy import TIMESTAMP, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -170,9 +170,10 @@ class DatabasePromptExperimentTestCasePromptResult(Base):
     # Rendered prompt with variables replaced
     rendered_prompt: Mapped[str] = mapped_column(Text, nullable=False)
 
-    # Output from the prompt
-    # Structure: {"content": str, "tool_calls": [], "cost": str}
-    output: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    # Output from the prompt (broken into separate columns)
+    output_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    output_tool_calls: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(JSON, nullable=True)
+    output_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
@@ -218,9 +219,10 @@ class DatabasePromptExperimentTestCasePromptResultEvalScore(Base):
         JSON, nullable=False
     )
 
-    # Eval results
-    # Structure: {"score": float, "explanation": str, "cost": float}
-    eval_results: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    # Eval results (broken into separate columns)
+    eval_result_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    eval_result_explanation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    eval_result_cost: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(

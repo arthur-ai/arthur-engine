@@ -373,11 +373,9 @@ class ExperimentExecutor:
                         if eval_key not in results_by_prompt[prompt_key]:
                             results_by_prompt[prompt_key][eval_key] = []
 
-                        # Add the score if eval results exist
-                        if eval_score.eval_results:
-                            score = eval_score.eval_results.get("score")
-                            if score is not None:
-                                results_by_prompt[prompt_key][eval_key].append(score)
+                        # Add the score if eval result exists
+                        if eval_score.eval_result_score is not None:
+                            results_by_prompt[prompt_key][eval_key].append(eval_score.eval_result_score)
 
             # Build the summary structure using Pydantic models
             prompt_eval_summaries = []
@@ -502,8 +500,10 @@ class ExperimentExecutor:
                 completion_request=completion_request,
             )
 
-            # Save output - convert response model to dict
-            prompt_result.output = response.model_dump(mode="python", exclude_none=True)
+            # Save output to separate columns
+            prompt_result.output_content = response.content if response.content else None
+            prompt_result.output_tool_calls = response.tool_calls if response.tool_calls else None
+            prompt_result.output_cost = str(response.cost) if response.cost else None
             db_session.commit()
 
             logger.info(
@@ -620,15 +620,15 @@ class ExperimentExecutor:
                 # Check if this is an experiment_output type
                 if source["type"] == "experiment_output":
                     # Get the value from prompt output
-                    if prompt_result.output:
-                        variable_map[variable_name] = prompt_result.output.get(
-                            "content", ""
-                        )
+                    # Priority: content -> tool_calls JSON -> default message
+                    if prompt_result.output_content:
+                        variable_map[variable_name] = prompt_result.output_content
+                    elif prompt_result.output_tool_calls:
+                        # If no content but tool calls exist, use JSON string of tool calls
+                        variable_map[variable_name] = json.dumps(prompt_result.output_tool_calls, indent=2)
                     else:
-                        logger.error(
-                            f"Prompt output not available for eval variable {variable_name}"
-                        )
-                        return False
+                        # If neither content nor tool calls, use default message
+                        variable_map[variable_name] = "No content was generated"
                 else:
                     # It's a dataset column - get the stored value
                     variable_map[variable_name] = stored_values.get(variable_name, "")
@@ -688,15 +688,10 @@ class ExperimentExecutor:
                 )
                 return False
 
-            # Save eval results using Pydantic model
-            eval_result = EvalExecutionResult(
-                score=llm_model_response.structured_output_response.score,
-                explanation=llm_model_response.structured_output_response.reason,
-                cost=llm_model_response.cost,
-            )
-            eval_score.eval_results = eval_result.model_dump(
-                mode="python", exclude_none=True
-            )
+            # Save eval results to separate columns
+            eval_score.eval_result_score = llm_model_response.structured_output_response.score
+            eval_score.eval_result_explanation = llm_model_response.structured_output_response.reason
+            eval_score.eval_result_cost = str(llm_model_response.cost) if llm_model_response.cost else None
             db_session.commit()
 
             logger.info(
