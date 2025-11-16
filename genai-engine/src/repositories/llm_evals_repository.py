@@ -164,5 +164,5 @@ class LLMEvalsRepository(BaseLLMRepository):
         return LLMEvalRunResponse(
             reason=llm_model_response.structured_output_response.reason,
             score=llm_model_response.structured_output_response.score,
-            cost=f"{llm_model_response.cost:.6f}",
+            cost=llm_model_response.cost,
         )
