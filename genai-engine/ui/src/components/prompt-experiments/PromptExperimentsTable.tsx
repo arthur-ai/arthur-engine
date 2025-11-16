@@ -10,6 +10,7 @@ import {
   Chip,
   TablePagination,
   LinearProgress,
+  CircularProgress,
 } from "@mui/material";
 import React from "react";
 import { formatUTCTimestamp, formatTimestampDuration, formatCurrency } from "@/utils/formatters";
@@ -169,11 +170,16 @@ export const PromptExperimentsTable: React.FC<PromptExperimentsTableProps> = ({
                 <TableCell>{experiment.prompt_name}</TableCell>
                 <TableCell>{experiment.total_rows}</TableCell>
                 <TableCell>
-                  <Chip
-                    label={getStatusLabel(experiment.status)}
-                    size="small"
-                    sx={getStatusChipSx(getStatusColor(experiment.status))}
-                  />
+                  <Box className="flex items-center gap-2">
+                    <Chip
+                      label={getStatusLabel(experiment.status)}
+                      size="small"
+                      sx={getStatusChipSx(getStatusColor(experiment.status))}
+                    />
+                    {(experiment.status === "running" || experiment.status === "queued") && (
+                      <CircularProgress size={16} />
+                    )}
+                  </Box>
                 </TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.created_at)}</TableCell>
                 <TableCell>{formatUTCTimestamp(experiment.finished_at)}</TableCell>
