@@ -350,7 +350,7 @@ class PromptExperimentRepository:
                             # Mark as placeholder - will be filled from prompt output when experiment runs
                             eval_input_variables.append({
                                 "variable_name": variable_name,
-                                "value": None,  # Will be filled when experiment runs
+                                "value": "<Waiting for output>",  # Will be filled when experiment runs
                             })
 
                     eval_score = DatabasePromptExperimentTestCasePromptResultEvalScore(
